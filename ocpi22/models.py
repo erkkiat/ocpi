@@ -20,12 +20,12 @@ class Token(models.Model):
     uid = models.CharField(max_length=36)
 
     TYPE_CHOICES = (
-        ('AD', 'AD_HOC_USER'),
-        ('AP', 'APP_USER'),
-        ('OT', 'OTHER'),
-        ('RF', 'RFID'),
+        ('AD_HOC_USER', 'Ad hoc user'),
+        ('APP_USER', 'Application user'),
+        ('OTHER', 'Other'),
+        ('RFID', 'RFID tag'),
     )
-    type = models.CharField(max_length=2, choices=TYPE_CHOICES)
+    type = models.CharField(max_length=11, choices=TYPE_CHOICES)
 
     # Uniquely identifies the EV Driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from
@@ -50,21 +50,21 @@ class Token(models.Model):
     WHITELIST_CHOICES = (
         # Token always has to be whitelisted, realtime authorization is not possible/allowed.
         # CPO shall always allow any use of this Token.
-        ('AL', 'ALWAYS'),
+        ('ALWAYS', 'Always'),
 
         # It is allowed to whitelist the token, realtime authorization is also allowed.
         # The CPO may choose which version of authorization to use.
-        ('AW', 'ALLOWED'),
+        ('ALLOWED', 'Allowed'),
 
         # In normal situations realtime authorization shall be used. But when the CPO cannot get a response
         # from the eMSP (communication between CPO and eMSP is offline), the CPO shall allow this Token to be used.
-        ('AO', 'ALLOWED_OFFLINE'),
+        ('ALLOWED_OFFLINE', 'Allowed when offline'),
 
         # Whitelisting is forbidden, only realtime authorization is allowed. CPO shall always send
         # a realtime authorization for any use of this Token to the eMSP.
-        ('NE', 'NEVER'),
+        ('NEVER', 'Never, only real time'),
     )
-    whitelist = models.CharField(max_length=2, choices=WHITELIST_CHOICES)
+    whitelist = models.CharField(max_length=15, choices=WHITELIST_CHOICES)
 
     # Language Code ISO 639-1. This optional field indicates the Token owner’s preferred interface language.
     # If the language is not provided or not supported then the CPO is free to choose its own language.
@@ -74,12 +74,12 @@ class Token(models.Model):
     # an Charge Point that support Preference base Smart Charging and support this ProfileType,
     # the Charge Point can start using this ProfileType, without this having to be set via: Set Charging Preferences.
     PROFILE_TYPE_CHOICES = (
-        ('CH', 'CHEAP'),  # Driver wants to use the cheapest charging profile possible.
-        ('FA', 'FAST'),  # Driver wants his EV charged as quickly as possible and is willing to pay a premium for this.
-        ('GR', 'GREEN'),  # Driver wants his EV charged with as much regenerative (green) energy as possible.
-        ('RE', 'REGULAR'),  # Driver does not have special preferences.
+        ('CHEAP', 'Cheap charging'),  # Driver wants to use the cheapest charging profile possible.
+        ('FAST', 'Fast charging'),  # Driver wants his EV charged as quickly as possible and is willing to pay a premium for this.
+        ('GREEN', 'Green energy'),  # Driver wants his EV charged with as much regenerative (green) energy as possible.
+        ('REGULAR', 'Regular, no preference'),  # Driver does not have special preferences.
     )
-    default_profile_type = models.CharField(max_length=2, null=True, blank=True, choices=PROFILE_TYPE_CHOICES)
+    default_profile_type = models.CharField(max_length=7, null=True, blank=True, choices=PROFILE_TYPE_CHOICES)
 
     # energy_contract = models.CharField(max_length=80)  # No type documentation available
 
@@ -91,13 +91,13 @@ class AuthorizationInfo(models.Model):
 
     # Status of the Token, and whether charging is allowed at the optionally given location.
     ALLOWED_CHOICES = (
-        ('AL', 'ALLOWED'),
-        ('BL', 'BLOCKED'),
-        ('EX', 'EXPIRED'),
-        ('NC', 'NO_CREDIT'),
-        ('NA', 'NOT_ALLOWED'),
+        ('ALLOWED', 'Allowed'),
+        ('BLOCKED', 'Blocked'),
+        ('EXPIRED', 'Expired token'),
+        ('NO_CREDIT', 'User has ho credit'),
+        ('NOT_ALLOWED', 'Not allowed'),
     )
-    allowed = models.CharField(max_length=2, choices=ALLOWED_CHOICES)
+    allowed = models.CharField(max_length=11, choices=ALLOWED_CHOICES)
 
     # The complete Token object for which this authorization was requested.
     token = models.ForeignKey(Token, on_delete=models.PROTECT)
