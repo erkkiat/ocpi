@@ -109,3 +109,227 @@ class AuthorizationInfo(models.Model):
     # Reference to the authorization given by the eMSP, when given, this reference will be provided
     # in the relevant Session and/or CDR.
     authorization_reference = models.CharField(max_length=36)
+
+    last_updated = models.DateTimeField(auto_now_add=True)
+
+
+class Tariff(models.Model):
+    pass
+
+
+class BusinessDetails(models.Model):
+    name = models.CharField(max_length=100)
+    website = models.URLField(null=True, blank=True)
+    logo = models.URLField(null=True, blank=True)
+
+
+class Facility(models.Model):
+    name = models.CharField(max_length=15)
+    description = models.CharField(max_length=255)
+
+
+class Capability(models.Model):
+    name = models.CharField(max_length=28)
+    description = models.CharField(max_length=255)
+
+
+class Location(models.Model):
+    """
+    A physical location with one or more EVSEs
+    """
+
+    # ISO-3166 alpha-2 country code of the CPO that owns this Location
+    country_code = models.CharField(max_length=2)
+
+    # CPO ID of the CPO that 'owns' this Location (following the ISO-15118 standard).
+    party_id = models.CharField(max_length=3)
+
+    # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
+    # This field can never be changed, modified or renamed.
+    id = models.CharField(max_length=36, primary_key=True)
+
+    # Defines if a Location may be published on an website or app etc.
+    # When this is set to false, only tokens identified in the field:
+    # publish_allowed_to are allowed to be shown this Location.
+    # When the same location has EVSEs that may be published and may not be published,
+    # two 'Locations' should be created.
+    publish = models.BooleanField()
+
+    # Defines the set of values that identify a token to which a Location might be published.
+    # At least one of the following fields SHALL be set: uid, visual_number, or group_id.
+    #
+    # When uid is set, type SHALL also be set.
+    publish_allowed_to = models.ManyToManyField(Token, null=True, blank=True)
+
+    # Display name of the location
+    name = models.CharField(max_length=255, null=True, blank=True)
+
+    # Street/block name and house number if available.
+    address = models.CharField(max_length=45)
+
+    # City or town
+    city = models.CharField(max_length=45)
+
+    # Postal code of the location, may only be omitted when the location has no postal code:
+    # in some countries charging locations at highways don’t have postal codes.
+    postal_code = models.CharField(max_length=45)
+
+    # State or province of the location, only to be used when relevant
+    state = models.CharField(max_length=20)
+
+    # ISO 3166-1 alpha-3 code for the country of this location
+    country = models.CharField(max_length=3)
+
+    # This class defines the geo location of the Charge Point. The geodetic system to be used is WGS 84.
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+
+    # An index for fast lookup, first 4 digits from lat
+    lat_partition = models.SmallIntegerField(db_index=True, null=True, blank=True)
+    # An index for fast lookup, first 4 digits from long
+    long_partition = models.SmallIntegerField(db_index=True, null=True, blank=True)
+
+    # Geographical location of related points relevant to the user
+    # related_locations
+
+    # The general type of parking at the charge point location
+    PARKING_CHOICES = (
+        ('ALONG_MOTORWAY', 'Along a motorway'),
+        ('PARKING_GARAGE', 'In a parking garage'),
+        ('PARKING_LOT', 'On a parking lot'),
+        ('ON_DRIVEWAY', 'On a driveway'),
+        ('ON_STREET', 'On the street'),
+        ('UNDERGROUND_GARAGE', 'In an underground garage'),
+    )
+    parking_type = models.CharField(max_length=18, null=True, blank=True)
+
+    # List of EVSEs that belong to this Location
+    # evses (comes automatically from Evse class)
+
+    # Human-readable directions on how to reach the location
+    # directions
+
+    operator = models.ManyToManyField(BusinessDetails, related_name='locations', null=True, blank=True)
+    suboperator = models.ManyToManyField(BusinessDetails, related_name='locations', null=True, blank=True)
+    owner = models.ManyToManyField(BusinessDetails, related_name='locations', null=True, blank=True)
+
+    # Optional list of facilities this charging location directly belongs to
+    facilities = models.ManyToManyField(Facility, null=True, blank=True)
+
+    # One of IANA tzdata’s TZ-values representing the time zone of the location.
+    # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
+    time_zone = models.CharField(max_length=64)
+
+    # The times when the EVSEs at the location can be accessed for charging
+    # opening_times
+
+    last_updated = models.DateTimeField(auto_now_add=True)
+
+
+class Evse(models.Model):
+    # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
+    # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.
+    # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
+    # use the field evse_id for that.
+    # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
+    uid = models.CharField(max_length=36)
+
+    # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
+    # (http://emi3group.com/documents-links/) "Part 2: business objects."
+    # Optional because: if an evse_id is to be re-used in the real world,
+    # the evse_id can be removed from an EVSE object if the status is set to REMOVED.
+    evse_id = models.CharField(max_length=48)
+
+    # Indicates the current status of the EVSE
+    STATUS_CHOICES = (
+        ('AVAILABLE', 'Available'),
+        ('BLOCKED', 'Physically blocked'),
+        ('CHARGING', 'Charging'),
+        ('INOPERATIVE', 'Inoperative (not yet active or it is no longer available)'),
+        ('OUTOFORDER', 'Out of order'),
+        ('PLANNED', 'Planned, will be operating soon'),
+        ('REMOVED', 'Discontinued/removed'),
+        ('RESERVED', 'Reserved for a particular EV driver'),
+        ('UNKNOWN', 'No status information available (also used when offline)'),
+    )
+    status = models.CharField(max_length=11, choices=STATUS_CHOICES)
+
+    CAPABILITY_CHOICES = (
+        ('CHARGING_PROFILE_CAPABLE', 'The EVSE supports charging profiles'),
+        ('CHARGING_PREFERENCES_CAPABLE', 'The EVSE supports charging preferences'),
+        ('CHIP_CARD_SUPPORT', 'EVSE has a payment terminal that supports chip cards'),
+        ('CONTACTLESS_CARD_SUPPORT', 'EVSE has a payment terminal that supports contactless cards'),
+        ('CREDIT_CARD_PAYABLE', 'EVSE has a payment terminal that makes it possible to pay for charging using a credit card'),
+        ('DEBIT_CARD_PAYABLE', 'EVSE has a payment terminal that makes it possible to pay for charging using a debit card'),
+        ('PED_TERMINAL', 'EVSE has a payment terminal with a pin-code entry device'),
+        ('REMOTE_START_STOP_CAPABLE', 'The EVSE can remotely be started / stopped'),
+        ('RESERVABLE', 'The EVSE can be reserved'),
+        ('RFID_READER', 'Charging at this EVSE can be authorized with an RFID token'),
+        ('TOKEN_GROUP_CAPABLE', 'This EVSE supports token groups, two or more tokens work as one'),
+        ('UNLOCK_CAPABLE', 'Connectors can be unlocked remotely'),
+    )
+    capabilities = models.ManyToManyField(Capability, related_name='evses')
+
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='evses')
+
+
+class Connector(models.Model):
+    # Identifier of the Connector within the EVSE. Two Connectors may have the same id
+    # as long as they do not belong to the same EVSE object.
+    uid = models.CharField(max_length=36)
+
+    evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='connectors')
+
+    STANDARD_CHOICES = (
+        ('CHADEMO', 'The connector type is CHAdeMO, DC'),
+        ('DOMESTIC_A', 'Standard / Domestic household, type "A", NEMA 1-15, 2 pins'),
+        ('DOMESTIC_B', 'Standard / Domestic household, type "B", NEMA 5-15, 3 pins'),
+        ('DOMESTIC_C', 'Standard / Domestic household, type "C", CEE 7 / 17, 2 pins'),
+        ('DOMESTIC_D', 'Standard / Domestic household, type "D", 3 pin'),
+        ('DOMESTIC_E', 'Standard / Domestic household, type "E", CEE 7 / 5 3 pins'),
+        ('DOMESTIC_F', 'Standard / Domestic household, type "F", CEE 7 / 4, Schuko, 3 pins'),
+        ('DOMESTIC_G', 'Standard / Domestic household, type "G", BS 1363, Commonwealth, 3 pins'),
+        ('DOMESTIC_H', 'Standard / Domestic household, type "H", SI-32, 3 pins'),
+        ('DOMESTIC_I', 'Standard / Domestic household, type "I", AS 3112, 3 pins'),
+        ('DOMESTIC_J', 'Standard / Domestic household, type "J", SEV 1011, 3 pins'),
+        ('DOMESTIC_K', 'Standard / Domestic household, type "K", DS 60884-2-D1, 3 pins'),
+        ('DOMESTIC_L', 'Standard / Domestic household, type "L", CEI 23-16-VII, 3 pins'),
+        ('IEC_60309_2_single_16', 'IEC 60309-2 Industrial Connector single phase 16 amperes (usually blue)'),
+        ('IEC_60309_2_three_16', 'IEC 60309-2 Industrial Connector three phase 16 amperes (usually red)'),
+        ('IEC_60309_2_three_32', 'IEC 60309-2 Industrial Connector three phase 32 amperes (usually red)'),
+        ('IEC_60309_2_three_64', 'IEC 60309-2 Industrial Connector three phase 64 amperes (usually red)'),
+        ('IEC_62196_T1', 'IEC 62196 Type 1 "SAE J1772"'),
+        ('IEC_62196_T1_COMBO', 'Combo Type 1 based, DC'),
+        ('IEC_62196_T2', 'IEC 62196 Type 2 "Mennekes"'),
+        ('IEC_62196_T2_COMBO', 'Combo Type 2 based, DC'),
+        ('IEC_62196_T3A', 'IEC 62196 Type 3A'),
+        ('IEC_62196_T3C', 'IEC 62196 Type 3C "Scame"'),
+        ('PANTOGRAPH_BOTTOM_UP', 'On-board Bottom-up-Pantograph typically for bus charging'),
+        ('PANTOGRAPH_TOP_DOWN', 'Off-board Top-down-Pantograph typically for bus charging'),
+        ('TESLA_R', 'Tesla Connector "Roadster"-type (round, 4 pin)'),
+        ('TESLA_S', 'Tesla Connector "Model-S"-type (oval, 5 pin)'),
+    )
+    standard = models.CharField(max_length=21, choices=STANDARD_CHOICES)
+
+    FORMAT_CHOICES = (
+        ('SOCKET', 'Socket, bring your own cable'),
+        ('CABLE', 'The connector is an attached cable'),
+    )
+    format = models.CharField(max_length=6, choices=FORMAT_CHOICES)
+
+    POWERTYPE_CHOICES = (
+        ('AC_1_PHASE', 'AC 1-phase'),
+        ('AC_3_PHASE', 'AC 3-phase'),
+        ('DC', 'Direct Current')
+    )
+    power_type = models.CharField(max_length=10, choices=POWERTYPE_CHOICES)
+
+    max_voltage = models.SmallIntegerField()
+    max_amperage = models.SmallIntegerField()
+    max_electric_power = models.SmallIntegerField()
+
+    tariff_ids = models.ManyToManyField(Tariff, related_name='connectors')
+
+    terms_and_conditions = models.URLField(null=True, blank=True)
+
+    last_updated = models.DateTimeField(auto_now_add=True)
