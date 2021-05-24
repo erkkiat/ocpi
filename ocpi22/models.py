@@ -159,7 +159,7 @@ class Location(models.Model):
     # At least one of the following fields SHALL be set: uid, visual_number, or group_id.
     #
     # When uid is set, type SHALL also be set.
-    publish_allowed_to = models.ManyToManyField(Token, null=True, blank=True)
+    publish_allowed_to = models.ManyToManyField(Token, related_name='locations')
 
     # Display name of the location
     name = models.CharField(max_length=255, null=True, blank=True)
@@ -209,12 +209,12 @@ class Location(models.Model):
     # Human-readable directions on how to reach the location
     # directions
 
-    operator = models.ManyToManyField(BusinessDetails, related_name='locations', null=True, blank=True)
-    suboperator = models.ManyToManyField(BusinessDetails, related_name='locations', null=True, blank=True)
-    owner = models.ManyToManyField(BusinessDetails, related_name='locations', null=True, blank=True)
+    operator = models.ManyToManyField(BusinessDetails, related_name='operator_locations')
+    suboperator = models.ManyToManyField(BusinessDetails, related_name='suboperator_locations')
+    owner = models.ManyToManyField(BusinessDetails, related_name='owner_locations')
 
     # Optional list of facilities this charging location directly belongs to
-    facilities = models.ManyToManyField(Facility, null=True, blank=True)
+    facilities = models.ManyToManyField(Facility, related_name='facility_locations')
 
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
     # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
