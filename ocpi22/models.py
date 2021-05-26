@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
 
 
 class Token(models.Model):
@@ -86,6 +88,9 @@ class Token(models.Model):
     # Timestamp when this Token was last updated (or created).
     last_updated = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f'{self.party_id}: {self.uid} {self.type}'
+
 
 class AuthorizationInfo(models.Model):
 
@@ -118,25 +123,44 @@ class Tariff(models.Model):
 
 
 class BusinessDetails(models.Model):
+    class Meta:
+        verbose_name_plural = 'business details'
     name = models.CharField(max_length=100)
-    website = models.URLField(null=True, blank=True)
-    logo = models.URLField(null=True, blank=True)
+    website = models.URLField(blank=True)
+    logo = models.URLField(blank=True)
+
+    def __str__(self):
+        return self.name
 
 
 class Facility(models.Model):
+    class Meta:
+        verbose_name_plural = 'facilities'
     name = models.CharField(max_length=15)
     description = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.name
+
 
 class Capability(models.Model):
+    class Meta:
+        verbose_name_plural = 'capabilities'
     name = models.CharField(max_length=28)
     description = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
 
 
 class Location(models.Model):
     """
     A physical location with one or more EVSEs
     """
+
+    unique_together = [
+        ['uid', 'suboperator', 'operator'],
+    ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
     country_code = models.CharField(max_length=2)
@@ -146,7 +170,7 @@ class Location(models.Model):
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    id = models.CharField(max_length=36, primary_key=True)
+    uid = models.CharField(max_length=36)
 
     # Defines if a Location may be published on an website or app etc.
     # When this is set to false, only tokens identified in the field:
@@ -159,10 +183,10 @@ class Location(models.Model):
     # At least one of the following fields SHALL be set: uid, visual_number, or group_id.
     #
     # When uid is set, type SHALL also be set.
-    publish_allowed_to = models.ManyToManyField(Token, related_name='locations')
+    publish_allowed_to = models.ManyToManyField(Token, related_name='locations', blank=True)
 
     # Display name of the location
-    name = models.CharField(max_length=255, null=True, blank=True)
+    name = models.CharField(max_length=255, blank=True)
 
     # Street/block name and house number if available.
     address = models.CharField(max_length=45)
@@ -172,10 +196,10 @@ class Location(models.Model):
 
     # Postal code of the location, may only be omitted when the location has no postal code:
     # in some countries charging locations at highways don’t have postal codes.
-    postal_code = models.CharField(max_length=45)
+    postal_code = models.CharField(max_length=45, blank=True)
 
     # State or province of the location, only to be used when relevant
-    state = models.CharField(max_length=20)
+    state = models.CharField(max_length=20, blank=True)
 
     # ISO 3166-1 alpha-3 code for the country of this location
     country = models.CharField(max_length=3)
@@ -201,7 +225,7 @@ class Location(models.Model):
         ('ON_STREET', 'On the street'),
         ('UNDERGROUND_GARAGE', 'In an underground garage'),
     )
-    parking_type = models.CharField(max_length=18, null=True, blank=True)
+    parking_type = models.CharField(max_length=18, blank=True, choices=PARKING_CHOICES)
 
     # List of EVSEs that belong to this Location
     # evses (comes automatically from Evse class)
@@ -209,12 +233,12 @@ class Location(models.Model):
     # Human-readable directions on how to reach the location
     # directions
 
-    operator = models.ManyToManyField(BusinessDetails, related_name='operator_locations')
-    suboperator = models.ManyToManyField(BusinessDetails, related_name='suboperator_locations')
-    owner = models.ManyToManyField(BusinessDetails, related_name='owner_locations')
+    operator = models.ManyToManyField(BusinessDetails, related_name='operator_locations', blank=True)
+    suboperator = models.ManyToManyField(BusinessDetails, related_name='suboperator_locations', blank=True)
+    owner = models.ManyToManyField(BusinessDetails, related_name='owner_locations', blank=True)
 
     # Optional list of facilities this charging location directly belongs to
-    facilities = models.ManyToManyField(Facility, related_name='facility_locations')
+    facilities = models.ManyToManyField(Facility, related_name='facility_locations', blank=True)
 
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
     # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
@@ -224,6 +248,9 @@ class Location(models.Model):
     # opening_times
 
     last_updated = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name or self.id
 
 
 class Evse(models.Model):
@@ -271,6 +298,11 @@ class Evse(models.Model):
     capabilities = models.ManyToManyField(Capability, related_name='evses')
 
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='evses')
+
+    # last_updated = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.uid} {self.evse_id}'
 
 
 class Connector(models.Model):
@@ -326,10 +358,28 @@ class Connector(models.Model):
 
     max_voltage = models.SmallIntegerField()
     max_amperage = models.SmallIntegerField()
-    max_electric_power = models.SmallIntegerField()
+    max_electric_power = models.SmallIntegerField(blank=True)
 
-    tariff_ids = models.ManyToManyField(Tariff, related_name='connectors')
+    tariff_ids = models.ManyToManyField(Tariff, related_name='connectors', blank=True)
 
-    terms_and_conditions = models.URLField(null=True, blank=True)
+    terms_and_conditions = models.URLField(blank=True)
 
     last_updated = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.uid} {self.standard}'
+
+
+def calculate_partition(coordinate):
+    if not coordinate:
+        return 0
+    return int(float(coordinate) * 100.0)
+
+
+@receiver(pre_save, sender=Location)
+def my_callback(sender, instance, *_args, **_kwargs):
+    location: Location = instance
+    location.lat_partition = calculate_partition(location.latitude)
+    location.long_partition = calculate_partition(location.longitude)
+    # if not charger.costs():
+    #     charger.access = 'FR'

@@ -49,7 +49,7 @@ USE_I18N = False
 USE_L10N = False
 
 # If you set this to False, Django will not use timezone-aware datetimes.
-USE_TZ = False
+USE_TZ = True
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/var/www/example.com/media/"
@@ -110,7 +110,7 @@ WSGI_APPLICATION = 'ocpiconnector.wsgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['ocpiconnector/templates', 'ocpi22/templates'],
+        'DIRS': ['ocpiconnector/templates', 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
