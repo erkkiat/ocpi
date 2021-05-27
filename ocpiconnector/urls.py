@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from datetime import datetime
 
 from django.conf.urls import include
@@ -60,6 +61,11 @@ class BusinessDetailsSerializer(serializers.HyperlinkedModelSerializer):
         model = BusinessDetails
         exclude = ['url']
 
+    def to_representation(self, value):
+        repr_dict = super().to_representation(value)
+        return OrderedDict((k, v) for k, v in repr_dict.items()
+                           if v not in [None, [], '', {}])
+
 
 class EvseSerializer(serializers.HyperlinkedModelSerializer):
     connectors = ConnectorSerializer(many=True, read_only=True)
@@ -90,6 +96,11 @@ class LocationSerializer(serializers.HyperlinkedModelSerializer):
         List the token IDs of the drivers who are allowed to see this Location
         """
         return [token.uid for token in location.publish_allowed_to.all()]
+
+    def to_representation(self, value):
+        repr_dict = super().to_representation(value)
+        return OrderedDict((k, v) for k, v in repr_dict.items()
+                           if v not in [None, [], '', {}])
 
 
 def apply_query_date_range(request, queryset) -> QuerySet:
