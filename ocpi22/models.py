@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
 
@@ -85,8 +85,7 @@ class Token(models.Model):
 
     # energy_contract = models.CharField(max_length=80)  # No type documentation available
 
-    # Timestamp when this Token was last updated (or created).
-    last_updated = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'{self.party_id}: {self.uid} {self.type}'
@@ -115,7 +114,7 @@ class AuthorizationInfo(models.Model):
     # in the relevant Session and/or CDR.
     authorization_reference = models.CharField(max_length=36)
 
-    last_updated = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
 
 
 class Tariff(models.Model):
@@ -251,8 +250,7 @@ class Location(models.Model):
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times
 
-    # Todo: update last_updated when Evse or Connector is saved
-    last_updated = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name or str(self.pk)
@@ -304,8 +302,7 @@ class Evse(models.Model):
 
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='evses')
 
-    # Todo: update last_updated when Connector is saved
-    # last_updated = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'{self.uid} {self.evse_id}'
@@ -366,11 +363,11 @@ class Connector(models.Model):
     max_amperage = models.SmallIntegerField()
     max_electric_power = models.SmallIntegerField(null=True, blank=True)
 
-    tariff_ids = models.ManyToManyField(Tariff, related_name='connectors', blank=True)
+    tariff_ids = models.ManyToManyField(Tariff, related_name='tariffs', blank=True)
 
     terms_and_conditions = models.URLField(blank=True, default='')
 
-    last_updated = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'{self.uid} {self.standard}'
@@ -389,3 +386,19 @@ def my_callback(sender, instance, *_args, **_kwargs):
     location.long_partition = calculate_partition(location.longitude)
     # if not charger.costs():
     #     charger.access = 'FR'
+
+
+@receiver(post_save, sender=Evse)
+def my_callback(sender, instance, *_args, **_kwargs):
+    evse: Evse = instance
+    location: Location = evse.location
+    # location.last_updated = evse.last_updated
+    location.save()
+
+
+@receiver(post_save, sender=Connector)
+def my_callback(sender, instance, *_args, **_kwargs):
+    connector: Connector = instance
+    evse: Evse = connector.evse
+    # evse.last_updated = connector.last_updated
+    evse.save()
