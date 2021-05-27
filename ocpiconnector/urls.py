@@ -113,12 +113,27 @@ def apply_query_date_range(request, queryset) -> QuerySet:
 
 
 class LocationViewSet(GenericViewSet):
+
     @action(methods=['GET'], detail=False)
     def locations(self, request):
         # noinspection PyUnresolvedReferences
         queryset = apply_query_date_range(request, Location.objects.all())
         serializer = LocationSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)')
+    def location_by_uid(self, request, uid):
+        # noinspection PyUnresolvedReferences
+        queryset = Location.objects.filter(uid=uid)
+        serializer = LocationSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    # @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
+    # def location_by_uid(self, request, uid, evse_id):
+    #     # noinspection PyUnresolvedReferences
+    #     queryset = Location.objects.filter(uid=uid)
+    #     serializer = LocationSerializer(queryset, many=True)
+    #     return Response(serializer.data)
 
     # noinspection PyUnresolvedReferences
     queryset = Location.objects.all().order_by('id')
@@ -132,9 +147,6 @@ class DocumentedRouter(routers.DefaultRouter):
 router = DocumentedRouter()
 router.register(r'tokens', TokenViewSet)
 router.register(r'', LocationViewSet)
-# router.register(r'evses', EvseViewSet)
-# router.register(r'businessdetails', BusinessDetailsViewSet)
-# router.register(r'connectors', ConnectorViewSet)
 
 urlpatterns = [
     path('ocpi/2.2/', include(router.urls)),

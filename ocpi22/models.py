@@ -250,6 +250,7 @@ class Location(models.Model):
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times
 
+    # Todo: It is best practice to return the oldest (by creation date, not the last_updated field) first
     last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
