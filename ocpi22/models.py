@@ -126,8 +126,8 @@ class BusinessDetails(models.Model):
     class Meta:
         verbose_name_plural = 'business details'
     name = models.CharField(max_length=100)
-    website = models.URLField(blank=True)
-    logo = models.URLField(blank=True)
+    website = models.URLField(blank=True, default='')
+    logo = models.URLField(blank=True, default='')
 
     def __str__(self):
         return self.name
@@ -225,7 +225,7 @@ class Location(models.Model):
         ('ON_STREET', 'On the street'),
         ('UNDERGROUND_GARAGE', 'In an underground garage'),
     )
-    parking_type = models.CharField(max_length=18, blank=True, choices=PARKING_CHOICES)
+    parking_type = models.CharField(max_length=18, null=True, blank=True, choices=PARKING_CHOICES)
 
     # List of EVSEs that belong to this Location
     # evses (comes automatically from Evse class)
@@ -233,13 +233,17 @@ class Location(models.Model):
     # Human-readable directions on how to reach the location
     # directions
 
-    operator = models.ManyToManyField(BusinessDetails, related_name='operator_locations', blank=True)
-    suboperator = models.ManyToManyField(BusinessDetails, related_name='suboperator_locations', blank=True)
-    owner = models.ManyToManyField(BusinessDetails, related_name='owner_locations', blank=True)
+    operator = models.ForeignKey(BusinessDetails, related_name='operator_locations',
+                                 null=True, blank=True, on_delete=models.PROTECT)
+    suboperator = models.ForeignKey(BusinessDetails, related_name='suboperator_locations',
+                                    null=True, blank=True, on_delete=models.PROTECT)
+    owner = models.ForeignKey(BusinessDetails, related_name='owner_locations',
+                              null=True, blank=True, on_delete=models.PROTECT)
 
     # Optional list of facilities this charging location directly belongs to
     facilities = models.ManyToManyField(Facility, related_name='facility_locations', blank=True)
 
+    # Todo: get time zone based on coordinates
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
     # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
     time_zone = models.CharField(max_length=64)
@@ -250,7 +254,7 @@ class Location(models.Model):
     last_updated = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name or self.id
+        return self.name or self.pk
 
 
 class Evse(models.Model):
@@ -358,11 +362,11 @@ class Connector(models.Model):
 
     max_voltage = models.SmallIntegerField()
     max_amperage = models.SmallIntegerField()
-    max_electric_power = models.SmallIntegerField(blank=True)
+    max_electric_power = models.SmallIntegerField(null=True, blank=True)
 
     tariff_ids = models.ManyToManyField(Tariff, related_name='connectors', blank=True)
 
-    terms_and_conditions = models.URLField(blank=True)
+    terms_and_conditions = models.URLField(blank=True, default='')
 
     last_updated = models.DateTimeField(auto_now_add=True)
 

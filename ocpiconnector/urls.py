@@ -60,14 +60,23 @@ class EvseSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class LocationSerializer(serializers.HyperlinkedModelSerializer):
-    evses = EvseSerializer(many=True, read_only=True)
-    operator = BusinessDetailsSerializer(read_only=True, many=True)
-    suboperator = BusinessDetailsSerializer(read_only=True, many=True)
-    owner = BusinessDetailsSerializer(read_only=True, many=True)
-
     class Meta:
         model = Location
-        exclude = ['lat_partition', 'long_partition', 'facilities', 'url']
+        exclude = ['lat_partition', 'long_partition', 'facilities', 'url', 'uid', 'latitude', 'longitude']
+
+    id = serializers.CharField(source='uid')
+    coordinates = serializers.SerializerMethodField()
+    evses = EvseSerializer(many=True, read_only=True)
+    operator = BusinessDetailsSerializer(read_only=True, many=False)
+    suboperator = BusinessDetailsSerializer(read_only=True, many=False)
+    owner = BusinessDetailsSerializer(read_only=True, many=False)
+    publish_allowed_to = serializers.SerializerMethodField()
+
+    def get_coordinates(self, location: Location):
+        return dict(latitude=location.latitude, longitude=location.longitude)
+
+    def get_publish_allowed_to(self, location: Location):
+        return [token.uid for token in location.publish_allowed_to.all()]
 
 
 class LocationViewSet(mixins.RetrieveModelMixin,
