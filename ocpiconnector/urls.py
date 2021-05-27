@@ -2,6 +2,7 @@ from datetime import datetime
 
 from django.conf.urls import include
 from django.contrib import admin
+from django.db.models import QuerySet
 from django.urls import path
 
 from rest_framework import routers, serializers, viewsets, mixins
@@ -91,28 +92,31 @@ class LocationSerializer(serializers.HyperlinkedModelSerializer):
         return [token.uid for token in location.publish_allowed_to.all()]
 
 
+def apply_query_date_range(request, queryset) -> QuerySet:
+    date_from: str = request.GET.get('date_from')
+    if date_from:
+        import dateutil.parser
+        date_from: datetime = dateutil.parser.isoparse(date_from)
+        queryset = queryset.filter(last_updated__gte=date_from)
+    date_to: str = request.GET.get('date_to')
+    if date_to:
+        import dateutil.parser
+        date_to: datetime = dateutil.parser.isoparse(date_to)
+        queryset = queryset.filter(last_updated__lt=date_to)
+    limit: int = int(request.GET.get('limit', '0'))
+    offset: int = int(request.GET.get('offset', '0'))
+
+    queryset = queryset.order_by('id')
+    if limit:
+        queryset = queryset[offset:offset + limit]
+    return queryset
+
+
 class LocationViewSet(GenericViewSet):
     @action(methods=['GET'], detail=False)
     def locations(self, request):
         # noinspection PyUnresolvedReferences
-        queryset = Location.objects.all()
-        date_from: str = request.GET.get('date_from')
-        if date_from:
-            import dateutil.parser
-            date_from: datetime = dateutil.parser.isoparse(date_from)
-            queryset = queryset.filter(last_updated__gte=date_from)
-        date_to: str = request.GET.get('date_to')
-        if date_to:
-            import dateutil.parser
-            date_to: datetime = dateutil.parser.isoparse(date_to)
-            queryset = queryset.filter(last_updated__lt=date_to)
-        limit: int = int(request.GET.get('limit', '0'))
-        offset: int = int(request.GET.get('offset', '0'))
-
-        queryset = queryset.order_by('id')
-        if limit:
-            queryset = queryset[offset:offset+limit]
-
+        queryset = apply_query_date_range(request, Location.objects.all())
         serializer = LocationSerializer(queryset, many=True)
         return Response(serializer.data)
 
