@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
-    TariffElement, PriceComponent
+    PriceComponent
 
 
 class TokenAdmin(admin.ModelAdmin):
@@ -32,8 +32,8 @@ class CapabilityAdmin(admin.ModelAdmin):
     model = Capability
 
 
-class TariffElementsInline(admin.TabularInline):
-    model = TariffElement
+class PriceComponentsInline(admin.TabularInline):
+    model = PriceComponent
 
 
 class PriceComponentAdmin(admin.ModelAdmin):
@@ -42,11 +42,7 @@ class PriceComponentAdmin(admin.ModelAdmin):
 
 class TariffAdmin(admin.ModelAdmin):
     model = Tariff
-    inlines = [ TariffElementsInline ]
-
-
-class TariffElementAdmin(admin.ModelAdmin):
-    model = TariffElement
+    inlines = [ PriceComponentsInline ]
 
 
 admin.site.register(Token, TokenAdmin)
@@ -57,5 +53,4 @@ admin.site.register(BusinessDetails, BusinessDetailsAdmin)
 admin.site.register(Facility, FacilityAdmin)
 admin.site.register(Capability, CapabilityAdmin)
 admin.site.register(Tariff, TariffAdmin)
-admin.site.register(TariffElement, TariffElementAdmin)
 admin.site.register(PriceComponent, PriceComponentAdmin)

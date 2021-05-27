@@ -165,17 +165,7 @@ class Tariff(models.Model):
     # max_price
 
     def __str__(self):
-        return ', '.join([str(x) for x in self.elements.all()] or f'{self.uid}')
-
-
-class TariffElement(models.Model):
-    tariff = models.ForeignKey(Tariff, related_name='elements', on_delete=models.PROTECT)
-
-    # List of price components that describe the pricing of a tariff.
-    # price_components is related from PriceComponent
-
-    def __str__(self):
-        return ', '.join([str(x) for x in self.price_components.all()]) or '[no pricing elements]'
+        return ', '.join([str(x) for x in self.price_components.all()] or f'{self.uid}')
 
 
 class PriceComponent(models.Model):
@@ -208,10 +198,10 @@ class PriceComponent(models.Model):
     # If 6 minutes were used, 10 minutes (2 blocks of step_size) will be billed.
     step_size = models.IntegerField()
 
-    tariff_element = models.ForeignKey(TariffElement, related_name='price_components', on_delete=models.PROTECT)
+    tariff = models.ForeignKey(Tariff, related_name='price_components', on_delete=models.PROTECT)
 
     def __str__(self):
-        return f'{self.price or 0.0} {self.tariff_element.tariff.currency} per {self.step_size} {self.get_type_display()}'
+        return f'{self.price or 0.0} {self.tariff.currency} per {self.step_size} {self.get_type_display()}'
 
 
 class BusinessDetails(models.Model):
