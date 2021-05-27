@@ -251,10 +251,11 @@ class Location(models.Model):
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times
 
+    # Todo: update last_updated when Evse or Connector is saved
     last_updated = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name or self.pk
+        return self.name or str(self.pk)
 
 
 class Evse(models.Model):
@@ -303,6 +304,7 @@ class Evse(models.Model):
 
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='evses')
 
+    # Todo: update last_updated when Connector is saved
     # last_updated = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

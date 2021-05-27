@@ -1,9 +1,13 @@
+from datetime import datetime
+
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path
 
 from rest_framework import routers, serializers, viewsets, mixins
+from rest_framework.decorators import action
 from rest_framework.viewsets import GenericViewSet
+from rest_framework.response import Response
 
 from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails
 
@@ -37,12 +41,17 @@ class TokenAPIView(routers.APIRootView):
 
 class ConnectorSerializer(serializers.HyperlinkedModelSerializer):
     uid = serializers.CharField()
+    max_electric_power = serializers.SerializerMethodField()
 
     class Meta:
         model = Connector
         fields = ['uid', 'standard', 'format',
                   'power_type', 'max_voltage', 'max_amperage', 'max_electric_power',
                   'terms_and_conditions', 'last_updated']
+
+    def get_max_electric_power(self, connector: Connector) -> str:
+        # Todo: what about 1-phase and 2-phase AC?
+        return connector.max_electric_power or connector.max_voltage * connector.max_amperage
 
 
 class BusinessDetailsSerializer(serializers.HyperlinkedModelSerializer):
@@ -75,32 +84,40 @@ class LocationSerializer(serializers.HyperlinkedModelSerializer):
     def get_coordinates(self, location: Location):
         return dict(latitude=location.latitude, longitude=location.longitude)
 
-    def get_publish_allowed_to(self, location: Location):
+    def get_publish_allowed_to(self, location: Location) -> list:
+        """
+        List the token IDs of the drivers who are allowed to see this Location
+        """
         return [token.uid for token in location.publish_allowed_to.all()]
 
 
-class LocationViewSet(mixins.RetrieveModelMixin,
-                   mixins.ListModelMixin,
-                   GenericViewSet):
+class LocationViewSet(GenericViewSet):
+    @action(methods=['GET'], detail=False)
+    def locations(self, request):
+        # noinspection PyUnresolvedReferences
+        queryset = Location.objects.all()
+        date_from: str = request.GET.get('date_from')
+        if date_from:
+            import dateutil.parser
+            date_from: datetime = dateutil.parser.isoparse(date_from)
+            queryset = queryset.filter(last_updated__gte=date_from)
+        date_to: str = request.GET.get('date_to')
+        if date_to:
+            import dateutil.parser
+            date_to: datetime = dateutil.parser.isoparse(date_to)
+            queryset = queryset.filter(last_updated__lt=date_to)
+        limit: int = int(request.GET.get('limit', '0'))
+        offset: int = int(request.GET.get('offset', '0'))
+
+        queryset = queryset.order_by('id')
+        if limit:
+            queryset = queryset[offset:offset+limit]
+
+        serializer = LocationSerializer(queryset, many=True)
+        return Response(serializer.data)
+
     # noinspection PyUnresolvedReferences
     queryset = Location.objects.all().order_by('id')
-    serializer_class = LocationSerializer
-
-
-# class EvseViewSet(mixins.RetrieveModelMixin,
-#                    mixins.ListModelMixin,
-#                    GenericViewSet):
-#     # noinspection PyUnresolvedReferences
-#     queryset = Evse.objects.all().order_by('id')
-#     serializer_class = EvseSerializer
-
-
-# class BusinessDetailsViewSet(mixins.RetrieveModelMixin,
-#                    mixins.ListModelMixin,
-#                    GenericViewSet):
-#     # noinspection PyUnresolvedReferences
-#     queryset = BusinessDetails.objects.all().order_by('id')
-#     serializer_class = BusinessDetailsSerializer
 
 
 class DocumentedRouter(routers.DefaultRouter):
@@ -110,7 +127,7 @@ class DocumentedRouter(routers.DefaultRouter):
 # Routers provide an easy way of automatically determining the URL conf.
 router = DocumentedRouter()
 router.register(r'tokens', TokenViewSet)
-router.register(r'locations', LocationViewSet)
+router.register(r'', LocationViewSet)
 # router.register(r'evses', EvseViewSet)
 # router.register(r'businessdetails', BusinessDetailsViewSet)
 # router.register(r'connectors', ConnectorViewSet)
