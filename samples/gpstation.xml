@@ -1,1 +1,60 @@
-<?xml version='1.0' ?><markers><marker id="" name="Orlandovtsi 1 Type 2 22 kW" address="Sofia str. 40" lat="42.724529" lng="23.338512" type="DC" status="1" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=59&amp;product_id=51" price="0.48" agmaps="google.navigation:q=42.724529,23.338512" igmaps="comgooglemaps://?daddr=42.724529,23.338512&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.724529,23.338512&amp;dirflg=d&amp;t=h" /><marker id="" name="NDK 1 Type 2 22 kW" address="Underground parking NDK" lat="42.684605" lng="23.320597" type="AC" status="0" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=62&amp;product_id=57" price="0.48" agmaps="google.navigation:q=42.684605,23.320597" igmaps="comgooglemaps://?daddr=42.684605,23.320597&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.684605,23.320597&amp;dirflg=d&amp;t=h" /><marker id="" name="Central Station 1 Type 2 22 kW" address="Central Station Sofia" lat="42.710426" lng="23.322491" type="AC" status="0" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=63&amp;product_id=58" price="0.48" agmaps="google.navigation:q=42.710426,23.322491" igmaps="comgooglemaps://?daddr=42.710426,23.322491&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.710426,23.322491&amp;dirflg=d&amp;t=h" /><marker id="" name="Zona 1 Type 2 22 kW" address="Zone B5 bl. 10" lat="42.697639" lng="23.303032" type="AC" status="0" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=64&amp;product_id=59" price="0.48" agmaps="google.navigation:q=42.697639,23.303032" igmaps="comgooglemaps://?daddr=42.697639,23.303032&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.697639,23.303032&amp;dirflg=d&amp;t=h" /><marker id="" name="Dragalevtsi 1 Type 2 22 kW" address="55A ulitsa Zahari Zograf, 1415 Vitosha, BG" lat="42.623486" lng="23.320843" type="AC" status="0" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=65&amp;product_id=60" price="0.48" agmaps="google.navigation:q=42.623486,23.320843" igmaps="comgooglemaps://?daddr=42.623486,23.320843&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.623486,23.320843&amp;dirflg=d&amp;t=h" /><marker id="" name="Golf Club 1 Type 2 7.5 kW" address="Ravno pole, St. Sofiya golf club and spa" lat="42.670425" lng="23.537140" type="AC" status="0" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=66&amp;product_id=61" price="0.48" agmaps="google.navigation:q=42.670427,23.537140" igmaps="comgooglemaps://?daddr=42.670427,23.537140&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.670427,23.537140&amp;dirflg=d&amp;t=h" /><marker id="" name="Terra Smolyan Type 2 22 kW" address="ul. Trakia 14, 4702 Industrial zone Trandevitsa, Smolyan" lat="41.570164" lng="24.763239" type="AC" status="2" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=68&amp;product_id=63" price="0.48" agmaps="google.navigation:q=41.570164,24.763239" igmaps="comgooglemaps://?daddr=41.570164,24.763239&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=41.570164,24.763239&amp;dirflg=d&amp;t=h" /><marker id="" name="Hadji Dimitar 1 Type 2 22 kW" address="ul. Malashevska 2, Sofia" lat="42.710583" lng="23.337729" type="AC" status="2" link="" price="0.48" agmaps="google.navigation:q=42.710582,23.337729" igmaps="comgooglemaps://?daddr=42.710582,23.337729&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.710582,23.337729&amp;dirflg=d&amp;t=h" /><marker id="" name="Kremak Type 2 22 kW" address="Main Road 66, Hrishteni village, Stara Zagora" lat="42.443249" lng="25.730640" type="AC" status="2" link="" price="0.48" agmaps="google.navigation:q=42.443247,25.730640" igmaps="comgooglemaps://?daddr=42.443247,25.730640&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.443247,25.730640&amp;dirflg=d&amp;t=h" /><marker id="" name="Valerii ScM Group Type 2 22 kW" address="ul. Stroevsko shosse 3, Trud village, Plovdiv" lat="42.216629" lng="24.726957" type="AC" status="2" link="" price="0.48" agmaps="google.navigation:q=42.216628,24.726958" igmaps="comgooglemaps://?daddr=42.216628,24.726958&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.216628,24.726958&amp;dirflg=d&amp;t=h" /><marker id="" name="Siemens Type 2 22 kW" address="Kukush str. 2, Sofia" lat="42.716785" lng="23.297478" type="AC" status="1" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=67&amp;product_id=62" price="0.48" agmaps="google.navigation:q=42.716784,23.297478" igmaps="comgooglemaps://?daddr=42.716784,23.297478&amp;directionsmode=transit" amaps="http://maps.apple.com/?daddr=42.716784,23.297478&amp;dirflg=d&amp;t=h" /></markers>
+<?xml version='1.0' ?>
+<markers>
+    <marker id="" name="Orlandovtsi 1 Type 2 22 kW" address="Sofia str. 40" lat="42.724529" lng="23.338512" type="DC"
+            status="1" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=59&amp;product_id=51"
+            price="0.48" agmaps="google.navigation:q=42.724529,23.338512"
+            igmaps="comgooglemaps://?daddr=42.724529,23.338512&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.724529,23.338512&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="NDK 1 Type 2 22 kW" address="Underground parking NDK" lat="42.684605" lng="23.320597" type="AC"
+            status="0" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=62&amp;product_id=57"
+            price="0.48" agmaps="google.navigation:q=42.684605,23.320597"
+            igmaps="comgooglemaps://?daddr=42.684605,23.320597&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.684605,23.320597&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Central Station 1 Type 2 22 kW" address="Central Station Sofia" lat="42.710426" lng="23.322491"
+            type="AC" status="0"
+            link="https://park.gpstation.eu/index.php?route=product/product&amp;path=63&amp;product_id=58" price="0.48"
+            agmaps="google.navigation:q=42.710426,23.322491"
+            igmaps="comgooglemaps://?daddr=42.710426,23.322491&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.710426,23.322491&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Zona 1 Type 2 22 kW" address="Zone B5 bl. 10" lat="42.697639" lng="23.303032" type="AC"
+            status="0" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=64&amp;product_id=59"
+            price="0.48" agmaps="google.navigation:q=42.697639,23.303032"
+            igmaps="comgooglemaps://?daddr=42.697639,23.303032&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.697639,23.303032&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Dragalevtsi 1 Type 2 22 kW" address="55A ulitsa Zahari Zograf, 1415 Vitosha, BG" lat="42.623486"
+            lng="23.320843" type="AC" status="0"
+            link="https://park.gpstation.eu/index.php?route=product/product&amp;path=65&amp;product_id=60" price="0.48"
+            agmaps="google.navigation:q=42.623486,23.320843"
+            igmaps="comgooglemaps://?daddr=42.623486,23.320843&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.623486,23.320843&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Golf Club 1 Type 2 7.5 kW" address="Ravno pole, St. Sofiya golf club and spa" lat="42.670425"
+            lng="23.537140" type="AC" status="0"
+            link="https://park.gpstation.eu/index.php?route=product/product&amp;path=66&amp;product_id=61" price="0.48"
+            agmaps="google.navigation:q=42.670427,23.537140"
+            igmaps="comgooglemaps://?daddr=42.670427,23.537140&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.670427,23.537140&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Terra Smolyan Type 2 22 kW" address="ul. Trakia 14, 4702 Industrial zone Trandevitsa, Smolyan"
+            lat="41.570164" lng="24.763239" type="AC" status="2"
+            link="https://park.gpstation.eu/index.php?route=product/product&amp;path=68&amp;product_id=63" price="0.48"
+            agmaps="google.navigation:q=41.570164,24.763239"
+            igmaps="comgooglemaps://?daddr=41.570164,24.763239&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=41.570164,24.763239&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Hadji Dimitar 1 Type 2 22 kW" address="ul. Malashevska 2, Sofia" lat="42.710583" lng="23.337729"
+            type="AC" status="2" link="" price="0.48" agmaps="google.navigation:q=42.710582,23.337729"
+            igmaps="comgooglemaps://?daddr=42.710582,23.337729&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.710582,23.337729&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Kremak Type 2 22 kW" address="Main Road 66, Hrishteni village, Stara Zagora" lat="42.443249"
+            lng="25.730640" type="AC" status="2" link="" price="0.48" agmaps="google.navigation:q=42.443247,25.730640"
+            igmaps="comgooglemaps://?daddr=42.443247,25.730640&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.443247,25.730640&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Valerii ScM Group Type 2 22 kW" address="ul. Stroevsko shosse 3, Trud village, Plovdiv"
+            lat="42.216629" lng="24.726957" type="AC" status="2" link="" price="0.48"
+            agmaps="google.navigation:q=42.216628,24.726958"
+            igmaps="comgooglemaps://?daddr=42.216628,24.726958&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.216628,24.726958&amp;dirflg=d&amp;t=h"/>
+    <marker id="" name="Siemens Type 2 22 kW" address="Kukush str. 2, Sofia" lat="42.716785" lng="23.297478" type="AC"
+            status="1" link="https://park.gpstation.eu/index.php?route=product/product&amp;path=67&amp;product_id=62"
+            price="0.48" agmaps="google.navigation:q=42.716784,23.297478"
+            igmaps="comgooglemaps://?daddr=42.716784,23.297478&amp;directionsmode=transit"
+            amaps="http://maps.apple.com/?daddr=42.716784,23.297478&amp;dirflg=d&amp;t=h"/>
+</markers>

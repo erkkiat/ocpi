@@ -62,6 +62,7 @@ class BusinessDetailsSerializer(serializers.HyperlinkedModelSerializer):
         exclude = ['url']
 
     def to_representation(self, value):
+        # Remove empty values
         repr_dict = super().to_representation(value)
         return OrderedDict((k, v) for k, v in repr_dict.items()
                            if v not in [None, [], '', {}])
@@ -98,6 +99,7 @@ class LocationSerializer(serializers.HyperlinkedModelSerializer):
         return [token.uid for token in location.publish_allowed_to.all()]
 
     def to_representation(self, value):
+        # Remove empty values
         repr_dict = super().to_representation(value)
         return OrderedDict((k, v) for k, v in repr_dict.items()
                            if v not in [None, [], '', {}])
@@ -133,7 +135,7 @@ class LocationViewSet(GenericViewSet):
         return Response(serializer.data)
 
     @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)')
-    def location_by_uid(self, request, uid):
+    def location_by_id(self, request, uid):
         # noinspection PyUnresolvedReferences
         queryset = Location.objects.filter(uid=uid)
         serializer = LocationSerializer(queryset, many=True)
