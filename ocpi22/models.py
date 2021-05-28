@@ -164,6 +164,8 @@ class Tariff(models.Model):
     # min_price
     # max_price
 
+    last_updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return ', '.join([str(x) for x in self.price_components.all()] or f'{self.uid}')
 

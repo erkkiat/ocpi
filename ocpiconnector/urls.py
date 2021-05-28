@@ -11,10 +11,18 @@ from rest_framework.decorators import action
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.response import Response
 
-from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails
+from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff
 
 
-class TokenSerializer(serializers.HyperlinkedModelSerializer):
+class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
+    def to_representation(self, value):
+        # Remove empty values
+        repr_dict = super().to_representation(value)
+        return OrderedDict((k, v) for k, v in repr_dict.items()
+                           if v not in [None, [], '', {}])
+
+
+class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Token
         exclude = []
@@ -41,7 +49,7 @@ class TokenAPIView(routers.APIRootView):
 
 
 
-class ConnectorSerializer(serializers.HyperlinkedModelSerializer):
+class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     uid = serializers.CharField()
     max_electric_power = serializers.SerializerMethodField()
 
@@ -56,19 +64,13 @@ class ConnectorSerializer(serializers.HyperlinkedModelSerializer):
         return connector.max_electric_power or connector.max_voltage * connector.max_amperage
 
 
-class BusinessDetailsSerializer(serializers.HyperlinkedModelSerializer):
+class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = BusinessDetails
         exclude = ['url']
 
-    def to_representation(self, value):
-        # Remove empty values
-        repr_dict = super().to_representation(value)
-        return OrderedDict((k, v) for k, v in repr_dict.items()
-                           if v not in [None, [], '', {}])
 
-
-class EvseSerializer(serializers.HyperlinkedModelSerializer):
+class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorSerializer(many=True, read_only=True)
 
     class Meta:
@@ -76,7 +78,32 @@ class EvseSerializer(serializers.HyperlinkedModelSerializer):
         exclude = ['capabilities', 'url', 'location']
 
 
-class LocationSerializer(serializers.HyperlinkedModelSerializer):
+class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
+    class Meta:
+        model = Tariff
+        fields = ('country_code', 'party_id', 'id', 'type', 'tariff_alt_url', 'elements', 'last_updated')
+
+    id = serializers.CharField(source='uid')
+    elements = serializers.SerializerMethodField()
+
+    # noinspection PyUnresolvedReferences
+    def get_elements(self, tariff: Tariff):
+        result = price_components=[
+            dict(
+                type=pc.type,
+                price=pc.price,
+                vat=pc.vat,
+                step_size=pc.step_size
+            )
+            for pc in tariff.price_components.all()
+        ]
+        for pc in price_components:
+            if not pc.get('vat'):
+                pc.pop('vat')
+        return dict(price_components=result)
+
+
+class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
         exclude = ['lat_partition', 'long_partition', 'facilities', 'url', 'uid', 'latitude', 'longitude']
@@ -98,12 +125,6 @@ class LocationSerializer(serializers.HyperlinkedModelSerializer):
         """
         return [token.uid for token in location.publish_allowed_to.all()]
 
-    def to_representation(self, value):
-        # Remove empty values
-        repr_dict = super().to_representation(value)
-        return OrderedDict((k, v) for k, v in repr_dict.items()
-                           if v not in [None, [], '', {}])
-
 
 def apply_query_date_range(request, queryset) -> QuerySet:
     date_from: str = request.GET.get('date_from')
@@ -123,6 +144,24 @@ def apply_query_date_range(request, queryset) -> QuerySet:
     if limit:
         queryset = queryset[offset:offset + limit]
     return queryset
+
+
+class TariffViewSet(GenericViewSet):
+    queryset = Tariff.objects.all().order_by('id')
+
+    @action(methods=['GET'], detail=False)
+    def tariffs(self, request):
+        # noinspection PyUnresolvedReferences
+        queryset = apply_query_date_range(request, Tariff.objects.all())
+        serializer = TariffSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)')
+    def tariff_by_id(self, request, uid):
+        # noinspection PyUnresolvedReferences
+        queryset = Tariff.objects.filter(uid=uid)
+        serializer = TariffSerializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class LocationViewSet(GenericViewSet):
@@ -160,6 +199,7 @@ class DocumentedRouter(routers.DefaultRouter):
 router = DocumentedRouter()
 router.register(r'tokens', TokenViewSet)
 router.register(r'', LocationViewSet)
+router.register(r'', TariffViewSet)
 
 urlpatterns = [
     path('ocpi/2.2/', include(router.urls)),
