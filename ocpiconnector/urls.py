@@ -25,7 +25,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Token
-        exclude = []
+        exclude = ['url']
 
 
 class TokenViewSet(viewsets.ModelViewSet):
