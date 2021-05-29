@@ -6,9 +6,9 @@ from django.contrib import admin
 from django.db.models import QuerySet
 from django.urls import path
 
-from rest_framework import routers, serializers, viewsets, mixins
+from rest_framework import routers, serializers, viewsets
 from rest_framework.decorators import action
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.viewsets import GenericViewSet, ViewSet
 from rest_framework.response import Response
 
 from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff

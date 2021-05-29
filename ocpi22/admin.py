@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
-    PriceComponent
+    PriceComponent, Cdr
 
 
 class TokenAdmin(admin.ModelAdmin):
@@ -43,25 +43,6 @@ class EvseAdmin(admin.ModelAdmin):
     location_url.short_description = "Location"
 
 
-# class ConnectorAdmin(admin.ModelAdmin):
-#     model = Connector
-#     list_display = ['location_url', 'evse_url', 'standard', 'format', 'power_type', 'power', 'tariff']
-#
-#     def evse_url(self, connector):
-#         return format_html("<a href='{url}'>{evse}</a>",
-#                            url=reverse('admin:ocpi22_evse_change', args=[connector.evse.pk]),
-#                            evse=str(connector.evse))
-#
-#     evse_url.short_description = "Evse"
-#
-#     def location_url(self, connector):
-#         return format_html("<a href='{url}'>{location}</a>",
-#                            url=reverse('admin:ocpi22_location_change', args=[connector.evse.location.pk]),
-#                            location=str(connector.evse.location))
-#
-#     location_url.short_description = "Location"
-
-
 class BusinessDetailsAdmin(admin.ModelAdmin):
     model = BusinessDetails
     list_display = ['name', 'website', 'logo']
@@ -78,11 +59,20 @@ class CapabilityAdmin(admin.ModelAdmin):
     list_display = ['name', 'description']
 
 
-class PriceComponentsInline(admin.TabularInline):
-    model = PriceComponent
+class CdrAdmin(admin.ModelAdmin):
+    model = Cdr
+    list_display = [
+        'total_cost_inc_vat', 'total_cost_excl_vat', 'total_energy', 'total_time',
+        'start_date_time', 'end_date_time',
+        'uid', 'party_id',
+        'session_id', 'auth_method',
+    ]
 
 
 class TariffAdmin(admin.ModelAdmin):
+    class PriceComponentsInline(admin.TabularInline):
+        model = PriceComponent
+
     model = Tariff
     list_display = ['party_id', '__str__', 'type', 'tariff_alt_url', 'country_code']
     list_display_links = ['__str__']
@@ -92,9 +82,8 @@ class TariffAdmin(admin.ModelAdmin):
 admin.site.register(Token, TokenAdmin)
 admin.site.register(Location, LocationAdmin)
 admin.site.register(Evse, EvseAdmin)
-# admin.site.register(Connector, ConnectorAdmin)
 admin.site.register(BusinessDetails, BusinessDetailsAdmin)
 admin.site.register(Facility, FacilityAdmin)
 admin.site.register(Capability, CapabilityAdmin)
 admin.site.register(Tariff, TariffAdmin)
-# admin.site.register(PriceComponent, PriceComponentAdmin)
+admin.site.register(Cdr, CdrAdmin)

@@ -1,4 +1,3 @@
-from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
@@ -94,7 +93,7 @@ class Token(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.party_id}: {self.uid} {self.type}'
+        return f'{self.party_id}: {self.type} {self.uid}'
 
 
 class AuthorizationInfo(models.Model):
@@ -232,14 +231,12 @@ class PriceComponent(models.Model):
                 return 'per parking minute'
             else:
                 return f'per {s} parking seconds'
+        # noinspection PyUnresolvedReferences
         return f'per {s} {self.get_type_display()}'
 
-    def _pretty_currency(self, c):
-        return dict(
-            EUR='€',
-            GBP='£',
-            USD='$'
-        ).get(c, c)
+    @staticmethod
+    def _pretty_currency(c):
+        return dict(EUR='€', GBP='£', USD='$').get(c, c)
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
@@ -277,9 +274,87 @@ class Capability(models.Model):
         return self.name
 
 
-# class EvseId(RegexValidator):
-#     regex = r'^[A-Z]{3}$'
-#     message = 'The EVSE ID should adhere to eMI3 v1.0: .'
+class Cdr(models.Model):
+    """
+    A Charge Detail Record is the description of a concluded charging session.
+    The CDR is the only billing-relevant object. CDRs are sent from the CPO to the eMSP
+    after the charging session has ended. Although there is no requirement to send CDRs in (semi-) realtime,
+    it is seen as good practice to send them as soon as possible. But if there is an agreement between
+    parties to send them, for example, once a month, that is also allowed by OCPI.
+    """
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['uid', 'party_id'], name='cdr_party_uid'),
+            # Todo: models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
+        ]
+
+    # ISO-3166 alpha-2 country code of the CPO that owns this CDR
+    country_code = models.CharField(max_length=2)
+
+    # CPO ID of the CPO that 'owns' this CDR (following the ISO-15118 standard).
+    party_id = models.CharField(max_length=3)
+
+    # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
+    # This field can never be changed, modified or renamed.
+    uid = models.CharField(max_length=39)
+
+    # Start timestamp of the charging session, or in-case of a reservation
+    # (before the start of a session) the start of the reservation.
+    start_date_time = models.DateTimeField()
+
+    # The timestamp when the session was completed/finished, charging might have finished before
+    # the session ends, for example: EV is full, but parking cost also has to be paid.
+    end_date_time = models.DateTimeField()
+
+    # Unique ID of the Session for which this CDR is sent. Is only allowed to be omitted
+    # when the CPO has not implemented the Sessions module or this CDR is the result of a reservation
+    # that never became a charging session, thus no OCPI Session.
+    session_id = models.CharField(max_length=36, blank=True, default='')
+
+    # Token used to start this charging session, includes all the relevant information to identify the unique token.
+    cdr_token = models.ForeignKey(Token, on_delete=models.PROTECT)
+
+    # Method used for authentication.
+    AUTH_METHOD_CHOICES = (
+        # Authentication request has been sent to the eMSP.
+        ('AUTH_REQUEST', 'Authentication request to eMSP'),
+
+        # Command like StartSession or ReserveNow used to start the Session,
+        # the Token provided in the Command was used as authorization.
+        ('COMMAND', 'Command from eMSP'),
+
+        # Whitelist used for authentication, no request to the eMSP has been performed.
+        ('WHITELIST', 'Token on whitelist'),
+    )
+    auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
+
+    # Location where the charging session took place, including only the relevant EVSE and Connector.
+    cdr_location = models.TextField()
+
+    # Currency of the CDR in ISO 4217 Code.
+    currency = models.CharField(max_length=3)
+
+    # List of relevant Tariff Elements, see: Tariff. When relevant, a Free of Charge tariff
+    # should also be in this list, and point to a defined Free of Charge Tariff.
+    tariffs = models.TextField()
+
+    # Total sum of all the costs of this transaction in the specified currency.
+    total_cost_excl_vat = models.FloatField()
+    total_cost_inc_vat = models.FloatField()
+
+    # Total energy charged, in kWh.
+    total_energy = models.FloatField()
+
+    # Total duration of the charging session (including the duration of charging and not charging), in hours.
+    total_time = models.FloatField()
+
+    last_updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.cdr_token} - {self.total_cost_inc_vat} {self.currency} - ' \
+               f'{self.total_time/60} min - {self.end_date_time}'
 
 
 class Location(models.Model):
@@ -382,7 +457,6 @@ class Location(models.Model):
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times
 
-    # Todo: It is best practice to return the oldest (by creation date, not the last_updated field) first
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
@@ -446,6 +520,7 @@ class Evse(models.Model):
         return self.evse_id
 
     def connector_list(self):
+        # noinspection PyUnresolvedReferences
         return format_html('<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff()}' for c in self.connectors.all()]))
 
 
@@ -516,10 +591,11 @@ class Connector(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
+        # noinspection PyUnresolvedReferences
         return f'{self.power()} {self.get_standard_display()}'
 
     def power(self):
-        return f'{(self.max_electric_power or self.max_voltage * self.max_amperage) / 1000} kW'
+        return f'{int((self.max_electric_power or self.max_voltage * self.max_amperage) / 1000)} kW'
 
     def tariff(self):
         return ' / '.join([str(t) for t in self.tariff_ids.all()])
