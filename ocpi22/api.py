@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff
 
+
 class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
     def to_representation(self, value):
         # Remove empty values
@@ -92,7 +93,8 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
                   'power_type', 'max_voltage', 'max_amperage', 'max_electric_power',
                   'terms_and_conditions', 'last_updated']
 
-    def get_max_electric_power(self, connector: Connector) -> str:
+    @staticmethod
+    def get_max_electric_power(connector: Connector) -> str:
         # Todo: what about 1-phase and 2-phase AC?
         return connector.max_electric_power or connector.max_voltage * connector.max_amperage
 
@@ -124,7 +126,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     @staticmethod
     def get_elements(tariff: Tariff) -> dict:
         # noinspection PyUnresolvedReferences
-        result = price_components=[
+        price_components = [
             dict(
                 type=pc.type,
                 price=pc.price,
@@ -136,13 +138,17 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         for pc in price_components:
             if not pc.get('vat'):
                 pc.pop('vat')
-        return dict(price_components=result)
+        return dict(price_components=price_components)
 
 
 class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
-        exclude = ['lat_partition', 'long_partition', 'facilities', 'url', 'uid', 'latitude', 'longitude']
+        fields = ['country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
+                  'name', 'address', 'city', 'postal_code', 'state', 'country',
+                  'coordinates', 'parking_type', 'evses',
+                  'operator', 'suboperator', 'owner',
+                  'facilities', 'time_zone', 'last_updated']
 
     id = serializers.CharField(source='uid')
     coordinates = serializers.SerializerMethodField()
@@ -151,16 +157,25 @@ class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
     suboperator = BusinessDetailsSerializer(read_only=True, many=False)
     owner = BusinessDetailsSerializer(read_only=True, many=False)
     publish_allowed_to = serializers.SerializerMethodField()
+    facilities = serializers.SerializerMethodField()
     last_updated = serializers.DateTimeField(default_timezone=timezone('UTC'), read_only=True)
 
-    def get_coordinates(self, location: Location) -> dict:
+    @staticmethod
+    def get_coordinates(location: Location) -> dict:
+        # Create a dict to be placed one step lower in the json
         return dict(latitude=location.latitude, longitude=location.longitude)
 
-    def get_publish_allowed_to(self, location: Location) -> list:
+    @staticmethod
+    def get_publish_allowed_to(location: Location) -> list:
         """
         List the token IDs of the drivers who are allowed to see this Location
         """
         return [token.uid for token in location.publish_allowed_to.all()]
+
+    @staticmethod
+    def get_facilities(location: Location):
+        # Create a list of facility names
+        return [facility.name for facility in location.facilities.all()]
 
 
 def apply_ocpi22_query_parameters(request, queryset) -> QuerySet:
@@ -209,14 +224,14 @@ class LocationViewSet(GenericViewSet):
     def locations(self, request) -> Response:
         # noinspection PyUnresolvedReferences
         queryset = apply_ocpi22_query_parameters(request, Location.objects.all())
-        serializer = LocationSerializer(queryset, many=True)
+        serializer = LocationSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)')
     def location_by_id(self, request, uid) -> Response:
         # noinspection PyUnresolvedReferences
         queryset = Location.objects.filter(uid=uid)
-        serializer = LocationSerializer(queryset, many=True)
+        serializer = LocationSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
     # @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')

@@ -258,7 +258,7 @@ class Facility(models.Model):
     class Meta:
         verbose_name_plural = 'facilities'
     name = models.CharField(max_length=15)
-    description = models.CharField(max_length=255)
+    description = models.CharField(max_length=255, blank=True, default='')
 
     def __str__(self):
         return self.name
@@ -268,7 +268,7 @@ class Capability(models.Model):
     class Meta:
         verbose_name_plural = 'capabilities'
     name = models.CharField(max_length=28)
-    description = models.CharField(max_length=255)
+    description = models.CharField(max_length=255, blank=True, default='')
 
     def __str__(self):
         return self.name
