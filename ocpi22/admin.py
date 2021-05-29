@@ -24,7 +24,7 @@ class LocationAdmin(admin.ModelAdmin):
     search_fields = ['party_id', 'uid', 'name', 'address', 'city', 'postal_code', 'state', 'country', 'parking_type']
     list_display = ['publish', 'name', 'address', 'city', 'country', 'party_id', 'country_code', 'actions_item']
     list_display_links = ['actions_item']
-    inlines = [EvseInline]
+    # inlines = [EvseInline]
 
     def actions_item(self, _obj):
         return format_html('Edit')
