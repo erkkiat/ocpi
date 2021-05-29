@@ -11,15 +11,10 @@ class TokenAdmin(admin.ModelAdmin):
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
 
 
-class EvseInline(admin.TabularInline):
-    model = Evse
-
-
-class ConnectorInline(admin.TabularInline):
-    model = Connector
-
-
 class LocationAdmin(admin.ModelAdmin):
+    class EvseInline(admin.TabularInline):
+        model = Evse
+
     model = Location
     search_fields = ['party_id', 'uid', 'name', 'address', 'city', 'postal_code', 'state', 'country', 'parking_type']
     list_display = ['publish', 'name', 'address', 'city', 'country', 'party_id', 'country_code', 'actions_item']
@@ -33,6 +28,9 @@ class LocationAdmin(admin.ModelAdmin):
 
 
 class EvseAdmin(admin.ModelAdmin):
+    class ConnectorInline(admin.TabularInline):
+        model = Connector
+
     model = Evse
     list_display = ['evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
