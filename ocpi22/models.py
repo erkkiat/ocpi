@@ -1,6 +1,8 @@
+from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
+from django.utils.html import format_html
 
 
 class Token(models.Model):
@@ -275,15 +277,21 @@ class Capability(models.Model):
         return self.name
 
 
+# class EvseId(RegexValidator):
+#     regex = r'^[A-Z]{3}$'
+#     message = 'The EVSE ID should adhere to eMI3 v1.0: .'
+
+
 class Location(models.Model):
     """
     A physical location with one or more EVSEs
     """
 
-    unique_together = [
-        ['uid', 'suboperator', 'operator'],
-        ['uid', 'party_id']
-    ]
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['uid', 'party_id'], name='party_uid'),
+            models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
+        ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
     country_code = models.CharField(max_length=2)
@@ -379,7 +387,7 @@ class Location(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name or f'[No name, UID: {self.pk}]'
+        return f'{self.name}, {self.address}, {self.city}' or f'[No name, UID: {self.pk}]'
 
 
 class Evse(models.Model):
@@ -394,7 +402,10 @@ class Evse(models.Model):
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
     # Optional because: if an evse_id is to be re-used in the real world,
     # the evse_id can be removed from an EVSE object if the status is set to REMOVED.
-    evse_id = models.CharField(max_length=48)
+
+    @property
+    def evse_id(self):
+        return f'{self.location.country_code}*{self.location.party_id}*E{self.location.uid}*{self.uid}'
 
     # Indicates the current status of the EVSE
     STATUS_CHOICES = (
@@ -432,7 +443,10 @@ class Evse(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.uid} {self.evse_id}'
+        return self.evse_id
+
+    def connector_list(self):
+        return format_html('<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff()}' for c in self.connectors.all()]))
 
 
 class Connector(models.Model):
@@ -447,46 +461,46 @@ class Connector(models.Model):
     evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='connectors')
 
     STANDARD_CHOICES = (
-        ('CHADEMO', 'The connector type is CHAdeMO, DC'),
-        ('DOMESTIC_A', 'Standard / Domestic household, type "A", NEMA 1-15, 2 pins'),
-        ('DOMESTIC_B', 'Standard / Domestic household, type "B", NEMA 5-15, 3 pins'),
-        ('DOMESTIC_C', 'Standard / Domestic household, type "C", CEE 7 / 17, 2 pins'),
-        ('DOMESTIC_D', 'Standard / Domestic household, type "D", 3 pin'),
-        ('DOMESTIC_E', 'Standard / Domestic household, type "E", CEE 7 / 5 3 pins'),
-        ('DOMESTIC_F', 'Standard / Domestic household, type "F", CEE 7 / 4, Schuko, 3 pins'),
-        ('DOMESTIC_G', 'Standard / Domestic household, type "G", BS 1363, Commonwealth, 3 pins'),
-        ('DOMESTIC_H', 'Standard / Domestic household, type "H", SI-32, 3 pins'),
-        ('DOMESTIC_I', 'Standard / Domestic household, type "I", AS 3112, 3 pins'),
-        ('DOMESTIC_J', 'Standard / Domestic household, type "J", SEV 1011, 3 pins'),
-        ('DOMESTIC_K', 'Standard / Domestic household, type "K", DS 60884-2-D1, 3 pins'),
-        ('DOMESTIC_L', 'Standard / Domestic household, type "L", CEI 23-16-VII, 3 pins'),
-        ('IEC_60309_2_single_16', 'IEC 60309-2 Industrial Connector single phase 16 amperes (usually blue)'),
-        ('IEC_60309_2_three_16', 'IEC 60309-2 Industrial Connector three phase 16 amperes (usually red)'),
-        ('IEC_60309_2_three_32', 'IEC 60309-2 Industrial Connector three phase 32 amperes (usually red)'),
-        ('IEC_60309_2_three_64', 'IEC 60309-2 Industrial Connector three phase 64 amperes (usually red)'),
+        ('IEC_62196_T2', 'Type 2 "Mennekes"'),
+        ('IEC_62196_T2_COMBO', 'CCS type 2'),
+        ('CHADEMO', 'CHAdeMO'),
         ('IEC_62196_T1', 'IEC 62196 Type 1 "SAE J1772"'),
-        ('IEC_62196_T1_COMBO', 'Combo Type 1 based, DC'),
-        ('IEC_62196_T2', 'IEC 62196 Type 2 "Mennekes"'),
-        ('IEC_62196_T2_COMBO', 'Combo Type 2 based, DC'),
+        ('IEC_62196_T1_COMBO', 'CCS type 1'),
         ('IEC_62196_T3A', 'IEC 62196 Type 3A'),
         ('IEC_62196_T3C', 'IEC 62196 Type 3C "Scame"'),
-        ('PANTOGRAPH_BOTTOM_UP', 'On-board Bottom-up-Pantograph typically for bus charging'),
-        ('PANTOGRAPH_TOP_DOWN', 'Off-board Top-down-Pantograph typically for bus charging'),
-        ('TESLA_R', 'Tesla Connector "Roadster"-type (round, 4 pin)'),
-        ('TESLA_S', 'Tesla Connector "Model-S"-type (oval, 5 pin)'),
+        ('DOMESTIC_A', 'Type "A", NEMA 1-15, 2 pins'),
+        ('DOMESTIC_B', 'Type "B", NEMA 5-15, 3 pins'),
+        ('DOMESTIC_C', 'Type "C", CEE 7 / 17, 2 pins'),
+        ('DOMESTIC_D', 'Type "D", 3 pin'),
+        ('DOMESTIC_E', 'Type "E", CEE 7 / 5 3 pins'),
+        ('DOMESTIC_F', 'Type "F", CEE 7 / 4, Schuko, 3 pins'),
+        ('DOMESTIC_G', 'Type "G", BS 1363, Commonwealth, 3 pins'),
+        ('DOMESTIC_H', 'Type "H", SI-32, 3 pins'),
+        ('DOMESTIC_I', 'Type "I", AS 3112, 3 pins'),
+        ('DOMESTIC_J', 'Type "J", SEV 1011, 3 pins'),
+        ('DOMESTIC_K', 'Type "K", DS 60884-2-D1, 3 pins'),
+        ('DOMESTIC_L', 'Type "L", CEI 23-16-VII, 3 pins'),
+        ('IEC_60309_2_single_16', 'IEC 60309-2 single phase 16 A (blue)'),
+        ('IEC_60309_2_three_16', 'IEC 60309-2 three phase 16 A (red)'),
+        ('IEC_60309_2_three_32', 'IEC 60309-2 three phase 32 A (red)'),
+        ('IEC_60309_2_three_64', 'IEC 60309-2 three phase 64 A (red)'),
+        ('PANTOGRAPH_BOTTOM_UP', 'On-board Bottom-up-Pantograph'),
+        ('PANTOGRAPH_TOP_DOWN', 'Off-board Top-down-Pantograph'),
+        ('TESLA_R', 'Tesla "Roadster"-type'),
+        ('TESLA_S', 'Tesla "Model-S"-type'),
     )
     standard = models.CharField(max_length=21, choices=STANDARD_CHOICES)
 
     FORMAT_CHOICES = (
         ('SOCKET', 'Socket, bring your own cable'),
-        ('CABLE', 'The connector is an attached cable'),
+        ('CABLE', 'Cable included'),
     )
     format = models.CharField(max_length=6, choices=FORMAT_CHOICES)
 
     POWERTYPE_CHOICES = (
         ('AC_1_PHASE', 'AC 1-phase'),
         ('AC_3_PHASE', 'AC 3-phase'),
-        ('DC', 'Direct Current')
+        ('DC', 'DC')
     )
     power_type = models.CharField(max_length=10, choices=POWERTYPE_CHOICES)
 
@@ -502,7 +516,13 @@ class Connector(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.uid} {self.standard}'
+        return f'{self.power()} {self.get_standard_display()}'
+
+    def power(self):
+        return f'{(self.max_electric_power or self.max_voltage * self.max_amperage) / 1000} kW'
+
+    def tariff(self):
+        return ' / '.join([str(t) for t in self.tariff_ids.all()])
 
 
 def calculate_partition(coordinate):

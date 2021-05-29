@@ -42,6 +42,10 @@ class Migration(migrations.Migration):
             preserve_default=False,
         ),
         migrations.AlterUniqueTogether(
+            name='location',
+            unique_together={('party_id', 'uid')},
+        ),
+        migrations.AlterUniqueTogether(
             name='connector',
             unique_together={('evse', 'uid')},
         ),
