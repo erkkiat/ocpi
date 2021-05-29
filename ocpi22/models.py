@@ -8,6 +8,9 @@ class Token(models.Model):
     A Token structure with data owned by the eMSP
     """
 
+    class Meta:
+        unique_together = [['party_id', 'uid']]
+
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
     country_code = models.CharField(max_length=2)
 
@@ -86,6 +89,7 @@ class Token(models.Model):
     # energy_contract = models.CharField(max_length=80)  # No type documentation available
 
     last_updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.party_id}: {self.uid} {self.type}'
@@ -118,6 +122,8 @@ class AuthorizationInfo(models.Model):
 
 
 class Tariff(models.Model):
+    class Meta:
+        unique_together = [['party_id', 'uid']]
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
     country_code = models.CharField(max_length=2)
 
@@ -165,6 +171,7 @@ class Tariff(models.Model):
     # max_price
 
     last_updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
@@ -275,6 +282,7 @@ class Location(models.Model):
 
     unique_together = [
         ['uid', 'suboperator', 'operator'],
+        ['uid', 'party_id']
     ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
@@ -368,9 +376,10 @@ class Location(models.Model):
 
     # Todo: It is best practice to return the oldest (by creation date, not the last_updated field) first
     last_updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name or str(self.pk)
+        return self.name or f'[No name, UID: {self.pk}]'
 
 
 class Evse(models.Model):
@@ -420,6 +429,7 @@ class Evse(models.Model):
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='evses')
 
     last_updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.uid} {self.evse_id}'
@@ -428,6 +438,10 @@ class Evse(models.Model):
 class Connector(models.Model):
     # Identifier of the Connector within the EVSE. Two Connectors may have the same id
     # as long as they do not belong to the same EVSE object.
+
+    class Meta:
+        unique_together = [['evse', 'uid']]
+
     uid = models.CharField(max_length=36)
 
     evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='connectors')
@@ -485,6 +499,7 @@ class Connector(models.Model):
     terms_and_conditions = models.URLField(blank=True, default='')
 
     last_updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.uid} {self.standard}'

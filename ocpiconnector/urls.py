@@ -30,7 +30,7 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
 
 class TokenViewSet(viewsets.ModelViewSet):
     # noinspection PyUnresolvedReferences
-    queryset = Token.objects.all()
+    queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
 
 
@@ -46,7 +46,6 @@ class TokenAPIView(routers.APIRootView):
     * The list of codes used here are available at [/api/v1/common/codes/](/api/v1/common/codes/)
     """
     pass
-
 
 
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -86,8 +85,9 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     id = serializers.CharField(source='uid')
     elements = serializers.SerializerMethodField()
 
-    # noinspection PyUnresolvedReferences
-    def get_elements(self, tariff: Tariff):
+    @staticmethod
+    def get_elements(tariff: Tariff) -> dict:
+        # noinspection PyUnresolvedReferences
         result = price_components=[
             dict(
                 type=pc.type,
@@ -116,7 +116,7 @@ class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
     owner = BusinessDetailsSerializer(read_only=True, many=False)
     publish_allowed_to = serializers.SerializerMethodField()
 
-    def get_coordinates(self, location: Location):
+    def get_coordinates(self, location: Location) -> dict:
         return dict(latitude=location.latitude, longitude=location.longitude)
 
     def get_publish_allowed_to(self, location: Location) -> list:
@@ -126,7 +126,7 @@ class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
         return [token.uid for token in location.publish_allowed_to.all()]
 
 
-def apply_query_date_range(request, queryset) -> QuerySet:
+def apply_ocpi22_query_parameters(request, queryset) -> QuerySet:
     date_from: str = request.GET.get('date_from')
     if date_from:
         import dateutil.parser
@@ -146,35 +146,40 @@ def apply_query_date_range(request, queryset) -> QuerySet:
     return queryset
 
 
-class TariffViewSet(GenericViewSet):
-    queryset = Tariff.objects.all().order_by('id')
+class TariffViewSet(ViewSet):
+    # noinspection PyUnresolvedReferences
+    queryset = Tariff.objects.all().order_by('created')
 
     @action(methods=['GET'], detail=False)
-    def tariffs(self, request):
+    def tariffs(self, request) -> Response:
         # noinspection PyUnresolvedReferences
-        queryset = apply_query_date_range(request, Tariff.objects.all())
+        queryset = apply_ocpi22_query_parameters(request, Tariff.objects.all().order_by('created'))
         serializer = TariffSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)')
-    def tariff_by_id(self, request, uid):
-        # noinspection PyUnresolvedReferences
-        queryset = Tariff.objects.filter(uid=uid)
-        serializer = TariffSerializer(queryset, many=True)
-        return Response(serializer.data)
+    # noinspection PyUnresolvedReferences
+    @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
+            url_path='tariffs/(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
+    def by_id(self, _request, country_code, party_id, uid) -> Response:
+        try:
+            tariff = Tariff.objects.get(country_code=country_code, party_id=party_id, uid=uid)
+            serializer = TariffSerializer(tariff, many=False)
+            return Response(serializer.data)
+        except Tariff.DoesNotExist:
+            return Response(status=404)
 
 
 class LocationViewSet(GenericViewSet):
 
     @action(methods=['GET'], detail=False)
-    def locations(self, request):
+    def locations(self, request) -> Response:
         # noinspection PyUnresolvedReferences
-        queryset = apply_query_date_range(request, Location.objects.all())
+        queryset = apply_ocpi22_query_parameters(request, Location.objects.all())
         serializer = LocationSerializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)')
-    def location_by_id(self, request, uid):
+    def location_by_id(self, request, uid) -> Response:
         # noinspection PyUnresolvedReferences
         queryset = Location.objects.filter(uid=uid)
         serializer = LocationSerializer(queryset, many=True)
