@@ -167,7 +167,8 @@ class Tariff(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return ', '.join([str(x) for x in self.price_components.all()] or f'{self.uid}')
+        # noinspection PyUnresolvedReferences
+        return ' + '.join([str(x) for x in self.price_components.all()] or f'{self.uid}')
 
 
 class PriceComponent(models.Model):
@@ -202,8 +203,38 @@ class PriceComponent(models.Model):
 
     tariff = models.ForeignKey(Tariff, related_name='price_components', on_delete=models.PROTECT)
 
+    def _format_step_and_type(self):
+        t = self.type
+        s = self.step_size
+        if t == 'ENERGY':
+            if s == 1000:
+                return 'per kWh'
+            else:
+                return f'per {s} kWh'
+        elif t == 'FLAT':
+            return 'flat price'
+        elif t == 'TIME':
+            if s == 60:
+                return 'per minute'
+            else:
+                return f'per {s} seconds'
+        elif t == 'PARKING_TIME':
+            if s == 60:
+                return 'per parking minute'
+            else:
+                return f'per {s} parking seconds'
+        return f'per {s} {self.get_type_display()}'
+
+    def _pretty_currency(self, c):
+        return dict(
+            EUR='€',
+            GBP='£',
+            USD='$'
+        ).get(c, c)
+
     def __str__(self):
-        return f'{self.price or 0.0} {self.tariff.currency} per {self.step_size} {self.get_type_display()}'
+        # noinspection PyUnresolvedReferences
+        return f'{self.price or 0.0:.2f}{self._pretty_currency(self.tariff.currency)} {self._format_step_and_type()}'
 
 
 class BusinessDetails(models.Model):
@@ -476,8 +507,8 @@ def my_callback(sender, instance, *_args, **_kwargs):
 
 @receiver(post_save, sender=Evse)
 def my_callback(sender, instance, *_args, **_kwargs):
-    evse: Evse = instance
-    location: Location = evse.location
+    evse = instance
+    location = evse.location
     # location.last_updated = evse.last_updated
     location.save()
 
@@ -485,6 +516,6 @@ def my_callback(sender, instance, *_args, **_kwargs):
 @receiver(post_save, sender=Connector)
 def my_callback(sender, instance, *_args, **_kwargs):
     connector: Connector = instance
-    evse: Evse = connector.evse
+    evse = connector.evse
     # evse.last_updated = connector.last_updated
     evse.save()
