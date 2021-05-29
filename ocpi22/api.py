@@ -19,11 +19,19 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         return OrderedDict((k, v) for k, v in repr_dict.items()
                            if v not in [None, [], '', {}])
 
+    def get_detail_url(self, obj):
+        request = self.context["request"]
+        if not hasattr(obj, 'get_absolute_url'):
+            return ''
+        return f'{request.build_absolute_uri(obj.get_absolute_url())}'  # return the absolute url of the object
+
+    detail_url = serializers.SerializerMethodField(read_only=True)  # define a SerializerMethodField
+
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Token
-        fields = ['country_code', 'party_id', 'uid', 'type', 'contract_id', 'visual_number', 'issuer', 'group_id',
+        fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type', 'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
     last_updated = serializers.DateTimeField(default_timezone=timezone('UTC'), read_only=True)
@@ -48,11 +56,11 @@ class TokenViewSet(viewsets.ModelViewSet):
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
 
         if request.method == 'GET':
-            serializer = TokenSerializer(token, many=False)
+            serializer = TokenSerializer(token, many=False, context={'request': request})
             return Response(serializer.data)
 
         elif request.method == 'PUT':
-            serializer = TokenSerializer(token, data=request.data)
+            serializer = TokenSerializer(token, data=request.data, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
@@ -60,7 +68,7 @@ class TokenViewSet(viewsets.ModelViewSet):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'PATCH':
-            serializer = TokenSerializer(token, data=request.data, partial=True)
+            serializer = TokenSerializer(token, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
@@ -68,7 +76,7 @@ class TokenViewSet(viewsets.ModelViewSet):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'POST':
-            serializer = TokenSerializer(token, data=request.data)
+            serializer = TokenSerializer(token, data=request.data, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
@@ -124,7 +132,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
 
     class Meta:
         model = Evse
-        fields = ['uid', 'evse_id', 'status', 'last_updated', 'connectors']
+        fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors']
 
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -157,7 +165,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
-        fields = ['country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
+        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
                   'name', 'address', 'city', 'postal_code', 'state', 'country',
                   'coordinates', 'parking_type', 'evses',
                   'operator', 'suboperator', 'owner',
@@ -248,7 +256,7 @@ class LocationViewSet(GenericViewSet):
         location = get_object_or_404(Location, country_code=country_code, party_id=party_id, uid=uid)
 
         if request.method == 'GET':
-            serializer = LocationSerializer(location)
+            serializer = LocationSerializer(location, context={'request': request})
             return Response(serializer.data)
 
         elif request.method == 'PATCH':
@@ -277,7 +285,7 @@ class EvseViewSet(GenericViewSet):
 
     @action(methods=['GET', 'PATCH'], detail=False,
             url_path='locations/(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
-    def evse_by_id(self, request, country_code, party_id, uid, evse_id) -> Response:
+    def by_id(self, request, country_code, party_id, uid, evse_id) -> Response:
         # noinspection PyUnresolvedReferences
         evse = get_object_or_404(Evse, uid=evse_id)
         location = evse.location
@@ -285,11 +293,11 @@ class EvseViewSet(GenericViewSet):
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
         if request.method == 'GET':
-            serializer = EvseSerializer(evse)
+            serializer = EvseSerializer(evse, context={'request': request})
             return Response(serializer.data)
 
         elif request.method == 'PATCH':
-            serializer = EvseSerializer(evse, data=request.data, partial=True)
+            serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)

@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
+from rest_framework.reverse import reverse
 
 
 class Token(models.Model):
@@ -94,6 +95,9 @@ class Token(models.Model):
 
     def __str__(self):
         return f'{self.party_id}: {self.type} {self.uid}'
+
+    def get_absolute_url(self):
+        return reverse('token-by-id', args=[self.country_code, self.party_id, self.uid])
 
 
 class AuthorizationInfo(models.Model):
@@ -463,6 +467,9 @@ class Location(models.Model):
     def __str__(self):
         return f'{self.name}, {self.address}, {self.city}' or f'[No name, UID: {self.pk}]'
 
+    def get_absolute_url(self):
+        return reverse('location-by-id', args=[self.country_code, self.party_id, self.uid])
+
 
 class Evse(models.Model):
     # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
@@ -522,6 +529,10 @@ class Evse(models.Model):
     def connector_list(self):
         # noinspection PyUnresolvedReferences
         return format_html('<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff()}' for c in self.connectors.all()]))
+
+    def get_absolute_url(self):
+        return reverse('evse-by-id',
+                       args=[self.location.country_code, self.location.party_id, self.location.uid, self.uid])
 
 
 class Connector(models.Model):

@@ -6,7 +6,7 @@ from ocpi22.api import DocumentedRouter, TokenViewSet, LocationViewSet, TariffVi
 
 # Routers provide an easy way of automatically determining the URL conf.
 router = DocumentedRouter()
-router.register(r'', TokenViewSet)
+router.register(r'tokens', TokenViewSet)
 router.register(r'', LocationViewSet)
 router.register(r'', EvseViewSet)
 router.register(r'', TariffViewSet)
