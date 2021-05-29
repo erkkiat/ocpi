@@ -30,7 +30,7 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
 
 class TokenViewSet(viewsets.ModelViewSet):
     # noinspection PyUnresolvedReferences
-    queryset = Token.objects.all().order_by('created')
+    queryset = Token.objects.all().order_by('-created')
     serializer_class = TokenSerializer
 
 
@@ -148,12 +148,12 @@ def apply_ocpi22_query_parameters(request, queryset) -> QuerySet:
 
 class TariffViewSet(ViewSet):
     # noinspection PyUnresolvedReferences
-    queryset = Tariff.objects.all().order_by('created')
+    queryset = Tariff.objects.all().order_by('-created')
 
     @action(methods=['GET'], detail=False)
     def tariffs(self, request) -> Response:
         # noinspection PyUnresolvedReferences
-        queryset = apply_ocpi22_query_parameters(request, Tariff.objects.all().order_by('created'))
+        queryset = apply_ocpi22_query_parameters(request, Tariff.objects.all().order_by('-created'))
         serializer = TariffSerializer(queryset, many=True)
         return Response(serializer.data)
 
