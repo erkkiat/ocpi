@@ -2,17 +2,18 @@ from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path
 
-from ocpi22.api import DocumentedRouter, TokenViewSet, LocationViewSet, TariffViewSet, tokens
+from ocpi22.api import DocumentedRouter, TokenViewSet, LocationViewSet, TariffViewSet, EvseViewSet
 
 # Routers provide an easy way of automatically determining the URL conf.
 router = DocumentedRouter()
-router.register(r'tokens', TokenViewSet)
+router.register(r'', TokenViewSet)
 router.register(r'', LocationViewSet)
+router.register(r'', EvseViewSet)
 router.register(r'', TariffViewSet)
 
 urlpatterns = [
     path('ocpi/2.2/', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
-    path('tokens/', tokens)
+    # path('tokens/', tokens)
 ]

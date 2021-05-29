@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pytz import timezone
 from rest_framework import routers, serializers, viewsets, status
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.viewsets import GenericViewSet, ViewSet
 from rest_framework.response import Response
@@ -34,6 +34,13 @@ class TokenViewSet(viewsets.ModelViewSet):
     queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
 
+    @action(methods=['GET'], detail=False)
+    def tokens(self, request) -> Response:
+        # noinspection PyUnresolvedReferences
+        queryset = apply_ocpi22_query_parameters(request, Token.objects.all())
+        serializer = TokenSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
     # noinspection PyUnresolvedReferences
     @action(methods=['GET', 'PUT', 'PATCH', 'POST', 'DELETE'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
@@ -49,18 +56,24 @@ class TokenViewSet(viewsets.ModelViewSet):
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'PATCH':
             serializer = TokenSerializer(token, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'POST':
             serializer = TokenSerializer(token, data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
             token.delete()
@@ -182,17 +195,17 @@ def apply_ocpi22_query_parameters(request, queryset) -> QuerySet:
     date_from: str = request.GET.get('date_from')
     if date_from:
         import dateutil.parser
-        date_from: datetime = dateutil.parser.isoparse(date_from)
+        date_from: datetime = dateutil.parser.parse(date_from, ignoretz=True)
         queryset = queryset.filter(last_updated__gte=date_from)
     date_to: str = request.GET.get('date_to')
     if date_to:
         import dateutil.parser
-        date_to: datetime = dateutil.parser.isoparse(date_to)
+        date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
         queryset = queryset.filter(last_updated__lt=date_to)
     limit: int = int(request.GET.get('limit', '0'))
     offset: int = int(request.GET.get('offset', '0'))
 
-    queryset = queryset.order_by('id')
+    queryset = queryset.order_by('created')
     if limit:
         queryset = queryset[offset:offset + limit]
     return queryset
@@ -227,39 +240,84 @@ class LocationViewSet(GenericViewSet):
         serializer = LocationSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
-    @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)')
-    def location_by_id(self, request, uid) -> Response:
+    # Todo: How to PATCH sub-dicts of Locations
+    @action(methods=['GET', 'PATCH'], detail=False,
+            url_path='locations/(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
+    def by_id(self, request, country_code, party_id, uid) -> Response:
         # noinspection PyUnresolvedReferences
-        queryset = Location.objects.filter(uid=uid)
-        serializer = LocationSerializer(queryset, many=True, context={'request': request})
-        return Response(serializer.data)
+        location = get_object_or_404(Location, country_code=country_code, party_id=party_id, uid=uid)
 
-    # @action(methods=['GET'], detail=False, url_path='locations/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
-    # def location_by_uid(self, request, uid, evse_id):
-    #     # noinspection PyUnresolvedReferences
-    #     queryset = Location.objects.filter(uid=uid)
-    #     serializer = LocationSerializer(queryset, many=True)
-    #     return Response(serializer.data)
+        if request.method == 'GET':
+            serializer = LocationSerializer(location)
+            return Response(serializer.data)
+
+        elif request.method == 'PATCH':
+            serializer = LocationSerializer(location, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     # noinspection PyUnresolvedReferences
     queryset = Location.objects.all().order_by('id')
+    serializer_class = LocationSerializer
+
+
+class EvseViewSet(GenericViewSet):
+
+    @action(methods=['GET'], detail=False)
+    def evses(self, request) -> Response:
+        # noinspection PyUnresolvedReferences
+        queryset = apply_ocpi22_query_parameters(request, Evse.objects.all())
+        serializer = EvseSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(methods=['GET', 'PATCH'], detail=False,
+            url_path='locations/(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
+    def evse_by_id(self, request, country_code, party_id, uid, evse_id) -> Response:
+        # noinspection PyUnresolvedReferences
+        evse = get_object_or_404(Evse, uid=evse_id)
+        location = evse.location
+        if location.uid != uid or location.party_id != party_id or location.country_code != country_code:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        if request.method == 'GET':
+            serializer = EvseSerializer(evse)
+            return Response(serializer.data)
+
+        elif request.method == 'PATCH':
+            serializer = EvseSerializer(evse, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    # noinspection PyUnresolvedReferences
+    queryset = Evse.objects.all().order_by('id')
+    serializer_class = EvseSerializer
 
 
 class DocumentedRouter(routers.DefaultRouter):
     APIRootView = TokenAPIView
 
 
-@api_view(['GET', 'PUT'])
-def tokens(request, pk):
-    token = get_object_or_404(Token, pk=pk)
-
-    if request.method == 'GET':
-        serializer = TokenSerializer(token)
-        return Response(serializer.data)
-
-    elif request.method == 'PUT':
-        serializer = TokenSerializer(token, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# @api_view(['GET', 'PUT'])
+# def tokens(request, pk):
+#     token = get_object_or_404(Token, pk=pk)
+#
+#     if request.method == 'GET':
+#         serializer = TokenSerializer(token)
+#         return Response(serializer.data)
+#
+#     elif request.method == 'PUT':
+#         serializer = TokenSerializer(token, data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
