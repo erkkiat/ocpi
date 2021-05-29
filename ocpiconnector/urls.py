@@ -74,7 +74,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
 
     class Meta:
         model = Evse
-        exclude = ['capabilities', 'url', 'location']
+        fields = ['uid', 'evse_id', 'status', 'last_updated', 'connectors']
 
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
