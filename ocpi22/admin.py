@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
-    PriceComponent, Cdr
+    PriceComponent, Cdr, Session
 
 
 class TokenAdmin(admin.ModelAdmin):
@@ -67,6 +67,20 @@ class CdrAdmin(admin.ModelAdmin):
         'uid', 'party_id',
         'session_id', 'auth_method',
     ]
+    readonly_fields = ['uid']
+
+
+class SessionAdmin(admin.ModelAdmin):
+    model = Session
+    ordering = ['-created']
+    list_display = [
+        'uid',
+        'location', 'evse', 'connector',
+        'cdr_token', 'kwh',
+        'start_date_time', 'end_date_time',
+        'total_cost_incl_vat', 'total_cost_excl_vat', 'currency'
+    ]
+    readonly_fields = ['uid']
 
 
 class TariffAdmin(admin.ModelAdmin):
@@ -77,6 +91,7 @@ class TariffAdmin(admin.ModelAdmin):
     list_display = ['party_id', '__str__', 'type', 'tariff_alt_url', 'country_code']
     list_display_links = ['__str__']
     inlines = [ PriceComponentsInline ]
+    readonly_fields = ['uid']
 
 
 admin.site.register(Token, TokenAdmin)
@@ -87,3 +102,4 @@ admin.site.register(Facility, FacilityAdmin)
 admin.site.register(Capability, CapabilityAdmin)
 admin.site.register(Tariff, TariffAdmin)
 admin.site.register(Cdr, CdrAdmin)
+admin.site.register(Session, SessionAdmin)

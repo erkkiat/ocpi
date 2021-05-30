@@ -3,21 +3,19 @@ from collections import OrderedDict
 from datetime import datetime
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import routers, serializers, viewsets, status, mixins
+from rest_framework import routers, serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff
+from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff, Session
 
 
 class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
     def to_representation(self, value):
         # Remove empty values
         repr_dict = super().to_representation(value)
-        return OrderedDict((k, v) for k, v in repr_dict.items()
-                           if v not in [None, [], '', {}])
+        return clear_empty(repr_dict)
 
     def get_detail_url(self, obj) -> str:
         """
@@ -45,20 +43,22 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
     cpo_url = serializers.SerializerMethodField(read_only=True)
 
 
+class OCPIViewSetMixin:
+    """
+    Apply the OCPI filters to the queryset
+    """
+
+    # noinspection PyUnresolvedReferences
+    def get_queryset(self):
+        return apply_ocpi22_filters(self.request, self.queryset)
+
+
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Token
         fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type',
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
-
-
-class OCPIViewSetMixin:
-    """
-    Apply the OCPI filters (date range, limit and offset)
-    """
-    def get_queryset(self):
-        return apply_ocpi22_filters(self.request, self.queryset)
 
 
 class TokenViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
@@ -124,12 +124,55 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors']
 
 
-class CpoEvseSerializer(HyperlinkedModelSerializerCleanedUp):
-    # connectors = ConnectorSerializer(many=True, read_only=True)
+def clear_empty(dict_with_possibly_empty_values):
+    return OrderedDict((k, v) for k, v in dict_with_possibly_empty_values.items()
+                if v not in [None, [], '', {}])
+
+
+class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     class Meta:
-        model = Evse
-        fields = ['cpo_url', 'uid', 'status']
+        model = Session
+        fields = ['detail_url', 'country_code', 'party_id', 'uid',
+                  'start_date_time', 'end_date_time', 'kwh',
+                  'cdr_token', 'auth_method', 'authorization_reference',
+                  'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
+                  'status', 'last_updated']
+
+    uid = serializers.CharField(read_only=True)
+    cdr_token = serializers.SerializerMethodField()
+    location_id = serializers.SerializerMethodField()
+    evse_uid = serializers.SerializerMethodField()
+    connector_id = serializers.SerializerMethodField()
+    total_cost = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_cdr_token(session):
+        token = session.cdr_token
+        return clear_empty(dict(
+            uid=token.uid,
+            type=token.type,
+            contract_id=token.contract_id
+        ))
+
+    @staticmethod
+    def get_location_id(session):
+        return session.location.uid
+
+    @staticmethod
+    def get_evse_uid(session):
+        return session.evse.uid
+
+    @staticmethod
+    def get_connector_id(session):
+        return session.connector.uid
+
+    @staticmethod
+    def get_total_cost(session):
+        return clear_empty(dict(
+            excl_vat=session.total_cost_excl_vat,
+            incl_vat=session.total_cost_incl_vat
+        ))
 
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -266,8 +309,38 @@ class LocationViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     # noinspection PyUnresolvedReferences
-    queryset = Location.objects.all().order_by('id')
+    queryset = Location.objects.all().order_by('created')
     serializer_class = LocationSerializer
+
+
+class SessionViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token', 'authorization_reference']
+
+    @action(methods=['GET', 'PATCH'], detail=False, url_name='by-id',
+            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
+    def session_by_id(self, request, country_code, party_id, uid) -> Response:
+        # noinspection PyUnresolvedReferences
+        session = get_object_or_404(Session, country_code=country_code, party_id=party_id, uid=uid)
+
+        if request.method == 'GET':
+            serializer = SessionSerializer(session, context={'request': request})
+            return Response(serializer.data)
+
+        elif request.method == 'PATCH':
+            serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    # noinspection PyUnresolvedReferences
+    queryset = Session.objects.all().order_by('created')
+    serializer_class = SessionSerializer
 
 
 class EvseViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
@@ -300,42 +373,6 @@ class EvseViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
     serializer_class = EvseSerializer
 
 
-class CpoEvseViewSet(mixins.RetrieveModelMixin,
-                     mixins.UpdateModelMixin,
-                     mixins.DestroyModelMixin,
-                     mixins.ListModelMixin,
-                     OCPIViewSetMixin,
-                     GenericViewSet):
-
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['status']
-
-    @action(methods=['GET', 'PATCH'], detail=False,
-            url_path='(?P<evse_id>[^/.]+)', url_name='by-id-cpo')
-    def by_id(self, request, evse_id) -> Response:
-        # noinspection PyUnresolvedReferences
-        evse = get_object_or_404(Evse, uid=evse_id)
-        location = evse.location
-
-        if request.method == 'GET':
-            serializer = CpoEvseSerializer(evse, context={'request': request})
-            return Response(serializer.data)
-
-        elif request.method == 'PATCH':
-            serializer = CpoEvseSerializer(evse, data=request.data, partial=True, context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    # noinspection PyUnresolvedReferences
-    queryset = Evse.objects.all().order_by('created')
-    serializer_class = CpoEvseSerializer
-
-
 class ConnectorAPIView(routers.APIRootView):
     """
     OCPI version 2.2
@@ -350,19 +387,3 @@ class ConnectorAPIView(routers.APIRootView):
 
 class OCPIRouter(routers.DefaultRouter):
     APIRootView = ConnectorAPIView
-
-
-class ChargePointOperatorAPIView(routers.APIRootView):
-    """
-    CPO API
-    ---------------
-
-    This portal provides ways to view the information in the database, read the API documentation and
-    try out sending information to the API. The OCPI API serves both the eMSP and the CPO.
-
-    1. The CPO specific interfaces are available at [/api/v1/cpo/](/api/v1/cpo/)
-    """
-
-
-class CPORouter(routers.DefaultRouter):
-    APIRootView = ChargePointOperatorAPIView

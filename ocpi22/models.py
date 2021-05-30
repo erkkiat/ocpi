@@ -1,8 +1,24 @@
+import uuid
+from datetime import datetime
+
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
 from rest_framework.reverse import reverse
+
+
+AUTH_METHOD_CHOICES = (
+    # Authentication request has been sent to the eMSP.
+    ('AUTH_REQUEST', 'Authentication request to eMSP'),
+
+    # Command like StartSession or ReserveNow used to start the Session,
+    # the Token provided in the Command was used as authorization.
+    ('COMMAND', 'Command from eMSP'),
+
+    # Whitelist used for authentication, no request to the eMSP has been performed.
+    ('WHITELIST', 'Token on whitelist'),
+)
 
 
 class Token(models.Model):
@@ -136,7 +152,7 @@ class Tariff(models.Model):
     party_id = models.CharField(max_length=3)
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, default=uuid.uuid4())
 
     # ISO-4217 code of the currency of this tariff
     currency = models.CharField(max_length=3)
@@ -304,7 +320,7 @@ class Cdr(models.Model):
 
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    uid = models.CharField(max_length=39)
+    uid = models.CharField(max_length=39, default=uuid.uuid4())
 
     # Start timestamp of the charging session, or in-case of a reservation
     # (before the start of a session) the start of the reservation.
@@ -323,17 +339,6 @@ class Cdr(models.Model):
     cdr_token = models.ForeignKey(Token, on_delete=models.PROTECT)
 
     # Method used for authentication.
-    AUTH_METHOD_CHOICES = (
-        # Authentication request has been sent to the eMSP.
-        ('AUTH_REQUEST', 'Authentication request to eMSP'),
-
-        # Command like StartSession or ReserveNow used to start the Session,
-        # the Token provided in the Command was used as authorization.
-        ('COMMAND', 'Command from eMSP'),
-
-        # Whitelist used for authentication, no request to the eMSP has been performed.
-        ('WHITELIST', 'Token on whitelist'),
-    )
     auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
 
     # Location where the charging session took place, including only the relevant EVSE and Connector.
@@ -362,6 +367,8 @@ class Cdr(models.Model):
     def __str__(self):
         return f'{self.cdr_token} - {self.total_cost_inc_vat} {self.currency} - ' \
                f'{self.total_time/60} min - {self.end_date_time}'
+
+
 
 
 class Location(models.Model):
@@ -617,6 +624,111 @@ class Connector(models.Model):
 
     def tariff(self):
         return ' / '.join([str(t) for t in self.tariff_ids.all()])
+
+
+class Session(models.Model):
+    """
+    The Session object describes one charging session. That doesn’t mean it is required that energy
+    has been transferred between EV and the Charge Point. It is possible that the EV never took energy
+    from the Charge Point because it was instructed not to take energy by the driver.
+    But as the EV was connected to the Charge Point, some form of start tariff,
+    park tariff or reservation cost might be relevant.
+    """
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['uid', 'party_id'], name='session_party_id_uid'),
+            # models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
+        ]
+
+    # ISO-3166 alpha-2 country code of the CPO that owns this Session
+    country_code = models.CharField(max_length=2)
+
+    # CPO ID of the CPO that 'owns' this Session (following the ISO-15118 standard).
+    party_id = models.CharField(max_length=3)
+
+    # The unique id that identifies the charging session in the CPO platform.
+    uid = models.CharField(max_length=36, default=uuid.uuid4())
+
+    # The timestamp when the session became ACTIVE in the Charge Point.
+    # When the session is still PENDING, this field SHALL be set to the time the Session was
+    # created at the Charge Point.
+    # Todo: When a Session goes from PENDING to ACTIVE, this field SHALL be update to the moment the Session went to ACTIVE in the Charge Point.
+    start_date_time = models.DateTimeField(default=datetime.now())
+
+    # The timestamp when the session was completed/finished, charging might have finished before the session ends,
+    # for example: EV is full, but parking cost also has to be paid.
+    end_date_time = models.DateTimeField(blank=True, null=True)
+
+    # How many kWh were charged.
+    kwh = models.FloatField()
+
+    # Token used to start this charging session, including all the relevant information to identify the unique token.
+    cdr_token = models.ForeignKey(Token, on_delete=models.PROTECT)
+
+    # Method used for authentication.
+    auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
+
+    # Reference to the authorization given by the eMSP. Todo: When the eMSP provided an authorization_reference in either:
+    # Todo: real-time authorization or StartSession, this field SHALL contain the same value.
+    # When different authorization_reference values have been given by the eMSP that are relevant to this Session,
+    # the last given value SHALL be used here.
+    authorization_reference = models.CharField(max_length=36, blank=True, default='')
+
+    # Location.id of the Location object of this CPO, on which the charging session is/was happening.
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='sessions')
+
+    # EVSE.uid of the EVSE of this Location on which the charging session is/was happening.
+    evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='sessions')
+
+    # Connector.id of the Connector of this Location the charging session is/was happening.
+    connector = models.ForeignKey(Connector, on_delete=models.PROTECT, related_name='sessions')
+
+    # Optional identification of the kWh meter.
+    meter_id = models.CharField(max_length=255, blank=True, null=True)
+
+    # ISO-4217 code of the currency of this tariff
+    currency = models.CharField(max_length=3)
+
+    # The total cost of the session in the specified currency. This is the price that the eMSP will
+    # have to pay to the CPO. A total_cost of 0.00 means free of charge. When omitted, i.e. no price
+    # information is given in the Session object, it does not imply the session is/was free of charge.
+    total_cost_excl_vat = models.FloatField(blank=True, null=True)
+    total_cost_incl_vat = models.FloatField(blank=True, null=True)
+
+    # The status of this session
+    STATUS_CHOICES = (
+        # The session has been accepted and is active. All pre-conditions were met: Communication between EV and EVSE
+        # (for example: cable plugged in correctly), EV or driver is authorized. EV is being charged,
+        # or can be charged. Energy is, or is not, being transfered.
+        ('ACTIVE', 'Active'),
+
+        # The session has been finished successfully.
+        # Todo: No more modifications will be made to the Session object using this state.
+        ('COMPLETED', 'Completed'),
+
+        # The Session object using this state is declared invalid and will not be billed.
+        ('INVALID', 'Invalid'),
+
+        # The session is pending, it has not yet started. Not all pre-conditions are met.
+        # This is the initial state. The session might never become an active session.
+        ('PENDING', 'Pending'),
+
+        # The session is started due to a reservation, charging has not yet started.
+        # The session might never become an active session.
+        ('RESERVATION', 'Reservation'),
+    )
+    status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING')
+
+    last_updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.cdr_token} - {self.start_date_time} - {self.kwh}kWh - ' \
+               f'EVSE {self.evse.evse_id} - {self.connector.get_standard_display()}'
+
+    def get_absolute_url(self):
+        return reverse('session-by-id', args=[self.country_code, self.party_id, self.uid])
 
 
 def calculate_partition(coordinate):
