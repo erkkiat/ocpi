@@ -3,10 +3,11 @@ from collections import OrderedDict
 from datetime import datetime
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import routers, serializers, viewsets, status
+from rest_framework import routers, serializers, viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff
 
@@ -52,7 +53,7 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
 
-class OCPIViewSet(viewsets.ModelViewSet):
+class OCPIViewSetMixin:
     """
     Apply the OCPI filters (date range, limit and offset)
     """
@@ -60,16 +61,16 @@ class OCPIViewSet(viewsets.ModelViewSet):
         return apply_ocpi22_filters(self.request, self.queryset)
 
 
-class TokenViewSet(OCPIViewSet):
+class TokenViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
     # noinspection PyUnresolvedReferences
-    queryset = Token.objects.all().order_by('-created')
+    queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'type']
 
     # noinspection PyUnresolvedReferences
-    @action(methods=['GET', 'PUT', 'PATCH', 'POST'], detail=False,
+    @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> Response:
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
@@ -225,7 +226,7 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
     return queryset
 
 
-class TariffViewSet(OCPIViewSet):
+class TariffViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
     # noinspection PyUnresolvedReferences
     queryset = Tariff.objects.all().order_by('created')
     serializer_class = TariffSerializer
@@ -238,7 +239,7 @@ class TariffViewSet(OCPIViewSet):
         return Response(serializer.data)
 
 
-class LocationViewSet(OCPIViewSet):
+class LocationViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
@@ -269,7 +270,7 @@ class LocationViewSet(OCPIViewSet):
     serializer_class = LocationSerializer
 
 
-class EvseViewSet(OCPIViewSet):
+class EvseViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
 
     @action(methods=['GET', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
@@ -299,7 +300,12 @@ class EvseViewSet(OCPIViewSet):
     serializer_class = EvseSerializer
 
 
-class CpoEvseViewSet(OCPIViewSet):
+class CpoEvseViewSet(mixins.RetrieveModelMixin,
+                     mixins.UpdateModelMixin,
+                     mixins.DestroyModelMixin,
+                     mixins.ListModelMixin,
+                     OCPIViewSetMixin,
+                     GenericViewSet):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status']
@@ -346,7 +352,7 @@ class OCPIRouter(routers.DefaultRouter):
     APIRootView = ConnectorAPIView
 
 
-class CPOAPIView(routers.APIRootView):
+class ChargePointOperatorAPIView(routers.APIRootView):
     """
     CPO API
     ---------------
@@ -359,4 +365,4 @@ class CPOAPIView(routers.APIRootView):
 
 
 class CPORouter(routers.DefaultRouter):
-    APIRootView = CPOAPIView
+    APIRootView = ChargePointOperatorAPIView
