@@ -296,7 +296,7 @@ class EvseViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     # noinspection PyUnresolvedReferences
-    queryset = Evse.objects.all().order_by('-created')
+    queryset = Evse.objects.all().order_by('created')
     serializer_class = EvseSerializer
 
 
@@ -332,7 +332,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     # noinspection PyUnresolvedReferences
-    queryset = Evse.objects.all().order_by('-created')
+    queryset = Evse.objects.all().order_by('created')
     serializer_class = CpoEvseSerializer
 
 
