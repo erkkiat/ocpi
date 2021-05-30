@@ -537,6 +537,10 @@ class Evse(models.Model):
         return reverse('evse-by-id',
                        args=[self.location.country_code, self.location.party_id, self.location.uid, self.uid])
 
+    def get_cpo_url(self):
+        return reverse('evse-by-id-cpo',
+                       args=[self.uid])
+
 
 class Connector(models.Model):
     # Identifier of the Connector within the EVSE. Two Connectors may have the same id

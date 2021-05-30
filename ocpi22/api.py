@@ -2,6 +2,7 @@ from django.db.models import QuerySet
 from collections import OrderedDict
 from datetime import datetime
 
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import routers, serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -28,7 +29,19 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
             return ''
         return f'{request.build_absolute_uri(obj.get_absolute_url())}'
 
+    def get_cpo_url(self, obj) -> str:
+        """
+        Construct a URL which points to the object instance view
+        :param obj: The object we need the instance view for
+        :return: The URL string to the instance view
+        """
+        request = self.context.get("request")
+        if not hasattr(obj, 'get_cpo_url') or not request:
+            return ''
+        return f'{request.build_absolute_uri(obj.get_cpo_url())}'
+
     detail_url = serializers.SerializerMethodField(read_only=True)
+    cpo_url = serializers.SerializerMethodField(read_only=True)
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -51,6 +64,9 @@ class TokenViewSet(OCPIViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Token.objects.all().order_by('-created')
     serializer_class = TokenSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['country_code', 'party_id', 'type']
 
     # noinspection PyUnresolvedReferences
     @action(methods=['GET', 'PUT', 'PATCH', 'POST'], detail=False,
@@ -105,6 +121,14 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Evse
         fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors']
+
+
+class CpoEvseSerializer(HyperlinkedModelSerializerCleanedUp):
+    # connectors = ConnectorSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Evse
+        fields = ['cpo_url', 'uid', 'status']
 
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -216,6 +240,9 @@ class TariffViewSet(OCPIViewSet):
 
 class LocationViewSet(OCPIViewSet):
 
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
+
     # Todo: How to PATCH sub-dicts of Locations
     @action(methods=['GET', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
@@ -272,9 +299,56 @@ class EvseViewSet(OCPIViewSet):
     serializer_class = EvseSerializer
 
 
+class CpoEvseViewSet(OCPIViewSet):
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['status']
+
+    @action(methods=['GET', 'PATCH'], detail=False,
+            url_path='(?P<evse_id>[^/.]+)', url_name='by-id-cpo')
+    def by_id(self, request, evse_id) -> Response:
+        # noinspection PyUnresolvedReferences
+        evse = get_object_or_404(Evse, uid=evse_id)
+        location = evse.location
+
+        if request.method == 'GET':
+            serializer = CpoEvseSerializer(evse, context={'request': request})
+            return Response(serializer.data)
+
+        elif request.method == 'PATCH':
+            serializer = CpoEvseSerializer(evse, data=request.data, partial=True, context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    # noinspection PyUnresolvedReferences
+    queryset = Evse.objects.all().order_by('-created')
+    serializer_class = CpoEvseSerializer
+
+
 class ConnectorAPIView(routers.APIRootView):
     """
     OCPI version 2.2
+    ---------------
+
+    This portal provides ways to view the information in the database, read the API documentation and
+    try out sending information to the API. The OCPI API serves both the eMSP and the CPO.
+
+    1. The CPO specific interfaces are available at [/api/cpo/v1/](/api/cpo/v1/)
+    """
+
+
+class OCPIRouter(routers.DefaultRouter):
+    APIRootView = ConnectorAPIView
+
+
+class CPOAPIView(routers.APIRootView):
+    """
+    CPO API
     ---------------
 
     This portal provides ways to view the information in the database, read the API documentation and
@@ -284,5 +358,5 @@ class ConnectorAPIView(routers.APIRootView):
     """
 
 
-class DocumentedRouter(routers.DefaultRouter):
-    APIRootView = ConnectorAPIView
+class CPORouter(routers.DefaultRouter):
+    APIRootView = CPOAPIView
