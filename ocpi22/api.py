@@ -17,23 +17,32 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         return OrderedDict((k, v) for k, v in repr_dict.items()
                            if v not in [None, [], '', {}])
 
-    def get_detail_url(self, obj):
+    def get_detail_url(self, obj) -> str:
+        """
+        Construct a URL which points to the object instance view
+        :param obj: The object we need the instance view for
+        :return: The URL string to the instance view
+        """
         request = self.context.get("request")
         if not hasattr(obj, 'get_absolute_url') or not request:
             return ''
-        return f'{request.build_absolute_uri(obj.get_absolute_url())}'  # return the absolute url of the object
+        return f'{request.build_absolute_uri(obj.get_absolute_url())}'
 
-    detail_url = serializers.SerializerMethodField(read_only=True)  # define a SerializerMethodField
+    detail_url = serializers.SerializerMethodField(read_only=True)
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Token
-        fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type', 'contract_id', 'visual_number', 'issuer', 'group_id',
+        fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type',
+                  'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
 
 class OCPIViewSet(viewsets.ModelViewSet):
+    """
+    Apply the OCPI filters (date range, limit and offset)
+    """
     def get_queryset(self):
         return apply_ocpi22_filters(self.request, self.queryset)
 
@@ -48,29 +57,17 @@ class TokenViewSet(OCPIViewSet):
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> Response:
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
+        method_is_patch = True if request.method == 'PATCH' else False
 
         if request.method == 'GET':
             serializer = TokenSerializer(token, many=False, context={'request': request})
             return Response(serializer.data)
 
-        elif request.method == 'PUT':
-            serializer = TokenSerializer(token, data=request.data, context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        elif request.method == 'PATCH':
-            serializer = TokenSerializer(token, data=request.data, partial=True, context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        elif request.method == 'POST':
-            serializer = TokenSerializer(token, data=request.data, context={'request': request})
+        elif request.method in ('PUT', 'POST', 'PATCH'):
+            serializer = TokenSerializer(token,
+                                         data=request.data,
+                                         partial=method_is_patch,
+                                         context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
@@ -81,8 +78,6 @@ class TokenViewSet(OCPIViewSet):
             token.delete()
             return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
 
 
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -143,7 +138,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         return dict(price_components=price_components)
 
     @staticmethod
-    def get_readable(tariff: Tariff) -> dict:
+    def get_readable(tariff: Tariff) -> str:
         return str(tariff)
 
 
@@ -184,6 +179,12 @@ class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 def apply_ocpi22_filters(request, queryset) -> QuerySet:
+    """
+    Apply the OCPI 2.2 filters to a queryset (date range, limit, offset)
+    :param request:
+    :param queryset:
+    :return:
+    """
     date_from: str = request.GET.get('date_from')
     if date_from:
         import dateutil.parser
@@ -230,7 +231,7 @@ class LocationViewSet(OCPIViewSet):
             return Response(serializer.data)
 
         elif request.method == 'PATCH':
-            serializer = LocationSerializer(location, data=request.data, partial=True)
+            serializer = LocationSerializer(location, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 return Response(serializer.data)
