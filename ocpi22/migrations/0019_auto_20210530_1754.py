@@ -4,6 +4,8 @@ import datetime
 from django.db import migrations, models
 import uuid
 
+from django.utils import timezone
+
 
 class Migration(migrations.Migration):
 
@@ -20,7 +22,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='session',
             name='start_date_time',
-            field=models.DateTimeField(default=datetime.now()),
+            field=models.DateTimeField(default=timezone.now()),
         ),
         migrations.AlterField(
             model_name='session',

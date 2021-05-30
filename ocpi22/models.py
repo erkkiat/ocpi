@@ -4,6 +4,7 @@ from datetime import datetime
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from django.utils.html import format_html
 from rest_framework.reverse import reverse
 
@@ -654,7 +655,7 @@ class Session(models.Model):
     # When the session is still PENDING, this field SHALL be set to the time the Session was
     # created at the Charge Point.
     # Todo: When a Session goes from PENDING to ACTIVE, this field SHALL be update to the moment the Session went to ACTIVE in the Charge Point.
-    start_date_time = models.DateTimeField(default=datetime.now())
+    start_date_time = models.DateTimeField(default=timezone.now())
 
     # The timestamp when the session was completed/finished, charging might have finished before the session ends,
     # for example: EV is full, but parking cost also has to be paid.
