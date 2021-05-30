@@ -182,6 +182,9 @@ class Tariff(models.Model):
         # noinspection PyUnresolvedReferences
         return ' + '.join([str(x) for x in self.price_components.all()] or f'{self.uid}')
 
+    def get_absolute_url(self):
+        return reverse('tariff-by-id', args=[self.country_code, self.party_id, self.uid])
+
 
 class PriceComponent(models.Model):
     TYPE_CHOICES = (

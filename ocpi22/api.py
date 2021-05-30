@@ -2,11 +2,9 @@ from django.db.models import QuerySet
 from collections import OrderedDict
 from datetime import datetime
 
-from pytz import timezone
 from rest_framework import routers, serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
-from rest_framework.viewsets import GenericViewSet, ViewSet
 from rest_framework.response import Response
 
 from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff
@@ -20,8 +18,8 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
                            if v not in [None, [], '', {}])
 
     def get_detail_url(self, obj):
-        request = self.context["request"]
-        if not hasattr(obj, 'get_absolute_url'):
+        request = self.context.get("request")
+        if not hasattr(obj, 'get_absolute_url') or not request:
             return ''
         return f'{request.build_absolute_uri(obj.get_absolute_url())}'  # return the absolute url of the object
 
@@ -34,20 +32,16 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type', 'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
-    last_updated = serializers.DateTimeField(default_timezone=timezone('UTC'), read_only=True)
+
+class OCPIViewSet(viewsets.ModelViewSet):
+    def get_queryset(self):
+        return apply_ocpi22_filters(self.request, self.queryset)
 
 
-class TokenViewSet(viewsets.ModelViewSet):
+class TokenViewSet(OCPIViewSet):
     # noinspection PyUnresolvedReferences
-    queryset = Token.objects.all().order_by('created')
+    queryset = Token.objects.all().order_by('-created')
     serializer_class = TokenSerializer
-
-    @action(methods=['GET'], detail=False)
-    def tokens(self, request) -> Response:
-        # noinspection PyUnresolvedReferences
-        queryset = apply_ocpi22_query_parameters(request, Token.objects.all())
-        serializer = TokenSerializer(queryset, many=True, context={'request': request})
-        return Response(serializer.data)
 
     # noinspection PyUnresolvedReferences
     @action(methods=['GET', 'PUT', 'PATCH', 'POST', 'DELETE'], detail=False,
@@ -89,24 +83,11 @@ class TokenViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-class TokenAPIView(routers.APIRootView):
-    """
-    OCPI version 2.2
-    ---------------
-
-    The Charger API provides ways to access the charge point database.
-
-    * The paged endpoint below lists all European chargers for creating a daily or weekly mirror of the database.
-    * See below link for further search endpoints.
-    * The list of codes used here are available at [/api/v1/common/codes/](/api/v1/common/codes/)
-    """
-    pass
 
 
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     uid = serializers.CharField()
     max_electric_power = serializers.SerializerMethodField()
-    last_updated = serializers.DateTimeField(default_timezone=timezone('UTC'), read_only=True)
 
     class Meta:
         model = Connector
@@ -128,7 +109,6 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorSerializer(many=True, read_only=True)
-    last_updated = serializers.DateTimeField(default_timezone=timezone('UTC'), read_only=True)
 
     class Meta:
         model = Evse
@@ -138,11 +118,12 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
-        fields = ('country_code', 'party_id', 'id', 'type', 'tariff_alt_url', 'elements', 'last_updated')
+        fields = ('detail_url', 'readable', 'country_code', 'party_id', 'id', 'type',
+                  'tariff_alt_url', 'elements', 'last_updated')
 
     id = serializers.CharField(source='uid')
     elements = serializers.SerializerMethodField()
-    last_updated = serializers.DateTimeField(default_timezone=timezone('UTC'), read_only=True)
+    readable = serializers.SerializerMethodField()
 
     @staticmethod
     def get_elements(tariff: Tariff) -> dict:
@@ -160,6 +141,10 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
             if not pc.get('vat'):
                 pc.pop('vat')
         return dict(price_components=price_components)
+
+    @staticmethod
+    def get_readable(tariff: Tariff) -> dict:
+        return str(tariff)
 
 
 class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -179,7 +164,6 @@ class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
     owner = BusinessDetailsSerializer(read_only=True, many=False)
     publish_allowed_to = serializers.SerializerMethodField()
     facilities = serializers.SerializerMethodField()
-    last_updated = serializers.DateTimeField(default_timezone=timezone('UTC'), read_only=True)
 
     @staticmethod
     def get_coordinates(location: Location) -> dict:
@@ -199,7 +183,7 @@ class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
         return [facility.name for facility in location.facilities.all()]
 
 
-def apply_ocpi22_query_parameters(request, queryset) -> QuerySet:
+def apply_ocpi22_filters(request, queryset) -> QuerySet:
     date_from: str = request.GET.get('date_from')
     if date_from:
         import dateutil.parser
@@ -219,38 +203,24 @@ def apply_ocpi22_query_parameters(request, queryset) -> QuerySet:
     return queryset
 
 
-class TariffViewSet(ViewSet):
+class TariffViewSet(OCPIViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Tariff.objects.all().order_by('created')
+    serializer_class = TariffSerializer
 
-    @action(methods=['GET'], detail=False)
-    def tariffs(self, request) -> Response:
-        # noinspection PyUnresolvedReferences
-        queryset = apply_ocpi22_query_parameters(request, Tariff.objects.all().order_by('created'))
-        serializer = TariffSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-    # noinspection PyUnresolvedReferences
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
-            url_path='tariffs/(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def by_id(self, _request, country_code, party_id, uid) -> Response:
+            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
+    def by_id(self, request, country_code, party_id, uid) -> Response:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid)
-        serializer = TariffSerializer(tariff, many=False)
+        serializer = TariffSerializer(tariff, many=False, context={'request': request})
         return Response(serializer.data)
 
 
-class LocationViewSet(GenericViewSet):
-
-    @action(methods=['GET'], detail=False)
-    def locations(self, request) -> Response:
-        # noinspection PyUnresolvedReferences
-        queryset = apply_ocpi22_query_parameters(request, Location.objects.all())
-        serializer = LocationSerializer(queryset, many=True, context={'request': request})
-        return Response(serializer.data)
+class LocationViewSet(OCPIViewSet):
 
     # Todo: How to PATCH sub-dicts of Locations
     @action(methods=['GET', 'PATCH'], detail=False,
-            url_path='locations/(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
+            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> Response:
         # noinspection PyUnresolvedReferences
         location = get_object_or_404(Location, country_code=country_code, party_id=party_id, uid=uid)
@@ -274,17 +244,10 @@ class LocationViewSet(GenericViewSet):
     serializer_class = LocationSerializer
 
 
-class EvseViewSet(GenericViewSet):
-
-    @action(methods=['GET'], detail=False)
-    def evses(self, request) -> Response:
-        # noinspection PyUnresolvedReferences
-        queryset = apply_ocpi22_query_parameters(request, Evse.objects.all())
-        serializer = EvseSerializer(queryset, many=True, context={'request': request})
-        return Response(serializer.data)
+class EvseViewSet(OCPIViewSet):
 
     @action(methods=['GET', 'PATCH'], detail=False,
-            url_path='locations/(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
+            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid, evse_id) -> Response:
         # noinspection PyUnresolvedReferences
         evse = get_object_or_404(Evse, uid=evse_id)
@@ -307,25 +270,21 @@ class EvseViewSet(GenericViewSet):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     # noinspection PyUnresolvedReferences
-    queryset = Evse.objects.all().order_by('id')
+    queryset = Evse.objects.all().order_by('-created')
     serializer_class = EvseSerializer
 
 
+class ConnectorAPIView(routers.APIRootView):
+    """
+    OCPI version 2.2
+    ---------------
+
+    This portal provides ways to view the information in the database, read the API documentation and
+    try out sending information to the API. The OCPI API serves both the eMSP and the CPO.
+
+    1. The CPO specific interfaces are available at [/api/v1/cpo/](/api/v1/cpo/)
+    """
+
+
 class DocumentedRouter(routers.DefaultRouter):
-    APIRootView = TokenAPIView
-
-
-# @api_view(['GET', 'PUT'])
-# def tokens(request, pk):
-#     token = get_object_or_404(Token, pk=pk)
-#
-#     if request.method == 'GET':
-#         serializer = TokenSerializer(token)
-#         return Response(serializer.data)
-#
-#     elif request.method == 'PUT':
-#         serializer = TokenSerializer(token, data=request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    APIRootView = ConnectorAPIView
