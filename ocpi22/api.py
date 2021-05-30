@@ -53,7 +53,7 @@ class TokenViewSet(OCPIViewSet):
     serializer_class = TokenSerializer
 
     # noinspection PyUnresolvedReferences
-    @action(methods=['GET', 'PUT', 'PATCH', 'POST', 'DELETE'], detail=False,
+    @action(methods=['GET', 'PUT', 'PATCH', 'POST'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> Response:
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
@@ -74,9 +74,6 @@ class TokenViewSet(OCPIViewSet):
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        elif request.method == 'DELETE':
-            token.delete()
-            return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
