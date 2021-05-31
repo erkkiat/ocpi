@@ -731,6 +731,9 @@ class Session(models.Model):
     def get_absolute_url(self):
         return reverse('session-by-id', args=[self.country_code, self.party_id, self.uid])
 
+    # def get_cpo_url(self):
+    #     return reverse('session-by-id-cpo', args=[self.uid])
+
 
 def calculate_partition(coordinate):
     if not coordinate:

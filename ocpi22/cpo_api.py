@@ -1,26 +1,32 @@
+import os
+import uuid
+
+from django.conf import settings
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import routers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.api import HyperlinkedModelSerializerCleanedUp, OCPIViewSetMixin
-from ocpi22.models import Evse
+from ocpi22.api import HyperlinkedModelSerializerCleanedUp, OCPIViewSetMixin, clear_empty
+from ocpi22.models import Evse, Session, Token, Connector
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Evse
-        fields = ['cpo_url', 'uid', 'status']
+        fields = ['url', 'uid', 'status']
 
 
 class EvseViewSet(mixins.RetrieveModelMixin,
-                     mixins.UpdateModelMixin,
-                     mixins.DestroyModelMixin,
-                     mixins.ListModelMixin,
-                     OCPIViewSetMixin,
-                     GenericViewSet):
+                  mixins.UpdateModelMixin,
+                  mixins.DestroyModelMixin,
+                  mixins.ListModelMixin,
+                  OCPIViewSetMixin,
+                  GenericViewSet):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status']
@@ -63,6 +69,131 @@ class EvseViewSet(mixins.RetrieveModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Evse.objects.all().order_by('created')
     serializer_class = EvseSerializer
+
+
+class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
+
+    class Meta:
+        model = Session
+        fields = ['url', 'uid',
+                  'start_date_time', 'end_date_time', 'kwh',
+                  'token', 'auth_method', 'authorization_reference',
+                  'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency',
+                  'total_cost_incl_vat', 'total_cost_excl_vat',
+                  'status', 'last_updated']
+
+    uid = serializers.CharField(read_only=True)
+    token = serializers.SerializerMethodField(read_only=True)
+    location_id = serializers.SerializerMethodField(read_only=True)
+    evse_uid = serializers.SerializerMethodField(read_only=True)
+    connector_id = serializers.SerializerMethodField(read_only=True)
+
+    @staticmethod
+    def get_token(session):
+        token = session.cdr_token
+        return clear_empty(dict(
+            uid=token.uid,
+            type=token.type,
+            contract_id=token.contract_id
+        ))
+
+    @staticmethod
+    def get_location_id(session):
+        return session.location.uid
+
+    @staticmethod
+    def get_evse_uid(session):
+        return session.evse.uid
+
+    @staticmethod
+    def get_connector_id(session):
+        return session.connector.uid
+
+
+def authorize_token(token):
+    # Todo: send auth request to the right MSP
+    if 'POSITIVE_TEST_TOKEN' in token.uid and settings.DEBUG:
+        return 'WHITELIST'
+    return False
+
+
+class SessionViewSet(viewsets.ViewSet):
+    queryset = Session.objects.all().order_by('created')
+
+    @action(methods=['PATCH'], detail=False, url_name='update',
+            url_path='update/(?P<session_id>[^/.]+)')
+    def update_session(self, request, session_id) -> Response:
+        session = get_object_or_404(Session, uid=session_id)
+        serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            if serializer.validated_data['kwh']:
+                serializer.validated_data['status'] = 'ACTIVE'
+            serializer.save()
+            # Todo: send update to MSP
+            result = dict(finish_url=request.build_absolute_uri(reverse('session-finish', args=[session.uid])))
+            result.update(serializer.data)
+            return Response(result)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['GET'], detail=False, url_name='finish',
+            url_path='finish/(?P<session_id>[^/.]+)')
+    def finish(self, request, session_id) -> Response:
+        session = get_object_or_404(Session, uid=session_id)
+        if session.status == 'PENDING' and not session.kwh:
+            session.status = 'INVALID'
+        elif session.status != 'ACTIVE' and session.kwh:
+            return Response(dict(
+                error=f'Session {session_id} is not active or pending, so it cannot be finished.'
+            ))
+        else:
+            session.status = 'COMPLETED'
+        session.end_date_time = timezone.now()
+        session.save()
+        # Todo: Create and send CDR to MSP
+        return Response(SessionSerializer(session).data)
+
+    @action(methods=['GET'], detail=False,
+            url_path='start/(?P<evse_id>[^/.]+)/(?P<connector_id>[^/.]+)/(?P<token_id>[^/.]+)')
+    def start(self, request, evse_id, connector_id, token_id) -> Response:
+        token = get_object_or_404(Token, uid=token_id)
+        evse = get_object_or_404(Evse, uid=evse_id)
+        location = evse.location
+        connector = get_object_or_404(Connector, uid=connector_id, evse=evse)
+        auth_method = authorize_token(token)
+        if not auth_method:
+            return Response(dict(error=f'Token {token} was not authorized for use by MSP at this time'),
+                                 status=status.HTTP_401_UNAUTHORIZED)
+        active_session = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
+        if active_session.count():
+            ic('Invalidating incomplete sessions', ",".join([str(s) for s in active_session]))
+            active_session.update(status='INVALID')
+
+        session = Session.objects.create(
+            country_code='FI',
+            party_id=os.environ.get('CPO_PARTY_ID', 'EKI'),
+            uid=uuid.uuid4(),
+            kwh=0.0,
+            cdr_token=token,
+            auth_method=auth_method,
+            location=location,
+            evse=evse,
+            connector=connector,
+            currency=os.environ.get('CPO_CURRENCY', 'EUR')
+        )
+
+        result = dict(
+            update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
+            finish_url=request.build_absolute_uri(reverse('session-finish', args=[session.uid])),
+            session_id=session.uid
+        )
+        if active_session.count():
+            # Todo: put this on error list
+            result['warnings'] = dict(
+                incomplete_sessions_invalidated=SessionSerializer(active_session, many=True).data
+            )
+        # Todo: send update to MSP
+        return Response(result)
 
 
 class ChargePointOperatorAPIView(routers.APIRootView):

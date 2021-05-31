@@ -28,7 +28,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
             return ''
         return f'{request.build_absolute_uri(obj.get_absolute_url())}'
 
-    def get_cpo_url(self, obj) -> str:
+    def get_url(self, obj) -> str:
         """
         Construct a URL which points to the object instance view
         :param obj: The object we need the instance view for
@@ -40,7 +40,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         return f'{request.build_absolute_uri(obj.get_cpo_url())}'
 
     detail_url = serializers.SerializerMethodField(read_only=True)
-    cpo_url = serializers.SerializerMethodField(read_only=True)
+    url = serializers.SerializerMethodField(read_only=True)
 
 
 class OCPIViewSetMixin:
@@ -181,7 +181,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ('detail_url', 'readable', 'country_code', 'party_id', 'id', 'type',
                   'tariff_alt_url', 'elements', 'last_updated')
 
-    id = serializers.CharField(source='uid')
+    id = serializers.CharField(source='uid', read_only=True)
     elements = serializers.SerializerMethodField()
     readable = serializers.SerializerMethodField()
 
