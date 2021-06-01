@@ -74,13 +74,14 @@ class SessionAdmin(admin.ModelAdmin):
     model = Session
     ordering = ['-created']
     list_display = [
-        'uid',
+        'uid', 'status',
         'location', 'evse', 'connector',
         'cdr_token', 'kwh',
         'start_date_time', 'end_date_time',
         'total_cost_incl_vat', 'total_cost_excl_vat', 'currency'
     ]
     search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token__uid']
+    list_filter = ['status']
     readonly_fields = ['uid']
 
 
