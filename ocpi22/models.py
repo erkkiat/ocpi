@@ -1,3 +1,4 @@
+import os
 import uuid
 
 from django.db import models
@@ -7,6 +8,8 @@ from django.utils import timezone
 from django.utils.html import format_html
 from rest_framework.reverse import reverse
 
+PARTY_ID = os.environ.get('PARTY_ID', 'XXX')
+COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
 
 AUTH_METHOD_CHOICES = (
     # Authentication request has been sent to the eMSP.
@@ -30,10 +33,10 @@ class Token(models.Model):
         unique_together = [['party_id', 'uid']]
 
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
-    country_code = models.CharField(max_length=2)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the MSP that 'owns' this Token (following the ISO-15118)
-    party_id = models.CharField(max_length=3)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Unique ID by which this Token can be identified.
     # This is the field used by CPO system (RFID reader on the Charge Point) to identify this token.
@@ -146,10 +149,10 @@ class Tariff(models.Model):
     class Meta:
         unique_together = [['party_id', 'uid']]
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the CPO that 'owns' this Tariff (following the ISO-15118 standard)
-    party_id = models.CharField(max_length=3)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
     uid = models.CharField(max_length=36, default=uuid.uuid4())
@@ -313,10 +316,10 @@ class Cdr(models.Model):
         ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this CDR
-    country_code = models.CharField(max_length=2)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the CPO that 'owns' this CDR (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
@@ -383,14 +386,14 @@ class Location(models.Model):
         ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the CPO that 'owns' this Location (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, default=uuid.uuid4())
 
     # Defines if a Location may be published on an website or app etc.
     # When this is set to false, only tokens identified in the field:
@@ -487,7 +490,7 @@ class Evse(models.Model):
     # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
     # use the field evse_id for that.
     # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, default=uuid.uuid4())
 
     # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
@@ -556,7 +559,7 @@ class Connector(models.Model):
     class Meta:
         unique_together = [['evse', 'uid']]
 
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, default=uuid.uuid4())
 
     evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='connectors')
 
@@ -642,10 +645,10 @@ class Session(models.Model):
         ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
-    country_code = models.CharField(max_length=2)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the CPO that 'owns' this Session (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # The unique id that identifies the charging session in the CPO platform.
     uid = models.CharField(max_length=36, default=uuid.uuid4())

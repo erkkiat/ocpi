@@ -95,14 +95,19 @@ class TokenViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
 
 
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
-    uid = serializers.CharField()
-    max_electric_power = serializers.SerializerMethodField()
-
     class Meta:
         model = Connector
         fields = ['uid', 'standard', 'format',
                   'power_type', 'max_voltage', 'max_amperage', 'max_electric_power',
-                  'terms_and_conditions', 'last_updated']
+                  'tariff_ids', 'terms_and_conditions', 'last_updated']
+
+    uid = serializers.CharField()
+    max_electric_power = serializers.SerializerMethodField()
+    tariff_ids = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_tariff_ids(connector: Connector) -> dict:
+        return [t.uid for t in connector.tariff_ids.all()]
 
     @staticmethod
     def get_max_electric_power(connector: Connector) -> str:
@@ -113,7 +118,7 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = BusinessDetails
-        exclude = ['url']
+        fields = ['name', 'website', 'logo']
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -235,6 +240,9 @@ class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
         """
         List the token IDs of the drivers who are allowed to see this Location
         """
+        if location.publish:
+            # Location is public to everyone, no need to specify exceptions
+            return []
         return [token.uid for token in location.publish_allowed_to.all()]
 
     @staticmethod

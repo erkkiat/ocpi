@@ -16,10 +16,15 @@ class LocationAdmin(admin.ModelAdmin):
         model = Evse
 
     model = Location
-    search_fields = ['party_id', 'uid', 'name', 'address', 'city', 'postal_code', 'state', 'country', 'parking_type']
-    list_display = ['publish', 'name', 'address', 'city', 'country', 'party_id', 'country_code', 'actions_item']
+    search_fields = ['uid', 'name', 'address', 'city', 'postal_code', 'state', 'country', 'parking_type']
+    fields = ['uid', 'publish', 'publish_allowed_to',
+              ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
+              ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone', ]
+    list_display = ['actions_item', 'publish', 'name', 'address', 'city', 'country']
     list_display_links = ['actions_item']
     # inlines = [EvseInline]
+    readonly_fields = ['uid', 'party_id', 'country_code']
+
 
     def actions_item(self, _obj):
         return format_html('Edit')
@@ -67,7 +72,7 @@ class CdrAdmin(admin.ModelAdmin):
         'uid', 'party_id',
         'session_id', 'auth_method',
     ]
-    readonly_fields = ['uid']
+    readonly_fields = ['uid', 'party_id', 'country_code']
 
 
 class SessionAdmin(admin.ModelAdmin):
@@ -82,7 +87,7 @@ class SessionAdmin(admin.ModelAdmin):
     ]
     search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token__uid']
     list_filter = ['status']
-    readonly_fields = ['uid']
+    readonly_fields = ['uid', 'party_id', 'country_code']
 
 
 class TariffAdmin(admin.ModelAdmin):
@@ -93,7 +98,7 @@ class TariffAdmin(admin.ModelAdmin):
     list_display = ['party_id', '__str__', 'type', 'tariff_alt_url', 'country_code']
     list_display_links = ['__str__']
     inlines = [ PriceComponentsInline ]
-    readonly_fields = ['uid']
+    readonly_fields = ['uid', 'party_id', 'country_code']
 
 
 admin.site.register(Token, TokenAdmin)
