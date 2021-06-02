@@ -379,9 +379,10 @@ class ConnectorAPIView(routers.APIRootView):
     ---------------
 
     This portal provides ways to view the information in the database, read the API documentation and
-    try out sending information to the API. The OCPI API serves both the eMSP and the CPO.
+    try out sending information to the API. The OCPI API serves primarily the eMSP.
 
-    1. The CPO specific interfaces are available at [/api/cpo/v1/](/api/cpo/v1/)
+    The interfaces for CPO are available at [/api/cpo/v1/](/api/cpo/v1/)
+    You can get more information on how to use the information here from [support@chargerhub.eu](support@chargerhub.eu).
     """
 
 
