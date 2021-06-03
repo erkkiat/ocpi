@@ -200,7 +200,7 @@ class Tariff(models.Model):
     def __str__(self):
         # noinspection PyUnresolvedReferences
         components = [str(x) for x in self.price_components.all()]
-        return ' + '.join(components or [f'{self.uid}'])
+        return f"{' + '.join(components or [f'{self.uid}'])} -- {self.get_type_display()}"
 
     def link(self):
         # noinspection PyUnresolvedReferences
