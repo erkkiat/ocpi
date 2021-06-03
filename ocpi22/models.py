@@ -178,7 +178,7 @@ class Tariff(models.Model):
 
         # Used to describe that a Tariff is valid when using an RFID, without any Charging Preference,
         # or when Charging Preference: REGULAR is set for the session.
-        ('REGULAR', 'Regular'),
+        ('REGULAR', 'Regular profile'),
     )
     type = models.CharField(max_length=14, choices=TYPE_CHOICES)
 
@@ -199,7 +199,16 @@ class Tariff(models.Model):
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return ' + '.join([str(x) for x in self.price_components.all()] or f'{self.uid}')
+        components = [str(x) for x in self.price_components.all()]
+        return ' + '.join(components or [f'{self.uid}'])
+
+    def link(self):
+        # noinspection PyUnresolvedReferences
+        components = [str(x) for x in self.price_components.all()]
+        url = reverse('admin:ocpi22_tariff_change', args=[self.pk])
+        return format_html(
+            f"<a href='{url}'>{' + '.join(components or [f'{self.uid}'])} -- {self.get_type_display()}</a>"
+        )
 
     def get_absolute_url(self):
         return reverse('tariff-by-id', args=[self.country_code, self.party_id, self.uid])
@@ -626,7 +635,7 @@ class Connector(models.Model):
         return f'{int((self.max_electric_power or self.max_voltage * self.max_amperage) / 1000)} kW'
 
     def tariff(self):
-        return ' / '.join([str(t) for t in self.tariff_ids.all()])
+        return format_html('<br>'.join([t.link() for t in self.tariff_ids.all()]))
 
 
 class Session(models.Model):

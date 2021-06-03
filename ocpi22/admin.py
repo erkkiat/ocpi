@@ -13,6 +13,18 @@ class TokenAdmin(admin.ModelAdmin):
     list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
     list_display_links = ['uid']
 
+    def has_delete_permission(self, request, obj=None):
+        # Disable delete
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        # Disable add
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # Disable change
+        return False
+
 
 class LocationAdmin(admin.ModelAdmin):
     class EvseInline(admin.TabularInline):
@@ -77,6 +89,14 @@ class CdrAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ['uid', 'party_id', 'country_code']
 
+    def has_delete_permission(self, request, obj=None):
+        # Disable delete
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        # Disable add
+        return False
+
 
 class SessionAdmin(admin.ModelAdmin):
     model = Session
@@ -91,6 +111,15 @@ class SessionAdmin(admin.ModelAdmin):
     search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token__uid']
     list_filter = ['status']
     readonly_fields = ['uid', 'party_id', 'country_code']
+
+    def has_delete_permission(self, request, obj=None):
+        # Disable delete
+        # return obj and obj.status == 'INVALID'
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        # Disable add
+        return False
 
 
 class TariffAdmin(admin.ModelAdmin):
