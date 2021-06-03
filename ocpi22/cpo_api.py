@@ -13,7 +13,7 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import HyperlinkedModelSerializerCleanedUp, OCPIViewSetMixin, clear_empty
-from ocpi22.models import Evse, Session, Token, Connector
+from ocpi22.models import Evse, Session, Token, Connector, Cdr
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -178,8 +178,25 @@ class SessionViewSet(viewsets.ViewSet):
         else:
             session.status = 'COMPLETED'
         session.end_date_time = timezone.now()
+        session.calculate_price()
         session.save()
-        # Todo: Create and send CDR to MSP
+        Cdr.objects.create(
+            start_date_time=session.start_date_time,
+            end_date_time=session.end_date_time,
+            session_id=session.uid,
+            cdr_token=session.cdr_token,
+            auth_method=session.auth_method,
+            # Todo: format in json
+            cdr_location=session.location.uid,
+            currency=session.currency,
+            # Todo: format in json
+            tariffs=session.connector.tariff(),
+            total_cost_excl_vat=session.total_cost_excl_vat,
+            total_cost_inc_vat=session.total_cost_incl_vat,
+            total_energy=session.kwh,
+            total_time=(session.end_date_time - session.start_date_time).seconds / 3600.0
+        )
+        # Todo: Send CDR to MSP
         return Response(SessionSerializer(session).data)
 
     @action(methods=['GET'], detail=False, url_name='start',

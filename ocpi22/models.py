@@ -739,6 +739,10 @@ class Session(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
+    def calculate_price(self):
+        self.total_cost_incl_vat = 1.23
+        self.total_cost_excl_vat = 1.0
+
     def __str__(self):
         return f'{self.cdr_token} - {self.start_date_time} - {self.kwh}kWh - ' \
                f'EVSE {self.evse.evse_id} - {self.connector.get_standard_display()}'
