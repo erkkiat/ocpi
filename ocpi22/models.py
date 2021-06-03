@@ -259,11 +259,15 @@ class PriceComponent(models.Model):
         elif t == 'TIME':
             if s == 60:
                 return 'per minute'
+            elif s == 3600:
+                return 'per hour'
             else:
                 return f'per {s} seconds'
         elif t == 'PARKING_TIME':
             if s == 60:
                 return 'per parking minute'
+            elif s == 3600:
+                return 'per hour parking'
             else:
                 return f'per {s} parking seconds'
         # noinspection PyUnresolvedReferences
