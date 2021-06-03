@@ -231,7 +231,7 @@ class PriceComponent(models.Model):
     )
     type = models.CharField(max_length=12, choices=TYPE_CHOICES)
 
-    # Price per unit (excl. VAT) for this tariff dimension.
+    # Price /unit (excl. VAT) for this tariff dimension.
     price = models.FloatField()
 
     # Applicable VAT percentage for this tariff dimension. If omitted, no VAT is applicable.
@@ -572,7 +572,7 @@ class Connector(models.Model):
     class Meta:
         unique_together = [['evse', 'uid']]
 
-    uid = models.CharField(max_length=36, default=uuid.uuid4())
+    uid = models.CharField(max_length=36)
 
     evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='connectors')
 
@@ -779,3 +779,9 @@ def my_callback(sender, instance, *_args, **_kwargs):
     evse = connector.evse
     # evse.last_updated = connector.last_updated
     evse.save()
+
+@receiver(pre_save, sender=Connector)
+def my_callback(sender, instance, *_args, **_kwargs):
+    connector: Connector = instance
+    if not connector.uid:
+        connector.uid = uuid.uuid4()
