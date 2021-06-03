@@ -46,10 +46,10 @@ class Token(models.Model):
     uid = models.CharField(max_length=36)
 
     TYPE_CHOICES = (
-        ('AD_HOC_USER', 'Ad hoc user'),
-        ('APP_USER', 'Application user'),
+        ('AD_HOC_USER', 'Ad hoc'),
+        ('APP_USER', 'App'),
         ('OTHER', 'Other'),
-        ('RFID', 'RFID tag'),
+        ('RFID', 'RFID'),
     )
     type = models.CharField(max_length=11, choices=TYPE_CHOICES)
 

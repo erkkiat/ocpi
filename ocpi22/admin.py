@@ -9,6 +9,9 @@ from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Conn
 class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
+    list_display = ['valid', 'uid', 'visual_number', 'country_code', 'party_id', 'type', 'contract_id', 'last_updated']
+    list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
+    list_display_links = ['uid']
 
 
 class LocationAdmin(admin.ModelAdmin):
