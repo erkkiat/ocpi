@@ -251,27 +251,27 @@ class PriceComponent(models.Model):
         s = self.step_size
         if t == 'ENERGY':
             if s == 1000:
-                return 'per kWh'
+                return '/ kWh'
             else:
-                return f'per {s} kWh'
+                return f'/ {s} kWh'
         elif t == 'FLAT':
-            return 'flat price'
+            return 'fixed'
         elif t == 'TIME':
             if s == 60:
-                return 'per minute'
+                return '/ minute'
             elif s == 3600:
-                return 'per hour'
+                return '/ hour'
             else:
-                return f'per {s} seconds'
+                return f'/ {s} seconds'
         elif t == 'PARKING_TIME':
             if s == 60:
-                return 'per parking minute'
+                return '/ parking minute'
             elif s == 3600:
-                return 'per hour parking'
+                return '/ hour parking'
             else:
-                return f'per {s} parking seconds'
+                return f'/ {s} parking seconds'
         # noinspection PyUnresolvedReferences
-        return f'per {s} {self.get_type_display()}'
+        return f'/ {s} {self.get_type_display()}'
 
     @staticmethod
     def _pretty_currency(c):
