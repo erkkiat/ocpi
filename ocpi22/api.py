@@ -172,6 +172,13 @@ class CdrViewSet(mixins.RetrieveModelMixin,
     queryset = Cdr.objects.all().order_by('created')
     serializer_class = CdrSerializer
 
+    @action(methods=['GET'], detail=False, url_name='cdr-by-id',
+            url_path='(?P<uid>[^/.]+)')
+    def cdr_by_id(self, request, uid) -> Response:
+        cdr = get_object_or_404(Cdr, uid=uid)
+        serializer = CdrSerializer(cdr, many=False, context={'request': request})
+        return Response(serializer.data)
+
 
 def clear_empty(dict_with_possibly_empty_values):
     return OrderedDict((k, v) for k, v in dict_with_possibly_empty_values.items()
