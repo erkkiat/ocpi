@@ -82,12 +82,12 @@ class CapabilityAdmin(admin.ModelAdmin):
 class CdrAdmin(admin.ModelAdmin):
     model = Cdr
     list_display = [
-        'total_cost_inc_vat', 'total_cost_excl_vat', 'total_energy', 'total_time',
+        'total_cost_incl_vat', 'total_cost_excl_vat', 'total_energy', 'total_time',
         'start_date_time', 'end_date_time',
         'uid', 'party_id',
-        'session_id', 'auth_method',
+        'session_id', 'auth_method', 'credit'
     ]
-    readonly_fields = ['uid', 'party_id', 'country_code']
+    list_filter = ['party_id', 'auth_method', 'credit']
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete
@@ -95,6 +95,10 @@ class CdrAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request, obj=None):
         # Disable add
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # Disable change
         return False
 
 

@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.api import HyperlinkedModelSerializerCleanedUp, OCPIViewSetMixin, clear_empty
+from ocpi22.api import HyperlinkedModelSerializerCleanedUp, OCPIViewSetMixin, clear_empty, CdrSerializer
 from ocpi22.models import Evse, Session, Token, Connector, Cdr
 
 
@@ -81,7 +81,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['url', 'uid',
                   'start_date_time', 'end_date_time', 'kwh',
                   'token', 'auth_method', 'authorization_reference',
-                  'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency',
+                  'location_id', 'evse_uid', 'connector_id', 'currency',
                   'total_cost_incl_vat', 'total_cost_excl_vat',
                   'status', 'last_updated']
 
@@ -180,24 +180,28 @@ class SessionViewSet(viewsets.ViewSet):
         session.end_date_time = timezone.now()
         session.calculate_price()
         session.save()
-        Cdr.objects.create(
+        cdr = Cdr.objects.create(
+            uid=uuid.uuid4(),
             start_date_time=session.start_date_time,
             end_date_time=session.end_date_time,
             session_id=session.uid,
             cdr_token=session.cdr_token,
             auth_method=session.auth_method,
+            authorization_reference=session.authorization_reference,
             # Todo: format in json
             cdr_location=session.location.uid,
             currency=session.currency,
-            # Todo: format in json
-            tariffs=session.connector.tariff(),
             total_cost_excl_vat=session.total_cost_excl_vat,
-            total_cost_inc_vat=session.total_cost_incl_vat,
+            total_cost_incl_vat=session.total_cost_incl_vat,
             total_energy=session.kwh,
             total_time=(session.end_date_time - session.start_date_time).seconds / 3600.0
         )
+        cdr.tariffs.set(session.connector.tariff_ids.all())
         # Todo: Send CDR to MSP
-        return Response(SessionSerializer(session).data)
+        return Response(dict(
+            session=SessionSerializer(session, context={'request': request}).data,
+            cdr=CdrSerializer(cdr, context={'request': request}).data)
+        )
 
     @action(methods=['GET'], detail=False, url_name='start',
             url_path='start/(?P<evse_id>[^/.]+)/(?P<connector_id>[^/.]+)/(?P<token_id>[^/.]+)')
@@ -220,6 +224,7 @@ class SessionViewSet(viewsets.ViewSet):
             party_id=os.environ.get('CPO_PARTY_ID', 'EKI'),
             uid=uuid.uuid4(),
             kwh=0.0,
+            start_date_time=timezone.now(),
             cdr_token=token,
             auth_method=auth_method,
             location=location,
@@ -236,7 +241,8 @@ class SessionViewSet(viewsets.ViewSet):
         if active_session.count():
             # Todo: put this on error list
             result['warnings'] = dict(
-                incomplete_sessions_invalidated=SessionSerializer(active_session, many=True).data
+                incomplete_sessions_invalidated=SessionSerializer(
+                    active_session, many=True, context={'request': request}).data
             )
         # Todo: send update to MSP
         return Response(result)

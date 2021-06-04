@@ -3,12 +3,13 @@ from collections import OrderedDict
 from datetime import datetime
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import routers, serializers, viewsets, status
+from rest_framework import routers, serializers, viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff, Session
+from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff, Session, Cdr
 
 
 class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
@@ -59,6 +60,15 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type',
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
+
+
+class CdrTokenSerializer(HyperlinkedModelSerializerCleanedUp):
+    """
+    Used for showing limited Token information when serializing a CDR
+    """
+    class Meta:
+        model = Token
+        fields = ['uid', 'type', 'contract_id']
 
 
 class TokenViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
@@ -129,9 +139,50 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors']
 
 
+class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
+    class Meta:
+        model = Cdr
+        fields = ['detail_url', 'country_code', 'party_id', 'uid', 'start_date_time', 'end_date_time',
+                  'session_id', 'cdr_token', 'auth_method', 'authorization_reference',
+                  'cdr_location', 'tariffs', 'total_cost', 'total_energy',
+                  'total_time', 'credit', 'credit_reference_id', 'last_updated']
+
+    cdr_token = CdrTokenSerializer(read_only=True)
+    total_cost = serializers.SerializerMethodField()
+    tariffs = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_total_cost(obj):
+        return get_total_cost(obj)
+
+    @staticmethod
+    def get_tariffs(cdr):
+        return [t.uid for t in cdr.tariffs.all()]
+
+
+class CdrViewSet(mixins.RetrieveModelMixin,
+                  mixins.ListModelMixin,
+                  OCPIViewSetMixin,
+                  GenericViewSet):
+    """
+    These are the Charge Detail Records. Once a CDR is created, it must not be modified or removed.
+    A CDR can be credited to the customer by creating a credit CDR in the admin user interface.
+    """
+    # noinspection PyUnresolvedReferences
+    queryset = Cdr.objects.all().order_by('created')
+    serializer_class = CdrSerializer
+
+
 def clear_empty(dict_with_possibly_empty_values):
     return OrderedDict((k, v) for k, v in dict_with_possibly_empty_values.items()
                 if v not in [None, [], '', {}])
+
+
+def get_total_cost(obj):
+    return clear_empty(dict(
+        excl_vat=obj.total_cost_excl_vat,
+        incl_vat=obj.total_cost_incl_vat
+    ))
 
 
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -173,11 +224,8 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         return session.connector.uid
 
     @staticmethod
-    def get_total_cost(session):
-        return clear_empty(dict(
-            excl_vat=session.total_cost_excl_vat,
-            incl_vat=session.total_cost_incl_vat
-        ))
+    def get_total_cost(obj):
+        return get_total_cost(obj)
 
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):

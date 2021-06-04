@@ -140,7 +140,7 @@ class AuthorizationInfo(models.Model):
 
     # Reference to the authorization given by the eMSP, when given, this reference will be provided
     # in the relevant Session and/or CDR.
-    authorization_reference = models.CharField(max_length=36)
+    authorization_reference = models.CharField(max_length=36, blank=True, default='')
 
     last_updated = models.DateTimeField(auto_now=True)
 
@@ -155,7 +155,7 @@ class Tariff(models.Model):
     party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
-    uid = models.CharField(max_length=36, default=uuid.uuid4())
+    uid = models.CharField(max_length=36)
 
     # ISO-4217 code of the currency of this tariff
     currency = models.CharField(max_length=3)
@@ -336,7 +336,7 @@ class Cdr(models.Model):
 
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    uid = models.CharField(max_length=39, default=uuid.uuid4())
+    uid = models.CharField(max_length=39)
 
     # Start timestamp of the charging session, or in-case of a reservation
     # (before the start of a session) the start of the reservation.
@@ -357,6 +357,12 @@ class Cdr(models.Model):
     # Method used for authentication.
     auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
 
+    # Reference to the authorization given by the eMSP. When the eMSP provided an authorization_reference in either:
+    # real-time authorization or StartSession, this field SHALL contain the same value.
+    # When different authorization_reference values have been given by the eMSP that are relevant to this Session,
+    # the last given value SHALL be used here.
+    authorization_reference = models.CharField(max_length=36, blank=True, default='')
+
     # Location where the charging session took place, including only the relevant EVSE and Connector.
     cdr_location = models.TextField()
 
@@ -365,11 +371,11 @@ class Cdr(models.Model):
 
     # List of relevant Tariff Elements, see: Tariff. When relevant, a Free of Charge tariff
     # should also be in this list, and point to a defined Free of Charge Tariff.
-    tariffs = models.TextField()
+    tariffs = models.ManyToManyField(Tariff, blank=True)
 
     # Total sum of all the costs of this transaction in the specified currency.
     total_cost_excl_vat = models.FloatField()
-    total_cost_inc_vat = models.FloatField()
+    total_cost_incl_vat = models.FloatField()
 
     # Total energy charged, in kWh.
     total_energy = models.FloatField()
@@ -377,14 +383,20 @@ class Cdr(models.Model):
     # Total duration of the charging session (including the duration of charging and not charging), in hours.
     total_time = models.FloatField()
 
+    # When set to true, this is a Credit CDR, and the field credit_reference_id needs to be set as well.
+    # Todo: Make a "create credit CDR" management command
+    credit = models.BooleanField(default=False)
+    credit_reference = models.ForeignKey('Cdr', blank=True, null=True, on_delete=models.PROTECT)
+
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.cdr_token} - {self.total_cost_inc_vat} {self.currency} - ' \
-               f'{self.total_time/60} min - {self.end_date_time}'
+        return f'{self.cdr_token} - {self.total_cost_incl_vat} {self.currency} - ' \
+               f'{(self.total_time/60):.4f} hours - {self.end_date_time}'
 
-
+    def get_absolute_url(self):
+        return reverse('cdr-detail', args=[self.uid])
 
 
 class Location(models.Model):
@@ -406,7 +418,7 @@ class Location(models.Model):
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    uid = models.CharField(max_length=36, default=uuid.uuid4())
+    uid = models.CharField(max_length=36)
 
     # Defines if a Location may be published on an website or app etc.
     # When this is set to false, only tokens identified in the field:
@@ -487,6 +499,7 @@ class Location(models.Model):
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times
 
+
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
@@ -503,7 +516,7 @@ class Evse(models.Model):
     # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
     # use the field evse_id for that.
     # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
-    uid = models.CharField(max_length=36, default=uuid.uuid4())
+    uid = models.CharField(max_length=36)
 
     # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
@@ -664,13 +677,13 @@ class Session(models.Model):
     party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # The unique id that identifies the charging session in the CPO platform.
-    uid = models.CharField(max_length=36, default=uuid.uuid4())
+    uid = models.CharField(max_length=36)
 
     # The timestamp when the session became ACTIVE in the Charge Point.
     # When the session is still PENDING, this field SHALL be set to the time the Session was
     # created at the Charge Point.
     # Todo: When a Session goes from PENDING to ACTIVE, this field SHALL be update to the moment the Session went to ACTIVE in the Charge Point.
-    start_date_time = models.DateTimeField(default=timezone.now())
+    start_date_time = models.DateTimeField()
 
     # The timestamp when the session was completed/finished, charging might have finished before the session ends,
     # for example: EV is full, but parking cost also has to be paid.
