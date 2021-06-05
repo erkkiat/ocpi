@@ -3,6 +3,7 @@ from django.db.models import QuerySet
 from collections import OrderedDict
 from datetime import datetime
 
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import routers, serializers, viewsets, status, mixins
 from rest_framework.decorators import action
@@ -45,20 +46,39 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
     url = serializers.SerializerMethodField(read_only=True)
 
 
-def set_ocpi_response_headers(response):
-    next_url = response.data.pop('next')
+def _disassemble_response(response):
+    if not response:
+        return None, None, None
+    data = response.data.get('results')
+    count = response.data.get('count')
+    next = None
+    next_url = response.data.get('next')
     if next_url:
-        response['Link'] = '<{next_url}; rel="next">'.format(next_url=next_url)
-    response['X-Total-Count'] = response.data.pop('count')
-    response['X-Limit'] = settings.REST_FRAMEWORK['PAGE_SIZE']
-    response.data.pop('previous')
+        next = '<{next_url}; rel="next">'.format(next_url=next_url)
+    return data, count, next
+
+
+def ocpi_response(response=None, json_data=None, status=1000, message=''):
+    data, count, next = _disassemble_response(response)
+    headers = None
+    if response:
+        headers = {
+            'X-Total-Count': count,
+            'X-Limit': settings.REST_FRAMEWORK['PAGE_SIZE']
+        }
+    response = Response(dict(
+        status_code=status,
+        status_message=message,
+        timestamp=timezone.now(),
+        data=json_data or data,
+    ), headers=headers)
     return response
 
 
 class OCPIListModelMixin(mixins.ListModelMixin):
     def list(self, *args, **kwargs):
         response = super().list(*args, **kwargs)
-        return set_ocpi_response_headers(response)
+        return ocpi_response(response)
 
 
 class OCPIViewSetMixin:
@@ -108,7 +128,7 @@ class TokenViewSet(viewsets.ModelViewSet,
 
         if request.method == 'GET':
             serializer = TokenSerializer(token, many=False, context={'request': request})
-            return Response(serializer.data)
+            return ocpi_response(json_data=serializer.data)
 
         elif request.method in ('PUT', 'POST', 'PATCH'):
             serializer = TokenSerializer(token,
@@ -117,7 +137,7 @@ class TokenViewSet(viewsets.ModelViewSet,
                                          context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data)
+                return ocpi_response(json_data=serializer.data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -197,7 +217,7 @@ class CdrViewSet(mixins.RetrieveModelMixin,
     def cdr_by_id(self, request, uid) -> Response:
         cdr = get_object_or_404(Cdr, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request})
-        return Response(serializer.data)
+        return ocpi_response(json_data=serializer.data)
 
 
 def clear_empty(dict_with_possibly_empty_values):
@@ -363,7 +383,7 @@ class TariffViewSet(viewsets.ModelViewSet,
     def by_id(self, request, country_code, party_id, uid) -> Response:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
-        return Response(serializer.data)
+        return ocpi_response(json_data=serializer.data)
 
 
 class LocationViewSet(viewsets.ModelViewSet,
@@ -381,13 +401,13 @@ class LocationViewSet(viewsets.ModelViewSet,
 
         if request.method == 'GET':
             serializer = LocationSerializer(location, context={'request': request})
-            return Response(serializer.data)
+            return ocpi_response(json_data=serializer.data)
 
         elif request.method == 'PATCH':
             serializer = LocationSerializer(location, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data)
+                return ocpi_response(json_data=serializer.data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -412,7 +432,7 @@ class SessionViewSet(OCPIViewSetMixin,
 
         if request.method == 'GET':
             serializer = SessionSerializer(session, context={'request': request})
-            return Response(serializer.data)
+            return ocpi_response(json_data=serializer.data)
 
         # elif request.method == 'PATCH':
         #     serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
@@ -445,7 +465,7 @@ class EvseViewSet(mixins.RetrieveModelMixin,
 
         if request.method == 'GET':
             serializer = EvseSerializer(evse, context={'request': request})
-            return Response(serializer.data)
+            return ocpi_response(json_data=serializer.data)
 
         # elif request.method == 'PATCH':
         #     serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
