@@ -44,7 +44,22 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
     url = serializers.SerializerMethodField(read_only=True)
 
 
-class OCPIViewSetMixin:
+def OCPIResponse(response):
+    next_url = response.data.pop('next')
+    if next_url:
+        response['Link'] = '<{next_url}; rel="next">'.format(next_url=next_url)
+    response['X-Total-Count'] = response.data.pop('count')
+    response.data.pop('previous')
+    return response
+
+
+class OCPIListModelMixin(mixins.ListModelMixin):
+    def list(self, *args, **kwargs):
+        response = super().list(*args, **kwargs)
+        return OCPIResponse(response)
+
+
+class OCPIViewSetMixin():
     """
     Apply the OCPI filters to the queryset
     """
@@ -66,12 +81,15 @@ class CdrTokenSerializer(HyperlinkedModelSerializerCleanedUp):
     """
     Used for showing limited Token information when serializing a CDR
     """
+
     class Meta:
         model = Token
         fields = ['uid', 'type', 'contract_id']
 
 
-class TokenViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
+class TokenViewSet(viewsets.ModelViewSet,
+                   OCPIViewSetMixin,
+                   OCPIListModelMixin):
     # noinspection PyUnresolvedReferences
     queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
@@ -161,9 +179,9 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 class CdrViewSet(mixins.RetrieveModelMixin,
-                  mixins.ListModelMixin,
-                  OCPIViewSetMixin,
-                  GenericViewSet):
+                 GenericViewSet,
+                 OCPIViewSetMixin,
+                 OCPIListModelMixin):
     """
     These are the Charge Detail Records. Once a CDR is created, it must not be modified or removed.
     A CDR can be credited to the customer by creating a credit CDR in the admin user interface.
@@ -182,7 +200,7 @@ class CdrViewSet(mixins.RetrieveModelMixin,
 
 def clear_empty(dict_with_possibly_empty_values):
     return OrderedDict((k, v) for k, v in dict_with_possibly_empty_values.items()
-                if v not in [None, [], '', {}])
+                       if v not in [None, [], '', {}])
 
 
 def get_total_cost(obj):
@@ -193,7 +211,6 @@ def get_total_cost(obj):
 
 
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
-
     class Meta:
         model = Session
         fields = ['detail_url', 'country_code', 'party_id', 'uid',
@@ -323,16 +340,18 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
         import dateutil.parser
         date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
         queryset = queryset.filter(last_updated__lt=date_to)
-    limit: int = int(request.GET.get('limit', '0'))
-    offset: int = int(request.GET.get('offset', '0'))
-
-    queryset = queryset.order_by('created')
-    if limit:
-        queryset = queryset[offset:offset + limit]
+    # limit: int = int(request.GET.get('limit', '0'))
+    # offset: int = int(request.GET.get('offset', '0'))
+    #
+    # queryset = queryset.order_by('created')
+    # if limit:
+    #     queryset = queryset[offset:offset + limit]
     return queryset
 
 
-class TariffViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
+class TariffViewSet(viewsets.ModelViewSet,
+                    OCPIViewSetMixin,
+                    OCPIListModelMixin):
     # noinspection PyUnresolvedReferences
     queryset = Tariff.objects.all().order_by('created')
     serializer_class = TariffSerializer
@@ -345,8 +364,9 @@ class TariffViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
         return Response(serializer.data)
 
 
-class LocationViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
-
+class LocationViewSet(viewsets.ModelViewSet,
+                      OCPIViewSetMixin,
+                      OCPIListModelMixin):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
 
@@ -376,8 +396,9 @@ class LocationViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
     serializer_class = LocationSerializer
 
 
-class SessionViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
-
+class SessionViewSet(viewsets.ModelViewSet,
+                     OCPIViewSetMixin,
+                     OCPIListModelMixin):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token', 'authorization_reference']
 
@@ -406,7 +427,9 @@ class SessionViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
     serializer_class = SessionSerializer
 
 
-class EvseViewSet(viewsets.ModelViewSet, OCPIViewSetMixin):
+class EvseViewSet(viewsets.ModelViewSet,
+                  OCPIViewSetMixin,
+                  OCPIListModelMixin):
 
     @action(methods=['GET', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
