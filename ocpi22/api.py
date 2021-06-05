@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import QuerySet
 from collections import OrderedDict
 from datetime import datetime
@@ -44,11 +45,12 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
     url = serializers.SerializerMethodField(read_only=True)
 
 
-def OCPIResponse(response):
+def set_ocpi_response_headers(response):
     next_url = response.data.pop('next')
     if next_url:
         response['Link'] = '<{next_url}; rel="next">'.format(next_url=next_url)
     response['X-Total-Count'] = response.data.pop('count')
+    response['X-Limit'] = settings.REST_FRAMEWORK['PAGE_SIZE']
     response.data.pop('previous')
     return response
 
@@ -56,10 +58,10 @@ def OCPIResponse(response):
 class OCPIListModelMixin(mixins.ListModelMixin):
     def list(self, *args, **kwargs):
         response = super().list(*args, **kwargs)
-        return OCPIResponse(response)
+        return set_ocpi_response_headers(response)
 
 
-class OCPIViewSetMixin():
+class OCPIViewSetMixin:
     """
     Apply the OCPI filters to the queryset
     """
@@ -134,7 +136,7 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     tariff_ids = serializers.SerializerMethodField()
 
     @staticmethod
-    def get_tariff_ids(connector: Connector) -> dict:
+    def get_tariff_ids(connector: Connector) -> list:
         return [t.uid for t in connector.tariff_ids.all()]
 
     @staticmethod
@@ -396,13 +398,13 @@ class LocationViewSet(viewsets.ModelViewSet,
     serializer_class = LocationSerializer
 
 
-class SessionViewSet(viewsets.ModelViewSet,
-                     OCPIViewSetMixin,
-                     OCPIListModelMixin):
+class SessionViewSet(OCPIViewSetMixin,
+                     OCPIListModelMixin,
+                     GenericViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token', 'authorization_reference']
 
-    @action(methods=['GET', 'PATCH'], detail=False, url_name='by-id',
+    @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def session_by_id(self, request, country_code, party_id, uid) -> Response:
         # noinspection PyUnresolvedReferences
@@ -412,13 +414,13 @@ class SessionViewSet(viewsets.ModelViewSet,
             serializer = SessionSerializer(session, context={'request': request})
             return Response(serializer.data)
 
-        elif request.method == 'PATCH':
-            serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # elif request.method == 'PATCH':
+        #     serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
+        #     if serializer.is_valid():
+        #         serializer.save()
+        #         return Response(serializer.data)
+        #     else:
+        #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
@@ -427,13 +429,14 @@ class SessionViewSet(viewsets.ModelViewSet,
     serializer_class = SessionSerializer
 
 
-class EvseViewSet(viewsets.ModelViewSet,
+class EvseViewSet(mixins.RetrieveModelMixin,
                   OCPIViewSetMixin,
-                  OCPIListModelMixin):
+                  OCPIListModelMixin,
+                  GenericViewSet):
 
-    @action(methods=['GET', 'PATCH'], detail=False,
+    @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
-    def by_id(self, request, country_code, party_id, uid, evse_id) -> Response:
+    def evse_by_id(self, request, country_code, party_id, uid, evse_id) -> Response:
         # noinspection PyUnresolvedReferences
         evse = get_object_or_404(Evse, uid=evse_id)
         location = evse.location
@@ -444,13 +447,13 @@ class EvseViewSet(viewsets.ModelViewSet,
             serializer = EvseSerializer(evse, context={'request': request})
             return Response(serializer.data)
 
-        elif request.method == 'PATCH':
-            serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # elif request.method == 'PATCH':
+        #     serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
+        #     if serializer.is_valid():
+        #         serializer.save()
+        #         return Response(serializer.data)
+        #     else:
+        #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 

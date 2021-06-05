@@ -21,13 +21,15 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Evse
         fields = ['url', 'uid', 'status', 'last_updated']
 
+    uid = serializers.CharField(read_only=True)
 
-class EvseViewSet(mixins.RetrieveModelMixin,
-                  mixins.UpdateModelMixin,
-                  mixins.DestroyModelMixin,
-                  mixins.ListModelMixin,
-                  OCPIViewSetMixin,
-                  GenericViewSet):
+
+class CpoEvseViewSet(mixins.RetrieveModelMixin,
+                     mixins.UpdateModelMixin,
+                     mixins.DestroyModelMixin,
+                     mixins.ListModelMixin,
+                     OCPIViewSetMixin,
+                     GenericViewSet):
     """
     This is an optimised subset of the EVSE information available in the OCPI Connector.
     """
@@ -35,7 +37,7 @@ class EvseViewSet(mixins.RetrieveModelMixin,
     filterset_fields = ['status']
 
     @action(methods=['GET', 'PATCH'], detail=False,
-            url_path='(?P<evse_id>[^/.]+)', url_name='by-id-cpo')
+            url_path='(?P<evse_id>[^/.]+)', url_name='by-id')
     def evse_by_id(self, request, evse_id) -> Response:
         """
         This URL is used for sending charger status updates to the Connector using the PATCH method.
@@ -75,7 +77,6 @@ class EvseViewSet(mixins.RetrieveModelMixin,
 
 
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
-
     class Meta:
         model = Session
         fields = ['url', 'uid',
@@ -129,6 +130,8 @@ class SessionViewSet(viewsets.ViewSet):
     """
     queryset = Session.objects.all().order_by('created')
 
+    FINAL_STATUSES = ('INVALID', 'COMPLETE')
+
     @action(methods=['PATCH'], detail=False, url_name='update',
             url_path='update/(?P<session_id>[^/.]+)')
     def update_session(self, request, session_id) -> Response:
@@ -144,6 +147,9 @@ class SessionViewSet(viewsets.ViewSet):
         * Finally, to finish the session, send the last update and then a GET to /api/cpo/v1/session/finish/{session_id}/
         """
         session = get_object_or_404(Session, uid=session_id)
+        if session.status in self.FINAL_STATUSES:
+            return Response(dict(error='This session cannot be updated, since it already has a final status'),
+                            status.HTTP_401_UNAUTHORIZED)
         serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             if serializer.validated_data['kwh']:
@@ -169,6 +175,10 @@ class SessionViewSet(viewsets.ViewSet):
         be billed, but they can still be found in the [admin user interface](/admin/).
         """
         session = get_object_or_404(Session, uid=session_id)
+        if session.status in self.FINAL_STATUSES:
+            return Response(dict(error='This session cannot be finished, since it already has a final status'),
+                            status.HTTP_401_UNAUTHORIZED)
+
         if session.status == 'PENDING' and not session.kwh:
             session.status = 'INVALID'
         elif session.status != 'ACTIVE' and session.kwh:
@@ -180,28 +190,29 @@ class SessionViewSet(viewsets.ViewSet):
         session.end_date_time = timezone.now()
         session.calculate_price()
         session.save()
-        cdr = Cdr.objects.create(
-            uid=uuid.uuid4(),
-            start_date_time=session.start_date_time,
-            end_date_time=session.end_date_time,
-            session_id=session.uid,
-            cdr_token=session.cdr_token,
-            auth_method=session.auth_method,
-            authorization_reference=session.authorization_reference,
-            # Todo: format in json
-            cdr_location=session.location.uid,
-            currency=session.currency,
-            total_cost_excl_vat=session.total_cost_excl_vat,
-            total_cost_incl_vat=session.total_cost_incl_vat,
-            total_energy=session.kwh,
-            total_time=(session.end_date_time - session.start_date_time).seconds / 3600.0
-        )
-        cdr.tariffs.set(session.connector.tariff_ids.all())
+        result = dict(session=SessionSerializer(session, context={'request': request}).data)
+        if session.kwh:
+            # noinspection PyUnresolvedReferences
+            cdr = Cdr.objects.create(
+                uid=uuid.uuid4(),
+                start_date_time=session.start_date_time,
+                end_date_time=session.end_date_time,
+                session_id=session.uid,
+                cdr_token=session.cdr_token,
+                auth_method=session.auth_method,
+                authorization_reference=session.authorization_reference,
+                # Todo: format in json
+                cdr_location=session.location.uid,
+                currency=session.currency,
+                total_cost_excl_vat=session.total_cost_excl_vat,
+                total_cost_incl_vat=session.total_cost_incl_vat,
+                total_energy=session.kwh,
+                total_time=(session.end_date_time - session.start_date_time).seconds / 3600.0
+            )
+            cdr.tariffs.set(session.connector.tariff_ids.all())
+            result['cdr'] = cdr=CdrSerializer(cdr, context={'request': request}).data
         # Todo: Send CDR to MSP
-        return Response(dict(
-            session=SessionSerializer(session, context={'request': request}).data,
-            cdr=CdrSerializer(cdr, context={'request': request}).data)
-        )
+        return Response(result)
 
     @action(methods=['GET'], detail=False, url_name='start',
             url_path='start/(?P<evse_id>[^/.]+)/(?P<connector_id>[^/.]+)/(?P<token_id>[^/.]+)')
@@ -213,7 +224,7 @@ class SessionViewSet(viewsets.ViewSet):
         auth_method = authorize_token(token)
         if not auth_method:
             return Response(dict(error=f'Token {token} was not authorized for use by MSP at this time'),
-                                 status=status.HTTP_401_UNAUTHORIZED)
+                            status=status.HTTP_401_UNAUTHORIZED)
         active_session = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
         if active_session.count():
             ic('Invalidating incomplete sessions', ",".join([str(s) for s in active_session]))
@@ -252,17 +263,17 @@ class ChargePointOperatorAPIView(routers.APIRootView):
     """
     Welcome to the OCPI Connector Developer Central. Here you can try out the CPO API interfaces to support
     the development and integration work.
-    These simplified interfaces provide the necessary tools for connecting a CPO backend to eMSPs and hubs which
-    use the OCPI protocol.
+    These streamlined interfaces provide the necessary tools for quickly connecting
+    a CPO backend to eMSPs and hubs which use the OCPI protocol.
 
-    Some additional information is available from OCPI Connector using the OCPI 2.2 interfaces,
-    which are available at [/ocpi/2.2/](/ocpi/2.2/).
+    Some additional data is available from the OCPI Connector using the OCPI 2.2 interfaces
+    at [/ocpi/2.2/](/ocpi/2.2/).
 
     All the objects in the OCPI Connector are available for browsing
     and selective modification at [the Admin User Interface](/admin/).
     It also provides tools for maintaining users, groups and their access to the OCPI Connector.
 
-    To enable roaming, these integrations are required from the CPO:
+    To start roaming, these integrations are required from the CPO:
 
     1. Location, evse and connector export (CPO => OCPI Connector)
     1. Charge point status change (CPO => OCPI Connector)
@@ -273,6 +284,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
 
     """
 
+    # noinspection PyUnresolvedReferences
     def get(self, request, *args, **kwargs):
         """
         Compile the example URLs for the front page
@@ -289,7 +301,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
                 reverse('session-start', args=[evse.uid, connector.uid, token.uid])
             ),
             how_to_update_charger_status=request.build_absolute_uri(
-                reverse('evse-by-id-cpo', args=[evse.uid])
+                reverse('cpo-evse-by-id', args=[evse.uid])
             ),
         )
         return Response(result)

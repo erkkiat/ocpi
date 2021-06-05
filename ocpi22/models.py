@@ -574,7 +574,7 @@ class Evse(models.Model):
                        args=[self.location.country_code, self.location.party_id, self.location.uid, self.uid])
 
     def get_cpo_url(self):
-        return reverse('evse-by-id-cpo',
+        return reverse('cpo-evse-by-id',
                        args=[self.uid])
 
 
