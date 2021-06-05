@@ -123,10 +123,16 @@ def authorize_token(token):
 
 class SessionViewSet(viewsets.ViewSet):
     """
-    When a driver starts charging using an RFID at the charge point, first the CPO needs to send a "start session"
-    to the below URL using a GET.
+    Congratulations, you have started a session!
 
-    * The start url GET /api/cpo/v1/session/start/{evse_id}/{connector_id}/{token_id}/
+    This step should happen when the driver starts charging using an RFID at the charge point.
+    The first step is that the CPO sends a "start session" GET to the below URL.
+
+    * The start session URL: GET /api/cpo/v1/session/start/{evse_id}/{connector_id}/{token_id}/
+
+    If the response contains a "incomplete_sessions_invalidated" node, that means that there was a session in progress
+    at this specific EVSE. That session was invalidated, although your response shows the EVSE's earlier status.
+
     """
     queryset = Session.objects.all().order_by('created')
 
@@ -139,7 +145,7 @@ class SessionViewSet(viewsets.ViewSet):
         After the session has been started, it is recommended to send an update with each kWh consumed,
         so that the driver can monitor the progress of
         the charging session. This is done by sending a PATCH to this URL, for example { "kwh": 10 }. You can
-        try it in the input bow below.
+        try it in the input box below.
 
         * To update a session, send a PATCH to /api/cpo/v1/session/update/{session_id}/
         with a body containing the updated fields in JSON format
@@ -154,6 +160,7 @@ class SessionViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             if serializer.validated_data['kwh']:
                 serializer.validated_data['status'] = 'ACTIVE'
+            # Todo: Create a
             serializer.save()
             # Todo: send update to MSP
             result = dict(finish_url=request.build_absolute_uri(reverse('session-finish', args=[session.uid])))
@@ -294,7 +301,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         token = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')[0]
 
         result = dict(
-            example_session_start=request.build_absolute_uri(
+            session_tutorial=request.build_absolute_uri(
                 reverse('session-start', args=[evse.uid, connector.uid, 'POSITIVE_TEST_TOKEN'])
             ),
             example_session_not_authorised=request.build_absolute_uri(
