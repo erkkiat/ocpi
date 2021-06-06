@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.api import HyperlinkedModelSerializerCleanedUp, OCPIViewSetMixin, clear_empty, CdrSerializer
+from ocpi22.api import HyperlinkedModelSerializerCleanedUp, clear_empty, CdrSerializer
 from ocpi22.models import Evse, Session, Token, Connector, Cdr
 
 
@@ -28,7 +28,6 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
                      mixins.UpdateModelMixin,
                      mixins.DestroyModelMixin,
                      mixins.ListModelMixin,
-                     OCPIViewSetMixin,
                      GenericViewSet):
     """
     This is an optimised subset of the EVSE information available in the OCPI Connector.

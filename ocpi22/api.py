@@ -1,13 +1,13 @@
-from django.conf import settings
 from django.db.models import QuerySet
 from collections import OrderedDict
 from datetime import datetime
 
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import routers, serializers, viewsets, status, mixins
+from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -46,49 +46,56 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
     url = serializers.SerializerMethodField(read_only=True)
 
 
-def _disassemble_response(response):
-    if not response:
-        return None, None, None
-    data = response.data.get('results')
-    count = response.data.get('count')
-    next = None
-    next_url = response.data.get('next')
-    if next_url:
-        next = '<{next_url}; rel="next">'.format(next_url=next_url)
-    return data, count, next
+class OCPIPaginationAndHeaders(LimitOffsetPagination):
+    default_limit = 100
 
-
-def ocpi_response(response=None, json_data=None, status=1000, message=''):
-    data, count, next = _disassemble_response(response)
-    headers = None
-    if response:
+    def get_paginated_response(self, data):
         headers = {
-            'X-Total-Count': count,
-            'X-Limit': settings.REST_FRAMEWORK['PAGE_SIZE']
+            'X-Total-Count': self.count,
+            'X-Limit': self.default_limit,
         }
-    response = Response(dict(
-        status_code=status,
-        status_message=message,
-        timestamp=timezone.now(),
-        data=json_data or data,
-    ), headers=headers)
-    return response
+
+        next_url = self.get_next_link()
+        if next_url:
+            headers['Link'] = '<{next_url}; rel="next">'.format(next_url=self.get_next_link())
+
+        return Response(OrderedDict([
+            ('status_code', 1000),
+            ('timestamp', timezone.now()),
+            ('data', data),
+        ]), headers=headers)
+
+    def paginate_queryset(self, queryset, request, view=None):
+        queryset = apply_ocpi22_filters(request, queryset)
+        return super().paginate_queryset(queryset, request, view)
 
 
-class OCPIListModelMixin(mixins.ListModelMixin):
-    def list(self, *args, **kwargs):
-        response = super().list(*args, **kwargs)
-        return ocpi_response(response)
+# def _disassemble_response(response):
+#     if not response:
+#         return None, None, None
+#     data = response.data
+#     count = response.data['count']
+#     next = None
+#     next_url = response.data['next']
+#     if next_url:
+#         next = '<{next_url}; rel="next">'.format(next_url=next_url)
+#     return data, count, next
 
 
-class OCPIViewSetMixin:
-    """
-    Apply the OCPI filters to the queryset
-    """
+# class OCPIListModelMixin(mixins.ListModelMixin):
+#     def list(self, *args, **kwargs):
+#         response = super().list(*args, **kwargs)
+#         return OCPIPaginationAndHeaders(response)
+#
 
-    # noinspection PyUnresolvedReferences
-    def get_queryset(self):
-        return apply_ocpi22_filters(self.request, self.queryset)
+# class OCPIViewSetMixin:
+#     """
+#     Apply the OCPI filters to the queryset
+#     """
+#
+#     # noinspection PyUnresolvedReferences
+#     def get_queryset(self):
+#         return apply_ocpi22_filters(self.request, self.queryset)
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -109,16 +116,19 @@ class CdrTokenSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['uid', 'type', 'contract_id']
 
 
-class TokenViewSet(viewsets.ModelViewSet,
-                   OCPIViewSetMixin,
-                   OCPIListModelMixin):
+class TokenViewSet(mixins.UpdateModelMixin,
+                   mixins.RetrieveModelMixin,
+                   mixins.ListModelMixin,
+                   GenericViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
+    pagination_class = OCPIPaginationAndHeaders
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'type']
 
+    # Todo: Create a completely new object using PUT
     # noinspection PyUnresolvedReferences
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
@@ -128,20 +138,20 @@ class TokenViewSet(viewsets.ModelViewSet,
 
         if request.method == 'GET':
             serializer = TokenSerializer(token, many=False, context={'request': request})
-            return ocpi_response(json_data=serializer.data)
+            return OCPIResponse(serializer.data)
 
-        elif request.method in ('PUT', 'POST', 'PATCH'):
+        elif request.method in ('PUT', 'PATCH'):
             serializer = TokenSerializer(token,
                                          data=request.data,
                                          partial=method_is_patch,
                                          context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                return ocpi_response(json_data=serializer.data)
+                return OCPIResponse(serializer.data)
             else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
 
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -201,9 +211,8 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 class CdrViewSet(mixins.RetrieveModelMixin,
-                 GenericViewSet,
-                 OCPIViewSetMixin,
-                 OCPIListModelMixin):
+                 mixins.ListModelMixin,
+                 GenericViewSet):
     """
     These are the Charge Detail Records. Once a CDR is created, it must not be modified or removed.
     A CDR can be credited to the customer by creating a credit CDR in the admin user interface.
@@ -211,13 +220,14 @@ class CdrViewSet(mixins.RetrieveModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Cdr.objects.all().order_by('created')
     serializer_class = CdrSerializer
+    pagination_class = OCPIPaginationAndHeaders
 
     @action(methods=['GET'], detail=False, url_name='cdr-by-id',
             url_path='(?P<uid>[^/.]+)')
     def cdr_by_id(self, request, uid) -> Response:
         cdr = get_object_or_404(Cdr, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request})
-        return ocpi_response(json_data=serializer.data)
+        return OCPIResponse(serializer.data)
 
 
 def clear_empty(dict_with_possibly_empty_values):
@@ -371,27 +381,31 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
     return queryset
 
 
-class TariffViewSet(viewsets.ModelViewSet,
-                    OCPIViewSetMixin,
-                    OCPIListModelMixin):
+class TariffViewSet(mixins.RetrieveModelMixin,
+                    mixins.ListModelMixin,
+                    GenericViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Tariff.objects.all().order_by('created')
     serializer_class = TariffSerializer
+    pagination_class = OCPIPaginationAndHeaders
+
+    # Todo: Create a completely new object using PUT
 
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> Response:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
-        return ocpi_response(json_data=serializer.data)
+        return OCPIResponse(serializer.data)
 
 
-class LocationViewSet(viewsets.ModelViewSet,
-                      OCPIViewSetMixin,
-                      OCPIListModelMixin):
+class LocationViewSet(mixins.ListModelMixin,
+                      mixins.RetrieveModelMixin,
+                      GenericViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
-
+    pagination_class = OCPIPaginationAndHeaders
+    
     # Todo: How to PATCH sub-dicts of Locations
     @action(methods=['GET', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
@@ -401,28 +415,29 @@ class LocationViewSet(viewsets.ModelViewSet,
 
         if request.method == 'GET':
             serializer = LocationSerializer(location, context={'request': request})
-            return ocpi_response(json_data=serializer.data)
+            return OCPIResponse(serializer.data)
 
         elif request.method == 'PATCH':
             serializer = LocationSerializer(location, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                return ocpi_response(json_data=serializer.data)
+                return OCPIResponse(serializer.data)
             else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
     # noinspection PyUnresolvedReferences
     queryset = Location.objects.all().order_by('created')
     serializer_class = LocationSerializer
 
 
-class SessionViewSet(OCPIViewSetMixin,
-                     OCPIListModelMixin,
+class SessionViewSet(mixins.ListModelMixin,
+                     mixins.RetrieveModelMixin,
                      GenericViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token', 'authorization_reference']
+    pagination_class = OCPIPaginationAndHeaders
 
     @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
@@ -432,27 +447,67 @@ class SessionViewSet(OCPIViewSetMixin,
 
         if request.method == 'GET':
             serializer = SessionSerializer(session, context={'request': request})
-            return ocpi_response(json_data=serializer.data)
+            return OCPIResponse(serializer.data)
 
         # elif request.method == 'PATCH':
         #     serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
         #     if serializer.is_valid():
         #         serializer.save()
-        #         return Response(serializer.data)
+        #         return OCPIResponse(serializer.data)
         #     else:
-        #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        #         return OCPIResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.all().order_by('created')
     serializer_class = SessionSerializer
 
 
+class OCPIResponse(Response):
+    def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None):
+        if isinstance(status_message, list):
+            status_message = ', '.join([s for s in status_message])
+        if isinstance(errors, dict):
+            status_message = ', '.join([f"{field}: {error}" for field, error in errors.items()])
+            data = errors
+            status_code = Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS
+        result = dict(
+            status_code=status_code,
+            status_message=status_message,
+            timestamp=timezone.now(),
+            data=data
+        )
+        super().__init__(result, status=http_status)
+
+
+class Ocpi:
+    class ClientError:
+        GENERIC_CLIENT_ERROR = 2000
+        INVALID_OR_MISSING_PARAMETERS = 2001
+        NOT_ENOUGH_INFORMATION = 2002
+        UNKNOWN_LOCATION = 2003
+        UNKNOWN_TOKEN = 2004
+
+    class ServerError:
+        GENERIC_SERVER_ERROR = 3000
+        UNABLE_TO_USE_CLIENTS_API = 3001
+        UNSUPPORTED_VERSION = 3002
+        NO_MATCHING_ENDPOINTS = 3003
+
+    class HubError:
+        UNKNOWN_RECEIVER = 4001
+        TIMEOUT_ON_FORWARDED_REQUEST = 4002
+        CONNECTION_PROBLEM = 4003
+
+
 class EvseViewSet(mixins.RetrieveModelMixin,
-                  OCPIViewSetMixin,
-                  OCPIListModelMixin,
+                  mixins.ListModelMixin,
                   GenericViewSet):
+    # noinspection PyUnresolvedReferences
+    queryset = Evse.objects.all().order_by('created')
+    serializer_class = EvseSerializer
+    pagination_class = OCPIPaginationAndHeaders
 
     @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
@@ -461,11 +516,13 @@ class EvseViewSet(mixins.RetrieveModelMixin,
         evse = get_object_or_404(Evse, uid=evse_id)
         location = evse.location
         if location.uid != uid or location.party_id != party_id or location.country_code != country_code:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return OCPIResponse(
+                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                status_message='The EVSE is not owned by the specified party or is not in the specified country')
 
         if request.method == 'GET':
             serializer = EvseSerializer(evse, context={'request': request})
-            return ocpi_response(json_data=serializer.data)
+            return OCPIResponse(serializer.data)
 
         # elif request.method == 'PATCH':
         #     serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
@@ -475,11 +532,7 @@ class EvseViewSet(mixins.RetrieveModelMixin,
         #     else:
         #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    # noinspection PyUnresolvedReferences
-    queryset = Evse.objects.all().order_by('created')
-    serializer_class = EvseSerializer
+        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
 
 class ConnectorAPIView(routers.APIRootView):
