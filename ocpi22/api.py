@@ -337,7 +337,8 @@ class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
     @staticmethod
     def get_coordinates(location: Location) -> dict:
         # Create a dict to be placed one step lower in the json
-        return dict(latitude=location.latitude, longitude=location.longitude)
+        # Longitude/Latitude has to be a string (OCPI) and have a fixed length of 6 decimals (e-clearing.net)
+        return dict(latitude=f'{location.latitude:.6f}', longitude=f'{location.longitude:.6f}')
 
     @staticmethod
     def get_publish_allowed_to(location: Location) -> list:
@@ -470,7 +471,7 @@ class OCPIResponse(Response):
             status_message = ', '.join([s for s in status_message])
         if isinstance(errors, dict):
             status_message = ', '.join([f"{field}: {error}" for field, error in errors.items()])
-            data = errors
+            data = errors  # This is a courtacy, it's not OCPI compliant
             status_code = Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS
         result = dict(
             status_code=status_code,

@@ -525,7 +525,7 @@ class Evse(models.Model):
 
     @property
     def evse_id(self):
-        return f'{self.location.country_code}*{self.location.party_id}*E{self.location.uid}*{self.uid}'
+        return f'{self.location.country_code}*{self.location.party_id}*E{self.location.uid}*{self.uid}'.upper()
 
     # Indicates the current status of the EVSE
     STATUS_CHOICES = (
