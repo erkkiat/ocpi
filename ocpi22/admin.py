@@ -35,11 +35,8 @@ class LocationAdmin(admin.ModelAdmin):
     fields = ['uid', 'publish', 'publish_allowed_to',
               ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
               ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone', ]
-    list_display = ['actions_item', 'publish', 'name', 'address', 'city', 'country']
-    list_display_links = ['actions_item']
-    # inlines = [EvseInline]
-    readonly_fields = ['uid', 'party_id', 'country_code']
-
+    list_display = ['uid', 'publish', 'name', 'address', 'city', 'country']
+    readonly_fields = ['party_id', 'country_code']
 
     def actions_item(self, _obj):
         return format_html('Edit')
@@ -116,10 +113,10 @@ class SessionAdmin(admin.ModelAdmin):
     list_filter = ['status']
     readonly_fields = ['uid', 'party_id', 'country_code']
 
-    def has_delete_permission(self, request, obj=None):
-        # Disable delete
-        # return obj and obj.status == 'INVALID'
-        return False
+    # def has_delete_permission(self, request, obj=None):
+    #     # Disable delete
+    #     # return obj and obj.status == 'INVALID'
+    #     return False
 
     def has_add_permission(self, request, obj=None):
         # Disable add
