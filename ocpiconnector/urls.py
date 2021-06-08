@@ -6,8 +6,9 @@ from rest_framework.schemas import get_schema_view
 from ocpi22.api import OCPIRouter, TokenViewSet, LocationViewSet, TariffViewSet, EvseViewSet, SessionViewSet, CdrViewSet
 from ocpi22.cpo_api import CPORouter, \
     CpoEvseViewSet, \
-    SessionViewSet as CpoSessionViewSet
-    # CdrViewSet as CpoCdrViewSet
+    SessionViewSet as CpoSessionViewSet, LocationQuickViewSet
+
+# CdrViewSet as CpoCdrViewSet
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'tokens', TokenViewSet)
@@ -21,6 +22,7 @@ cpo_router = CPORouter()
 cpo_router.register(r'evses', CpoEvseViewSet, basename='cpo-evse')
 # cpo_router.register(r'cdrs', CpoCdrViewSet)
 cpo_router.register(r'session', CpoSessionViewSet, basename='session')
+cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
 
 urlpatterns = [
     path('ocpi/2.2/', include(ocpi_router.urls)),

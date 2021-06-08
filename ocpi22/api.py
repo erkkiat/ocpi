@@ -42,8 +42,32 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
             return ''
         return f'{request.build_absolute_uri(obj.get_cpo_url())}'
 
+    def get_quick_url(self, obj) -> str:
+        """
+        Construct a URL which points to the object instance view
+        :param obj: The object we need the instance view for
+        :return: The URL string to the instance view
+        """
+        request = self.context.get("request")
+        if not hasattr(obj, 'get_quick_url') or not request:
+            return ''
+        return f'{request.build_absolute_uri(obj.get_quick_url())}'
+
+    def get_status_url(self, obj) -> str:
+        """
+        Construct a URL which points to the object instance view
+        :param obj: The object we need the instance view for
+        :return: The URL string to the instance view
+        """
+        request = self.context.get("request")
+        if not hasattr(obj, 'get_status_url') or not request:
+            return ''
+        return f'{request.build_absolute_uri(obj.get_status_url())}'
+
     detail_url = serializers.SerializerMethodField(read_only=True)
     url = serializers.SerializerMethodField(read_only=True)
+    quick_url = serializers.SerializerMethodField(read_only=True)
+    status_url = serializers.SerializerMethodField(read_only=True)
 
 
 class OCPIPaginationAndHeaders(LimitOffsetPagination):

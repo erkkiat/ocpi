@@ -1,11 +1,12 @@
 import os
 import uuid
 
+from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
-from django.utils import timezone
 from django.utils.html import format_html
+from icecream import ic
 from rest_framework.reverse import reverse
 
 PARTY_ID = os.environ.get('PARTY_ID', 'XXX')
@@ -200,12 +201,14 @@ class Tariff(models.Model):
     def __str__(self):
         # noinspection PyUnresolvedReferences
         components = [str(x) for x in self.price_components.all()]
+        # noinspection PyUnresolvedReferences
         return f"{' + '.join(components or [f'{self.uid}'])} -- {self.get_type_display()}"
 
     def link(self):
         # noinspection PyUnresolvedReferences
         components = [str(x) for x in self.price_components.all()]
         url = reverse('admin:ocpi22_tariff_change', args=[self.pk])
+        # noinspection PyUnresolvedReferences
         return format_html(
             f"<a href='{url}'>{' + '.join(components or [f'{self.uid}'])} -- {self.get_type_display()}</a>"
         )
@@ -425,7 +428,7 @@ class Location(models.Model):
     # publish_allowed_to are allowed to be shown this Location.
     # When the same location has EVSEs that may be published and may not be published,
     # two 'Locations' should be created.
-    publish = models.BooleanField()
+    publish = models.BooleanField(default=True)
 
     # Defines the set of values that identify a token to which a Location might be published.
     # At least one of the following fields SHALL be set: uid, visual_number, or group_id.
@@ -499,7 +502,6 @@ class Location(models.Model):
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times
 
-
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
@@ -509,14 +511,25 @@ class Location(models.Model):
     def get_absolute_url(self):
         return reverse('location-by-id', args=[self.country_code, self.party_id, self.uid])
 
+    def get_quick_url(self):
+        return reverse('quick-location-by-id', args=[self.uid])
+
+
+uid_validator = RegexValidator(r'^[0-9a-zA-Z\*]+$', message='Numbers and letters only')
+
 
 class Evse(models.Model):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['uid', 'location'], name='evse_party_uid'),
+        ]
+
     # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
     # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.
     # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
     # use the field evse_id for that.
     # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, unique=True, validators=[uid_validator])
 
     # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
@@ -557,7 +570,7 @@ class Evse(models.Model):
     )
     capabilities = models.ManyToManyField(Capability, related_name='evses')
 
-    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='evses')
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses')
 
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -577,6 +590,10 @@ class Evse(models.Model):
         return reverse('cpo-evse-by-id',
                        args=[self.uid])
 
+    def get_status_url(self):
+        return reverse('cpo-evse-by-id',
+                       args=[self.uid])
+
 
 class Connector(models.Model):
     # Identifier of the Connector within the EVSE. Two Connectors may have the same id
@@ -587,7 +604,7 @@ class Connector(models.Model):
 
     uid = models.CharField(max_length=36)
 
-    evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='connectors')
+    evse = models.ForeignKey(Evse, on_delete=models.CASCADE, related_name='connectors')
 
     STANDARD_CHOICES = (
         ('IEC_62196_T2', 'Type 2 "Mennekes"'),
@@ -626,6 +643,11 @@ class Connector(models.Model):
     )
     format = models.CharField(max_length=6, choices=FORMAT_CHOICES)
 
+    POWERTYPES = dict(
+        CHADEMO='DC',
+        IEC_62196_T2_COMBO='DC',
+        IEC_62196_T2='AC_3_PHASE'
+    )
     POWERTYPE_CHOICES = (
         ('AC_1_PHASE', 'AC 1-phase'),
         ('AC_3_PHASE', 'AC 3-phase'),
@@ -782,6 +804,13 @@ def my_callback(sender, instance, *_args, **_kwargs):
     #     charger.access = 'FR'
 
 
+# @receiver(pre_save, sender=Evse)
+# def my_callback(sender, instance, *_args, **_kwargs):
+#     evse = instance
+#     if not evse.uid:
+#         raise Exception('EVSE with no UID')
+
+
 @receiver(post_save, sender=Evse)
 def my_callback(sender, instance, *_args, **_kwargs):
     evse = instance
@@ -797,8 +826,11 @@ def my_callback(sender, instance, *_args, **_kwargs):
     # evse.last_updated = connector.last_updated
     evse.save()
 
+
 @receiver(pre_save, sender=Connector)
 def my_callback(sender, instance, *_args, **_kwargs):
     connector: Connector = instance
     if not connector.uid:
         connector.uid = uuid.uuid4()
+    if not connector.power_type:
+        connector.power_type = Connector.POWERTYPES[connector.standard]
