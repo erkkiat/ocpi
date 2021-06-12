@@ -165,20 +165,6 @@ class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     uid = serializers.CharField(validators=[models.uid_validator])
     connectors = ConnectorQuickSerializer(many=True)
 
-    # def get_object(self, view_name, view_args, view_kwargs):
-    #
-    # def create(self, validated_data):
-    #     ic(self.location)
-    #     connectors = validated_data.pop('connectors')
-    #     validated_data['location'] = self.location
-    #     ic(validated_data)
-    #     # noinspection PyUnresolvedReferences
-    #     evse = Evse.objects.create(**validated_data)
-    #     for connector in connectors:
-    #         # noinspection PyUnresolvedReferences
-    #         Connector.objects.create(evse=evse, **connector)
-    #     return evse
-
 
 class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
@@ -209,10 +195,10 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     # noinspection PyUnresolvedReferences
     def update(self, location, validated_data, *args, **kwargs):
         ic('update', location, validated_data)
-        evses = validated_data.pop('evses') if 'evses' in validated_data else []
+        evses = validated_data.pop('evses', [])
         Location.objects.filter(uid=location.uid).update(**validated_data)
         for evse_dict in evses:
-            connectors = evse_dict.pop('connectors') if 'connectors' in evse_dict else []
+            connectors = evse_dict.pop('connectors', [])
             evse, created = Evse.objects.get_or_create(location=location, uid=evse_dict.pop('uid'),
                                                        defaults=evse_dict)
             if not created:
@@ -244,9 +230,6 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 
     # noinspection PyUnresolvedReferences
     def put(self, request, uid=None):
-        location = None
-        serializer = None
-
         if uid:
             # Write over an existing Location
             location: Location = get_object_or_404(Location, uid=uid)
@@ -280,6 +263,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
                                                  context={'request': request})
             if serializer.is_valid():
                 serializer.save()
+                # noinspection PyUnresolvedReferences
                 serializer = LocationQuickSerializer(Location.objects.get(uid=uid))
                 return Response(serializer.data)
             else:

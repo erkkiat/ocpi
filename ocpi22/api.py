@@ -94,34 +94,6 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
         return super().paginate_queryset(queryset, request, view)
 
 
-# def _disassemble_response(response):
-#     if not response:
-#         return None, None, None
-#     data = response.data
-#     count = response.data['count']
-#     next = None
-#     next_url = response.data['next']
-#     if next_url:
-#         next = '<{next_url}; rel="next">'.format(next_url=next_url)
-#     return data, count, next
-
-
-# class OCPIListModelMixin(mixins.ListModelMixin):
-#     def list(self, *args, **kwargs):
-#         response = super().list(*args, **kwargs)
-#         return OCPIPaginationAndHeaders(response)
-#
-
-# class OCPIViewSetMixin:
-#     """
-#     Apply the OCPI filters to the queryset
-#     """
-#
-#     # noinspection PyUnresolvedReferences
-#     def get_queryset(self):
-#         return apply_ocpi22_filters(self.request, self.queryset)
-
-
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Token
@@ -176,41 +148,6 @@ class TokenViewSet(mixins.UpdateModelMixin,
                 return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
-
-
-class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Connector
-        fields = ['uid', 'standard', 'format',
-                  'power_type', 'max_voltage', 'max_amperage', 'max_electric_power',
-                  'tariff_ids', 'terms_and_conditions', 'last_updated']
-
-    uid = serializers.CharField()
-    max_electric_power = serializers.SerializerMethodField()
-    tariff_ids = serializers.SerializerMethodField()
-
-    @staticmethod
-    def get_tariff_ids(connector: Connector) -> list:
-        return [t.uid for t in connector.tariff_ids.all()]
-
-    @staticmethod
-    def get_max_electric_power(connector: Connector) -> str:
-        # Todo: what about 1-phase and 2-phase AC?
-        return connector.max_electric_power or connector.max_voltage * connector.max_amperage
-
-
-class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = BusinessDetails
-        fields = ['name', 'website', 'logo']
-
-
-class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
-    connectors = ConnectorSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Evse
-        fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors']
 
 
 class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -340,46 +277,6 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         return str(tariff)
 
 
-class LocationSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Location
-        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
-                  'name', 'address', 'city', 'postal_code', 'state', 'country',
-                  'coordinates', 'parking_type', 'evses',
-                  'operator', 'suboperator', 'owner',
-                  'facilities', 'time_zone', 'last_updated']
-
-    id = serializers.CharField(source='uid')
-    coordinates = serializers.SerializerMethodField()
-    evses = EvseSerializer(many=True, read_only=True)
-    operator = BusinessDetailsSerializer(read_only=True, many=False)
-    suboperator = BusinessDetailsSerializer(read_only=True, many=False)
-    owner = BusinessDetailsSerializer(read_only=True, many=False)
-    publish_allowed_to = serializers.SerializerMethodField()
-    facilities = serializers.SerializerMethodField()
-
-    @staticmethod
-    def get_coordinates(location: Location) -> dict:
-        # Create a dict to be placed one step lower in the json
-        # Longitude/Latitude has to be a string (OCPI) and have a fixed length of 6 decimals (e-clearing.net)
-        return dict(latitude=f'{location.latitude:.6f}', longitude=f'{location.longitude:.6f}')
-
-    @staticmethod
-    def get_publish_allowed_to(location: Location) -> list:
-        """
-        List the token IDs of the drivers who are allowed to see this Location
-        """
-        if location.publish:
-            # Location is public to everyone, no need to specify exceptions
-            return []
-        return [token.uid for token in location.publish_allowed_to.all()]
-
-    @staticmethod
-    def get_facilities(location: Location):
-        # Create a list of facility names
-        return [facility.name for facility in location.facilities.all()]
-
-
 def apply_ocpi22_filters(request, queryset) -> QuerySet:
     """
     Apply the OCPI 2.2 filters to a queryset (date range, limit, offset)
@@ -422,39 +319,6 @@ class TariffViewSet(mixins.RetrieveModelMixin,
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
-
-
-class LocationViewSet(mixins.ListModelMixin,
-                      mixins.RetrieveModelMixin,
-                      GenericViewSet):
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
-    pagination_class = OCPIPaginationAndHeaders
-    
-    # Todo: How to PATCH sub-dicts of Locations
-    @action(methods=['GET', 'PATCH'], detail=False,
-            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def by_id(self, request, country_code, party_id, uid) -> Response:
-        # noinspection PyUnresolvedReferences
-        location = get_object_or_404(Location, country_code=country_code, party_id=party_id, uid=uid)
-
-        if request.method == 'GET':
-            serializer = LocationSerializer(location, context={'request': request})
-            return OCPIResponse(serializer.data)
-
-        elif request.method == 'PATCH':
-            serializer = LocationSerializer(location, data=request.data, partial=True, context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                return OCPIResponse(serializer.data)
-            else:
-                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
-
-        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
-
-    # noinspection PyUnresolvedReferences
-    queryset = Location.objects.all().order_by('created')
-    serializer_class = LocationSerializer
 
 
 class SessionViewSet(mixins.ListModelMixin,
@@ -524,40 +388,6 @@ class Ocpi:
         UNKNOWN_RECEIVER = 4001
         TIMEOUT_ON_FORWARDED_REQUEST = 4002
         CONNECTION_PROBLEM = 4003
-
-
-class EvseViewSet(mixins.RetrieveModelMixin,
-                  mixins.ListModelMixin,
-                  GenericViewSet):
-    # noinspection PyUnresolvedReferences
-    queryset = Evse.objects.all().order_by('created')
-    serializer_class = EvseSerializer
-    pagination_class = OCPIPaginationAndHeaders
-
-    @action(methods=['GET'], detail=False, url_name='by-id',
-            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
-    def evse_by_id(self, request, country_code, party_id, uid, evse_id) -> Response:
-        # noinspection PyUnresolvedReferences
-        evse = get_object_or_404(Evse, uid=evse_id)
-        location = evse.location
-        if location.uid != uid or location.party_id != party_id or location.country_code != country_code:
-            return OCPIResponse(
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-                status_message='The EVSE is not owned by the specified party or is not in the specified country')
-
-        if request.method == 'GET':
-            serializer = EvseSerializer(evse, context={'request': request})
-            return OCPIResponse(serializer.data)
-
-        # elif request.method == 'PATCH':
-        #     serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
-        #     if serializer.is_valid():
-        #         serializer.save()
-        #         return Response(serializer.data)
-        #     else:
-        #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
 
 class ConnectorAPIView(routers.APIRootView):

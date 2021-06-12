@@ -3,12 +3,13 @@ from django.contrib import admin
 from django.urls import path
 from rest_framework.schemas import get_schema_view
 
-from ocpi22.api import OCPIRouter, TokenViewSet, LocationViewSet, TariffViewSet, EvseViewSet, SessionViewSet, CdrViewSet
+from ocpi22.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet
 from ocpi22.cpo_api import CPORouter, \
     CpoEvseViewSet, \
     SessionViewSet as CpoSessionViewSet, LocationQuickViewSet
 
 # CdrViewSet as CpoCdrViewSet
+from ocpi22.location import LocationViewSet, EvseViewSet
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'tokens', TokenViewSet)
