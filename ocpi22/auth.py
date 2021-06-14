@@ -1,11 +1,53 @@
-from icecream import ic
+import base64
+import binascii
+
 from rest_framework import exceptions
 from rest_framework.permissions import DjangoModelPermissions
+from rest_framework.reverse import reverse
+
+from ocpi22.models import Credentials
 
 
-def check_auth_token(token):
-    ic(token)
-    return token == 'eki' or token == "IpbJOXxkxOAuKR92z0nEcmVF3Qw09VG7I7d/WCg0koM="
+class OCPI_AUTH_TYPES:
+    NONE=0
+    TOKEN_A=1
+    FINAL=2
+
+
+def check_auth_token(request, token):
+    try:
+        token_ascii = base64.b64decode(token).decode('ascii')
+        request.ocpi_auth = OCPI_AUTH_TYPES.NONE
+
+        # First check for TOKEN_A, are we still getting to know each other?
+        # noinspection PyUnresolvedReferences
+        credentials_matches = Credentials.objects.filter(token_a=token_ascii)
+        if credentials_matches.count():
+            if request.path not in [reverse('base-versions'), reverse('credentials-credentials')]:
+                raise exceptions.NotAuthenticated(f'TOKEN_A can only be used for the Credentials and Versions modules')
+
+            credentials = credentials_matches[0]
+            request.ocpi_auth = OCPI_AUTH_TYPES.TOKEN_A
+            request.country_code = credentials.country_code
+            request.party_id = credentials.party_id
+            return True
+        else:
+            # Or are we already friends?
+            # noinspection PyUnresolvedReferences
+            credentials_matches = Credentials.objects.filter(ours=token_ascii)
+            if credentials_matches.count():
+                credentials = credentials_matches[0]
+                request.ocpi_auth = OCPI_AUTH_TYPES.FINAL
+                request.country_code = credentials.country_code
+                request.party_id = credentials.party_id
+                return True
+    except binascii.Error as e:
+        raise exceptions.NotAuthenticated(f'Authentication token: {e}')
+    if token:
+        # This token is no good
+        raise exceptions.NotAuthenticated
+    # If no token, give other permission mechanisms a chance
+    return False
 
 
 class OCPIPermission(DjangoModelPermissions):
@@ -19,6 +61,8 @@ class OCPIPermission(DjangoModelPermissions):
         auth_id = request.META.get('HTTP_AUTHORIZATION',
                                    request.GET.get('auth-test', '')).replace('Token ', '')
         # Check for token authentication, secondarily basic auth
-        if check_auth_token(auth_id) or super().has_permission(request, view):
-            return True
-        raise exceptions.PermissionDenied
+        if check_auth_token(request, auth_id) or \
+            hasattr(view, 'publicly_visible') or \
+            super().has_permission(request, view):
+                return True
+        raise exceptions.NotAuthenticated

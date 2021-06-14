@@ -476,6 +476,9 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         )
         return Response(result)
 
+    def get_view_name(self):
+        return 'Charge Point Operator API'
+
 
 class CPORouter(routers.DefaultRouter):
     APIRootView = ChargePointOperatorAPIView

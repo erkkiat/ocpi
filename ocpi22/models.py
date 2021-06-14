@@ -1,3 +1,4 @@
+import base64
 import os
 import uuid
 
@@ -6,7 +7,6 @@ from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
-from icecream import ic
 from rest_framework.reverse import reverse
 
 PARTY_ID = os.environ.get('PARTY_ID', 'XXX')
@@ -23,6 +23,37 @@ AUTH_METHOD_CHOICES = (
     # Whitelist used for authentication, no request to the eMSP has been performed.
     ('WHITELIST', 'Token on whitelist'),
 )
+
+
+class Credentials(models.Model):
+    # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+
+    # CPO ID of the MSP that 'owns' this Token (following the ISO-15118)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
+
+    # The credentials token used only for the initial connection, and is communicated manually between parties
+    token_a = models.CharField(max_length=64, blank=True, default='')
+
+    # Our credentials token used for the actual communication
+    ours = models.CharField(max_length=64, blank=True, default='')
+
+    # The other party's credentials token used for the actual communication
+    theirs = models.CharField(max_length=64, blank=True, default='')
+
+    last_updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.country_code}*{self.party_id}*{self.token_a or self.ours}'
+
+    def token_a_base64(self):
+        # noinspection PyUnresolvedReferences
+        return base64.b64encode(self.token_a.encode('ascii')).decode('ascii')
+
+    def ours_base64(self):
+        # noinspection PyUnresolvedReferences
+        return base64.b64encode(self.ours.encode('ascii')).decode('ascii')
 
 
 class Token(models.Model):
@@ -396,7 +427,7 @@ class Cdr(models.Model):
 
     def __str__(self):
         return f'{self.cdr_token} - {self.total_cost_incl_vat} {self.currency} - ' \
-               f'{(self.total_time/60):.4f} hours - {self.end_date_time}'
+               f'{(self.total_time/60.0):.4f} hours - {self.end_date_time}'
 
     def get_absolute_url(self):
         return reverse('cdr-detail', args=[self.uid])
@@ -834,3 +865,12 @@ def my_callback(sender, instance, *_args, **_kwargs):
         connector.uid = uuid.uuid4()
     if not connector.power_type:
         connector.power_type = Connector.POWERTYPES[connector.standard]
+
+
+@receiver(pre_save, sender=Credentials)
+def my_callback(sender, instance, *_args, **_kwargs):
+    credentials: Credentials = instance
+    if not credentials.token_a:
+        credentials.token_a = uuid.uuid4()
+    if not credentials.ours:
+        credentials.ours = uuid.uuid4()

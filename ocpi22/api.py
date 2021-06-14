@@ -4,14 +4,15 @@ from datetime import datetime
 
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import routers, serializers, status, mixins
+from rest_framework import routers, serializers, status, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.models import Token, Location, Connector, Evse, BusinessDetails, Tariff, Session, Cdr
+from ocpi22.models import Token, Tariff, Session, Cdr, Credentials
+from ocpi22.versions import get_endpoints_dict
 
 
 class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
@@ -189,6 +190,26 @@ class CdrViewSet(mixins.RetrieveModelMixin,
         cdr = get_object_or_404(Cdr, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
+
+
+class CredentialsViewSet(mixins.CreateModelMixin,
+                         viewsets.ViewSet):
+    """
+    Credential tokens exchange.
+    """
+    # noinspection PyUnresolvedReferences
+    queryset = Credentials.objects.none()
+    # serializer_class = CdrSerializer
+    # pagination_class = OCPIPaginationAndHeaders
+
+    @action(methods=['POST'], detail=False, url_name='',
+            url_path='')
+    def credentials(self, request) -> Response:
+        return OCPIResponse(dict(posted=0))
+
+    def get(self, request):
+        return OCPIResponse(status_code=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
+                            status_message='Credentials can only be posted')
 
 
 def clear_empty(dict_with_possibly_empty_values):
@@ -390,18 +411,21 @@ class Ocpi:
         CONNECTION_PROBLEM = 4003
 
 
-class ConnectorAPIView(routers.APIRootView):
+class OcpiApi22View(routers.APIRootView):
     """
-    OCPI version 2.2
-    ---------------
-
     This portal provides ways to view the information in the database, read the API documentation and
-    try out sending information to the API. The OCPI API serves primarily the eMSP.
+    try out sending information to the API.
 
-    The interfaces for CPO are available at [/api/cpo/v1/](/api/cpo/v1/)
-    You can get more information on how to use the information here from [support@chargerhub.eu](support@chargerhub.eu).
+    The streamlined interfaces for the CPO are available at [/api/cpo/v1/](/api/cpo/v1/).
+    You can contact [support@chargerhub.eu](support@chargerhub.eu) for more information.
     """
+    def get(self, request, **kwargs):
+        return Response(get_endpoints_dict(request))
+
+    def get_view_name(self):
+        return 'OCPI 2.2'
 
 
 class OCPIRouter(routers.DefaultRouter):
-    APIRootView = ConnectorAPIView
+    APIRootView = OcpiApi22View
+    root_view_name = 'ocpi-22'
