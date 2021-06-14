@@ -17,7 +17,6 @@ class OCPI_AUTH_TYPES:
 def check_auth_token(request, token):
     allowed_for_token_a = (
         reverse('base-versions'),
-        reverse('credentials-credentials'),
         reverse('credentials-list'),
     )
     try:

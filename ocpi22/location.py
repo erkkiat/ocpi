@@ -170,6 +170,10 @@ class LocationViewSet(mixins.ListModelMixin,
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
     pagination_class = OCPIPaginationAndHeaders
+    root_view_name = 'locations'
+
+    def get_view_name(self):
+        return 'Locations'
 
     # noinspection PyUnresolvedReferences
     def put(self, request, country_code=None, party_id=None, uid=None):

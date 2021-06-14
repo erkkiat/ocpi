@@ -49,7 +49,15 @@ class TokenViewSet(mixins.UpdateModelMixin,
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'type']
 
-    # Todo: Create a completely new object using PUT
+    def get_view_name(self):
+        return 'Tokens'
+
+    def put(self, request):
+        serialiser = TokenSerializer(data=request.data)
+        if serialiser.is_valid():
+            serialiser.save()
+        return Response(serialiser.data)
+
     # noinspection PyUnresolvedReferences
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
@@ -159,11 +167,8 @@ class CredentialsViewSet(mixins.CreateModelMixin,
     queryset = Credentials.objects.none()
     serializer_class = CredentialsSerializer
 
-    @action(methods=['POST', 'PUT'], detail=False, url_name='',
-            url_path='.')
-    def credentials(self, request) -> OCPIResponse:
-        ic(request.POST)
-        return OCPIResponse(dict(posted=0))
+    def get_view_name(self):
+        return 'Credentials'
 
     @staticmethod
     def get(request):
@@ -267,6 +272,9 @@ class TariffViewSet(mixins.RetrieveModelMixin,
     queryset = Tariff.objects.all().order_by('created')
     serializer_class = TariffSerializer
     pagination_class = OCPIPaginationAndHeaders
+
+    def get_view_name(self):
+        return 'Tariffs'
 
     # Todo: Create a completely new object using PUT
 

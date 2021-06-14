@@ -22,40 +22,36 @@ def get_endpoints_dict(request):
             dict(
                 identifier="credentials",
                 role=R,
-                url=request.build_absolute_uri(reverse('credentials-credentials'))
+                url=request.build_absolute_uri(reverse('credentials-list'))
             ),
             dict(
                 identifier="credentials",
                 role=S,
-                url=request.build_absolute_uri(reverse('credentials-credentials'))
+                url=request.build_absolute_uri(reverse('credentials-list'))
             ),
-            # dict(
-            #     identifier="locations",
-            #     role=S,
-            #     url=reverse('locations')
-            # ),
-            # dict(
-            #     identifier="tokens",
-            #     role=R,
-            #     url=reverse('tokens')
-            # ),
-            # dict(
-            #     identifier="credentials",
-            #     role=R,
-            #     url=reverse('credentials')
-            # ),
-            # dict(
-            #     identifier="credentials",
-            #     role=R,
-            #     url=reverse('credentials')
-            # ),
+            dict(
+                identifier="locations",
+                role=S,
+                url=request.build_absolute_uri(reverse('location-list'))
+            ),
+            dict(
+                identifier="tokens",
+                role=R,
+                url=request.build_absolute_uri(reverse('token-list'))
+            ),
+            dict(
+                identifier="tariffs",
+                role=S,
+                url=request.build_absolute_uri(reverse('tariff-list'))
+            ),
         ]
     )
 
 
 class OCPIBaseView(routers.APIRootView):
     """
-    This is a test.
+    Welcome to the OCPI Connector Developer Central. You can start exploring the server by clicking the version link
+    below.
     """
 
     # noinspection PyUnresolvedReferences
