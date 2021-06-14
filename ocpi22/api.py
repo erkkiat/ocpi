@@ -1,98 +1,22 @@
-from django.db.models import QuerySet
-from collections import OrderedDict
-from datetime import datetime
+import os
 
-from django.utils import timezone
+from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import routers, serializers, status, mixins, viewsets
+from icecream import ic
+from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
+from rest_framework.exceptions import NotFound
 
-from ocpi22.models import Token, Tariff, Session, Cdr, Credentials
+from ocpi22.location import BusinessDetailsSerializer
+from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, clear_empty, \
+    OCPIResponse
 from ocpi22.versions import get_endpoints_dict
-
-
-class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
-    def to_representation(self, value):
-        # Remove empty values
-        repr_dict = super().to_representation(value)
-        return clear_empty(repr_dict)
-
-    def get_detail_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_absolute_url') or not request:
-            return ''
-        return f'{request.build_absolute_uri(obj.get_absolute_url())}'
-
-    def get_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_cpo_url') or not request:
-            return ''
-        return f'{request.build_absolute_uri(obj.get_cpo_url())}'
-
-    def get_quick_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_quick_url') or not request:
-            return ''
-        return f'{request.build_absolute_uri(obj.get_quick_url())}'
-
-    def get_status_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_status_url') or not request:
-            return ''
-        return f'{request.build_absolute_uri(obj.get_status_url())}'
-
-    detail_url = serializers.SerializerMethodField(read_only=True)
-    url = serializers.SerializerMethodField(read_only=True)
-    quick_url = serializers.SerializerMethodField(read_only=True)
-    status_url = serializers.SerializerMethodField(read_only=True)
-
-
-class OCPIPaginationAndHeaders(LimitOffsetPagination):
-    default_limit = 100
-
-    def get_paginated_response(self, data):
-        headers = {
-            'X-Total-Count': self.count,
-            'X-Limit': self.default_limit,
-        }
-
-        next_url = self.get_next_link()
-        if next_url:
-            headers['Link'] = '<{next_url}; rel="next">'.format(next_url=self.get_next_link())
-
-        return Response(OrderedDict([
-            ('status_code', 1000),
-            ('timestamp', timezone.now()),
-            ('data', data),
-        ]), headers=headers)
-
-    def paginate_queryset(self, queryset, request, view=None):
-        queryset = apply_ocpi22_filters(request, queryset)
-        return super().paginate_queryset(queryset, request, view)
+from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -192,36 +116,74 @@ class CdrViewSet(mixins.RetrieveModelMixin,
         return OCPIResponse(serializer.data)
 
 
+class RolesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CredentialsRole
+        fields = ('country_code', 'party_id', 'role', 'business_details')
+
+    business_details = BusinessDetailsSerializer()
+
+
+class CredentialsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Credentials
+        fields = ('token', 'url', 'roles')
+
+    token = serializers.CharField(source='theirs')
+    url = serializers.URLField()
+    roles = RolesSerializer(many=True)
+
+    # noinspection PyUnresolvedReferences
+    def create(self, validated_data):
+        try:
+            roles = validated_data.pop('roles')
+            credentials = Credentials.objects.create(**validated_data)
+            for role_dict in roles:
+                business_details_dict = role_dict.pop('business_details')
+                business_details = BusinessDetails.objects.create(**business_details_dict)
+                CredentialsRole.objects.create(credentials=credentials,
+                                               business_details=business_details,
+                                               **role_dict)
+            return credentials
+        except IntegrityError:
+            raise NotFound(code=405, detail='This Credentials already exists. Try doing a PUT or DELETE.')
+
+
 class CredentialsViewSet(mixins.CreateModelMixin,
-                         viewsets.ViewSet):
+                         GenericViewSet):
     """
-    Credential tokens exchange.
+    Credential tokens exchange. Please note that the tokens are always base64 encoded for transport.
     """
+    # The queryset tells Django REST how to determine access to these endpoints
     # noinspection PyUnresolvedReferences
     queryset = Credentials.objects.none()
-    # serializer_class = CdrSerializer
-    # pagination_class = OCPIPaginationAndHeaders
+    serializer_class = CredentialsSerializer
 
-    @action(methods=['POST'], detail=False, url_name='',
-            url_path='')
-    def credentials(self, request) -> Response:
+    @action(methods=['POST', 'PUT'], detail=False, url_name='',
+            url_path='.')
+    def credentials(self, request) -> OCPIResponse:
+        ic(request.POST)
         return OCPIResponse(dict(posted=0))
 
-    def get(self, request):
-        return OCPIResponse(status_code=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
-                            status_message='Credentials can only be posted')
+    @staticmethod
+    def get(request):
+        return Response(
+            dict(
+                token=request.credentials.ours_base64()
+                if hasattr(request, 'credentials') else 'not available when using basic auth',
 
+                url=request.build_absolute_uri(reverse('base-versions')),
 
-def clear_empty(dict_with_possibly_empty_values):
-    return OrderedDict((k, v) for k, v in dict_with_possibly_empty_values.items()
-                       if v not in [None, [], '', {}])
-
-
-def get_total_cost(obj):
-    return clear_empty(dict(
-        excl_vat=obj.total_cost_excl_vat,
-        incl_vat=obj.total_cost_incl_vat
-    ))
+                roles=[dict(
+                    role='CPO',
+                    country_code=COUNTRY_CODE,
+                    party_id=PARTY_ID,
+                    business_details=dict(
+                        name=os.environ.get('BUSINESS_NAME', 'Please set BUSINESS_NAME in server environment')
+                    )
+                )]
+            )
+        )
 
 
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -298,32 +260,6 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         return str(tariff)
 
 
-def apply_ocpi22_filters(request, queryset) -> QuerySet:
-    """
-    Apply the OCPI 2.2 filters to a queryset (date range, limit, offset)
-    :param request:
-    :param queryset:
-    :return:
-    """
-    date_from: str = request.GET.get('date_from')
-    if date_from:
-        import dateutil.parser
-        date_from: datetime = dateutil.parser.parse(date_from, ignoretz=True)
-        queryset = queryset.filter(last_updated__gte=date_from)
-    date_to: str = request.GET.get('date_to')
-    if date_to:
-        import dateutil.parser
-        date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
-        queryset = queryset.filter(last_updated__lt=date_to)
-    # limit: int = int(request.GET.get('limit', '0'))
-    # offset: int = int(request.GET.get('offset', '0'))
-    #
-    # queryset = queryset.order_by('created')
-    # if limit:
-    #     queryset = queryset[offset:offset + limit]
-    return queryset
-
-
 class TariffViewSet(mixins.RetrieveModelMixin,
                     mixins.ListModelMixin,
                     GenericViewSet):
@@ -374,43 +310,6 @@ class SessionViewSet(mixins.ListModelMixin,
     serializer_class = SessionSerializer
 
 
-class OCPIResponse(Response):
-    def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None):
-        if isinstance(status_message, list):
-            status_message = ', '.join([s for s in status_message])
-        if isinstance(errors, dict):
-            status_message = ', '.join([f"{field}: {error}" for field, error in errors.items()])
-            data = errors  # This is a courtacy, it's not OCPI compliant
-            status_code = Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS
-        result = dict(
-            status_code=status_code,
-            status_message=status_message,
-            timestamp=timezone.now(),
-            data=data
-        )
-        super().__init__(result, status=http_status)
-
-
-class Ocpi:
-    class ClientError:
-        GENERIC_CLIENT_ERROR = 2000
-        INVALID_OR_MISSING_PARAMETERS = 2001
-        NOT_ENOUGH_INFORMATION = 2002
-        UNKNOWN_LOCATION = 2003
-        UNKNOWN_TOKEN = 2004
-
-    class ServerError:
-        GENERIC_SERVER_ERROR = 3000
-        UNABLE_TO_USE_CLIENTS_API = 3001
-        UNSUPPORTED_VERSION = 3002
-        NO_MATCHING_ENDPOINTS = 3003
-
-    class HubError:
-        UNKNOWN_RECEIVER = 4001
-        TIMEOUT_ON_FORWARDED_REQUEST = 4002
-        CONNECTION_PROBLEM = 4003
-
-
 class OcpiApi22View(routers.APIRootView):
     """
     This portal provides ways to view the information in the database, read the API documentation and
@@ -419,6 +318,7 @@ class OcpiApi22View(routers.APIRootView):
     The streamlined interfaces for the CPO are available at [/api/cpo/v1/](/api/cpo/v1/).
     You can contact [support@chargerhub.eu](support@chargerhub.eu) for more information.
     """
+
     def get(self, request, **kwargs):
         return Response(get_endpoints_dict(request))
 

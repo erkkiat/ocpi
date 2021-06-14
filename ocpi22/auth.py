@@ -15,6 +15,11 @@ class OCPI_AUTH_TYPES:
 
 
 def check_auth_token(request, token):
+    allowed_for_token_a = (
+        reverse('base-versions'),
+        reverse('credentials-credentials'),
+        reverse('credentials-list'),
+    )
     try:
         token_ascii = base64.b64decode(token).decode('ascii')
         request.ocpi_auth = OCPI_AUTH_TYPES.NONE
@@ -23,13 +28,12 @@ def check_auth_token(request, token):
         # noinspection PyUnresolvedReferences
         credentials_matches = Credentials.objects.filter(token_a=token_ascii)
         if credentials_matches.count():
-            if request.path not in [reverse('base-versions'), reverse('credentials-credentials')]:
+            if request.path not in allowed_for_token_a:
                 raise exceptions.NotAuthenticated(f'TOKEN_A can only be used for the Credentials and Versions modules')
 
             credentials = credentials_matches[0]
             request.ocpi_auth = OCPI_AUTH_TYPES.TOKEN_A
-            request.country_code = credentials.country_code
-            request.party_id = credentials.party_id
+            request.credentials = credentials
             return True
         else:
             # Or are we already friends?
@@ -38,8 +42,7 @@ def check_auth_token(request, token):
             if credentials_matches.count():
                 credentials = credentials_matches[0]
                 request.ocpi_auth = OCPI_AUTH_TYPES.FINAL
-                request.country_code = credentials.country_code
-                request.party_id = credentials.party_id
+                request.credentials = credentials
                 return True
     except binascii.Error as e:
         raise exceptions.NotAuthenticated(f'Authentication token: {e}')

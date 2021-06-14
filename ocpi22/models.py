@@ -1,5 +1,4 @@
 import base64
-import os
 import uuid
 
 from django.core.validators import RegexValidator
@@ -9,8 +8,7 @@ from django.dispatch import receiver
 from django.utils.html import format_html
 from rest_framework.reverse import reverse
 
-PARTY_ID = os.environ.get('PARTY_ID', 'XXX')
-COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
+from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 AUTH_METHOD_CHOICES = (
     # Authentication request has been sent to the eMSP.
@@ -25,12 +23,21 @@ AUTH_METHOD_CHOICES = (
 )
 
 
-class Credentials(models.Model):
-    # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+class BusinessDetails(models.Model):
+    class Meta:
+        verbose_name_plural = 'business details'
 
-    # CPO ID of the MSP that 'owns' this Token (following the ISO-15118)
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    name = models.CharField(max_length=100)
+    website = models.URLField(blank=True, default='')
+    logo = models.URLField(blank=True, default='')
+
+    def __str__(self):
+        return self.name
+
+
+class Credentials(models.Model):
+    class Meta:
+        verbose_name_plural = 'credentials'
 
     # The credentials token used only for the initial connection, and is communicated manually between parties
     token_a = models.CharField(max_length=64, blank=True, default='')
@@ -41,11 +48,18 @@ class Credentials(models.Model):
     # The other party's credentials token used for the actual communication
     theirs = models.CharField(max_length=64, blank=True, default='')
 
+    # URL to the other party's versions endpoint
+    url = models.URLField(blank=True, default='')
+
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.country_code}*{self.party_id}*{self.token_a or self.ours}'
+        # noinspection PyUnresolvedReferences
+        return ", ".join([
+            f'{r.country_code}*{r.party_id} ({r.role})'
+            for r in self.roles.all()
+        ])
 
     def token_a_base64(self):
         # noinspection PyUnresolvedReferences
@@ -54,6 +68,38 @@ class Credentials(models.Model):
     def ours_base64(self):
         # noinspection PyUnresolvedReferences
         return base64.b64encode(self.ours.encode('ascii')).decode('ascii')
+
+
+class CredentialsRole(models.Model):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['country_code', 'party_id', 'role'], name='unique_credentialsroles'),
+        ]
+
+    ROLE_CHOICES = (
+        ('CPO', 'Charge Point operator'),
+        ('EMSP', 'Emobility Service Provider'),
+        ('HUB', 'Hub'),
+        ('NAP', 'National Access Point'),
+        ('NSP', 'Navigation Service Provider'),
+        ('OTHER', 'Other'),
+        ('SCSP', 'Smart Charging Service Provider'),
+    )
+
+    role = models.CharField(max_length=5, choices=ROLE_CHOICES)
+
+    business_details = models.ForeignKey(BusinessDetails, on_delete=models.PROTECT)
+
+    # ISO-3166 alpha-2 country code
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+
+    # ID of the party
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
+
+    credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='roles')
+
+    def __str__(self):
+        return f'{self.country_code}*{self.party_id} ({self.role})'
 
 
 class Token(models.Model):
@@ -314,17 +360,6 @@ class PriceComponent(models.Model):
     def __str__(self):
         # noinspection PyUnresolvedReferences
         return f'{self.price or 0.0:.2f}{self._pretty_currency(self.tariff.currency)} {self._format_step_and_type()}'
-
-
-class BusinessDetails(models.Model):
-    class Meta:
-        verbose_name_plural = 'business details'
-    name = models.CharField(max_length=100)
-    website = models.URLField(blank=True, default='')
-    logo = models.URLField(blank=True, default='')
-
-    def __str__(self):
-        return self.name
 
 
 class Facility(models.Model):

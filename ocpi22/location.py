@@ -5,8 +5,8 @@ from rest_framework.decorators import action
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
-from ocpi22.api import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, OCPIResponse, Ocpi
 from ocpi22.models import Location, Evse, Connector, BusinessDetails, uid_validator
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, OCPIResponse, Ocpi
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):

@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
-    PriceComponent, Cdr, Session, Credentials
+    PriceComponent, Cdr, Session, Credentials, CredentialsRole
 
 
 class TokenAdmin(admin.ModelAdmin):
@@ -124,6 +124,7 @@ class SessionAdmin(admin.ModelAdmin):
 
 
 class TariffAdmin(admin.ModelAdmin):
+
     class PriceComponentsInline(admin.TabularInline):
         model = PriceComponent
 
@@ -136,9 +137,13 @@ class TariffAdmin(admin.ModelAdmin):
 
 class CredentialsAdmin(admin.ModelAdmin):
 
+    class CredentialRolesInline(admin.TabularInline):
+        model = CredentialsRole
+
     model = Credentials
-    list_display = ['country_code', 'party_id', 'token_a_base64', 'ours_base64', 'last_updated']
+    list_display = ['token_a_base64', 'ours_base64', '__str__']
     readonly_fields = ['ours', 'theirs', 'last_updated', 'created']
+    inlines = [ CredentialRolesInline ]
 
 
 admin.site.register(Token, TokenAdmin)

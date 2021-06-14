@@ -7,6 +7,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get('SECRET_KEY', 'idnty9dyt3178oxr3xfgxr328oxntr')
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
 
+PARTY_ID = os.environ.get('PARTY_ID', 'XXX')
+COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
+
 ADMINS = [('Erkki Tapola', 'erkki.tapola@chargerhub.eu')]
 MANAGERS = ADMINS
 
@@ -19,6 +22,7 @@ DATABASES = {
         'PASSWORD': '',
         'HOST': '',  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         'PORT': '',  # Set to empty string for default.
+        'ATOMIC_REQUESTS': True,
     }
 }
 
