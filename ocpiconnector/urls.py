@@ -31,7 +31,7 @@ common_router = BaseRouter()
 common_router.register(r'', VersionsViewSet, basename='base')
 
 urlpatterns = [
-    path('ocpi/2.2/', include(ocpi_router.urls)),
+    path('ocpi/cpo/2.2/', include(ocpi_router.urls)),
     path('api/cpo/v1/', include(cpo_router.urls)),
     path('ocpi/', include(common_router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),

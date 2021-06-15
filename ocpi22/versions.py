@@ -50,7 +50,7 @@ def get_endpoints_dict(request):
 
 class OCPIBaseView(routers.APIRootView):
     """
-    Welcome to the OCPI Connector Developer Central. You can start exploring the server by clicking the version link
+    Welcome to the OCPI Connector Developer Central. You can start exploring the server by clicking the Versions link
     below.
     """
 
