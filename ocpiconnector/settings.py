@@ -31,7 +31,8 @@ def parse_jawsdb_maria_url(url):
     })
 
 
-JAWSDB_MARIA_URL = os.environ.get('JAWSDB_MARIA_URL', None)
+JAWSDB_MARIA_URL = os.environ.get('JAWSDB_MARIA_URL',
+                                  os.environ.get('JAWSDB_URL', None))
 if JAWSDB_MARIA_URL:
     # We're running on Heroku
     DATABASES = parse_jawsdb_maria_url(JAWSDB_MARIA_URL)
