@@ -147,7 +147,8 @@ class Ocpi:
 
 
 class OCPIResponse(Response):
-    def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None):
+    def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None,
+                 *args, **kwargs):
         if isinstance(status_message, list):
             status_message = ', '.join([s for s in status_message])
         if isinstance(errors, dict):
@@ -160,4 +161,4 @@ class OCPIResponse(Response):
             timestamp=timezone.now(),
             data=data
         )
-        super().__init__(result, status=http_status)
+        super().__init__(result, status=http_status, *args, **kwargs)

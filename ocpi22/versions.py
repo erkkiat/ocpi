@@ -44,6 +44,11 @@ def get_endpoints_dict(request):
                 role=S,
                 url=request.build_absolute_uri(reverse('tariff-list'))
             ),
+            dict(
+                identifier="commands",
+                role=R,
+                url=request.build_absolute_uri(reverse('commands-list'))
+            ),
         ]
     )
 
@@ -63,6 +68,9 @@ class OCPIBaseView(routers.APIRootView):
         result = dict(
             versions=request.build_absolute_uri(
                 reverse('base-versions')
+            ),
+            openapi=request.build_absolute_uri(
+                reverse('openapi-schema')
             ),
         )
         return Response(result)

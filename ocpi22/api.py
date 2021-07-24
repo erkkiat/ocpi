@@ -45,9 +45,17 @@ class TokenViewSet(mixins.UpdateModelMixin,
     queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
     pagination_class = OCPIPaginationAndHeaders
+    lookup_field = 'uid'
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'type']
+
+    # def options(self, request, *args, **kwargs):
+    #     ic(args, kwargs)
+    #     if not kwargs:
+    #         return Response(dict(message='There is no options for this view, please see options for the Token view'))
+    #     else:
+    #         return super().options(request, *args, **kwargs)
 
     def get_view_name(self):
         return 'Tokens'

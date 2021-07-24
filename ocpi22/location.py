@@ -176,34 +176,34 @@ class LocationViewSet(mixins.ListModelMixin,
         return 'Locations'
 
     # noinspection PyUnresolvedReferences
-    def put(self, request, country_code=None, party_id=None, uid=None):
-        ic(country_code, party_id, uid)
-        data = request.data.get('data', request.data)
-        if uid:
-            # Write over an existing Location
-            location: Location = get_object_or_404(Location,
-                                                   country_code=country_code,
-                                                   party_id=party_id,
-                                                   uid=uid)
-            serializer = self.get_serializer(location, data=data)
-            ic('Writing over', serializer)
-        else:
-            # Create a new object
-            # This relies on serializer.create()
-            serializer = self.get_serializer(data=data)
-
-        if serializer.is_valid():
-            serializer.save()
-            location: Location = get_object_or_404(Location, uid=uid)
-            serializer = self.get_serializer(location)
-            ic(serializer.data)
-            return OCPIResponse(serializer.data)
-        else:
-            ic('Not valid', serializer.data)
-            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+    # def put(self, request, country_code=None, party_id=None, uid=None):
+    #     ic(country_code, party_id, uid)
+    #     data = request.data.get('data', request.data)
+    #     if uid:
+    #         # Write over an existing Location
+    #         location: Location = get_object_or_404(Location,
+    #                                                country_code=country_code,
+    #                                                party_id=party_id,
+    #                                                uid=uid)
+    #         serializer = self.get_serializer(location, data=data)
+    #         ic('Writing over', serializer)
+    #     else:
+    #         # Create a new object
+    #         # This relies on serializer.create()
+    #         serializer = self.get_serializer(data=data)
+    #
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         location: Location = get_object_or_404(Location, uid=uid)
+    #         serializer = self.get_serializer(location)
+    #         ic(serializer.data)
+    #         return OCPIResponse(serializer.data)
+    #     else:
+    #         ic('Not valid', serializer.data)
+    #         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     # Todo: How to PATCH sub-dicts of Locations
-    @action(methods=['GET', 'PATCH'], detail=False,
+    @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
         # noinspection PyUnresolvedReferences
@@ -216,10 +216,11 @@ class LocationViewSet(mixins.ListModelMixin,
             serializer = LocationSerializer(location, context={'request': request})
             return OCPIResponse(serializer.data)
 
-        elif request.method == 'PATCH':
+        elif request.method in ('PUT', 'PATCH'):
+            partial = request.method == 'PATCH'
             serializer = LocationSerializer(location,
                                             data=request.data.get('data', request.data),
-                                            partial=True,
+                                            partial=partial,
                                             context={'request': request})
             if serializer.is_valid():
                 serializer.save()

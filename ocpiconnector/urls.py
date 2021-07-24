@@ -4,6 +4,7 @@ from django.urls import path
 from rest_framework.schemas import get_schema_view
 
 from ocpi22.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet
+from ocpi22.commands import CommandsViewSet
 from ocpi22.cpo_api import CPORouter, \
     CpoEvseViewSet, \
     SessionViewSet as CpoSessionViewSet, LocationQuickViewSet
@@ -20,6 +21,7 @@ ocpi_router.register(r'evses', EvseViewSet)
 ocpi_router.register(r'tariffs', TariffViewSet)
 ocpi_router.register(r'sessions', SessionViewSet)
 ocpi_router.register(r'cdrs', CdrViewSet)
+ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
 
 cpo_router = CPORouter()
 cpo_router.register(r'evses', CpoEvseViewSet, basename='cpo-evse')
