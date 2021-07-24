@@ -22,14 +22,11 @@ def get_first_connector(evse):
     return evse.connectors.all()[0]
 
 
-async def start_session_async(data):
-    # sleep(5)
+def start_session_async(data):
     ic('Pretended to start session')
     evse = get_object_or_404(Evse, uid=data['evse_id'])
     session = start_session(data['location_id'], evse.uid, get_first_connector(evse), data['token']['uid'])
     return session
-
-session_loop = asyncio.new_event_loop()
 
 
 class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
@@ -42,9 +39,8 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     def start_session(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            asyncio.set_event_loop(session_loop)
-            session_loop.create_task(start_session_async(serializer.data))
-            return OCPIResponse(serializer.data)
+            start_session_async(serializer.data)
+            return OCPIResponse(serializer.data) # TODO: Return what the OCPI standard says
         return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     def get_view_name(self):
