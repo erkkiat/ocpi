@@ -56,7 +56,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 ALLOWED_HOSTS = [
     'localhost', '127.0.0.1',
     '.ocpiconnector.com',
-    '.chargerhub.eu'
+    '.chargerhub.eu',
+    'ocpi-connector.herokuapp.com',
+    'ocpi-connector-production.herokuapp.com',
 ]
 
 # Local time zone for this installation. Choices can be found here:
