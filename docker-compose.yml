@@ -1,0 +1,57 @@
+  version: '3'
+
+  services:
+    db:
+      image: mysql
+      command: --default-authentication-plugin=mysql_native_password
+      restart: always
+      environment:
+        MYSQL_ROOT_PASSWORD: char462coal
+        MYSQL_DATABASE: electrip
+        MYSQL_USER: electrip
+        MYSQL_PASSWORD: electrip-pw
+      ports:
+        - 3306:3306
+#    adminer:
+#      image: adminer
+#      restart: always
+#      ports:
+#        - 8050:8080
+    web:
+      restart: always
+      build: .
+      entrypoint: /code/entrypoint.sh
+      command: gunicorn electrip.wsgi:application --bind 0.0.0.0:8080 --reload --timeout 240
+      env_file:
+        - .env
+      volumes:
+        - .:/code
+      ports:
+        - "8000:8080"
+      depends_on:
+        - db
+
+    db-test:
+      image: mysql
+      command: --default-authentication-plugin=mysql_native_password
+      restart: always
+      environment:
+        MYSQL_ROOT_PASSWORD: char462coal
+        MYSQL_DATABASE: test_electrip
+        MYSQL_USER: electrip
+        MYSQL_PASSWORD: electrip-pw
+      ports:
+        - 3307:3306
+
+    test:
+      restart: always
+      build: .
+      command: bash -c 'export TEST=1 && python manage.py test --noinput'
+      env_file:
+        - .env
+      volumes:
+        - .:/code
+      ports:
+        - "8001:8080"
+      depends_on:
+        - db-test

@@ -13,24 +13,51 @@ COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
 ADMINS = [('Erkki Tapola', 'erkki.tapola@chargerhub.eu')]
 MANAGERS = ADMINS
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',  # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'dev.sqlite3',  # Or path to database file if using sqlite3.
-        # The following settings are not used with sqlite3:
-        'USER': '',
-        'PASSWORD': '',
-        'HOST': '',  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
-        'PORT': '',  # Set to empty string for default.
-        'ATOMIC_REQUESTS': True,
+
+def parse_jawsdb_maria_url(url):
+    protocol, url = url.split('://')
+    assert (protocol == 'mysql')
+    credentials, connection = url.split('@')
+    userid, password = credentials.split(':')
+    connection, database = connection.split('/')
+    host, port = connection.split(':')
+    return dict(default={
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': database,
+        'USER': userid,
+        'PASSWORD': password,
+        'HOST': host,
+        'PORT': port
+    })
+
+
+JAWSDB_MARIA_URL = os.environ.get('JAWSDB_MARIA_URL', None)
+if JAWSDB_MARIA_URL:
+    # We're running on Heroku
+    DATABASES = parse_jawsdb_maria_url(JAWSDB_MARIA_URL)
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',  # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
+            'NAME': 'dev.sqlite3',  # Or path to database file if using sqlite3.
+            # The following settings are not used with sqlite3:
+            'USER': '',
+            'PASSWORD': '',
+            'HOST': '',  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
+            'PORT': '',  # Set to empty string for default.
+            'ATOMIC_REQUESTS': True,
+        }
     }
-}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', ]
+ALLOWED_HOSTS = [
+    'localhost', '127.0.0.1',
+    '.ocpiconnector.com',
+    '.chargerhub.eu'
+]
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
