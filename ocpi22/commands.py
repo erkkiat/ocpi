@@ -46,7 +46,15 @@ class CommandResponse(serializers.Serializer):
     timeout = serializers.IntegerField()
 
     # Human-readable description of the result (if one can be provided), multiple languages can be provided.
-    # message = DisplayTextSerializer()
+    message = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_message(obj):
+        ic(obj)
+        return [
+            dict(language=o['language'], text=o['text'])
+            for o in obj['message']
+        ]
 
 
 def start_session(data):
@@ -81,19 +89,24 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
                 response_serializer = CommandResponse(
                     instance=dict(
                         result=result,
-                        timeout=5,
-                        # message=DisplayTextSerializer(
-                        #     instance=dict(
-                        #         language='EN',
-                        #         text='Command accepted'
-                        #     ))
+                        timeout=120,
+                        message=[
+                            dict(
+                                language='EN',
+                                text='Command accepted'
+                            ),
+                            dict(
+                                language='FI',
+                                text='Komento hyväksytty'
+                            )
+                        ]
                     ))
                 return OCPIResponse(response_serializer.data)
         except (NotFound, Http404) as e:
             return OCPIResponse(None, status_message=str(e),
                                 http_status=status.HTTP_400_BAD_REQUEST,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        return OCPIResponse(serializer.errors,
+        return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
