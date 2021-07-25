@@ -781,7 +781,19 @@ class Session(models.Model):
     kwh = models.FloatField()
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
-    cdr_token = models.ForeignKey(Token, on_delete=models.PROTECT)
+    # Unique ID by which this Token can be identified.
+    # This is the field used by the CPO’s system (RFID reader on the Charge Point) to identify this token.
+    # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
+    # If this is a type=APP_USER Token, it will be a unique, by the eMSP, generated ID.
+    cdr_token_uid = models.CharField(max_length=36)
+
+    # Type of the token
+    cdr_token_type = models.CharField(max_length=11, choices=Token.TYPE_CHOICES)
+
+    # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
+    # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
+    # (http://emi3group.com/documents-links/) "Part 2: business objects."
+    cdr_token_contract_id = models.CharField(max_length=36)
 
     # Method used for authentication.
     auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
@@ -845,7 +857,7 @@ class Session(models.Model):
         self.total_cost_excl_vat = 1.0
 
     def __str__(self):
-        return f'{self.cdr_token} - {self.start_date_time} - {self.kwh}kWh - ' \
+        return f'{self.cdr_token_uid} - {self.start_date_time} - {self.kwh}kWh - ' \
                f'EVSE {self.evse.evse_id} - {self.connector.get_standard_display()}'
 
     def get_absolute_url(self):

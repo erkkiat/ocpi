@@ -105,7 +105,7 @@ class SessionAdmin(admin.ModelAdmin):
     list_display = [
         'uid', 'status',
         'location', 'evse', 'connector',
-        'cdr_token', 'kwh',
+        'cdr_token_uid', 'kwh',
         'start_date_time', 'end_date_time',
         'total_cost_incl_vat', 'total_cost_excl_vat', 'currency'
     ]
@@ -131,7 +131,7 @@ class TariffAdmin(admin.ModelAdmin):
     model = Tariff
     list_display = ['party_id', '__str__', 'type', 'tariff_alt_url', 'country_code']
     list_display_links = ['__str__']
-    inlines = [ PriceComponentsInline ]
+    inlines = [PriceComponentsInline]
     readonly_fields = ['uid', 'party_id', 'country_code']
 
 
@@ -143,7 +143,7 @@ class CredentialsAdmin(admin.ModelAdmin):
     model = Credentials
     list_display = ['token_a_base64', 'ours_base64', '__str__']
     readonly_fields = ['ours', 'theirs', 'last_updated', 'created']
-    inlines = [ CredentialRolesInline ]
+    inlines = [CredentialRolesInline]
 
 
 admin.site.register(Token, TokenAdmin)

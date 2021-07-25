@@ -293,6 +293,7 @@ class SessionViewSet(viewsets.ViewSet):
     at this specific EVSE. That session was invalidated, although your response shows the EVSE's earlier status.
 
     """
+    # noinspection PyUnresolvedReferences
     queryset = Session.objects.all().order_by('created')
     pagination_class = LimitOffsetPagination
 
@@ -392,11 +393,13 @@ class SessionViewSet(viewsets.ViewSet):
         if not auth_method:
             return Response(dict(error=f'Token {token} was not authorized for use by MSP at this time'),
                             status=status.HTTP_401_UNAUTHORIZED)
+        # noinspection PyUnresolvedReferences
         active_session = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
         if active_session.count():
             ic('Invalidating incomplete sessions', ",".join([str(s) for s in active_session]))
             active_session.update(status='INVALID')
 
+        # noinspection PyUnresolvedReferences
         session = Session.objects.create(
             country_code='FI',
             party_id=os.environ.get('CPO_PARTY_ID', 'EKI'),

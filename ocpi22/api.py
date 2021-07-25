@@ -2,7 +2,6 @@ import os
 
 from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
-from icecream import ic
 from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -60,7 +59,8 @@ class TokenViewSet(mixins.UpdateModelMixin,
     def get_view_name(self):
         return 'Tokens'
 
-    def put(self, request):
+    @staticmethod
+    def put(request):
         serialiser = TokenSerializer(data=request.data)
         if serialiser.is_valid():
             serialiser.save()
