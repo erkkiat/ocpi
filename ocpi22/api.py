@@ -328,11 +328,11 @@ class SessionViewSet(mixins.ListModelMixin,
 
 class OcpiApi22View(routers.APIRootView):
     """
-    This portal provides ways to view the information in the database, read the API documentation and
-    try out sending information to the API.
+    This portal provides ways to view the information in the database, to read the API documentation and
+    to try out sending requests to the API.
 
     The streamlined interfaces for the CPO are available at [/api/cpo/v1/](/api/cpo/v1/).
-    You can contact [support@chargerhub.eu](support@chargerhub.eu) for more information.
+    You can contact [support@chargerhub.eu](support@chargerhub.eu) for training.
     """
 
     def get(self, request, **kwargs):
