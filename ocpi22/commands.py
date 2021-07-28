@@ -7,7 +7,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer
-from ocpi22.models import Session, Evse
+from ocpi22.models import Session, Evse, Connector
 from ocpi22.tasks import command_start, debug_task
 from ocpi22.util import OCPIResponse, Ocpi
 
@@ -50,7 +50,6 @@ class CommandResponse(serializers.Serializer):
 
     @staticmethod
     def get_message(obj):
-        ic(obj)
         return [
             dict(language=o['language'], text=o['text'])
             for o in obj['message']
@@ -58,7 +57,7 @@ class CommandResponse(serializers.Serializer):
 
 
 def start_session(_request, data):
-    evse = get_object_or_404(Evse, uid=data['evse_uid'])
+    # evse = get_object_or_404(Evse, uid=data['evse_uid'])
     # session = create_session(
     #     data['location_id'],
     #     evse.uid,
@@ -77,11 +76,18 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     serializer_class = CommandsSerializer
     # permission_classes = [OCPIPermission]
 
+    def _check_parameters(self, data):
+        evse = get_object_or_404(Evse, uid=data['evse_uid'])
+        location = evse.location
+        if location.uid != data['location_id']:
+            raise NotFound("Location doesn't match EVSE")
+        return True
+
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
         try:
             serializer = self.serializer_class(data=request.data)
-            if serializer.is_valid():
+            if serializer.is_valid() and self._check_parameters(serializer.data):
                 result = 'REJECTED'
                 session = start_session(request, serializer.data)
                 if session:

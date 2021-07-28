@@ -32,13 +32,13 @@ def command_start(_self, data):
     from ocpi22.models import Evse
     from ocpi22.sessions import create_session
 
-    ic()
-    ic('Talking to EVSE in the background...')
     evse = get_object_or_404(Evse, uid=data['evse_uid'])
+    connector = evse.connectors.all()[0]
+    ic(evse, connector)
     _session = create_session(
         data['location_id'],
         evse.uid,
-        'BG-TASK-1',  # Todo: Get connector ID from CPO system
+        connector.uid,
         ad_hoc_token=data['token'],
         authorize=False  # When eMSP sends a SESSION_START, they are responsible for validating their Token
     )
