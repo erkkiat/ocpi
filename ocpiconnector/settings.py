@@ -13,6 +13,8 @@ COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
 ADMINS = [('Erkki Tapola', 'erkki.tapola@chargerhub.eu')]
 MANAGERS = ADMINS
 
+TIMEOUT_FOR_COMMANDS = 2 * 60
+
 
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split('://')
@@ -216,3 +218,9 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend'
     ],
 }
+
+# Celery Configuration Options
+CELERY_TIMEZONE = "Finland/Helsinki"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = TIMEOUT_FOR_COMMANDS - 1
+CELERY_WORKER_CANCEL_LONG_RUNNING_TASKS_ON_CONNECTION_LOSS = True

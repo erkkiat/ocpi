@@ -8,7 +8,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer
 from ocpi22.models import Session, Evse
-from ocpi22.sessions import create_session
+from ocpi22.tasks import command_start, debug_task
 from ocpi22.util import OCPIResponse, Ocpi
 
 
@@ -57,18 +57,18 @@ class CommandResponse(serializers.Serializer):
         ]
 
 
-def start_session(data):
-    ic(data)
-    ic('Pretended to start session')
+def start_session(_request, data):
     evse = get_object_or_404(Evse, uid=data['evse_uid'])
-    session = create_session(
-        data['location_id'],
-        evse.uid,
-        1,  # Todo: Get connector ID from CPO system
-        ad_hoc_token=data['token'],
-        authorize=False  # When eMSP sends a SESSION_START, they are responsible for validating their Token
-    )
-    return session
+    # session = create_session(
+    #     data['location_id'],
+    #     evse.uid,
+    #     1,  # Todo: Get connector ID from CPO system
+    #     ad_hoc_token=data['token'],
+    #     authorize=False  # When eMSP sends a SESSION_START, they are responsible for validating their Token
+    # )
+    # debug_task.delay()
+    command_start.delay(data)
+    return True
 
 
 class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
@@ -83,7 +83,7 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
                 result = 'REJECTED'
-                session = start_session(serializer.data)
+                session = start_session(request, serializer.data)
                 if session:
                     result = 'ACCEPTED'
                 response_serializer = CommandResponse(
