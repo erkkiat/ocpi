@@ -12,6 +12,7 @@ from ocpi22.cpo_api import CPORouter, \
 # CdrViewSet as CpoCdrViewSet
 from ocpi22.location import LocationViewSet, EvseViewSet
 from ocpi22.versions import VersionsViewSet, BaseRouter
+from ocpiconnector import charger_simulator
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
@@ -36,6 +37,7 @@ urlpatterns = [
     path('ocpi/cpo/2.2/', include(ocpi_router.urls)),
     path('api/cpo/v1/', include(cpo_router.urls)),
     path('ocpi/', include(common_router.urls)),
+    path('simulator/', include(charger_simulator.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
     path('openapi', get_schema_view(

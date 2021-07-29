@@ -22,11 +22,11 @@ def get_token(token_id, ad_hoc_token):
 
 
 def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None, authorize=True) -> Session:
-    ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
+    # ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
     token = get_token(token_id, ad_hoc_token)
     evse = get_object_or_404(Evse, uid=evse_id)
     location = evse.location
-    ic(token, evse, location)
+    # ic(token, evse, location)
     if location.uid != location_id:
         raise NotFound("Location doesn't match EVSE")
     connector = get_object_or_404(Connector, uid=connector_id, evse=evse)
@@ -38,7 +38,7 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
     # noinspection PyUnresolvedReferences
     active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
     if active_sessions.count():
-        ic('Invalidating incomplete sessions at this evse', ",".join([str(s) for s in active_sessions]))
+        print(f'Invalidating incomplete sessions at this evse: {",".join([str(s) for s in active_sessions])}')
         active_sessions.update(status='INVALID')
 
     # noinspection PyUnresolvedReferences
