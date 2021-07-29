@@ -56,20 +56,6 @@ class CommandResponse(serializers.Serializer):
         ]
 
 
-def start_session(_request, data):
-    # evse = get_object_or_404(Evse, uid=data['evse_uid'])
-    # session = create_session(
-    #     data['location_id'],
-    #     evse.uid,
-    #     1,  # Todo: Get connector ID from CPO system
-    #     ad_hoc_token=data['token'],
-    #     authorize=False  # When eMSP sends a SESSION_START, they are responsible for validating their Token
-    # )
-    # debug_task.delay()
-    command_start.delay(data)
-    return True
-
-
 class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     root_view_name = 'commands'
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
@@ -87,11 +73,11 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     def start_session(self, request):
         try:
             serializer = self.serializer_class(data=request.data)
-            if serializer.is_valid() and self._check_parameters(serializer.data):
+            if serializer.is_valid():
                 result = 'REJECTED'
-                session = start_session(request, serializer.data)
-                if session:
+                if self._check_parameters(serializer.data):
                     result = 'ACCEPTED'
+                command_start.delay(serializer.data)
                 response_serializer = CommandResponse(
                     instance=dict(
                         result=result,
