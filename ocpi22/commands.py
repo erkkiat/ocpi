@@ -4,11 +4,12 @@ from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import get_object_or_404
+from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer
-from ocpi22.models import Session, Evse, Connector
-from ocpi22.tasks import command_start, debug_task
+from ocpi22.models import Session, Evse
+from ocpi22.tasks import command_start
 from ocpi22.util import OCPIResponse, Ocpi
 
 
@@ -77,7 +78,7 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
                 result = 'REJECTED'
                 if self._check_parameters(serializer.data):
                     result = 'ACCEPTED'
-                command_start.delay(serializer.data)
+                command_start.delay(serializer.data, url=request.build_absolute_uri(reverse('simulate_session_start')))
                 response_serializer = CommandResponse(
                     instance=dict(
                         result=result,

@@ -29,7 +29,7 @@ def debug_task(self):
 
 
 @app.task(bind=True)
-def command_start(self, data):
+def command_start(self, data, url=''):
     from rest_framework.generics import get_object_or_404
 
     from ocpi22.models import Evse
@@ -37,20 +37,20 @@ def command_start(self, data):
 
     result = requests.get(
         os.environ.get('ENDPOINT_SESSION_START',
-            default='http://localhost:5000' + reverse('simulate_session_start')
+            default=url
         )
     )
     if result.status_code == 200:
         evse = get_object_or_404(Evse, uid=data['evse_uid'])
         connector = evse.connectors.all()[0]
         # ic(evse, connector)
-        _session = create_session(
+        session = create_session(
             data['location_id'],
             evse.uid,
             connector.uid,
             ad_hoc_token=data['token'],
             authorize=False  # When eMSP sends a SESSION_START, they are responsible for validating their Token
         )
-        print('*** Started session')
+        print(f'*** Started session {session} - {result.text}')
     else:
         print(f'*** Error {result.status_code} - {result.text} from charger')
