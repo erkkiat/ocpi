@@ -3,7 +3,6 @@ import uuid
 from collections import namedtuple
 
 from django.utils import timezone
-from icecream import ic
 from rest_framework import exceptions
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import get_object_or_404
