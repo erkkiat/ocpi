@@ -32,12 +32,17 @@ def command_start(_self, data, url=''):
 
     # POST the start command to CPO system
     result = requests.post(
-        os.environ.get('ENDPOINT_SESSION_START', default=url),
+        os.environ.get('ENDPOINT_SESSION_START', default=url),  # For testing, append: + '?force_result=EVSE_OCCUPIED',
         data=dict(
             location=data['location_id'],
             evse=data['evse_uid']
         )
     )
+    result_status = 'ACCEPTED'
+    result_data = result.json()
+    if result_data:
+        result_status = result_data.get('status')
+
     if result.status_code == 200:
         # If CPO responds ok, create the new Session
         evse = get_object_or_404(Evse, uid=data['evse_uid'])
@@ -50,10 +55,10 @@ def command_start(_self, data, url=''):
             authorize=False  # When eMSP sends a SESSION_START, they are responsible for validating their Token
         )
         print(f'*** Started session {session} - {result.text}')
-        status = ('ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
+        status = (result_status or 'ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
     else:
         print(f'*** Error {result.status_code} - {result.text} from charger')
-        status = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
+        status = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
 
     # Respond to eMSP
     result_data = dict(
@@ -63,11 +68,5 @@ def command_start(_self, data, url=''):
             dict(language='FI', text=status[2])
         ]
     )
-    # result_text = CommandResult(data=result_data)
-    # if result_text.is_valid():
-    #     pp(result_text.data)
     response_url = data.get('response_url')
-    # requests.post(response_url, data=result_text.data)
     requests.post(response_url, data=json.dumps(result_data).encode('utf8'))
-    # else:
-    #     print(f'*** Code error: {result_text.errors}')

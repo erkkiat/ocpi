@@ -5,6 +5,9 @@ from django.http import HttpResponse
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 
+from pprint import PrettyPrinter
+pp = PrettyPrinter(indent=4).pprint
+
 
 @csrf_exempt
 def session_start(request):
@@ -24,7 +27,9 @@ def session_start(request):
 
 @csrf_exempt
 def emsp_callback(request: WSGIRequest):
-    print(f'Got response from charger: {request.body.decode("utf8")}')
+    data = json.loads(request.body.decode("utf8"))
+    pp('Got response from CPO:')
+    pp(data)
     return HttpResponse()
 
 
