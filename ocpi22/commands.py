@@ -5,7 +5,6 @@ from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import get_object_or_404
-from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -139,9 +138,4 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         return 'Commands'
-
-    @staticmethod
-    def get(_request):
-        return OCPIResponse(dict(juujuu=1))
-
 
