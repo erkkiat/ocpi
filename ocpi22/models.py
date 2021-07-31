@@ -421,7 +421,15 @@ class Cdr(models.Model):
     session_id = models.CharField(max_length=36, blank=True, default='')
 
     # Token used to start this charging session, includes all the relevant information to identify the unique token.
-    cdr_token = models.ForeignKey(Token, on_delete=models.PROTECT)
+    cdr_token_uid = models.CharField(max_length=36)
+
+    # Type of the token
+    cdr_token_type = models.CharField(max_length=11, choices=Token.TYPE_CHOICES)
+
+    # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
+    # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
+    # (http://emi3group.com/documents-links/) "Part 2: business objects."
+    cdr_token_contract_id = models.CharField(max_length=36)
 
     # Method used for authentication.
     auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
@@ -461,7 +469,7 @@ class Cdr(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.cdr_token} - {self.total_cost_incl_vat} {self.currency} - ' \
+        return f'{self.cdr_token_type} {self.cdr_token_uid} - {self.total_cost_incl_vat} {self.currency} - ' \
                f'{(self.total_time/60.0):.4f} hours - {self.end_date_time}'
 
     def get_absolute_url(self):

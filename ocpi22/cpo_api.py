@@ -109,11 +109,10 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     @staticmethod
     def get_token(session):
-        token = session.cdr_token
         return clear_empty(dict(
-            uid=token.uid,
-            type=token.type,
-            contract_id=token.contract_id
+            uid=session.cdr_token_uid,
+            type=session.cdr_token_type,
+            contract_id=session.cdr_token_contract_id
         ))
 
     @staticmethod
@@ -366,7 +365,9 @@ class SessionViewSet(viewsets.ViewSet):
                 start_date_time=session.start_date_time,
                 end_date_time=session.end_date_time,
                 session_id=session.uid,
-                cdr_token=session.cdr_token,
+                cdr_token_uid=session.cdr_token_uid,
+                cdr_token_type=session.cdr_token_type,
+                cdr_token_contract_id=session.cdr_token_contract_id,
                 auth_method=session.auth_method,
                 authorization_reference=session.authorization_reference,
                 # Todo: format in json

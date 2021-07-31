@@ -109,7 +109,7 @@ class SessionAdmin(admin.ModelAdmin):
         'start_date_time', 'end_date_time',
         'total_cost_incl_vat', 'total_cost_excl_vat', 'currency'
     ]
-    search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token__uid']
+    search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token_uid']
     list_filter = ['status']
     readonly_fields = ['uid', 'party_id', 'country_code']
 

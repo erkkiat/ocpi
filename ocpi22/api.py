@@ -217,11 +217,10 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     @staticmethod
     def get_cdr_token(session):
-        token = session.cdr_token
         return clear_empty(dict(
-            uid=token.uid,
-            type=token.type,
-            contract_id=token.contract_id
+            uid=session.cdr_token_uid,
+            type=session.cdr_token_type,
+            contract_id=session.cdr_token_contract_id
         ))
 
     @staticmethod
@@ -298,7 +297,7 @@ class SessionViewSet(mixins.ListModelMixin,
                      mixins.RetrieveModelMixin,
                      GenericViewSet):
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token', 'authorization_reference']
+    filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token_uid', 'authorization_reference']
     pagination_class = OCPIPaginationAndHeaders
 
     @action(methods=['GET'], detail=False, url_name='by-id',
