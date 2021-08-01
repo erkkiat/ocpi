@@ -103,10 +103,10 @@ class SessionAdmin(admin.ModelAdmin):
     model = Session
     ordering = ['-created']
     list_display = [
-        'uid', 'status',
+        'start_date_time',
+        'status',
         'location', 'evse', 'connector',
         'cdr_token_uid', 'kwh',
-        'start_date_time', 'end_date_time',
         'total_cost_incl_vat', 'total_cost_excl_vat', 'currency'
     ]
     search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token_uid']
