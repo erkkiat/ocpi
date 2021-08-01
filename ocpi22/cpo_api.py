@@ -370,8 +370,19 @@ class SessionViewSet(viewsets.ViewSet):
                 cdr_token_contract_id=session.cdr_token_contract_id,
                 auth_method=session.auth_method,
                 authorization_reference=session.authorization_reference,
-                # Todo: format in json
-                cdr_location=session.location.uid,
+                cdr_location_id=session.location.uid,
+                cdr_location_address=session.location.address,
+                cdr_location_city=session.location.city,
+                cdr_location_postal_code=session.location.postal_code,
+                cdr_location_country=session.location.country,
+                cdr_location_latitude=session.location.latitude,
+                cdr_location_longitude=session.location.longitude,
+                cdr_location_evse_uid=session.evse.uid,
+                cdr_location_evse_id=session.evse.evse_id,
+                cdr_location_connector_id=session.connector.uid,
+                cdr_location_connector_standard=session.connector.standard,
+                cdr_location_connector_format=session.connector.format,
+                cdr_location_connector_power_type=session.connector.power_type,
                 currency=session.currency,
                 total_cost_excl_vat=session.total_cost_excl_vat,
                 total_cost_incl_vat=session.total_cost_incl_vat,
@@ -440,7 +451,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
     a CPO backend to eMSPs and hubs which use the OCPI protocol.
 
     Some additional data is available from the OCPI Connector using the OCPI 2.2 interfaces
-    at [/ocpi/2.2/](/ocpi/2.2/).
+    at [/ocpi/cpo/2.2/](/ocpi/cpo/2.2/).
 
     All the objects in the OCPI Connector are available for browsing
     and selective modification at [the Admin User Interface](/admin/).

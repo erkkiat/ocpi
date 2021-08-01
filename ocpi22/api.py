@@ -26,14 +26,14 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
 
-class CdrTokenSerializer(HyperlinkedModelSerializerCleanedUp):
-    """
-    Used for showing limited Token information when serializing a CDR
-    """
-
-    class Meta:
-        model = Token
-        fields = ['uid', 'type', 'contract_id']
+# class CdrTokenSerializer(serializers.Serializer):
+#     """
+#     Used for showing limited Token information when serializing a CDR
+#     """
+#
+#     class Meta:
+#         model = Token
+#         fields = ['uid', 'type', 'contract_id']
 
 
 class TokenViewSet(mixins.UpdateModelMixin,
@@ -99,9 +99,10 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                   'cdr_location', 'tariffs', 'total_cost', 'total_energy',
                   'total_time', 'credit', 'credit_reference_id', 'last_updated']
 
-    cdr_token = CdrTokenSerializer(read_only=True)
+    cdr_token = serializers.SerializerMethodField()
     total_cost = serializers.SerializerMethodField()
     tariffs = serializers.SerializerMethodField()
+    cdr_location = serializers.SerializerMethodField()
 
     @staticmethod
     def get_total_cost(obj):
@@ -111,6 +112,33 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     def get_tariffs(cdr):
         return [t.uid for t in cdr.tariffs.all()]
 
+    @staticmethod
+    def get_cdr_token(cdr):
+        return dict(
+            uid=cdr.cdr_token_uid,
+            type=cdr.cdr_token_type,
+            contract_id=cdr.cdr_token_contract_id
+        )
+
+    @staticmethod
+    def get_cdr_location(cdr):
+        result = dict(
+            id=cdr.cdr_location_id,
+            address=cdr.cdr_location_address,
+            city=cdr.cdr_location_city,
+            postal_code=cdr.cdr_location_postal_code,
+            country=cdr.cdr_location_country,
+            coordinates=dict(
+                latitude=cdr.cdr_location_latitude,
+                longitude=cdr.cdr_location_longitude),
+            evse_uid=cdr.cdr_location_evse_uid,
+            evse_id=cdr.cdr_location_evse_id,
+            connector_id=cdr.cdr_location_connector_id,
+            connector_standard=cdr.cdr_location_connector_standard,
+            connector_format=cdr.cdr_location_connector_format,
+            connector_power_type=cdr.cdr_location_connector_power_type,
+        )
+        return result
 
 class CdrViewSet(mixins.RetrieveModelMixin,
                  mixins.ListModelMixin,

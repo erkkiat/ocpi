@@ -45,6 +45,16 @@ def get_endpoints_dict(request):
                 url=request.build_absolute_uri(reverse('tariff-list'))
             ),
             dict(
+                identifier="sessions",
+                role=S,
+                url=request.build_absolute_uri(reverse('session-list'))
+            ),
+            dict(
+                identifier="cdrs",
+                role=S,
+                url=request.build_absolute_uri(reverse('cdr-list'))
+            ),
+            dict(
                 identifier="commands",
                 role=R,
                 url=request.build_absolute_uri(reverse('commands-list'))
