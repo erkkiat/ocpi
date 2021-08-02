@@ -320,7 +320,14 @@ class SessionViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             if serializer.validated_data['kwh']:
                 serializer.validated_data['status'] = 'ACTIVE'
-            # Todo: Create a
+
+            # Let's not try to calculate all costs before the end of the Session
+            # end_date_time = session.end_date_time or timezone.now()
+            # serializer.validated_data['total_cost_incl_vat'], \
+            #     serializer.validated_data['total_cost_excl_vat'] = \
+            #     self.calculate_price(session.connector, session.kwh,
+            #                          (end_date_time - session.start_date_time).seconds / 60 / 60)
+
             serializer.save()
             # Todo: send update to MSP
             result = dict(finish_url=request.build_absolute_uri(reverse('session-finish', args=[session.uid])))

@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
+from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
@@ -766,9 +767,33 @@ class Session(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def calculate_price(self):
-        self.total_cost_incl_vat = 1.23
-        self.total_cost_excl_vat = 1.0
+    def calculate_price(self) -> (float, float):
+        connector = self.connector
+        kwh = self.kwh
+        hours = (self.end_date_time - self.start_date_time).seconds / 3600
+        ic(kwh, hours)
+        result_incl_vat = 0.0
+        result_excl_vat = 0.0
+        tariff: Tariff
+        for tariff in connector.tariff_ids.all():
+            if tariff.type != 'REGULAR':
+                # Todo: Implement profile types
+                continue
+            pc: PriceComponent
+            # noinspection PyUnresolvedReferences
+            for pc in tariff.price_components.all():
+                excl_vat = dict(
+                    ENERGY=lambda x: kwh * x,
+                    TIME=lambda x: hours * x,
+                    FLAT=lambda x: x
+                ).get(pc.type, lambda x: 0.0)(pc.price)
+                incl_vat = excl_vat * (1.0 + pc.vat / 100) \
+                    if pc.vat else excl_vat
+                ic(pc, excl_vat)
+                result_incl_vat += incl_vat
+                result_excl_vat += excl_vat
+        self.total_cost_incl_vat = round(result_incl_vat, 2)
+        self.total_cost_excl_vat = round(result_excl_vat, 2)
 
     def __str__(self):
         return f'{self.cdr_token_uid} - {self.start_date_time} - {self.kwh}kWh - ' \
