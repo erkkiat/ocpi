@@ -129,8 +129,9 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
             postal_code=cdr.cdr_location_postal_code,
             country=cdr.cdr_location_country,
             coordinates=dict(
-                latitude=cdr.cdr_location_latitude,
-                longitude=cdr.cdr_location_longitude),
+                latitude=f'{cdr.cdr_location_latitude:.6f}',
+                longitude=f'{cdr.cdr_location_longitude:.6f}'
+            ),
             evse_uid=cdr.cdr_location_evse_uid,
             evse_id=cdr.cdr_location_evse_id,
             connector_id=cdr.cdr_location_connector_id,
