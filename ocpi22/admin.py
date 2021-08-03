@@ -104,7 +104,7 @@ class CdrAdmin(admin.ModelAdmin):
     model = Cdr
     list_display = [
         'total_cost_incl_vat', 'total_cost_excl_vat', 'total_energy', 'total_time',
-        'start_date_time', 'end_date_time',
+        'start_date_time', 'end_date_time',  # Todo: Show time in local timezone
         'uid', 'party_id',
         'session_id', 'auth_method', 'credit'
     ]
@@ -127,7 +127,7 @@ class SessionAdmin(admin.ModelAdmin):
     model = Session
     ordering = ['-created']
     list_display = [
-        'start_date_time',
+        'start_date_time',  # Todo: Show time in local timezone
         'status',
         'location', 'evse', 'connector',
         'cdr_token_uid', 'kwh',
