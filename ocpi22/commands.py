@@ -10,6 +10,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer
 from ocpi22.models import Session, Evse
+from ocpi22.sessions import create_session
 from ocpi22.tasks import command_start
 from ocpi22.util import OCPIResponse, Ocpi
 
@@ -102,22 +103,25 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     serializer_class = CommandsSerializer
     # permission_classes = [OCPIPermission]
 
-    def _check_parameters(self, data):
-        evse = get_object_or_404(Evse, uid=data['evse_uid'])
-        location = evse.location
-        if location.uid != data['location_id']:
-            raise NotFound("Location doesn't match EVSE")
-        return True
-
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
         try:
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
-                result = 'REJECTED'
-                if self._check_parameters(serializer.data):
-                    result = 'ACCEPTED'
-                command_start.delay(serializer.data, url=request.build_absolute_uri(reverse('simulate_session_start')))
+                result = 'ACCEPTED'
+                session = create_session(
+                    serializer.data['location_id'],
+                    serializer.data['evse_uid'],
+                    serializer.data.get('connector_id'),
+                    ad_hoc_token=serializer.data['token'],
+                    authorize=False
+                    # When eMSP sends a SESSION_START, they are responsible for validating their Token
+                )
+
+                command_start.delay(
+                    serializer.data, session.uid,
+                    update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
+                    url=request.build_absolute_uri(reverse('simulate_session_start')))
                 response_serializer = CommandResponse(
                     instance=dict(
                         result=result,

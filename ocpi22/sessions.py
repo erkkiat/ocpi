@@ -28,7 +28,8 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
     # ic(token, evse, location)
     if location.uid != location_id:
         raise NotFound("Location doesn't match EVSE")
-    connector = get_object_or_404(Connector, uid=connector_id, evse=evse)
+    # The Connector may be selected later and the information gotten from the charger
+    connector = get_object_or_404(Connector, uid=connector_id, evse=evse) if connector_id else None
     auth_method = 'COMMAND'
     if authorize:
         auth_method = authorize_token(token)

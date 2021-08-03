@@ -25,17 +25,19 @@ app.autodiscover_tasks()
 
 
 @app.task(bind=True)
-def command_start(_self, data, url=''):
+def command_start(_self, data, session_uid, update_url, url):
+    from ocpi22.models import Session
     from rest_framework.generics import get_object_or_404
-    from ocpi22.models import Evse
-    from ocpi22.sessions import create_session
+    session: Session = get_object_or_404(Session, uid=session_uid)
 
     # POST the start command to CPO system
     result = requests.post(
         os.environ.get('ENDPOINT_SESSION_START', default=url),  # For testing, append: + '?force_result=EVSE_OCCUPIED',
         data=dict(
-            location=data['location_id'],
-            evse=data['evse_uid']
+            location=session.location.uid,
+            evse=session.evse.uid,
+            session=session.uid,
+            update_url=update_url
         )
     )
     result_status = 'ACCEPTED'
@@ -44,23 +46,19 @@ def command_start(_self, data, url=''):
         result_status = result_data.get('status')
 
     if result.status_code == 200:
-        # If CPO responds ok, create the new Session
-        evse = get_object_or_404(Evse, uid=data['evse_uid'])
-        connector = evse.connectors.all()[0]
-        session = create_session(
-            data['location_id'],
-            evse.uid,
-            connector.uid,
-            ad_hoc_token=data['token'],
-            authorize=False  # When eMSP sends a SESSION_START, they are responsible for validating their Token
-        )
-        print(f'*** Started session {session} - {result.text}')
+        from ocpi22.models import Connector
+        session.status = 'ACTIVE'
+        session.connector = get_object_or_404(Connector, uid=result_data['connector'], evse=session.evse)
+        session.save()
+        print('*** Response from CPO/charger to OCPI Connector worker task:')
+        print(result.text)
+        print(f'Activated session {session}')
         status = (result_status or 'ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
     else:
         print(f'*** Error {result.status_code} - {result.text} from charger')
         status = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
 
-    # Respond to eMSP
+    # Send asynchronous OCPI response to eMSP
     result_data = dict(
         result=status[0],
         message=[

@@ -730,7 +730,7 @@ class Session(models.Model):
     evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='sessions')
 
     # Connector.id of the Connector of this Location the charging session is/was happening.
-    connector = models.ForeignKey(Connector, on_delete=models.PROTECT, related_name='sessions')
+    connector = models.ForeignKey(Connector, on_delete=models.PROTECT, related_name='sessions', blank=True, null=True)
 
     # Optional identification of the kWh meter.
     meter_id = models.CharField(max_length=255, blank=True, null=True)
@@ -801,7 +801,8 @@ class Session(models.Model):
 
     def __str__(self):
         return f'{self.cdr_token_uid} - {self.start_date_time} - {self.kwh}kWh - ' \
-               f'EVSE {self.evse.evse_id} - {self.connector.get_standard_display()}'
+               f'EVSE {self.evse.evse_id} - ' \
+               f'{self.connector.get_standard_display() if self.connector else "no connector"}'
 
     def get_absolute_url(self):
         return reverse('session-by-id', args=[self.country_code, self.party_id, self.uid])

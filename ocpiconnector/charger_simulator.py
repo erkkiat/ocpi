@@ -6,29 +6,51 @@ from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 
 from pprint import PrettyPrinter
+
+from ocpi22.models import Evse
+
 pp = PrettyPrinter(indent=4).pprint
 
 
 @csrf_exempt
 def session_start(request):
+    """
+    Simulate CPO/charger interface, where the session start commands end up
+    """
+
     status = 200
     result = dict(
         mode='SIMULATOR',
         host=request.build_absolute_uri(),
         status='ACCEPTED'
     )
+
+    pp('*** CPO/charger got request from OCPI Connector:')
+    pp(request.POST)
+
     # Todo: Add instructions for configuring charger endpoints
     force_result = request.GET.get('force_result')
     if force_result:
         result['status'] = force_result
         status = request.GET.get('force_status', default=500)
+
+    # Pick a connector, any connector (for testing purposes)
+    evse = Evse.objects.get(uid=request.POST.get('evse'))
+    connector = evse.connectors.all()[0]
+    result['connector'] = connector.uid
+
     return HttpResponse(json.dumps(result), status=status)
 
 
 @csrf_exempt
 def emsp_callback(request: WSGIRequest):
+    """
+    After the session start, a response is sent asynchronously
+    to a dynamically specified callback URL on the eMSP server
+    """
+
     data = json.loads(request.body.decode("utf8"))
-    pp('Got response from CPO:')
+    pp('*** eMSP got response from charger/CPO:')
     pp(data)
     return HttpResponse()
 
