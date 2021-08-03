@@ -1,5 +1,5 @@
 cachetools==4.2.2
-Django==3.2.3
+django>=3.2.4,<3.3
 httplib2==0.19.1
 oauthlib==3.1.0
 pip==21.1.3
