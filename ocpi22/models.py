@@ -769,12 +769,12 @@ class Session(models.Model):
 
     def calculate_price(self) -> (float, float):
         connector = self.connector
-        kwh = self.kwh
+        kwh: float = self.kwh
         hours = (self.end_date_time - self.start_date_time).seconds / 3600
-        ic(kwh, hours)
-        result_incl_vat = 0.0
-        result_excl_vat = 0.0
+        result_incl_vat: float = 0.0
+        result_excl_vat: float = 0.0
         tariff: Tariff
+
         for tariff in connector.tariff_ids.all():
             if tariff.type != 'REGULAR':
                 # Todo: Implement profile types

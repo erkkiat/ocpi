@@ -394,7 +394,7 @@ class SessionViewSet(viewsets.ViewSet):
                 total_cost_excl_vat=session.total_cost_excl_vat,
                 total_cost_incl_vat=session.total_cost_incl_vat,
                 total_energy=session.kwh,
-                total_time=(session.end_date_time - session.start_date_time).seconds / 3600.0
+                total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5)
             )
             cdr.tariffs.set(session.connector.tariff_ids.all())
             result['cdr'] = CdrSerializer(cdr, context={'request': request}).data
