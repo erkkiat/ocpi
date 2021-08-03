@@ -103,10 +103,9 @@ class CapabilityAdmin(admin.ModelAdmin):
 class CdrAdmin(admin.ModelAdmin):
     model = Cdr
     list_display = [
-        'total_cost_incl_vat', 'total_cost_excl_vat', 'total_energy', 'total_time',
-        'start_date_time', 'end_date_time',  # Todo: Show time in local timezone
-        'uid', 'party_id',
-        'session_id', 'auth_method', 'credit'
+        'start_date_time',  # Todo: Show time in local timezone
+        'operator', 'total_cost', 'total_energy', 'charging_time',
+        'session_id', 'auth_method'
     ]
     list_filter = ['party_id', 'auth_method', 'credit']
 

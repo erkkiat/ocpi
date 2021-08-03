@@ -944,6 +944,17 @@ class Cdr(models.Model):
     def get_absolute_url(self):
         return reverse('cdr-detail', args=[self.uid])
 
+    def operator(self):
+        return f'{self.country_code}*{self.party_id}'
+
+    def total_cost(self):
+        return f'{"-" if self.credit else ""}{self.total_cost_incl_vat:.2f}/' \
+               f'{"-" if self.credit else ""}{self.total_cost_excl_vat:.2f} {self.currency}' \
+               f'{" (credited)" if self.credit else ""}'
+
+    def charging_time(self):
+        return f'{self.total_time*60} min'
+
 
 def calculate_partition(coordinate):
     if not coordinate:
