@@ -17,6 +17,9 @@ from ocpi22 import models
 from ocpi22.api import HyperlinkedModelSerializerCleanedUp, clear_empty, CdrSerializer
 from ocpi22.models import Evse, Session, Token, Connector, Cdr, Location
 
+from pprint import PrettyPrinter
+pp = PrettyPrinter(indent=4).pprint
+
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
@@ -312,6 +315,7 @@ class SessionViewSet(viewsets.ViewSet):
 
         * Finally, to finish the session, send the last update and then a GET to /api/cpo/v1/session/finish/{session_id}/
         """
+        pp(f'*** OCPI Connector got an update from CPO/charger for session {session_id}: {request.data}')
         session = get_object_or_404(Session, uid=session_id)
         if session.status in self.FINAL_STATUSES:
             return Response(dict(error='This session cannot be updated, since it already has a final status'),
@@ -483,6 +487,8 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         evse = Evse.objects.all()[0]
         connector = Connector.objects.filter(evse=evse)[0]
         token = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')[0]
+        sessions = Session.objects.filter(status='ACTIVE')
+        session = sessions[0] if sessions.count() else 'no_active_sessions_currently'
 
         result = dict(
             session_tutorial=request.build_absolute_uri(
@@ -490,6 +496,9 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             ),
             example_session_not_authorised=request.build_absolute_uri(
                 reverse('session-start', args=[evse.uid, connector.uid, token.uid])
+            ),
+            example_session_update=request.build_absolute_uri(
+                reverse('session-update', args=[session.uid])
             ),
             how_to_export_locations=request.build_absolute_uri(
                 reverse('quick-location-list')
