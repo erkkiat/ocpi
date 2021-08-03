@@ -294,6 +294,9 @@ class Tariff(models.Model):
     def get_absolute_url(self):
         return reverse('tariff-by-id', args=[self.country_code, self.party_id, self.uid])
 
+    def operator(self):
+        return f'{self.country_code}*{self.party_id}'
+
 
 class PriceComponent(models.Model):
     TYPE_CHOICES = (
@@ -304,7 +307,8 @@ class PriceComponent(models.Model):
         ('FLAT', 'Flat'),
 
         # Time not charging: defined in hours, step_size multiplier: 1 second
-        ('PARKING_TIME', 'Parking seconds'),
+        # ('PARKING_TIME', 'Parking seconds'),
+        # Todo: Implement PARKING_TIME PriceComponent
 
         # Time charging: defined in hours, step_size multiplier: 1 second
         # Can also be used in combination with a RESERVATION restriction to describe the price of the reservation time.

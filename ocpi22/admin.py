@@ -70,10 +70,34 @@ class FacilityAdmin(admin.ModelAdmin):
     model = Facility
     list_display = ['name', 'description']
 
+    def has_delete_permission(self, request, obj=None):
+        # Disable delete
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        # Disable add
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # Disable change
+        return False
+
 
 class CapabilityAdmin(admin.ModelAdmin):
     model = Capability
     list_display = ['name', 'description']
+
+    def has_delete_permission(self, request, obj=None):
+        # Disable delete
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        # Disable add
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # Disable change
+        return False
 
 
 class CdrAdmin(admin.ModelAdmin):
@@ -129,10 +153,10 @@ class TariffAdmin(admin.ModelAdmin):
         model = PriceComponent
 
     model = Tariff
-    list_display = ['party_id', '__str__', 'type', 'tariff_alt_url', 'country_code']
+    list_display = ['operator', '__str__', 'last_updated']
     list_display_links = ['__str__']
     inlines = [PriceComponentsInline]
-    readonly_fields = ['uid', 'party_id', 'country_code']
+    readonly_fields = ['uid', 'party_id', 'country_code', 'last_updated']
 
 
 class CredentialsAdmin(admin.ModelAdmin):
