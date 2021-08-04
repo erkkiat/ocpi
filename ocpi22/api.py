@@ -1,5 +1,6 @@
 import os
 
+from django.core.handlers.wsgi import WSGIRequest
 from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import routers, serializers, status, mixins
@@ -354,10 +355,31 @@ class SessionViewSet(mixins.ListModelMixin,
     serializer_class = SessionSerializer
 
 
+class RootView(routers.APIRootView):
+    """
+    Welcome to the OCPI Connector Developer Center. Here you can access the OCPI 2.2 endpoints with examples
+    and the CPO interface for quick integration to popular roaming networks.
+    """
+
+    def get(self, request: WSGIRequest, **kwargs):
+        return Response({
+            "OCPI 2.2": request.build_absolute_uri(reverse('ocpi-22')),
+            "CPO API": request.build_absolute_uri(reverse('cpo-api')),
+        })
+
+    def get_view_name(self):
+        return 'OCPI Connector Developer Center'
+
+
+class RootRouter(routers.DefaultRouter):
+    APIRootView = RootView
+    root_view_name = 'root'
+
+
 class OcpiApi22View(routers.APIRootView):
     """
-    This portal provides ways to view the information in the database, to read the API documentation and
-    to try out sending requests to the API.
+    This portal provides ways to test OCPI 2.2 interaction, view the information in the database and
+    to read the API documentation.
 
     The streamlined interfaces for the CPO are available at [/api/cpo/v1/](/api/cpo/v1/).
     You can contact [support@chargerhub.eu](support@chargerhub.eu) for training.

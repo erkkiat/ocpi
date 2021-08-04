@@ -456,8 +456,7 @@ class SessionViewSet(viewsets.ViewSet):
 
 class ChargePointOperatorAPIView(routers.APIRootView):
     """
-    Welcome to the OCPI Connector Developer Central. Here you can try out the CPO API interfaces to support
-    the development and integration work.
+    Here you can try out the CPO API interfaces to support your development and integration work.
     These streamlined interfaces provide the necessary tools for quickly connecting
     a CPO backend to eMSPs and hubs which use the OCPI protocol.
 
@@ -472,7 +471,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
 
     1. Location, evse and connector export (CPO => OCPI Connector)
     1. Charge point status change (CPO => OCPI Connector)
-    1. Remote commands (CPO <= OCPI Connector)
+    1. Remote commands (eMSP => OCPI Connector => CPO)
     1. Session start, update and end (CPO => OCPI Connector)
 
     For more details, click the examples below and you will find the step-by-step technical documentation.
@@ -488,7 +487,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         connector = Connector.objects.filter(evse=evse)[0]
         token = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')[0]
         sessions = Session.objects.filter(status='ACTIVE')
-        session = sessions[0] if sessions.count() else 'no_active_sessions_currently'
+        session = sessions[0] if sessions.count() else ''
 
         result = dict(
             session_tutorial=request.build_absolute_uri(
@@ -499,7 +498,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             ),
             example_session_update=request.build_absolute_uri(
                 reverse('session-update', args=[session.uid])
-            ),
+            ) if session else 'Please start a new session first',
             how_to_export_locations=request.build_absolute_uri(
                 reverse('quick-location-list')
             ),
@@ -515,3 +514,4 @@ class ChargePointOperatorAPIView(routers.APIRootView):
 
 class CPORouter(routers.DefaultRouter):
     APIRootView = ChargePointOperatorAPIView
+    root_view_name = 'cpo-api'
