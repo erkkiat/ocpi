@@ -263,7 +263,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     @staticmethod
     def get_connector_id(session):
-        return session.connector.uid
+        return session.connector.uid if session.connector else 0
 
     @staticmethod
     def get_total_cost(obj):
