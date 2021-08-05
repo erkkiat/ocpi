@@ -4,6 +4,7 @@ from django.http import Http404
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
+from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -18,11 +19,27 @@ pp = pprint.PrettyPrinter(indent=4).pprint
 
 
 class CommandsSerializer(serializers.Serializer):
-    response_url = serializers.URLField()
-    token = TokenSerializer()
-    location_id = serializers.CharField()
-    evse_uid = serializers.CharField(required=False, allow_blank=True)
-    authorization_reference = serializers.CharField(required=False, allow_blank=True)
+    response_url = serializers.URLField(
+        label='URL that the CommandResult POST should be sent to. '
+              'This URL might contain a unique ID to be able to distinguish between StartSession requests.'
+    )
+    token = TokenSerializer(
+        label='Token object the Charge Point has to use to start a new session. '
+              'The Token provided in this request is authorized by the eMSP.'
+    )
+    location_id = serializers.CharField(
+        label='Location.id of the Location (belonging to the CPO this request was sent to) '
+              'on which a session is to be started.'
+    )
+    evse_uid = serializers.CharField(
+        required=False, allow_blank=True,
+        label='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
+    )
+    authorization_reference = serializers.CharField(
+        required=False, allow_blank=True,
+        label='Reference to the authorization given by the eMSP, '
+              'when given, this reference will be provided in the relevant Session and/or CDR.'
+    )
 
 
 class DisplayTextSerializer(serializers.Serializer):
@@ -142,3 +159,7 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     def get_view_name(self):
         return 'Commands'
 
+    def list(self, request, *args, **kwargs):
+        return Response(dict(
+            start_session=request.build_absolute_uri(reverse('commands-start-session')),
+        ))
