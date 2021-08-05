@@ -16,14 +16,6 @@ from ocpi22.util import OCPIResponse, Ocpi
 import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint
 
-import logging
-from slack_logger import SlackHandler, SlackFormatter
-
-sh = SlackHandler(os.environ.get('SLACK_WEBHOOK'))
-sh.setFormatter(SlackFormatter())
-sh.setLevel(logging.INFO)
-logging.basicConfig(handlers=[sh])
-
 
 class CommandsSerializer(serializers.Serializer):
     response_url = serializers.URLField()

@@ -7,12 +7,8 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 import logging
-from slack_logger import SlackHandler, SlackFormatter
-
-sh = SlackHandler(os.environ.get('SLACK_WEBHOOK'))
-sh.setFormatter(SlackFormatter())
-sh.setLevel(logging.DEBUG)
-logging.basicConfig(handlers=[sh])
+from ocpiconnector import slack_logging
+slack_logging.init()
 
 # Set the default Django settings module for the 'celery' program.
 os.environ['DJANGO_SETTINGS_MODULE'] = 'ocpiconnector.settings'
