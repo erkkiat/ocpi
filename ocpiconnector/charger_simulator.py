@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpResponse
@@ -25,16 +26,17 @@ def session_start(request):
         status='ACCEPTED'
     )
 
-    pp('*** CPO/charger got request from OCPI Connector:')
-    pp(request.POST)
+    logging.debug('*** CPO/charger got request from OCPI Connector:')
+    logging.debug(request.POST)
 
     # Todo: Add instructions for configuring charger endpoints
     force_result = request.GET.get('force_result')
     if force_result:
         result['status'] = force_result
-        status = request.GET.get('force_status', default=500)
+        status = request.GET.get('force_status', default=409)
 
     # Pick a connector, any connector (for testing purposes)
+    # noinspection PyUnresolvedReferences
     evse = Evse.objects.get(uid=request.POST.get('evse'))
     connector = evse.connectors.all()[0]
     result['connector'] = connector.uid
@@ -50,8 +52,8 @@ def emsp_callback(request: WSGIRequest):
     """
 
     data = json.loads(request.body.decode("utf8"))
-    pp('*** eMSP got response from charger/CPO:')
-    pp(data)
+    logging.debug('*** eMSP got response from charger/CPO:')
+    logging.debug(data)
     return HttpResponse()
 
 

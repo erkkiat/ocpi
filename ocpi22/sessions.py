@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from collections import namedtuple
@@ -38,7 +39,8 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
     # noinspection PyUnresolvedReferences
     active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
     if active_sessions.count():
-        print(f'Invalidating incomplete sessions at this evse: {",".join([str(s) for s in active_sessions])}')
+        logging.warning(f'New session starting, invalidating incomplete sessions at {evse.evse_id}: '
+                        f'{",".join([str(s) for s in active_sessions])}')
         active_sessions.update(status='INVALID')
 
     # noinspection PyUnresolvedReferences

@@ -4,7 +4,6 @@ from django.http import Http404
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
-from rest_framework.generics import get_object_or_404
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -16,6 +15,14 @@ from ocpi22.util import OCPIResponse, Ocpi
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint
+
+import logging
+from slack_logger import SlackHandler, SlackFormatter
+
+sh = SlackHandler(os.environ.get('SLACK_WEBHOOK'))
+sh.setFormatter(SlackFormatter())
+sh.setLevel(logging.INFO)
+logging.basicConfig(handlers=[sh])
 
 
 class CommandsSerializer(serializers.Serializer):
@@ -109,7 +116,7 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
                 result = 'ACCEPTED'
-                session = create_session(
+                session: Session = create_session(
                     serializer.data['location_id'],
                     serializer.data['evse_uid'],
                     serializer.data.get('connector_id'),

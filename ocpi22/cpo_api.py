@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 
@@ -402,6 +403,13 @@ class SessionViewSet(viewsets.ViewSet):
             )
             cdr.tariffs.set(session.connector.tariff_ids.all())
             result['cdr'] = CdrSerializer(cdr, context={'request': request}).data
+
+            # from ocpi22.commands import sh
+            # logging.basicConfig(handlers=[sh], level=logging.INFO)
+            logging.info(f'Successful charging session finished at {session.location}, EVSE: {session.evse.evse_id}, '
+                         f'kwh: {session.kwh}, total time: {cdr.total_time*60:.0f} minutes, '
+                         f'cost: {session.total_cost_incl_vat} {session.currency}')
+
         # Todo: Send CDR to MSP
         return Response(result)
 
@@ -419,7 +427,7 @@ class SessionViewSet(viewsets.ViewSet):
         # noinspection PyUnresolvedReferences
         active_session = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
         if active_session.count():
-            ic('Invalidating incomplete sessions', ",".join([str(s) for s in active_session]))
+            logging.warning('Invalidating incomplete sessions', ",".join([str(s) for s in active_session]))
             active_session.update(status='INVALID')
 
         # noinspection PyUnresolvedReferences
