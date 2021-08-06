@@ -165,8 +165,8 @@ class CredentialsAdmin(admin.ModelAdmin):
         model = CredentialsRole
 
     model = Credentials
-    list_display = ['token_a_base64', 'ours_base64', '__str__']
-    readonly_fields = ['ours', 'theirs', 'last_updated', 'created']
+    list_display = ['party', 'token_a_base64', 'ours_base64', 'theirs_base64']
+    readonly_fields = ['ours', 'theirs_base64', 'last_updated', 'created']
     inlines = [CredentialRolesInline]
 
 

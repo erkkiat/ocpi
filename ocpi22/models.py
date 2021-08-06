@@ -57,20 +57,28 @@ class Credentials(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
+    def party(self):
         # noinspection PyUnresolvedReferences
         return ", ".join([
             f'{r.country_code}*{r.party_id} ({r.role})'
             for r in self.roles.all()
         ])
 
+    @staticmethod
+    def base64(token: models.CharField):
+        return base64.b64encode(str(token).encode('ascii')).decode('ascii')
+
     def token_a_base64(self):
         # noinspection PyUnresolvedReferences
-        return base64.b64encode(self.token_a.encode('ascii')).decode('ascii')
+        return self.base64(self.token_a)
 
     def ours_base64(self):
         # noinspection PyUnresolvedReferences
-        return base64.b64encode(self.ours.encode('ascii')).decode('ascii')
+        return self.base64(self.ours)
+
+    def theirs_base64(self):
+        # noinspection PyUnresolvedReferences
+        return self.base64(self.theirs)
 
 
 class CredentialsRole(models.Model):
