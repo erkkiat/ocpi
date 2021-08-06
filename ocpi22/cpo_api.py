@@ -21,6 +21,9 @@ from ocpi22.models import Evse, Session, Token, Connector, Cdr, Location
 from pprint import PrettyPrinter
 pp = PrettyPrinter(indent=4).pprint
 
+from ocpiconnector import slack_logging
+slack_logging.init()
+
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
@@ -362,7 +365,7 @@ class SessionViewSet(viewsets.ViewSet):
             session.status = 'INVALID'
         elif session.status != 'ACTIVE' and session.kwh:
             return Response(dict(
-                error=f'Session {session_id} is not active or pending, so it cannot be finished.'
+                error=f'Session {session_id} was already finished. {session}'
             ))
         else:
             session.status = 'COMPLETED'
@@ -408,7 +411,7 @@ class SessionViewSet(viewsets.ViewSet):
             # logging.basicConfig(handlers=[sh], level=logging.INFO)
             logging.info(f'Successful charging session finished at {session.location}, EVSE: {session.evse.evse_id}, '
                          f'kwh: {session.kwh}, total time: {cdr.total_time*60:.0f} minutes, '
-                         f'cost: {session.total_cost_incl_vat} {session.currency}')
+                         f'cost: {session.total_cost_incl_vat} {session.currency}', extra={'notify_slack': True})
 
         # Todo: Send CDR to MSP
         return Response(result)

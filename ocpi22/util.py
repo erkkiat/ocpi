@@ -20,6 +20,18 @@ def get_total_cost(obj):
     ))
 
 
+def hours_minutes(hours_float):
+    hours = int(hours_float)
+    minutes = int((hours_float-hours)*60)
+    if hours:
+        return f'{hours} h {minutes} min'
+    elif not hours and not minutes:
+        seconds = int(hours_float*3600)
+        return f'{seconds} seconds'
+    else:
+        return f'{minutes} min'
+
+
 class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
     def to_representation(self, value):
         # Remove empty values

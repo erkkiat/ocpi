@@ -128,8 +128,9 @@ class SessionAdmin(admin.ModelAdmin):
     list_display = [
         'start_date_time',  # Todo: Show time in local timezone
         'status',
+        'total_time',
         'location', 'evse', 'connector',
-        'cdr_token_uid', 'kwh',
+        'cdr_token_uid', 'kwh', 'last_updated',
         'total_cost_incl_vat', 'total_cost_excl_vat', 'currency'
     ]
     search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token_uid']

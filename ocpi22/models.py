@@ -5,10 +5,12 @@ from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
+from ocpi22.util import hours_minutes
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 AUTH_METHOD_CHOICES = (
@@ -807,8 +809,11 @@ class Session(models.Model):
     def get_absolute_url(self):
         return reverse('session-by-id', args=[self.country_code, self.party_id, self.uid])
 
-    # def get_cpo_url(self):
-    #     return reverse('session-by-id-cpo', args=[self.uid])
+    def total_time(self):
+        if self.status == 'INVALID':
+            return '-'
+        end = self.end_date_time if self.end_date_time else timezone.now()
+        return hours_minutes((end - self.start_date_time).seconds/3600)
 
 
 class Cdr(models.Model):
@@ -953,7 +958,7 @@ class Cdr(models.Model):
                f'{" (credited)" if self.credit else ""}'
 
     def charging_time(self):
-        return f'{self.total_time*60} min'
+        return hours_minutes(self.total_time)
 
 
 def calculate_partition(coordinate):
