@@ -172,6 +172,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     # 'django.contrib.admindocs',
     'ocpi22',
+    'ocpiconnector',
     'whitenoise',
     'rest_framework',
     'django_filters',

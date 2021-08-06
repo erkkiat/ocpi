@@ -15,9 +15,11 @@ class OCPI_AUTH_TYPES:
 
 
 def check_auth_token(request, token):
+    # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
     allowed_for_token_a = (
-        reverse('base-versions'),
-        reverse('credentials-list'),
+        reverse('base-versions'),       # The "Versions" endpoint
+        reverse('credentials-list'),    # Getting the Credentials
+        reverse('ocpi-22')              # The "Endpoints" endpoint
     )
     try:
         token_ascii = base64.b64decode(token).decode('ascii')
