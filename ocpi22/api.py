@@ -1,15 +1,15 @@
+import json
 import os
 
 from django.core.handlers.wsgi import WSGIRequest
-from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
+from icecream import ic
 from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
-from rest_framework.exceptions import NotFound
 
 from ocpi22.location import BusinessDetailsSerializer
 from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails
@@ -142,6 +142,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
         )
         return result
 
+
 class CdrViewSet(mixins.RetrieveModelMixin,
                  mixins.ListModelMixin,
                  GenericViewSet):
@@ -180,19 +181,19 @@ class CredentialsSerializer(serializers.ModelSerializer):
     roles = RolesSerializer(many=True)
 
     # noinspection PyUnresolvedReferences
-    def create(self, validated_data):
-        try:
-            roles = validated_data.pop('roles')
-            credentials = Credentials.objects.create(**validated_data)
-            for role_dict in roles:
-                business_details_dict = role_dict.pop('business_details')
-                business_details = BusinessDetails.objects.create(**business_details_dict)
-                CredentialsRole.objects.create(credentials=credentials,
-                                               business_details=business_details,
-                                               **role_dict)
-            return credentials
-        except IntegrityError:
-            raise NotFound(code=405, detail='This Credentials already exists. Try doing a PUT or DELETE.')
+    # def create(self, validated_data):
+    #     try:
+    #         roles = validated_data.pop('roles')
+    #         credentials = Credentials.objects.create(**validated_data)
+    #         for role_dict in roles:
+    #             business_details_dict = role_dict.pop('business_details')
+    #             business_details = BusinessDetails.objects.create(**business_details_dict)
+    #             CredentialsRole.objects.create(credentials=credentials,
+    #                                            business_details=business_details,
+    #                                            **role_dict)
+    #         return credentials
+    #     except IntegrityError:
+    #         raise NotFound(code=405, detail='This Credentials already exists. Try doing a PUT or DELETE.')
 
 
 class CredentialsViewSet(mixins.CreateModelMixin,
@@ -230,6 +231,35 @@ class CredentialsViewSet(mixins.CreateModelMixin,
             )
         )
 
+    def create(self, request: WSGIRequest, *args, **kwargs):
+        assert hasattr(request, 'credentials')
+        # noinspection PyUnresolvedReferences
+        credentials: Credentials = request.credentials
+        data = json.loads(request.body)
+        credentials.theirs = data['token']
+        credentials.url = data['url']
+        credentials.save()
+        # noinspection PyUnresolvedReferences
+        credentials.roles.all().delete()
+
+        for role in data['roles']:
+            ic(role)
+            serializer = RolesSerializer(data=role)
+            if serializer.is_valid():
+                ic(serializer.data)
+                data = serializer.data
+                bd = data.pop('business_details')
+                business_details = BusinessDetails(**bd)
+                business_details.save()
+                ic(data)
+                role = CredentialsRole(**data)
+                role.credentials = credentials
+                role.business_details = business_details
+                role.save()
+                ic(role)
+            else:
+                return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+        return OCPIResponse(dict(yesyes=1))
 
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:

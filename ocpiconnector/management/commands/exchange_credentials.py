@@ -14,7 +14,7 @@ class Command(BaseCommand):
         pass
 
     def ocpi_get(self, url, token):
-        self.stdout.write(f'Getting {url}')
+        # self.stdout.write(f'Getting {url}')
         response = requests.get(url, headers=dict(Authorization=f'Token {token}'))
         if response.status_code != 200:
             self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
@@ -22,7 +22,7 @@ class Command(BaseCommand):
         return response
 
     def ocpi_post(self, url, token, *args, **kwargs):
-        self.stdout.write(f'Posting to {url}')
+        # self.stdout.write(f'Posting to {url}')
         response = requests.post(url, headers=dict(Authorization=f'Token {token}'), *args, **kwargs)
         if response.status_code != 200:
             self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
@@ -45,6 +45,7 @@ class Command(BaseCommand):
         url = options['credentials_url']
         token_b = secrets.token_hex(64)
         try:
+            self.stdout.write('\n\n1) Getting version info and selecting a common version\n\n')
             selected_version = None
             versions_response = self.ocpi_get(url, token_a)
             if versions_response.status_code == 200:
@@ -56,6 +57,8 @@ class Command(BaseCommand):
                 if not selected_version:
                     raise self.NoCommonVersion('There is no common version available.')
                 self.stdout.write(f'Selected version: {selected_version}.')
+
+                self.stdout.write('\n\n2) Getting endpoints\n\n')
 
                 endpoints_response = self.ocpi_get(selected_version['url'], token_a)
                 if endpoints_response.status_code == 200:
@@ -74,6 +77,9 @@ class Command(BaseCommand):
                                     country_code=os.environ.get('COUNTRY_CODE', 'XX')
                                 ),
                             ]
+
+                            self.stdout.write('\n\n3) Sending Credentials Roles to other party\n\n')
+
                             data_to_send = dict(
                                 token=token_b,
                                 url=f'http://localhost:8000{reverse("base-versions")}',
@@ -83,7 +89,7 @@ class Command(BaseCommand):
                             credentials_response = self.ocpi_post(
                                 credentials_url,
                                 token_a,
-                                data=data_to_send
+                                json=data_to_send
                             )
             else:
                 print(f'*** Error connecting: {versions_response.status_code} {versions_response.reason}')
