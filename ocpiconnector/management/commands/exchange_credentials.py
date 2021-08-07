@@ -1,5 +1,5 @@
 import os
-import uuid
+import secrets
 
 import requests
 from django.core.management.base import BaseCommand
@@ -31,8 +31,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         # Positional arguments
-        parser.add_argument('token_a', type=str)
-        parser.add_argument('credentials_url', type=str)
+        parser.add_argument('token_a', type=str, help='The TOKEN_A provided by the other party')
+        parser.add_argument('credentials_url', type=str, help='The credentials URL provided by the other party')
 
         # parser.add_argument(
         #     '--delete',
@@ -43,7 +43,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         token_a = options['token_a']
         url = options['credentials_url']
-        token_b = str(uuid.uuid4())
+        token_b = secrets.token_hex(64)
         try:
             selected_version = None
             versions_response = self.ocpi_get(url, token_a)
@@ -69,7 +69,7 @@ class Command(BaseCommand):
                             roles = [
                                 dict(
                                     role='CPO',
-                                    business_details=dict(name='Operator Name'),  # Todo: Get from ENV
+                                    business_details=dict(name=os.environ.get('BUSINESS_NAME', '')),
                                     party_id=os.environ.get('PARTY_ID', 'XXX'),
                                     country_code=os.environ.get('COUNTRY_CODE', 'XX')
                                 ),

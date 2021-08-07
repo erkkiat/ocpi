@@ -1,3 +1,4 @@
+import secrets
 from collections import OrderedDict
 from datetime import datetime
 
@@ -30,6 +31,10 @@ def hours_minutes(hours_float):
         return f'{seconds} seconds'
     else:
         return f'{minutes} min'
+
+
+def generate_random_token():
+    return secrets.token_hex(32)
 
 
 class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):

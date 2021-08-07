@@ -1,4 +1,5 @@
 import base64
+import secrets
 import uuid
 
 from django.core.validators import RegexValidator
@@ -10,7 +11,7 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.util import hours_minutes
+from ocpi22.util import hours_minutes, generate_random_token
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 AUTH_METHOD_CHOICES = (
@@ -43,7 +44,7 @@ class Credentials(models.Model):
         verbose_name_plural = 'credentials'
 
     # The credentials token used only for the initial connection, and is communicated manually between parties
-    token_a = models.CharField(max_length=64, blank=True, default='')
+    token_a = models.CharField(max_length=64, default=secrets.token_hex(32))
 
     # Our credentials token used for the actual communication
     ours = models.CharField(max_length=64, blank=True, default='')
@@ -54,10 +55,17 @@ class Credentials(models.Model):
     # URL to the other party's versions endpoint
     url = models.URLField(blank=True, default='')
 
-    version = models.CharField(max_length=10)
+    VERSION_CHOICES = (
+        ('22', '2.2'),
+        ('211', '2.1.1')
+    )
+    version = models.CharField(max_length=10, choices=VERSION_CHOICES, blank=True, null=True)
 
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Credentials for {" / ".join([str(s) for s in self.roles.all()])}'
 
     def party(self):
         # noinspection PyUnresolvedReferences
@@ -1036,6 +1044,6 @@ def my_callback(sender, instance, *_args, **_kwargs):
 def my_callback(sender, instance, *_args, **_kwargs):
     credentials: Credentials = instance
     if not credentials.token_a:
-        credentials.token_a = uuid.uuid4()
+        credentials.token_a = generate_random_token()
     if not credentials.ours:
-        credentials.ours = uuid.uuid4()
+        credentials.ours = generate_random_token()
