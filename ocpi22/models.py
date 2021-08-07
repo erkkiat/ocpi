@@ -65,6 +65,7 @@ class Credentials(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
+        # noinspection PyUnresolvedReferences
         return f'Credentials for {" / ".join([str(s) for s in self.roles.all()])}'
 
     def party(self):
@@ -124,7 +125,16 @@ class CredentialsRole(models.Model):
 
 
 class Endpoint(models.Model):
-    identifier = models.CharField(max_length=12)
+    IDENTIFIER_CHOICES = (
+        ('credentials', 'Credentials'),
+        ('locations', 'Locations'),
+        ('tokens', 'Tokens'),
+        ('commands', 'Commands'),
+        ('tariffs', 'Tariffs'),
+        ('cdrs', 'Charge Detail Records'),
+        ('sessions', 'Sessions'),
+    )
+    identifier = models.CharField(max_length=12, choices=IDENTIFIER_CHOICES)
 
     url = models.URLField()
 
@@ -135,6 +145,10 @@ class Endpoint(models.Model):
     role = models.CharField(max_length=8, choices=ROLE_CHOICES)
 
     credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='endpoints')
+
+    def __str__(self):
+        # noinspection PyUnresolvedReferences
+        return f'{self.get_identifier_display()} {self.get_role_display()}'
 
 
 class Token(models.Model):
@@ -1045,5 +1059,5 @@ def my_callback(sender, instance, *_args, **_kwargs):
     credentials: Credentials = instance
     if not credentials.token_a:
         credentials.token_a = generate_random_token()
-    if not credentials.ours:
-        credentials.ours = generate_random_token()
+    # if not credentials.ours:
+    #     credentials.ours = generate_random_token()

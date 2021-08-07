@@ -1,3 +1,4 @@
+import base64
 import os
 import secrets
 
@@ -5,6 +6,8 @@ import requests
 from django.core.management.base import BaseCommand
 from icecream import ic
 from rest_framework.reverse import reverse
+
+from ocpi22.models import Endpoint, Credentials
 
 
 class Command(BaseCommand):
@@ -16,19 +19,18 @@ class Command(BaseCommand):
     class ProtocolError(Exception):
         pass
 
-    def ocpi_get(self, url, token):
-        # self.stdout.write(f'Getting {url}')
-        response = requests.get(url, headers=dict(Authorization=f'Token {token}'))
+    def ocpi_get(self, url, token_base64):
+        self.stdout.write(f'Getting {url}')
+        response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'))
         if response.status_code != 200:
             self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
             self.stdout.write(response.text)
             raise self.ProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}')
         return response
 
-    def ocpi_post(self, url, token, *args, **kwargs):
-        # self.stdout.write(f'Posting to {url}')
-        ic(kwargs['json'])
-        response = requests.post(url=url, headers=dict(Authorization=f'Token {token}'), *args, **kwargs)
+    def ocpi_post(self, url, token_base64, *args, **kwargs):
+        self.stdout.write(f'Posting to {url}')
+        response = requests.post(url=url, headers=dict(Authorization=f'Token {token_base64}'), *args, **kwargs)
         if response.status_code != 200:
             self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
             self.stdout.write(response.text)
@@ -77,20 +79,40 @@ class Command(BaseCommand):
         raise self.ProtocolError('There is no credentials_url provided by the other party')
 
     def handle(self, *args, **options):
-        token_a = options['token_a']
+        token_a_base64 = options['token_a']
         url = options['credentials_url']
         token_b = secrets.token_hex(64)
         try:
-            self.stdout.write('\n\n1) Getting version info and selecting a common version\n\n')
-            selected_version = self.__select_version(url, token_a)
+            self.stdout.write('\n\n1) Getting version info from other party '
+                              'and selecting a version we both understand\n\n')
+            selected_version = self.__select_version(url, token_a_base64)
             self.stdout.write(f'Selected version: {selected_version}.')
 
-            self.stdout.write('\n\n2) Getting endpoints\n\n')
-            endpoints = self.__get_endpoints(selected_version['url'], token_a)
+            self.stdout.write('\n\n2) Getting endpoints from other party\n\n')
+            endpoints = self.__get_endpoints(selected_version['url'], token_a_base64)
             endpoints_str = ", ".join(set([e['identifier'] for e in endpoints['endpoints']]))
             self.stdout.write(f'Got endpoints: {endpoints_str}')
 
-            self.stdout.write('\n\n3) Sending Credentials Roles to other party\n\n')
+            token_a = base64.b64decode(token_a_base64).decode('ascii')
+
+            # noinspection PyUnresolvedReferences
+            credentials, _created = Credentials.objects.get_or_create(
+                token_a=token_a,
+                defaults=dict(
+                    ours=token_b,
+                    version=endpoints['version'].replace('.', '')  # "2.2" => "22"
+               )
+            )
+
+            # Replace any existing endpoints for this specific party
+            credentials.endpoints.all().delete()
+
+            for ep in endpoints['endpoints']:
+                endpoint = Endpoint(**ep)
+                endpoint.credentials = credentials
+                endpoint.save()
+
+            self.stdout.write('\n\n3) Sending our Credentials Roles to the other party\n\n')
 
             data_to_send = dict(
                 token=token_b,
@@ -112,7 +134,7 @@ class Command(BaseCommand):
             ic(data_to_send)
             credentials_response = self.ocpi_post(
                 self.find_endpoint_url(endpoints, 'credentials', 'receiver'),
-                token_a,
+                token_a_base64,
                 json=data_to_send
             )
         except requests.exceptions.ConnectionError as e:
