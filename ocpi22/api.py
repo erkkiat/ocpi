@@ -198,7 +198,9 @@ class CredentialsSerializer(serializers.ModelSerializer):
 class CredentialsViewSet(mixins.CreateModelMixin,
                          GenericViewSet):
     """
-    Credential tokens exchange. Please note that the tokens are always base64 encoded for transport.
+    Credential tokens exchange. Please note that the tokens are base64 encoded for transport, except in the
+    credentials exchange module. For testing purposes, you can include the token by using
+    ?auth-test=TOKEN.
     """
     # The queryset tells Django REST how to determine access to these endpoints
     # noinspection PyUnresolvedReferences
