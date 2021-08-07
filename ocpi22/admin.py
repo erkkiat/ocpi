@@ -168,6 +168,7 @@ class CredentialsAdmin(admin.ModelAdmin):
     list_display = ['party', 'token_a_base64', 'ours_base64', 'theirs_base64']
     readonly_fields = ['ours', 'theirs_base64', 'last_updated', 'created']
     inlines = [CredentialRolesInline]
+    list_display_links = ['token_a_base64']
 
 
 admin.site.register(Token, TokenAdmin)
