@@ -1,7 +1,10 @@
+import os
+import uuid
+
 import requests
 from django.core.management.base import BaseCommand
 from icecream import ic
-
+from rest_framework.reverse import reverse
 
 
 class Command(BaseCommand):
@@ -13,6 +16,14 @@ class Command(BaseCommand):
     def ocpi_get(self, url, token):
         self.stdout.write(f'Getting {url}')
         response = requests.get(url, headers=dict(Authorization=f'Token {token}'))
+        if response.status_code != 200:
+            self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
+            self.stdout.write(response.text)
+        return response
+
+    def ocpi_post(self, url, token, *args, **kwargs):
+        self.stdout.write(f'Posting to {url}')
+        response = requests.post(url, headers=dict(Authorization=f'Token {token}'), *args, **kwargs)
         if response.status_code != 200:
             self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
             self.stdout.write(response.text)
@@ -32,7 +43,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         token_a = options['token_a']
         url = options['credentials_url']
-        # Todo: token_b = generate token
+        token_b = str(uuid.uuid4())
         try:
             selected_version = None
             versions_response = self.ocpi_get(url, token_a)
@@ -47,7 +58,33 @@ class Command(BaseCommand):
                 self.stdout.write(f'Selected version: {selected_version}.')
 
                 endpoints_response = self.ocpi_get(selected_version['url'], token_a)
-                ic(endpoints_response.json())
+                if endpoints_response.status_code == 200:
+                    endpoints_json = endpoints_response.json()
+                    for endpoint in endpoints_json['endpoints']:
+                        identifier = endpoint.get('identifier').lower()
+                        role = endpoint.get('role').lower()
+                        if identifier == 'credentials' and role == 'receiver':
+                            credentials_url = endpoint.get('url')
+                            self.stdout.write(f'Credentials receiver URL: {credentials_url}')
+                            roles = [
+                                dict(
+                                    role='CPO',
+                                    business_details=dict(name='Operator Name'),  # Todo: Get from ENV
+                                    party_id=os.environ.get('PARTY_ID', 'XXX'),
+                                    country_code=os.environ.get('COUNTRY_CODE', 'XX')
+                                ),
+                            ]
+                            data_to_send = dict(
+                                token=token_b,
+                                url=f'http://localhost:8000{reverse("base-versions")}',
+                                roles=roles
+                            )
+                            ic(data_to_send)
+                            credentials_response = self.ocpi_post(
+                                credentials_url,
+                                token_a,
+                                data=data_to_send
+                            )
             else:
                 print(f'*** Error connecting: {versions_response.status_code} {versions_response.reason}')
         except requests.exceptions.ConnectionError as e:

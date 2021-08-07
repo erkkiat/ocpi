@@ -54,6 +54,8 @@ class Credentials(models.Model):
     # URL to the other party's versions endpoint
     url = models.URLField(blank=True, default='')
 
+    version = models.CharField(max_length=10)
+
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
@@ -111,6 +113,20 @@ class CredentialsRole(models.Model):
 
     def __str__(self):
         return f'{self.country_code}*{self.party_id} ({self.role})'
+
+
+class Endpoint(models.Model):
+    identifier = models.CharField(max_length=12)
+
+    url = models.URLField()
+
+    ROLE_CHOICES = (
+        ('SENDER', 'Sender'),
+        ('RECEIVER', 'Receiver')
+    )
+    role = models.CharField(max_length=8, choices=ROLE_CHOICES)
+
+    credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='endpoints')
 
 
 class Token(models.Model):
