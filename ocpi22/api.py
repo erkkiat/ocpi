@@ -243,6 +243,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
         credentials.roles.all().delete()
 
         for role in data['roles']:
+            assert isinstance(role, dict)
             ic(role)
             serializer = RolesSerializer(data=role)
             if serializer.is_valid():
@@ -251,12 +252,10 @@ class CredentialsViewSet(mixins.CreateModelMixin,
                 bd = data.pop('business_details')
                 business_details = BusinessDetails(**bd)
                 business_details.save()
-                ic(data)
                 role = CredentialsRole(**data)
                 role.credentials = credentials
                 role.business_details = business_details
                 role.save()
-                ic(role)
             else:
                 return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
         return OCPIResponse(dict(yesyes=1))
