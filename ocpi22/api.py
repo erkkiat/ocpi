@@ -244,10 +244,8 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
         for role in data['roles']:
             assert isinstance(role, dict)
-            ic(role)
             serializer = RolesSerializer(data=role)
             if serializer.is_valid():
-                ic(serializer.data)
                 data = serializer.data
                 bd = data.pop('business_details')
                 business_details = BusinessDetails(**bd)

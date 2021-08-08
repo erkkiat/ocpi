@@ -3,6 +3,7 @@ import os
 import secrets
 
 import requests
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from icecream import ic
 from rest_framework.reverse import reverse
@@ -96,13 +97,17 @@ class Command(BaseCommand):
             token_a = base64.b64decode(token_a_base64).decode('ascii')
 
             # noinspection PyUnresolvedReferences
-            credentials, _created = Credentials.objects.get_or_create(
+            credentials, created = Credentials.objects.get_or_create(
                 token_a=token_a,
                 defaults=dict(
                     ours=token_b,
                     version=endpoints['version'].replace('.', '')  # "2.2" => "22"
                )
             )
+
+            if not created:
+                credentials.ours = token_b
+                credentials.save()
 
             # Replace any existing endpoints for this specific party
             credentials.endpoints.all().delete()
@@ -116,7 +121,7 @@ class Command(BaseCommand):
 
             data_to_send = dict(
                 token=token_b,
-                url=f'http://localhost:8000{reverse("base-versions")}',
+                url=f'http://{settings.HOSTNAME}{reverse("base-versions")}',
                 roles=[dict(
                     role='CPO',
                     business_details=dict(name=os.environ.get('BUSINESS_NAME', '')),

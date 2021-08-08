@@ -1,5 +1,6 @@
 # Django settings for ocpiconnector project.
 import os
+import socket
 
 DEBUG = os.environ.get('DEBUG', False)
 TEMPLATE_DEBUG = DEBUG
@@ -15,6 +16,7 @@ MANAGERS = ADMINS
 
 TIMEOUT_FOR_COMMANDS = 2 * 60
 
+HOSTNAME = os.environ.get('HOSTNAME', socket.gethostname())
 
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split('://')
