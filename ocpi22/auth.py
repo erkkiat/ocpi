@@ -32,7 +32,13 @@ def check_auth_token(request, token):
             if request.path not in allowed_for_token_a:
                 raise exceptions.NotAuthenticated(f'TOKEN_A can only be used for the Credentials and Versions modules')
 
+            # Don't accept TOKEN_A anymore, if tokens have been exchanged
+            # NOTE: At a given time, one party may possess all three tokens while the other has only two
+
             credentials = credentials_matches[0]
+            if credentials.ours and credentials.theirs:
+                raise exceptions.NotAuthenticated(f'TOKEN_A has expired when TOKEN_B and TOKEN_C were exchanged')
+
             request.ocpi_auth = OCPI_AUTH_TYPES.TOKEN_A
             request.credentials = credentials
             return True
