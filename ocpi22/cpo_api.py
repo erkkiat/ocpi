@@ -16,12 +16,13 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22 import models
 from ocpi22.api import HyperlinkedModelSerializerCleanedUp, clear_empty, CdrSerializer
+from ocpi22.location import send_evse_updates
 from ocpi22.models import Evse, Session, Token, Connector, Cdr, Location
+from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
 pp = PrettyPrinter(indent=4).pprint
 
-from ocpiconnector import slack_logging
 slack_logging.init()
 
 
@@ -54,6 +55,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
         serializer = EvseSerializer(evse, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            send_evse_updates(evse.uid)
             return Response(serializer.data)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -87,6 +89,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
             serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
+                send_evse_updates(evse.uid)
                 return Response(serializer.data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -96,6 +99,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Evse.objects.all().order_by('created')
     serializer_class = EvseSerializer
+    lookup_field = 'evse_id'
 
 
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):

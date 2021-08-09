@@ -2,12 +2,14 @@ import json
 import os
 import celery
 import requests
-
 import pprint
-pp = pprint.PrettyPrinter(indent=4).pprint
-
 import logging
+
+from celery import exceptions
+from icecream import ic
 from ocpiconnector import slack_logging
+
+pp = pprint.PrettyPrinter(indent=4).pprint
 slack_logging.init()
 
 # Set the default Django settings module for the 'celery' program.
@@ -81,3 +83,61 @@ def command_start(_self, data, session_uid, update_url, url):
         requests.post(response_url, data=json.dumps(result_data).encode('utf8'))
     except requests.exceptions.ConnectionError as e:
         logging.error(str(e))
+
+
+@app.task(bind=True)
+def send_location_update(_self, location_uid, endpoint):
+    from ocpi22.models import Location
+    from ocpi22.location import LocationSerializer
+    # noinspection PyUnresolvedReferences
+    location = Location.objects.get(uid=location_uid)
+    serializer = LocationSerializer(instance=location)
+    if not endpoint.credentials.theirs:
+        raise exceptions.Retry(
+            f'Token for party {endpoint.credentials.party()}is unknown, please set Credentials.theirs',
+            when=10
+        )
+
+    url = f'{endpoint.url}{location.country_code}/{location.party_id}/{location.uid}/'
+    print(f'Sending Location update to {endpoint.credentials.party()} at {url}')
+
+    result = requests.put(
+        url,
+        serializer.data,
+        headers=dict(Authorization=f'Token {endpoint.get_token_base64()}'))
+    if result.status_code != 200:
+        ic(result.text[-400:])
+        print(f'{result.status_code} - {result.reason}')
+
+
+@app.task(bind=True)
+def send_evse_status_update(_self, evse_uid, endpoint):
+    from ocpi22.models import Evse
+    # noinspection PyUnresolvedReferences
+    evse = Evse.objects.get(uid=evse_uid)
+    location = evse.location
+    if not endpoint.credentials.theirs:
+        raise exceptions.Retry(
+            f'Token for party {endpoint.credentials.party()}is unknown, please set Credentials.theirs',
+            when=10
+        )
+
+    url = f'{endpoint.url}{location.country_code}/{location.party_id}/{location.uid}/{evse_uid}/'
+    print(f'Sending Evse update to {endpoint.credentials.party()} at {url}')
+
+    # Gireve accepts only status updates, so let's make sure no other data gets through
+    # They will pull full locations every 24h
+    data = dict(
+        status=evse.status,
+        last_updated=evse.last_updated
+    )
+    token_base64 = endpoint.get_token_base64()
+    result = requests.patch(
+        url,
+        data,
+        headers=dict(Authorization=f'Token {token_base64}'))
+    if result.status_code == 200:
+        ic('*** Successful Evse update')
+    else:
+        ic(result.text[-400:])
+        print(f'{result.status_code} - {result.reason}')

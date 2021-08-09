@@ -2,10 +2,12 @@ from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
-from ocpi22.models import Location, Evse, Connector, BusinessDetails, uid_validator
+from ocpi22.models import Location, Evse, Connector, BusinessDetails, uid_validator, Endpoint
+from ocpi22.tasks import send_location_update, send_evse_status_update
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, OCPIResponse, Ocpi
 
 
@@ -176,48 +178,82 @@ class LocationViewSet(mixins.ListModelMixin,
         return 'Locations'
 
     # noinspection PyUnresolvedReferences
-    # def put(self, request, country_code=None, party_id=None, uid=None):
-    #     ic(country_code, party_id, uid)
-    #     data = request.data.get('data', request.data)
-    #     if uid:
-    #         # Write over an existing Location
-    #         location: Location = get_object_or_404(Location,
-    #                                                country_code=country_code,
-    #                                                party_id=party_id,
-    #                                                uid=uid)
-    #         serializer = self.get_serializer(location, data=data)
-    #         ic('Writing over', serializer)
-    #     else:
-    #         # Create a new object
-    #         # This relies on serializer.create()
-    #         serializer = self.get_serializer(data=data)
-    #
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         location: Location = get_object_or_404(Location, uid=uid)
-    #         serializer = self.get_serializer(location)
-    #         ic(serializer.data)
-    #         return OCPIResponse(serializer.data)
-    #     else:
-    #         ic('Not valid', serializer.data)
-    #         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+    def put(self, request, country_code=None, party_id=None, uid=None, evse_uid=None):
+        ic()
+        if evse_uid:
+            self.by_evse_id(request, country_code, party_id, uid, evse_uid, partial=False)
+
+        ic(country_code, party_id, uid, evse_uid)
+        data = request.data.get('data', request.data)
+        if uid:
+            # Write over an existing Location
+            location: Location = get_object_or_404(Location,
+                                                   country_code=country_code,
+                                                   party_id=party_id,
+                                                   uid=uid)
+            serializer = self.get_serializer(location, data=data)
+            ic('Writing over', serializer)
+        else:
+            # Create a new object
+            # This relies on serializer.create()
+            serializer = self.get_serializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save()
+            location: Location = get_object_or_404(Location, uid=uid)
+            serializer = self.get_serializer(location)
+            ic(serializer.data)
+            return OCPIResponse(serializer.data)
+        else:
+            ic('Not valid', serializer.data)
+            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['GET', 'PATCH'], detail=False,
+            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_uid>[^/.]+)')
+    def by_evse_id(self, request: Request, country_code, party_id, uid, evse_uid, partial=True) -> OCPIResponse:
+        ic()
+        location = get_object_or_404(Location, uid=uid, party_id=party_id, country_code=country_code)
+        evse = get_object_or_404(Evse, uid=evse_uid, location=location)
+        if request.method == 'PATCH':
+            serializer = EvseSerializer(instance=evse, data=request.data, partial=partial)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                return OCPIResponse(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+        else:
+            serializer = EvseSerializer(instance=evse)
+        return OCPIResponse(serializer.data)
 
     # Todo: How to PATCH sub-dicts of Locations
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
-        # noinspection PyUnresolvedReferences
-        location = get_object_or_404(Location,
-                                     country_code=country_code,
-                                     party_id=party_id,
-                                     uid=uid)
-
+    def by_id(self, request: Request, country_code, party_id, uid) -> OCPIResponse:
         if request.method == 'GET':
+            # noinspection PyUnresolvedReferences
+            location = get_object_or_404(Location,
+                                         country_code=country_code,
+                                         party_id=party_id,
+                                         uid=uid)
             serializer = LocationSerializer(location, context={'request': request})
             return OCPIResponse(serializer.data)
 
         elif request.method in ('PUT', 'PATCH'):
             partial = request.method == 'PATCH'
+            serializer = LocationSerializer(data=request.data.get('data', request.data),
+                                            context={'request': request})
+            if not serializer.is_valid():
+                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+
+            # noinspection PyUnresolvedReferences
+            location, created = Location.objects.get_or_create(
+                country_code=country_code,
+                party_id=party_id,
+                uid=uid,
+                defaults=serializer.data
+            )
+            if created:
+                return OCPIResponse(serializer.data)
+
             serializer = LocationSerializer(location,
                                             data=request.data.get('data', request.data),
                                             partial=partial,
@@ -233,3 +269,29 @@ class LocationViewSet(mixins.ListModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Location.objects.all().order_by('created')
     serializer_class = LocationSerializer
+
+
+def send_evse_updates(evse_uid):
+    """
+    Find all endpoints interested in Location updates and send update in a background task
+    """
+
+    # noinspection PyUnresolvedReferences
+    endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
+    e: Endpoint
+    for e in endpoints:
+        print(f'Send EVSE update to {e.url}')
+        send_evse_status_update.delay(evse_uid, e)
+
+
+def send_location_updates(location_uid):
+    """
+    Find all endpoints interested in Location updates and send update in a background task
+    """
+
+    # noinspection PyUnresolvedReferences
+    endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
+    e: Endpoint
+    for e in endpoints:
+        print(f'Send Location update to {e.url}')
+        send_location_update.delay(location_uid, e)

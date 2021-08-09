@@ -150,6 +150,10 @@ class Endpoint(models.Model):
         # noinspection PyUnresolvedReferences
         return f'{self.get_identifier_display()} {self.get_role_display()}'
 
+    def get_token_base64(self):
+        token = self.credentials.theirs
+        return base64.b64encode(str(token).encode('ascii')).decode('ascii')
+
 
 class Token(models.Model):
     """
