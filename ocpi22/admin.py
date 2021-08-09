@@ -31,10 +31,12 @@ class LocationAdmin(admin.ModelAdmin):
         model = Evse
 
     model = Location
-    search_fields = ['uid', 'name', 'address', 'city', 'postal_code', 'state', 'country', 'parking_type']
+    search_fields = ['country_code', 'party_id', 'uid', 'name', 'address', 'city',
+                     'postal_code', 'state', 'country', 'parking_type']
     fields = ['uid', 'publish', 'publish_allowed_to',
               ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
-              ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone', ]
+              ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone',
+              ('country_code', 'party_id')]
     list_display = ['uid', 'publish', 'name', 'address', 'city', 'country']
     readonly_fields = ['party_id', 'country_code']
 
