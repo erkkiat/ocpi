@@ -496,7 +496,8 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         """
         evse = Evse.objects.all()[0]
         connector = Connector.objects.filter(evse=evse)[0]
-        token = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')[0]
+        tokens = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')
+        token = tokens[0] if tokens.count() else None
         sessions = Session.objects.filter(status='ACTIVE')
         session = sessions[0] if sessions.count() else ''
 
@@ -506,7 +507,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             ),
             example_session_not_authorised=request.build_absolute_uri(
                 reverse('session-start', args=[evse.uid, connector.uid, token.uid])
-            ),
+            ) if token else 'Please create a token first',
             example_session_update=request.build_absolute_uri(
                 reverse('session-update', args=[session.uid])
             ) if session else 'Please start a new session first',
