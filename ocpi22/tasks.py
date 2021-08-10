@@ -86,12 +86,14 @@ def command_start(_self, data, session_uid, update_url, url):
 
 
 @app.task(bind=True)
-def send_location_update(_self, location_uid, endpoint):
-    from ocpi22.models import Location
+def send_location_update(_self, location_uid, endpoint_pk):
+    from ocpi22.models import Location, Endpoint
     from ocpi22.location import LocationSerializer
     # noinspection PyUnresolvedReferences
     location = Location.objects.get(uid=location_uid)
     serializer = LocationSerializer(instance=location)
+    # noinspection PyUnresolvedReferences
+    endpoint = Endpoint.objects.get(pk=endpoint_pk)
     if not endpoint.credentials.theirs:
         raise exceptions.Retry(
             f'Token for party {endpoint.credentials.party()}is unknown, please set Credentials.theirs',
@@ -111,11 +113,13 @@ def send_location_update(_self, location_uid, endpoint):
 
 
 @app.task(bind=True)
-def send_evse_status_update(_self, evse_uid, endpoint):
-    from ocpi22.models import Evse
+def send_evse_status_update(_self, evse_uid, endpoint_pk):
+    from ocpi22.models import Evse, Endpoint
     # noinspection PyUnresolvedReferences
     evse = Evse.objects.get(uid=evse_uid)
     location = evse.location
+    # noinspection PyUnresolvedReferences
+    endpoint = Endpoint.objects.get(pk=endpoint_pk)
     if not endpoint.credentials.theirs:
         raise exceptions.Retry(
             f'Token for party {endpoint.credentials.party()}is unknown, please set Credentials.theirs',
@@ -123,7 +127,7 @@ def send_evse_status_update(_self, evse_uid, endpoint):
         )
 
     url = f'{endpoint.url}{location.country_code}/{location.party_id}/{location.uid}/{evse_uid}/'
-    print(f'Sending Evse update to {endpoint.credentials.party()} at {url}')
+    logging.error(f'Sending Evse update to {endpoint.credentials.party()} at {url}')
 
     # Gireve accepts only status updates, so let's make sure no other data gets through
     # They will pull full locations every 24h
@@ -137,7 +141,8 @@ def send_evse_status_update(_self, evse_uid, endpoint):
         data,
         headers=dict(Authorization=f'Token {token_base64}'))
     if result.status_code == 200:
-        ic('*** Successful Evse update')
+        pass
+        # ic('*** Successful Evse update')
     else:
-        ic(result.text[-400:])
-        print(f'{result.status_code} - {result.reason}')
+        # ic(result.text[-400:])
+        logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')

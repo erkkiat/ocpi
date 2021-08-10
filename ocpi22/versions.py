@@ -35,6 +35,11 @@ def get_endpoints_dict(request):
                 url=request.build_absolute_uri(reverse('location-list'))
             ),
             dict(
+                identifier="locations",
+                role=R,
+                url=request.build_absolute_uri(reverse('location-list'))
+            ),
+            dict(
                 identifier="tokens",
                 role=R,
                 url=request.build_absolute_uri(reverse('token-list'))

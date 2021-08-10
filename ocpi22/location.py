@@ -281,7 +281,7 @@ def send_evse_updates(evse_uid):
     e: Endpoint
     for e in endpoints:
         print(f'Send EVSE update to {e.url}')
-        send_evse_status_update.delay(evse_uid, e)
+        send_evse_status_update.delay(evse_uid, e.pk)
 
 
 def send_location_updates(location_uid):
@@ -294,4 +294,4 @@ def send_location_updates(location_uid):
     e: Endpoint
     for e in endpoints:
         print(f'Send Location update to {e.url}')
-        send_location_update.delay(location_uid, e)
+        send_location_update.delay(location_uid, e.pk)
