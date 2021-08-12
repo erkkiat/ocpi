@@ -249,6 +249,14 @@ class Token(models.Model):
     def get_absolute_url(self):
         return reverse('token-by-id', args=[self.country_code, self.party_id, self.uid])
 
+    @staticmethod
+    def get_if_exists(*args, **kwargs):
+        # noinspection PyUnresolvedReferences
+        tokens = Token.objects.filter(*args, **kwargs)
+        if tokens.count():
+            return tokens[0]
+        return None
+
 
 class AuthorizationInfo(models.Model):
 

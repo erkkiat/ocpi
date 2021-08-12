@@ -71,7 +71,6 @@ def command_start(_self, data, session_uid, update_url, url):
         logging.error(f'Cannot reach {update_url}, please check your request parameters.')
         logging.error(str(e))
 
-
     # Send asynchronous OCPI response to eMSP
     result_data = dict(
         result=status[0],

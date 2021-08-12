@@ -62,10 +62,15 @@ class TokenViewSet(mixins.UpdateModelMixin,
 
     @staticmethod
     def put(request):
-        serialiser = TokenSerializer(data=request.data)
+        uid = request.data.get('uid')
+        party_id = request.data.get('party_id')
+        instance = Token.get_if_exists(uid=uid, party_id=party_id)
+        serialiser = TokenSerializer(data=request.data, instance=instance, partial=True)
         if serialiser.is_valid():
             serialiser.save()
-        return Response(serialiser.data)
+            return OCPIResponse(serialiser.data)
+        else:
+            return OCPIResponse(errors=serialiser.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
     # noinspection PyUnresolvedReferences
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
@@ -257,6 +262,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
             else:
                 return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
         return OCPIResponse(dict(yesyes=1))
+
 
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
