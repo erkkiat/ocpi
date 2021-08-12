@@ -6,6 +6,7 @@ import pprint
 import logging
 
 from celery import exceptions
+from django.http import Http404
 from icecream import ic
 from ocpiconnector import slack_logging
 
@@ -65,10 +66,11 @@ def command_start(_self, data, session_uid, update_url, url):
             logging.warning(f'Unable to start charging at {session.location}, EVSE: {session.evse.evse_id} '
                          f'status code {result.status_code} - response text: {result.text}')
             status = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
-    except requests.exceptions.ConnectionError as e:
+    except (requests.exceptions.ConnectionError, Http404, Exception) as e:
         status = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
         logging.error(f'Cannot reach {update_url}, please check your request parameters.')
         logging.error(str(e))
+
 
     # Send asynchronous OCPI response to eMSP
     result_data = dict(
