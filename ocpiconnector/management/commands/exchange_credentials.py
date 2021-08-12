@@ -1,6 +1,5 @@
 import base64
 import os
-import secrets
 
 import requests
 from django.conf import settings
@@ -103,7 +102,7 @@ class Command(BaseCommand):
                 defaults=dict(
                     ours=token_b,
                     version=endpoints['version'].replace('.', '')  # "2.2" => "22"
-               )
+                )
             )
 
             if not created:
@@ -138,7 +137,7 @@ class Command(BaseCommand):
                 ],
             )
             ic(data_to_send)
-            credentials_response = self.ocpi_post(
+            _credentials_response = self.ocpi_post(
                 self.find_endpoint_url(endpoints, 'credentials', 'receiver'),
                 token_a_base64,
                 json=data_to_send

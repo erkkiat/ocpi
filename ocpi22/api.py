@@ -1,12 +1,12 @@
-import json
+import logging
 import os
 
 from django.core.handlers.wsgi import WSGIRequest
 from django_filters.rest_framework import DjangoFilterBackend
-from icecream import ic
 from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
@@ -225,6 +225,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
                 url=request.build_absolute_uri(reverse('base-versions')),
 
+                # Todo: Check this, should be "Retrieves the credentials object to access the server’s platform"
                 roles=[dict(
                     role='CPO',
                     country_code=COUNTRY_CODE,
@@ -236,11 +237,17 @@ class CredentialsViewSet(mixins.CreateModelMixin,
             )
         )
 
-    def create(self, request: WSGIRequest, *args, **kwargs):
+    @staticmethod
+    def delete(request: Request, *_args, **_kwargs):
+        logging.warning(f'Deleting {request.credentials} on request by Credential owner.')
+        request.credentials.delete()
+        return OCPIResponse('Your credentials have been deleted, as requested.')
+
+    def create(self, request: Request, *args, **kwargs):
         assert hasattr(request, 'credentials')
         # noinspection PyUnresolvedReferences
+        data = request.data
         credentials: Credentials = request.credentials
-        data = json.loads(request.body)
         credentials.theirs = data['token']
         credentials.url = data['url']
         credentials.save()
@@ -261,7 +268,8 @@ class CredentialsViewSet(mixins.CreateModelMixin,
                 role.save()
             else:
                 return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
-        return OCPIResponse(dict(yesyes=1))
+        serializer = CredentialsSerializer(instance=credentials)
+        return OCPIResponse(serializer.data)
 
 
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
