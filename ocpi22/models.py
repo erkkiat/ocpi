@@ -125,22 +125,34 @@ class CredentialsRole(models.Model):
 
 
 class Endpoint(models.Model):
+    CREDENTIALS = 'credentials'
+    LOCATIONS = 'locations'
+    TOKENS = 'tokens'
+    COMMANDS = 'commands'
+    TARIFFS = 'tariffs'
+    CDRS = 'cdrs'
+    SESSIONS = 'sessions'
+
     IDENTIFIER_CHOICES = (
-        ('credentials', 'Credentials'),
-        ('locations', 'Locations'),
-        ('tokens', 'Tokens'),
-        ('commands', 'Commands'),
-        ('tariffs', 'Tariffs'),
-        ('cdrs', 'Charge Detail Records'),
-        ('sessions', 'Sessions'),
+        (CREDENTIALS, 'Credentials'),
+        (LOCATIONS, 'Locations'),
+        (TOKENS, 'Tokens'),
+        (COMMANDS, 'Commands'),
+        (TARIFFS, 'Tariffs'),
+        (CDRS, 'Charge Detail Records'),
+        (SESSIONS, 'Sessions'),
     )
     identifier = models.CharField(max_length=12, choices=IDENTIFIER_CHOICES)
 
     url = models.URLField()
 
+    # Todo: Everything should be case-insensitive
+    SENDER = 'SENDER'
+    RECEIVER = 'RECEIVER'
+
     ROLE_CHOICES = (
-        ('SENDER', 'Sender'),
-        ('RECEIVER', 'Receiver')
+        (SENDER, 'Sender'),
+        (RECEIVER, 'Receiver')
     )
     role = models.CharField(max_length=8, choices=ROLE_CHOICES)
 
@@ -159,6 +171,14 @@ class Token(models.Model):
     """
     A Token structure with data owned by the eMSP
     """
+
+    SENDER = None
+
+    ALLOWED = 'ALLOWED'
+    BLOCKED = 'BLOCKED'
+    EXPIRED = 'EXPIRED'
+    NO_CREDIT = 'NO_CREDIT'
+    NOT_ALLOWED = 'NOT_ALLOWED'
 
     class Meta:
         unique_together = [['party_id', 'uid']]
@@ -204,22 +224,26 @@ class Token(models.Model):
 
     valid = models.BooleanField()
 
+    ALWAYS = 'ALWAYS'
+    ALLOWED_OFFLINE = 'ALLOWED_OFFLINE'
+    NEVER = 'NEVER'
+
     WHITELIST_CHOICES = (
         # Token always has to be whitelisted, realtime authorization is not possible/allowed.
         # CPO shall always allow any use of this Token.
-        ('ALWAYS', 'Always'),
+        (ALWAYS, 'Always'),
 
         # It is allowed to whitelist the token, realtime authorization is also allowed.
         # The CPO may choose which version of authorization to use.
-        ('ALLOWED', 'Allowed'),
+        (ALLOWED, 'Allowed'),
 
         # In normal situations realtime authorization shall be used. But when the CPO cannot get a response
         # from the eMSP (communication between CPO and eMSP is offline), the CPO shall allow this Token to be used.
-        ('ALLOWED_OFFLINE', 'Allowed when offline'),
+        (ALLOWED_OFFLINE, 'Allowed when offline'),
 
         # Whitelisting is forbidden, only realtime authorization is allowed. CPO shall always send
         # a realtime authorization for any use of this Token to the eMSP.
-        ('NEVER', 'Never, only real time'),
+        (NEVER, 'Never, only real time'),
     )
     whitelist = models.CharField(max_length=15, choices=WHITELIST_CHOICES)
 

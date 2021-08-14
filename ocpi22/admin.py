@@ -17,13 +17,13 @@ class TokenAdmin(admin.ModelAdmin):
         # Disable delete
         return False
 
-    def has_add_permission(self, request, obj=None):
-        # Disable add
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        # Disable change
-        return False
+    # def has_add_permission(self, request, obj=None):
+    #     # Disable add
+    #     return False
+    #
+    # def has_change_permission(self, request, obj=None):
+    #     # Disable change
+    #     return False
 
 
 class LocationAdmin(admin.ModelAdmin):

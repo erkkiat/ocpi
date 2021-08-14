@@ -1,7 +1,9 @@
 import logging
 import os
+import uuid
 
 from django.core.handlers.wsgi import WSGIRequest
+from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
@@ -72,10 +74,32 @@ class TokenViewSet(mixins.UpdateModelMixin,
         else:
             return OCPIResponse(errors=serialiser.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
-    # noinspection PyUnresolvedReferences
+    @csrf_exempt
+    @action(methods=['POST', 'GET'], detail=False,
+            url_path='(?P<token_uid>[^/.]+)/authorize')
+    def authorize(self, _request, token_uid) -> OCPIResponse:
+        token = get_object_or_404(Token, uid=token_uid)
+        allowed = Token.ALLOWED
+        info = ''
+        if not token.valid:
+            allowed = Token.EXPIRED
+            info = 'Your token is no longer valid'
+        elif 'NO_CREDIT' in token_uid:
+            allowed = Token.NO_CREDIT
+            info = 'Please refill your account'
+        serializer = TokenSerializer(instance=token)
+        return OCPIResponse(
+            dict(
+                allowed=allowed,
+                token=serializer.data,
+                authorization_reference=uuid.uuid4(),
+                info=info
+            )
+        )
+
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def by_id(self, request, country_code, party_id, uid) -> Response:
+    def by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
         method_is_patch = True if request.method == 'PATCH' else False
 
