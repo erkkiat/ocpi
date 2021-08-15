@@ -2,6 +2,7 @@ import logging
 import os
 import uuid
 
+from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
@@ -81,6 +82,7 @@ class TokenViewSet(mixins.UpdateModelMixin,
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
+        assert settings.DEBUG, 'Simulator endpoints work only in debug mode. Try exchanging Credentials again.'
         ic(request.data, request.get_full_path())
         token = get_object_or_404(Token, uid=token_uid)
         allowed = Token.ALLOWED

@@ -34,6 +34,7 @@ def get_endpoints_dict(request):
                 role=S,
                 url=request.build_absolute_uri(reverse('location-list'))
             ),
+            # Todo: Locations receiver and Tokens sender are for simulator, and should only be active when in debug
             dict(
                 identifier="locations",
                 role=R,
