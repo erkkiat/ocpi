@@ -27,7 +27,17 @@ AUTH_METHOD_CHOICES = (
 )
 
 
-class BusinessDetails(models.Model):
+class ModelUtilMixin:
+    @classmethod
+    def get_if_exists(__cls__, *args, **kwargs):
+        # noinspection PyUnresolvedReferences
+        objects = __cls__.objects.filter(*args, **kwargs)
+        if objects.count():
+            return objects[0]
+        return None
+
+
+class BusinessDetails(models.Model, ModelUtilMixin):
     class Meta:
         verbose_name_plural = 'business details'
 
@@ -39,7 +49,7 @@ class BusinessDetails(models.Model):
         return self.name
 
 
-class Credentials(models.Model):
+class Credentials(models.Model, ModelUtilMixin):
     class Meta:
         verbose_name_plural = 'credentials'
 
@@ -92,7 +102,7 @@ class Credentials(models.Model):
         return self.base64(self.theirs)
 
 
-class CredentialsRole(models.Model):
+class CredentialsRole(models.Model, ModelUtilMixin):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['country_code', 'party_id', 'role'], name='unique_credentialsroles'),
@@ -124,7 +134,7 @@ class CredentialsRole(models.Model):
         return f'{self.country_code}*{self.party_id} ({self.role})'
 
 
-class Endpoint(models.Model):
+class Endpoint(models.Model, ModelUtilMixin):
     CREDENTIALS = 'credentials'
     LOCATIONS = 'locations'
     TOKENS = 'tokens'
@@ -167,7 +177,7 @@ class Endpoint(models.Model):
         return base64.b64encode(str(token).encode('ascii')).decode('ascii')
 
 
-class Token(models.Model):
+class Token(models.Model, ModelUtilMixin):
     """
     A Token structure with data owned by the eMSP
     """
@@ -273,16 +283,8 @@ class Token(models.Model):
     def get_absolute_url(self):
         return reverse('token-by-id', args=[self.country_code, self.party_id, self.uid])
 
-    @staticmethod
-    def get_if_exists(*args, **kwargs):
-        # noinspection PyUnresolvedReferences
-        tokens = Token.objects.filter(*args, **kwargs)
-        if tokens.count():
-            return tokens[0]
-        return None
 
-
-class AuthorizationInfo(models.Model):
+class AuthorizationInfo(models.Model, ModelUtilMixin):
 
     # Status of the Token, and whether charging is allowed at the optionally given location.
     ALLOWED_CHOICES = (
@@ -308,7 +310,7 @@ class AuthorizationInfo(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
 
 
-class Tariff(models.Model):
+class Tariff(models.Model, ModelUtilMixin):
     class Meta:
         unique_together = [['party_id', 'uid']]
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
@@ -382,7 +384,7 @@ class Tariff(models.Model):
         return f'{self.country_code}*{self.party_id}'
 
 
-class PriceComponent(models.Model):
+class PriceComponent(models.Model, ModelUtilMixin):
     TYPE_CHOICES = (
         # Defined in kWh, step_size multiplier: 1 Wh
         ('ENERGY', 'Wh'),
@@ -451,7 +453,7 @@ class PriceComponent(models.Model):
         return f'{self.price or 0.0:.2f}{self._pretty_currency(self.tariff.currency)} {self._format_step_and_type()}'
 
 
-class Facility(models.Model):
+class Facility(models.Model, ModelUtilMixin):
     class Meta:
         verbose_name_plural = 'facilities'
     name = models.CharField(max_length=15)
@@ -461,7 +463,7 @@ class Facility(models.Model):
         return self.name
 
 
-class Capability(models.Model):
+class Capability(models.Model, ModelUtilMixin):
     class Meta:
         verbose_name_plural = 'capabilities'
     name = models.CharField(max_length=28)
@@ -471,7 +473,7 @@ class Capability(models.Model):
         return self.name
 
 
-class Location(models.Model):
+class Location(models.Model, ModelUtilMixin):
     """
     A physical location with one or more EVSEs
     """
@@ -587,7 +589,7 @@ class Location(models.Model):
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*]+$', message='Numbers and letters only')
 
 
-class Evse(models.Model):
+class Evse(models.Model, ModelUtilMixin):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['uid', 'location'], name='evse_party_uid'),
@@ -664,7 +666,7 @@ class Evse(models.Model):
                        args=[self.uid])
 
 
-class Connector(models.Model):
+class Connector(models.Model, ModelUtilMixin):
     # Identifier of the Connector within the EVSE. Two Connectors may have the same id
     # as long as they do not belong to the same EVSE object.
 
@@ -746,7 +748,7 @@ class Connector(models.Model):
         return format_html('<br>'.join([t.link() for t in self.tariff_ids.all()]))
 
 
-class Session(models.Model):
+class Session(models.Model, ModelUtilMixin):
     """
     The Session object describes one charging session. That doesn’t mean it is required that energy
     has been transferred between EV and the Charge Point. It is possible that the EV never took energy
@@ -898,7 +900,7 @@ class Session(models.Model):
         return hours_minutes((end - self.start_date_time).seconds/3600)
 
 
-class Cdr(models.Model):
+class Cdr(models.Model, ModelUtilMixin):
     """
     A Charge Detail Record is the description of a concluded charging session.
     The CDR is the only billing-relevant object. CDRs are sent from the CPO to the eMSP
