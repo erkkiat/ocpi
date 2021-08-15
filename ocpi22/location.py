@@ -220,7 +220,7 @@ class LocationViewSet(mixins.ListModelMixin,
             if serializer.is_valid():
                 serializer.save()
             else:
-                return OCPIResponse(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+                return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
         else:
             serializer = EvseSerializer(instance=evse)
         return OCPIResponse(serializer.data)
@@ -253,7 +253,7 @@ class LocationViewSet(mixins.ListModelMixin,
                 defaults=serializer.data
             )
             if created:
-                return OCPIResponse(serializer.data)
+                return OCPIResponse(serializer.data, http_status=201)
 
             serializer = LocationSerializer(location,
                                             data=request.data.get('data', request.data),

@@ -70,9 +70,10 @@ class TokenViewSet(mixins.UpdateModelMixin,
         serialiser = TokenSerializer(data=request.data, instance=instance, partial=True)
         if serialiser.is_valid():
             serialiser.save()
-            return OCPIResponse(serialiser.data)
+            # Return 201 if instance was created
+            return OCPIResponse(serialiser.data, http_status=200 if instance else 201)
         else:
-            return OCPIResponse(errors=serialiser.errors, status_code=status.HTTP_400_BAD_REQUEST)
+            return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     @csrf_exempt
     @action(methods=['POST', 'GET'], detail=False,
