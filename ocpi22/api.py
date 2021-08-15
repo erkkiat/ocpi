@@ -5,6 +5,7 @@ import uuid
 from django.core.handlers.wsgi import WSGIRequest
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
+from icecream import ic
 from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -75,10 +76,12 @@ class TokenViewSet(mixins.UpdateModelMixin,
         else:
             return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
+    # Todo: NO_CREDIT and other errors should go all the way back to the charger to be shown
     @csrf_exempt
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
-    def authorize(self, _request, token_uid) -> OCPIResponse:
+    def authorize(self, request: Request, token_uid) -> OCPIResponse:
+        ic(request.data, request.get_full_path())
         token = get_object_or_404(Token, uid=token_uid)
         allowed = Token.ALLOWED
         info = ''
@@ -87,14 +90,16 @@ class TokenViewSet(mixins.UpdateModelMixin,
             info = 'Your token is no longer valid'
         elif 'NO_CREDIT' in token_uid:
             allowed = Token.NO_CREDIT
-            info = 'Please refill your account'
+            info = 'You have insufficient balance on your account'
         serializer = TokenSerializer(instance=token)
         return OCPIResponse(
             dict(
-                allowed=allowed,
-                token=serializer.data,
-                authorization_reference=uuid.uuid4(),
-                info=info
+                AuthorizationInfo=dict(
+                    allowed=allowed,
+                    token=serializer.data,
+                    authorization_reference=uuid.uuid4(),
+                    info=info
+                )
             )
         )
 
@@ -463,3 +468,8 @@ class OcpiApi22View(routers.APIRootView):
 class OCPIRouter(routers.DefaultRouter):
     APIRootView = OcpiApi22View
     root_view_name = 'ocpi-22'
+
+    # Make trailing slash optional in URLs
+    def __init__(self):
+        super().__init__()
+        self.trailing_slash = '/?'

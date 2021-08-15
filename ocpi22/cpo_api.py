@@ -18,6 +18,7 @@ from ocpi22 import models
 from ocpi22.api import HyperlinkedModelSerializerCleanedUp, clear_empty, CdrSerializer
 from ocpi22.location import send_evse_updates
 from ocpi22.models import Evse, Session, Token, Connector, Cdr, Location
+from ocpi22.tokens import authorize_token
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
@@ -137,13 +138,6 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     @staticmethod
     def get_connector_id(session):
         return session.connector.uid
-
-
-def authorize_token(token):
-    # Todo: send auth request to the right MSP
-    if 'POSITIVE_TEST_TOKEN' in token.uid and settings.DEBUG:
-        return 'WHITELIST'
-    return False
 
 
 class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -421,20 +415,25 @@ class SessionViewSet(viewsets.ViewSet):
         return Response(result)
 
     @action(methods=['GET'], detail=False, url_name='start',
-            url_path='start/(?P<evse_id>[^/.]+)/(?P<connector_id>[^/.]+)/(?P<token_id>[^/.]+)')
-    def start_session(self, request, evse_id, connector_id, token_id) -> Response:
-        token = get_object_or_404(Token, uid=token_id)
+            url_path='start/(?P<evse_id>[^/.]+)/(?P<connector_id>[^/.]+)/(?P<token_uid>[^/.]+)')
+    def start_session(self, request, evse_id, connector_id, token_uid) -> Response:
         evse = get_object_or_404(Evse, uid=evse_id)
         location = evse.location
         connector = get_object_or_404(Connector, uid=connector_id, evse=evse)
-        auth_method = authorize_token(token)
+        auth_method, authorization_info = authorize_token(token_uid, location)
         if not auth_method:
-            return Response(dict(error=f'Token {token} was not authorized for use by MSP at this time'),
+            return Response(dict(error=f'Token {token_uid} was not authorized for use by MSP at this time'),
                             status=status.HTTP_401_UNAUTHORIZED)
+        if not authorization_info:
+            text = f'There is technical error authorizing {token_uid}, response from MSP is missing token information.'
+            logging.error(text)
+            return Response(dict(error=text))
+        token = authorization_info.get('token')
         # noinspection PyUnresolvedReferences
         active_session = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
         if active_session.count():
-            logging.warning('Invalidating incomplete sessions', ",".join([str(s) for s in active_session]))
+            logging.warning('Starting a new session while one or more previous sessions have not been finished. '
+                            f'Invalidating incomplete sessions: {",".join([str(s) for s in active_session])}')
             active_session.update(status='INVALID')
 
         # noinspection PyUnresolvedReferences
@@ -444,10 +443,11 @@ class SessionViewSet(viewsets.ViewSet):
             uid=uuid.uuid4(),
             kwh=0.0,
             start_date_time=timezone.now(),
-            cdr_token_uid=token.uid,
-            cdr_token_type=token.type,
-            cdr_token_contract_id=token.contract_id,
+            cdr_token_uid=token.get('uid'),
+            cdr_token_type=token.get('type'),
+            cdr_token_contract_id=token.get('contract_id'),
             auth_method=auth_method,
+            authorization_reference=authorization_info.get('authorization_reference'),
             location=location,
             evse=evse,
             connector=connector,

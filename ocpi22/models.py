@@ -14,18 +14,6 @@ from rest_framework.reverse import reverse
 from ocpi22.util import hours_minutes, generate_random_token
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
-AUTH_METHOD_CHOICES = (
-    # Authentication request has been sent to the eMSP.
-    ('AUTH_REQUEST', 'Authentication request to eMSP'),
-
-    # Command like StartSession or ReserveNow used to start the Session,
-    # the Token provided in the Command was used as authorization.
-    ('COMMAND', 'Command from eMSP'),
-
-    # Whitelist used for authentication, no request to the eMSP has been performed.
-    ('WHITELIST', 'Token on whitelist'),
-)
-
 
 class ModelUtilMixin:
     @classmethod
@@ -205,6 +193,11 @@ class Token(models.Model, ModelUtilMixin):
     # If this is a APP_USER or AD_HOC_USER Token, it will be a uniquely, by the eMSP, generated ID.
     # This field is named uid instead of id to prevent confusion with: contract_id.
     uid = models.CharField(max_length=36)
+
+    AD_HOC_USER = 'AD_HOC_USER'
+    APP_USER = 'APP_USER'
+    OTHER = 'OTHER'
+    RFID = 'RFID'
 
     TYPE_CHOICES = (
         ('AD_HOC_USER', 'Ad hoc'),
@@ -800,6 +793,22 @@ class Session(models.Model, ModelUtilMixin):
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
     cdr_token_contract_id = models.CharField(max_length=36)
 
+    AUTH_REQUEST = 'AUTH_REQUEST'
+    COMMAND = 'COMMAND'
+    WHITELIST = 'WHITELIST'
+
+    AUTH_METHOD_CHOICES = (
+        # Authentication request has been sent to the eMSP.
+        (AUTH_REQUEST, 'Authentication request to eMSP'),
+
+        # Command like StartSession or ReserveNow used to start the Session,
+        # the Token provided in the Command was used as authorization.
+        (COMMAND, 'Command from eMSP'),
+
+        # Whitelist used for authentication, no request to the eMSP has been performed.
+        (WHITELIST, 'Token on whitelist'),
+    )
+
     # Method used for authentication.
     auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
 
@@ -950,7 +959,7 @@ class Cdr(models.Model, ModelUtilMixin):
     cdr_token_contract_id = models.CharField(max_length=36)
 
     # Method used for authentication.
-    auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
+    auth_method = models.CharField(max_length=12, choices=Session.AUTH_METHOD_CHOICES)
 
     # Reference to the authorization given by the eMSP. When the eMSP provided an authorization_reference in either:
     # real-time authorization or StartSession, this field SHALL contain the same value.

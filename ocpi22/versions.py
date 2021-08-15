@@ -45,6 +45,11 @@ def get_endpoints_dict(request):
                 url=request.build_absolute_uri(reverse('token-list'))
             ),
             dict(
+                identifier="tokens",
+                role=S,
+                url=request.build_absolute_uri(reverse('token-list'))
+            ),
+            dict(
                 identifier="tariffs",
                 role=S,
                 url=request.build_absolute_uri(reverse('tariff-list'))

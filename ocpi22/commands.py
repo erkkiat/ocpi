@@ -35,7 +35,6 @@ class CommandsSerializer(serializers.Serializer):
         required=False, allow_blank=True,
         label='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
     )
-    # Todo: Make sure this reference ends up in both Session and CDR
     authorization_reference = serializers.CharField(
         required=False, allow_blank=True,
         label='Reference to the authorization given by the eMSP, '
