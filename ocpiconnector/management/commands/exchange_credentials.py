@@ -82,7 +82,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         token_a_base64 = options['token_a']
         url = options['credentials_url']
-        token_b = generate_random_token()
+        token_b = generate_random_token().upper()
         try:
             self.stdout.write('\n\n1) Getting version info from other party '
                               'and selecting a version we both understand\n\n')

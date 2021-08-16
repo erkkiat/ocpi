@@ -17,9 +17,9 @@ from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(__cls__, *args, **kwargs):
+    def get_if_exists(cls, *args, **kwargs):
         # noinspection PyUnresolvedReferences
-        objects = __cls__.objects.filter(*args, **kwargs)
+        objects = cls.objects.filter(*args, **kwargs)
         if objects.count():
             return objects[0]
         return None
@@ -40,6 +40,8 @@ class BusinessDetails(models.Model, ModelUtilMixin):
 class Credentials(models.Model, ModelUtilMixin):
     class Meta:
         verbose_name_plural = 'credentials'
+
+    upper_case_fields = ('token_a', 'ours', 'theirs')
 
     # The credentials token used only for the initial connection, and is communicated manually between parties
     token_a = models.CharField(max_length=64, default=secrets.token_hex(32))
@@ -65,6 +67,13 @@ class Credentials(models.Model, ModelUtilMixin):
     def __str__(self):
         # noinspection PyUnresolvedReferences
         return f'Credentials for {" / ".join([str(s) for s in self.roles.all()])}'
+
+    def save(self, *args, **kwargs):
+        if hasattr(self, 'upper_case_fields'):
+            for field in self.upper_case_fields:
+                upper_value = self.__getattribute__(field).upper()
+                self.__setattr__(field, upper_value)
+        return super(self.__class__, self).save(*args, **kwargs)
 
     def party(self):
         # noinspection PyUnresolvedReferences
@@ -302,6 +311,7 @@ class AuthorizationInfo(models.Model, ModelUtilMixin):
 
     last_updated = models.DateTimeField(auto_now=True)
 
+# Todo: OCPI tariff_id has to contain a valid OCHP tariffId (NLEVNT12345ABC)
 
 class Tariff(models.Model, ModelUtilMixin):
     class Meta:
@@ -477,6 +487,8 @@ class Location(models.Model, ModelUtilMixin):
             models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
 
+    upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id']
+
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
     country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
@@ -508,6 +520,8 @@ class Location(models.Model, ModelUtilMixin):
 
     # City or town
     city = models.CharField(max_length=45)
+
+    # Todo: Postal code must be in uppercase ascii-7 characters.
 
     # Postal code of the location, may only be omitted when the location has no postal code:
     # in some countries charging locations at highways don’t have postal codes.
@@ -571,6 +585,13 @@ class Location(models.Model, ModelUtilMixin):
 
     def __str__(self):
         return f'{self.name}, {self.address}, {self.city}' or f'[No name, UID: {self.pk}]'
+
+    def save(self, *args, **kwargs):
+        if hasattr(self, 'upper_case_fields'):
+            for field in self.upper_case_fields:
+                upper_value = getattr(self, field).upper()
+                setattr(self, field, upper_value)
+        return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse('location-by-id', args=[self.country_code, self.party_id, self.uid])
@@ -908,6 +929,8 @@ class Session(models.Model, ModelUtilMixin):
         end = self.end_date_time if self.end_date_time else timezone.now()
         return hours_minutes((end - self.start_date_time).seconds/3600)
 
+# Todo: CDR.id must contain the CPO-ID (NLEVN12345ABCDEFG...) [up to 36 characters total]
+# Todo: CDR.id must follow the pattern: Regular Expression: [0-9A-Z]{1,36}
 
 class Cdr(models.Model, ModelUtilMixin):
     """
