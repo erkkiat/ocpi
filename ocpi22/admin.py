@@ -9,7 +9,7 @@ from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Conn
 class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
-    list_display = ['valid', 'uid', 'visual_number', 'country_code', 'party_id', 'type', 'contract_id', 'last_updated']
+    list_display = ['party', 'valid', 'type', 'uid', 'visual_number', 'contract_id', 'last_updated']
     list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
     list_display_links = ['uid']
 
@@ -37,7 +37,7 @@ class LocationAdmin(admin.ModelAdmin):
               ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
               ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone',
               ('country_code', 'party_id')]
-    list_display = ['uid', 'publish', 'name', 'address', 'city', 'country']
+    list_display = ['uid', 'publish', 'name', 'street_address']
     readonly_fields = ['party_id', 'country_code']
 
     def actions_item(self, _obj):
@@ -155,7 +155,7 @@ class TariffAdmin(admin.ModelAdmin):
         model = PriceComponent
 
     model = Tariff
-    list_display = ['operator', '__str__', 'last_updated']
+    list_display = ['uid', '__str__', 'last_updated']
     list_display_links = ['__str__']
     inlines = [PriceComponentsInline]
     readonly_fields = ['uid', 'party_id', 'country_code', 'last_updated']

@@ -33,7 +33,7 @@ def hours_minutes(hours_float):
         return f'{minutes} min'
 
 
-def generate_random_token():
+def generate_random_token() -> str:
     return secrets.token_hex(32)
 
 

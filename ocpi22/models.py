@@ -24,6 +24,11 @@ class ModelUtilMixin:
             return objects[0]
         return None
 
+    def party(self):
+        if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
+            return f'{self.country_code}*{self.party_id}'
+        return ''
+
 
 class BusinessDetails(models.Model, ModelUtilMixin):
     class Meta:
@@ -190,6 +195,8 @@ class Token(models.Model, ModelUtilMixin):
     class Meta:
         unique_together = [['party_id', 'uid']]
 
+    upper_case_fields = ('country_code', 'party_id', 'uid', 'contract_id', 'language')
+
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
     country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
@@ -282,6 +289,13 @@ class Token(models.Model, ModelUtilMixin):
     def __str__(self):
         return f'{self.party_id}: {self.type} {self.uid}'
 
+    def save(self, *args, **kwargs):
+        if hasattr(self, 'upper_case_fields'):
+            for field in self.upper_case_fields:
+                upper_value = self.__getattribute__(field).upper()
+                self.__setattr__(field, upper_value)
+        return super(self.__class__, self).save(*args, **kwargs)
+
     def get_absolute_url(self):
         return reverse('token-by-id', args=[self.country_code, self.party_id, self.uid])
 
@@ -316,6 +330,9 @@ class AuthorizationInfo(models.Model, ModelUtilMixin):
 class Tariff(models.Model, ModelUtilMixin):
     class Meta:
         unique_together = [['party_id', 'uid']]
+
+    upper_case_fields = ('country_code', 'party_id', 'currency')
+
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
     country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
@@ -364,6 +381,14 @@ class Tariff(models.Model, ModelUtilMixin):
 
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if hasattr(self, 'upper_case_fields'):
+            for field in self.upper_case_fields:
+                upper_value = self.__getattribute__(field).upper()
+                self.__setattr__(field, upper_value)
+        self.uid = f'{self.country_code}{self.party_id}T{self.pk}'
+        return super(self.__class__, self).save(*args, **kwargs)
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
@@ -521,8 +546,6 @@ class Location(models.Model, ModelUtilMixin):
     # City or town
     city = models.CharField(max_length=45)
 
-    # Todo: Postal code must be in uppercase ascii-7 characters.
-
     # Postal code of the location, may only be omitted when the location has no postal code:
     # in some countries charging locations at highways don’t have postal codes.
     postal_code = models.CharField(max_length=45, blank=True)
@@ -598,6 +621,9 @@ class Location(models.Model, ModelUtilMixin):
 
     def get_quick_url(self):
         return reverse('quick-location-by-id', args=[self.uid])
+
+    def street_address(self):
+        return f'{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}'
 
 
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*]+$', message='Numbers and letters only')
