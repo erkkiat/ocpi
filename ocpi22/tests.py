@@ -16,7 +16,7 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
 from ocpi22.location import LocationViewSet
-from ocpi22.models import Token, Location
+from ocpi22.models import Credentials, Location
 
 
 class LocationTests(TestCase):
@@ -24,7 +24,7 @@ class LocationTests(TestCase):
 
     # noinspection PyUnresolvedReferences
     def setUp(self):
-        self.token = Token.objects.all()[0]
+        self.credentials = Credentials.objects.all()[0]
         self.location: Location = Location.objects.all()[0]
 
     def test_evse_format(self):
@@ -77,3 +77,20 @@ class LocationTests(TestCase):
             self.assertIsInstance(connectors, list, msg='EVSE connectors should be a list')
 
         self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
+
+        detail_url = data.get('detail_url')
+
+        # This should fail without authentication
+        result = self.client.get(detail_url)
+        self.assertEqual(result.status_code, 403, 'A Location request should require OCPI authentication.')
+        ic(result.json())
+
+        # ...and work with a proper OCPI token
+        url = f'{detail_url}?auth-test={self.credentials.ours_base64()}'
+        result = self.client.get(url)
+        self.assertEqual(result.status_code, 200, 'Token auth-test seems not to work.')
+        ic(result.json())
+
+        result = self.client.get(detail_url, HTTP_AUTHORIZATION=f'Token {self.credentials.ours_base64()}')
+        self.assertEqual(result.status_code, 200, 'OCPI token authentication seems not to work.')
+        ic(result.json())

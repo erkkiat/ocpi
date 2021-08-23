@@ -51,11 +51,11 @@ def check_auth_token(request, token):
                 request.ocpi_auth = OCPI_AUTH_TYPES.FINAL
                 request.credentials = credentials
                 return True
-    except binascii.Error as e:
+    except (binascii.Error, UnicodeDecodeError) as e:
         raise exceptions.NotAuthenticated(f'Authentication token: {e}')
     if token:
         # This token is no good
-        raise exceptions.NotAuthenticated
+        raise exceptions.NotAuthenticated(f'The token "{token}" seems to be faulty')
     # If no token, give other permission mechanisms a chance
     return False
 
