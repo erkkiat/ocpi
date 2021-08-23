@@ -649,6 +649,7 @@ class Evse(models.Model, ModelUtilMixin):
 
     @property
     def evse_id(self):
+        # The eMI3 1.0 standard ID
         return f'{self.location.country_code}*{self.location.party_id}*E{self.location.uid}*{self.uid}'.upper()
 
     # Indicates the current status of the EVSE

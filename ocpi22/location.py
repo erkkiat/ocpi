@@ -211,11 +211,11 @@ class LocationViewSet(mixins.ListModelMixin,
     @action(methods=['GET', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_uid>[^/.]+)')
     def by_evse_id(self, request: Request, country_code, party_id, uid, evse_uid, partial=True) -> OCPIResponse:
-        print(f'*** Updating Evse {evse_uid} with new status {request.data["status"]} '
-              f'from {request.credentials.party()}')
         location = get_object_or_404(Location, uid=uid, party_id=party_id, country_code=country_code)
         evse = get_object_or_404(Evse, uid=evse_uid, location=location)
         if request.method == 'PATCH':
+            print(f'*** Updating Evse {evse_uid} with new status {request.data.get("status")} '
+                  f'from {request.credentials.party()}')
             serializer = EvseSerializer(instance=evse, data=request.data, partial=partial)
             if serializer.is_valid():
                 serializer.save()

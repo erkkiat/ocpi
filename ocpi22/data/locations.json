@@ -1,0 +1,4128 @@
+[
+   {
+      "pk" : 1,
+      "fields" : {
+         "logo" : "",
+         "name" : "Plugit Finland",
+         "website" : ""
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Recharge",
+         "website" : ""
+      },
+      "pk" : 2
+   },
+   {
+      "pk" : 3,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Tesla"
+      }
+   },
+   {
+      "pk" : 4,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Eki",
+         "website" : "http://www.chargerhub.eu/",
+         "logo" : ""
+      }
+   },
+   {
+      "pk" : 5,
+      "fields" : {
+         "name" : "Lidl",
+         "website" : "",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Please set BUSINESS_NAME in server environment"
+      },
+      "pk" : 6
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Please set BUSINESS_NAME in server environment",
+         "website" : "",
+         "logo" : ""
+      },
+      "pk" : 7
+   },
+   {
+      "pk" : 8,
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Please set BUSINESS_NAME in server environment"
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "pk" : 9,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Please set BUSINESS_NAME in server environment",
+         "website" : ""
+      }
+   },
+   {
+      "pk" : 10,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Please set BUSINESS_NAME in server environment",
+         "website" : ""
+      }
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Please set BUSINESS_NAME in server environment",
+         "website" : ""
+      },
+      "pk" : 11
+   },
+   {
+      "pk" : 12,
+      "fields" : {
+         "logo" : "",
+         "name" : "Please set BUSINESS_NAME in server environment",
+         "website" : ""
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "pk" : 13,
+      "fields" : {
+         "logo" : "",
+         "name" : "Please set BUSINESS_NAME in server environment",
+         "website" : ""
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Please set BUSINESS_NAME in server environment",
+         "website" : "",
+         "logo" : ""
+      },
+      "pk" : 14
+   },
+   {
+      "pk" : 15,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Please set BUSINESS_NAME in server environment",
+         "website" : ""
+      }
+   },
+   {
+      "pk" : 16,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Please set BUSINESS_NAME in server environment"
+      }
+   },
+   {
+      "fields" : {
+         "name" : "Operator Name",
+         "website" : "",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails",
+      "pk" : 17
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw",
+         "logo" : ""
+      },
+      "pk" : 18
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Warsaw"
+      },
+      "pk" : 19
+   },
+   {
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails",
+      "pk" : 20
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Warsaw",
+         "website" : "",
+         "logo" : ""
+      },
+      "pk" : 21
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Warsaw",
+         "website" : "",
+         "logo" : ""
+      },
+      "pk" : 22
+   },
+   {
+      "pk" : 23,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Warsaw",
+         "website" : ""
+      }
+   },
+   {
+      "pk" : 24,
+      "fields" : {
+         "name" : "Warsaw",
+         "website" : "",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "pk" : 25,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Warsaw",
+         "website" : "",
+         "logo" : ""
+      }
+   },
+   {
+      "pk" : 26,
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "pk" : 27,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      }
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Warsaw Energy",
+         "website" : ""
+      },
+      "pk" : 28
+   },
+   {
+      "fields" : {
+         "name" : "Warsaw Energy",
+         "website" : "",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails",
+      "pk" : 29
+   },
+   {
+      "pk" : 30,
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Warsaw Energy"
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "pk" : 31,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Warsaw Energy"
+      }
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      },
+      "pk" : 32
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Warsaw Energy",
+         "website" : "",
+         "logo" : ""
+      },
+      "pk" : 33
+   },
+   {
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails",
+      "pk" : 34
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      },
+      "pk" : 35
+   },
+   {
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails",
+      "pk" : 36
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      },
+      "pk" : 37
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Warsaw Energy",
+         "website" : ""
+      },
+      "pk" : 38
+   },
+   {
+      "pk" : 39,
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Warsaw Energy"
+      },
+      "model" : "ocpi22.businessdetails",
+      "pk" : 40
+   },
+   {
+      "pk" : 41,
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Warsaw Energy"
+      },
+      "pk" : 42
+   },
+   {
+      "pk" : 43,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Warsaw Energy",
+         "website" : "",
+         "logo" : ""
+      }
+   },
+   {
+      "pk" : 44,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      }
+   },
+   {
+      "pk" : 45,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "website" : "",
+         "name" : "Warsaw Energy",
+         "logo" : ""
+      }
+   },
+   {
+      "pk" : 46,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "name" : "Bigbusiness2",
+         "website" : "",
+         "logo" : ""
+      }
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Bigbusiness"
+      },
+      "pk" : 47
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Warsaw Energy",
+         "website" : ""
+      },
+      "pk" : 48
+   },
+   {
+      "pk" : 49,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Warsaw Energy",
+         "website" : ""
+      }
+   },
+   {
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Warsaw Energy"
+      },
+      "model" : "ocpi22.businessdetails",
+      "pk" : 50
+   },
+   {
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "name" : "Warsaw Energy",
+         "website" : ""
+      },
+      "pk" : 51
+   },
+   {
+      "pk" : 52,
+      "model" : "ocpi22.businessdetails",
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Warsaw Energy"
+      }
+   },
+   {
+      "pk" : 53,
+      "fields" : {
+         "logo" : "",
+         "website" : "",
+         "name" : "Warsaw Energy"
+      },
+      "model" : "ocpi22.businessdetails"
+   },
+   {
+      "pk" : 42,
+      "model" : "ocpi22.credentials",
+      "fields" : {
+         "url" : "http://localhost:5000/ocpi/versions/",
+         "last_updated" : "2021-08-16T14:29:24.060",
+         "created" : "2021-08-16T14:29:15.835",
+         "ours" : "7046C63330EB10266A0D3C767E8CDCCC4063563EC31DE7784F0316E762BFD4BC",
+         "token_a" : "07FD54E081897A07D343334D79E90ED8F6A8961635E2B6A7085F377D17181A77",
+         "theirs" : "AD8FEA9E0C85E160DF2B8ADBB4F120D4536FCC8FF5C0C8A8576AB0B267F5FC98",
+         "version" : "22"
+      }
+   },
+   {
+      "pk" : 43,
+      "model" : "ocpi22.credentialsrole",
+      "fields" : {
+         "role" : "CPO",
+         "business_details" : 52,
+         "credentials" : 42,
+         "country_code" : "PL",
+         "party_id" : "QWE"
+      }
+   },
+   {
+      "pk" : 44,
+      "fields" : {
+         "country_code" : "PL",
+         "credentials" : 42,
+         "party_id" : "QWE",
+         "business_details" : 53,
+         "role" : "EMSP"
+      },
+      "model" : "ocpi22.credentialsrole"
+   },
+   {
+      "fields" : {
+         "credentials" : 42,
+         "identifier" : "credentials",
+         "role" : "RECEIVER",
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/credentials"
+      },
+      "model" : "ocpi22.endpoint",
+      "pk" : 209
+   },
+   {
+      "pk" : 210,
+      "fields" : {
+         "identifier" : "credentials",
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/credentials",
+         "role" : "SENDER",
+         "credentials" : 42
+      },
+      "model" : "ocpi22.endpoint"
+   },
+   {
+      "fields" : {
+         "role" : "SENDER",
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/locations",
+         "identifier" : "locations",
+         "credentials" : 42
+      },
+      "model" : "ocpi22.endpoint",
+      "pk" : 211
+   },
+   {
+      "pk" : 212,
+      "model" : "ocpi22.endpoint",
+      "fields" : {
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/locations",
+         "role" : "RECEIVER",
+         "identifier" : "locations",
+         "credentials" : 42
+      }
+   },
+   {
+      "model" : "ocpi22.endpoint",
+      "fields" : {
+         "credentials" : 42,
+         "identifier" : "tokens",
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/tokens",
+         "role" : "RECEIVER"
+      },
+      "pk" : 213
+   },
+   {
+      "model" : "ocpi22.endpoint",
+      "fields" : {
+         "role" : "SENDER",
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/tokens",
+         "identifier" : "tokens",
+         "credentials" : 42
+      },
+      "pk" : 214
+   },
+   {
+      "pk" : 215,
+      "model" : "ocpi22.endpoint",
+      "fields" : {
+         "role" : "SENDER",
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/tariffs",
+         "identifier" : "tariffs",
+         "credentials" : 42
+      }
+   },
+   {
+      "fields" : {
+         "credentials" : 42,
+         "role" : "SENDER",
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/sessions",
+         "identifier" : "sessions"
+      },
+      "model" : "ocpi22.endpoint",
+      "pk" : 216
+   },
+   {
+      "pk" : 217,
+      "model" : "ocpi22.endpoint",
+      "fields" : {
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/cdrs",
+         "role" : "SENDER",
+         "identifier" : "cdrs",
+         "credentials" : 42
+      }
+   },
+   {
+      "model" : "ocpi22.endpoint",
+      "fields" : {
+         "identifier" : "commands",
+         "url" : "http://localhost:5000/ocpi/cpo/2.2/commands",
+         "role" : "RECEIVER",
+         "credentials" : 42
+      },
+      "pk" : 218
+   },
+   {
+      "fields" : {
+         "contract_id" : "Contract234567",
+         "country_code" : "FI",
+         "whitelist" : "ALWAYS",
+         "language" : "FI",
+         "last_updated" : "2021-08-15T16:09:39.428",
+         "group_id" : null,
+         "issuer" : "EON",
+         "type" : "RFID",
+         "party_id" : "EON",
+         "visual_number" : null,
+         "created" : "2021-05-29T08:06:10.612",
+         "default_profile_type" : "REGULAR",
+         "uid" : "7654321R",
+         "valid" : false
+      },
+      "model" : "ocpi22.token",
+      "pk" : 2
+   },
+   {
+      "model" : "ocpi22.token",
+      "fields" : {
+         "language" : "FI",
+         "group_id" : "DHL1",
+         "last_updated" : "2021-05-29T17:09:36.592",
+         "country_code" : "FI",
+         "contract_id" : "Contract1",
+         "whitelist" : "ALWAYS",
+         "valid" : true,
+         "uid" : "418",
+         "created" : "2021-05-29T08:06:10.612",
+         "default_profile_type" : "CHEAP",
+         "issuer" : "EKI",
+         "type" : "APP_USER",
+         "visual_number" : "43618643712846738219",
+         "party_id" : "EON"
+      },
+      "pk" : 3
+   },
+   {
+      "pk" : 4,
+      "model" : "ocpi22.token",
+      "fields" : {
+         "language" : "FI",
+         "last_updated" : "2021-05-29T18:46:16.618",
+         "group_id" : "",
+         "country_code" : "FI",
+         "contract_id" : "123",
+         "whitelist" : "ALWAYS",
+         "valid" : true,
+         "default_profile_type" : "GREEN",
+         "created" : "2021-05-29T18:46:16.618",
+         "uid" : "8000",
+         "issuer" : "EON",
+         "type" : "RFID",
+         "party_id" : "EON",
+         "visual_number" : ""
+      }
+   },
+   {
+      "model" : "ocpi22.token",
+      "fields" : {
+         "last_updated" : "2021-05-29T19:48:13.101",
+         "group_id" : null,
+         "language" : "FI",
+         "whitelist" : "ALLOWED_OFFLINE",
+         "contract_id" : "Contract1",
+         "country_code" : "FI",
+         "valid" : true,
+         "created" : "2021-05-29T20:09:27.470",
+         "default_profile_type" : "GREEN",
+         "uid" : "1234567B",
+         "party_id" : "EKI",
+         "visual_number" : null,
+         "issuer" : "EKI",
+         "type" : "RFID"
+      },
+      "pk" : 6
+   },
+   {
+      "fields" : {
+         "whitelist" : "ALLOWED_OFFLINE",
+         "country_code" : "FI",
+         "contract_id" : "Contract123456",
+         "group_id" : null,
+         "last_updated" : "2021-05-30T04:35:23.752",
+         "language" : "FI",
+         "visual_number" : null,
+         "party_id" : "EON",
+         "issuer" : "EKI",
+         "type" : "RFID",
+         "default_profile_type" : "GREEN",
+         "created" : "2021-05-29T17:16:53.861",
+         "uid" : "1234567D",
+         "valid" : true
+      },
+      "model" : "ocpi22.token",
+      "pk" : 8
+   },
+   {
+      "fields" : {
+         "issuer" : "EON",
+         "type" : "RFID",
+         "visual_number" : null,
+         "party_id" : "EON",
+         "valid" : true,
+         "created" : "2021-05-29T17:17:07.034",
+         "default_profile_type" : "GREEN",
+         "uid" : "1234567E",
+         "contract_id" : "Contract123",
+         "country_code" : "BG",
+         "whitelist" : "ALLOWED_OFFLINE",
+         "language" : "FI",
+         "last_updated" : "2021-05-29T22:21:13.616",
+         "group_id" : null
+      },
+      "model" : "ocpi22.token",
+      "pk" : 9
+   },
+   {
+      "pk" : 10,
+      "model" : "ocpi22.token",
+      "fields" : {
+         "whitelist" : "ALLOWED_OFFLINE",
+         "contract_id" : "Contract123",
+         "country_code" : "FI",
+         "group_id" : null,
+         "last_updated" : "2021-05-31T17:57:07.088",
+         "language" : "FI",
+         "party_id" : "EON",
+         "visual_number" : null,
+         "issuer" : "EON",
+         "type" : "RFID",
+         "valid" : true,
+         "created" : "2021-05-30T05:37:26.653",
+         "uid" : "POSITIVE_TEST_TOKEN",
+         "default_profile_type" : "GREEN"
+      }
+   },
+   {
+      "fields" : {
+         "last_updated" : "2021-08-12T18:02:36.250",
+         "group_id" : "DF000-2001-8999",
+         "language" : "FI",
+         "whitelist" : "ALWAYS",
+         "contract_id" : "DE8ACC12E46L89",
+         "country_code" : "DE",
+         "created" : "2021-05-30T15:49:01.379",
+         "uid" : "012345678",
+         "default_profile_type" : "CHEAP",
+         "valid" : true,
+         "visual_number" : "DF000-2001-8999-1",
+         "party_id" : "TNM",
+         "issuer" : "TheNewMotion",
+         "type" : "RFID"
+      },
+      "model" : "ocpi22.token",
+      "pk" : 12
+   },
+   {
+      "fields" : {
+         "language" : "FI",
+         "last_updated" : "2021-08-15T16:35:03.353",
+         "group_id" : null,
+         "contract_id" : "Contract234567",
+         "country_code" : "FI",
+         "whitelist" : "NEVER",
+         "created" : "2021-05-30T16:03:03.233",
+         "default_profile_type" : "REGULAR",
+         "uid" : "EKIEKI",
+         "valid" : true,
+         "issuer" : "EON",
+         "type" : "RFID",
+         "party_id" : "EON",
+         "visual_number" : null
+      },
+      "model" : "ocpi22.token",
+      "pk" : 13
+   },
+   {
+      "fields" : {
+         "uid" : "JOKUEKI",
+         "created" : "2021-06-14T19:01:44.922",
+         "default_profile_type" : "REGULAR",
+         "valid" : true,
+         "issuer" : "EON",
+         "type" : "RFID",
+         "party_id" : "EON",
+         "visual_number" : null,
+         "language" : "FI",
+         "last_updated" : "2021-06-14T19:01:44.922",
+         "group_id" : null,
+         "country_code" : "FI",
+         "contract_id" : "Contract23456",
+         "whitelist" : "ALWAYS"
+      },
+      "model" : "ocpi22.token",
+      "pk" : 14
+   },
+   {
+      "fields" : {
+         "contract_id" : "A123",
+         "country_code" : "FI",
+         "whitelist" : "NEVER",
+         "language" : "FI",
+         "last_updated" : "2021-08-16T15:11:11.264",
+         "group_id" : "cde",
+         "issuer" : "eki",
+         "type" : "RFID",
+         "visual_number" : "c123",
+         "party_id" : "EKI",
+         "created" : "2021-08-12T16:34:13.390",
+         "uid" : "EKI1_NO_CREDIT",
+         "default_profile_type" : null,
+         "valid" : true
+      },
+      "model" : "ocpi22.token",
+      "pk" : 15
+   },
+   {
+      "model" : "ocpi22.token",
+      "fields" : {
+         "group_id" : null,
+         "last_updated" : "2021-08-15T05:48:16.579",
+         "language" : "FI",
+         "whitelist" : "ALLOWED",
+         "country_code" : "FI",
+         "contract_id" : "Contract234567",
+         "valid" : false,
+         "default_profile_type" : "REGULAR",
+         "created" : "2021-08-15T05:48:16.579",
+         "uid" : "7654321R2",
+         "visual_number" : null,
+         "party_id" : "EON",
+         "issuer" : "EON",
+         "type" : "RFID"
+      },
+      "pk" : 16
+   },
+   {
+      "pk" : 1,
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "created" : "2021-05-29T08:06:10.598",
+         "uid" : "FIEKIT1",
+         "tariff_alt_url" : "",
+         "currency" : "EUR",
+         "party_id" : "EKI",
+         "type" : "REGULAR",
+         "last_updated" : "2021-08-16T15:05:38.523",
+         "country_code" : "FI"
+      }
+   },
+   {
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "country_code" : "FI",
+         "last_updated" : "2021-08-16T15:03:33.533",
+         "party_id" : "EKI",
+         "currency" : "EUR",
+         "type" : "PROFILE_GREEN",
+         "tariff_alt_url" : "",
+         "created" : "2021-05-29T08:06:10.598",
+         "uid" : "FIEKIT2"
+      },
+      "pk" : 2
+   },
+   {
+      "pk" : 3,
+      "fields" : {
+         "last_updated" : "2021-08-16T15:03:20.843",
+         "country_code" : "FI",
+         "uid" : "FIEONT3",
+         "created" : "2021-05-30T18:03:11.868",
+         "tariff_alt_url" : "",
+         "type" : "AD_HOC_PAYMENT",
+         "party_id" : "EON",
+         "currency" : "EUR"
+      },
+      "model" : "ocpi22.tariff"
+   },
+   {
+      "pk" : 1,
+      "fields" : {
+         "vat" : 24,
+         "tariff" : 1,
+         "step_size" : 1000,
+         "type" : "ENERGY",
+         "price" : 0.3
+      },
+      "model" : "ocpi22.pricecomponent"
+   },
+   {
+      "pk" : 2,
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "vat" : 24,
+         "tariff" : 1,
+         "step_size" : 60,
+         "price" : 0.05,
+         "type" : "TIME"
+      }
+   },
+   {
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "tariff" : 1,
+         "vat" : 24,
+         "step_size" : 1,
+         "price" : 0.5,
+         "type" : "FLAT"
+      },
+      "pk" : 3
+   },
+   {
+      "pk" : 4,
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "type" : "ENERGY",
+         "price" : 0.55,
+         "step_size" : 1000,
+         "vat" : null,
+         "tariff" : 2
+      }
+   },
+   {
+      "pk" : 5,
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "type" : "TIME",
+         "price" : 0.05,
+         "step_size" : 60,
+         "tariff" : 2,
+         "vat" : null
+      }
+   },
+   {
+      "fields" : {
+         "step_size" : 1000,
+         "tariff" : 3,
+         "vat" : 0.1,
+         "type" : "ENERGY",
+         "price" : 0.4
+      },
+      "model" : "ocpi22.pricecomponent",
+      "pk" : 6
+   },
+   {
+      "pk" : 1,
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "description" : "Hotels and other lodging",
+         "name" : "HOTEL"
+      }
+   },
+   {
+      "pk" : 2,
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "description" : "A restaurant",
+         "name" : "RESTAURANT"
+      }
+   },
+   {
+      "pk" : 3,
+      "fields" : {
+         "name" : "CAFE",
+         "description" : ""
+      },
+      "model" : "ocpi22.facility"
+   },
+   {
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "description" : "",
+         "name" : "SPORT"
+      },
+      "pk" : 4
+   },
+   {
+      "fields" : {
+         "description" : "",
+         "name" : "MALL"
+      },
+      "model" : "ocpi22.facility",
+      "pk" : 5
+   },
+   {
+      "pk" : 6,
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "name" : "SUPERMARKET",
+         "description" : ""
+      }
+   },
+   {
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "name" : "RECREATION_AREA",
+         "description" : ""
+      },
+      "pk" : 7
+   },
+   {
+      "pk" : 8,
+      "fields" : {
+         "name" : "NATURE",
+         "description" : ""
+      },
+      "model" : "ocpi22.facility"
+   },
+   {
+      "fields" : {
+         "name" : "MUSEUM",
+         "description" : ""
+      },
+      "model" : "ocpi22.facility",
+      "pk" : 9
+   },
+   {
+      "pk" : 10,
+      "fields" : {
+         "name" : "BIKE_SHARING",
+         "description" : ""
+      },
+      "model" : "ocpi22.facility"
+   },
+   {
+      "pk" : 11,
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "name" : "BUS_STOP",
+         "description" : ""
+      }
+   },
+   {
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "description" : "",
+         "name" : "TAXI_STAND"
+      },
+      "pk" : 12
+   },
+   {
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "description" : "",
+         "name" : "TRAM_STOP"
+      },
+      "pk" : 13
+   },
+   {
+      "pk" : 14,
+      "fields" : {
+         "name" : "METRO_STATION",
+         "description" : ""
+      },
+      "model" : "ocpi22.facility"
+   },
+   {
+      "pk" : 15,
+      "fields" : {
+         "name" : "TRAIN_STATION",
+         "description" : ""
+      },
+      "model" : "ocpi22.facility"
+   },
+   {
+      "pk" : 16,
+      "fields" : {
+         "name" : "AIRPORT",
+         "description" : ""
+      },
+      "model" : "ocpi22.facility"
+   },
+   {
+      "fields" : {
+         "description" : "",
+         "name" : "PARKING_LOT"
+      },
+      "model" : "ocpi22.facility",
+      "pk" : 17
+   },
+   {
+      "pk" : 18,
+      "fields" : {
+         "description" : "",
+         "name" : "CARPOOL_PARKING"
+      },
+      "model" : "ocpi22.facility"
+   },
+   {
+      "pk" : 19,
+      "model" : "ocpi22.facility",
+      "fields" : {
+         "name" : "FUEL_STATION",
+         "description" : ""
+      }
+   },
+   {
+      "pk" : 20,
+      "fields" : {
+         "name" : "WIFI",
+         "description" : ""
+      },
+      "model" : "ocpi22.facility"
+   },
+   {
+      "pk" : 1,
+      "model" : "ocpi22.capability",
+      "fields" : {
+         "name" : "RFID_READER",
+         "description" : "Charging at this EVSE can be authorized with an RFID token."
+      }
+   },
+   {
+      "pk" : 2,
+      "fields" : {
+         "name" : "DEBIT_CARD_PAYABLE",
+         "description" : "EVSE has a payment terminal that makes it possible to pay for charging using a debit card."
+      },
+      "model" : "ocpi22.capability"
+   },
+   {
+      "pk" : 14,
+      "model" : "ocpi22.location",
+      "fields" : {
+         "city" : "Sofia",
+         "operator" : 5,
+         "postal_code" : "AB1202",
+         "lat_partition" : 4272,
+         "parking_type" : "PARKING_LOT",
+         "suboperator" : null,
+         "owner" : null,
+         "publish" : true,
+         "latitude" : 42.7271577,
+         "long_partition" : 2333,
+         "address" : "Sofia str. 40",
+         "state" : "",
+         "party_id" : "EON",
+         "country" : "BGR",
+         "created" : "2021-06-07T19:19:16.246",
+         "uid" : "1",
+         "name" : "Orlandovtsi 1",
+         "country_code" : "FI",
+         "longitude" : 23.3336124,
+         "facilities" : [
+            1,
+            2,
+            6
+         ],
+         "time_zone" : "Helsinki/Finland",
+         "publish_allowed_to" : [],
+         "last_updated" : "2021-08-16T14:16:27.290"
+      }
+   },
+   {
+      "model" : "ocpi22.location",
+      "fields" : {
+         "state" : "",
+         "party_id" : "EON",
+         "country" : "FIN",
+         "uid" : "2",
+         "created" : "2021-06-08T18:35:13.361",
+         "name" : "Ekin laturi kotona jossain",
+         "country_code" : "FI",
+         "longitude" : 30,
+         "facilities" : [],
+         "time_zone" : "Helsinki/Finland",
+         "publish_allowed_to" : [],
+         "last_updated" : "2021-08-16T13:37:59.764",
+         "city" : "Espoo",
+         "postal_code" : "02620",
+         "operator" : null,
+         "lat_partition" : 6000,
+         "parking_type" : null,
+         "suboperator" : null,
+         "owner" : null,
+         "publish" : true,
+         "latitude" : 60,
+         "address" : "Nuolihaukantie",
+         "long_partition" : 3000
+      },
+      "pk" : 32
+   },
+   {
+      "model" : "ocpi22.location",
+      "fields" : {
+         "publish_allowed_to" : [],
+         "last_updated" : "2021-08-09T05:26:56.200",
+         "time_zone" : "Finland/Helsinki",
+         "country_code" : "FI",
+         "longitude" : 30,
+         "facilities" : [],
+         "created" : "2021-06-08T18:52:57.873",
+         "uid" : "3",
+         "name" : "Ekin laturi kotona siellä",
+         "country" : "FIN",
+         "party_id" : "EON",
+         "state" : "",
+         "address" : "Nuolihaukantie 25BCD",
+         "long_partition" : 3000,
+         "publish" : true,
+         "latitude" : 61,
+         "suboperator" : 4,
+         "owner" : 4,
+         "parking_type" : null,
+         "lat_partition" : 6100,
+         "postal_code" : "02620",
+         "operator" : 4,
+         "city" : "Espoo"
+      },
+      "pk" : 33
+   },
+   {
+      "pk" : 7,
+      "fields" : {
+         "last_updated" : "2021-08-10T04:59:55.692",
+         "uid" : "9A",
+         "created" : "2021-06-07T19:23:49.395",
+         "status" : "INOPERATIVE",
+         "location" : 14,
+         "capabilities" : [
+            1
+         ]
+      },
+      "model" : "ocpi22.evse"
+   },
+   {
+      "pk" : 12,
+      "fields" : {
+         "capabilities" : [],
+         "location" : 32,
+         "uid" : "1024",
+         "created" : "2021-06-08T18:35:13.365",
+         "last_updated" : "2021-06-08T18:52:20.515",
+         "status" : "AVAILABLE"
+      },
+      "model" : "ocpi22.evse"
+   },
+   {
+      "pk" : 13,
+      "fields" : {
+         "status" : "AVAILABLE",
+         "uid" : "1025",
+         "created" : "2021-06-08T18:52:57.877",
+         "last_updated" : "2021-08-09T05:26:56.197",
+         "capabilities" : [
+            1
+         ],
+         "location" : 33
+      },
+      "model" : "ocpi22.evse"
+   },
+   {
+      "model" : "ocpi22.connector",
+      "fields" : {
+         "last_updated" : "2021-06-07T19:23:49.400",
+         "standard" : "IEC_62196_T2",
+         "tariff_ids" : [
+            1,
+            2,
+            3
+         ],
+         "max_electric_power" : null,
+         "max_amperage" : 92,
+         "terms_and_conditions" : "",
+         "evse" : 7,
+         "created" : "2021-06-07T19:23:49.400",
+         "uid" : "1",
+         "format" : "CABLE",
+         "max_voltage" : 238,
+         "power_type" : "DC"
+      },
+      "pk" : 8
+   },
+   {
+      "model" : "ocpi22.connector",
+      "fields" : {
+         "max_amperage" : 92,
+         "max_electric_power" : null,
+         "standard" : "IEC_62196_T2",
+         "last_updated" : "2021-06-08T18:35:13.370",
+         "tariff_ids" : [],
+         "evse" : 12,
+         "terms_and_conditions" : "",
+         "power_type" : "DC",
+         "max_voltage" : 238,
+         "format" : "CABLE",
+         "created" : "2021-06-08T18:35:13.370",
+         "uid" : "1"
+      },
+      "pk" : 15
+   },
+   {
+      "pk" : 16,
+      "fields" : {
+         "evse" : 13,
+         "terms_and_conditions" : "",
+         "power_type" : "DC",
+         "max_voltage" : 238,
+         "uid" : "1",
+         "created" : "2021-06-08T18:52:57.881",
+         "format" : "CABLE",
+         "max_electric_power" : null,
+         "max_amperage" : 92,
+         "last_updated" : "2021-07-28T18:39:13.563",
+         "standard" : "IEC_62196_T2",
+         "tariff_ids" : [
+            1,
+            2,
+            3
+         ]
+      },
+      "model" : "ocpi22.connector"
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-03T15:08:34.774",
+         "status" : "COMPLETED",
+         "meter_id" : null,
+         "created" : "2021-08-03T15:08:34.775",
+         "uid" : "70970efc-eacb-40ad-8a71-b4868d5cbdb2",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "total_cost_excl_vat" : 3.5,
+         "cdr_token_uid" : "EKIEKI",
+         "end_date_time" : "2021-08-03T15:12:01.558",
+         "last_updated" : "2021-08-03T15:12:01.781",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : 4.34,
+         "country_code" : "FI",
+         "connector" : 16,
+         "kwh" : 10
+      },
+      "pk" : 108
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "party_id" : "EKI",
+         "status" : "INVALID",
+         "uid" : "0e5d9e98-9c4e-475f-ba99-e0d03ceae29c",
+         "created" : "2021-08-04T17:32:40.112",
+         "meter_id" : null,
+         "country_code" : "FI",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : null,
+         "connector" : 8,
+         "kwh" : 0,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : null,
+         "last_updated" : "2021-08-04T17:32:40.112",
+         "end_date_time" : null,
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-04T17:32:40.111"
+      },
+      "pk" : 109
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-04T17:32:53.792",
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "WHITELIST",
+         "connector" : 8,
+         "kwh" : 10,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-04T17:33:01.449",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "party_id" : "EKI",
+         "status" : "INVALID",
+         "uid" : "9264f4bd-24e4-4a03-9bb2-da6f0fe9f3da",
+         "created" : "2021-08-04T17:32:53.794",
+         "meter_id" : null
+      },
+      "pk" : 110
+   },
+   {
+      "fields" : {
+         "start_date_time" : "2021-08-04T18:06:28.933",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "cdr_token_type" : "RFID",
+         "kwh" : 10,
+         "connector" : 8,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "WHITELIST",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-04T18:07:10.496",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : null,
+         "party_id" : "EKI",
+         "cdr_token_contract_id" : "Contract123",
+         "authorization_reference" : "",
+         "uid" : "e4bd4b1b-de79-4d0b-bfd1-efe8b603cdf3",
+         "created" : "2021-08-04T18:06:28.934",
+         "meter_id" : null,
+         "status" : "INVALID"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 111
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "created" : "2021-08-04T18:07:52.185",
+         "uid" : "f01cae2b-bbe9-4510-9c93-fa4be8186231",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-04T18:07:52.184",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : null,
+         "kwh" : 0,
+         "connector" : 8,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "WHITELIST",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "start_date_time" : "2021-08-04T18:07:52.184"
+      },
+      "pk" : 112
+   },
+   {
+      "pk" : 113,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-04T18:09:01.121",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "location" : 14,
+         "evse" : 7,
+         "last_updated" : "2021-08-04T18:09:01.123",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "connector" : 8,
+         "kwh" : 0,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "WHITELIST",
+         "country_code" : "FI",
+         "meter_id" : null,
+         "uid" : "a7933cee-75c8-4748-aa1f-e43a10a14e19",
+         "created" : "2021-08-04T18:09:01.123",
+         "status" : "INVALID",
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123"
+      }
+   },
+   {
+      "pk" : 114,
+      "fields" : {
+         "start_date_time" : "2021-08-04T18:11:01.863",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "kwh" : 0,
+         "connector" : 16,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-04T18:11:03.548",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "uid" : "4bc7d2a1-3b22-42b2-b548-c3ef98f78a93",
+         "created" : "2021-08-04T18:11:01.864",
+         "meter_id" : null
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "pk" : 115,
+      "fields" : {
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "connector" : 16,
+         "kwh" : 0,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "last_updated" : "2021-08-04T18:13:55.906",
+         "end_date_time" : null,
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "meter_id" : null,
+         "created" : "2021-08-04T18:13:54.400",
+         "uid" : "23df7e7b-c85f-48ac-9360-77255f3cfd0f",
+         "start_date_time" : "2021-08-04T18:13:54.398",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID"
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "fields" : {
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "uid" : "7c10885f-73ab-44b6-9f97-487acc17e143",
+         "created" : "2021-08-04T18:15:29.039",
+         "meter_id" : null,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "connector" : 16,
+         "kwh" : 0,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-04T18:15:30.133",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-04T18:15:29.038"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 116
+   },
+   {
+      "fields" : {
+         "start_date_time" : "2021-08-04T18:17:23.272",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-04T18:17:24.823",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "connector" : 16,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "uid" : "d1cc42fb-0c50-4647-b8fa-59b83e0c5e62",
+         "created" : "2021-08-04T18:17:23.274",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 117
+   },
+   {
+      "fields" : {
+         "status" : "INVALID",
+         "created" : "2021-08-04T18:20:39.403",
+         "uid" : "a59f7899-abe9-4ab7-84bf-4071b8871387",
+         "meter_id" : null,
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "last_updated" : "2021-08-04T18:20:39.403",
+         "end_date_time" : null,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "connector" : null,
+         "kwh" : 0,
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-04T18:20:39.401"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 118
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "start_date_time" : "2021-08-04T18:23:09.095",
+         "meter_id" : null,
+         "uid" : "6b460dbf-ba4a-46f0-bb2b-6ee22d86daac",
+         "created" : "2021-08-04T18:23:09.096",
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "last_updated" : "2021-08-04T18:23:09.096",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "kwh" : 0,
+         "connector" : null,
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI"
+      },
+      "pk" : 119
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-04T18:24:43.923",
+         "currency" : "EUR",
+         "location" : 33,
+         "evse" : 13,
+         "cdr_token_type" : "RFID",
+         "connector" : null,
+         "kwh" : 0,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-04T18:24:43.925",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "meter_id" : null,
+         "uid" : "1cf0bd34-7ccc-4564-9ca1-8a1b9d5bc794",
+         "created" : "2021-08-04T18:24:43.926",
+         "status" : "INVALID"
+      },
+      "pk" : 120
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-04T18:26:46.954",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "uid" : "f9a74e1a-09e0-4406-8992-277b0e60c13b",
+         "created" : "2021-08-04T18:26:46.955",
+         "meter_id" : null,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "kwh" : 0,
+         "connector" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-04T18:26:46.955"
+      },
+      "pk" : 121
+   },
+   {
+      "pk" : 122,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "start_date_time" : "2021-08-04T18:30:13.843",
+         "uid" : "ee17b92b-24f1-4105-ad7d-9101bbf96d91",
+         "created" : "2021-08-04T18:30:13.844",
+         "meter_id" : null,
+         "status" : "COMPLETED",
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "end_date_time" : "2021-08-04T18:30:29.066",
+         "last_updated" : "2021-08-04T18:30:29.313",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 8,
+         "kwh" : 25,
+         "connector" : 8,
+         "country_code" : "FI",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : 9.92
+      }
+   },
+   {
+      "pk" : 123,
+      "fields" : {
+         "country_code" : "FI",
+         "total_cost_incl_vat" : 4.34,
+         "auth_method" : "WHITELIST",
+         "kwh" : 10,
+         "connector" : 8,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 3.5,
+         "end_date_time" : "2021-08-04T18:32:55.484",
+         "last_updated" : "2021-08-04T18:32:55.726",
+         "cdr_token_contract_id" : "Contract123",
+         "authorization_reference" : "",
+         "party_id" : "EKI",
+         "status" : "COMPLETED",
+         "uid" : "311eba7b-cabb-45d4-863e-4ab82fcc9512",
+         "created" : "2021-08-04T18:32:37.537",
+         "meter_id" : null,
+         "start_date_time" : "2021-08-04T18:32:37.535",
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID"
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "party_id" : "EKI",
+         "cdr_token_contract_id" : "Contract123",
+         "authorization_reference" : "",
+         "meter_id" : null,
+         "created" : "2021-08-04T18:33:39.427",
+         "uid" : "b27591d8-aa2a-4e86-b58b-898d415348a2",
+         "status" : "COMPLETED",
+         "kwh" : 10,
+         "connector" : 8,
+         "total_cost_incl_vat" : 4.34,
+         "auth_method" : "WHITELIST",
+         "country_code" : "FI",
+         "last_updated" : "2021-08-04T18:33:46.168",
+         "end_date_time" : "2021-08-04T18:33:45.942",
+         "total_cost_excl_vat" : 3.5,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-04T18:33:39.426"
+      },
+      "pk" : 124
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "kwh" : 10,
+         "connector" : 8,
+         "country_code" : "FI",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : 4.34,
+         "last_updated" : "2021-08-04T18:35:23.826",
+         "end_date_time" : "2021-08-04T18:35:23.501",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 3.5,
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "created" : "2021-08-04T18:35:16.079",
+         "uid" : "3c4ea3e4-0fba-438d-ab22-74212716663d",
+         "meter_id" : null,
+         "status" : "COMPLETED",
+         "start_date_time" : "2021-08-04T18:35:16.078",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "cdr_token_type" : "RFID"
+      },
+      "pk" : 125
+   },
+   {
+      "fields" : {
+         "last_updated" : "2021-08-04T19:01:35.654",
+         "end_date_time" : "2021-08-04T19:01:35.397",
+         "total_cost_excl_vat" : 3.5,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "connector" : 8,
+         "kwh" : 10,
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : 4.34,
+         "country_code" : "FI",
+         "meter_id" : null,
+         "uid" : "db107260-0a5b-4b93-9225-fe679817f90f",
+         "created" : "2021-08-04T19:01:26.048",
+         "status" : "COMPLETED",
+         "party_id" : "EKI",
+         "cdr_token_contract_id" : "Contract123",
+         "authorization_reference" : "",
+         "start_date_time" : "2021-08-04T19:01:26.046",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14
+      },
+      "model" : "ocpi22.session",
+      "pk" : 126
+   },
+   {
+      "pk" : 127,
+      "fields" : {
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "start_date_time" : "2021-08-04T19:02:00.902",
+         "created" : "2021-08-04T19:02:00.903",
+         "uid" : "030f13b3-32bd-44e8-ab58-ee3434eed9ef",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "last_updated" : "2021-08-04T19:02:27.019",
+         "end_date_time" : "2021-08-04T19:02:26.694",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 0.5,
+         "connector" : 8,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : 0.62
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "fields" : {
+         "start_date_time" : "2021-08-04T19:02:31.848",
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : 4.34,
+         "country_code" : "FI",
+         "kwh" : 10,
+         "connector" : 8,
+         "total_cost_excl_vat" : 3.5,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "end_date_time" : "2021-08-04T19:02:39.882",
+         "last_updated" : "2021-08-04T19:02:39.892",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "party_id" : "EKI",
+         "status" : "COMPLETED",
+         "meter_id" : null,
+         "created" : "2021-08-04T19:02:31.849",
+         "uid" : "5a264e51-6930-404c-8dec-4f3eb31a5b4b"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 128
+   },
+   {
+      "pk" : 129,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "cdr_token_type" : "RFID",
+         "location" : 14,
+         "evse" : 7,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-05T04:37:22.425",
+         "status" : "COMPLETED",
+         "uid" : "93221065-321e-44b8-ba73-f0911d7fd51b",
+         "created" : "2021-08-05T04:37:22.426",
+         "meter_id" : null,
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "party_id" : "EKI",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 3.5,
+         "end_date_time" : "2021-08-05T04:37:48.657",
+         "last_updated" : "2021-08-05T04:37:48.890",
+         "country_code" : "FI",
+         "total_cost_incl_vat" : 4.34,
+         "auth_method" : "WHITELIST",
+         "connector" : 8,
+         "kwh" : 10
+      }
+   },
+   {
+      "pk" : 130,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "party_id" : "EKI",
+         "cdr_token_contract_id" : "Contract123",
+         "authorization_reference" : "",
+         "meter_id" : null,
+         "created" : "2021-08-05T04:47:15.099",
+         "uid" : "bddc95e3-d3c9-4b5c-84e8-249408ac9391",
+         "status" : "COMPLETED",
+         "kwh" : 10,
+         "connector" : 8,
+         "total_cost_incl_vat" : 4.34,
+         "auth_method" : "WHITELIST",
+         "country_code" : "FI",
+         "end_date_time" : "2021-08-05T04:47:28.479",
+         "last_updated" : "2021-08-05T04:47:28.717",
+         "total_cost_excl_vat" : 3.5,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T04:47:15.098"
+      }
+   },
+   {
+      "fields" : {
+         "created" : "2021-08-05T04:47:59.614",
+         "uid" : "1e98b55f-1b93-4f0d-b69b-c22afd702cb2",
+         "meter_id" : null,
+         "status" : "COMPLETED",
+         "party_id" : "EKI",
+         "cdr_token_contract_id" : "Contract123",
+         "authorization_reference" : "",
+         "last_updated" : "2021-08-05T04:48:05.887",
+         "end_date_time" : "2021-08-05T04:48:05.643",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 3.5,
+         "connector" : 8,
+         "kwh" : 10,
+         "country_code" : "FI",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : 4.34,
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "location" : 14,
+         "evse" : 7,
+         "start_date_time" : "2021-08-05T04:47:59.613"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 131
+   },
+   {
+      "pk" : 132,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-05T04:54:37.070",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T04:54:37.071",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "connector" : null,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "created" : "2021-08-05T04:54:37.071",
+         "uid" : "b3b694b9-f786-4789-bd11-bf2c9520f440",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : ""
+      }
+   },
+   {
+      "fields" : {
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T04:56:43.058",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "created" : "2021-08-05T04:56:43.059",
+         "uid" : "7a29e1cb-d045-4d01-a38a-76cd0839828c",
+         "meter_id" : null,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "connector" : null,
+         "kwh" : 0,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T04:56:43.059"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 133
+   },
+   {
+      "pk" : 134,
+      "fields" : {
+         "status" : "INVALID",
+         "meter_id" : null,
+         "uid" : "dd383bf4-2d8e-42b9-8fa1-0ba98cf4838c",
+         "created" : "2021-08-05T04:57:50.697",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "last_updated" : "2021-08-05T04:57:50.697",
+         "end_date_time" : null,
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "kwh" : 0,
+         "connector" : null,
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-05T04:57:50.696"
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "pk" : 135,
+      "fields" : {
+         "status" : "INVALID",
+         "meter_id" : null,
+         "uid" : "1fb16a0b-a65a-4617-8531-173c1e44cbae",
+         "created" : "2021-08-05T04:59:04.461",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "last_updated" : "2021-08-05T04:59:04.461",
+         "end_date_time" : null,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "connector" : null,
+         "kwh" : 0,
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-05T04:59:04.460"
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "pk" : 136,
+      "fields" : {
+         "last_updated" : "2021-08-05T05:03:27.732",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "connector" : null,
+         "kwh" : 0,
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "meter_id" : null,
+         "created" : "2021-08-05T05:03:27.733",
+         "uid" : "36ba537d-276b-4510-a3d9-069956031de5",
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "start_date_time" : "2021-08-05T05:03:27.731",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "meter_id" : null,
+         "uid" : "dd04e940-da0b-46e6-960f-2c7773215125",
+         "created" : "2021-08-05T05:05:14.757",
+         "status" : "INVALID",
+         "connector" : null,
+         "kwh" : 0,
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "last_updated" : "2021-08-05T05:05:14.757",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T05:05:14.756"
+      },
+      "pk" : 137
+   },
+   {
+      "pk" : 138,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "created" : "2021-08-05T05:07:37.761",
+         "uid" : "ff4e5c44-a2cc-43cf-b614-a484af228cc7",
+         "meter_id" : null,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "connector" : 16,
+         "kwh" : 0,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T05:07:38.946",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T05:07:37.760"
+      }
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-05T05:10:32.785",
+         "status" : "INVALID",
+         "meter_id" : null,
+         "created" : "2021-08-05T05:10:32.786",
+         "uid" : "67c8597c-09c8-412b-bd02-88b3d95df04e",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "last_updated" : "2021-08-05T05:10:34.052",
+         "end_date_time" : null,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "connector" : 16,
+         "kwh" : 0
+      },
+      "pk" : 139
+   },
+   {
+      "pk" : 140,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "created" : "2021-08-05T05:12:06.645",
+         "uid" : "2326821d-c8ac-4583-a055-0f34ff66d6cd",
+         "meter_id" : null,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "kwh" : 0,
+         "connector" : 16,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T05:12:07.917",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T05:12:06.644"
+      }
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-05T05:13:43.688",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "cdr_token_type" : "RFID",
+         "kwh" : 0,
+         "connector" : 16,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T05:13:44.801",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "uid" : "73a5937a-1f3b-4269-b591-d6f07aae4e1e",
+         "created" : "2021-08-05T05:13:43.690",
+         "meter_id" : null,
+         "status" : "INVALID"
+      },
+      "pk" : 141
+   },
+   {
+      "pk" : 142,
+      "fields" : {
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "created" : "2021-08-05T05:16:51.284",
+         "uid" : "2e92c468-900b-42b4-83f8-47ab0ed4dd1d",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "connector" : 16,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "last_updated" : "2021-08-05T05:16:53.159",
+         "end_date_time" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T05:16:51.279"
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "meter_id" : null,
+         "uid" : "d51282ef-b8ca-490a-973f-4aebffb9932a",
+         "created" : "2021-08-05T05:18:55.190",
+         "status" : "INVALID",
+         "kwh" : 0,
+         "connector" : 16,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "last_updated" : "2021-08-05T05:18:56.295",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T05:18:55.189"
+      },
+      "pk" : 143
+   },
+   {
+      "pk" : 144,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "uid" : "cfa9e6fc-bc76-4d81-be20-45b14fd87791",
+         "created" : "2021-08-05T05:19:14.058",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "last_updated" : "2021-08-05T05:19:14.058",
+         "end_date_time" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "kwh" : 0,
+         "connector" : null,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "start_date_time" : "2021-08-05T05:19:14.057"
+      }
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "connector" : 16,
+         "kwh" : 0,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T05:34:57.500",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "meter_id" : null,
+         "uid" : "44bf0fda-b332-4aac-b0f6-43430b59bd43",
+         "created" : "2021-08-05T05:34:56.389",
+         "status" : "INVALID",
+         "start_date_time" : "2021-08-05T05:34:56.388",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "cdr_token_type" : "RFID"
+      },
+      "pk" : 145
+   },
+   {
+      "fields" : {
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-05T05:36:02.219",
+         "status" : "INVALID",
+         "uid" : "eed1cfe9-1000-48b1-90e6-045eb073ce6c",
+         "created" : "2021-08-05T05:36:02.220",
+         "meter_id" : null,
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "XXX",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "last_updated" : "2021-08-05T05:36:02.665",
+         "end_date_time" : null,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "kwh" : 0,
+         "connector" : 16
+      },
+      "model" : "ocpi22.session",
+      "pk" : 146
+   },
+   {
+      "pk" : 147,
+      "fields" : {
+         "last_updated" : "2021-08-05T06:25:46.614",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "kwh" : 0,
+         "connector" : 16,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "meter_id" : null,
+         "created" : "2021-08-05T06:25:45.454",
+         "uid" : "34f96c67-16d6-45fe-b376-6d9b3d9954a7",
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "start_date_time" : "2021-08-05T06:25:45.453",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "pk" : 148,
+      "fields" : {
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T07:24:59.059",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "connector" : 16,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "created" : "2021-08-05T07:24:57.940",
+         "uid" : "ccb466e5-7fc3-427d-9694-109ca3baa591",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "start_date_time" : "2021-08-05T07:24:57.935",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "pk" : 149,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-05T07:26:30.601",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "kwh" : 0,
+         "connector" : 16,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "last_updated" : "2021-08-05T07:26:35.527",
+         "end_date_time" : null,
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "meter_id" : null,
+         "uid" : "53129737-4d10-4508-a84b-73041cad18ed",
+         "created" : "2021-08-05T07:26:30.602"
+      }
+   },
+   {
+      "fields" : {
+         "uid" : "4c74e23a-16c6-4162-bbc3-e4ad6d2f8c89",
+         "created" : "2021-08-05T07:27:25.795",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T07:27:27.225",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "connector" : 16,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "start_date_time" : "2021-08-05T07:27:25.791"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 150
+   },
+   {
+      "pk" : 151,
+      "fields" : {
+         "last_updated" : "2021-08-05T07:28:04.951",
+         "end_date_time" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "kwh" : 0,
+         "connector" : 16,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "uid" : "beed5b1f-3114-479a-aed2-a2c3101f95cf",
+         "created" : "2021-08-05T07:28:01.799",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "start_date_time" : "2021-08-05T07:28:01.798",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "location" : 33,
+         "evse" : 13
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "fields" : {
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "connector" : 16,
+         "kwh" : 0,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T07:29:22.418",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "uid" : "24033f17-496a-4b39-b4b9-80866f55a3fa",
+         "created" : "2021-08-05T07:29:21.031",
+         "meter_id" : null,
+         "start_date_time" : "2021-08-05T07:29:21.029",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 152
+   },
+   {
+      "fields" : {
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "kwh" : 0,
+         "connector" : 16,
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T07:31:09.844",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "uid" : "a8c66e89-43ef-476a-8139-ef0de376b056",
+         "created" : "2021-08-05T07:31:08.613",
+         "meter_id" : null,
+         "start_date_time" : "2021-08-05T07:31:08.611",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 153
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-05T07:32:44.232",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "cdr_token_type" : "RFID",
+         "connector" : 16,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T07:32:45.418",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "created" : "2021-08-05T07:32:44.235",
+         "uid" : "eb4a7a58-2c90-4f00-b7cc-2382705206a1",
+         "meter_id" : null,
+         "status" : "INVALID"
+      },
+      "pk" : 154
+   },
+   {
+      "pk" : 155,
+      "fields" : {
+         "start_date_time" : "2021-08-05T07:34:11.052",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "cdr_token_type" : "RFID",
+         "kwh" : 0,
+         "connector" : 16,
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T07:34:12.235",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "meter_id" : null,
+         "created" : "2021-08-05T07:34:11.053",
+         "uid" : "14ed862d-463a-4b06-b977-b0e204ef70ce",
+         "status" : "INVALID"
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "pk" : 156,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "XXX",
+         "status" : "INVALID",
+         "meter_id" : null,
+         "created" : "2021-08-05T07:53:28.398",
+         "uid" : "f2fef3c0-f2de-4658-ac86-f3c235f3e5c8",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "kwh" : 0,
+         "connector" : 16,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T07:53:29.970",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T07:53:28.397"
+      }
+   },
+   {
+      "pk" : 157,
+      "fields" : {
+         "status" : "INVALID",
+         "uid" : "40c515e8-f5aa-4b5f-88a2-20e1e7740822",
+         "created" : "2021-08-05T07:54:43.061",
+         "meter_id" : null,
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "XXX",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "last_updated" : "2021-08-05T07:54:43.540",
+         "end_date_time" : null,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "kwh" : 0,
+         "connector" : 16,
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-05T07:54:43.060"
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "pk" : 158,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "last_updated" : "2021-08-05T07:59:44.490",
+         "end_date_time" : null,
+         "country_code" : "FI",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "kwh" : 0,
+         "connector" : 16,
+         "status" : "INVALID",
+         "uid" : "665cbfe8-bb5e-4ceb-884c-5d7fdff4ab76",
+         "created" : "2021-08-05T07:59:43.096",
+         "meter_id" : null,
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "XXX",
+         "start_date_time" : "2021-08-05T07:59:43.095",
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR"
+      }
+   },
+   {
+      "pk" : 159,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "meter_id" : null,
+         "uid" : "028d50a9-2ba3-431c-b12b-eb423ee1d531",
+         "created" : "2021-08-05T08:00:03.073",
+         "status" : "INVALID",
+         "connector" : 16,
+         "kwh" : 0,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "last_updated" : "2021-08-05T08:00:03.375",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-05T08:00:03.072"
+      }
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "uid" : "ab018a36-37cc-404c-8d06-26d9345699fc",
+         "created" : "2021-08-05T08:09:12.964",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-05T08:09:14.052",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "connector" : 16,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 13,
+         "location" : 33,
+         "start_date_time" : "2021-08-05T08:09:12.963"
+      },
+      "pk" : 160
+   },
+   {
+      "pk" : 161,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "status" : "INVALID",
+         "meter_id" : null,
+         "created" : "2021-08-06T08:37:38.036",
+         "uid" : "cb1e680c-f0cf-44d1-821f-8f1c8ec4ca52",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-06T08:37:39.438",
+         "auth_method" : "COMMAND",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "connector" : 16,
+         "kwh" : 0,
+         "cdr_token_type" : "RFID",
+         "location" : 33,
+         "evse" : 13,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-06T08:37:38.035"
+      }
+   },
+   {
+      "fields" : {
+         "status" : "COMPLETED",
+         "meter_id" : null,
+         "uid" : "52b904be-7c08-4b3e-988b-981b886d3407",
+         "created" : "2021-08-06T08:39:51.870",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "XXX",
+         "total_cost_excl_vat" : 6.5,
+         "cdr_token_uid" : "EKIEKI",
+         "end_date_time" : "2021-08-06T08:44:10.336",
+         "last_updated" : "2021-08-06T08:44:10.580",
+         "total_cost_incl_vat" : 8.06,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "kwh" : 20,
+         "connector" : 16,
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-06T08:39:51.864"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 162
+   },
+   {
+      "pk" : 163,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "currency" : "EUR",
+         "location" : 33,
+         "evse" : 13,
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-12T05:38:55.107",
+         "party_id" : "XXX",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "created" : "2021-08-12T05:38:55.108",
+         "uid" : "a7bc178d-c278-4cac-b5a0-ac68195d92ec",
+         "meter_id" : null,
+         "status" : "INVALID",
+         "connector" : null,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-12T05:38:55.108",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null
+      }
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "last_updated" : "2021-08-12T05:42:14.496",
+         "end_date_time" : null,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "kwh" : 0,
+         "connector" : null,
+         "status" : "INVALID",
+         "meter_id" : null,
+         "uid" : "75798c3f-d3e6-481a-84f2-88f94f4cab9d",
+         "created" : "2021-08-12T05:42:14.496",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "start_date_time" : "2021-08-12T05:42:14.494",
+         "cdr_token_type" : "RFID",
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR"
+      },
+      "pk" : 164
+   },
+   {
+      "fields" : {
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "XXX",
+         "status" : "PENDING",
+         "meter_id" : null,
+         "created" : "2021-08-12T16:22:23.610",
+         "uid" : "eb52e1a1-9a4c-48fa-8f4b-016989e0733f",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "connector" : null,
+         "kwh" : 0,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "last_updated" : "2021-08-12T16:22:23.610",
+         "end_date_time" : null,
+         "evse" : 13,
+         "location" : 33,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-12T16:22:23.602"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 165
+   },
+   {
+      "fields" : {
+         "start_date_time" : "2021-08-15T05:22:37.825",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "cdr_token_type" : "RFID",
+         "kwh" : 0,
+         "connector" : 8,
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-15T05:22:37.827",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract123",
+         "meter_id" : null,
+         "uid" : "7500c0e1-2a75-4365-884a-ea88d7cf5a52",
+         "created" : "2021-08-15T05:22:37.827",
+         "status" : "INVALID"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 166
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-15T06:15:19.293",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "EKI",
+         "status" : "INVALID",
+         "meter_id" : null,
+         "uid" : "1d72bfec-57ca-412b-a68b-a0551ec9ac3d",
+         "created" : "2021-08-15T06:15:19.293",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "kwh" : 0,
+         "connector" : 8,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-15T06:15:19.293"
+      },
+      "pk" : 167
+   },
+   {
+      "fields" : {
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-15T16:12:42.063",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "123",
+         "party_id" : "EKI",
+         "status" : "INVALID",
+         "created" : "2021-08-15T16:12:42.064",
+         "uid" : "56c732d3-de92-494c-abf8-1cd3f5f93b1d",
+         "meter_id" : null,
+         "country_code" : "FI",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : null,
+         "kwh" : 0,
+         "connector" : 8,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-15T16:12:42.064"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 168
+   },
+   {
+      "pk" : 169,
+      "fields" : {
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-15T16:14:58.235",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "WHITELIST",
+         "country_code" : "FI",
+         "connector" : 8,
+         "kwh" : 0,
+         "status" : "INVALID",
+         "meter_id" : null,
+         "created" : "2021-08-15T16:14:58.235",
+         "uid" : "a3249dfc-d10e-4555-923b-86d401c28653",
+         "cdr_token_contract_id" : "123",
+         "authorization_reference" : "",
+         "party_id" : "EKI",
+         "start_date_time" : "2021-08-15T16:14:58.234",
+         "cdr_token_type" : "RFID",
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR"
+      },
+      "model" : "ocpi22.session"
+   },
+   {
+      "fields" : {
+         "start_date_time" : "2021-08-15T16:27:53.979",
+         "cdr_token_type" : "RFID",
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR",
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "end_date_time" : null,
+         "last_updated" : "2021-08-15T16:27:53.979",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "connector" : 8,
+         "kwh" : 0,
+         "status" : "INVALID",
+         "meter_id" : null,
+         "created" : "2021-08-15T16:27:53.979",
+         "uid" : "e4fac2c3-1bc7-485e-af8b-a400dd299e74",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract234567",
+         "party_id" : "EKI"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 170
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-15T16:31:23.512",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "last_updated" : "2021-08-15T16:31:23.514",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "connector" : 8,
+         "kwh" : 0,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "WHITELIST",
+         "country_code" : "FI",
+         "meter_id" : null,
+         "uid" : "07da5ba1-80bd-4ac9-abc1-bfbf10759ab1",
+         "created" : "2021-08-15T16:31:23.514",
+         "status" : "INVALID",
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract234567"
+      },
+      "pk" : 171
+   },
+   {
+      "pk" : 172,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "last_updated" : "2021-08-15T16:32:06.379",
+         "end_date_time" : null,
+         "total_cost_incl_vat" : null,
+         "auth_method" : "WHITELIST",
+         "country_code" : "FI",
+         "kwh" : 0,
+         "connector" : 8,
+         "status" : "INVALID",
+         "meter_id" : null,
+         "created" : "2021-08-15T16:32:06.379",
+         "uid" : "cbaadc1d-0ba3-4af3-bbca-6e414697c530",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract234567",
+         "party_id" : "EKI",
+         "start_date_time" : "2021-08-15T16:32:06.379",
+         "cdr_token_type" : "RFID",
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR"
+      }
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : null,
+         "last_updated" : "2021-08-15T16:34:04.796",
+         "end_date_time" : null,
+         "country_code" : "FI",
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : null,
+         "kwh" : 0,
+         "connector" : 8,
+         "status" : "INVALID",
+         "uid" : "4713d4a3-2480-4e0c-af50-0eef165271e6",
+         "created" : "2021-08-15T16:34:04.796",
+         "meter_id" : null,
+         "cdr_token_contract_id" : "Contract234567",
+         "authorization_reference" : "",
+         "party_id" : "EKI",
+         "start_date_time" : "2021-08-15T16:34:04.795",
+         "cdr_token_type" : "RFID",
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR"
+      },
+      "pk" : 173
+   },
+   {
+      "pk" : 174,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-15T16:34:29.050",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "last_updated" : "2021-08-15T16:34:29.050",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKIEKI",
+         "connector" : 8,
+         "kwh" : 0,
+         "auth_method" : "WHITELIST",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "meter_id" : null,
+         "uid" : "69b61163-8b5a-42c4-b0e3-8fb926404ff3",
+         "created" : "2021-08-15T16:34:29.050",
+         "status" : "INVALID",
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "Contract234567"
+      }
+   },
+   {
+      "fields" : {
+         "start_date_time" : "2021-08-15T16:46:24.865",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "cdr_token_type" : "RFID",
+         "connector" : 8,
+         "kwh" : 0,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "AUTH_REQUEST",
+         "last_updated" : "2021-08-15T16:46:24.866",
+         "end_date_time" : null,
+         "cdr_token_uid" : "EKITESTAA",
+         "total_cost_excl_vat" : null,
+         "party_id" : "EKI",
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "1234",
+         "uid" : "34e0a4f5-6a2a-4b37-af66-b3cf1806e403",
+         "created" : "2021-08-15T16:46:24.866",
+         "meter_id" : null,
+         "status" : "INVALID"
+      },
+      "model" : "ocpi22.session",
+      "pk" : 175
+   },
+   {
+      "pk" : 176,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "authorization_reference" : "",
+         "cdr_token_contract_id" : "1234",
+         "party_id" : "EKI",
+         "status" : "INVALID",
+         "created" : "2021-08-15T16:46:40.224",
+         "uid" : "4da9a318-06f8-4912-9325-22d842510880",
+         "meter_id" : null,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "AUTH_REQUEST",
+         "kwh" : 0,
+         "connector" : 8,
+         "cdr_token_uid" : "EKITESTAA",
+         "total_cost_excl_vat" : null,
+         "end_date_time" : null,
+         "last_updated" : "2021-08-15T16:46:40.224",
+         "evse" : 7,
+         "location" : 14,
+         "currency" : "EUR",
+         "cdr_token_type" : "RFID",
+         "start_date_time" : "2021-08-15T16:46:40.224"
+      }
+   },
+   {
+      "model" : "ocpi22.session",
+      "fields" : {
+         "meter_id" : null,
+         "uid" : "46a11599-35ce-41ee-8539-ba6144b5cdf8",
+         "created" : "2021-08-15T16:50:35.452",
+         "status" : "INVALID",
+         "party_id" : "EKI",
+         "authorization_reference" : "2ff15372-e376-4ec9-9747-8d38d513468c",
+         "cdr_token_contract_id" : "1234",
+         "last_updated" : "2021-08-15T16:50:35.452",
+         "end_date_time" : null,
+         "total_cost_excl_vat" : null,
+         "cdr_token_uid" : "EKITESTAA",
+         "kwh" : 0,
+         "connector" : 8,
+         "auth_method" : "AUTH_REQUEST",
+         "total_cost_incl_vat" : null,
+         "country_code" : "FI",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "start_date_time" : "2021-08-15T16:50:35.451"
+      },
+      "pk" : 177
+   },
+   {
+      "pk" : 178,
+      "model" : "ocpi22.session",
+      "fields" : {
+         "start_date_time" : "2021-08-15T17:05:15.744",
+         "cdr_token_type" : "RFID",
+         "currency" : "EUR",
+         "evse" : 7,
+         "location" : 14,
+         "last_updated" : "2021-08-15T17:05:15.746",
+         "end_date_time" : null,
+         "cdr_token_uid" : "EKITESTAA",
+         "total_cost_excl_vat" : null,
+         "kwh" : 0,
+         "connector" : 8,
+         "country_code" : "FI",
+         "total_cost_incl_vat" : null,
+         "auth_method" : "AUTH_REQUEST",
+         "uid" : "cf382314-75d8-42a4-ab2f-eb7633a0cb3f",
+         "created" : "2021-08-15T17:05:15.746",
+         "meter_id" : null,
+         "status" : "PENDING",
+         "party_id" : "EKI",
+         "authorization_reference" : "c8826557-1ebd-4f93-9228-02c587adbf4a",
+         "cdr_token_contract_id" : "1234"
+      }
+   },
+   {
+      "pk" : 14,
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "start_date_time" : "2021-08-01T07:24:28.581",
+         "credit_reference" : null,
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "currency" : "EUR",
+         "cdr_location_city" : "Sofia",
+         "country_code" : "XX",
+         "auth_method" : "WHITELIST",
+         "cdr_location_id" : "1",
+         "cdr_location_latitude" : "42.7271577",
+         "last_updated" : "2021-08-01T16:32:38.304",
+         "end_date_time" : "2021-08-01T16:32:38.289",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "cdr_location_postal_code" : "1202",
+         "session_id" : "cd45e467-3bed-4651-92e0-4851ecaebd2b",
+         "cdr_location_address" : "Sofia str. 40",
+         "created" : "2021-08-01T16:32:38.304",
+         "total_time" : 9.13583333333333,
+         "cdr_location_longitude" : "23.3336124",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_country" : "BGR",
+         "credit" : false,
+         "cdr_token_type" : "RFID",
+         "total_cost_incl_vat" : 1.23,
+         "cdr_location_connector_power_type" : "DC",
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 1,
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 10,
+         "cdr_token_contract_id" : "Contract123",
+         "party_id" : "XXX",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "uid" : "bbb66dce-4e32-48ca-bfde-ac1dd5fd8104"
+      }
+   },
+   {
+      "pk" : 15,
+      "fields" : {
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "Contract123",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 10,
+         "uid" : "86a2d70b-061b-4a26-93a7-eec95240babb",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 1.23,
+         "total_cost_excl_vat" : 1,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_connector_format" : "CABLE",
+         "credit" : false,
+         "cdr_location_country" : "BGR",
+         "cdr_token_type" : "RFID",
+         "total_time" : 10.5663888888889,
+         "cdr_location_longitude" : "23.3336124",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "created" : "2021-08-01T17:58:27.665",
+         "cdr_location_address" : "Sofia str. 40",
+         "session_id" : "cd45e467-3bed-4651-92e0-4851ecaebd2b",
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "last_updated" : "2021-08-01T17:58:27.665",
+         "end_date_time" : "2021-08-01T17:58:27.651",
+         "cdr_location_latitude" : "42.7271577",
+         "cdr_location_id" : "1",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "cdr_location_city" : "Sofia",
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-01T07:24:28.581"
+      },
+      "model" : "ocpi22.cdr"
+   },
+   {
+      "pk" : 16,
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "party_id" : "XXX",
+         "total_energy" : 20,
+         "cdr_location_connector_id" : "1",
+         "cdr_token_contract_id" : "Contract123",
+         "uid" : "23f985d4-3003-444a-a9aa-c53c5fd5ffe0",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 26.7765155555556,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 26.7605555555556,
+         "credit" : false,
+         "cdr_location_country" : "BGR",
+         "cdr_token_type" : "RFID",
+         "total_time" : 0.693055555555556,
+         "cdr_location_longitude" : "23.3336124",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_postal_code" : "1202",
+         "authorization_reference" : "",
+         "cdr_location_evse_uid" : "9A",
+         "created" : "2021-08-01T18:56:55.172",
+         "cdr_location_address" : "Sofia str. 40",
+         "session_id" : "f2ecd4aa-ec01-4691-af63-95c9c55d1f9a",
+         "country_code" : "XX",
+         "auth_method" : "WHITELIST",
+         "last_updated" : "2021-08-01T18:56:55.171",
+         "end_date_time" : "2021-08-01T18:56:54.946",
+         "cdr_location_id" : "1",
+         "cdr_location_latitude" : "42.7271577",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "cdr_location_city" : "Sofia",
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-01T18:15:19.619"
+      }
+   },
+   {
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "last_updated" : "2021-08-01T19:02:11.591",
+         "end_date_time" : "2021-08-01T19:02:11.303",
+         "cdr_location_latitude" : "42.7271577",
+         "cdr_location_id" : "1",
+         "cdr_location_postal_code" : "1202",
+         "authorization_reference" : "",
+         "cdr_location_evse_uid" : "9A",
+         "created" : "2021-08-01T19:02:11.592",
+         "session_id" : "2e9c7a53-e915-4ac9-8fd5-7319136596ef",
+         "cdr_location_address" : "Sofia str. 40",
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-01T18:59:33.462",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "cdr_location_city" : "Sofia",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 6.51,
+         "total_cost_excl_vat" : 6.5,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "Contract123",
+         "total_energy" : 20,
+         "cdr_location_connector_id" : "1",
+         "uid" : "2663620f-f28b-4ee1-a02a-db69fc238266",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "total_time" : 0.0436111111111111,
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_longitude" : "23.3336124",
+         "credit" : false,
+         "cdr_location_country" : "BGR",
+         "cdr_token_type" : "RFID"
+      },
+      "pk" : 17
+   },
+   {
+      "pk" : 18,
+      "fields" : {
+         "cdr_location_id" : "1",
+         "cdr_location_latitude" : "42.7271577",
+         "last_updated" : "2021-08-03T05:30:43.366",
+         "end_date_time" : "2021-08-03T05:30:43.090",
+         "country_code" : "XX",
+         "auth_method" : "WHITELIST",
+         "session_id" : "ec0bcc48-6890-4c81-b2a2-5269e260f66f",
+         "cdr_location_address" : "Sofia str. 40",
+         "created" : "2021-08-03T05:30:43.366",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "cdr_location_postal_code" : "1202",
+         "start_date_time" : "2021-08-03T05:30:29.649",
+         "credit_reference" : null,
+         "cdr_location_city" : "Sofia",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "currency" : "EUR",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_connector_format" : "CABLE",
+         "total_cost_excl_vat" : 6.5,
+         "total_cost_incl_vat" : 8.06,
+         "cdr_location_connector_power_type" : "DC",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "uid" : "3742cf46-0346-4b58-b380-fbfb0cc9b84a",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 20,
+         "cdr_token_contract_id" : "Contract123",
+         "party_id" : "XXX",
+         "cdr_location_longitude" : "23.3336124",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "total_time" : 0.00361111111111111,
+         "cdr_token_type" : "RFID",
+         "cdr_location_country" : "BGR",
+         "credit" : false
+      },
+      "model" : "ocpi22.cdr"
+   },
+   {
+      "pk" : 19,
+      "fields" : {
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "cdr_location_postal_code" : "1202",
+         "session_id" : "f14a50f3-e1e2-444e-b1eb-37789d5ba0c7",
+         "cdr_location_address" : "Sofia str. 40",
+         "created" : "2021-08-03T05:33:45.580",
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "cdr_location_latitude" : "42.7271577",
+         "cdr_location_id" : "1",
+         "end_date_time" : "2021-08-03T05:33:45.312",
+         "last_updated" : "2021-08-03T05:33:45.579",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "currency" : "EUR",
+         "cdr_location_city" : "Sofia",
+         "start_date_time" : "2021-08-03T05:33:37.083",
+         "credit_reference" : null,
+         "cdr_token_contract_id" : "Contract123",
+         "total_energy" : 20,
+         "cdr_location_connector_id" : "1",
+         "party_id" : "XXX",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "uid" : "c268b10a-2385-42fe-8be3-c32096fe3a0a",
+         "total_cost_incl_vat" : 8.06,
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_excl_vat" : 6.5,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_country" : "BGR",
+         "credit" : false,
+         "cdr_token_type" : "RFID",
+         "total_time" : 0.00222,
+         "cdr_location_longitude" : "23.3336124",
+         "cdr_location_connector_standard" : "IEC_62196_T2"
+      },
+      "model" : "ocpi22.cdr"
+   },
+   {
+      "pk" : 20,
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "last_updated" : "2021-08-03T10:32:10.429",
+         "end_date_time" : "2021-08-03T10:32:10.190",
+         "cdr_location_id" : "1",
+         "cdr_location_latitude" : "42.7271577",
+         "country_code" : "XX",
+         "auth_method" : "WHITELIST",
+         "created" : "2021-08-03T10:32:10.429",
+         "session_id" : "c1a825b3-c569-4f4a-8af4-af30947a7174",
+         "cdr_location_address" : "Sofia str. 40",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-03T10:31:52.154",
+         "cdr_location_city" : "Sofia",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 6.5,
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 8.06,
+         "uid" : "4c1f357f-be06-4bf2-95d3-4619aa96abc4",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "party_id" : "XXX",
+         "total_energy" : 20,
+         "cdr_location_connector_id" : "1",
+         "cdr_token_contract_id" : "Contract123",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_longitude" : "23.3336124",
+         "total_time" : 0.005,
+         "cdr_token_type" : "RFID",
+         "credit" : false,
+         "cdr_location_country" : "BGR"
+      }
+   },
+   {
+      "fields" : {
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-03T10:36:07.818",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "cdr_location_city" : "Sofia",
+         "country_code" : "XX",
+         "auth_method" : "WHITELIST",
+         "last_updated" : "2021-08-03T10:36:18.218",
+         "end_date_time" : "2021-08-03T10:36:17.961",
+         "cdr_location_id" : "1",
+         "cdr_location_latitude" : "42.7271577",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "created" : "2021-08-03T10:36:18.218",
+         "session_id" : "e777e187-2008-4ba1-acfa-900aa0daa35a",
+         "cdr_location_address" : "Sofia str. 40",
+         "total_time" : 0.00278,
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_longitude" : "23.3336124",
+         "credit" : false,
+         "cdr_location_country" : "BGR",
+         "cdr_token_type" : "RFID",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 8.06,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "total_cost_excl_vat" : 6.5,
+         "party_id" : "XXX",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 20,
+         "cdr_token_contract_id" : "Contract123",
+         "uid" : "4b81227e-ee6b-4978-a294-b52a0ee67e0e",
+         "cdr_location_evse_id" : "FI*EON*E1*9A"
+      },
+      "model" : "ocpi22.cdr",
+      "pk" : 21
+   },
+   {
+      "pk" : 22,
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "cdr_location_city" : "Espoo",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-03T15:08:34",
+         "created" : "2021-08-03T15:12:01.789",
+         "cdr_location_address" : "Nuolihaukantie 25BCD",
+         "session_id" : "70970efc-eacb-40ad-8a71-b4868d5cbdb2",
+         "cdr_location_postal_code" : "02620",
+         "cdr_location_evse_uid" : "1025",
+         "authorization_reference" : "",
+         "end_date_time" : "2021-08-03T15:12:01",
+         "last_updated" : "2021-08-03T15:27:01.525",
+         "cdr_location_id" : "3",
+         "cdr_location_latitude" : "61.0",
+         "country_code" : "XX",
+         "auth_method" : "COMMAND",
+         "cdr_token_type" : "RFID",
+         "credit" : false,
+         "cdr_location_country" : "FIN",
+         "cdr_location_longitude" : "30.0",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "total_time" : 0.05722,
+         "uid" : "5813d849-e821-43ae-9405-00febf4a8fbc",
+         "cdr_location_evse_id" : "FI*EON*E3*1025",
+         "party_id" : "XXX",
+         "total_energy" : 10,
+         "cdr_location_connector_id" : "1",
+         "cdr_token_contract_id" : "123",
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "EKIEKI",
+         "total_cost_excl_vat" : 3.5,
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 4.34
+      }
+   },
+   {
+      "pk" : 23,
+      "fields" : {
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_connector_format" : "CABLE",
+         "total_cost_excl_vat" : 8,
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 9.92,
+         "uid" : "ddb592af-85f9-4a8c-aa3c-b8943b9e8ccf",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "party_id" : "XXX",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 25,
+         "cdr_token_contract_id" : "Contract123",
+         "cdr_location_longitude" : "23.333612",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "total_time" : 0.00417,
+         "cdr_token_type" : "RFID",
+         "credit" : false,
+         "cdr_location_country" : "BGR",
+         "end_date_time" : "2021-08-04T18:30:29.066",
+         "last_updated" : "2021-08-04T18:30:29.323",
+         "cdr_location_id" : "1",
+         "cdr_location_latitude" : "42.727158",
+         "country_code" : "XX",
+         "auth_method" : "WHITELIST",
+         "created" : "2021-08-04T18:30:29.323",
+         "cdr_location_address" : "Sofia str. 40",
+         "session_id" : "ee17b92b-24f1-4105-ad7d-9101bbf96d91",
+         "cdr_location_postal_code" : "1202",
+         "authorization_reference" : "",
+         "cdr_location_evse_uid" : "9A",
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-04T18:30:13.843",
+         "cdr_location_city" : "Sofia",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ]
+      },
+      "model" : "ocpi22.cdr"
+   },
+   {
+      "pk" : 24,
+      "fields" : {
+         "cdr_location_country" : "BGR",
+         "credit" : false,
+         "cdr_token_type" : "RFID",
+         "total_time" : 0.00472,
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_longitude" : "23.333612",
+         "cdr_token_contract_id" : "Contract123",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 10,
+         "party_id" : "XXX",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "uid" : "af209107-8f4e-45a6-805d-a5aafcb4f40e",
+         "total_cost_incl_vat" : 4.34,
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_excl_vat" : 3.5,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "currency" : "EUR",
+         "cdr_location_city" : "Sofia",
+         "start_date_time" : "2021-08-04T18:32:37.535",
+         "credit_reference" : null,
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_address" : "Sofia str. 40",
+         "session_id" : "311eba7b-cabb-45d4-863e-4ab82fcc9512",
+         "created" : "2021-08-04T18:32:55.735",
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "cdr_location_latitude" : "42.727158",
+         "cdr_location_id" : "1",
+         "last_updated" : "2021-08-04T18:32:55.734",
+         "end_date_time" : "2021-08-04T18:32:55.484"
+      },
+      "model" : "ocpi22.cdr"
+   },
+   {
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "session_id" : "b27591d8-aa2a-4e86-b58b-898d415348a2",
+         "cdr_location_address" : "Sofia str. 40",
+         "created" : "2021-08-04T18:33:46.180",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_id" : "1",
+         "cdr_location_latitude" : "42.727158",
+         "end_date_time" : "2021-08-04T18:33:45.942",
+         "last_updated" : "2021-08-04T18:33:46.180",
+         "country_code" : "XX",
+         "auth_method" : "WHITELIST",
+         "cdr_location_city" : "Sofia",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-04T18:33:39.426",
+         "credit_reference" : null,
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "uid" : "a710e044-84b9-421b-a53f-8f70a359ef84",
+         "total_energy" : 10,
+         "cdr_location_connector_id" : "1",
+         "cdr_token_contract_id" : "Contract123",
+         "party_id" : "XXX",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_connector_format" : "CABLE",
+         "total_cost_excl_vat" : 3.5,
+         "total_cost_incl_vat" : 4.34,
+         "cdr_location_connector_power_type" : "DC",
+         "cdr_token_type" : "RFID",
+         "cdr_location_country" : "BGR",
+         "credit" : false,
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_longitude" : "23.333612",
+         "total_time" : 0.00167
+      },
+      "pk" : 25
+   },
+   {
+      "pk" : 26,
+      "fields" : {
+         "created" : "2021-08-04T18:35:23.838",
+         "cdr_location_address" : "Sofia str. 40",
+         "session_id" : "3c4ea3e4-0fba-438d-ab22-74212716663d",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "last_updated" : "2021-08-04T18:35:23.838",
+         "end_date_time" : "2021-08-04T18:35:23.501",
+         "cdr_location_latitude" : "42.727158",
+         "cdr_location_id" : "1",
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "cdr_location_city" : "Sofia",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-04T18:35:16.078",
+         "uid" : "a5c6f874-7ccd-4103-8610-648824bcd438",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "Contract123",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 10,
+         "total_cost_excl_vat" : 3.5,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 4.34,
+         "cdr_token_type" : "RFID",
+         "credit" : false,
+         "cdr_location_country" : "BGR",
+         "cdr_location_longitude" : "23.333612",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "total_time" : 0.00194
+      },
+      "model" : "ocpi22.cdr"
+   },
+   {
+      "pk" : 27,
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "end_date_time" : "2021-08-04T19:01:35.397",
+         "last_updated" : "2021-08-04T19:01:35.661",
+         "cdr_location_latitude" : "42.727158",
+         "cdr_location_id" : "1",
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "created" : "2021-08-04T19:01:35.662",
+         "cdr_location_address" : "Sofia str. 40",
+         "session_id" : "db107260-0a5b-4b93-9225-fe679817f90f",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-04T19:01:26.046",
+         "cdr_location_city" : "Sofia",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "total_cost_excl_vat" : 3.5,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 4.34,
+         "uid" : "a2a98ad2-dac5-456b-98b3-205499ec7882",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "Contract123",
+         "total_energy" : 10,
+         "cdr_location_connector_id" : "1",
+         "cdr_location_longitude" : "23.333612",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "total_time" : 0.0025,
+         "cdr_token_type" : "RFID",
+         "credit" : false,
+         "cdr_location_country" : "BGR"
+      }
+   },
+   {
+      "pk" : 28,
+      "fields" : {
+         "uid" : "f4e91aa1-9c5c-48f6-9610-80819645ce51",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "Contract123",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 10,
+         "total_cost_excl_vat" : 3.5,
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 4.34,
+         "cdr_token_type" : "RFID",
+         "credit" : false,
+         "cdr_location_country" : "BGR",
+         "cdr_location_longitude" : "23.333612",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "total_time" : 0.00222,
+         "created" : "2021-08-04T19:02:39.902",
+         "session_id" : "5a264e51-6930-404c-8dec-4f3eb31a5b4b",
+         "cdr_location_address" : "Sofia str. 40",
+         "cdr_location_postal_code" : "1202",
+         "authorization_reference" : "",
+         "cdr_location_evse_uid" : "9A",
+         "end_date_time" : "2021-08-04T19:02:39.882",
+         "last_updated" : "2021-08-04T19:02:39.901",
+         "cdr_location_latitude" : "42.727158",
+         "cdr_location_id" : "1",
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "cdr_location_city" : "Sofia",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-04T19:02:31.848"
+      },
+      "model" : "ocpi22.cdr"
+   },
+   {
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "cdr_token_type" : "RFID",
+         "cdr_location_country" : "BGR",
+         "credit" : false,
+         "cdr_location_longitude" : "23.333612",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "total_time" : 0.00722,
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "uid" : "1f90c1a9-eff2-4b0f-bf6f-e93f4a6a2675",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 10,
+         "cdr_token_contract_id" : "Contract123",
+         "party_id" : "XXX",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_connector_format" : "CABLE",
+         "total_cost_excl_vat" : 3.5,
+         "total_cost_incl_vat" : 4.34,
+         "cdr_location_connector_power_type" : "DC",
+         "cdr_location_city" : "Sofia",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "currency" : "EUR",
+         "start_date_time" : "2021-08-05T04:37:22.425",
+         "credit_reference" : null,
+         "cdr_location_address" : "Sofia str. 40",
+         "session_id" : "93221065-321e-44b8-ba73-f0911d7fd51b",
+         "created" : "2021-08-05T04:37:48.897",
+         "authorization_reference" : "",
+         "cdr_location_evse_uid" : "9A",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_id" : "1",
+         "cdr_location_latitude" : "42.727158",
+         "last_updated" : "2021-08-05T04:37:48.897",
+         "end_date_time" : "2021-08-05T04:37:48.657",
+         "country_code" : "XX",
+         "auth_method" : "WHITELIST"
+      },
+      "pk" : 29
+   },
+   {
+      "fields" : {
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-05T04:47:15.098",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "cdr_location_city" : "Sofia",
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "last_updated" : "2021-08-05T04:47:28.724",
+         "end_date_time" : "2021-08-05T04:47:28.479",
+         "cdr_location_latitude" : "42.727158",
+         "cdr_location_id" : "1",
+         "cdr_location_postal_code" : "1202",
+         "cdr_location_evse_uid" : "9A",
+         "authorization_reference" : "",
+         "created" : "2021-08-05T04:47:28.725",
+         "session_id" : "bddc95e3-d3c9-4b5c-84e8-249408ac9391",
+         "cdr_location_address" : "Sofia str. 40",
+         "total_time" : 0.00361,
+         "cdr_location_longitude" : "23.333612",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "credit" : false,
+         "cdr_location_country" : "BGR",
+         "cdr_token_type" : "RFID",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 4.34,
+         "total_cost_excl_vat" : 3.5,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "party_id" : "XXX",
+         "cdr_token_contract_id" : "Contract123",
+         "total_energy" : 10,
+         "cdr_location_connector_id" : "1",
+         "uid" : "99c9cb29-ff02-4ff9-b7d5-daa9403ab71b",
+         "cdr_location_evse_id" : "FI*EON*E1*9A"
+      },
+      "model" : "ocpi22.cdr",
+      "pk" : 30
+   },
+   {
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "cdr_token_contract_id" : "Contract123",
+         "total_energy" : 10,
+         "cdr_location_connector_id" : "1",
+         "party_id" : "XXX",
+         "cdr_location_evse_id" : "FI*EON*E1*9A",
+         "uid" : "6e6f3c49-0a85-456c-89fc-a4cc9422a8e9",
+         "total_cost_incl_vat" : 4.34,
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_excl_vat" : 3.5,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "POSITIVE_TEST_TOKEN",
+         "cdr_location_country" : "BGR",
+         "credit" : false,
+         "cdr_token_type" : "RFID",
+         "total_time" : 0.00167,
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_longitude" : "23.333612",
+         "authorization_reference" : "",
+         "cdr_location_evse_uid" : "9A",
+         "cdr_location_postal_code" : "1202",
+         "session_id" : "1e98b55f-1b93-4f0d-b69b-c22afd702cb2",
+         "cdr_location_address" : "Sofia str. 40",
+         "created" : "2021-08-05T04:48:05.895",
+         "auth_method" : "WHITELIST",
+         "country_code" : "XX",
+         "cdr_location_latitude" : "42.727158",
+         "cdr_location_id" : "1",
+         "end_date_time" : "2021-08-05T04:48:05.643",
+         "last_updated" : "2021-08-05T04:48:05.895",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "currency" : "EUR",
+         "cdr_location_city" : "Sofia",
+         "start_date_time" : "2021-08-05T04:47:59.613",
+         "credit_reference" : null
+      },
+      "pk" : 31
+   },
+   {
+      "pk" : 32,
+      "model" : "ocpi22.cdr",
+      "fields" : {
+         "cdr_location_city" : "Espoo",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-06T08:39:51.864",
+         "created" : "2021-08-06T08:41:01.612",
+         "session_id" : "52b904be-7c08-4b3e-988b-981b886d3407",
+         "cdr_location_address" : "Nuolihaukantie 25BCD",
+         "cdr_location_postal_code" : "02620",
+         "cdr_location_evse_uid" : "1025",
+         "authorization_reference" : "",
+         "end_date_time" : "2021-08-06T08:41:01.288",
+         "last_updated" : "2021-08-06T08:41:01.612",
+         "cdr_location_latitude" : "61.000000",
+         "cdr_location_id" : "3",
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "cdr_token_type" : "RFID",
+         "credit" : false,
+         "cdr_location_country" : "FIN",
+         "cdr_location_longitude" : "30.000000",
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "total_time" : 0.01917,
+         "uid" : "bda64858-9c29-4111-95b9-5ebc8688829e",
+         "cdr_location_evse_id" : "FI*EON*E3*1025",
+         "party_id" : "EON",
+         "cdr_token_contract_id" : "123",
+         "cdr_location_connector_id" : "1",
+         "total_energy" : 20,
+         "total_cost_excl_vat" : 6.5,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "EKIEKI",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 8.06
+      }
+   },
+   {
+      "fields" : {
+         "cdr_location_connector_standard" : "IEC_62196_T2",
+         "cdr_location_longitude" : "30.000000",
+         "total_time" : 0.07167,
+         "cdr_token_type" : "RFID",
+         "credit" : false,
+         "cdr_location_country" : "FIN",
+         "total_cost_excl_vat" : 6.5,
+         "cdr_location_connector_format" : "CABLE",
+         "cdr_token_uid" : "EKIEKI",
+         "cdr_location_connector_power_type" : "DC",
+         "total_cost_incl_vat" : 8.06,
+         "uid" : "347e96ae-eae5-4174-9d51-025e5c2ba853",
+         "cdr_location_evse_id" : "FI*EON*E3*1025",
+         "party_id" : "EON",
+         "cdr_token_contract_id" : "123",
+         "total_energy" : 20,
+         "cdr_location_connector_id" : "1",
+         "credit_reference" : null,
+         "start_date_time" : "2021-08-06T08:39:51.864",
+         "cdr_location_city" : "Espoo",
+         "currency" : "EUR",
+         "tariffs" : [
+            1,
+            2,
+            3
+         ],
+         "last_updated" : "2021-08-06T08:44:10.588",
+         "end_date_time" : "2021-08-06T08:44:10.336",
+         "cdr_location_latitude" : "61.000000",
+         "cdr_location_id" : "3",
+         "auth_method" : "COMMAND",
+         "country_code" : "FI",
+         "created" : "2021-08-06T08:44:10.588",
+         "cdr_location_address" : "Nuolihaukantie 25BCD",
+         "session_id" : "52b904be-7c08-4b3e-988b-981b886d3407",
+         "cdr_location_postal_code" : "02620",
+         "authorization_reference" : "",
+         "cdr_location_evse_uid" : "1025"
+      },
+      "model" : "ocpi22.cdr",
+      "pk" : 33
+   }
+]
