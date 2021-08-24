@@ -37,14 +37,14 @@ class LocationTests(TestCase):
         request = factory.get(url)
         viewset = LocationViewSet()
         response = viewset.by_evse_id(request, l.country_code, l.party_id, l.uid, evse.uid)
-        ic(response, response.data)
+        # ic(response, response.data)
         data = response.data.get('data')
         self.assertIsInstance(data, dict, msg='There should be a dict element "data" in the EVSE')
         connectors = data.get('connectors')
         self.assertIsInstance(connectors, list, msg='EVSE connectors should be a list')
         self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
 
-    def test_location_by_id(self):
+    def test_location(self):
         factory = APIRequestFactory()
         url = reverse('location-by-id',
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
@@ -53,7 +53,7 @@ class LocationTests(TestCase):
         l = self.location
         viewset = LocationViewSet()
         response = viewset.by_id(request, l.country_code, l.party_id, l.uid)
-        ic(response, response.data)
+        # ic(response, response.data)
         data = response.data.get('data')
         self.assertIsInstance(data, dict, msg='There should be a dict element "data" in the Location')
 
@@ -76,6 +76,18 @@ class LocationTests(TestCase):
             connectors = evse.get('connectors')
             self.assertIsInstance(connectors, list, msg='EVSE connectors should be a list')
 
+    def test_ocpi(self):
+        factory = APIRequestFactory()
+        url = reverse('location-by-id',
+                      args=[self.location.country_code, self.location.party_id, self.location.uid])
+
+        request = factory.get(url)
+        l = self.location
+        viewset = LocationViewSet()
+        response = viewset.by_id(request, l.country_code, l.party_id, l.uid)
+        # ic(response, response.data)
+        data = response.data.get('data')
+
         self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
 
         detail_url = data.get('detail_url')
@@ -83,14 +95,20 @@ class LocationTests(TestCase):
         # This should fail without authentication
         result = self.client.get(detail_url)
         self.assertEqual(result.status_code, 403, 'A Location request should require OCPI authentication.')
-        ic(result.json())
+
+        # Fail with the other party's token
+        result = self.client.get(detail_url, HTTP_AUTHORIZATION=f'Token {self.credentials.theirs_base64()}')
+        self.assertEqual(result.status_code, 403, "OCPI token authentication allows the other party's token.")
+
+        # Fail with token_a after the credentials exchange has been done
+        result = self.client.get(detail_url, HTTP_AUTHORIZATION=f'Token {self.credentials.token_a_base64()}')
+        self.assertEqual(result.status_code, 403,
+                         "OCPI token authentication allows token_a after the credentials exchange has been finished.")
 
         # ...and work with a proper OCPI token
         url = f'{detail_url}?auth-test={self.credentials.ours_base64()}'
         result = self.client.get(url)
         self.assertEqual(result.status_code, 200, 'Token auth-test seems not to work.')
-        ic(result.json())
 
         result = self.client.get(detail_url, HTTP_AUTHORIZATION=f'Token {self.credentials.ours_base64()}')
         self.assertEqual(result.status_code, 200, 'OCPI token authentication seems not to work.')
-        ic(result.json())
