@@ -56,6 +56,7 @@ class Command(BaseCommand):
             for version_option in versions_response.json():
                 # Todo: Support earlier versions also
                 if version_option['version'] == '2.2':
+                    # Todo: Version doesn't seem to update
                     selected_version = version_option
                     break
             if not selected_version:

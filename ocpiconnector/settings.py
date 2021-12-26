@@ -65,6 +65,7 @@ ALLOWED_HOSTS = [
     '.chargerhub.eu',
     'ocpi-connector.herokuapp.com',
     'ocpi-connector-production.herokuapp.com',
+    '*-ocpi.herokuapp.com',
 ]
 
 # Local time zone for this installation. Choices can be found here:
