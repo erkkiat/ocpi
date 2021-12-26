@@ -145,6 +145,7 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
 class Ocpi:
     class ClientError:
+        # Todo: Check that these are used
         GENERIC_CLIENT_ERROR = 2000
         INVALID_OR_MISSING_PARAMETERS = 2001
         NOT_ENOUGH_INFORMATION = 2002
@@ -179,3 +180,14 @@ class OCPIResponse(Response):
             data=data
         )
         super().__init__(result, status=http_status, *args, **kwargs)
+
+
+class UpperCaseSerializerField(serializers.CharField):
+
+    def __init__(self, *args, **kwargs):
+        super(UpperCaseSerializerField, self).__init__(*args, **kwargs)
+
+    def to_representation(self, value):
+        value = super(UpperCaseSerializerField, self).to_representation(value)
+        if value:
+            return value.upper()

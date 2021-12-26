@@ -271,6 +271,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
     @staticmethod
     def delete(request: Request, *_args, **_kwargs):
+        # Todo: Make sure deletition is not possible for others than owner
         logging.warning(f'Deleting {request.credentials} on request by Credential owner.')
         request.credentials.delete()
         return OCPIResponse('Your credentials have been deleted, as requested.')
