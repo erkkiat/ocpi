@@ -530,7 +530,8 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             return Response(result)
         except (IndexError, AttributeError):
             return Response(dict(
-                tutorial='After creating some Evses with Connectors and some Tokens, you will see example links here.')
+                tutorial='After creating some Evses with Connectors, '
+                         'and some Tokens, you will see some example links here.')
             )
 
     def get_view_name(self):

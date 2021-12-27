@@ -53,7 +53,12 @@ class Command(BaseCommand):
         selected_version = None
         versions_response = self.ocpi_get(url, token)
         if versions_response.status_code == 200:
+            ic(versions_response.json())
             for version_option in versions_response.json():
+                if "version" not in version_option or "url" not in version_option:
+                    raise SyntaxError('Version information not found in received data. '
+                                      'Make sure you have the OCPI versions URL.')
+                ic(version_option)
                 # Todo: Support earlier versions also
                 if version_option['version'] == '2.2':
                     # Todo: Version doesn't seem to update
@@ -125,13 +130,13 @@ class Command(BaseCommand):
                 url=f'http://{settings.HOSTNAME}{reverse("base-versions")}',
                 roles=[dict(
                     role='CPO',
-                    business_details=dict(name=os.environ.get('BUSINESS_NAME', '')),
+                    business_details=dict(name=os.environ.get('BUSINESS_NAME', 'N/A')),
                     party_id=os.environ.get('PARTY_ID', 'XXX'),
                     country_code=os.environ.get('COUNTRY_CODE', 'XX')
                 ),
                     dict(
                         role='EMSP',
-                        business_details=dict(name=os.environ.get('BUSINESS_NAME', '')),
+                        business_details=dict(name=os.environ.get('BUSINESS_NAME', 'N/A')),
                         party_id=os.environ.get('PARTY_ID', 'XXX'),
                         country_code=os.environ.get('COUNTRY_CODE', 'XX')
                     )
