@@ -32,7 +32,10 @@ def parse_jawsdb_maria_url(url):
         'USER': userid,
         'PASSWORD': password,
         'HOST': host,
-        'PORT': port
+        'PORT': port,
+        'OPTIONS': {
+            'sql_mode': 'traditional',
+        }
     })
 
 
