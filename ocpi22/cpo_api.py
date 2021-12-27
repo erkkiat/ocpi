@@ -2,7 +2,6 @@ import logging
 import os
 import uuid
 
-from django.conf import settings
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -498,17 +497,22 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         """
         Compile the example URLs for the front page
         """
-        evse = Evse.objects.all()[0]
-        connector = Connector.objects.filter(evse=evse)[0]
+        evse = Evse.objects.none()
+        connector = Connector.objects.none()
+        evses = Evse.objects.all()
+        if evses.count():
+            evse = evses[0]
+            connectors = Connector.objects.filter(evse=evse)
+            connector = connectors[0] if connectors else Connector.objects.none()
         tokens = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')
-        token = tokens[0] if tokens.count() else None
+        token = tokens[0] if tokens.count() else Token.objects.none()
         sessions = Session.objects.filter(status='ACTIVE')
         session = sessions[0] if sessions.count() else ''
 
         result = dict(
             session_tutorial=request.build_absolute_uri(
                 reverse('session-start', args=[evse.uid, connector.uid, 'POSITIVE_TEST_TOKEN'])
-            ),
+            ) if evse and connector else 'Please create an EVSE with a connector first',
             example_session_not_authorised=request.build_absolute_uri(
                 reverse('session-start', args=[evse.uid, connector.uid, token.uid])
             ) if token else 'Please create a token first',
