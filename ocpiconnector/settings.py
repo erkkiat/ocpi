@@ -185,6 +185,7 @@ INSTALLED_APPS = (
     'whitenoise',
     'rest_framework',
     'django_filters',
+    'django_createsuperuser',
 )
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'

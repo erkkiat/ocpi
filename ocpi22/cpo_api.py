@@ -497,36 +497,41 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         """
         Compile the example URLs for the front page
         """
-        evse = Evse.objects.none()
-        connector = Connector.objects.none()
-        evses = Evse.objects.all()
-        if evses.count():
-            evse = evses[0]
-            connectors = Connector.objects.filter(evse=evse)
-            connector = connectors[0] if connectors else Connector.objects.none()
-        tokens = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')
-        token = tokens[0] if tokens.count() else Token.objects.none()
-        sessions = Session.objects.filter(status='ACTIVE')
-        session = sessions[0] if sessions.count() else ''
+        try:
+            evse = Evse.objects.none()
+            connector = Connector.objects.none()
+            evses = Evse.objects.all()
+            if evses.count():
+                evse = evses[0]
+                connectors = Connector.objects.filter(evse=evse)
+                connector = connectors[0] if connectors else Connector.objects.none()
+            tokens = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')
+            token = tokens[0] if tokens.count() else Token.objects.none()
+            sessions = Session.objects.filter(status='ACTIVE')
+            session = sessions[0] if sessions.count() else ''
 
-        result = dict(
-            session_tutorial=request.build_absolute_uri(
-                reverse('session-start', args=[evse.uid, connector.uid, 'POSITIVE_TEST_TOKEN'])
-            ) if evse and connector else 'Please create an EVSE with a connector first',
-            example_session_not_authorised=request.build_absolute_uri(
-                reverse('session-start', args=[evse.uid, connector.uid, token.uid])
-            ) if token else 'Please create a token first',
-            example_session_update=request.build_absolute_uri(
-                reverse('session-update', args=[session.uid])
-            ) if session else 'Please start a new session first',
-            how_to_export_locations=request.build_absolute_uri(
-                reverse('quick-location-list')
-            ),
-            how_to_update_charger_status=request.build_absolute_uri(
-                reverse('cpo-evse-by-id', args=[evse.uid])
-            ),
-        )
-        return Response(result)
+            result = dict(
+                session_tutorial=request.build_absolute_uri(
+                    reverse('session-start', args=[evse.uid, connector.uid, 'POSITIVE_TEST_TOKEN'])
+                ) if evse and connector else 'Please create an EVSE with a connector first',
+                example_session_not_authorised=request.build_absolute_uri(
+                    reverse('session-start', args=[evse.uid, connector.uid, token.uid])
+                ) if token else 'Please create a token first',
+                example_session_update=request.build_absolute_uri(
+                    reverse('session-update', args=[session.uid])
+                ) if session else 'Please start a new session first',
+                how_to_export_locations=request.build_absolute_uri(
+                    reverse('quick-location-list')
+                ),
+                how_to_update_charger_status=request.build_absolute_uri(
+                    reverse('cpo-evse-by-id', args=[evse.uid])
+                ),
+            )
+            return Response(result)
+        except (IndexError, AttributeError):
+            return Response(dict(
+                tutorial='After creating some Evses with Connectors and some Tokens, you will see example links here.')
+            )
 
     def get_view_name(self):
         return 'Charge Point Operator API'
