@@ -1,9 +1,19 @@
 {% extends "admin/base.html" %}
+{% load static %}
 
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
 
+{% block extrastyle %}
+    <link rel="stylesheet" type="text/css" href="{% static "css/ocpiconnector-admin.css" %}">
+{% endblock %}
+
 {% block branding %}
-<h1 id="site-name"><a href="{% url 'admin:index' %}">OCPI Connector Admin</a></h1>
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <img alt="ChargerHub logo" src="{% static 'images/chargerhub-logo-black.svg' %}">
+        OCPI Connector Admin
+    </a>
+</h1>
 {% endblock %}
 
 {% block nav-global %}{% endblock %}
