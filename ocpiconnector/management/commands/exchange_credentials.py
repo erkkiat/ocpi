@@ -87,7 +87,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         def heading(s):
-            self.stdout.write(f"\n\n{Style.BRIGHT}{s}\n\n{Style.RESET_ALL}")
+            self.stdout.write(f"\n\n{Style.BRIGHT}{s}\n{Style.RESET_ALL}")
 
         token_base64 = options['token_a']
         url = options['credentials_url']
@@ -144,6 +144,7 @@ class Command(BaseCommand):
                 token_base64,
                 json=data_to_send
             )
+            heading('Credentials exchange has been finished successfully')
 
         except requests.exceptions.ConnectionError as e:
             print(f'{Back.RED}*** Cannot reach the URL you specified: {str(e)}')
