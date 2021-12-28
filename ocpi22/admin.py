@@ -110,6 +110,7 @@ class CdrAdmin(admin.ModelAdmin):
         'session_id', 'auth_method'
     ]
     list_filter = ['party_id', 'auth_method', 'credit']
+    search_fields = ['party_id', 'country_code', 'session_id']
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete
@@ -173,6 +174,7 @@ class CredentialsAdmin(admin.ModelAdmin):
     list_display = ['party', 'token_a_base64', 'ours_base64', 'theirs_base64']
     readonly_fields = ['ours', 'theirs_base64', 'last_updated', 'created']
     inlines = [CredentialRolesInline, EndpointsInline]
+    search_fields = ['roles__party_id', 'roles__country_code',]
     list_display_links = ['token_a_base64']
 
 
