@@ -84,23 +84,23 @@ class Command(BaseCommand):
         raise self.ProtocolError('There is no credentials_url provided by the other party')
 
     def handle(self, *args, **options):
-        token_a_base64 = options['token_a']
+        token_base64 = options['token_a']
         url = options['credentials_url']
         token_b = generate_random_token().upper()
         try:
             self.stdout.write('\n\n1) Getting version info from other party '
                               'and selecting a version we both understand\n\n')
-            selected_version = self.__select_version(url, token_a_base64)
+            selected_version = self.__select_version(url, token_base64)
             self.stdout.write(f'Selected version: {selected_version}.')
 
             self.stdout.write('\n\n2) Getting endpoints from other party\n\n')
-            endpoints = self.__get_endpoints(selected_version['url'], token_a_base64)
+            endpoints = self.__get_endpoints(selected_version['url'], token_base64)
             endpoints_str = ", ".join(set([e['identifier'] for e in endpoints['endpoints']]))
             self.stdout.write(f'Got endpoints: {endpoints_str}')
 
-            token_a = base64.b64decode(token_a_base64).decode('ascii')
+            token = base64.b64decode(token_base64).decode('ascii')
 
-            credentials = Credentials.find(token_a, create=True)
+            credentials = Credentials.find(token, create=True)
             credentials.ours = token_b
             credentials.version = endpoints['version'].replace('.', '')  # "2.2" => "22"
             credentials.save()
@@ -134,7 +134,7 @@ class Command(BaseCommand):
             )
             _credentials_response = self.ocpi_post(
                 self.find_endpoint_url(endpoints, 'credentials', 'receiver'),
-                token_a_base64,
+                token_base64,
                 json=data_to_send
             )
 

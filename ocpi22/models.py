@@ -107,7 +107,7 @@ class Credentials(models.Model, ModelUtilMixin):
     @staticmethod
     def find(token, create=False):
         # noinspection PyUnresolvedReferences
-        credentials = Credentials.objects.filter(Q(token_a=token) | Q(ours=token))
+        credentials = Credentials.objects.filter(Q(token_a=token) | Q(ours=token) | Q(theirs=token))
         count = credentials.count()
         assert count <= 1, f"There are overlapping tokens in credentials {', '.join([str(a.pk) for a in credentials])}."
         if credentials.count() == 1:

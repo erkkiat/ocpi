@@ -17,7 +17,10 @@ MANAGERS = ADMINS
 
 TIMEOUT_FOR_COMMANDS = 2 * 60
 
+# Todo: Hostnames are internal in Heroku, find the real one
+
 HOSTNAME = os.environ.get('HOSTNAME', socket.gethostname())
+
 
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split('://')
