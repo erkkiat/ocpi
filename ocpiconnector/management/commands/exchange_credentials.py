@@ -4,7 +4,6 @@ import os
 import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.models import Endpoint, Credentials
@@ -61,7 +60,6 @@ class Command(BaseCommand):
                 # ic(version_option)
                 # Todo: Support earlier versions also
                 if version_option['version'] == '2.2':
-                    # Todo: Version doesn't seem to update
                     selected_version = version_option
                     break
             if not selected_version:
@@ -102,18 +100,10 @@ class Command(BaseCommand):
 
             token_a = base64.b64decode(token_a_base64).decode('ascii')
 
-            # noinspection PyUnresolvedReferences
-            credentials, created = Credentials.objects.get_or_create(
-                token_a=token_a,
-                defaults=dict(
-                    ours=token_b,
-                    version=endpoints['version'].replace('.', '')  # "2.2" => "22"
-                )
-            )
-
-            if not created:
-                credentials.ours = token_b
-                credentials.save()
+            credentials = Credentials.find(token_a, create=True)
+            credentials.ours = token_b
+            credentials.version = endpoints['version'].replace('.', '')  # "2.2" => "22"
+            credentials.save()
 
             # Replace any existing endpoints for this specific party
             credentials.endpoints.all().delete()
@@ -142,12 +132,12 @@ class Command(BaseCommand):
                     )
                 ],
             )
-            # ic(data_to_send)
             _credentials_response = self.ocpi_post(
                 self.find_endpoint_url(endpoints, 'credentials', 'receiver'),
                 token_a_base64,
                 json=data_to_send
             )
+
         except requests.exceptions.ConnectionError as e:
             print(f'*** Cannot reach the URL you specified: {str(e)}')
         except self.ProtocolError as e:
