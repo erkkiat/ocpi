@@ -105,17 +105,19 @@ MEDIA_URL = ''
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/var/www/example.com/static/"
 STATIC_URL = os.environ.get('EDGE_URL', '') + '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+if os.environ.get('LOCAL_STATIC') and False:
+    STATIC_ROOT = os.path.join(BASE_DIR, 'ocpiconnector/static')
+else:
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # URL prefix for static files.
 # Example: "http://example.com/static/", "http://static.example.com/"
 
 # Additional locations of static files
-STATICFILES_DIRS = (
-    # Put strings here, like "/home/html/static" or "C:/www/django/static".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-)
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "ocpiconnector/static"),
+]
 
 # List of finder classes that know how to find static files in
 # various locations.

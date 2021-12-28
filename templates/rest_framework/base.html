@@ -17,11 +17,12 @@
       {% block style %}
         {% block bootstrap_theme %}
           <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/bootstrap.min.css" %}"/>
-          <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/bootstrap-tweaks.css" %}"/>
+<!--          <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/bootstrap-tweaks.css" %}"/>-->
         {% endblock %}
 
-        <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/prettify.css" %}"/>
+<!--        <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/prettify.css" %}"/>-->
         <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/default.css" %}"/>
+        <link rel="stylesheet" type="text/css" href="{% static "css/ocpiconnector.css" %}"/>
         {% if code_style %}<style>{{ code_style }}</style>{% endif %}
       {% endblock %}
 
@@ -38,12 +39,18 @@
           <div class="container">
             <span>
               {% block branding %}
-                <a class='navbar-brand' rel="nofollow" href='#'>
+                <a class='navbar-brand mb-5 mt-5' rel="nofollow" href='#'>
+                    <img alt="ChargerHub logo" src="{% static 'images/chargerhub-logo-black.svg' %}">
                     OCPI Connector Developer Central - ChargerHub.EU
                 </a>
               {% endblock %}
             </span>
             <ul class="nav navbar-nav pull-right">
+
+              {% if user.is_staff %}
+              <li><a href="/admin/">Admin</a></li>
+              {% endif %}
+
               {% block userlinks %}
                 {% if user.is_authenticated %}
                   {% optional_logout request user %}

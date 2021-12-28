@@ -1,0 +1,12 @@
+{
+	"version": 3,
+	"file": "ocpiconnector.css",
+	"sources": [
+		"../scss/ocpiconnector.scss"
+	],
+	"sourcesContent": [
+		".navbar-brand {\n    padding: 7px 15px;\n    img {\n        display: inline;\n        filter: invert(100%);\n        height: 36px;\n    }\n}"
+	],
+	"names": [],
+	"mappings": ";AAAA,AAAA,aAAa,CAAC;EACV,OAAO,EAAE,QAAQ;CAMpB;;;AAPD,AAEI,aAFS,CAET,GAAG,CAAC;EACA,OAAO,EAAE,MAAM;EACf,MAAM,EAAE,YAAY;EACpB,MAAM,EAAE,IAAI;CACf"
+}
