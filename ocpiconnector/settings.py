@@ -17,9 +17,7 @@ MANAGERS = ADMINS
 
 TIMEOUT_FOR_COMMANDS = 2 * 60
 
-# Todo: Hostnames are internal in Heroku, find the real one
-
-HOSTNAME = os.environ.get('HOSTNAME', socket.gethostname())
+HOSTNAME = os.environ['HOSTNAME']
 
 
 def parse_jawsdb_maria_url(url):
@@ -67,13 +65,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = [
     'localhost', '127.0.0.1',
-    '.ocpiconnector.com',
-    '.chargerhub.eu',
-    'ocpi-connector.herokuapp.com',
-    'ocpi-connector-production.herokuapp.com',
-    'hub-ocpi.herokuapp.com',
-    'cpo-ocpi.herokuapp.com',
-    'emsp-ocpi.herokuapp.com',
+    HOSTNAME
 ]
 
 # Local time zone for this installation. Choices can be found here:
