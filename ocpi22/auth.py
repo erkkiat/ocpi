@@ -30,7 +30,9 @@ def check_auth_token(request, token):
         credentials_matches = Credentials.objects.filter(token_a=token_ascii)
         if credentials_matches.count():
             if request.path not in allowed_for_token_a:
-                raise exceptions.NotAuthenticated(f'TOKEN_A can only be used for the Credentials and Versions modules')
+                raise exceptions.NotAuthenticated(
+                    f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
+                )
 
             # Don't accept TOKEN_A anymore, if tokens have been exchanged
             # NOTE: At a given time, one party may possess all three tokens while the other has only two
@@ -55,7 +57,7 @@ def check_auth_token(request, token):
         raise exceptions.NotAuthenticated(f'Authentication token: {e}')
     if token:
         # This token is no good
-        raise exceptions.NotAuthenticated(f'The token "{token}" seems to be faulty')
+        raise exceptions.NotAuthenticated(f'The token "{token}" doesn\'t match any of our current credentials')
     # If no token, give other permission mechanisms a chance
     return False
 

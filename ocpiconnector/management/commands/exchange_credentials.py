@@ -9,6 +9,8 @@ from rest_framework.reverse import reverse
 from ocpi22.models import Endpoint, Credentials
 from ocpi22.util import generate_random_token
 
+from colorama import Back, Style
+
 
 class Command(BaseCommand):
     help = 'Exchange the credentials tokens with a new or existing partner.'
@@ -23,7 +25,7 @@ class Command(BaseCommand):
         self.stdout.write(f'Getting {url}')
         response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'))
         if response.status_code != 200:
-            self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
+            self.stdout.write(f'{Back.RED}*** Got response: {response.status_code} - {response.reason}')
             self.stdout.write(response.text)
             raise self.ProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}')
         return response
@@ -84,16 +86,21 @@ class Command(BaseCommand):
         raise self.ProtocolError('There is no credentials_url provided by the other party')
 
     def handle(self, *args, **options):
+        def heading(s):
+            self.stdout.write(f"\n\n{Style.BRIGHT}{s}\n\n{Style.RESET_ALL}")
+
         token_base64 = options['token_a']
         url = options['credentials_url']
         token_b = generate_random_token().upper()
         try:
-            self.stdout.write('\n\n1) Getting version info from other party '
-                              'and selecting a version we both understand\n\n')
+            heading('1) Getting version info from other party '
+                              'and selecting a version we both understand')
+
             selected_version = self.__select_version(url, token_base64)
             self.stdout.write(f'Selected version: {selected_version}.')
 
-            self.stdout.write('\n\n2) Getting endpoints from other party\n\n')
+            heading('2) Getting endpoints from other party')
+
             endpoints = self.__get_endpoints(selected_version['url'], token_base64)
             endpoints_str = ", ".join(set([e['identifier'] for e in endpoints['endpoints']]))
             self.stdout.write(f'Got endpoints: {endpoints_str}')
@@ -113,7 +120,7 @@ class Command(BaseCommand):
                 endpoint.credentials = credentials
                 endpoint.save()
 
-            self.stdout.write('\n\n3) Sending our Credentials Roles to the other party\n\n')
+            heading('3) Sending our Credentials Roles to the other party')
 
             data_to_send = dict(
                 token=token_b,
@@ -139,6 +146,6 @@ class Command(BaseCommand):
             )
 
         except requests.exceptions.ConnectionError as e:
-            print(f'*** Cannot reach the URL you specified: {str(e)}')
+            print(f'{Back.RED}*** Cannot reach the URL you specified: {str(e)}')
         except self.ProtocolError as e:
-            print(f'*** There has been a protocol error: {str(e)}')
+            print(f'{Back.RED}*** There has been a protocol error: {str(e)}')
