@@ -394,12 +394,16 @@ class Tariff(models.Model, ModelUtilMixin):
     created = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
+        noloop = kwargs.pop('noloop') if 'noloop' in kwargs else False
+        result = super(self.__class__, self).save(*args, **kwargs)
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
                 upper_value = self.__getattribute__(field).upper()
                 self.__setattr__(field, upper_value)
-        self.uid = f'{self.country_code}{self.party_id}T{self.pk}'
-        return super(self.__class__, self).save(*args, **kwargs)
+        if not noloop:
+            self.uid = f'{self.country_code}{self.party_id}T{self.pk}'
+            self.save(noloop=True)
+        return result
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
@@ -1169,3 +1173,10 @@ def my_callback(sender, instance, *_args, **_kwargs):
         credentials.token_a = generate_random_token()
     # if not credentials.ours:
     #     credentials.ours = generate_random_token()
+
+
+@receiver(pre_save, sender=Tariff)
+def my_callback(sender, instance, *_args, **_kwargs):
+    tariff: Tariff = instance
+    if not tariff.uid:
+        tariff.uid = uuid.uuid4()
