@@ -1,0 +1,12 @@
+Installing a new OCPI Connector instance on Heroku
+
+- Add staging app
+- Set HOSTNAME environment variable to full domain name (etc. "abc.ocpiconnector.com")
+- Auto deploys on
+- Deploy
+- Add add-ons: Papertrail, Heroku Redis, JawsDB MySQL
+- Remove add-on:
+- Make sure initial data has been loaded (Capabilities and Facilities)
+- Create superuser
+- Check from Papertrail that Celery can reach Redis
+  (" heroku/worker.1 Starting process with command `celery --app ocpi22.tasks worker`")
