@@ -123,11 +123,11 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
     endpoint = Endpoint.objects.get(pk=endpoint_pk)
     if not endpoint.credentials.theirs:
         raise exceptions.Retry(
-            f'Token for party {endpoint.credentials.party()}is unknown, please set Credentials.theirs',
+            f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
             when=10
         )
 
-    url = f'{endpoint.url}{location.country_code}/{location.party_id}/{location.uid}/{evse_uid}/'
+    url = f'{endpoint.url}/{location.country_code}/{location.party_id}/{location.uid}/{evse_uid}/'
     logging.error(f'Sending Evse update to {endpoint.credentials.party()} at {url}')
 
     # Gireve accepts only status updates, so let's make sure no other data gets through
