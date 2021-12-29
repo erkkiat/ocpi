@@ -1154,18 +1154,18 @@ def my_callback(sender, instance, *_args, **_kwargs):
     location: Location = evse.location
     # location.last_updated = evse.last_updated
     ic(f'Saving location #{location.uid} {location.name}')
+    location.save()
     if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
         ic('*** This is our location, sending updates to all known parties')
         #
         # For this part we need to store Endpoints and Credentials in Redis instead of MySQL which is locked right now
         #
-        # from ocpi22.location import send_evse_updates
-        # send_evse_updates(evse.uid)
-    location.save()
+        from ocpi22.location import send_evse_updates
+        send_evse_updates(evse.uid)
 
 
 @receiver(post_save, sender=Connector)
-def my_callback(sender, instance, *_args, **_kwargs):
+def connector_post_save(sender, instance, *_args, **_kwargs):
     connector: Connector = instance
     evse = connector.evse
     # evse.last_updated = connector.last_updated
@@ -1173,7 +1173,7 @@ def my_callback(sender, instance, *_args, **_kwargs):
 
 
 @receiver(pre_save, sender=Connector)
-def my_callback(sender, instance, *_args, **_kwargs):
+def connector_pre_save(sender, instance, *_args, **_kwargs):
     connector: Connector = instance
     if not connector.uid:
         connector.uid = uuid.uuid4()
@@ -1182,7 +1182,7 @@ def my_callback(sender, instance, *_args, **_kwargs):
 
 
 @receiver(pre_save, sender=Credentials)
-def my_callback(sender, instance, *_args, **_kwargs):
+def credentials_pre_save(sender, instance, *_args, **_kwargs):
     credentials: Credentials = instance
     if not credentials.token_a:
         credentials.token_a = generate_random_token()
@@ -1191,7 +1191,7 @@ def my_callback(sender, instance, *_args, **_kwargs):
 
 
 @receiver(pre_save, sender=Tariff)
-def my_callback(sender, instance, *_args, **_kwargs):
+def tariff_pre_save(sender, instance, *_args, **_kwargs):
     tariff: Tariff = instance
     if not tariff.uid:
         tariff.uid = uuid.uuid4()
