@@ -1158,11 +1158,10 @@ def evse_post_save(sender, instance, *_args, **_kwargs):
     location.save()
     if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
         ic('*** This is our location, sending updates to all known parties')
-        #
-        # For this part we need to store Endpoints and Credentials in Redis instead of MySQL which is locked right now
-        #
-        from ocpi22.location import send_evse_updates
-        send_evse_updates(evse.uid)
+        # from ocpi22.location import send_evse_updates
+        # send_evse_updates(evse.uid)
+        from ocpi22.location import send_location_updates
+        send_location_updates(location.uid, new_location=False)
 
 
 @receiver(post_save, sender=Connector)
