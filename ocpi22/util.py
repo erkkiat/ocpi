@@ -191,3 +191,25 @@ class UpperCaseSerializerField(serializers.CharField):
         value = super(UpperCaseSerializerField, self).to_representation(value)
         if value:
             return value.upper()
+
+
+def check_ownership(request, country_code, party_id, check_operator_id_from_request_data=True):
+    if not hasattr(request, 'credentials'):
+        return False
+    if check_operator_id_from_request_data and hasattr(request, 'data'):
+        cc = request.data.get('country_code')
+        pi = request.data.get('party_id')
+        if (cc and cc != country_code) or (pi and pi != party_id):
+            return False
+    for role in request.credentials.roles.all():
+        if role.country_code == country_code and role.party_id == party_id:
+            return True
+    return False
+
+
+class NotOwner(OCPIResponse):
+    def __init__(self):
+        super().__init__(
+            status_message="Country ID and Party ID need to match your credentials.",
+            status_code=2002,
+            http_status=status.HTTP_403_FORBIDDEN)

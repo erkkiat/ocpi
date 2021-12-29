@@ -18,7 +18,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.location import BusinessDetailsSerializer
 from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, clear_empty, \
-    OCPIResponse
+    OCPIResponse, NotOwner
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
@@ -68,12 +68,15 @@ class TokenViewSet(mixins.UpdateModelMixin,
     def put(request):
         uid = request.data.get('uid')
         party_id = request.data.get('party_id')
-        instance = Token.get_if_exists(uid=uid, party_id=party_id)
-        serialiser = TokenSerializer(data=request.data, instance=instance, partial=True)
+
+        token: Token = Token.get_if_exists(uid=uid, party_id=party_id)
+        if token and not token.is_owner(request):
+            return NotOwner()
+        serialiser = TokenSerializer(data=request.data, instance=token, partial=True)
         if serialiser.is_valid():
             serialiser.save()
             # Return 201 if instance was created
-            return OCPIResponse(serialiser.data, http_status=200 if instance else 201)
+            return OCPIResponse(serialiser.data, http_status=200 if token else 201)
         else:
             return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
@@ -108,6 +111,16 @@ class TokenViewSet(mixins.UpdateModelMixin,
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
+        def request_is_authorised(party_id, country_code):
+            if request.user.is_staff:
+                return True
+            if not hasattr(request, 'credentials'):
+                return False
+            for role in request.credentials.roles.all():
+                if role.country_code == country_code and role.party_id == party_id:
+                    return True
+            return False
+
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
         method_is_patch = True if request.method == 'PATCH' else False
 
@@ -116,6 +129,9 @@ class TokenViewSet(mixins.UpdateModelMixin,
             return OCPIResponse(serializer.data)
 
         elif request.method in ('PUT', 'PATCH'):
+            if not token.is_owner(request):
+                return NotOwner()
+
             serializer = TokenSerializer(token,
                                          data=request.data,
                                          partial=method_is_patch,
@@ -274,7 +290,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
         # Todo: Make sure deletition is not possible for others than owner
         logging.warning(f'Deleting {request.credentials} on request by Credential owner.')
         request.credentials.delete()
-        return OCPIResponse('Your credentials have been deleted, as requested.')
+        return OCPIResponse(status_message='Your credentials have been deleted, as requested.')
 
     def create(self, request: Request, *args, **kwargs):
         assert hasattr(request, 'credentials')
@@ -294,7 +310,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
                 # ic(serializer.data, settings.COUNTRY_CODE, settings.PARTY_ID)
                 if serializer.data['country_code'] == settings.COUNTRY_CODE \
                     and serializer.data['party_id'] == settings.PARTY_ID:
-                    return OCPIResponse(f'You are not allowed to use the same operator ID '
+                    return OCPIResponse(status_message=f'You are not allowed to use the same operator ID '
                                         f'"{settings.COUNTRY_CODE}*{settings.PARTY_ID}" as we do.',
                                         http_status=status.HTTP_400_BAD_REQUEST, status_code=2001)
 

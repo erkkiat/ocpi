@@ -2,6 +2,7 @@ import base64
 import secrets
 import uuid
 
+from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
@@ -12,7 +13,7 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.util import hours_minutes, generate_random_token
+from ocpi22.util import hours_minutes, generate_random_token, check_ownership
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
@@ -112,6 +113,7 @@ class Credentials(models.Model, ModelUtilMixin):
         assert count <= 1, f"There are overlapping tokens in credentials {', '.join([str(a.pk) for a in credentials])}."
         if credentials.count() == 1:
             return credentials[0]
+        # noinspection PyUnresolvedReferences
         return Credentials.objects.create(token_a=token) if create else None
 
 
@@ -310,6 +312,9 @@ class Token(models.Model, ModelUtilMixin):
     def get_absolute_url(self):
         return reverse('token-by-id', args=[self.country_code, self.party_id, self.uid])
 
+    def is_owner(self, request):
+        return check_ownership(request, self.country_code, self.party_id)
+
 
 class AuthorizationInfo(models.Model, ModelUtilMixin):
 
@@ -337,6 +342,7 @@ class AuthorizationInfo(models.Model, ModelUtilMixin):
     last_updated = models.DateTimeField(auto_now=True)
 
 # Todo: OCPI tariff_id has to contain a valid OCHP tariffId (NLEVNT12345ABC)
+
 
 class Tariff(models.Model, ModelUtilMixin):
     class Meta:
@@ -974,6 +980,7 @@ class Session(models.Model, ModelUtilMixin):
 # Todo: CDR.id must contain the CPO-ID (NLEVN12345ABCDEFG...) [up to 36 characters total]
 # Todo: CDR.id must follow the pattern: Regular Expression: [0-9A-Z]{1,36}
 
+
 class Cdr(models.Model, ModelUtilMixin):
     """
     A Charge Detail Record is the description of a concluded charging session.
@@ -1144,8 +1151,16 @@ def my_callback(sender, instance, *_args, **_kwargs):
 @receiver(post_save, sender=Evse)
 def my_callback(sender, instance, *_args, **_kwargs):
     evse = instance
-    location = evse.location
+    location: Location = evse.location
     # location.last_updated = evse.last_updated
+    ic(f'Saving location #{location.uid} {location.name}')
+    if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
+        ic('*** This is our location, sending updates to all known parties')
+        #
+        # For this part we need to store Endpoints and Credentials in Redis instead of MySQL which is locked right now
+        #
+        # from ocpi22.location import send_evse_updates
+        # send_evse_updates(evse.uid)
     location.save()
 
 
