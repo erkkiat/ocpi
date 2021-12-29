@@ -12,6 +12,8 @@ SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
 PARTY_ID = os.environ.get('PARTY_ID', 'XXX')
 COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
 
+SEND_UPDATES = os.environ.get('SEND_UPDATES', True)
+
 ADMINS = [('Erkki Tapola', 'erkki.tapola@chargerhub.eu')]
 MANAGERS = ADMINS
 

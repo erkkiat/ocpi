@@ -89,22 +89,28 @@ def command_start(_self, data, session_uid, update_url, url):
 
 
 @app.task(bind=True)
-def send_location_update(_self, location_uid, endpoint_pk):
+def send_location_update(_self, location_uid, endpoint_pk, new_location):
     from ocpi22.models import Location, Endpoint
     from ocpi22.location import LocationSerializer
     # noinspection PyUnresolvedReferences
-    location = Location.objects.get(uid=location_uid)
+    location: Location = Location.objects.get(uid=location_uid)
+    if not location.publish:
+        print(f"Location #{location_uid} - {location.name} is not public, so not sending it out")
+        return
     serializer = LocationSerializer(instance=location)
+
     # noinspection PyUnresolvedReferences
     endpoint = Endpoint.objects.get(pk=endpoint_pk)
     if not endpoint.credentials.theirs:
         raise exceptions.Retry(
-            f'Token for party {endpoint.credentials.party()}is unknown, please set Credentials.theirs',
+            f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
             when=10
         )
 
-    url = urljoin(endpoint.url, f'{location.country_code}/{location.party_id}/{location.uid}/')
-    print(f'Sending Location update to {endpoint.credentials.party()} at {url}')
+    url = endpoint.url
+    # if not new_location:
+    #     url = urljoin(url, f'{location.country_code}/{location.party_id}/{location.uid}/')
+    print(f'Sending Location (update) to {endpoint.credentials.party()} at {url}')
 
     result = requests.put(
         url,

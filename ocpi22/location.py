@@ -1,3 +1,4 @@
+from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
 from rest_framework import mixins, serializers, status
@@ -277,22 +278,24 @@ def send_evse_updates(evse_uid):
     Find all endpoints interested in Location updates and send update in a background task
     """
 
-    # noinspection PyUnresolvedReferences
-    endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
-    e: Endpoint
-    for e in endpoints:
-        print(f'Send EVSE update to {e.url}')
-        send_evse_status_update.delay(evse_uid, e.pk)
+    if settings.SEND_UPDATES:
+        # noinspection PyUnresolvedReferences
+        endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
+        e: Endpoint
+        for e in endpoints:
+            print(f'Send EVSE update to {e.url}')
+            send_evse_status_update.delay(evse_uid, e.pk)
 
 
-def send_location_updates(location_uid):
+def send_location_updates(location_uid, new_location=False):
     """
     Find all endpoints interested in Location updates and send update in a background task
     """
 
-    # noinspection PyUnresolvedReferences
-    endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
-    e: Endpoint
-    for e in endpoints:
-        print(f'Send Location update to {e.url}')
-        send_location_update.delay(location_uid, e.pk)
+    if settings.SEND_UPDATES:
+        # noinspection PyUnresolvedReferences
+        endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
+        e: Endpoint
+        for e in endpoints:
+            print(f'Send Location update to {e.url}')
+            send_location_update.delay(location_uid, e.pk, new_location)

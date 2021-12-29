@@ -1133,23 +1133,24 @@ def calculate_partition(coordinate):
 
 
 @receiver(pre_save, sender=Location)
-def my_callback(sender, instance, *_args, **_kwargs):
+def location_pre_save(sender, instance, *_args, **_kwargs):
     location: Location = instance
     location.lat_partition = calculate_partition(location.latitude)
     location.long_partition = calculate_partition(location.longitude)
-    # if not charger.costs():
-    #     charger.access = 'FR'
 
 
-# @receiver(pre_save, sender=Evse)
-# def my_callback(sender, instance, *_args, **_kwargs):
-#     evse = instance
-#     if not evse.uid:
-#         raise Exception('EVSE with no UID')
+@receiver(post_save, sender=Location)
+def location_post_save(sender, instance, *_args, **kwargs):
+    location: Location = instance
+    if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
+        ic('*** This is our location, sending updates to all known parties')
+        created = kwargs.get('created')
+        from ocpi22.location import send_location_updates
+        send_location_updates(location.uid, new_location=created)
 
 
 @receiver(post_save, sender=Evse)
-def my_callback(sender, instance, *_args, **_kwargs):
+def evse_post_save(sender, instance, *_args, **_kwargs):
     evse = instance
     location: Location = evse.location
     # location.last_updated = evse.last_updated
