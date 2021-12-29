@@ -1,5 +1,7 @@
 import json
 import os
+from urllib.parse import urljoin
+
 import celery
 import requests
 import pprint
@@ -101,7 +103,7 @@ def send_location_update(_self, location_uid, endpoint_pk):
             when=10
         )
 
-    url = f'{endpoint.url}{location.country_code}/{location.party_id}/{location.uid}/'
+    url = urljoin(endpoint.url, f'{location.country_code}/{location.party_id}/{location.uid}/')
     print(f'Sending Location update to {endpoint.credentials.party()} at {url}')
 
     result = requests.put(
@@ -110,7 +112,7 @@ def send_location_update(_self, location_uid, endpoint_pk):
         headers=dict(Authorization=f'Token {endpoint.get_token_base64()}'))
     if result.status_code != 200:
         ic(result.text[-400:])
-        print(f'{result.status_code} - {result.reason}')
+        logging.error(f'{result.status_code} - {result.reason}')
 
 
 @app.task(bind=True)
@@ -127,7 +129,7 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
             when=10
         )
 
-    url = f'{endpoint.url}/{location.country_code}/{location.party_id}/{location.uid}/{evse_uid}/'
+    url = urljoin(endpoint.url, f'{location.country_code}/{location.party_id}/{location.uid}/{evse_uid}/')
     logging.error(f'Sending Evse update to {endpoint.credentials.party()} at {url}')
 
     # Gireve accepts only status updates, so let's make sure no other data gets through
