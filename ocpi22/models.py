@@ -78,8 +78,10 @@ class Credentials(models.Model, ModelUtilMixin):
     def save(self, *args, **kwargs):
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
-                upper_value = self.__getattribute__(field).upper()
-                self.__setattr__(field, upper_value)
+                f = self.__getattribute__(field)
+                if f:
+                    upper_value = f.upper()
+                    self.__setattr__(field, upper_value)
         return super(self.__class__, self).save(*args, **kwargs)
 
     def party(self):
