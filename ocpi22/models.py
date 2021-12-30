@@ -78,8 +78,10 @@ class Credentials(models.Model, ModelUtilMixin):
     def save(self, *args, **kwargs):
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
-                upper_value = self.__getattribute__(field).upper()
-                self.__setattr__(field, upper_value)
+                f = self.__getattribute__(field)
+                if f:
+                    upper_value = f.upper()
+                    self.__setattr__(field, upper_value)
         return super(self.__class__, self).save(*args, **kwargs)
 
     def party(self):
@@ -305,8 +307,10 @@ class Token(models.Model, ModelUtilMixin):
     def save(self, *args, **kwargs):
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
-                upper_value = self.__getattribute__(field).upper()
-                self.__setattr__(field, upper_value)
+                f = self.__getattribute__(field)
+                if f:
+                    upper_value = f.upper()
+                    self.__setattr__(field, upper_value)
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -404,8 +408,10 @@ class Tariff(models.Model, ModelUtilMixin):
         result = super(self.__class__, self).save(*args, **kwargs)
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
-                upper_value = self.__getattribute__(field).upper()
-                self.__setattr__(field, upper_value)
+                f = self.__getattribute__(field)
+                if f:
+                    upper_value = f.upper()
+                    self.__setattr__(field, upper_value)
         if not noloop:
             self.uid = f'{self.country_code}{self.party_id}T{self.pk}'
             self.save(noloop=True)
@@ -633,8 +639,10 @@ class Location(models.Model, ModelUtilMixin):
     def save(self, *args, **kwargs):
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
-                upper_value = getattr(self, field).upper()
-                setattr(self, field, upper_value)
+                f = self.__getattribute__(field)
+                if f:
+                    upper_value = f.upper()
+                    self.__setattr__(field, upper_value)
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
