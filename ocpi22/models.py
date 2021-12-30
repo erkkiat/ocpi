@@ -140,10 +140,10 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     business_details = models.ForeignKey(BusinessDetails, on_delete=models.PROTECT)
 
     # ISO-3166 alpha-2 country code
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
 
     # ID of the party
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
 
     credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='roles')
 
@@ -213,10 +213,10 @@ class Token(models.Model, ModelUtilMixin):
     upper_case_fields = ('country_code', 'party_id', 'uid', 'contract_id', 'language')
 
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
 
     # CPO ID of the MSP that 'owns' this Token (following the ISO-15118)
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
 
     # Unique ID by which this Token can be identified.
     # This is the field used by CPO system (RFID reader on the Charge Point) to identify this token.
@@ -355,10 +355,10 @@ class Tariff(models.Model, ModelUtilMixin):
     upper_case_fields = ('country_code', 'party_id', 'currency')
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
 
     # CPO ID of the CPO that 'owns' this Tariff (following the ISO-15118 standard)
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
     uid = models.CharField(max_length=36)
@@ -542,10 +542,10 @@ class Location(models.Model, ModelUtilMixin):
     upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id']
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
 
     # CPO ID of the CPO that 'owns' this Location (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
@@ -834,10 +834,10 @@ class Session(models.Model, ModelUtilMixin):
         ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
 
     # CPO ID of the CPO that 'owns' this Session (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
 
     # The unique id that identifies the charging session in the CPO platform.
     uid = models.CharField(max_length=36)
@@ -1005,10 +1005,10 @@ class Cdr(models.Model, ModelUtilMixin):
         ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this CDR
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
 
     # CPO ID of the CPO that 'owns' this CDR (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
 
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
@@ -1121,9 +1121,6 @@ class Cdr(models.Model, ModelUtilMixin):
 
     def get_absolute_url(self):
         return reverse('cdr-detail', args=[self.uid])
-
-    def operator(self):
-        return f'{self.country_code}*{self.party_id}'
 
     def total_cost(self):
         return f'{"-" if self.credit else ""}{self.total_cost_incl_vat:.2f}/' \

@@ -12,7 +12,7 @@ class TokenAdmin(admin.ModelAdmin):
     list_display = ['party', 'valid', 'type', 'uid', 'visual_number', 'contract_id', 'last_updated']
     list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
     list_display_links = ['uid']
-    exclude = ['country_code', 'party_id']
+    # exclude = ['country_code', 'party_id']
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete
@@ -36,10 +36,9 @@ class LocationAdmin(admin.ModelAdmin):
                      'postal_code', 'state', 'country', 'parking_type']
     fields = ['uid', 'publish', 'publish_allowed_to',
               ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
-              ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone',
-              ('country_code', 'party_id')]
-    list_display = ['uid', 'publish', 'name', 'street_address']
-    readonly_fields = ['party_id', 'country_code']
+              ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone',]
+    list_display = ['party', 'uid', 'publish', 'name', 'street_address']
+    list_display_links = ['uid']
 
     def actions_item(self, _obj):
         return format_html('Edit')
@@ -106,11 +105,13 @@ class CapabilityAdmin(admin.ModelAdmin):
 class CdrAdmin(admin.ModelAdmin):
     model = Cdr
     list_display = [
+        'party',
         'start_date_time',  # Todo: Show time in local timezone
-        'operator', 'total_cost', 'total_energy', 'charging_time',
+        'total_cost', 'total_energy', 'charging_time',
         'session_id', 'auth_method'
     ]
     list_filter = ['party_id', 'auth_method', 'credit']
+    list_display_links = ['start_date_time']
     search_fields = ['party_id', 'country_code', 'session_id']
 
     def has_delete_permission(self, request, obj=None):
@@ -130,6 +131,7 @@ class SessionAdmin(admin.ModelAdmin):
     model = Session
     ordering = ['-created']
     list_display = [
+        'party',
         'start_date_time',  # Todo: Show time in local timezone
         'status',
         'total_time',
@@ -137,6 +139,7 @@ class SessionAdmin(admin.ModelAdmin):
         'cdr_token_uid', 'kwh', 'last_updated',
         'total_cost_incl_vat', 'total_cost_excl_vat', 'currency'
     ]
+    list_display_links = ['start_date_time']
     search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token_uid']
     list_filter = ['status']
     readonly_fields = ['uid', 'party_id', 'country_code']
@@ -157,7 +160,7 @@ class TariffAdmin(admin.ModelAdmin):
         model = PriceComponent
 
     model = Tariff
-    list_display = ['uid', '__str__', 'last_updated']
+    list_display = ['party', 'uid', '__str__', 'last_updated']
     list_display_links = ['__str__']
     inlines = [PriceComponentsInline]
     readonly_fields = ['uid', 'party_id', 'country_code', 'last_updated']
