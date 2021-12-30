@@ -306,9 +306,10 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
                 data = serializer.data
                 bd = data.pop('business_details')
-                business_details, _created = BusinessDetails.objects.get_or_create(**bd)
+                business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(**bd)
                 business_details.save()
-                role = CredentialsRole(**data)
+
+                role, _role_created = CredentialsRole.objects.get_or_create(**data)
                 role.credentials = credentials
                 role.business_details = business_details
                 role.save()
