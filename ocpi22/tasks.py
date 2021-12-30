@@ -122,11 +122,11 @@ def send_location_update(_self, location_uid, endpoint_pk, new_location):
 
 
 @app.task(bind=True)
-def send_token_update(_self, location_uid, endpoint_pk):
+def send_token_update(_self, token_uid, endpoint_pk):
     from ocpi22.models import Token, Endpoint
     from ocpi22.tokens import TokenSerializer
     # noinspection PyUnresolvedReferences
-    token: Token = Token.objects.get(uid=location_uid)
+    token: Token = Token.objects.get(uid=token_uid)
     serializer = TokenSerializer(instance=token)
 
     # noinspection PyUnresolvedReferences

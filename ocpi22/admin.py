@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
@@ -21,10 +22,9 @@ class TokenAdmin(admin.ModelAdmin):
     # def has_add_permission(self, request, obj=None):
     #     # Disable add
     #     return False
-    #
-    # def has_change_permission(self, request, obj=None):
-    #     # Disable change
-    #     return False
+
+    def has_change_permission(self, request, token: Token=None):
+        return token and token.country_code == settings.COUNTRY_CODE and token.party_id == settings.PARTY_ID
 
 
 class LocationAdmin(admin.ModelAdmin):
@@ -39,6 +39,9 @@ class LocationAdmin(admin.ModelAdmin):
               ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone',]
     list_display = ['party', 'uid', 'publish', 'name', 'street_address']
     list_display_links = ['uid']
+
+    def has_change_permission(self, request, obj=None):
+        return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
 
     def actions_item(self, _obj):
         return format_html('Edit')
@@ -58,6 +61,9 @@ class EvseAdmin(admin.ModelAdmin):
         return format_html("<a href='{url}'>{location}</a>",
                            url=reverse('admin:ocpi22_location_change', args=[evse.location.pk]),
                            location=str(evse.location))
+
+    def has_change_permission(self, request, obj=None):
+        return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
 
     location_url.short_description = "Location"
 
@@ -144,10 +150,9 @@ class SessionAdmin(admin.ModelAdmin):
     list_filter = ['status']
     readonly_fields = ['uid', 'party_id', 'country_code']
 
-    # def has_delete_permission(self, request, obj=None):
-    #     # Disable delete
-    #     # return obj and obj.status == 'INVALID'
-    #     return False
+    def has_delete_permission(self, request, obj=None):
+        # Disable delete except for invalid sessions
+        return obj and obj.status == 'INVALID'
 
     def has_add_permission(self, request, obj=None):
         # Disable add
@@ -163,7 +168,13 @@ class TariffAdmin(admin.ModelAdmin):
     list_display = ['party', 'uid', '__str__', 'last_updated']
     list_display_links = ['__str__']
     inlines = [PriceComponentsInline]
-    readonly_fields = ['uid', 'party_id', 'country_code', 'last_updated']
+    readonly_fields = ['uid', 'last_updated']
+
+    def has_change_permission(self, request, obj=None):
+        return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
+
+    def has_delete_permission(self, request, obj=None):
+        return self.has_change_permission(request, obj)
 
 
 class CredentialsAdmin(admin.ModelAdmin):
