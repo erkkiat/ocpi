@@ -180,7 +180,7 @@ class TariffAdmin(admin.ModelAdmin):
 class CredentialsAdmin(admin.ModelAdmin):
 
     class CredentialRolesInline(admin.TabularInline):
-        model = CredentialsRole
+        model = CredentialsRole.credentials.through
 
     class EndpointsInline(admin.TabularInline):
         model = Endpoint
@@ -191,6 +191,11 @@ class CredentialsAdmin(admin.ModelAdmin):
     inlines = [CredentialRolesInline, EndpointsInline]
     search_fields = ['roles__party_id', 'roles__country_code',]
     list_display_links = ['token_a_base64']
+
+
+@admin.register(CredentialsRole)
+class CredentialsRoleAdmin(admin.ModelAdmin):
+    model = CredentialsRole
 
 
 admin.site.register(Token, TokenAdmin)

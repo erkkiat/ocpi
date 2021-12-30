@@ -145,7 +145,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     # ID of the party
     party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
 
-    credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='roles')
+    credentials = models.ManyToManyField(Credentials, related_name='roles')
 
     def __str__(self):
         return f'{self.country_code}*{self.party_id} ({self.role})'
