@@ -1195,3 +1195,12 @@ def tariff_pre_save(sender, instance, *_args, **_kwargs):
     tariff: Tariff = instance
     if not tariff.uid:
         tariff.uid = uuid.uuid4()
+
+
+@receiver(post_save, sender=Token)
+def token_post_save(sender, instance, *_args, **_kwargs):
+    token: Token = instance
+    if token.country_code == settings.COUNTRY_CODE and token.party_id == settings.PARTY_ID:
+        ic('*** This is our token, sending updates to all known parties')
+        from ocpi22.location import send_token_updates
+        send_token_updates(token.uid)

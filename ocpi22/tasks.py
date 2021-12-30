@@ -122,6 +122,34 @@ def send_location_update(_self, location_uid, endpoint_pk, new_location):
 
 
 @app.task(bind=True)
+def send_token_update(_self, location_uid, endpoint_pk):
+    from ocpi22.models import Token, Endpoint
+    from ocpi22.tokens import TokenSerializer
+    # noinspection PyUnresolvedReferences
+    token: Token = Token.objects.get(uid=location_uid)
+    serializer = TokenSerializer(instance=token)
+
+    # noinspection PyUnresolvedReferences
+    endpoint = Endpoint.objects.get(pk=endpoint_pk)
+    if not endpoint.credentials.theirs:
+        raise exceptions.Retry(
+            f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
+            when=10
+        )
+
+    url = endpoint.url
+    print(f'Sending Token to {endpoint.credentials.party()} at {url}')
+
+    result = requests.put(
+        url,
+        serializer.data,
+        headers=dict(Authorization=f'Token {endpoint.get_token_base64()}'))
+    if result.status_code != 200:
+        ic(result.text[-400:])
+        logging.error(f'{result.status_code} - {result.reason}')
+
+
+@app.task(bind=True)
 def send_evse_status_update(_self, evse_uid, endpoint_pk):
     from ocpi22.models import Evse, Endpoint
     # noinspection PyUnresolvedReferences
@@ -130,6 +158,7 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
     # noinspection PyUnresolvedReferences
     endpoint = Endpoint.objects.get(pk=endpoint_pk)
     if not endpoint.credentials.theirs:
+        # Todo: No OCPI retries
         raise exceptions.Retry(
             f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
             when=10

@@ -460,7 +460,7 @@ class SessionViewSet(mixins.ListModelMixin,
 
 class RootView(routers.APIRootView):
     """
-    Welcome to the OCPI Connector Developer Center. Here you can access the OCPI 2.2 endpoints with examples
+    Welcome to the OCPI Connector Developer Central. Here you can access the OCPI 2.2 endpoints with examples
     and the CPO interface for quick integration to popular roaming networks.
     """
 
@@ -471,7 +471,7 @@ class RootView(routers.APIRootView):
         })
 
     def get_view_name(self):
-        return 'OCPI Connector Developer Center'
+        return 'OCPI Connector Developer Central'
 
 
 class RootRouter(routers.DefaultRouter):

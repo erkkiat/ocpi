@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -8,8 +10,10 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
 from ocpi22.models import Location, Evse, Connector, BusinessDetails, uid_validator, Endpoint
-from ocpi22.tasks import send_location_update, send_evse_status_update
+from ocpi22.tasks import send_location_update, send_evse_status_update, send_token_update
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, OCPIResponse, Ocpi
+
+UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -285,6 +289,8 @@ def send_evse_updates(evse_uid):
         for e in endpoints:
             print(f'Send EVSE update to {e.url}')
             send_evse_status_update.delay(evse_uid, e.pk)
+    else:
+        logging.warning(UPDATES_DISABLED)
 
 
 def send_location_updates(location_uid, new_location=False):
@@ -299,3 +305,21 @@ def send_location_updates(location_uid, new_location=False):
         for e in endpoints:
             print(f'Send Location update to {e.url}')
             send_location_update.delay(location_uid, e.pk, new_location)
+    else:
+        logging.warning(UPDATES_DISABLED)
+
+
+def send_token_updates(token_uid):
+    """
+    Find all endpoints interested in Token updates and send update in a background task
+    """
+
+    if settings.SEND_UPDATES:
+        # noinspection PyUnresolvedReferences
+        endpoints = Endpoint.objects.filter(identifier='tokens', role='RECEIVER')
+        e: Endpoint
+        for e in endpoints:
+            print(f'Send Token update to {e.url}')
+            send_token_update.delay(token_uid, e.pk)
+    else:
+        logging.warning(UPDATES_DISABLED)
