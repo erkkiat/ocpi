@@ -12,6 +12,7 @@ class TokenAdmin(admin.ModelAdmin):
     list_display = ['party', 'valid', 'type', 'uid', 'visual_number', 'contract_id', 'last_updated']
     list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
     list_display_links = ['uid']
+    exclude = ['country_code', 'party_id']
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete
