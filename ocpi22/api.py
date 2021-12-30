@@ -111,16 +111,6 @@ class TokenViewSet(mixins.UpdateModelMixin,
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
-        def request_is_authorised(party_id, country_code):
-            if request.user.is_staff:
-                return True
-            if not hasattr(request, 'credentials'):
-                return False
-            for role in request.credentials.roles.all():
-                if role.country_code == country_code and role.party_id == party_id:
-                    return True
-            return False
-
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
         method_is_patch = True if request.method == 'PATCH' else False
 
@@ -309,7 +299,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
                 # They should definitely not have the same operator ID as we do
                 # ic(serializer.data, settings.COUNTRY_CODE, settings.PARTY_ID)
                 if serializer.data.get('country_code') == settings.COUNTRY_CODE \
-                    and serializer.data.get('party_id') == settings.PARTY_ID:
+                  and serializer.data.get('party_id') == settings.PARTY_ID:
                     return OCPIResponse(status_message=f'You are not allowed to use the same operator ID '
                                         f'"{settings.COUNTRY_CODE}*{settings.PARTY_ID}" as we do.',
                                         http_status=status.HTTP_400_BAD_REQUEST, status_code=2001)
