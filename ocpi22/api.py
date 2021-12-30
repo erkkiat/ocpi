@@ -297,8 +297,8 @@ class CredentialsViewSet(mixins.CreateModelMixin,
         # noinspection PyUnresolvedReferences
         data = request.data
         credentials: Credentials = request.credentials
-        credentials.theirs = data['token']
-        credentials.url = data['url']
+        credentials.theirs = data.get('token')
+        credentials.url = data.get('url')
         # noinspection PyUnresolvedReferences
         credentials.roles.all().delete()
 
@@ -308,15 +308,15 @@ class CredentialsViewSet(mixins.CreateModelMixin,
             if serializer.is_valid():
                 # They should definitely not have the same operator ID as we do
                 # ic(serializer.data, settings.COUNTRY_CODE, settings.PARTY_ID)
-                if serializer.data['country_code'] == settings.COUNTRY_CODE \
-                    and serializer.data['party_id'] == settings.PARTY_ID:
+                if serializer.data.get('country_code') == settings.COUNTRY_CODE \
+                    and serializer.data.get('party_id') == settings.PARTY_ID:
                     return OCPIResponse(status_message=f'You are not allowed to use the same operator ID '
                                         f'"{settings.COUNTRY_CODE}*{settings.PARTY_ID}" as we do.',
                                         http_status=status.HTTP_400_BAD_REQUEST, status_code=2001)
 
                 data = serializer.data
                 bd = data.pop('business_details')
-                business_details = BusinessDetails(**bd)
+                business_details = BusinessDetails.objects.get_or_create(**bd)
                 business_details.save()
                 role = CredentialsRole(**data)
                 role.credentials = credentials
