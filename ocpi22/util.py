@@ -1,3 +1,4 @@
+import logging
 import secrets
 from collections import OrderedDict
 from datetime import datetime
@@ -173,6 +174,7 @@ class OCPIResponse(Response):
             status_message = ', '.join([f"{field}: {error}" for field, error in errors.items()])
             data = errors  # This is a courtacy, it's not OCPI compliant
             status_code = Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS
+            logging.error(status_message)
         result = dict(
             status_code=status_code,
             status_message=status_message,
