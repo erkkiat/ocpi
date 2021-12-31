@@ -140,10 +140,10 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     business_details = models.ForeignKey(BusinessDetails, on_delete=models.PROTECT)
 
     # ISO-3166 alpha-2 country code
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # ID of the party
-    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     credentials = models.ManyToManyField(Credentials, related_name='roles')
 

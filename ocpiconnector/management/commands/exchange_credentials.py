@@ -94,7 +94,7 @@ class Command(BaseCommand):
         token_b = generate_random_token().upper()
         try:
             heading('1) Getting version info from other party '
-                              'and selecting a version we both understand')
+                    'and selecting a version we both understand')
 
             selected_version = self.__select_version(url, token_base64)
             self.stdout.write(f'Selected version: {selected_version}.')
@@ -107,12 +107,13 @@ class Command(BaseCommand):
 
             token = base64.b64decode(token_base64).decode('ascii')
 
-            credentials = Credentials.find(token, create=True)
+            credentials: Credentials = Credentials.find(token, create=True)
             credentials.ours = token_b
             credentials.version = endpoints['version'].replace('.', '')  # "2.2" => "22"
             credentials.save()
 
             # Replace any existing endpoints for this specific party
+            # noinspection PyUnresolvedReferences
             credentials.endpoints.all().delete()
 
             for ep in endpoints['endpoints']:
@@ -144,7 +145,10 @@ class Command(BaseCommand):
                 token_base64,
                 json=data_to_send
             )
-            heading('Credentials exchange has been finished successfully')
+            if credentials.ours and credentials.theirs:
+                heading('Credentials exchange 2/2 has been finished successfully')
+            else:
+                heading('Credentials exchange 1/2 has been finished successfully, now initiate from the other end')
 
         except requests.exceptions.ConnectionError as e:
             print(f'{Back.RED}*** Cannot reach the URL you specified: {str(e)}')
