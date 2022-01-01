@@ -945,7 +945,7 @@ class Session(models.Model, ModelUtilMixin):
 
     def calculate_price(self) -> (float, float):
         connector = self.connector
-        kwh: float = self.kwh
+        kwh: float = float(self.kwh)
         hours = (self.end_date_time - self.start_date_time).seconds / 3600
         result_incl_vat: float = 0.0
         result_excl_vat: float = 0.0

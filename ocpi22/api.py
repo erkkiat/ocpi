@@ -310,9 +310,9 @@ class CredentialsViewSet(mixins.CreateModelMixin,
                 bd = data.pop('business_details')
                 business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(**bd)
 
-                role, _role_created = CredentialsRole.objects.get_or_create(**data)
+                role, _role_created = CredentialsRole.objects.get_or_create(
+                    **data, defaults=dict(business_details=business_details))
                 credentials.roles.add(role)
-                role.business_details = business_details
             else:
                 return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
