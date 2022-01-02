@@ -43,11 +43,15 @@ class BusinessDetails(models.Model, ModelUtilMixin):
     def __str__(self):
         return self.name
 
-    def references(self):
+    def referenced_locations(self):
         # noinspection PyUnresolvedReferences
         return self.owner_locations.all().count() + \
                self.operator_locations.all().count() + \
                self.owner_locations.all().count()
+
+    def referenced_credentials(self):
+        # noinspection PyUnresolvedReferences
+        return self.credentialsroles.all().count()
 
 
 class Credentials(models.Model, ModelUtilMixin):
@@ -143,7 +147,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
     role = models.CharField(max_length=5, choices=ROLE_CHOICES)
 
-    business_details = models.ForeignKey(BusinessDetails, on_delete=models.PROTECT)
+    business_details = models.ForeignKey(BusinessDetails, on_delete=models.PROTECT, related_name='credentialsroles')
 
     # ISO-3166 alpha-2 country code
     country_code = models.CharField(max_length=2, default=COUNTRY_CODE)

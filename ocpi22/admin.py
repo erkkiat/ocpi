@@ -70,7 +70,7 @@ class EvseAdmin(admin.ModelAdmin):
 
 class BusinessDetailsAdmin(admin.ModelAdmin):
     model = BusinessDetails
-    list_display = ['name', 'website', 'logo', 'references']
+    list_display = ['name', 'website', 'logo', 'referenced_locations', 'referenced_credentials']
 
 
 class FacilityAdmin(admin.ModelAdmin):
