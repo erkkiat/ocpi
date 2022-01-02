@@ -195,6 +195,7 @@ class CredentialsAdmin(admin.ModelAdmin):
 @admin.register(CredentialsRole)
 class CredentialsRoleAdmin(admin.ModelAdmin):
     model = CredentialsRole
+    list_display = ['operator', 'business_details', 'references']
 
 
 admin.site.register(Token, TokenAdmin)

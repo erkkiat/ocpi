@@ -160,6 +160,12 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     def __str__(self):
         return f'{self.country_code}*{self.party_id} ({self.role})'
 
+    def operator(self):
+        return self.__str__()
+
+    def references(self):
+        return self.credentials.all().count()
+
 
 class Endpoint(models.Model, ModelUtilMixin):
     CREDENTIALS = 'credentials'
