@@ -402,6 +402,7 @@ class Tariff(models.Model, ModelUtilMixin):
         # or when Charging Preference: REGULAR is set for the session.
         ('REGULAR', 'Regular profile'),
     )
+
     type = models.CharField(max_length=14, choices=TYPE_CHOICES)
 
     # URL to a web page that contains an explanation of the tariff information in human readable form.
@@ -602,6 +603,17 @@ class Location(models.Model, ModelUtilMixin):
     # This class defines the geo location of the Charge Point. The geodetic system to be used is WGS 84.
     latitude = models.FloatField()
     longitude = models.FloatField()
+
+    def get_coordinates(self):
+        """Formatting for OCPI (2.2)"""
+        return dict(latitude=self.latitude, longitude=self.longitude)
+
+    def set_coordinates(self, value):
+        ic()
+        ic(value)
+        raise NotImplementedError()
+
+    coordinates = property(get_coordinates, set_coordinates)
 
     # An index for fast lookup, first 4 digits from lat
     lat_partition = models.SmallIntegerField(db_index=True, null=True, blank=True)
