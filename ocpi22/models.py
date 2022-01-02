@@ -43,6 +43,12 @@ class BusinessDetails(models.Model, ModelUtilMixin):
     def __str__(self):
         return self.name
 
+    def references(self):
+        # noinspection PyUnresolvedReferences
+        return self.owner_locations.all().count() + \
+               self.operator_locations.all().count() + \
+               self.owner_locations.all().count()
+
 
 class Credentials(models.Model, ModelUtilMixin):
     class Meta:
