@@ -211,7 +211,8 @@ class LocationViewSet(mixins.ListModelMixin,
             return OCPIResponse(serializer.data)
         else:
             ic('Not valid', serializer.data)
-            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @action(methods=['GET', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_uid>[^/.]+)')
@@ -225,7 +226,8 @@ class LocationViewSet(mixins.ListModelMixin,
             if serializer.is_valid():
                 serializer.save()
             else:
-                return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+                return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
+                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         else:
             serializer = EvseSerializer(instance=evse)
         return OCPIResponse(serializer.data)
@@ -268,7 +270,8 @@ class LocationViewSet(mixins.ListModelMixin,
                 serializer.save()
                 return OCPIResponse(serializer.data)
             else:
-                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
+                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
