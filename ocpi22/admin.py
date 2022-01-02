@@ -63,7 +63,7 @@ class EvseAdmin(admin.ModelAdmin):
                            location=str(evse.location))
 
     def has_change_permission(self, request, obj=None):
-        return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
+        return obj and obj.location.country_code == settings.COUNTRY_CODE and obj.location.party_id == settings.PARTY_ID
 
     location_url.short_description = "Location"
 
