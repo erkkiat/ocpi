@@ -435,6 +435,9 @@ class Tariff(models.Model, ModelUtilMixin):
         return result
 
     def __str__(self):
+        return self.uid
+
+    def price(self):
         # noinspection PyUnresolvedReferences
         components = [str(x) for x in self.price_components.all()]
         # noinspection PyUnresolvedReferences
