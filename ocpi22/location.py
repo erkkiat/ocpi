@@ -2,6 +2,7 @@ import logging
 
 from django.conf import settings
 from django.core.validators import RegexValidator
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
 from rest_framework import mixins, serializers, status
@@ -111,10 +112,7 @@ class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
                                     validators=[evse_validator],
                                     label="A valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)")
 
-    def update(self, evse: Evse, validated_data: dict) -> Evse:
-        skip_fields = ('evse_id', 'uid')
-
-        connectors = validated_data.pop('connectors', [])
+    def process_connectors(self, evse: Evse, connectors: dict) -> None:
         for c in connectors:
             # noinspection PyUnresolvedReferences
             try:
@@ -125,7 +123,21 @@ class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
                 connector = None
             connector_serializer = ConnectorSaveSerializer(connector, data=c)
             if connector_serializer.is_valid():
-                connector_serializer.save()
+                connector_serializer.save(evse=evse)
+
+    def create(self, validated_data):
+        skip_fields = ('evse_id', 'uid')
+        connectors = validated_data.pop('connectors', [])
+        # noinspection PyUnresolvedReferences
+        evse = Evse.objects.create(**validated_data)
+        self.process_connectors(evse, connectors)
+        return evse
+
+    def update(self, evse: Evse, validated_data: dict) -> Evse:
+        skip_fields = ('evse_id', 'uid')
+
+        connectors = validated_data.pop('connectors', [])
+        self.process_connectors(evse, connectors)
 
         for key, value in validated_data.items():
             if key not in skip_fields:
@@ -307,37 +319,73 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
     operator = BusinessDetailsSerializer(required=False)
     suboperator = BusinessDetailsSerializer(required=False)
 
-    def create(self, validated_data):
-        ic()
-        ic(validated_data)
+    @staticmethod
+    def process_evses(location, evses) -> None:
+        for e in evses:
+            try:
+                # noinspection PyUnresolvedReferences
+                evse: Evse = Evse.objects.get(uid=e['uid'], location=location)
+                ic(e, evse)
+                # noinspection PyUnresolvedReferences
+                evse_serializer = EvseSaveSerializer(instance=evse, data=e)
+            except Evse.DoesNotExist:
+                evse_serializer = EvseSaveSerializer(data=e)
+            if evse_serializer.is_valid():
+                evse_serializer.save(location=location)
+            else:
+                raise ValidationError(evse_serializer.errors)
 
-    def update(self, location: Location, validated_data) -> Location:
-        readonly_fields = ('country_code', 'party_id', 'uid', 'last_updated')
-
-        # Pop out all elements which are not directly understood by Location, and process them separately
+    @staticmethod
+    def process_coordinates(validated_data: dict):
+        """Handle manually all subobjects the Location cannot handle"""
         coordinates = validated_data.pop('coordinates', None)
         if coordinates:
             validated_data['latitude'] = coordinates.get('latitude')
             validated_data['longitude'] = coordinates.get('longitude')
 
+        return validated_data
+
+    @staticmethod
+    def remove_readonly_fields(validated_data: dict, readonly_fields: list) -> dict:
+        for r in readonly_fields:
+            validated_data.pop(r, None)
+        return validated_data
+
+    def create(self, validated_data: dict):
+        with transaction.atomic():
+            readonly_fields = ['last_updated']
+            validated_data = self.remove_readonly_fields(validated_data, readonly_fields)
+            # Pop out all elements which are not directly understood by Location, and process them separately
+            validated_data = self.process_coordinates(validated_data)
+            facilities = validated_data.pop('facilities', None)
+            evses = validated_data.pop('evses', [])
+
+            # noinspection PyUnresolvedReferences
+            location = Location.objects.create(**validated_data)
+
+            for e in evses:
+                connectors = e.pop('connectors')
+                # noinspection PyUnresolvedReferences
+                evse = Evse.objects.create(**e, location=location)
+                for c in connectors:
+                    connector_serializer = ConnectorSaveSerializer(data=c)
+                    if connector_serializer.is_valid():
+                        connector_serializer.save(evse=evse)
+                    # noinspection PyUnresolvedReferences
+                    # connector = Connector.objects.create(**c, evse=evse)
+
+            if facilities:
+                location.facilities.set(facilities)
+            return location
+
+    def update(self, location: Location, validated_data: dict) -> Location:
+        readonly_fields = ('country_code', 'party_id', 'uid', 'last_updated')
+
+        # Pop out all elements which are not directly understood by Location, and process them separately
+        validated_data = self.process_coordinates(validated_data)
         facilities = validated_data.pop('facilities', None)
         if facilities:
             location.facilities.set(facilities)
-
-        evses = validated_data.pop('evses', [])
-
-        for e in evses:
-            # noinspection PyUnresolvedReferences
-            evse: Evse = Evse.objects.get(uid=e['uid'])
-            # noinspection PyUnresolvedReferences
-            try:
-                evse_serializer = EvseSaveSerializer(instance=evse, data=e)
-            except Evse.DoesNotExist:
-                evse_serializer = EvseSaveSerializer(data=e)
-            if evse_serializer.is_valid():
-                evse_serializer.save()
-            else:
-                raise ValidationError(evse_serializer.errors)
 
         for key, value in validated_data.items():
             if key not in readonly_fields:
@@ -361,36 +409,35 @@ class LocationViewSet(mixins.ListModelMixin,
         return 'Locations'
 
     # noinspection PyUnresolvedReferences
-    def put(self, request, country_code=None, party_id=None, uid=None, evse_uid=None):
-        ic()
-        if evse_uid:
-            self.by_evse_id(request, country_code, party_id, uid, evse_uid, partial=False)
-
-        ic(country_code, party_id, uid, evse_uid)
+    def put(self, request):
+        if not hasattr(request, 'credentials'):
+            return OCPIResponse('Credentials are needed for creating Locations.',
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                                http_status=status.HTTP_403_FORBIDDEN)
         data = request.data.get('data', request.data)
-        if uid:
-            # Write over an existing Location
-            location: Location = get_object_or_404(Location,
-                                                   country_code=country_code,
-                                                   party_id=party_id,
-                                                   uid=uid)
-            serializer = self.get_serializer(location, data=data)
-            ic('Writing over', serializer)
-        else:
-            # Create a new object
-            # This relies on serializer.create()
-            serializer = self.get_serializer(data=data)
+        uid = data.get('id')
+        country_code = data.get('country_code')
+        party_id = data.get('party_id')
 
-        if serializer.is_valid():
-            serializer.save()
-            location: Location = get_object_or_404(Location, uid=uid)
-            serializer = self.get_serializer(location)
-            ic(serializer.data)
-            return OCPIResponse(serializer.data)
+        ic(country_code, party_id, uid)
+
+        if uid:
+            try:
+                location = Location.objects.get(uid=uid, country_code=country_code, party_id=party_id)
+            except Location.DoesNotExist:
+                location = None
+            serializer = LocationSaveSerializer(location, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return OCPIResponse(serializer.data)
+            else:
+                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
+                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         else:
-            ic('Not valid', serializer.data)
-            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
-                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+            return OCPIResponse(
+                status_message=f'Country code, party_id and id are required when doing a PUT for a Location.',
+                http_status=status.HTTP_400_BAD_REQUEST,
+                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @action(methods=['GET', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_uid>[^/.]+)')
