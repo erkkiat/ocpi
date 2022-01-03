@@ -26,8 +26,12 @@ app = celery.Celery('ocpi22.tasks')
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
-app.conf.update(broker_url=os.environ.get('REDIS_URL'),
-                result_backend=os.environ.get('REDIS_URL'))
+REDIS_URL = os.environ.get('REDIS_URL')
+if 'rediss' in REDIS_URL and 'ssl_cert_reqs' not in REDIS_URL:
+    REDIS_URL += '?ssl_cert_reqs=CERT_NONE'
+
+app.conf.update(broker_url=REDIS_URL,
+                result_backend=REDIS_URL)
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
