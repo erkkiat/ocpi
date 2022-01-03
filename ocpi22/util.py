@@ -215,3 +215,13 @@ class NotOwner(OCPIResponse):
             status_message="Country ID and Party ID need to match your credentials.",
             status_code=2002,
             http_status=status.HTTP_403_FORBIDDEN)
+
+def matching_operator(request, country_code, party_id) -> bool:
+    if request.user.is_staff:
+        return True
+    if not hasattr(request, 'credentials'):
+        return False
+    for r in request.credentials.roles.all():
+        if r.country_code == country_code and r.party_id == party_id:
+            return True
+    return False

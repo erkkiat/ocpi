@@ -61,7 +61,7 @@ class LocationTests(TestCase):
         l = self.create_location()
         # noinspection PyUnresolvedReferences
         evse = l.evses.all()[0]
-        url = reverse('evse-by-id',
+        url = reverse('location-by-evse-id',
                       args=[l.country_code, l.party_id, l.uid, evse.uid])
 
         request = factory.get(url)

@@ -16,7 +16,7 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.location import BusinessDetailsSerializer
-from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails
+from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, clear_empty, \
     OCPIResponse, NotOwner
 from ocpi22.versions import get_endpoints_dict
@@ -31,16 +31,6 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
 
-# class CdrTokenSerializer(serializers.Serializer):
-#     """
-#     Used for showing limited Token information when serializing a CDR
-#     """
-#
-#     class Meta:
-#         model = Token
-#         fields = ['uid', 'type', 'contract_id']
-
-
 class TokenViewSet(mixins.UpdateModelMixin,
                    mixins.RetrieveModelMixin,
                    mixins.ListModelMixin,
@@ -53,13 +43,6 @@ class TokenViewSet(mixins.UpdateModelMixin,
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'type']
-
-    # def options(self, request, *args, **kwargs):
-    #     ic(args, kwargs)
-    #     if not kwargs:
-    #         return Response(dict(message='There is no options for this view, please see options for the Token view'))
-    #     else:
-    #         return super().options(request, *args, **kwargs)
 
     def get_view_name(self):
         return 'Tokens'
@@ -364,14 +347,22 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         return get_total_cost(obj)
 
 
+class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
+    class Meta:
+        model = PriceComponent
+        fields = ('type', 'price', 'vat', 'step_size')
+
+
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
-        fields = ('detail_url', 'readable', 'country_code', 'party_id', 'id', 'type',
-                  'tariff_alt_url', 'elements', 'last_updated')
+        fields = ('detail_url', 'country_code', 'party_id', 'id', 'type',
+                  'tariff_alt_url',
+                  'elements', 'readable',
+                  'last_updated')
 
     id = serializers.CharField(source='uid', read_only=True)
-    elements = serializers.SerializerMethodField()
+    elements = PriceComponentSerializer(source='price_components', many=True)
     readable = serializers.SerializerMethodField()
 
     @staticmethod
@@ -393,7 +384,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
     @staticmethod
     def get_readable(tariff: Tariff) -> str:
-        return str(tariff)
+        return tariff.price()
 
 
 class TariffViewSet(mixins.RetrieveModelMixin,

@@ -1,1 +1,266 @@
-[{"model": "ocpi22.capability", "pk": 1, "fields": {"name": "RFID_READER", "description": "Charging at this EVSE can be authorized with an RFID token."}}, {"model": "ocpi22.capability", "pk": 2, "fields": {"name": "DEBIT_CARD_PAYABLE", "description": "EVSE has a payment terminal that makes it possible to pay for charging using a debit card."}}, {"model": "ocpi22.facility", "pk": 1, "fields": {"name": "HOTEL", "description": "Hotels and other lodging"}}, {"model": "ocpi22.facility", "pk": 2, "fields": {"name": "RESTAURANT", "description": "A restaurant"}}, {"model": "ocpi22.facility", "pk": 3, "fields": {"name": "CAFE", "description": ""}}, {"model": "ocpi22.facility", "pk": 4, "fields": {"name": "SPORT", "description": ""}}, {"model": "ocpi22.facility", "pk": 5, "fields": {"name": "MALL", "description": ""}}, {"model": "ocpi22.facility", "pk": 6, "fields": {"name": "SUPERMARKET", "description": ""}}, {"model": "ocpi22.facility", "pk": 7, "fields": {"name": "RECREATION_AREA", "description": ""}}, {"model": "ocpi22.facility", "pk": 8, "fields": {"name": "NATURE", "description": ""}}, {"model": "ocpi22.facility", "pk": 9, "fields": {"name": "MUSEUM", "description": ""}}, {"model": "ocpi22.facility", "pk": 10, "fields": {"name": "BIKE_SHARING", "description": ""}}, {"model": "ocpi22.facility", "pk": 11, "fields": {"name": "BUS_STOP", "description": ""}}, {"model": "ocpi22.facility", "pk": 12, "fields": {"name": "TAXI_STAND", "description": ""}}, {"model": "ocpi22.facility", "pk": 13, "fields": {"name": "TRAM_STOP", "description": ""}}, {"model": "ocpi22.facility", "pk": 14, "fields": {"name": "METRO_STATION", "description": ""}}, {"model": "ocpi22.facility", "pk": 15, "fields": {"name": "TRAIN_STATION", "description": ""}}, {"model": "ocpi22.facility", "pk": 16, "fields": {"name": "AIRPORT", "description": ""}}, {"model": "ocpi22.facility", "pk": 17, "fields": {"name": "PARKING_LOT", "description": ""}}, {"model": "ocpi22.facility", "pk": 18, "fields": {"name": "CARPOOL_PARKING", "description": ""}}, {"model": "ocpi22.facility", "pk": 19, "fields": {"name": "FUEL_STATION", "description": ""}}, {"model": "ocpi22.facility", "pk": 20, "fields": {"name": "WIFI", "description": ""}}]
+[
+  {
+    "model": "ocpi22.capability",
+    "pk": 1,
+    "fields": {
+      "name": "RFID_READER",
+      "description": "Charging at this EVSE can be authorized with an RFID token."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 3,
+    "fields": {
+      "name": "CHARGING_PROFILE_CAPABLE",
+      "description": "The EVSE supports charging profiles."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 2,
+    "fields": {
+      "name": "DEBIT_CARD_PAYABLE",
+      "description": "EVSE has a payment terminal that makes it possible to pay for charging using a debit card."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 4,
+    "fields": {
+      "name": "CHARGING_PREFERENCES_CAPABLE",
+      "description": "The EVSE supports charging preferences."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 5,
+    "fields": {
+      "name": "CHIP_CARD_SUPPORT",
+      "description": "EVSE has a payment terminal that supports chip cards."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 6,
+    "fields": {
+      "name": "CONTACTLESS_CARD_SUPPORT",
+      "description": "EVSE has a payment terminal that supports contactless cards."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 7,
+    "fields": {
+      "name": "CREDIT_CARD_PAYABLE",
+      "description": "EVSE has a payment terminal that makes it possible to pay for charging using a credit card."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 9,
+    "fields": {
+      "name": "PED_TERMINAL",
+      "description": "EVSE has a payment terminal with a pin-code entry device."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 10,
+    "fields": {
+      "name": "REMOTE_START_STOP_CAPABLE",
+      "description": "The EVSE can remotely be started/stopped."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 11,
+    "fields": {
+      "name": "RESERVABLE",
+      "description": "The EVSE can be reserved."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 12,
+    "fields": {
+      "name": "START_SESSION_CONNECTOR_REQUIRED",
+      "description": "When a StartSession is sent to this EVSE, the MSP is required to add the optional connector_id field in the StartSession object."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 13,
+    "fields": {
+      "name": "TOKEN_GROUP_CAPABLE",
+      "description": "This EVSE supports token groups, two or more tokens work as one, so that a session can be started with one token and stopped with another (handy when a card and key-fob are given to the EV-driver)."
+    }
+  },
+  {
+    "model": "ocpi22.capability",
+    "pk": 14,
+    "fields": {
+      "name": "UNLOCK_CAPABLE",
+      "description": "Connectors have mechanical lock that can be requested by the eMSP to be unlocked."
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 1,
+    "fields": {
+      "name": "HOTEL",
+      "description": "Hotels and other lodging"
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 2,
+    "fields": {
+      "name": "RESTAURANT",
+      "description": "A restaurant"
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 3,
+    "fields": {
+      "name": "CAFE",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 4,
+    "fields": {
+      "name": "SPORT",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 5,
+    "fields": {
+      "name": "MALL",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 6,
+    "fields": {
+      "name": "SUPERMARKET",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 7,
+    "fields": {
+      "name": "RECREATION_AREA",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 8,
+    "fields": {
+      "name": "NATURE",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 9,
+    "fields": {
+      "name": "MUSEUM",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 10,
+    "fields": {
+      "name": "BIKE_SHARING",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 11,
+    "fields": {
+      "name": "BUS_STOP",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 12,
+    "fields": {
+      "name": "TAXI_STAND",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 13,
+    "fields": {
+      "name": "TRAM_STOP",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 14,
+    "fields": {
+      "name": "METRO_STATION",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 15,
+    "fields": {
+      "name": "TRAIN_STATION",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 16,
+    "fields": {
+      "name": "AIRPORT",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 17,
+    "fields": {
+      "name": "PARKING_LOT",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 18,
+    "fields": {
+      "name": "CARPOOL_PARKING",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 19,
+    "fields": {
+      "name": "FUEL_STATION",
+      "description": ""
+    }
+  },
+  {
+    "model": "ocpi22.facility",
+    "pk": 20,
+    "fields": {
+      "name": "WIFI",
+      "description": ""
+    }
+  }
+]

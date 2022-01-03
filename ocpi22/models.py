@@ -366,7 +366,7 @@ class AuthorizationInfo(models.Model, ModelUtilMixin):
 
 class Tariff(models.Model, ModelUtilMixin):
     class Meta:
-        unique_together = [['party_id', 'uid']]
+        unique_together = [['country_code', 'party_id', 'uid']]
 
     upper_case_fields = ('country_code', 'party_id', 'currency')
 
@@ -429,15 +429,16 @@ class Tariff(models.Model, ModelUtilMixin):
                 if f:
                     upper_value = f.upper()
                     self.__setattr__(field, upper_value)
-        if not noloop:
-            self.uid = f'{self.country_code}{self.party_id}T{self.pk}'
-            self.save(noloop=True)
+        # if not noloop:
+        #     self.uid = f'{self.country_code}{self.party_id}T{self.pk}'
+        #     self.save(noloop=True)
         return result
 
     def __str__(self):
         return self.uid
 
     def price(self):
+        """Format the price components in a readable form"""
         # noinspection PyUnresolvedReferences
         components = [str(x) for x in self.price_components.all()]
         # noinspection PyUnresolvedReferences
@@ -541,7 +542,7 @@ class Facility(models.Model, ModelUtilMixin):
 class Capability(models.Model, ModelUtilMixin):
     class Meta:
         verbose_name_plural = 'capabilities'
-    name = models.CharField(max_length=28)
+    name = models.CharField(max_length=32)
     description = models.CharField(max_length=255, blank=True, default='')
 
     def __str__(self):
@@ -686,7 +687,7 @@ class Location(models.Model, ModelUtilMixin):
         return f'{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}'
 
 
-uid_validator = RegexValidator(r'^[0-9a-zA-Z\*]+$', message='Numbers and letters only')
+uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')
 
 
 class Evse(models.Model, ModelUtilMixin):
@@ -707,10 +708,12 @@ class Evse(models.Model, ModelUtilMixin):
     # Optional because: if an evse_id is to be re-used in the real world,
     # the evse_id can be removed from an EVSE object if the status is set to REMOVED.
 
-    @property
-    def evse_id(self):
-        # The eMI3 1.0 standard ID
-        return f'{self.location.country_code}*{self.location.party_id}*E{self.location.uid}*{self.uid}'.upper()
+    evse_id = models.CharField(max_length=48, blank=True, null=True)
+
+    # @property
+    # def evse_id(self):
+    #     # The eMI3 1.0 standard ID
+    #     return f'{self.location.country_code}*{self.location.party_id}*E{self.location.uid}*{self.uid}'.upper()
 
     # Indicates the current status of the EVSE
     STATUS_CHOICES = (
@@ -755,7 +758,7 @@ class Evse(models.Model, ModelUtilMixin):
         return format_html('<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff()}' for c in self.connectors.all()]))
 
     def get_absolute_url(self):
-        return reverse('evse-by-id',
+        return reverse('location-by-evse-id',
                        args=[self.location.country_code, self.location.party_id, self.location.uid, self.uid])
 
     def get_cpo_url(self):
