@@ -56,6 +56,7 @@ class EvseAdmin(admin.ModelAdmin):
     model = Evse
     list_display = ['evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
+    search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
 
     def location_url(self, evse):
         return format_html("<a href='{url}'>{location}</a>",
