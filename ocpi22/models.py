@@ -371,10 +371,10 @@ class Tariff(models.Model, ModelUtilMixin):
     upper_case_fields = ('country_code', 'party_id', 'currency')
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the CPO that 'owns' this Tariff (following the ISO-15118 standard)
-    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
     uid = models.CharField(max_length=36)
@@ -562,10 +562,10 @@ class Location(models.Model, ModelUtilMixin):
     upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id']
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the CPO that 'owns' this Location (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.

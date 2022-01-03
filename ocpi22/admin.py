@@ -164,10 +164,12 @@ class TariffAdmin(admin.ModelAdmin):
         model = PriceComponent
 
     model = Tariff
-    list_display = ['party', 'uid', 'price', 'last_updated']
+    list_display = ['party', 'uid', 'price', 'last_updated',
+                    'country_code', 'party_id',
+                    ]
     list_display_links = ['price']
     inlines = [PriceComponentsInline]
-    readonly_fields = ['uid', 'last_updated']
+    readonly_fields = ['last_updated']
 
     def has_change_permission(self, request, obj=None):
         return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
