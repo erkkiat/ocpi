@@ -700,7 +700,7 @@ class Evse(models.Model, ModelUtilMixin):
     # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
     # use the field evse_id for that.
     # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
-    uid = models.CharField(max_length=36, unique=True, validators=[uid_validator])
+    uid = models.CharField(max_length=36, validators=[uid_validator])
 
     # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
@@ -1190,7 +1190,7 @@ def evse_post_save(sender, instance, *_args, **_kwargs):
     evse = instance
     location: Location = evse.location
     # location.last_updated = evse.last_updated
-    ic(f'Saving location #{location.uid} {location.name}')
+    # print(f'Saving location #{location.uid} {location.name}')
     location.save()
     if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
         ic('*** This is our location, sending updates to all known parties')
