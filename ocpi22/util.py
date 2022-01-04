@@ -174,6 +174,7 @@ class OCPIResponse(Response):
             status_message = ', '.join([f"{field}: {error}" for field, error in errors.items()])
             data = errors  # This is a courtacy, it's not OCPI compliant
             status_code = Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS
+            http_status = status.HTTP_400_BAD_REQUEST
             logging.error(status_message)
         result = dict(
             status_code=status_code,
