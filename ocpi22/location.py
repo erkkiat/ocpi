@@ -339,7 +339,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
     id = serializers.CharField(source='uid')
     evses = EvseSaveSerializer(many=True)
     coordinates = CoordinatesSaveSerializer()
-    name = serializers.CharField()
+    name = serializers.CharField(required=False)
     facilities = FacilitiesSaveSerializer(many=True, required=False)
     owner = BusinessDetailsSerializer(required=False)
     operator = BusinessDetailsSerializer(required=False)

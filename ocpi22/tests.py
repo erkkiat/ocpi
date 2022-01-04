@@ -177,6 +177,9 @@ class LocationTests(TestCase):
              'f76c2e0c-a6ef-4f67-bf23-6a187e5ca0e0', 1, 1),
 
             # Todo: Check for publish_allowed_to below
+
+            ('location_example_uc5_home_charge_point', 'DE', 'ALL', status.HTTP_201_CREATED, 1000, [],
+             'a5295927-09b9-4a71-b4b9-a5fffdfa0b77', 1, 1),
         )
 
         publish_allowed_to = [{
