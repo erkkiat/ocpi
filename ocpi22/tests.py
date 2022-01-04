@@ -15,14 +15,14 @@ from django.test import TestCase
 # Todo: Tariff_id: Regular Expression: [A-Z]{2}[A-Za-z0-9]{3}[T][A-Z0-9][A-Z0-9\*]{0,29}
 # Todo: evse_id Regular Expression: [A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
-from icecream import ic
+from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
 from ocpi22.location import LocationViewSet
 from ocpi22.models import Credentials, Location, Evse, Connector, CredentialsRole, BusinessDetails, Tariff, \
     PriceComponent
-from ocpi22.util import OCPIResponse
+from ocpi22.util import OCPIResponse, Ocpi
 
 
 class LocationTests(TestCase):
@@ -59,12 +59,10 @@ class LocationTests(TestCase):
     def setUp(self):
         self.location = self.create_location()
         self.credentials = Credentials.objects.create(token_a='TOKEN_A', ours='OURS', theirs='THEIRS')
-        bd = BusinessDetails.objects.create(name='Test Business')
+        self.business_details = BusinessDetails.objects.create(name='Test Business')
         roles1 = CredentialsRole.objects.create(role='CPO', country_code=self.country_code,
-                                                party_id=self.party_id, business_details=bd)
-        roles2 = CredentialsRole.objects.create(role='CPO', country_code='BE',
-                                                party_id='BEC', business_details=bd)
-        self.credentials.roles.set([roles1, roles2])
+                                                party_id=self.party_id, business_details=self.business_details)
+        self.credentials.roles.set([roles1])
 
     # noinspection PyUnresolvedReferences
     def create_tariff(self, *_args, **kwargs):
@@ -140,29 +138,48 @@ class LocationTests(TestCase):
 
     def test_put_location(self):
         url = reverse('location-list')
-        # data = dict(jotain=1, country_code=self.country_code, party_id=self.party_id)
         dirname = os.path.dirname(os.path.abspath(__file__))
         token_base64 = self.credentials.ours_base64()
 
-        self.create_tariff(uid='11', country_code='BE', party_id='BEC')
-        self.create_tariff(uid='12', country_code='BE', party_id='BEC')
-        self.create_tariff(uid='13', country_code='BE', party_id='BEC')
+        invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
 
-        for testfile in ['location_example']:
-            with open(os.path.join(dirname, f'data/examples/{testfile}.json')) as file:
+        response = self.put_location_data(url, invalid_data, 'FALSETOKEN')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                         'A Location request should require OCPI authentication. '
+                         f'{response.data}')
+        self.assertEqual(response.data['status_code'], Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                         'The response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
+                         f'{response.data}')
+
+        response = self.put_location_data(url, invalid_data, token_base64)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                         'Badly formed but correctly authenticated request should produce http status code 400.')
+
+        testcases = (
+            ('location_example', 'BE', 'BEC', status.HTTP_201_CREATED, 1000, ['11', '12', '13']),
+            ('location_example_added_connector', 'BE', 'BEC', status.HTTP_200_OK, 1000, []),
+            ('location_example_added_evse', 'BE', 'BEC', status.HTTP_200_OK, 1000, []),
+        )
+        for filename, country_code, party_id, http_status, ocpi_status, tariffs in testcases:
+            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
                 data = json.load(file)
 
-            request = self.factory.put(url, data, content_type="application/json",
-                                       Authorization=f'Token {token_base64}')
-            request.data = data
-            request.user = AnonymousUser
-            request.credentials = self.credentials
+            # Create the needed Tariffs
+            for t in tariffs:
+                self.create_tariff(uid=t, country_code=country_code, party_id=party_id)
 
-            viewset = LocationViewSet()
-            response = viewset.put(request)
-            self.assertEqual(response.status_code, 201,
-                             'An OCPI response should have a status code 201 when item has been created. '
-                             f'status_text: "{response.status_text}"')
+            # And CretentialsRoles
+            roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
+                                                    party_id=party_id, defaults=dict(business_details=self.business_details))
+            self.credentials.roles.add(roles)
+
+            # Send the request
+            response = self.put_location_data(url, data, token_base64)
+            if response.status_text:
+                print(f'status_text: "{response.status_text}"')
+            self.assertEqual(response.status_code, http_status, f'Expected a HTTP status code {http_status}.')
+            self.assertEqual(response.data['status_code'], ocpi_status,
+                             f'Expected an OCPI status code {ocpi_status}.')
 
 
     def test_ocpi(self):
