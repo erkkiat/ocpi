@@ -156,11 +156,43 @@ class LocationTests(TestCase):
                          'Badly formed but correctly authenticated request should produce http status code 400.')
 
         testcases = (
-            ('location_example', 'BE', 'BEC', status.HTTP_201_CREATED, 1000, ['11', '12', '13']),
-            ('location_example_added_connector', 'BE', 'BEC', status.HTTP_200_OK, 1000, []),
-            ('location_example_added_evse', 'BE', 'BEC', status.HTTP_200_OK, 1000, []),
+            # Create a Location and then update it by adding one more Connector and then an Evse with a Connector
+            ('location_example', 'BE', 'BEC', status.HTTP_201_CREATED, 1000, ['11', '12', '13'], 'LOC1', 2, 3),
+            ('location_example_added_connector', 'BE', 'BEC', status.HTTP_200_OK, 1000, [], 'LOC1', 2, 4),
+            ('location_example_added_evse', 'BE', 'BEC', status.HTTP_200_OK, 1000, [], 'LOC1', 3, 5),
+
+            ('location_example_parking_garage_opening_hours', 'SE', 'EVC', status.HTTP_201_CREATED, 1000, [],
+             'cbb0df21-d17d-40ba-a4aa-dc588c8f98cb', 1, 1),
+
+            ('location_example_uc2_destination_charger', 'NL', 'ALF', status.HTTP_201_CREATED, 1000, [],
+             '3e7b39c2-10d0-4138-a8b3-8509a25f9920', 1, 1),
+            ('location_example_uc3_destination_charger_not_published', 'NL', 'ALF', status.HTTP_200_OK, 1000, [],
+             '3e7b39c2-10d0-4138-a8b3-8509a25f9920', 1, 1),
+            ('location_example_uc3_destination_charger_not_published', 'NL', 'ALF', status.HTTP_200_OK, 1000, [],
+             '3e7b39c2-10d0-4138-a8b3-8509a25f9920', 1, 1),
+
+            # Todo: Implement parking_restrictions
+
+            ('location_example_uc4_limited_visibility', 'NL', 'ALL', status.HTTP_201_CREATED, 1000, [],
+             'f76c2e0c-a6ef-4f67-bf23-6a187e5ca0e0', 1, 1),
+
+            # Todo: Check for publish_allowed_to below
         )
-        for filename, country_code, party_id, http_status, ocpi_status, tariffs in testcases:
+
+        publish_allowed_to = [{
+            "visual_number": "12345-67",
+            "issuer": "NewMotion"
+        }, {
+            "visual_number": "0055375624",
+            "issuer": "ANWB"
+        }, {
+            "uid": "12345678905880",
+            "type": "RFID"
+        }]
+
+        for filename, country_code, party_id, http_status, ocpi_status, tariffs, \
+          uid, evses, connectors in testcases:
+
             with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
                 data = json.load(file)
 
@@ -176,10 +208,22 @@ class LocationTests(TestCase):
             # Send the request
             response = self.put_location_data(url, data, token_base64)
             if response.status_text:
-                print(f'status_text: "{response.status_text}"')
-            self.assertEqual(response.status_code, http_status, f'Expected a HTTP status code {http_status}.')
+                print(f'status_text: "{response.status_text}" for {filename} case.')
+            self.assertEqual(response.status_code, http_status,
+                             f'Expected a HTTP status code {http_status} for {filename} case.')
             self.assertEqual(response.data['status_code'], ocpi_status,
-                             f'Expected an OCPI status code {ocpi_status}.')
+                             f'Expected an OCPI status code {ocpi_status} for {filename} case.')
+
+            # noinspection PyUnresolvedReferences
+            location = Location.objects.get(uid=uid)
+            # print(f"Evses: {location.evses.count()}")
+            self.assertEqual(location.evses.count(), evses, f'There should be {evses} evses after {filename} case.')
+            connector_count = 0
+            for evse in location.evses.all():
+                connector_count += evse.connectors.count()
+            # print(f"Connectors: {connector_count}")
+            self.assertEqual(connector_count, connectors,
+                             f'There should be {connectors} connectors after {filename} case.')
 
 
     def test_ocpi(self):
