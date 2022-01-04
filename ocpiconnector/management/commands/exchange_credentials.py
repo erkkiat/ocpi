@@ -146,9 +146,9 @@ class Command(BaseCommand):
                 json=data_to_send
             )
             if credentials.ours and credentials.theirs:
-                heading('Credentials exchange 2/2 has been finished successfully')
+                heading(Style.BRIGHT + 'Credentials exchange has been finished successfully.' + Style.RESET_ALL)
             else:
-                heading('Credentials exchange 1/2 has been finished successfully, now initiate from the other end')
+                heading('Credentials exchange first part was successful, now initiate from the other end.')
 
         except requests.exceptions.ConnectionError as e:
             print(f'{Back.RED}*** Cannot reach the URL you specified: {str(e)}')
