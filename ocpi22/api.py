@@ -49,6 +49,8 @@ class TokenViewSet(mixins.UpdateModelMixin,
 
     @staticmethod
     def put(request):
+        ic()
+        ic(request.data)
         uid = request.data.get('uid')
         party_id = request.data.get('party_id')
 

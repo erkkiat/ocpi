@@ -229,10 +229,10 @@ class Token(models.Model, ModelUtilMixin):
     upper_case_fields = ('country_code', 'party_id', 'uid', 'contract_id', 'language')
 
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the MSP that 'owns' this Token (following the ISO-15118)
-    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Unique ID by which this Token can be identified.
     # This is the field used by CPO system (RFID reader on the Charge Point) to identify this token.
@@ -403,7 +403,7 @@ class Tariff(models.Model, ModelUtilMixin):
         ('REGULAR', 'Regular profile'),
     )
 
-    type = models.CharField(max_length=14, choices=TYPE_CHOICES)
+    type = models.CharField(max_length=14, choices=TYPE_CHOICES, default='REGULAR')
 
     # URL to a web page that contains an explanation of the tariff information in human readable form.
     tariff_alt_url = models.URLField(blank=True, default='')
@@ -868,10 +868,10 @@ class Session(models.Model, ModelUtilMixin):
         ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the CPO that 'owns' this Session (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # The unique id that identifies the charging session in the CPO platform.
     uid = models.CharField(max_length=36)
@@ -1039,10 +1039,10 @@ class Cdr(models.Model, ModelUtilMixin):
         ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this CDR
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE, editable=False)
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
 
     # CPO ID of the CPO that 'owns' this CDR (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID, editable=False)
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
 
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.

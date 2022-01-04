@@ -13,7 +13,7 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
 from ocpi22.models import Location, Evse, Connector, BusinessDetails, uid_validator, Endpoint, Tariff, Facility, \
-    Capability
+    Capability, Token
 from ocpi22.tasks import send_location_update, send_evse_status_update, send_token_update
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, OCPIResponse, Ocpi, NotOwner, \
     matching_operator
@@ -377,7 +377,6 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
                 # Connectors
                 for c in connectors:
                     tariff_ids = c.pop('tariff_ids', [])
-                    ic(tariff_ids)
                     # noinspection PyUnresolvedReferences
                     connector = Connector.objects.create(**c, evse=evse)
 
@@ -467,9 +466,10 @@ class LocationViewSet(mixins.ListModelMixin,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
     def by_evse_id(self, request, country_code, party_id, uid, evse_id) -> OCPIResponse:
         # noinspection PyUnresolvedReferences
-        evse = get_object_or_404(Evse, uid=evse_id)
+        evse = get_object_or_404(Evse, uid=evse_id, location__uid=uid)
         location = evse.location
-        if location.uid != uid or location.party_id != party_id or location.country_code != country_code:
+
+        if location.party_id != party_id or location.country_code != country_code:
             return OCPIResponse(
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 status_message='The EVSE is not owned by the specified party or is not in the specified country')
@@ -510,21 +510,16 @@ class LocationViewSet(mixins.ListModelMixin,
         if not matching_operator(request, country_code, party_id):
             return NotOwner()
 
-        ic()
-        ic(country_code, party_id, uid)
-
         if uid:
             try:
                 location = Location.objects.get(uid=uid, country_code=country_code, party_id=party_id)
             except Location.DoesNotExist:
                 location = None
-            ic()
-            ic(location)
-            ic(data)
             serializer = LocationSaveSerializer(location, data=data)
             if serializer.is_valid():
                 serializer.save()
-                return OCPIResponse(serializer.data)
+                http_status = status.HTTP_200_OK if location else status.HTTP_201_CREATED
+                return OCPIResponse(serializer.data, http_status=http_status)
             else:
                 return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
@@ -621,7 +616,7 @@ def send_location_updates(location_uid, new_location=False):
         logging.warning(UPDATES_DISABLED)
 
 
-def send_token_updates(token_uid):
+def send_token_updates(token: Token):
     """
     Find all endpoints interested in Token updates and send update in a background task
     """
