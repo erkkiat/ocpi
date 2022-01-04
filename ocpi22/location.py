@@ -631,7 +631,7 @@ def send_token_updates(token_uid):
         endpoints = Endpoint.objects.filter(identifier='tokens', role='RECEIVER')
         e: Endpoint
         for e in endpoints:
-            print(f'Send Token update to {e.url}')
+            print(f'Send Token {token_uid} update to {e.url}')
             send_token_update.delay(token_uid, e.pk)
     else:
         logging.warning(UPDATES_DISABLED)

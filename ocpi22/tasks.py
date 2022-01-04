@@ -26,7 +26,7 @@ app = celery.Celery('ocpi22.tasks')
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
-REDIS_URL = os.environ.get('REDIS_URL')
+REDIS_URL = os.environ['REDIS_URL']
 if 'rediss' in REDIS_URL and 'ssl_cert_reqs' not in REDIS_URL:
     REDIS_URL += '?ssl_cert_reqs=CERT_NONE'
 
@@ -129,28 +129,36 @@ def send_location_update(_self, location_uid, endpoint_pk, new_location):
 def send_token_update(_self, token_uid, endpoint_pk):
     from ocpi22.models import Token, Endpoint
     from ocpi22.tokens import TokenSerializer
-    # noinspection PyUnresolvedReferences
-    token: Token = Token.objects.get(uid=token_uid)
-    serializer = TokenSerializer(instance=token)
+
+    logging.info(f"Celery sending Token {token_uid} update to {endpoint_pk}")
 
     # noinspection PyUnresolvedReferences
-    endpoint = Endpoint.objects.get(pk=endpoint_pk)
-    if not endpoint.credentials.theirs:
-        raise exceptions.Retry(
-            f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
-            when=10
-        )
+    try:
+        token: Token = Token.objects.get(uid=token_uid)
+        serializer = TokenSerializer(instance=token)
 
-    url = endpoint.url
-    print(f'Sending Token to {endpoint.credentials.party()} at {url}')
+        # noinspection PyUnresolvedReferences
+        endpoint = Endpoint.objects.get(pk=endpoint_pk)
+        if not endpoint.credentials.theirs:
+            raise exceptions.Retry(
+                f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
+                when=10
+            )
 
-    result = requests.put(
-        url,
-        serializer.data,
-        headers=dict(Authorization=f'Token {endpoint.get_token_base64()}'))
-    if result.status_code != 200:
-        ic(result.text[-400:])
-        logging.error(f'{result.status_code} - {result.reason}')
+        url = endpoint.url
+        print(f'Sending Token to {endpoint.credentials.party()} at {url}')
+
+        result = requests.put(
+            url,
+            serializer.data,
+            headers=dict(Authorization=f'Token {endpoint.get_token_base64()}'))
+        if result.status_code != 200:
+            ic(result.text[-400:])
+            logging.error(f'{result.status_code} - {result.reason}')
+    except Token.DoesNotExist:
+        logging.error(f'Token with UID {token_uid} does not seem to exist? '
+                      'This is a bug or the Token has just disappeared. '
+                      f'There are {Token.objects.all().count()} tokens in the database.')
 
 
 @app.task(bind=True)
