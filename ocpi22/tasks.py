@@ -126,39 +126,16 @@ def send_location_update(_self, location_uid, endpoint_pk, new_location):
 
 
 @app.task(bind=True)
-def send_token_update(_self, token_uid, endpoint_pk):
-    from ocpi22.models import Token, Endpoint
-    from ocpi22.tokens import TokenSerializer
+def send_token_update(_self, token_data, url, token_base64):
+    logging.info(f"Celery sending Token update to {url}")
 
-    logging.info(f"Celery sending Token {token_uid} update to {endpoint_pk}")
-
-    # noinspection PyUnresolvedReferences
-    try:
-        token: Token = Token.objects.get(uid=token_uid)
-        serializer = TokenSerializer(instance=token)
-
-        # noinspection PyUnresolvedReferences
-        endpoint = Endpoint.objects.get(pk=endpoint_pk)
-        if not endpoint.credentials.theirs:
-            raise exceptions.Retry(
-                f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
-                when=10
-            )
-
-        url = endpoint.url
-        print(f'Sending Token to {endpoint.credentials.party()} at {url}')
-
-        result = requests.put(
-            url,
-            serializer.data,
-            headers=dict(Authorization=f'Token {endpoint.get_token_base64()}'))
-        if result.status_code != 200:
-            ic(result.text[-400:])
-            logging.error(f'{result.status_code} - {result.reason}')
-    except Token.DoesNotExist:
-        logging.error(f'Token with UID {token_uid} does not seem to exist? '
-                      'This is a bug or the Token has just disappeared. '
-                      f'There are {Token.objects.all().count()} tokens in the database.')
+    result = requests.put(
+        url,
+        token_data,
+        headers=dict(Authorization=f'Token {token_base64}'))
+    if result.status_code != 200:
+        ic(result.text[-400:])
+        logging.error(f'{result.status_code} - {result.reason}')
 
 
 @app.task(bind=True)

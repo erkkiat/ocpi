@@ -4,7 +4,6 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
-from icecream import ic
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -595,7 +594,10 @@ def send_evse_updates(evse_uid):
         e: Endpoint
         for e in endpoints:
             print(f'Send EVSE update to {e.url}')
-            send_evse_status_update.delay(evse_uid, e.pk)
+            if settings.BACKGROUND_SEND:
+                send_evse_status_update.delay(evse_uid, e.pk)
+            else:
+                send_evse_status_update(evse_uid, e.pk)
     else:
         logging.warning(UPDATES_DISABLED)
 
@@ -611,7 +613,10 @@ def send_location_updates(location_uid, new_location=False):
         e: Endpoint
         for e in endpoints:
             print(f'Send Location update to {e.url}')
-            send_location_update.delay(location_uid, e.pk, new_location)
+            if settings.BACKGROUND_SEND:
+                send_location_update.delay(location_uid, e.pk, new_location)
+            else:
+                send_location_update(location_uid, e.pk, new_location)
     else:
         logging.warning(UPDATES_DISABLED)
 
@@ -626,7 +631,12 @@ def send_token_updates(token: Token):
         endpoints = Endpoint.objects.filter(identifier='tokens', role='RECEIVER')
         e: Endpoint
         for e in endpoints:
-            print(f'Send Token {token_uid} update to {e.url}')
-            send_token_update.delay(token_uid, e.pk)
+            print(f'Send Token {token} update to {e.url}')
+            from ocpi22.api import TokenSerializer
+            serializer = TokenSerializer(instance=token)
+            if settings.BACKGROUND_SEND:
+                send_token_update.delay(serializer.data, e.url, e.get_token_base64())
+            else:
+                send_token_update(serializer.data, e.url, e.get_token_base64())
     else:
         logging.warning(UPDATES_DISABLED)

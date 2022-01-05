@@ -12,7 +12,10 @@ SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
 PARTY_ID = os.environ.get('PARTY_ID', 'XXX')
 COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
 
+# Send updates to partners who we have Credentials for
 SEND_UPDATES = os.environ.get('SEND_UPDATES', True)
+# Send updates asynchronously using Celery
+BACKGROUND_SEND = os.environ.get('BACKGROUND_SEND', True)
 
 ADMINS = [('Erkki Tapola', 'erkki.tapola@chargerhub.eu')]
 MANAGERS = ADMINS

@@ -1242,4 +1242,4 @@ def token_post_save(sender, instance, *_args, **_kwargs):
     if token.country_code == settings.COUNTRY_CODE and token.party_id == settings.PARTY_ID:
         ic('*** This is our token, sending updates to all known parties')
         from ocpi22.location import send_token_updates
-        send_token_updates(token.uid)
+        send_token_updates(token)
