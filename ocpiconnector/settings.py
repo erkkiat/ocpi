@@ -147,6 +147,7 @@ MIDDLEWARE = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'ocpi22.middleware.DebugMiddleware',
 )
 
 ROOT_URLCONF = 'ocpiconnector.urls'
