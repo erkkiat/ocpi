@@ -93,49 +93,31 @@ def command_start(_self, data, session_uid, update_url, url):
 
 
 @app.task(bind=True)
-def send_location_update(_self, location_uid, endpoint_pk, new_location):
-    from ocpi22.models import Location, Endpoint
-    from ocpi22.location import LocationSerializer
-    # noinspection PyUnresolvedReferences
-    location: Location = Location.objects.get(uid=location_uid)
-    if not location.publish:
-        print(f"Location #{location_uid} - {location.name} is not public, so not sending it out")
-        return
-    serializer = LocationSerializer(instance=location)
-
-    # noinspection PyUnresolvedReferences
-    endpoint = Endpoint.objects.get(pk=endpoint_pk)
-    if not endpoint.credentials.theirs:
-        raise exceptions.Retry(
-            f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
-            when=10
-        )
-
-    url = endpoint.url
-    # if not new_location:
-    #     url = urljoin(url, f'{location.country_code}/{location.party_id}/{location.uid}/')
-    print(f'Sending Location (update) to {endpoint.credentials.party()} at {url}')
+def send_location_update(_self, location_data, url, token_base64):
+    logging.info(f'Sending Location (update) to {url}')
 
     result = requests.put(
         url,
-        serializer.data,
-        headers=dict(Authorization=f'Token {endpoint.get_token_base64()}'))
-    if result.status_code != 200:
-        ic(result.text[-400:])
-        logging.error(f'{result.status_code} - {result.reason}')
+        json=location_data,
+        headers=dict(Authorization=f'Token {token_base64}'))
+    logging.info(f"Response: {result.status_code} - {result.reason}")
+    if result.status_code >= 400:
+        logging.error(result.text[-400:])
+        logging.error(f'Unable to send Location update to {url}: {result.status_code} - {result.reason}')
 
 
 @app.task(bind=True)
 def send_token_update(_self, token_data, url, token_base64):
-    logging.info(f"Celery sending Token update to {url}")
+    logging.info(f"Sending Token update to {url}")
 
     result = requests.put(
         url,
-        token_data,
-        headers=dict(Authorization=f'Token {token_base64}'))
+        json=token_data,
+        headers=dict(Authorization=f'Token {token_base64}'),
+    )
     if result.status_code != 200:
-        ic(result.text[-400:])
-        logging.error(f'{result.status_code} - {result.reason}')
+        logging.error(result.text[-400:])
+        logging.error(f'Unable to send Token update to {url}: {result.status_code} - {result.reason}')
 
 
 @app.task(bind=True)
@@ -167,9 +149,6 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
         url,
         data,
         headers=dict(Authorization=f'Token {token_base64}'))
-    if result.status_code == 200:
-        pass
-        # ic('*** Successful Evse update')
-    else:
-        # ic(result.text[-400:])
+    if result.status_code != 200:
+        logging.error(result.text[-400:])
         logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')

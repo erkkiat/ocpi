@@ -1,9 +1,11 @@
+import json
 import logging
 
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
+from icecream import ic
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -127,8 +129,9 @@ class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySaveSerializer(many=True, required=False)
     evse_id = serializers.CharField(required=False,
-                                    validators=[evse_validator],
-                                    label="A valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)")
+                                    # validators=[evse_validator],
+                                    # label="A valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)"
+                                    )
 
     @staticmethod
     def process_connectors(evse: Evse, connectors: dict) -> None:
@@ -250,7 +253,7 @@ class LocationSerializer(LocationSerializerBase, HyperlinkedModelSerializerClean
     lookup_field = 'uid'
 
     coordinates = serializers.SerializerMethodField()
-    evses = EvseSerializer(many=True)
+    evses = EvseSerializer(many=True, required=False)
     publish_allowed_to = serializers.SerializerMethodField()
     facilities = serializers.SerializerMethodField()
 
@@ -336,7 +339,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
     lookup_field = 'uid'
 
     id = serializers.CharField(source='uid')
-    evses = EvseSaveSerializer(many=True)
+    evses = EvseSaveSerializer(many=True, required=False)
     coordinates = CoordinatesSaveSerializer()
     name = serializers.CharField(required=False)
     facilities = FacilitiesSaveSerializer(many=True, required=False)
@@ -402,7 +405,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
 
         # Pop out all elements which are not directly understood by Location, and process them separately
         validated_data = self.process_coordinates(validated_data)
-        evses = validated_data.pop('evses', None)
+        evses = validated_data.pop('evses', [])
         facilities = validated_data.pop('facilities', [])
         location.facilities.set(facilities)
 
@@ -502,6 +505,7 @@ class LocationViewSet(mixins.ListModelMixin,
     # noinspection PyUnresolvedReferences
     def put(self, request, *_args, **_kwargs):
         data = request.data.get('data', request.data)
+        ic(data)
         uid = data.get('id')
         country_code = request.data.get('country_code')
         party_id = request.data.get('party_id')
@@ -602,7 +606,7 @@ def send_evse_updates(evse_uid):
         logging.warning(UPDATES_DISABLED)
 
 
-def send_location_updates(location_uid, new_location=False):
+def send_location_updates(location: Location) -> None:
     """
     Find all endpoints interested in Location updates and send update in a background task
     """
@@ -610,18 +614,21 @@ def send_location_updates(location_uid, new_location=False):
     if settings.SEND_UPDATES:
         # noinspection PyUnresolvedReferences
         endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
+        serializer = LocationSerializer(instance=location)
+        d = json.dumps(serializer.data)
+        ic(len(d), serializer.data)
         e: Endpoint
         for e in endpoints:
             print(f'Send Location update to {e.url}')
             if settings.BACKGROUND_SEND:
-                send_location_update.delay(location_uid, e.pk, new_location)
+                send_location_update.delay(serializer.data, e.url, e.get_token_base64())
             else:
-                send_location_update(location_uid, e.pk, new_location)
+                send_location_update(serializer.data, e.url, e.get_token_base64())
     else:
         logging.warning(UPDATES_DISABLED)
 
 
-def send_token_updates(token: Token):
+def send_token_updates(token: Token) -> None:
     """
     Find all endpoints interested in Token updates and send update in a background task
     """

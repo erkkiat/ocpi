@@ -420,7 +420,7 @@ class Tariff(models.Model, ModelUtilMixin):
     created = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        noloop = kwargs.pop('noloop') if 'noloop' in kwargs else False
+        # noloop = kwargs.pop('noloop') if 'noloop' in kwargs else False
         result = super(self.__class__, self).save(*args, **kwargs)
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
@@ -704,7 +704,7 @@ class Evse(models.Model, ModelUtilMixin):
     # Optional because: if an evse_id is to be re-used in the real world,
     # the evse_id can be removed from an EVSE object if the status is set to REMOVED.
 
-    evse_id = models.CharField(max_length=48, blank=True, null=True)
+    evse_id = models.CharField(max_length=48, blank=True, default='')
 
     # @property
     # def evse_id(self):
@@ -1175,13 +1175,13 @@ def location_pre_save(sender, instance, *_args, **_kwargs):
 
 
 @receiver(post_save, sender=Location)
-def location_post_save(sender, instance, *_args, **kwargs):
+def location_post_save(sender, instance, *_args, **_kwargs):
     location: Location = instance
     if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
         ic('*** This is our location, sending updates to all known parties')
-        created = kwargs.get('created')
+        # created = kwargs.get('created')
         from ocpi22.location import send_location_updates
-        send_location_updates(location.uid, new_location=created)
+        send_location_updates(location)
 
 
 @receiver(post_save, sender=Evse)
@@ -1196,7 +1196,7 @@ def evse_post_save(sender, instance, *_args, **_kwargs):
         # from ocpi22.location import send_evse_updates
         # send_evse_updates(evse.uid)
         from ocpi22.location import send_location_updates
-        send_location_updates(location.uid, new_location=False)
+        send_location_updates(location)
 
 
 @receiver(post_save, sender=Connector)
