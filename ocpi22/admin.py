@@ -54,7 +54,7 @@ class EvseAdmin(admin.ModelAdmin):
         model = Connector
 
     model = Evse
-    list_display = ['evse_id', 'location_url', 'status', 'connector_list']
+    list_display = ['party', 'evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
 
@@ -198,7 +198,7 @@ class CredentialsAdmin(admin.ModelAdmin):
 @admin.register(CredentialsRole)
 class CredentialsRoleAdmin(admin.ModelAdmin):
     model = CredentialsRole
-    list_display = ['operator', 'business_details', 'references']
+    list_display = ['party', 'business_details', 'references']
 
 
 admin.site.register(Token, TokenAdmin)

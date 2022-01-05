@@ -27,6 +27,8 @@ class ModelUtilMixin:
         return None
 
     def party(self):
+        if hasattr(self, 'location'):
+            return f'{self.location.country_code}*{self.location.party_id}'
         if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
             return f'{self.country_code}*{self.party_id}'
         return ''
@@ -159,9 +161,6 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
     def __str__(self):
         return f'{self.country_code}*{self.party_id} ({self.role})'
-
-    def operator(self):
-        return self.__str__()
 
     def references(self):
         return self.credentials.all().count()
@@ -455,9 +454,6 @@ class Tariff(models.Model, ModelUtilMixin):
 
     def get_absolute_url(self):
         return reverse('tariff-by-id', args=[self.country_code, self.party_id, self.uid])
-
-    def operator(self):
-        return f'{self.country_code}*{self.party_id}'
 
 
 class PriceComponent(models.Model, ModelUtilMixin):
