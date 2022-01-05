@@ -682,6 +682,9 @@ class Location(models.Model, ModelUtilMixin):
     def street_address(self):
         return f'{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}'
 
+    def evse_count(self):
+        return self.evses.count()
+
 
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')
 
