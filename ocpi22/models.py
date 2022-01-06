@@ -831,7 +831,7 @@ class Connector(models.Model, ModelUtilMixin):
 
     max_voltage = models.SmallIntegerField()
     max_amperage = models.SmallIntegerField()
-    max_electric_power = models.SmallIntegerField(null=True, blank=True)
+    max_electric_power = models.IntegerField(null=True, blank=True)
 
     tariff_ids = models.ManyToManyField(Tariff, related_name='tariffs', blank=True)
 
