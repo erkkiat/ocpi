@@ -175,9 +175,7 @@ class TariffAdmin(admin.ModelAdmin):
         model = PriceComponent
 
     model = Tariff
-    list_display = ['party', 'uid', 'price', 'last_updated',
-                    'country_code', 'party_id',
-                    ]
+    list_display = ['party', 'uid', 'price', 'last_updated']
     list_display_links = ['price']
     inlines = [PriceComponentsInline]
     readonly_fields = ['last_updated']
