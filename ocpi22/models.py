@@ -683,7 +683,19 @@ class Location(models.Model, ModelUtilMixin):
         return f'{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}'
 
     def evse_count(self):
+        # noinspection PyUnresolvedReferences
         return self.evses.count()
+
+    def evse_list(self):
+        # noinspection PyUnresolvedReferences
+        return format_html(
+            '<hr style="margin: 4px">'.join(
+                [
+                    f'<a href="{reverse("admin:ocpi22_evse_change", args=[e.pk])}">{str(e)}</a>'
+                    for e in self.evses.all()
+                ]
+            )
+        )
 
 
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')

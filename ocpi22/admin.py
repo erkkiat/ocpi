@@ -37,7 +37,7 @@ class LocationAdmin(admin.ModelAdmin):
     fields = ['uid', 'publish', 'publish_allowed_to',
               ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
               ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone',]
-    list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_count']
+    list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
 
     def has_change_permission(self, request, obj=None):
