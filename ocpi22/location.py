@@ -128,10 +128,10 @@ class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorSaveSerializer(many=True, required=False)
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySaveSerializer(many=True, required=False)
-    evse_id = serializers.CharField(required=False,
-                                    # validators=[evse_validator],
-                                    # label="A valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)"
-                                    )
+    # evse_id = serializers.CharField(required=False,
+    #                                 # validators=[evse_validator],
+    #                                 # label="A valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)"
+    #                                 )
 
     @staticmethod
     def process_connectors(evse: Evse, connectors: dict) -> None:
