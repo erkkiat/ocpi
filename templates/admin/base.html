@@ -28,7 +28,7 @@
 
     {% if not is_popup %}
     <!-- Header -->
-    <div id="header">
+    <div id="header" {% if header_color %}style="background-color: {{ header_color }}{% endif %}">
         <div id="branding">
         {% block branding %}{% endblock %}
         </div>
