@@ -27,10 +27,32 @@ class TokenAdmin(admin.ModelAdmin):
         return token and token.country_code == settings.COUNTRY_CODE and token.party_id == settings.PARTY_ID
 
 
+# from django import forms
+
+
+# class LocationForm(forms.ModelForm):
+#     def validate_unique(self):
+#         super().validate_unique()
+#         ic(self.data)
+#         latitude = self.data.get('latitude', '')
+#         if "," in latitude:
+#             try:
+#                 lat, long, *_the_rest = latitude.split(",")
+#                 self.data['latitude'] = lat
+#                 self.data['longitude'] = long
+#                 self.cleaned_data['latitude'] = lat
+#                 self.cleaned_data['longitude'] = long
+#             except:
+#                 pass
+#
+#     latitude = forms.CharField()
+
+
 class LocationAdmin(admin.ModelAdmin):
     class EvseInline(admin.TabularInline):
         model = Evse
 
+    # form = LocationForm
     model = Location
     search_fields = ['country_code', 'party_id', 'uid', 'name', 'address', 'city',
                      'postal_code', 'state', 'country', 'parking_type']
@@ -46,10 +68,10 @@ class LocationAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    def actions_item(self, _obj):
-        return format_html('Edit')
-
-    actions_item.short_description = ''
+    # def actions_item(self, _obj):
+    #     return format_html('Edit')
+    #
+    # actions_item.short_description = ''
 
 
 class EvseAdmin(admin.ModelAdmin):
