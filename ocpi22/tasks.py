@@ -10,6 +10,8 @@ import logging
 from celery import exceptions
 from django.http import Http404
 from icecream import ic
+from rest_framework import status
+
 from ocpiconnector import slack_logging
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -101,9 +103,23 @@ def send_location_update(_self, location_data, url, token_base64):
         json=location_data,
         headers=dict(Authorization=f'Token {token_base64}'))
     logging.info(f"Response: {result.status_code} - {result.reason}")
-    if result.status_code >= 400:
+    if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-400:])
         logging.error(f'Unable to send Location update to {url}: {result.status_code} - {result.reason}')
+
+
+@app.task(bind=True)
+def send_update(_self, data, url, token_base64):
+    logging.info(f'Sending update to {url}')
+
+    result = requests.put(
+        url,
+        json=data,
+        headers=dict(Authorization=f'Token {token_base64}'))
+    logging.info(f"Response: {result.status_code} - {result.reason}")
+    if result.status_code >= status.HTTP_400_BAD_REQUEST:
+        logging.error(result.text[-500:])
+        logging.error(f'Unable to send update to {url}: {result.status_code} - {result.reason}')
 
 
 @app.task(bind=True)
@@ -115,7 +131,7 @@ def send_token_update(_self, token_data, url, token_base64):
         json=token_data,
         headers=dict(Authorization=f'Token {token_base64}'),
     )
-    if result.status_code != 200:
+    if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-400:])
         logging.error(f'Unable to send Token update to {url}: {result.status_code} - {result.reason}')
 
@@ -149,6 +165,6 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
         url,
         data,
         headers=dict(Authorization=f'Token {token_base64}'))
-    if result.status_code != 200:
+    if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-400:])
         logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')

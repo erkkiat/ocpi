@@ -426,6 +426,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
                         setattr(evse, key, value)
                 evse.save()
             except Evse.DoesNotExist:
+                # noinspection PyUnresolvedReferences
                 evse = Evse.objects.create(**e, location=location)
             evse.capabilities.set(capabilities)
 
@@ -615,8 +616,8 @@ def send_location_updates(location: Location) -> None:
         # noinspection PyUnresolvedReferences
         endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
         serializer = LocationSerializer(instance=location)
-        d = json.dumps(serializer.data)
-        ic(len(d), serializer.data)
+        # d = json.dumps(serializer.data)
+        # ic(len(d), serializer.data)
         e: Endpoint
         for e in endpoints:
             print(f'Send Location update to {e.url}')
@@ -624,6 +625,27 @@ def send_location_updates(location: Location) -> None:
                 send_location_update.delay(serializer.data, e.url, e.get_token_base64())
             else:
                 send_location_update(serializer.data, e.url, e.get_token_base64())
+    else:
+        logging.warning(UPDATES_DISABLED)
+
+
+def send_updates(instance: serializers.Serializer, ocpi_module: str, serializer_class) -> None:
+    """
+    Find all endpoints interested in Tariff updates and send update in a background task
+    """
+
+    if settings.SEND_UPDATES:
+        # noinspection PyUnresolvedReferences
+        endpoints = Endpoint.objects.filter(identifier=ocpi_module, role='RECEIVER')
+        serializer = serializer_class(instance)
+        e: Endpoint
+        for e in endpoints:
+            print(f'Send update to {ocpi_module} module at {e.url}')
+            ic(serializer.data)
+            if settings.BACKGROUND_SEND:
+                send_update.delay(serializer.data, e.url, e.get_token_base64())
+            else:
+                send_update(serializer.data, e.url, e.get_token_base64())
     else:
         logging.warning(UPDATES_DISABLED)
 
