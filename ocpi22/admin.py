@@ -10,10 +10,10 @@ from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Conn
 class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
-    list_display = ['party', 'valid', 'type', 'uid', 'visual_number', 'contract_id', 'last_updated']
+    list_display = ['party', 'valid', 'uid', 'type', 'visual_number', 'contract_id', 'last_updated']
     list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
     list_display_links = ['uid']
-    # exclude = ['country_code', 'party_id']
+    readonly_fields = ['country_code', 'party_id']
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete
@@ -198,9 +198,9 @@ class TariffAdmin(admin.ModelAdmin):
 
     model = Tariff
     list_display = ['party', 'uid', 'price', 'last_updated']
-    list_display_links = ['price']
+    list_display_links = ['uid']
     inlines = [PriceComponentsInline]
-    readonly_fields = ['last_updated']
+    readonly_fields = ['uid', 'country_code', 'party_id']
 
     def has_change_permission(self, request, obj=None):
         return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
