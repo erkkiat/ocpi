@@ -4,6 +4,7 @@ import uuid
 
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
+from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -18,7 +19,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.location import BusinessDetailsSerializer
 from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, clear_empty, \
-    OCPIResponse, NotOwner
+    OCPIResponse, NotOwner, matching_operator
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
@@ -349,6 +350,20 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         return get_total_cost(obj)
 
 
+class ElementsSaveSerializer(serializers.Serializer):
+    def to_internal_value(self, data):
+        ic()
+        ic(data)
+        # pc = PriceComponentSerializer(instance=tariff.price_components.all(), many=True)
+        # return dict(price_components=pc.data)
+        return data
+
+    def to_representation(self, instance):
+        ic()
+        ic(instance)
+        return instance
+
+
 class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = PriceComponent
@@ -363,30 +378,69 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
                   'elements', 'readable',
                   'last_updated')
 
-    id = serializers.CharField(source='uid', read_only=True)
-    elements = PriceComponentSerializer(source='price_components', many=True)
+    id = serializers.CharField(source='uid')
+    elements = serializers.SerializerMethodField()
     readable = serializers.SerializerMethodField()
 
     @staticmethod
-    def get_elements(tariff: Tariff) -> dict:
+    def get_elements(tariff: Tariff):
+        # ic(tariff.price_components.all().values())
         # noinspection PyUnresolvedReferences
-        price_components = [
-            dict(
-                type=pc.type,
-                price=pc.price,
-                vat=pc.vat,
-                step_size=pc.step_size
-            )
-            for pc in tariff.price_components.all()
-        ]
-        for pc in price_components:
-            if not pc.get('vat'):
-                pc.pop('vat')
-        return dict(price_components=price_components)
+        pc = PriceComponentSerializer(instance=tariff.price_components.all(), many=True)
+        return dict(price_components=pc.data)
 
     @staticmethod
     def get_readable(tariff: Tariff) -> str:
         return tariff.price()
+
+    def create(self, validated_data):
+        elements = validated_data.pop('elements')
+        price_components = elements.pop('price_components')
+        tariff = Tariff.objects.create(**validated_data)
+        return tariff
+
+
+class TariffSaveSerializer(HyperlinkedModelSerializerCleanedUp):
+    class Meta:
+        model = Tariff
+        fields = ('country_code', 'party_id', 'id', 'type',
+                  'tariff_alt_url', 'elements',
+                  'last_updated')
+
+    id = serializers.CharField(source='uid')
+    elements = ElementsSaveSerializer(write_only=True, validators=[])
+
+    @transaction.atomic
+    def create(self, validated_data):
+        elements = validated_data.pop('elements')
+        price_components = elements.pop('price_components')
+        # ic(price_components)
+        tariff = Tariff.objects.create(**validated_data)
+        for pc in price_components:
+            # ic(pc)
+            # noinspection PyUnresolvedReferences
+            price_component = PriceComponent.objects.create(**pc, tariff=tariff)
+            # ic(price_component)
+        return tariff
+
+    @transaction.atomic
+    def update(self, tariff, validated_data):
+        # ic()
+        elements = validated_data.pop('elements')
+        price_components = elements.pop('price_components')
+        for key, value in validated_data.items():
+            setattr(tariff, key, value)
+
+        tariff.price_components.all().delete()
+
+        for pc in price_components:
+            # ic(pc)
+            # noinspection PyUnresolvedReferences
+            price_component = PriceComponent.objects.create(**pc, tariff=tariff)
+            # ic(price_component)
+
+        tariff.save()
+        return tariff
 
 
 class TariffViewSet(mixins.RetrieveModelMixin,
@@ -400,14 +454,37 @@ class TariffViewSet(mixins.RetrieveModelMixin,
     def get_view_name(self):
         return 'Tariffs'
 
-    # Todo: Create a completely new object using PUT
-
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> Response:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
+
+    @staticmethod
+    def put(request) -> OCPIResponse:
+        data = request.data.get('data', request.data)
+
+        # ic(data)
+
+        country_code = data.get('country_code')
+        party_id = data.get('party_id')
+
+        if not matching_operator(request, country_code, party_id):
+            return NotOwner()
+
+        # noinspection PyUnresolvedReferences
+        try:
+            # noinspection PyUnresolvedReferences
+            tariff = Tariff.objects.get(country_code=country_code, party_id=party_id, uid=data.get('id'))
+        except Tariff.DoesNotExist:
+            tariff = None
+        serializer = TariffSaveSerializer(instance=tariff, data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return OCPIResponse(serializer.data)
+        else:
+            return OCPIResponse(errors=serializer.errors)
 
 
 class SessionViewSet(mixins.ListModelMixin,

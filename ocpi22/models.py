@@ -419,19 +419,14 @@ class Tariff(models.Model, ModelUtilMixin):
     last_updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        # noloop = kwargs.pop('noloop') if 'noloop' in kwargs else False
-        result = super(self.__class__, self).save(*args, **kwargs)
+    def save(self, *args, **kwargs) -> None:
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
                 f = self.__getattribute__(field)
                 if f:
                     upper_value = f.upper()
                     self.__setattr__(field, upper_value)
-        # if not noloop:
-        #     self.uid = f'{self.country_code}{self.party_id}T{self.pk}'
-        #     self.save(noloop=True)
-        return result
+        super(self.__class__, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.uid
@@ -1190,9 +1185,10 @@ def location_pre_save(sender, instance, *_args, **_kwargs):
 
 
 @receiver(post_save, sender=Location)
-def location_post_save(sender, instance, *_args, **_kwargs):
+def location_post_save(sender, instance, *_args, **kwargs):
     location: Location = instance
-    if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
+    if not kwargs.get('created') and \
+            location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
         ic('*** This is our location, sending updates to all known parties')
         # created = kwargs.get('created')
         from ocpi22.location import send_location_updates
@@ -1202,23 +1198,21 @@ def location_post_save(sender, instance, *_args, **_kwargs):
 @receiver(post_save, sender=Evse)
 def evse_post_save(sender, instance, *_args, **_kwargs):
     evse = instance
-    location: Location = evse.location
-    # location.last_updated = evse.last_updated
-    # print(f'Saving location #{location.uid} {location.name}')
-    location.save()
-    if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
-        ic('*** This is our location, sending updates to all known parties')
-        # from ocpi22.location import send_evse_updates
-        # send_evse_updates(evse.uid)
-        from ocpi22.location import send_location_updates
-        send_location_updates(location)
+    evse.location.last_updated = evse.last_updated
+    evse.location.save()
+    # if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
+    #     ic('*** This is our location, sending updates to all known parties')
+    #     # from ocpi22.location import send_evse_updates
+    #     # send_evse_updates(evse.uid)
+    #     from ocpi22.location import send_location_updates
+    #     send_location_updates(location)
 
 
 @receiver(post_save, sender=Connector)
 def connector_post_save(sender, instance, *_args, **_kwargs):
     connector: Connector = instance
     evse = connector.evse
-    # evse.last_updated = connector.last_updated
+    evse.last_updated = connector.last_updated
     evse.save()
 
 
@@ -1245,6 +1239,25 @@ def tariff_pre_save(sender, instance, *_args, **_kwargs):
     tariff: Tariff = instance
     if not tariff.uid:
         tariff.uid = uuid.uuid4()
+
+
+@receiver(post_save, sender=Tariff)
+def tariff_post_save(sender, instance, *_args, **kwargs):
+    ic(instance, kwargs)
+    # Skip the first post_save signal, which triggers with Tariff.objects.create(), instead wait for PriceComponents
+    if not kwargs.get('created') and \
+            instance.country_code == settings.COUNTRY_CODE and instance.party_id == settings.PARTY_ID:
+        ic('*** This is our Tariff, sending updates to all known parties')
+        from ocpi22.api import TariffSerializer
+        from ocpi22.location import send_updates
+        send_updates(instance, 'tariffs', TariffSerializer)
+
+
+@receiver(post_save, sender=PriceComponent)
+def price_component_post_save(sender, instance: PriceComponent, *_args, **_kwargs):
+    tariff = instance.tariff
+    tariff.last_updated = timezone.now()
+    tariff.save()
 
 
 @receiver(post_save, sender=Token)
