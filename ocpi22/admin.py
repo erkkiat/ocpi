@@ -200,7 +200,7 @@ class TariffAdmin(admin.ModelAdmin):
     list_display = ['party', 'uid', 'price', 'last_updated']
     list_display_links = ['uid']
     inlines = [PriceComponentsInline]
-    readonly_fields = ['uid', 'country_code', 'party_id']
+    readonly_fields = ['country_code', 'party_id']
 
     def has_change_permission(self, request, obj=None):
         return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
