@@ -13,7 +13,7 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.util import hours_minutes, generate_random_token, check_ownership
+from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
@@ -702,8 +702,9 @@ class Location(models.Model, ModelUtilMixin):
         if not hasattr(self, 'update_sent') and \
                 self.country_code == settings.COUNTRY_CODE and self.party_id == settings.PARTY_ID:
             print('*** This is our location, sending updates to all known parties')
-            from ocpi22.location import send_location_updates
-            send_location_updates(self)
+            from ocpi22.location import LocationSerializer
+            from ocpi22.api import send_updates
+            send_updates(self, Ocpi.Modules.LOCATIONS, LocationSerializer)
             # Send update only once
             setattr(self, 'update_sent', True)
 
@@ -1284,7 +1285,7 @@ def tariff_post_save(sender, instance, *_args, **kwargs):
             instance.country_code == settings.COUNTRY_CODE and instance.party_id == settings.PARTY_ID:
         ic('*** This is our Tariff, sending updates to all known parties')
         from ocpi22.api import TariffSerializer
-        from ocpi22.location import send_updates
+        from ocpi22.api import send_updates
         send_updates(instance, 'tariffs', TariffSerializer)
 
 
@@ -1300,5 +1301,5 @@ def token_post_save(sender, instance, *_args, **_kwargs):
     token: Token = instance
     if token.country_code == settings.COUNTRY_CODE and token.party_id == settings.PARTY_ID:
         ic('*** This is our token, sending updates to all known parties')
-        from ocpi22.location import send_token_updates
-        send_token_updates(token)
+        from ocpi22.api import send_updates, TokenSerializer
+        send_updates(token, Ocpi.Modules.TOKENS, TokenSerializer)

@@ -164,6 +164,14 @@ class Ocpi:
         TIMEOUT_ON_FORWARDED_REQUEST = 4002
         CONNECTION_PROBLEM = 4003
 
+    class Modules:
+        LOCATIONS = 'locations'
+        TARIFFS = 'tariffs'
+        TOKENS = 'tokens'
+        CREDENTIALS = 'credentials'
+        SESSIONS = 'sessions'
+        CDRS = 'cdrs'
+
 
 class OCPIResponse(Response):
     def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None,
@@ -187,8 +195,8 @@ class OCPIResponse(Response):
 
 class UpperCaseSerializerField(serializers.CharField):
 
-    def __init__(self, *args, **kwargs):
-        super(UpperCaseSerializerField, self).__init__(*args, **kwargs)
+    def __init__(self, *_args, **kwargs):
+        super(UpperCaseSerializerField, self).__init__(**kwargs)
 
     def to_representation(self, value):
         value = super(UpperCaseSerializerField, self).to_representation(value)
@@ -216,6 +224,7 @@ class NotOwner(OCPIResponse):
             status_message="Country ID and Party ID need to match your credentials.",
             status_code=2002,
             http_status=status.HTTP_403_FORBIDDEN)
+
 
 def matching_operator(request, country_code, party_id) -> bool:
     if request.user.is_staff:

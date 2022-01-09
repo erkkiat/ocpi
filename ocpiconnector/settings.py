@@ -14,6 +14,8 @@ COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
 
 # Send updates to partners who we have Credentials for
 SEND_UPDATES = os.environ.get('SEND_UPDATES', True)
+UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'
+
 # Send updates asynchronously using Celery
 BACKGROUND_SEND = os.environ.get('BACKGROUND_SEND', True)
 

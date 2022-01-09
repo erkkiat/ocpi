@@ -9,7 +9,6 @@ import logging
 
 from celery import exceptions
 from django.http import Http404
-from icecream import ic
 from rest_framework import status
 
 from ocpiconnector import slack_logging
@@ -95,21 +94,7 @@ def command_start(_self, data, session_uid, update_url, url):
 
 
 @app.task(bind=True)
-def send_location_update(_self, location_data, url, token_base64):
-    logging.info(f'Sending Location (update) to {url}')
-
-    result = requests.put(
-        url,
-        json=location_data,
-        headers=dict(Authorization=f'Token {token_base64}'))
-    logging.info(f"Response: {result.status_code} - {result.reason}")
-    if result.status_code >= status.HTTP_400_BAD_REQUEST:
-        logging.error(result.text[-400:])
-        logging.error(f'Unable to send Location update to {url}: {result.status_code} - {result.reason}')
-
-
-@app.task(bind=True)
-def send_update(_self, data, url, token_base64):
+def send_update(_self, data, url, token_base64) -> None:
     logging.info(f'Sending update to {url}')
 
     result = requests.put(
@@ -120,20 +105,6 @@ def send_update(_self, data, url, token_base64):
     if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-500:])
         logging.error(f'Unable to send update to {url}: {result.status_code} - {result.reason}')
-
-
-@app.task(bind=True)
-def send_token_update(_self, token_data, url, token_base64):
-    logging.info(f"Sending Token update to {url}")
-
-    result = requests.put(
-        url,
-        json=token_data,
-        headers=dict(Authorization=f'Token {token_base64}'),
-    )
-    if result.status_code >= status.HTTP_400_BAD_REQUEST:
-        logging.error(result.text[-400:])
-        logging.error(f'Unable to send Token update to {url}: {result.status_code} - {result.reason}')
 
 
 @app.task(bind=True)
@@ -168,3 +139,5 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
     if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-400:])
         logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')
+
+

@@ -4,7 +4,6 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
-from icecream import ic
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -13,12 +12,12 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
 from ocpi22.models import Location, Evse, Connector, BusinessDetails, uid_validator, Endpoint, Tariff, Facility, \
-    Capability, Token
-from ocpi22.tasks import send_location_update, send_evse_status_update, send_token_update, send_update
+    Capability
+from ocpi22.tasks import send_evse_status_update
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, OCPIResponse, Ocpi, NotOwner, \
     matching_operator
+from ocpiconnector.settings import UPDATES_DISABLED
 
-UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'
 
 # Todo: Fetch all Locations for reliable data update, but fetch Tariffs first, since Location refers to them
 # Todo: PATCH & PUT Evse
@@ -613,69 +612,5 @@ def send_evse_updates(evse_uid):
                 send_evse_status_update.delay(evse_uid, e.pk)
             else:
                 send_evse_status_update(evse_uid, e.pk)
-    else:
-        logging.warning(UPDATES_DISABLED)
-
-
-def send_location_updates(location: Location) -> None:
-    """
-    Find all endpoints interested in Location updates and send update in a background task
-    """
-
-    if settings.SEND_UPDATES:
-        # noinspection PyUnresolvedReferences
-        endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
-        serializer = LocationSerializer(instance=location)
-        # d = json.dumps(serializer.data)
-        # ic(len(d), serializer.data)
-        e: Endpoint
-        for e in endpoints:
-            print(f'Send Location update to {e.url}')
-            if settings.BACKGROUND_SEND:
-                send_location_update.delay(serializer.data, e.url, e.get_token_base64())
-            else:
-                send_location_update(serializer.data, e.url, e.get_token_base64())
-    else:
-        logging.warning(UPDATES_DISABLED)
-
-
-def send_updates(instance: serializers.Serializer, ocpi_module: str, serializer_class) -> None:
-    """
-    Find all endpoints interested in Tariff updates and send update in a background task
-    """
-
-    if settings.SEND_UPDATES:
-        # noinspection PyUnresolvedReferences
-        endpoints = Endpoint.objects.filter(identifier=ocpi_module, role='RECEIVER')
-        serializer = serializer_class(instance)
-        e: Endpoint
-        for e in endpoints:
-            print(f'Send update to {ocpi_module} module at {e.url}')
-            ic(serializer.data)
-            if settings.BACKGROUND_SEND:
-                send_update.delay(serializer.data, e.url, e.get_token_base64())
-            else:
-                send_update(serializer.data, e.url, e.get_token_base64())
-    else:
-        logging.warning(UPDATES_DISABLED)
-
-
-def send_token_updates(token: Token) -> None:
-    """
-    Find all endpoints interested in Token updates and send update in a background task
-    """
-
-    if settings.SEND_UPDATES:
-        # noinspection PyUnresolvedReferences
-        endpoints = Endpoint.objects.filter(identifier='tokens', role='RECEIVER')
-        e: Endpoint
-        for e in endpoints:
-            print(f'Send Token {token} update to {e.url}')
-            from ocpi22.api import TokenSerializer
-            serializer = TokenSerializer(instance=token)
-            if settings.BACKGROUND_SEND:
-                send_token_update.delay(serializer.data, e.url, e.get_token_base64())
-            else:
-                send_token_update(serializer.data, e.url, e.get_token_base64())
     else:
         logging.warning(UPDATES_DISABLED)

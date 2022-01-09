@@ -4,7 +4,7 @@ import uuid
 
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
-from django.db import transaction
+from django.db import transaction, models
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -17,11 +17,13 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.location import BusinessDetailsSerializer
-from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent
+from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent, \
+    Endpoint
+from ocpi22.tasks import send_update
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, clear_empty, \
     OCPIResponse, NotOwner, matching_operator
 from ocpi22.versions import get_endpoints_dict
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
+from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID, UPDATES_DISABLED
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -564,3 +566,25 @@ class OCPIRouter(routers.DefaultRouter):
     def __init__(self):
         super().__init__()
         self.trailing_slash = '/?'
+
+
+def send_updates(instance: models.Model, ocpi_module: str, serializer_class) -> None:
+    """
+    Find all endpoints interested in Tariff updates and send update in a background task.
+    To disable updates, set env SEND_UPDATES to false
+    """
+
+    if settings.SEND_UPDATES > 0:
+        # noinspection PyUnresolvedReferences
+        endpoints = Endpoint.objects.filter(identifier=ocpi_module, role='RECEIVER')
+        serializer = serializer_class(instance)
+        e: Endpoint
+        for e in endpoints:
+            print(f'Send update to {ocpi_module} module at {e.url}')
+            ic(serializer.data)
+            if settings.BACKGROUND_SEND:
+                send_update.delay(serializer.data, e.url, e.get_token_base64())
+            else:
+                send_update(serializer.data, e.url, e.get_token_base64())
+    else:
+        logging.warning(UPDATES_DISABLED)
