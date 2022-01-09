@@ -1,4 +1,3 @@
-import json
 import logging
 
 from django.conf import settings
@@ -21,6 +20,11 @@ from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHe
 
 UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'
 
+# Todo: Fetch all Locations for reliable data update, but fetch Tariffs first, since Location refers to them
+# Todo: PATCH & PUT Evse
+# Todo: PATCH & PUT Connector
+# Todo: DELETE Tariff
+
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
@@ -33,7 +37,9 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         defaults.update(data)
         data = defaults
 
-        business_details, _created = BusinessDetails.objects.get_or_create(**data)
+        business_details, _created = BusinessDetails.objects.get_or_create(
+            name=data.get('name'), website=data.get('website', ''), defaults=dict(logo=data.get('logo', ''))
+        )
         return business_details
 
     # def to_representation(self, value):
@@ -61,7 +67,7 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
         return connector.max_electric_power or connector.max_voltage * connector.max_amperage
 
 
-class TariffSaveSerializer(serializers.StringRelatedField):
+class TariffField(serializers.StringRelatedField):
     # noinspection PyUnresolvedReferences
     def to_internal_value(self, data):
         try:
@@ -113,7 +119,7 @@ class ConnectorSaveSerializer(HyperlinkedModelSerializerCleanedUp):
 
     id = serializers.CharField(source='uid')
     # max_electric_power = serializers.SerializerMethodField()
-    tariff_ids = TariffSaveSerializer(many=True, required=False)
+    tariff_ids = TariffField(many=True, required=False)
 
 
 evse_validator = RegexValidator(r'[A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}$',
@@ -418,6 +424,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
         for e in evses:
             connectors = e.pop('connectors', [])
             capabilities = e.pop('capabilities', [])
+            # noinspection PyUnresolvedReferences
             try:
                 # noinspection PyUnresolvedReferences
                 evse = Evse.objects.get(uid=e.get('uid'), location=location)
@@ -462,9 +469,7 @@ class LocationViewSet(mixins.ListModelMixin,
     def get_view_name(self):
         return 'Locations'
 
-    # def detail(self, request):
-    #     return self.get(request)
-
+    @transaction.atomic
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False, url_name='by-evse-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
     def by_evse_id(self, request, country_code, party_id, uid, evse_id) -> OCPIResponse:
@@ -503,10 +508,10 @@ class LocationViewSet(mixins.ListModelMixin,
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    # noinspection PyUnresolvedReferences
+    @transaction.atomic
     def put(self, request, *_args, **_kwargs):
         data = request.data.get('data', request.data)
-        ic(data)
+        print(data)
         uid = data.get('id')
         country_code = request.data.get('country_code')
         party_id = request.data.get('party_id')
@@ -515,9 +520,12 @@ class LocationViewSet(mixins.ListModelMixin,
             return NotOwner()
 
         if uid:
+            # noinspection PyUnresolvedReferences
             try:
+                # noinspection PyUnresolvedReferences
                 location = Location.objects.get(uid=uid, country_code=country_code, party_id=party_id)
             except Location.DoesNotExist:
+                print(f"New location {uid}, {country_code}, {party_id}")
                 location = None
             serializer = LocationSaveSerializer(location, data=data)
             if serializer.is_valid():
@@ -555,6 +563,7 @@ class LocationViewSet(mixins.ListModelMixin,
     #         serializer = EvseSerializer(instance=evse)
     #     return OCPIResponse(serializer.data)
 
+    @transaction.atomic
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request: Request, country_code, party_id, uid) -> OCPIResponse:
@@ -581,7 +590,8 @@ class LocationViewSet(mixins.ListModelMixin,
                 return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
+        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
+                            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     # noinspection PyUnresolvedReferences
     queryset = Location.objects.all().order_by('created')

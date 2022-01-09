@@ -4,7 +4,7 @@ import uuid
 
 from django.conf import settings
 from django.core.validators import RegexValidator
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
@@ -494,7 +494,7 @@ class PriceComponent(models.Model, ModelUtilMixin):
             if s == 1000:
                 return '/ kWh'
             else:
-                return f'/ {s} kWh'
+                return f'/ {s} Wh'
         elif t == 'FLAT':
             return 'fixed'
         elif t == 'TIME':
@@ -694,6 +694,18 @@ class Location(models.Model, ModelUtilMixin):
                 ]
             )
         )
+
+    def atomic_post_save(self, *args, **kwargs):
+        ic()
+        ic(args, kwargs)
+
+        if not hasattr(self, 'update_sent') and \
+                self.country_code == settings.COUNTRY_CODE and self.party_id == settings.PARTY_ID:
+            print('*** This is our location, sending updates to all known parties')
+            from ocpi22.location import send_location_updates
+            send_location_updates(self)
+            # Send update only once
+            setattr(self, 'update_sent', True)
 
 
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')
@@ -1187,22 +1199,35 @@ def location_pre_save(sender, instance, *_args, **_kwargs):
     location.long_partition = calculate_partition(location.longitude)
 
 
-@receiver(post_save, sender=Location)
-def location_post_save(sender, instance, *_args, **kwargs):
-    location: Location = instance
-    if not kwargs.get('created') and \
-            location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
-        ic('*** This is our location, sending updates to all known parties')
-        # created = kwargs.get('created')
-        from ocpi22.location import send_location_updates
-        send_location_updates(location)
+@receiver(post_save)
+def atomic_post_save(sender, instance, **kwargs):
+    """
+    This makes sure that updates are sent only once per atomic operation. There was a problem
+    with post_save being triggered first when a new Location is saved, then again with Evses and Connectors.
+    """
+    if hasattr(instance, "atomic_post_save") and transaction.get_connection().in_atomic_block:
+        transaction.on_commit(lambda: instance.atomic_post_save(**kwargs))
+
+
+# Todo: Prevent creating EVSE linked to a Location owned by another party
 
 
 @receiver(post_save, sender=Evse)
-def evse_post_save(sender, instance, *_args, **_kwargs):
+def evse_post_save(sender, instance, *_args, **kwargs):
+    """
+    Make sure that only Admin calls Evse.save() without the update_fields list
+    """
+    ic()
+    ic(kwargs)
+    update_fields = kwargs.get('update_fields', [])
+    if update_fields and 'last_updated' in update_fields:
+        # If only last_updated has been changed, Location.last_updated has been already updated by connector_post_save
+        ic('evse_post_save was triggered by connector_post_save, no updating for Location.last_updated')
+        return
+    ic('evse_post_save is updating Location.last_updated')
     evse = instance
     evse.location.last_updated = evse.last_updated
-    evse.location.save()
+    evse.location.save(update_fields=['last_updated'])
     # if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
     #     ic('*** This is our location, sending updates to all known parties')
     #     # from ocpi22.location import send_evse_updates
@@ -1212,11 +1237,18 @@ def evse_post_save(sender, instance, *_args, **_kwargs):
 
 
 @receiver(post_save, sender=Connector)
-def connector_post_save(sender, instance, *_args, **_kwargs):
+def connector_post_save(sender, instance, *_args, **kwargs):
+    ic()
+    ic(kwargs)
     connector: Connector = instance
     evse = connector.evse
+    ic('connector_post_save is updating Evse.last_updated')
     evse.last_updated = connector.last_updated
-    evse.save()
+    evse.save(update_fields=['last_updated'])
+    ic('connector_post_save is updating Location.last_updated')
+    location = connector.evse.location
+    location.last_updated = connector.last_updated
+    location.save(update_fields=['last_updated'])
 
 
 @receiver(pre_save, sender=Connector)
