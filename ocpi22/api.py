@@ -5,6 +5,7 @@ import uuid
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
 from django.db import transaction, models
+from django.utils.module_loading import import_string
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -573,6 +574,9 @@ def send_updates(instance: models.Model, ocpi_module: str, serializer_class) -> 
     Find all endpoints interested in Tariff updates and send update in a background task.
     To disable updates, set env SEND_UPDATES to false
     """
+
+    if isinstance(serializer_class, str):
+        serializer_class = import_string(serializer_class)
 
     if settings.SEND_UPDATES > 0:
         # noinspection PyUnresolvedReferences

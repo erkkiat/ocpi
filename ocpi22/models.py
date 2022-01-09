@@ -33,6 +33,36 @@ class ModelUtilMixin:
             return f'{self.country_code}*{self.party_id}'
         return ''
 
+    # noinspection PyUnresolvedReferences
+    def is_ours(self) -> bool:
+        # Returns true if we hold the master data for this object
+        if hasattr(self, 'country_code') and self.country_code != settings.COUNTRY_CODE:
+            return False
+        if hasattr(self, 'party_id') and self.party_id != settings.PARTY_ID:
+            return False
+        return True
+
+
+class OcpiModule:
+    ocpi_serializer_class = None
+    ocpi_module_name = None
+
+    def atomic_post_save(self, *args, **kwargs):
+        ic("Generic atomic_post_save")
+        ic(args, kwargs)
+
+        assert self.ocpi_serializer_class, \
+            f'OCPI object class {type(self)} must have an ocpi_serializer_class specified.'
+        assert self.ocpi_module_name, \
+            f'OCPI object class {type(self)} must have an ocpi_module_name specified.'
+
+        if not hasattr(self, 'update_sent') and self.is_ours():
+            print('*** This is our object, sending updates to all known parties')
+            from ocpi22.api import send_updates
+            send_updates(self, self.ocpi_module_name, self.ocpi_serializer_class)
+            # Send update only once
+            setattr(self, 'update_sent', True)
+
 
 class BusinessDetails(models.Model, ModelUtilMixin):
     class Meta:
@@ -212,10 +242,13 @@ class Endpoint(models.Model, ModelUtilMixin):
         return base64.b64encode(str(token).encode('ascii')).decode('ascii')
 
 
-class Token(models.Model, ModelUtilMixin):
+class Token(models.Model, ModelUtilMixin, OcpiModule):
     """
     A Token structure with data owned by the eMSP
     """
+
+    ocpi_serializer_class = 'ocpi22.api.TokenSerializer'
+    ocpi_module_name = Ocpi.Modules.TOKENS
 
     SENDER = None
 
@@ -366,7 +399,11 @@ class AuthorizationInfo(models.Model, ModelUtilMixin):
 # Todo: OCPI tariff_id has to contain a valid OCHP tariffId (NLEVNT12345ABC)
 
 
-class Tariff(models.Model, ModelUtilMixin):
+class Tariff(models.Model, ModelUtilMixin, OcpiModule):
+
+    ocpi_serializer_class = 'ocpi22.api.TariffSerializer'
+    ocpi_module_name = Ocpi.Modules.TARIFFS
+
     class Meta:
         unique_together = [['country_code', 'party_id', 'uid']]
 
@@ -543,10 +580,13 @@ class Capability(models.Model, ModelUtilMixin):
         return self.name
 
 
-class Location(models.Model, ModelUtilMixin):
+class Location(models.Model, ModelUtilMixin, OcpiModule):
     """
     A physical location with one or more EVSEs
     """
+
+    ocpi_serializer_class = 'ocpi22.location.LocationSerializer'
+    ocpi_module_name = Ocpi.Modules.LOCATIONS
 
     class Meta:
         constraints = [
@@ -694,19 +734,6 @@ class Location(models.Model, ModelUtilMixin):
                 ]
             )
         )
-
-    def atomic_post_save(self, *args, **kwargs):
-        ic()
-        ic(args, kwargs)
-
-        if not hasattr(self, 'update_sent') and \
-                self.country_code == settings.COUNTRY_CODE and self.party_id == settings.PARTY_ID:
-            print('*** This is our location, sending updates to all known parties')
-            from ocpi22.location import LocationSerializer
-            from ocpi22.api import send_updates
-            send_updates(self, Ocpi.Modules.LOCATIONS, LocationSerializer)
-            # Send update only once
-            setattr(self, 'update_sent', True)
 
 
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')
@@ -1277,29 +1304,8 @@ def tariff_pre_save(sender, instance, *_args, **_kwargs):
         tariff.uid = uuid.uuid4()
 
 
-@receiver(post_save, sender=Tariff)
-def tariff_post_save(sender, instance, *_args, **kwargs):
-    ic(instance, kwargs)
-    # Skip the first post_save signal, which triggers with Tariff.objects.create(), instead wait for PriceComponents
-    if not kwargs.get('created') and \
-            instance.country_code == settings.COUNTRY_CODE and instance.party_id == settings.PARTY_ID:
-        ic('*** This is our Tariff, sending updates to all known parties')
-        from ocpi22.api import TariffSerializer
-        from ocpi22.api import send_updates
-        send_updates(instance, 'tariffs', TariffSerializer)
-
-
 @receiver(post_save, sender=PriceComponent)
 def price_component_post_save(sender, instance: PriceComponent, *_args, **_kwargs):
     tariff = instance.tariff
     tariff.last_updated = timezone.now()
     tariff.save()
-
-
-@receiver(post_save, sender=Token)
-def token_post_save(sender, instance, *_args, **_kwargs):
-    token: Token = instance
-    if token.country_code == settings.COUNTRY_CODE and token.party_id == settings.PARTY_ID:
-        ic('*** This is our token, sending updates to all known parties')
-        from ocpi22.api import send_updates, TokenSerializer
-        send_updates(token, Ocpi.Modules.TOKENS, TokenSerializer)
