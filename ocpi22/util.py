@@ -3,8 +3,11 @@ import secrets
 from collections import OrderedDict
 from datetime import datetime
 
+from django.conf import settings
 from django.db.models import QuerySet
 from django.utils import timezone
+from django.utils.module_loading import import_string
+from icecream import ic
 from rest_framework import serializers, status
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
@@ -235,3 +238,53 @@ def matching_operator(request, country_code, party_id) -> bool:
         if r.country_code == country_code and r.party_id == party_id:
             return True
     return False
+
+
+class OcpiModule:
+    ocpi_serializer_class = None
+    ocpi_module_name = None
+
+    def atomic_post_save(self, *args, **kwargs) -> None:
+        ic("Generic atomic_post_save")
+        ic(args, kwargs)
+
+        assert self.ocpi_serializer_class, \
+            f'OCPI object class {type(self)} must have an ocpi_serializer_class specified.'
+        assert self.ocpi_module_name, \
+            f'OCPI object class {type(self)} must have an ocpi_module_name specified.'
+
+        if not hasattr(self, 'update_sent') and self.is_ours():
+            print('*** This is our object, sending updates to all known parties')
+            self.send_updates()
+            # Send update only once
+            setattr(self, 'update_sent', True)
+
+
+    def send_updates(self) -> None:
+        """
+        Find all endpoints interested in Tariff updates and send update in a background task.
+        To disable updates, set env SEND_UPDATES to false
+        """
+
+        ocpi_module = self.ocpi_module_name
+        serializer_class = self.ocpi_serializer_class
+
+        if isinstance(serializer_class, str):
+            serializer_class = import_string(serializer_class)
+
+        if settings.SEND_UPDATES > 0:
+            from ocpi22.models import Endpoint
+            # noinspection PyUnresolvedReferences
+            endpoints = Endpoint.objects.filter(identifier=ocpi_module, role='RECEIVER')
+            serializer = serializer_class(self)
+            e: Endpoint
+            for e in endpoints:
+                print(f'Send update to {ocpi_module} module at {e.url}')
+                ic(serializer.data)
+                from ocpi22.tasks import send_update
+                if settings.BACKGROUND_SEND:
+                    send_update.delay(serializer.data, e.url, e.get_token_base64())
+                else:
+                    send_update(serializer.data, e.url, e.get_token_base64())
+        else:
+            logging.warning(settings.UPDATES_DISABLED)

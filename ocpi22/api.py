@@ -567,28 +567,3 @@ class OCPIRouter(routers.DefaultRouter):
     def __init__(self):
         super().__init__()
         self.trailing_slash = '/?'
-
-
-def send_updates(instance: models.Model, ocpi_module: str, serializer_class) -> None:
-    """
-    Find all endpoints interested in Tariff updates and send update in a background task.
-    To disable updates, set env SEND_UPDATES to false
-    """
-
-    if isinstance(serializer_class, str):
-        serializer_class = import_string(serializer_class)
-
-    if settings.SEND_UPDATES > 0:
-        # noinspection PyUnresolvedReferences
-        endpoints = Endpoint.objects.filter(identifier=ocpi_module, role='RECEIVER')
-        serializer = serializer_class(instance)
-        e: Endpoint
-        for e in endpoints:
-            print(f'Send update to {ocpi_module} module at {e.url}')
-            ic(serializer.data)
-            if settings.BACKGROUND_SEND:
-                send_update.delay(serializer.data, e.url, e.get_token_base64())
-            else:
-                send_update(serializer.data, e.url, e.get_token_base64())
-    else:
-        logging.warning(UPDATES_DISABLED)

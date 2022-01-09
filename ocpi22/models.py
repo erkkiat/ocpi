@@ -13,7 +13,7 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi
+from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
@@ -41,27 +41,6 @@ class ModelUtilMixin:
         if hasattr(self, 'party_id') and self.party_id != settings.PARTY_ID:
             return False
         return True
-
-
-class OcpiModule:
-    ocpi_serializer_class = None
-    ocpi_module_name = None
-
-    def atomic_post_save(self, *args, **kwargs):
-        ic("Generic atomic_post_save")
-        ic(args, kwargs)
-
-        assert self.ocpi_serializer_class, \
-            f'OCPI object class {type(self)} must have an ocpi_serializer_class specified.'
-        assert self.ocpi_module_name, \
-            f'OCPI object class {type(self)} must have an ocpi_module_name specified.'
-
-        if not hasattr(self, 'update_sent') and self.is_ours():
-            print('*** This is our object, sending updates to all known parties')
-            from ocpi22.api import send_updates
-            send_updates(self, self.ocpi_module_name, self.ocpi_serializer_class)
-            # Send update only once
-            setattr(self, 'update_sent', True)
 
 
 class BusinessDetails(models.Model, ModelUtilMixin):
