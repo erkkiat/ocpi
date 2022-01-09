@@ -126,7 +126,7 @@ class LocationTests(TestCase):
             connectors = evse.get('connectors')
             self.assertIsInstance(connectors, list, msg='EVSE connectors should be a list')
 
-    def put_location_data(self, url, data, token) -> OCPIResponse:
+    def put(self, url, data, token) -> OCPIResponse:
         request = self.factory.put(url, data, content_type="application/json",
                                    Authorization=f'Token {token}')
         request.data = data
@@ -143,7 +143,7 @@ class LocationTests(TestCase):
 
         invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
 
-        response = self.put_location_data(url, invalid_data, 'FALSETOKEN')
+        response = self.put(url, invalid_data, 'FALSETOKEN')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'A Location request should require OCPI authentication. '
                          f'{response.data}')
@@ -151,7 +151,7 @@ class LocationTests(TestCase):
                          'The response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
                          f'{response.data}')
 
-        response = self.put_location_data(url, invalid_data, token_base64)
+        response = self.put(url, invalid_data, token_base64)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Badly formed but correctly authenticated request should produce http status code 400.')
 
@@ -209,7 +209,7 @@ class LocationTests(TestCase):
             self.credentials.roles.add(roles)
 
             # Send the request
-            response = self.put_location_data(url, data, token_base64)
+            response = self.put(url, data, token_base64)
             if response.status_text:
                 print(f'status_text: "{response.status_text}" for {filename} case.')
             self.assertEqual(response.status_code, http_status,
@@ -228,6 +228,32 @@ class LocationTests(TestCase):
             self.assertEqual(connector_count, connectors,
                              f'There should be {connectors} connectors after {filename} case.')
 
+        # This was a specific problem
+        response = self.put(
+            url,
+            json.loads('''
+            {"address": "Street 1",
+                      "city": "Helsinki",
+                      "coordinates": {"latitude": "60.000000", "longitude": "30.000000"},
+                      "country": "FIN",
+                      "country_code": "BE",
+                      "facilities": ["HOTEL"],
+                      "id": "UID11",
+                      "last_updated": "2022-01-05T06:58:15.811866",
+                      "name": "Test location 6",
+                      "parking_type": "PARKING_LOT",
+                      "party_id": "BEC",
+                      "publish": true,
+                      "time_zone": "Europe/Helsinki"}
+            '''), token_base64)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_patch_connector(self):
+        # url = reverse('location-connector', self.location, ...)
+        data = dict({
+            "tariff_ids": ["15"],
+            "last_updated": "2019-06-24T12:39:09Z"
+        })
 
     def test_ocpi(self):
         url = reverse('location-by-id',
