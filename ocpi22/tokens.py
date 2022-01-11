@@ -1,22 +1,10 @@
 import logging
 
-import requests
 from django.conf import settings
 from icecream import ic
-from requests import Response
-from rest_framework import exceptions
 
 from ocpi22.api import TokenSerializer
-
-
-def ocpi_post(url, token_base64, *args, **kwargs) -> Response:
-    print(f'Posting to {url}')
-    response = requests.post(url, *args, **kwargs, headers=dict(Authorization=f'Token {token_base64}'))
-    if response.status_code not in (200, 403, 404):
-        print(f'*** Got response: {response.status_code} - {response.reason}')
-        ic(response.text)
-        raise exceptions.APIException(f'Got response for {url}: {response.status_code} - {response.reason}')
-    return response
+from ocpi22.util import ocpi_post
 
 
 def authorize_token(token_uid, location=None):

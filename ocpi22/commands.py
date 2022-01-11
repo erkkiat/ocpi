@@ -1,6 +1,10 @@
+import uuid
 from collections import OrderedDict
+from urllib.parse import urljoin
 
+from django.conf import settings
 from django.http import Http404
+from icecream import ic
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -8,11 +12,12 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.api import TokenSerializer
-from ocpi22.models import Session, Evse
+from ocpi22.api import TokenSerializer, CommandTokenSerializer
+from ocpi22.auth import OCPIPermission
+from ocpi22.models import Session, Evse, Endpoint, CredentialsRole, Token
 from ocpi22.sessions import create_session
 from ocpi22.tasks import command_start
-from ocpi22.util import OCPIResponse, Ocpi
+from ocpi22.util import OCPIResponse, Ocpi, ocpi_post
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -23,7 +28,7 @@ class CommandsSerializer(serializers.Serializer):
         label='URL that the CommandResult POST should be sent to. '
               'This URL might contain a unique ID to be able to distinguish between StartSession requests.'
     )
-    token = TokenSerializer(
+    token = CommandTokenSerializer(
         label='Token object the Charge Point has to use to start a new session. '
               'The Token provided in this request is authorized by the eMSP.'
     )
@@ -117,7 +122,7 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     root_view_name = 'commands'
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
     serializer_class = CommandsSerializer
-    # permission_classes = [OCPIPermission]
+    permission_classes = [OCPIPermission]
 
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
@@ -125,11 +130,12 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
                 result = 'ACCEPTED'
+                token = serializer.data.get('token', '')
                 session: Session = create_session(
-                    serializer.data['location_id'],
-                    serializer.data['evse_uid'],
-                    serializer.data.get('connector_id'),
-                    ad_hoc_token=serializer.data['token'],
+                    location_id=serializer.data['location_id'],
+                    evse_id=serializer.data.get('evse_uid', ''),
+                    connector_id=serializer.data.get('connector_id'),
+                    ad_hoc_token=token,
                     authorize=False
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
                 )
@@ -148,7 +154,7 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
                         ]
                     ))
                 return OCPIResponse(response_serializer.data)
-        except (NotFound, Http404) as e:
+        except (NotFound, Http404, KeyError) as e:
             return OCPIResponse(None, status_message=str(e),
                                 http_status=status.HTTP_400_BAD_REQUEST,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
@@ -163,3 +169,47 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
         return Response(dict(
             start_session=request.build_absolute_uri(reverse('commands-start-session')),
         ))
+
+
+def get_our_first_token():
+    try:
+        return Token.objects.filter(country_code=settings.COUNTRY_CODE, party_id=settings.PARTY_ID)[0]
+    except IndexError:
+        raise ValueError('Please create a Token first.')
+
+
+def find_endpoint(country_code, party_id, identifier, endpoint_role) -> Endpoint:
+    for role in CredentialsRole.objects.filter(country_code=country_code, party_id=party_id):
+        for credentials in role.credentials.all():
+            # noinspection PyUnresolvedReferences
+            endpoints = credentials.endpoints.filter(identifier=identifier, role=endpoint_role)
+            if endpoints.count():
+                return endpoints[0]
+
+
+def send_start_command(request, evse: Evse, token: Token) -> Response:
+    if evse.location.party() != f'{settings.COUNTRY_CODE}*{settings.PARTY_ID}':
+        country_code = evse.location.country_code
+        party_id = evse.location.party_id
+        # noinspection PyUnresolvedReferences
+
+        endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
+        if endpoint:
+            print(f'*** Sending start command for {evse.location.name}.')
+            data=dict(
+                    response_url=request.build_absolute_uri('/'),
+                    token=TokenSerializer(token).data,
+                    location_id=evse.location.uid,
+                    evse_uid=evse.uid,
+                    authorization_reference=uuid.uuid4().hex,
+            )
+            ic(data)
+            ic(endpoint.url)
+            return ocpi_post(urljoin(f'{endpoint.url}/', 'START_SESSION'), endpoint.get_token_base64(),
+                             data=data)
+        else:
+            print(f'Unable to find endpoint for {evse.location.party()}.')
+            return Response()
+    else:
+        print(f'Not sending start command to ourself.')
+        return Response()

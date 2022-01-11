@@ -1,14 +1,17 @@
+import json
 import logging
 import secrets
 from collections import OrderedDict
 from datetime import datetime
 
+import requests
 from django.conf import settings
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from icecream import ic
-from rest_framework import serializers, status
+from requests import Response
+from rest_framework import serializers, status, exceptions
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
@@ -174,6 +177,7 @@ class Ocpi:
         CREDENTIALS = 'credentials'
         SESSIONS = 'sessions'
         CDRS = 'cdrs'
+        COMMANDS = 'commands'
 
 
 class OCPIResponse(Response):
@@ -288,3 +292,21 @@ class OcpiModule:
                     send_update(serializer.data, e.url, e.get_token_base64())
         else:
             logging.warning(settings.UPDATES_DISABLED)
+
+
+def ocpi_post(url, token_base64, *args, **kwargs) -> Response:
+    print(f'Posting to {url}')
+    data = ''
+    if 'data' in kwargs:
+        data = json.dumps(kwargs.pop('data'))
+        ic(data)
+    response = requests.post(url, *args, **kwargs, data=data,
+                             headers={
+                                 "Authorization": f'Token {token_base64}',
+                                 'content-type': 'application/json',
+                             })
+    if response.status_code not in (200, 403, 404):
+        print(f'*** Got response: {response.status_code} - {response.reason}')
+        logging.error(response.text)
+        raise exceptions.APIException(f'Got response for {url}: {response.status_code} - {response.reason} ')
+    return response

@@ -1,8 +1,11 @@
 from django.conf import settings
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
+from requests import Response
+from rest_framework import exceptions
 
+from ocpi22.commands import send_start_command, get_our_first_token
 from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
     PriceComponent, Cdr, Session, Credentials, CredentialsRole, Endpoint
 
@@ -47,7 +50,6 @@ class TokenAdmin(admin.ModelAdmin):
 #
 #     latitude = forms.CharField()
 
-
 class LocationAdmin(admin.ModelAdmin):
     class EvseInline(admin.TabularInline):
         model = Evse
@@ -68,10 +70,8 @@ class LocationAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    # def actions_item(self, _obj):
-    #     return format_html('Edit')
-    #
-    # actions_item.short_description = ''
+
+
 
 
 class EvseAdmin(admin.ModelAdmin):
@@ -82,6 +82,7 @@ class EvseAdmin(admin.ModelAdmin):
     list_display = ['party', 'evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
+    actions = ['start_charging']
 
     def location_url(self, evse):
         return format_html("<a href='{url}'>{location}</a>",
@@ -99,6 +100,22 @@ class EvseAdmin(admin.ModelAdmin):
     #     obj.save()
 
     location_url.short_description = "Location"
+
+    @admin.action(description='Start charging')
+    def start_charging(self, request, queryset):
+        evse: Evse
+        for evse in queryset:
+            try:
+                response: Response = send_start_command(request, evse, get_our_first_token())
+                if response:
+                    self.message_user(request, f'Starting charging at {evse.location}, '
+                                           f'response: {response.status_code} - {response.reason}')
+                else:
+                    self.message_user(request, f'Unable to start charging at {evse.location}.',
+                                      level=messages.ERROR)
+            except exceptions.APIException as e:
+                    self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
+                                      level=messages.ERROR)
 
 
 class BusinessDetailsAdmin(admin.ModelAdmin):

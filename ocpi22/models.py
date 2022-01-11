@@ -214,7 +214,7 @@ class Endpoint(models.Model, ModelUtilMixin):
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return f'{self.get_identifier_display()} {self.get_role_display()}'
+        return f'{self.get_identifier_display()} {self.get_role_display()} at {self.url}'
 
     def get_token_base64(self):
         token = self.credentials.theirs
@@ -237,9 +237,6 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     NO_CREDIT = 'NO_CREDIT'
     NOT_ALLOWED = 'NOT_ALLOWED'
 
-    class Meta:
-        unique_together = [['party_id', 'uid']]
-
     upper_case_fields = ('country_code', 'party_id', 'uid', 'contract_id', 'language')
 
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
@@ -253,7 +250,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
     # If this is a APP_USER or AD_HOC_USER Token, it will be a uniquely, by the eMSP, generated ID.
     # This field is named uid instead of id to prevent confusion with: contract_id.
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, unique=True)
 
     AD_HOC_USER = 'AD_HOC_USER'
     APP_USER = 'APP_USER'
@@ -1262,7 +1259,7 @@ def connector_post_save(sender, instance, *_args, **kwargs):
 def connector_pre_save(sender, instance, *_args, **_kwargs):
     connector: Connector = instance
     if not connector.uid:
-        connector.uid = uuid.uuid4()
+        connector.uid = uuid.uuid4().hex
     if not connector.power_type:
         connector.power_type = Connector.POWERTYPES[connector.standard]
 
@@ -1280,7 +1277,7 @@ def credentials_pre_save(sender, instance, *_args, **_kwargs):
 def tariff_pre_save(sender, instance, *_args, **_kwargs):
     tariff: Tariff = instance
     if not tariff.uid:
-        tariff.uid = uuid.uuid4()
+        tariff.uid = uuid.uuid4().hex
 
 
 @receiver(post_save, sender=PriceComponent)

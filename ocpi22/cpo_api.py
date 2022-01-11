@@ -373,7 +373,7 @@ class SessionViewSet(viewsets.ViewSet):
         if session.kwh:
             # noinspection PyUnresolvedReferences
             cdr = Cdr.objects.create(
-                uid=uuid.uuid4(),
+                uid=uuid.uuid4().hex,
                 start_date_time=session.start_date_time,
                 end_date_time=session.end_date_time,
                 session_id=session.uid,
@@ -439,7 +439,7 @@ class SessionViewSet(viewsets.ViewSet):
         session = Session.objects.create(
             country_code='FI',
             party_id=os.environ.get('CPO_PARTY_ID', 'EKI'),
-            uid=uuid.uuid4(),
+            uid=uuid.uuid4().hex,
             kwh=0.0,
             start_date_time=timezone.now(),
             cdr_token_uid=token.get('uid'),

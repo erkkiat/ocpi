@@ -4,8 +4,7 @@ import uuid
 
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
-from django.db import transaction, models
-from django.utils.module_loading import import_string
+from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -18,13 +17,11 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.location import BusinessDetailsSerializer
-from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent, \
-    Endpoint
-from ocpi22.tasks import send_update
+from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, clear_empty, \
     OCPIResponse, NotOwner, matching_operator
 from ocpi22.versions import get_endpoints_dict
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID, UPDATES_DISABLED
+from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -33,6 +30,29 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type',
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
+
+
+class CommandTokenSerializer(serializers.Serializer):
+    class Meta:
+        fields = ['country_code', 'party_id', 'uid', 'type',
+                  'contract_id', 'visual_number', 'issuer', 'group_id',
+                  'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
+
+    country_code = serializers.CharField(required=True)
+    party_id = serializers.CharField(required=True)
+    uid = serializers.CharField(required=True)
+    type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True)
+    contract_id = serializers.CharField(required=True)
+
+    # The rest is optional, and actually not stored in Session or Cdr
+
+    # visual_number = serializers.CharField()
+    # issuer = serializers.CharField()
+    # group_id = serializers.CharField()
+    # valid = serializers.BooleanField()
+    # whitelist = serializers.ChoiceField(choices=Token.WHITELIST_CHOICES)
+    # language = serializers.CharField(required=False, max_length=2)
+    # default_profile_type = serializers.ChoiceField(choices=Token.PROFILE_TYPE_CHOICES)
 
 
 class TokenViewSet(mixins.UpdateModelMixin,
@@ -91,7 +111,7 @@ class TokenViewSet(mixins.UpdateModelMixin,
                 AuthorizationInfo=dict(
                     allowed=allowed,
                     token=serializer.data,
-                    authorization_reference=uuid.uuid4(),
+                    authorization_reference=uuid.uuid4().hex,
                     info=info
                 )
             )
