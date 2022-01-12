@@ -4,6 +4,7 @@ from django.conf import settings
 from icecream import ic
 
 from ocpi22.api import TokenSerializer
+from ocpi22.models import Token
 from ocpi22.util import ocpi_post
 
 
@@ -43,3 +44,15 @@ def authorize_token(token_uid, location=None):
     logging.warning(f'No authorization for token {token_uid} at {location or "<not known>"} from any party. '
                     'Someone may be trying to use a credit card or some other unsuitable payment device.')
     return False, False
+
+
+def get_admin_token() -> Token:
+    token, _created = Token.objects.get_or_create(
+        country_code=settings.COUNTRY_CODE,
+        party_id=settings.PARTY_ID,
+        uid=f'{settings.COUNTRY_CODE}*{settings.PARTY_ID}*T*ADMIN*TOKEN',
+        defaults=dict(
+            type='OTHER', contract_id='INTERNAL', issuer=f'{settings.COUNTRY_CODE}*{settings.PARTY_ID}', valid=True
+        )
+    )
+    return token

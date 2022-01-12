@@ -5,9 +5,10 @@ from django.utils.html import format_html
 from requests import Response
 from rest_framework import exceptions
 
-from ocpi22.commands import send_start_command, get_our_first_token
+from ocpi22.commands import send_start_command
 from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
     PriceComponent, Cdr, Session, Credentials, CredentialsRole, Endpoint
+from ocpi22.tokens import get_admin_token
 
 
 class TokenAdmin(admin.ModelAdmin):
@@ -106,7 +107,7 @@ class EvseAdmin(admin.ModelAdmin):
         evse: Evse
         for evse in queryset:
             try:
-                response: Response = send_start_command(request, evse, get_our_first_token())
+                response: Response = send_start_command(request, evse, get_admin_token())
                 if response:
                     self.message_user(request, f'Starting charging at {evse.location}, '
                                            f'response: {response.status_code} - {response.reason}')
