@@ -3,6 +3,7 @@ import os
 import uuid
 from collections import namedtuple
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import exceptions
 from rest_framework.exceptions import NotFound
@@ -21,7 +22,8 @@ def get_token(token_id, ad_hoc_token):
     return CdrToken(**ad_hoc_token)
 
 
-def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None, authorize=True) -> Session:
+def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None,
+                   authorization_reference=None, authorize=True) -> Session:
     # ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
     token = get_token(token_id, ad_hoc_token)
     evse = get_object_or_404(Evse, uid=evse_id)
@@ -45,8 +47,8 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
 
     # noinspection PyUnresolvedReferences
     session = Session.objects.create(
-        country_code='FI',
-        party_id=os.environ.get('CPO_PARTY_ID', 'XXX'),
+        country_code=settings.COUNTRY_CODE,
+        party_id=settings.PARTY_ID,
         uid=uuid.uuid4().hex,
         kwh=0.0,
         start_date_time=timezone.now(),
@@ -54,6 +56,7 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
         cdr_token_type=token.type,
         cdr_token_contract_id=token.contract_id,
         auth_method=auth_method,
+        authorization_reference=authorization_reference,
         location=location,
         evse=evse,
         connector=connector,

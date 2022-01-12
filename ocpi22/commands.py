@@ -135,6 +135,7 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
                     location_id=serializer.data['location_id'],
                     evse_id=serializer.data.get('evse_uid', ''),
                     connector_id=serializer.data.get('connector_id'),
+                    authorization_reference=serializer.data.get('authorization_reference'),
                     ad_hoc_token=token,
                     authorize=False
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
