@@ -13,7 +13,8 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule
+from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule, clear_empty, \
+    get_total_cost
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
@@ -41,6 +42,11 @@ class ModelUtilMixin:
         if hasattr(self, 'party_id') and self.party_id != settings.PARTY_ID:
             return False
         return True
+
+    def is_owner(self, request):
+        if not hasattr(self, 'country_code') or not hasattr(self, 'party_id'):
+            return False
+        return check_ownership(request, self.country_code, self.party_id)
 
 
 class BusinessDetails(models.Model, ModelUtilMixin):
@@ -342,9 +348,6 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
 
     def get_absolute_url(self):
         return reverse('token-by-id', args=[self.country_code, self.party_id, self.uid])
-
-    def is_owner(self, request):
-        return check_ownership(request, self.country_code, self.party_id)
 
 
 class AuthorizationInfo(models.Model, ModelUtilMixin):
@@ -888,7 +891,7 @@ class Session(models.Model, ModelUtilMixin):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['uid', 'party_id'], name='session_party_id_uid'),
+            models.UniqueConstraint(fields=['uid', 'party_id', 'country_code'], name='session_party_id_uid_country_code'),
             # models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
 
@@ -929,6 +932,14 @@ class Session(models.Model, ModelUtilMixin):
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
     cdr_token_contract_id = models.CharField(max_length=36)
 
+    # @property
+    # def cdr_token(self):
+    #     return clear_empty(dict(
+    #         uid=self.cdr_token_uid,
+    #         type=self.cdr_token_type,
+    #         contract_id=self.cdr_token_contract_id
+    #     ))
+
     AUTH_REQUEST = 'AUTH_REQUEST'
     COMMAND = 'COMMAND'
     WHITELIST = 'WHITELIST'
@@ -957,8 +968,22 @@ class Session(models.Model, ModelUtilMixin):
     # Location.id of the Location object of this CPO, on which the charging session is/was happening.
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='sessions')
 
+    @property
+    def location_uid(self):
+        # I firmly believe this is not in use
+        raise NotImplementedError()
+        # For SessionSaveSerializer
+        return self.location.uid
+
     # EVSE.uid of the EVSE of this Location on which the charging session is/was happening.
     evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='sessions')
+
+    @property
+    def evse_uid(self):
+        # I firmly believe this is not in use
+        raise NotImplementedError()
+        # For SessionSaveSerializer
+        return self.evse.uid
 
     # Connector.id of the Connector of this Location the charging session is/was happening.
     connector = models.ForeignKey(Connector, on_delete=models.PROTECT, related_name='sessions', blank=True, null=True)
@@ -974,6 +999,13 @@ class Session(models.Model, ModelUtilMixin):
     # information is given in the Session object, it does not imply the session is/was free of charge.
     total_cost_excl_vat = models.FloatField(blank=True, null=True)
     total_cost_incl_vat = models.FloatField(blank=True, null=True)
+
+    @property
+    def total_cost(self):
+        # I firmly believe this is not in use
+        raise NotImplementedError()
+        # For SessionSaveSerializer, OCPI 2.2 format
+        return get_total_cost(self)
 
     # The status of this session
     STATUS_CHOICES = (

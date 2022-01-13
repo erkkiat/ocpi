@@ -3,7 +3,6 @@ import logging
 from django.conf import settings
 from icecream import ic
 
-from ocpi22.api import TokenSerializer
 from ocpi22.models import Token
 from ocpi22.util import ocpi_post
 
@@ -16,6 +15,7 @@ def authorize_token(token_uid, location=None):
 
     token: Token = Token.get_if_exists(uid=token_uid)
     if token and token.whitelist in (Token.ALLOWED, Token.ALWAYS):
+        from ocpi22.api import TokenSerializer
         serializer = TokenSerializer(instance=token)
         return Session.WHITELIST, serializer.data
     # noinspection PyUnresolvedReferences

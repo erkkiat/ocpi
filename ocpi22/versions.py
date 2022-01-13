@@ -66,6 +66,11 @@ def get_endpoints_dict(request):
                 url=request.build_absolute_uri(reverse('session-list'))
             ),
             dict(
+                identifier="sessions",
+                role=R,
+                url=request.build_absolute_uri(reverse('session-list'))
+            ),
+            dict(
                 identifier="cdrs",
                 role=S,
                 url=request.build_absolute_uri(reverse('cdr-list'))

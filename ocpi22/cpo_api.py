@@ -14,10 +14,10 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22 import models
-from ocpi22.api import HyperlinkedModelSerializerCleanedUp, clear_empty, CdrSerializer
 from ocpi22.location import send_evse_updates
 from ocpi22.models import Evse, Session, Token, Connector, Cdr, Location
 from ocpi22.tokens import authorize_token
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
@@ -402,6 +402,7 @@ class SessionViewSet(viewsets.ViewSet):
                 total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5)
             )
             cdr.tariffs.set(session.connector.tariff_ids.all())
+            from ocpi22.api import CdrSerializer
             result['cdr'] = CdrSerializer(cdr, context={'request': request}).data
 
             # from ocpi22.commands import sh
