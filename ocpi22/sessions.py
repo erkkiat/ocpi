@@ -10,7 +10,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.generics import get_object_or_404
 
 from ocpi22.cpo_api import authorize_token
-from ocpi22.models import Token, Evse, Connector, Session
+from ocpi22.models import Token, Evse, Connector, Session, Location
 
 
 def get_token(token_id, ad_hoc_token):
@@ -26,7 +26,10 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
                    authorization_reference=None, authorize=True) -> Session:
     # ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
     token = get_token(token_id, ad_hoc_token)
-    evse = get_object_or_404(Evse, uid=evse_id)
+    location = Location.get_if_exists(uid=location_id)
+    if not location:
+        raise NotFound(f'Location {location_id} is not in our database')
+    evse = get_object_or_404(Evse, uid=evse_id, location=location)
     location = evse.location
     # ic(token, evse, location)
     if location.uid != location_id:

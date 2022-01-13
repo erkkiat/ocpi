@@ -3,6 +3,7 @@ from collections import OrderedDict
 from urllib.parse import urljoin
 
 from django.conf import settings
+from django.db import transaction
 from django.http import Http404
 from icecream import ic
 from rest_framework import mixins, serializers, status
@@ -124,6 +125,7 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     serializer_class = CommandsSerializer
     permission_classes = [OCPIPermission]
 
+    @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
         try:

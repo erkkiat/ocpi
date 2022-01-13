@@ -1,9 +1,4 @@
-"""
-This file demonstrates writing tests using the unittest module. These will pass
-when you run "manage.py test".
-
-Replace this with more appropriate tests for your application.
-"""
+import doctest
 import json
 import os
 
@@ -23,6 +18,12 @@ from ocpi22.location import LocationViewSet
 from ocpi22.models import Credentials, Location, Evse, Connector, CredentialsRole, BusinessDetails, Tariff, \
     PriceComponent
 from ocpi22.util import OCPIResponse, Ocpi
+
+
+def load_tests(_loader, tests, _ignore):
+    tests.addTests(doctest.DocTestSuite('ocpi22.util'))
+    # tests.addTests(doctest.DocTestSuite('chargers.vendors.tesla'))
+    return tests
 
 
 class LocationTests(TestCase):
@@ -210,8 +211,8 @@ class LocationTests(TestCase):
 
             # Send the request
             response = self.put(url, data, token_base64)
-            if response.status_text:
-                print(f'status_text: "{response.status_text}" for {filename} case.')
+            # if response.status_text:
+            #     print(f'status_text: "{response.status_text}" for {filename} case.')
             self.assertEqual(response.status_code, http_status,
                              f'Expected a HTTP status code {http_status} for {filename} case.')
             self.assertEqual(response.data['status_code'], ocpi_status,

@@ -880,7 +880,7 @@ class Connector(models.Model, ModelUtilMixin):
         return format_html('<br>'.join([t.link() for t in self.tariff_ids.all()]))
 
 
-class Session(models.Model, ModelUtilMixin):
+class Session(models.Model, ModelUtilMixin, OcpiModule):
     """
     The Session object describes one charging session. That doesn’t mean it is required that energy
     has been transferred between EV and the Charge Point. It is possible that the EV never took energy
@@ -894,6 +894,9 @@ class Session(models.Model, ModelUtilMixin):
             models.UniqueConstraint(fields=['uid', 'party_id', 'country_code'], name='session_party_id_uid_country_code'),
             # models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
+
+    ocpi_module_name = Ocpi.Modules.SESSIONS
+    ocpi_serializer_class = 'ocpi22.api.SessionSaveSerializer'
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
     country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
@@ -932,14 +935,6 @@ class Session(models.Model, ModelUtilMixin):
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
     cdr_token_contract_id = models.CharField(max_length=36)
 
-    # @property
-    # def cdr_token(self):
-    #     return clear_empty(dict(
-    #         uid=self.cdr_token_uid,
-    #         type=self.cdr_token_type,
-    #         contract_id=self.cdr_token_contract_id
-    #     ))
-
     AUTH_REQUEST = 'AUTH_REQUEST'
     COMMAND = 'COMMAND'
     WHITELIST = 'WHITELIST'
@@ -968,22 +963,8 @@ class Session(models.Model, ModelUtilMixin):
     # Location.id of the Location object of this CPO, on which the charging session is/was happening.
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='sessions')
 
-    @property
-    def location_uid(self):
-        # I firmly believe this is not in use
-        raise NotImplementedError()
-        # For SessionSaveSerializer
-        return self.location.uid
-
     # EVSE.uid of the EVSE of this Location on which the charging session is/was happening.
     evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='sessions')
-
-    @property
-    def evse_uid(self):
-        # I firmly believe this is not in use
-        raise NotImplementedError()
-        # For SessionSaveSerializer
-        return self.evse.uid
 
     # Connector.id of the Connector of this Location the charging session is/was happening.
     connector = models.ForeignKey(Connector, on_delete=models.PROTECT, related_name='sessions', blank=True, null=True)
@@ -1253,14 +1234,14 @@ def evse_post_save(sender, instance, *_args, **kwargs):
     """
     Make sure that only Admin calls Evse.save() without the update_fields list
     """
-    ic()
-    ic(kwargs)
+    # ic()
+    # ic(kwargs)
     update_fields = kwargs.get('update_fields', [])
     if update_fields and 'last_updated' in update_fields:
         # If only last_updated has been changed, Location.last_updated has been already updated by connector_post_save
-        ic('evse_post_save was triggered by connector_post_save, no updating for Location.last_updated')
+        # ic('evse_post_save was triggered by connector_post_save, no updating for Location.last_updated')
         return
-    ic('evse_post_save is updating Location.last_updated')
+    # ic('evse_post_save is updating Location.last_updated')
     evse = instance
     evse.location.last_updated = evse.last_updated
     evse.location.save(update_fields=['last_updated'])
@@ -1274,14 +1255,14 @@ def evse_post_save(sender, instance, *_args, **kwargs):
 
 @receiver(post_save, sender=Connector)
 def connector_post_save(sender, instance, *_args, **kwargs):
-    ic()
-    ic(kwargs)
+    # ic()
+    # ic(kwargs)
     connector: Connector = instance
     evse = connector.evse
-    ic('connector_post_save is updating Evse.last_updated')
+    # ic('connector_post_save is updating Evse.last_updated')
     evse.last_updated = connector.last_updated
     evse.save(update_fields=['last_updated'])
-    ic('connector_post_save is updating Location.last_updated')
+    # ic('connector_post_save is updating Location.last_updated')
     location = connector.evse.location
     location.last_updated = connector.last_updated
     location.save(update_fields=['last_updated'])

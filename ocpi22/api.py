@@ -335,89 +335,29 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
 
 class CdrTokenSerializer(serializers.Serializer):
-    class Meta:
-        fields = ['uid', 'type', 'contract_id']
-
     uid = serializers.CharField(required=True, source='cdr_token_uid')
     type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True, source='cdr_token_type')
     contract_id = serializers.CharField(required=True, source='cdr_token_contract_id')
 
-    # def get_attribute(self, instance):
-    #     return instance
-    #
-    # def to_representation(self, instance):
-    #     return dict(
-    #         uid=instance.cdr_token_uid,
-    #         type=instance.cdr_token_type,
-    #         contract_id=instance.cdr_token_contract_id
-    #     )
-
-
-# class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
-#     class Meta:
-#         model = Session
-#         fields = ['detail_url', 'country_code', 'party_id', 'uid',
-#                   'start_date_time', 'end_date_time', 'kwh',
-#                   'cdr_token', 'auth_method', 'authorization_reference',
-#                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
-#                   'status', 'last_updated']
-#
-#     uid = serializers.CharField(required=True)
-#     cdr_token = serializers.DictField()
-#     location_id = serializers.CharField(source='location_uid')
-#     evse_uid = serializers.CharField()
-#     connector_id = serializers.SerializerMethodField()
-#     total_cost = serializers.SerializerMethodField()
-#
-#     @staticmethod
-#     def get_location_id(session):
-#         return session.location.uid
-#
-#     @staticmethod
-#     def get_evse_uid(session):
-#         return session.evse.uid
-#
-#     @staticmethod
-#     def get_connector_id(session):
-#         return session.connector.uid if session.connector else 0
-#
-#     @staticmethod
-#     def get_total_cost(obj):
-#         return get_total_cost(obj)
-
 
 class TotalCostSerializer(serializers.Serializer):
-    class Meta:
-        fields = ['excl_vat', 'incl_vat']
-
     excl_vat = serializers.FloatField(source='total_cost_excl_vat')
-    incl_vat = serializers.FloatField(source='total_cost_incl_vat')
+    incl_vat = serializers.FloatField(source='total_cost_incl_vat', required=False)
 
-    # def get_attribute(self, instance):
-    #     return instance
-    #
-    # def to_representation(self, instance):
-    #     return clear_empty(dict(
-    #         excl_vat=instance.total_cost_excl_vat,
-    #         incl_vat=instance.total_cost_incl_vat
-    #     ))
 
 default_error_messages = dict(
-    object_missing='{name} with UID {uid} does not exist in our database'
+    object_missing='There is no {name} with UID {uid} in our database'
 )
 
 
 class LocationIdSerializer(serializers.Serializer):
     location_id = serializers.CharField(required=True)
+    default_error_messages = default_error_messages
 
     def to_representation(self, instance: Session):
-        ic()
-        ic(instance)
         return instance.location.uid
 
     def to_internal_value(self, data: str):
-        ic()
-        ic(data)
         location = Location.get_if_exists(uid=data)
         if not location:
             self.fail('object_missing', name='Location', uid=data)
@@ -426,6 +366,7 @@ class LocationIdSerializer(serializers.Serializer):
 
 class EvseUidSerializer(serializers.Serializer):
     evse_uid = serializers.CharField(required=True)
+    default_error_messages = default_error_messages
 
     def to_representation(self, instance: Session):
         ic()
@@ -450,67 +391,19 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
                   'status', 'last_updated']
 
-    # country_code = serializers.CharField(required=True)
-    # party_id = serializers.CharField(required=True)
-    # uid = serializers.CharField(required=True)
     cdr_token = CdrTokenSerializer(required=True, source='*')
     location_id = LocationIdSerializer(source='*')
     evse_uid = EvseUidSerializer(source='*')
-    # connector_id = serializers.CharField()
-    # start_date_time = serializers.DateTimeField()
-    # end_date_time = serializers.DateTimeField(required=False)
-    # kwh = serializers.FloatField()
-    # auth_method = serializers.ChoiceField(choices=Session.AUTH_METHOD_CHOICES)
-    # authorization_reference = serializers.CharField(required=False)
-    # meter_id = serializers.CharField(required=False)
-    # currency = serializers.CharField(max_length=3)
-    # status = serializers.ChoiceField(choices=Session.STATUS_CHOICES)
-    # last_updated = serializers.DateTimeField()
-    total_cost = TotalCostSerializer(source='*')
-
-    def _process_incoming(self, data: dict, update: bool=False) -> dict:
-        token = data.pop('cdr_token', None)
-        ic(token)
-        total_cost = data.pop('total_cost', None)
-        location_uid = data.pop('location_uid', None)
-        evse_uid = data.pop('evse_uid', None)
-        location = Location.get_if_exists(uid=location_uid)
-        evse = Evse.get_if_exists(uid=evse_uid)
-        if not update:
-            # Make sure Location and Evse exist
-            if not location:
-                raise ValidationError(f'Location {location_uid} does not exist in our database')
-            if not evse:
-                raise ValidationError(f'Evse {evse_uid} does not exist in our database')
-            if location != evse.location:
-                raise ValidationError(f'Evse {evse_uid} is not at location {location_uid}')
-        data.update(dict(
-            cdr_token_uid=token.get('uid'),
-            cdr_token_type=token.get('type'),
-            cdr_token_contract_id=token.get('contract_id'),
-            total_cost_excl_vat=total_cost.get('excl_vat'),
-            total_cost_incl_vat=total_cost.get('incl_vat'),
-            location=location,
-            evse=evse
-        ))
-        return data
+    total_cost = TotalCostSerializer(source='*', required=False)
 
     def create(self, validated_data):
-        ic()
-        # validated_data = self._process_incoming(validated_data)
-        ic(validated_data)
         return Session.objects.create(
             **validated_data
         )
 
     def update(self, instance, validated_data):
-        ic()
-        ic(validated_data)
-        # validated_data = self._process_incoming(validated_data, update=True)
-
         for key, value in validated_data.items():
             if key not in ('uid', 'location', 'evse'):
-                ic(key, value)
                 setattr(instance, key, value)
             else:
                 print(f'Skipping key {key}')
@@ -582,13 +475,10 @@ class TariffSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     def create(self, validated_data):
         elements = validated_data.pop('elements')
         price_components = elements.pop('price_components')
-        # ic(price_components)
         tariff = Tariff.objects.create(**validated_data)
         for pc in price_components:
-            # ic(pc)
             # noinspection PyUnresolvedReferences
             price_component = PriceComponent.objects.create(**pc, tariff=tariff)
-            # ic(price_component)
         return tariff
 
     @transaction.atomic
@@ -666,6 +556,7 @@ class SessionViewSet(mixins.ListModelMixin,
     queryset = Session.objects.all().order_by('created')
     serializer_class = SessionSaveSerializer
 
+    @transaction.atomic
     @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def session_by_id(self, request, country_code, party_id, uid) -> Response:
@@ -686,6 +577,7 @@ class SessionViewSet(mixins.ListModelMixin,
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
+    @transaction.atomic
     def put(self, request, partial=False) -> OCPIResponse:
         data = request.data.get('data', request.data)
         uid = data.get('uid')

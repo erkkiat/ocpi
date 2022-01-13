@@ -17,8 +17,26 @@ from rest_framework.response import Response
 
 
 def clear_empty(dict_with_possibly_empty_values):
-    return OrderedDict((k, v) for k, v in dict_with_possibly_empty_values.items()
-                       if v not in [None, [], '', {}])
+    """
+    Do a recursive cleanup for a dict and remove empty values and dicts with no keys
+
+    # Must leave zero floats untouched
+    >>> clear_empty(dict(jotain=0.0))
+    OrderedDict([('jotain', 0.0)])
+
+    # Must remove empty dictionaries recursively
+    >>> clear_empty(dict(jotain='', muuta=dict(jotain='')))
+    OrderedDict()
+    """
+
+    if not isinstance(dict_with_possibly_empty_values, dict):
+        return dict_with_possibly_empty_values
+    result = OrderedDict()
+    for key, value in dict_with_possibly_empty_values.items():
+        value = clear_empty(value)
+        if value or value == 0.0:
+            result[key] = value
+    return result
 
 
 def get_total_cost(obj):
@@ -28,7 +46,16 @@ def get_total_cost(obj):
     ))
 
 
-def hours_minutes(hours_float):
+def hours_minutes(hours_float: float) -> str:
+    """
+    >>> hours_minutes(1.5)
+    '1 h 30 min'
+    >>> hours_minutes(.5)
+    '30 min'
+    >>> hours_minutes(2/3600)
+    '2 seconds'
+    """
+
     hours = int(hours_float)
     minutes = int((hours_float-hours)*60)
     if hours:
@@ -41,6 +68,12 @@ def hours_minutes(hours_float):
 
 
 def generate_random_token() -> str:
+    """
+    >>> len(generate_random_token())
+    64
+    >>> generate_random_token() != generate_random_token()
+    True
+    """
     return secrets.token_hex(32)
 
 
@@ -48,7 +81,8 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
     def to_representation(self, value):
         # Remove empty values
         repr_dict = super().to_representation(value)
-        return clear_empty(repr_dict)
+        result = clear_empty(repr_dict)
+        return result
 
     def get_detail_url(self, obj) -> str:
         """
@@ -249,8 +283,8 @@ class OcpiModule:
     ocpi_module_name = None
 
     def atomic_post_save(self, *args, **kwargs) -> None:
-        ic("Generic atomic_post_save")
-        ic(args, kwargs)
+        # ic("Generic atomic_post_save")
+        # ic(args, kwargs)
 
         assert self.ocpi_serializer_class, \
             f'OCPI object class {type(self)} must have an ocpi_serializer_class specified.'
@@ -284,7 +318,6 @@ class OcpiModule:
             e: Endpoint
             for e in endpoints:
                 print(f'Send update to {ocpi_module} module at {e.url}')
-                ic(serializer.data)
                 from ocpi22.tasks import send_update
                 if settings.BACKGROUND_SEND:
                     send_update.delay(serializer.data, e.url, e.get_token_base64())

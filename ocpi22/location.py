@@ -510,7 +510,7 @@ class LocationViewSet(mixins.ListModelMixin,
     @transaction.atomic
     def put(self, request, *_args, **_kwargs):
         data = request.data.get('data', request.data)
-        print(data)
+        # print(data)
         uid = data.get('id')
         country_code = request.data.get('country_code')
         party_id = request.data.get('party_id')
@@ -524,7 +524,7 @@ class LocationViewSet(mixins.ListModelMixin,
                 # noinspection PyUnresolvedReferences
                 location = Location.objects.get(uid=uid, country_code=country_code, party_id=party_id)
             except Location.DoesNotExist:
-                print(f"New location {uid}, {country_code}, {party_id}")
+                # print(f"New location {uid}, {country_code}, {party_id}")
                 location = None
             serializer = LocationSaveSerializer(location, data=data)
             if serializer.is_valid():

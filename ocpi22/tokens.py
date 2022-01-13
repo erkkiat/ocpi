@@ -32,7 +32,6 @@ def authorize_token(token_uid, location=None):
             token_base64=endpoint.get_token_base64(),
             data=dict(LocationReferences=location_references) if location else dict()
         )
-        ic(result.json())
         if result.status_code == 403:
             logging.warning(f'No authorization for token {token_uid} at {location or "<not known>"} '
                             f'from {endpoint.credentials.party()}. ')
