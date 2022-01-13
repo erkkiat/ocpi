@@ -110,7 +110,8 @@ class EvseAdmin(admin.ModelAdmin):
                 response: Response = send_start_command(request, evse, get_admin_token())
                 if response:
                     self.message_user(request, f'Starting charging at {evse.location}, '
-                                           f'response: {response.status_code} - {response.reason}')
+                                               f'response: {response.status_code} - '
+                                               f'{response.reason if hasattr(response, "reason") else "Ok" }')
                 else:
                     self.message_user(request, f'Unable to start charging at {evse.location}.',
                                       level=messages.ERROR)
