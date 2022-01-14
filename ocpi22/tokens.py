@@ -38,7 +38,7 @@ def authorize_token(token_uid, location=None):
             # raise exception.PermissionDenied("You don't have enough balance on your account.")
         if result.status_code == 200:
             data = result.json()
-            ic(data)
+            # ic(data)
             return Session.AUTH_REQUEST, data.get('data').get('AuthorizationInfo')
     logging.warning(f'No authorization for token {token_uid} at {location or "<not known>"} from any party. '
                     'Someone may be trying to use a credit card or some other unsuitable payment device.')

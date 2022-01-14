@@ -10,10 +10,12 @@ from django.test import TestCase
 # Todo: Tariff_id: Regular Expression: [A-Z]{2}[A-Za-z0-9]{3}[T][A-Z0-9][A-Z0-9\*]{0,29}
 # Todo: evse_id Regular Expression: [A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
+from icecream import ic
 from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
+from ocpi22.api import TariffViewSet, TariffSerializer
 from ocpi22.location import LocationViewSet
 from ocpi22.models import Credentials, Location, Evse, Connector, CredentialsRole, BusinessDetails, Tariff, \
     PriceComponent, TariffElement
@@ -131,15 +133,14 @@ class LocationTests(TestCase):
             connectors = evse.get('connectors')
             self.assertIsInstance(connectors, list, msg='EVSE connectors should be a list')
 
-    def put(self, url, data, token) -> OCPIResponse:
+    def put(self, url, data, token, viewset) -> OCPIResponse:
         request = self.factory.put(url, data, content_type="application/json",
                                    Authorization=f'Token {token}')
         request.data = data
         request.user = AnonymousUser
         request.credentials = self.credentials
 
-        viewset = LocationViewSet()
-        return viewset.put(request)
+        return viewset().put(request)
 
     def test_put_location(self):
         url = reverse('location-list')
@@ -148,7 +149,7 @@ class LocationTests(TestCase):
 
         invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
 
-        response = self.put(url, invalid_data, 'FALSETOKEN')
+        response = self.put(url, invalid_data, 'FALSETOKEN', LocationViewSet)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'A Location request should require OCPI authentication. '
                          f'{response.data}')
@@ -156,7 +157,7 @@ class LocationTests(TestCase):
                          'The response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
                          f'{response.data}')
 
-        response = self.put(url, invalid_data, token_base64)
+        response = self.put(url, invalid_data, token_base64, LocationViewSet)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Badly formed but correctly authenticated request should produce http status code 400.')
 
@@ -214,7 +215,7 @@ class LocationTests(TestCase):
             self.credentials.roles.add(roles)
 
             # Send the request
-            response = self.put(url, data, token_base64)
+            response = self.put(url, data, token_base64, LocationViewSet)
             # if response.status_text:
             #     print(f'status_text: "{response.status_text}" for {filename} case.')
             self.assertEqual(response.status_code, http_status,
@@ -222,36 +223,78 @@ class LocationTests(TestCase):
             self.assertEqual(response.data['status_code'], ocpi_status,
                              f'Expected an OCPI status code {ocpi_status} for {filename} case.')
 
-            # noinspection PyUnresolvedReferences
-            location = Location.objects.get(uid=uid)
-            # print(f"Evses: {location.evses.count()}")
-            self.assertEqual(location.evses.count(), evses, f'There should be {evses} evses after {filename} case.')
-            connector_count = 0
-            for evse in location.evses.all():
-                connector_count += evse.connectors.count()
-            # print(f"Connectors: {connector_count}")
-            self.assertEqual(connector_count, connectors,
-                             f'There should be {connectors} connectors after {filename} case.')
+            if evses:
+                # noinspection PyUnresolvedReferences
+                location = Location.objects.get(uid=uid)
+                # print(f"Evses: {location.evses.count()}")
+                self.assertEqual(location.evses.count(), evses, f'There should be {evses} evses after {filename} case.')
+                connector_count = 0
+                for evse in location.evses.all():
+                    connector_count += evse.connectors.count()
+                # print(f"Connectors: {connector_count}")
+                self.assertEqual(connector_count, connectors,
+                                 f'There should be {connectors} connectors after {filename} case.')
 
-        # This was a specific problem
-        response = self.put(
-            url,
-            json.loads('''
-            {"address": "Street 1",
-                      "city": "Helsinki",
-                      "coordinates": {"latitude": "60.000000", "longitude": "30.000000"},
-                      "country": "FIN",
-                      "country_code": "BE",
-                      "facilities": ["HOTEL"],
-                      "id": "UID11",
-                      "last_updated": "2022-01-05T06:58:15.811866",
-                      "name": "Test location 6",
-                      "parking_type": "PARKING_LOT",
-                      "party_id": "BEC",
-                      "publish": true,
-                      "time_zone": "Europe/Helsinki"}
-            '''), token_base64)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_put_tariff(self):
+        url = reverse('tariff-list')
+        dirname = os.path.dirname(os.path.abspath(__file__))
+        token_base64 = self.credentials.ours_base64()
+
+        invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
+
+        response = self.put(url, invalid_data, 'FALSETOKEN', TariffViewSet)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                         'A Tariff request should require OCPI authentication. '
+                         f'{response.data}')
+        self.assertEqual(response.data['status_code'], Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                         'The response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
+                         f'{response.data}')
+
+        testcases = (
+            ('tariff_1_simple_2hour', 'DE', 'ALL', status.HTTP_201_CREATED, 1000, '2015-06-29T20:39:09Z'),
+            ('tariff_1_simple_2hour_modified', 'DE', 'ALL', status.HTTP_200_OK, 1000, '2015-06-29T20:39:09Z'),
+        )
+
+        for filename, country_code, party_id, http_status, ocpi_status, last_updated in testcases:
+
+            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
+                data = json.load(file)
+
+            # Create CretentialsRoles
+            roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
+                                                    party_id=party_id, defaults=dict(business_details=self.business_details))
+            self.credentials.roles.add(roles)
+
+            # Send the request
+            response = self.put(url, data, token_base64, TariffViewSet)
+            if response.status_text:
+                print(f'status_text: "{response.status_text}" for {filename} case.')
+            self.assertEqual(response.status_code, http_status,
+                             f'Expected a HTTP status code {http_status} for {filename} case.')
+            self.assertEqual(response.data['status_code'], ocpi_status,
+                             f'Expected an OCPI status code {ocpi_status} for {filename} case.')
+
+            # Check that there are three levels stored from the incoming JSON
+            uid = data.get('id')
+            saved_data = TariffSerializer(Tariff.objects.get(uid=uid)).data
+            ic(saved_data)
+
+            # self.assertEqual(saved_data.get('last_updated'), '2015-06-29T20:39:09Z',
+            #                  'Last_updated is not stored from the incoming data')
+            elements_list = saved_data.get('elements')
+            self.assertIsInstance(elements_list, list,
+                                  'TariffElements list is missing from the stored Tariff')
+            self.assertTrue(len(elements_list), 'Stored TariffElement list is empty')
+            for el in elements_list:
+                price_components_list = el.get('price_components')
+                self.assertIsInstance(price_components_list, list,
+                                      'PriceComponents list is missing from the stored Tariff')
+                self.assertTrue(len(price_components_list),
+                                'PriceComponents list in Tariff is empty')
+                for pc in price_components_list:
+                    self.assertTrue(pc.get('type'),
+                                    'Looks like TariffSerializer is not storing PriceComponents')
 
     def test_patch_connector(self):
         # url = reverse('location-connector', self.location, ...)

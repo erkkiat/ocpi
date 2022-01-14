@@ -474,7 +474,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
 
 
 class TariffElement(models.Model, ModelUtilMixin):
-    tariff = models.ForeignKey(Tariff, related_name='tariff_elements', on_delete=models.PROTECT)
+    tariff = models.ForeignKey(Tariff, related_name='tariff_elements', on_delete=models.CASCADE)
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
@@ -518,7 +518,7 @@ class PriceComponent(models.Model, ModelUtilMixin):
     def tariff(self):
         return self.tariff_element.tariff
 
-    tariff_element = models.ForeignKey(TariffElement, related_name='price_components', on_delete=models.PROTECT)
+    tariff_element = models.ForeignKey(TariffElement, related_name='price_components', on_delete=models.CASCADE)
 
     def _format_step_and_type(self):
         t = self.type
@@ -529,7 +529,7 @@ class PriceComponent(models.Model, ModelUtilMixin):
             else:
                 return f'/ {s} Wh'
         elif t == 'FLAT':
-            return 'fixed'
+            return 'flat'
         elif t == 'TIME':
             if s == 60:
                 return '/ minute'

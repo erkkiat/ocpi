@@ -331,7 +331,7 @@ def ocpi_post(url, token_base64, *args, **kwargs) -> Response:
     data = ''
     if 'data' in kwargs:
         data = json.dumps(kwargs.pop('data'))
-        ic(data)
+        # ic(data)
     response = requests.post(url, *args, **kwargs, data=data,
                              headers={
                                  "Authorization": f'Token {token_base64}',

@@ -13,9 +13,9 @@ from ocpi22.tokens import get_admin_token
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False
 
-from django.conf.locale.en import formats as es_formats
+from django.conf.locale.en import formats as locale_formats
 
-es_formats.DATETIME_FORMAT = "j/n/Y H:i"
+locale_formats.DATETIME_FORMAT = "j/n/Y H:i"
 
 
 class TokenAdmin(admin.ModelAdmin):

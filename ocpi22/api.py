@@ -18,11 +18,15 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.location import BusinessDetailsSerializer
 from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent, \
-    Location, Evse
+    Location, Evse, TariffElement
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, \
     OCPIResponse, NotOwner, matching_operator
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
+
+default_error_messages = dict(
+    object_missing='There is no {name} with UID {uid} in our database'
+)
 
 
 class CdrTokenSerializer(serializers.Serializer):
@@ -43,6 +47,13 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
+    def to_internal_value(self, data):
+        uid = data.get('uid')
+        token = Token.get_if_exists(uid=uid)
+        if not token:
+            self.fail('object-missing', name='Token', uid=uid)
+        return token
+
 
 class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
@@ -55,47 +66,47 @@ class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
 class ElementsSaveSerializer(serializers.Serializer):
     price_components = PriceComponentSerializer(many=True)
 
-    # def to_internal_value(self, data):
-    #     ic()
-    #     ic(data)
-    #     # pc = PriceComponentSerializer(instance=tariff.price_components.all(), many=True)
-    #     # return dict(price_components=pc.data)
-    #     return data
-
-    # def to_representation(self, instance):
-    #     ic()
-    #     ic(instance)
-    #     return instance
-
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
-        fields = ('detail_url', 'country_code', 'party_id', 'id', 'type',
-                  'tariff_alt_url',
-                  'elements', 'readable',
-                  'last_updated')
+        exclude = ['created', 'uid']
 
-    id = serializers.CharField(source='uid')
-    elements = ElementsSaveSerializer(source='tariff_elements', many=True)
+    id = serializers.CharField(source='uid', required=True)
+    elements = ElementsSaveSerializer(source='tariff_elements', many=True, required=True)
     readable = serializers.SerializerMethodField()
-
-    # @staticmethod
-    # def get_elements(tariff: Tariff):
-    #     # ic(tariff.price_components.all().values())
-    #     # noinspection PyUnresolvedReferences
-    #     pc = PriceComponentSerializer(instance=tariff.price_components.all(), many=True)
-    #     return dict(price_components=pc.data)
 
     @staticmethod
     def get_readable(tariff: Tariff) -> str:
         return tariff.price()
 
-    def create(self, validated_data):
-        elements = validated_data.pop('elements')
-        price_components = elements.pop('price_components')
-        # Todo: Create or get PriceComponents and link to Tariff
+    def _delete_children(self, tariff: Tariff):
+        # noinspection PyUnresolvedReferences
+        for te in tariff.tariff_elements.all():
+            te.delete()
+
+    def _create_children(self, tariff: Tariff, tariff_elements: dict):
+        for te in tariff_elements:
+            price_components = te.pop('price_components')
+            # noinspection PyUnresolvedReferences
+            tariff_element = TariffElement.objects.create(**te, tariff=tariff)
+            for pc in price_components:
+                # noinspection PyUnresolvedReferences
+                PriceComponent.objects.create(**pc, tariff_element=tariff_element)
+
+    def update(self, instance: Tariff, validated_data: dict) -> Tariff:
+        ic(instance, validated_data)
+        tariff_elements = validated_data.pop('tariff_elements')
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.save()
+        self._create_children(instance, tariff_elements)
+        return instance
+
+    def create(self, validated_data: dict) -> Tariff:
+        tariff_elements = validated_data.pop('tariff_elements')
         tariff = Tariff.objects.create(**validated_data)
+        self._create_children(tariff, tariff_elements)
         return tariff
 
 
@@ -136,8 +147,6 @@ class TokenViewSet(mixins.UpdateModelMixin,
 
     @staticmethod
     def put(request):
-        ic()
-        ic(request.data)
         uid = request.data.get('uid')
         party_id = request.data.get('party_id')
 
@@ -371,6 +380,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
                 role, _role_created = CredentialsRole.objects.get_or_create(
                     **data, defaults=dict(business_details=business_details))
+                # noinspection PyUnresolvedReferences
                 credentials.roles.add(role)
             else:
                 return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
@@ -380,11 +390,6 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
         serializer = CredentialsSerializer(instance=credentials)
         return OCPIResponse(serializer.data)
-
-
-default_error_messages = dict(
-    object_missing='There is no {name} with UID {uid} in our database'
-)
 
 
 class LocationIdSerializer(serializers.Serializer):
@@ -406,13 +411,9 @@ class EvseUidSerializer(serializers.Serializer):
     default_error_messages = default_error_messages
 
     def to_representation(self, instance: Session):
-        ic()
-        ic(instance)
         return instance.evse.uid
 
     def to_internal_value(self, data: str):
-        ic()
-        ic(data)
         evse = Evse.get_if_exists(uid=data)
         if not evse:
             self.fail('object_missing', name='Evse', uid=data)
@@ -448,44 +449,44 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
         return instance
 
 
-class TariffSaveSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Tariff
-        fields = ('country_code', 'party_id', 'id', 'type',
-                  'tariff_alt_url', 'elements',
-                  'last_updated')
-
-    id = serializers.CharField(source='uid')
-    elements = ElementsSaveSerializer(write_only=True, validators=[])
-
-    @transaction.atomic
-    def create(self, validated_data):
-        elements = validated_data.pop('elements')
-        price_components = elements.pop('price_components')
-        tariff = Tariff.objects.create(**validated_data)
-        for pc in price_components:
-            # noinspection PyUnresolvedReferences
-            price_component = PriceComponent.objects.create(**pc, tariff=tariff)
-        return tariff
-
-    @transaction.atomic
-    def update(self, tariff, validated_data):
-        # ic()
-        elements = validated_data.pop('elements')
-        price_components = elements.pop('price_components')
-        for key, value in validated_data.items():
-            setattr(tariff, key, value)
-
-        tariff.price_components.all().delete()
-
-        for pc in price_components:
-            # ic(pc)
-            # noinspection PyUnresolvedReferences
-            price_component = PriceComponent.objects.create(**pc, tariff=tariff)
-            # ic(price_component)
-
-        tariff.save()
-        return tariff
+# class TariffSaveSerializer(HyperlinkedModelSerializerCleanedUp):
+#     class Meta:
+#         model = Tariff
+#         fields = ('country_code', 'party_id', 'id', 'type',
+#                   'tariff_alt_url', 'elements',
+#                   'last_updated')
+#
+#     id = serializers.CharField(source='uid')
+#     elements = ElementsSaveSerializer(write_only=True, validators=[])
+#
+#     @transaction.atomic
+#     def create(self, validated_data):
+#         elements = validated_data.pop('elements')
+#         price_components = elements.pop('price_components')
+#         tariff = Tariff.objects.create(**validated_data)
+#         for pc in price_components:
+#             # noinspection PyUnresolvedReferences
+#             price_component = PriceComponent.objects.create(**pc, tariff=tariff)
+#         return tariff
+#
+#     @transaction.atomic
+#     def update(self, tariff, validated_data):
+#         # ic()
+#         elements = validated_data.pop('elements')
+#         price_components = elements.pop('price_components')
+#         for key, value in validated_data.items():
+#             setattr(tariff, key, value)
+#
+#         tariff.price_components.all().delete()
+#
+#         for pc in price_components:
+#             # ic(pc)
+#             # noinspection PyUnresolvedReferences
+#             price_component = PriceComponent.objects.create(**pc, tariff=tariff)
+#             # ic(price_component)
+#
+#         tariff.save()
+#         return tariff
 
 
 class TariffViewSet(mixins.RetrieveModelMixin,
@@ -511,8 +512,6 @@ class TariffViewSet(mixins.RetrieveModelMixin,
     def put(request) -> OCPIResponse:
         data = request.data.get('data', request.data)
 
-        # ic(data)
-
         country_code = data.get('country_code')
         party_id = data.get('party_id')
 
@@ -525,10 +524,10 @@ class TariffViewSet(mixins.RetrieveModelMixin,
             tariff = Tariff.objects.get(country_code=country_code, party_id=party_id, uid=data.get('id'))
         except Tariff.DoesNotExist:
             tariff = None
-        serializer = TariffSaveSerializer(instance=tariff, data=data)
+        serializer = TariffSerializer(instance=tariff, data=data)
         if serializer.is_valid():
             serializer.save()
-            return OCPIResponse(serializer.data)
+            return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if tariff else status.HTTP_201_CREATED)
         else:
             return OCPIResponse(errors=serializer.errors)
 
