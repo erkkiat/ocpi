@@ -2,12 +2,13 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
+from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from requests import Response
 from rest_framework import exceptions
 
 from ocpi22.commands import send_start_command
 from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
-    PriceComponent, Cdr, Session, Credentials, CredentialsRole, Endpoint
+    PriceComponent, Cdr, Session, Credentials, CredentialsRole, Endpoint, TariffElement
 from ocpi22.tokens import get_admin_token
 
 
