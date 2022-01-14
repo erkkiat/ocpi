@@ -297,7 +297,6 @@ class OcpiModule:
             # Send update only once
             setattr(self, 'update_sent', True)
 
-
     def send_updates(self) -> None:
         """
         Find all endpoints interested in Tariff updates and send update in a background task.

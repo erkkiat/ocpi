@@ -14,10 +14,11 @@ class MyFilter(logging.Filter):
 webhook = os.environ.get('SLACK_WEBHOOK')
 sh = SlackHandler(webhook) if webhook else None
 
+
 def init():
     if sh:
         sh.setFormatter(SlackFormatter())
         sh.setLevel(logging.DEBUG)
-        filter = MyFilter()
-        sh.addFilter(filter)
+        my_filter = MyFilter()
+        sh.addFilter(my_filter)
         logging.basicConfig(handlers=[sh])

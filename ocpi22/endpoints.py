@@ -1,3 +1,6 @@
+from ocpi22.models import Endpoint
+
+
 def find_endpoints(identifier, role, endpoints=Endpoint.objects.all()):
     for endpoint in endpoints:
         ep_identifier = endpoint.get('identifier').lower()

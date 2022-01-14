@@ -8,10 +8,10 @@ from rest_framework.reverse import reverse
 from ocpi22.models import Credentials
 
 
-class OCPI_AUTH_TYPES:
-    NONE=0
-    TOKEN_A=1
-    FINAL=2
+class OcpiAuthTypes:
+    NONE = 0
+    TOKEN_A = 1
+    FINAL = 2
 
 
 def check_auth_token(request, token):
@@ -23,7 +23,7 @@ def check_auth_token(request, token):
     )
     try:
         token_ascii = base64.b64decode(token).decode('ascii')
-        request.ocpi_auth = OCPI_AUTH_TYPES.NONE
+        request.ocpi_auth = OcpiAuthTypes.NONE
 
         # First check for TOKEN_A, are we still getting to know each other?
         # noinspection PyUnresolvedReferences
@@ -41,7 +41,7 @@ def check_auth_token(request, token):
             if credentials.ours and credentials.theirs:
                 raise exceptions.NotAuthenticated(f'TOKEN_A has expired when TOKEN_B and TOKEN_C were exchanged')
 
-            request.ocpi_auth = OCPI_AUTH_TYPES.TOKEN_A
+            request.ocpi_auth = OcpiAuthTypes.TOKEN_A
             request.credentials = credentials
             return True
         else:
@@ -50,7 +50,7 @@ def check_auth_token(request, token):
             credentials_matches = Credentials.objects.filter(ours=token_ascii)
             if credentials_matches.count():
                 credentials = credentials_matches[0]
-                request.ocpi_auth = OCPI_AUTH_TYPES.FINAL
+                request.ocpi_auth = OcpiAuthTypes.FINAL
                 request.credentials = credentials
                 return True
     except (binascii.Error, UnicodeDecodeError) as e:
@@ -74,7 +74,8 @@ class OCPIPermission(DjangoModelPermissions):
                                    request.GET.get('auth-test', '')).replace('Token ', '')
         # Check for token authentication, secondarily basic auth
         if check_auth_token(request, auth_id) or \
-            hasattr(view, 'publicly_visible') or \
-            super().has_permission(request, view):
-                return True
+          hasattr(view, 'publicly_visible') or \
+          super().has_permission(request, view):
+            return True
+
         raise exceptions.NotAuthenticated

@@ -68,22 +68,22 @@ def command_start(_self, data, session_uid, update_url, url):
             logging.debug('*** Response from CPO/charger to OCPI Connector worker task:')
             logging.debug(result.text)
             logging.debug(f'Activated session {session}')
-            status = (result_status or 'ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
+            status_text = (result_status or 'ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
         else:
             logging.warning(f'Unable to start charging at {session.location}, EVSE: {session.evse.evse_id} '
                          f'status code {result.status_code} - response text: {result.text}')
-            status = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
+            status_text = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
     except (requests.exceptions.ConnectionError, Http404, Exception) as e:
-        status = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
+        status_text = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
         logging.error(f'Cannot reach {update_url}, please check your request parameters.')
         logging.error(str(e))
 
     # Send asynchronous OCPI response to eMSP
     result_data = dict(
-        result=status[0],
+        result=status_text[0],
         message=[
-            dict(language='EN', text=status[1]),
-            dict(language='FI', text=status[2])
+            dict(language='EN', text=status_text[1]),
+            dict(language='FI', text=status_text[2])
         ]
     )
     try:

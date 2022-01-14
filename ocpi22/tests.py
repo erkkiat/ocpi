@@ -34,7 +34,7 @@ class LocationTests(TestCase):
     party_id = 'XXX'
 
     # noinspection PyUnresolvedReferences
-    def create_location(self, uid=None, address='Testroad 1', name='Name', status='AVAILABLE') -> Location:
+    def create_location(self, uid=None, address='Testroad 1', name='Name', location_status='AVAILABLE') -> Location:
         """
         Create a location with multiple Evses, with overlapping Evse IDs (OCPI: Evse ID is unique
         within a party and its suboperators
@@ -49,7 +49,7 @@ class LocationTests(TestCase):
         )
         # Use the same ids to make sure that they are accepted
         for i in range(1, 5):
-            evse = Evse.objects.create(status=status, uid=i, location=location)
+            evse = Evse.objects.create(status=location_status, uid=i, location=location)
             for n in range(1, 5):
                 Connector.objects.create(uid=n, evse=evse, standard='IEC_62196_T2',
                                          format='SOCKET', power_type='AC_3_PHASE', max_voltage=230, max_amperage=96,
@@ -65,8 +65,9 @@ class LocationTests(TestCase):
                                                 party_id=self.party_id, business_details=self.business_details)
         self.credentials.roles.set([roles1])
 
+    @staticmethod
     # noinspection PyUnresolvedReferences
-    def create_tariff(self, *_args, **kwargs):
+    def create_tariff(*_args, **kwargs):
         params = dict(
             currency='EUR'
         )
@@ -81,15 +82,15 @@ class LocationTests(TestCase):
         location2 = self.create_location()
 
     def test_evse_format(self):
-        l = self.create_location()
+        loc = self.create_location()
         # noinspection PyUnresolvedReferences
-        evse = l.evses.all()[0]
+        evse = loc.evses.all()[0]
         url = reverse('location-by-evse-id',
-                      args=[l.country_code, l.party_id, l.uid, evse.uid])
+                      args=[loc.country_code, loc.party_id, loc.uid, evse.uid])
 
         request = self.factory.get(url)
         viewset = LocationViewSet()
-        response = viewset.by_evse_id(request, l.country_code, l.party_id, l.uid, evse.uid)
+        response = viewset.by_evse_id(request, loc.country_code, loc.party_id, loc.uid, evse.uid)
         data = response.data.get('data')
         self.assertIsInstance(data, dict, msg='There should be a dict element "data" in the EVSE')
         connectors = data.get('connectors')
@@ -101,9 +102,9 @@ class LocationTests(TestCase):
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
 
         request = self.factory.get(url)
-        l = self.location
+        loc = self.location
         viewset = LocationViewSet()
-        response = viewset.by_id(request, l.country_code, l.party_id, l.uid)
+        response = viewset.by_id(request, loc.country_code, loc.party_id, loc.uid)
         # ic(response, response.data)
         data = response.data.get('data')
         self.assertIsInstance(data, dict, msg='There should be a dict element "data" in the Location')
@@ -195,7 +196,7 @@ class LocationTests(TestCase):
         }]
 
         for filename, country_code, party_id, http_status, ocpi_status, tariffs, \
-          uid, evses, connectors in testcases:
+        uid, evses, connectors in testcases:
 
             with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
                 data = json.load(file)
@@ -261,9 +262,9 @@ class LocationTests(TestCase):
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
 
         request = self.factory.get(url)
-        l = self.location
+        loc = self.location
         viewset = LocationViewSet()
-        response = viewset.by_id(request, l.country_code, l.party_id, l.uid)
+        response = viewset.by_id(request, loc.country_code, loc.party_id, loc.uid)
         # ic(response, response.data)
         data = response.data.get('data')
 

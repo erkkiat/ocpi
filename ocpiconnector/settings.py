@@ -1,6 +1,5 @@
 # Django settings for ocpiconnector project.
 import os
-import socket
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
 DEBUG = os.environ.get('DEBUG', False)

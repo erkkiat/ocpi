@@ -199,7 +199,7 @@ def send_start_command(request, evse: Evse, token: Token) -> Response:
         endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
         if endpoint:
             print(f'*** Sending start command for {evse.location.name}.')
-            data=dict(
+            data = dict(
                     response_url=request.build_absolute_uri('/'),
                     token=TokenSerializer(token).data,
                     location_id=evse.location.uid,

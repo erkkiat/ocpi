@@ -13,8 +13,7 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule, clear_empty, \
-    get_total_cost
+from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 

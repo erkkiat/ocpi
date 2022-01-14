@@ -10,8 +10,7 @@ from ocpi22.cpo_api import CPORouter, \
     CpoEvseViewSet, \
     SessionViewSet as CpoSessionViewSet, LocationQuickViewSet
 
-# CdrViewSet as CpoCdrViewSet
-from ocpi22.location import LocationViewSet, EvseViewSet
+from ocpi22.location import LocationViewSet
 from ocpi22.versions import VersionsViewSet, BaseRouter
 from ocpiconnector import charger_simulator
 
@@ -19,7 +18,6 @@ ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
 ocpi_router.register(r'tokens', TokenViewSet)
 ocpi_router.register(r'locations', LocationViewSet)
-# ocpi_router.register(r'evses', EvseViewSet)
 ocpi_router.register(r'tariffs', TariffViewSet)
 ocpi_router.register(r'sessions', SessionViewSet)
 ocpi_router.register(r'cdrs', CdrViewSet)

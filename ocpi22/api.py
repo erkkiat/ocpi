@@ -457,6 +457,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     def create(self, validated_data):
         elements = validated_data.pop('elements')
         price_components = elements.pop('price_components')
+        # Todo: Create or get PriceComponents and link to Tariff
         tariff = Tariff.objects.create(**validated_data)
         return tariff
 

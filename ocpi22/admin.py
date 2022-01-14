@@ -27,7 +27,7 @@ class TokenAdmin(admin.ModelAdmin):
     #     # Disable add
     #     return False
 
-    def has_change_permission(self, request, token: Token=None):
+    def has_change_permission(self, request, token: Token = None):
         return token and token.country_code == settings.COUNTRY_CODE and token.party_id == settings.PARTY_ID
 
 
@@ -61,7 +61,7 @@ class LocationAdmin(admin.ModelAdmin):
                      'postal_code', 'state', 'country', 'parking_type']
     fields = ['uid', 'publish', 'publish_allowed_to',
               ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
-              ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone',]
+              ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone']
     list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
 
@@ -70,9 +70,6 @@ class LocationAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-
-
 
 
 class EvseAdmin(admin.ModelAdmin):
@@ -116,8 +113,8 @@ class EvseAdmin(admin.ModelAdmin):
                     self.message_user(request, f'Unable to start charging at {evse.location}.',
                                       level=messages.ERROR)
             except exceptions.APIException as e:
-                    self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
-                                      level=messages.ERROR)
+                self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
+                                  level=messages.ERROR)
 
 
 class BusinessDetailsAdmin(admin.ModelAdmin):
@@ -240,7 +237,7 @@ class CredentialsAdmin(admin.ModelAdmin):
     list_display = ['party', 'token_a_base64', 'ours_base64', 'theirs_base64']
     readonly_fields = ['ours', 'theirs_base64', 'last_updated', 'created']
     inlines = [CredentialRolesInline, EndpointsInline]
-    search_fields = ['roles__party_id', 'roles__country_code',]
+    search_fields = ['roles__party_id', 'roles__country_code']
     list_display_links = ['token_a_base64']
 
 
