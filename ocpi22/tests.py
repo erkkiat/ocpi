@@ -16,7 +16,7 @@ from rest_framework.test import APIRequestFactory
 
 from ocpi22.location import LocationViewSet
 from ocpi22.models import Credentials, Location, Evse, Connector, CredentialsRole, BusinessDetails, Tariff, \
-    PriceComponent
+    PriceComponent, TariffElement
 from ocpi22.util import OCPIResponse, Ocpi
 
 
@@ -73,7 +73,10 @@ class LocationTests(TestCase):
         )
         params.update(kwargs)
         tariff = Tariff.objects.create(**params)
-        PriceComponent.objects.create(type='FLAT', price=1.0, step_size=1, tariff=tariff)
+        # noinspection PyUnresolvedReferences
+        tariff_element = TariffElement.objects.create(tariff=tariff)
+        # noinspection PyUnresolvedReferences
+        PriceComponent.objects.create(type='FLAT', price=1.0, step_size=1, tariff_element=tariff_element)
         return tariff
 
     def test_evse_with_same_id(self):

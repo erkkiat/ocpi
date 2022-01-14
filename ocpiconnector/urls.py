@@ -42,6 +42,7 @@ urlpatterns = [
     path('simulator/', include(charger_simulator.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
+    path('_nested_admin/', include('nested_admin.urls')),
     path('openapi', get_schema_view(
         title="OCPI Connector",
         description="OpenAPI schemas for ChargerHub.EU OCPI Connector",

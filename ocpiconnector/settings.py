@@ -188,6 +188,7 @@ INSTALLED_APPS = (
     'whitenoise',
     'rest_framework',
     'django_filters',
+    'nested_admin',
 )
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'

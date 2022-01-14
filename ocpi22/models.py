@@ -452,24 +452,38 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     def price(self):
         """Format the price components in a readable form"""
         # noinspection PyUnresolvedReferences
-        components = [str(x) for x in self.price_components.all()]
+        components = [
+            str(pc)
+            for pc in [
+                element
+                for element in self.tariff_elements.all()
+            ]
+        ]
         # noinspection PyUnresolvedReferences
         return f"{' + '.join(components or [f'{self.uid}'])} -- {self.get_type_display()}"
 
     def link(self):
-        # noinspection PyUnresolvedReferences
-        components = [str(x) for x in self.price_components.all()]
         url = reverse('admin:ocpi22_tariff_change', args=[self.pk])
         # noinspection PyUnresolvedReferences
         return format_html(
-            f"<a href='{url}'>{' + '.join(components or [f'{self.uid}'])} -- {self.get_type_display()}</a>"
+            f"<a href='{url}'>{self.price()} -- {self.get_type_display()}</a>"
         )
 
     def get_absolute_url(self):
         return reverse('tariff-by-id', args=[self.country_code, self.party_id, self.uid])
 
 
+class TariffElement(models.Model, ModelUtilMixin):
+    tariff = models.ForeignKey(Tariff, related_name='tariff_elements', on_delete=models.PROTECT)
+
+    def __str__(self):
+        # noinspection PyUnresolvedReferences
+        return ", ".join([str(pc) for pc in self.price_components.all()])
+
+
 class PriceComponent(models.Model, ModelUtilMixin):
+    # List of price components that describe the pricing of a tariff.
+
     TYPE_CHOICES = (
         # Defined in kWh, step_size multiplier: 1 Wh
         ('ENERGY', 'Wh'),
@@ -500,7 +514,11 @@ class PriceComponent(models.Model, ModelUtilMixin):
     # If 6 minutes were used, 10 minutes (2 blocks of step_size) will be billed.
     step_size = models.IntegerField()
 
-    tariff = models.ForeignKey(Tariff, related_name='price_components', on_delete=models.PROTECT)
+    @property
+    def tariff(self):
+        return self.tariff_element.tariff
+
+    tariff_element = models.ForeignKey(TariffElement, related_name='price_components', on_delete=models.PROTECT)
 
     def _format_step_and_type(self):
         t = self.type
@@ -1170,7 +1188,7 @@ class Cdr(models.Model, ModelUtilMixin):
 
     # Total sum of all the costs of this transaction in the specified currency.
     total_cost_excl_vat = models.FloatField()
-    total_cost_incl_vat = models.FloatField()
+    total_cost_incl_vat = models.FloatField(blank=True, null=True)
 
     # Total energy charged, in kWh.
     total_energy = models.FloatField()

@@ -208,15 +208,18 @@ class SessionAdmin(admin.ModelAdmin):
         return False
 
 
-class TariffAdmin(admin.ModelAdmin):
+class TariffAdmin(NestedModelAdmin):
 
-    class PriceComponentsInline(admin.TabularInline):
-        model = PriceComponent
+    class ElementsInline(NestedStackedInline):
+        class PriceComponentsInline(NestedTabularInline):
+            model = PriceComponent
+        model = TariffElement
+        inlines = [PriceComponentsInline]
 
     model = Tariff
     list_display = ['party', 'uid', 'price', 'last_updated']
     list_display_links = ['uid']
-    inlines = [PriceComponentsInline]
+    inlines = [ElementsInline]
     readonly_fields = ['country_code', 'party_id']
 
     def has_change_permission(self, request, obj=None):

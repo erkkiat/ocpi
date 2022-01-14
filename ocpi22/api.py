@@ -25,12 +25,78 @@ from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
+class CdrTokenSerializer(serializers.Serializer):
+    uid = serializers.CharField(required=True, source='cdr_token_uid')
+    type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True, source='cdr_token_type')
+    contract_id = serializers.CharField(required=True, source='cdr_token_contract_id')
+
+
+class TotalCostSerializer(serializers.Serializer):
+    excl_vat = serializers.FloatField(source='total_cost_excl_vat')
+    incl_vat = serializers.FloatField(source='total_cost_incl_vat', required=False)
+
+
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Token
         fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type',
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
+
+
+class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
+    class Meta:
+        model = PriceComponent
+        fields = ('type', 'price', 'vat', 'step_size')
+
+    step_size = serializers.IntegerField(min_value=1, max_value=24*60*60)
+
+
+class ElementsSaveSerializer(serializers.Serializer):
+    price_components = PriceComponentSerializer(many=True)
+
+    # def to_internal_value(self, data):
+    #     ic()
+    #     ic(data)
+    #     # pc = PriceComponentSerializer(instance=tariff.price_components.all(), many=True)
+    #     # return dict(price_components=pc.data)
+    #     return data
+
+    # def to_representation(self, instance):
+    #     ic()
+    #     ic(instance)
+    #     return instance
+
+
+class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
+    class Meta:
+        model = Tariff
+        fields = ('detail_url', 'country_code', 'party_id', 'id', 'type',
+                  'tariff_alt_url',
+                  'elements', 'readable',
+                  'last_updated')
+
+    id = serializers.CharField(source='uid')
+    elements = ElementsSaveSerializer(source='tariff_elements', many=True)
+    readable = serializers.SerializerMethodField()
+
+    # @staticmethod
+    # def get_elements(tariff: Tariff):
+    #     # ic(tariff.price_components.all().values())
+    #     # noinspection PyUnresolvedReferences
+    #     pc = PriceComponentSerializer(instance=tariff.price_components.all(), many=True)
+    #     return dict(price_components=pc.data)
+
+    @staticmethod
+    def get_readable(tariff: Tariff) -> str:
+        return tariff.price()
+
+    def create(self, validated_data):
+        elements = validated_data.pop('elements')
+        price_components = elements.pop('price_components')
+        # Todo: Create or get PriceComponents and link to Tariff
+        tariff = Tariff.objects.create(**validated_data)
+        return tariff
 
 
 class CommandTokenSerializer(serializers.Serializer):
@@ -148,26 +214,14 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                   'cdr_location', 'tariffs', 'total_cost', 'total_energy',
                   'total_time', 'credit', 'credit_reference_id', 'last_updated']
 
-    cdr_token = serializers.SerializerMethodField()
-    total_cost = serializers.SerializerMethodField()
-    tariffs = serializers.SerializerMethodField()
+    cdr_token = CdrTokenSerializer(source='*')
+    total_cost = TotalCostSerializer(source='*')
+    tariffs = TariffSerializer(many=True)
     cdr_location = serializers.SerializerMethodField()
-
-    @staticmethod
-    def get_total_cost(obj):
-        return get_total_cost(obj)
 
     @staticmethod
     def get_tariffs(cdr):
         return [t.uid for t in cdr.tariffs.all()]
-
-    @staticmethod
-    def get_cdr_token(cdr):
-        return dict(
-            uid=cdr.cdr_token_uid,
-            type=cdr.cdr_token_type,
-            contract_id=cdr.cdr_token_contract_id
-        )
 
     @staticmethod
     def get_cdr_location(cdr):
@@ -328,17 +382,6 @@ class CredentialsViewSet(mixins.CreateModelMixin,
         return OCPIResponse(serializer.data)
 
 
-class CdrTokenSerializer(serializers.Serializer):
-    uid = serializers.CharField(required=True, source='cdr_token_uid')
-    type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True, source='cdr_token_type')
-    contract_id = serializers.CharField(required=True, source='cdr_token_contract_id')
-
-
-class TotalCostSerializer(serializers.Serializer):
-    excl_vat = serializers.FloatField(source='total_cost_excl_vat')
-    incl_vat = serializers.FloatField(source='total_cost_incl_vat', required=False)
-
-
 default_error_messages = dict(
     object_missing='There is no {name} with UID {uid} in our database'
 )
@@ -405,57 +448,6 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
         return instance
 
 
-class ElementsSaveSerializer(serializers.Serializer):
-    def to_internal_value(self, data):
-        ic()
-        ic(data)
-        # pc = PriceComponentSerializer(instance=tariff.price_components.all(), many=True)
-        # return dict(price_components=pc.data)
-        return data
-
-    def to_representation(self, instance):
-        ic()
-        ic(instance)
-        return instance
-
-
-class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = PriceComponent
-        fields = ('type', 'price', 'vat', 'step_size')
-
-
-class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Tariff
-        fields = ('detail_url', 'country_code', 'party_id', 'id', 'type',
-                  'tariff_alt_url',
-                  'elements', 'readable',
-                  'last_updated')
-
-    id = serializers.CharField(source='uid')
-    elements = serializers.SerializerMethodField()
-    readable = serializers.SerializerMethodField()
-
-    @staticmethod
-    def get_elements(tariff: Tariff):
-        # ic(tariff.price_components.all().values())
-        # noinspection PyUnresolvedReferences
-        pc = PriceComponentSerializer(instance=tariff.price_components.all(), many=True)
-        return dict(price_components=pc.data)
-
-    @staticmethod
-    def get_readable(tariff: Tariff) -> str:
-        return tariff.price()
-
-    def create(self, validated_data):
-        elements = validated_data.pop('elements')
-        price_components = elements.pop('price_components')
-        # Todo: Create or get PriceComponents and link to Tariff
-        tariff = Tariff.objects.create(**validated_data)
-        return tariff
-
-
 class TariffSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
@@ -503,6 +495,7 @@ class TariffViewSet(mixins.RetrieveModelMixin,
     queryset = Tariff.objects.all().order_by('created')
     serializer_class = TariffSerializer
     pagination_class = OCPIPaginationAndHeaders
+    lookup_field = 'uid'
 
     def get_view_name(self):
         return 'Tariffs'
