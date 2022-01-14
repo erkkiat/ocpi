@@ -191,14 +191,24 @@ class SessionAdmin(admin.ModelAdmin):
         'start_date_time',  # Todo: Show time in local timezone
         'status',
         'total_time',
-        'location', 'evse', 'connector',
-        'cdr_token_uid', 'kwh', 'last_updated',
-        'total_cost_incl_vat', 'total_cost_excl_vat', 'currency'
+        'evse', 'connector',
+        'cdr_token_uid', 'kwh',
+        'cost'
     ]
     list_display_links = ['start_date_time']
-    search_fields = ['location__name', 'location__address', 'evse__uid', 'party_id', 'cdr_token_uid', 'uid']
-    list_filter = ['status']
+    search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid', 'uid']
+    # list_filter = ['status', 'party_id',]
     readonly_fields = ['uid', 'party_id', 'country_code']
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return (
+                'country_code', 'party_id', 'meter_id',
+                'authorization_reference', 'uid', 'auth_method',
+                'cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id',
+                'location', 'evse', 'connector', 'start_date_time'
+            )
+        return []
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete except for invalid sessions

@@ -1074,6 +1074,19 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         end = self.end_date_time if self.end_date_time else timezone.now()
         return hours_minutes((end - self.start_date_time).seconds/3600)
 
+    def cost(self) -> str:
+        cost_format = "{incl_vat} ({excl_vat}) {currency}"
+        if not self.total_cost_excl_vat and not self.total_cost_incl_vat:
+            return 'N/A'
+        if self.total_cost_incl_vat:
+            cost_format = "{incl_vat} {currency}"
+        else:
+            cost_format = "{excl_vat} {currency} (VAT 0%)"
+
+        return cost_format.format(incl_vat=self.total_cost_incl_vat,
+                                  excl_vat=self.total_cost_excl_vat,
+                                  currency=self.currency)
+
 # Todo: CDR.id must contain the CPO-ID (NLEVN12345ABCDEFG...) [up to 36 characters total]
 # Todo: CDR.id must follow the pattern: Regular Expression: [0-9A-Z]{1,36}
 
