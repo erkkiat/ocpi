@@ -10,7 +10,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
 from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -119,27 +118,26 @@ class TokenViewSet(mixins.UpdateModelMixin,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
-        method_is_patch = True if request.method == 'PATCH' else False
 
         if request.method == 'GET':
             serializer = TokenSerializer(token, many=False, context={'request': request})
             return OCPIResponse(serializer.data)
 
-        elif request.method in ('PUT', 'PATCH'):
-            if not token.is_owner(request):
-                return NotOwner()
+        # Method is PUT or PATCH
+        if not token.is_owner(request):
+            return NotOwner()
 
-            serializer = TokenSerializer(token,
-                                         data=request.data,
-                                         partial=method_is_patch,
-                                         context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                return OCPIResponse(serializer.data)
-            else:
-                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+        method_is_patch = bool(request.method == 'PATCH')
 
-        return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
+        serializer = TokenSerializer(token,
+                                     data=request.data,
+                                     partial=method_is_patch,
+                                     context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return OCPIResponse(serializer.data)
+
+        return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
 
 class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -574,8 +572,9 @@ class SessionViewSet(mixins.ListModelMixin,
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
+    @staticmethod
     @transaction.atomic
-    def put(self, request, partial=False) -> OCPIResponse:
+    def put(request, partial=False) -> OCPIResponse:
         data = request.data.get('data', request.data)
         uid = data.get('uid')
         country_code = data.get('country_code')
@@ -589,9 +588,9 @@ class SessionViewSet(mixins.ListModelMixin,
         serialiser = SessionSaveSerializer(data=request.data, instance=session, partial=partial)
         if serialiser.is_valid():
             serialiser.save()
-            return OCPIResponse(serialiser.data, http_status=status.HTTP_200_OK if session else status.HTTP_201_CREATED)
-        else:
-            return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
+            return OCPIResponse(serialiser.data,
+                                http_status=status.HTTP_200_OK if session else status.HTTP_201_CREATED)
+        return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
         return self.put(request, partial=True)
@@ -603,7 +602,8 @@ class RootView(routers.APIRootView):
     and the CPO interface for quick integration to popular roaming networks.
     """
 
-    def get(self, request: WSGIRequest, **kwargs):
+    @staticmethod
+    def get(request: WSGIRequest, **kwargs):
         return Response({
             "OCPI 2.2": request.build_absolute_uri(reverse('ocpi-22')),
             "CPO API": request.build_absolute_uri(reverse('cpo-api')),
@@ -627,7 +627,8 @@ class OcpiApi22View(routers.APIRootView):
     You can contact [support@chargerhub.eu](support@chargerhub.eu) for training.
     """
 
-    def get(self, request, **kwargs):
+    @staticmethod
+    def get(request, **kwargs):
         return Response(get_endpoints_dict(request))
 
     def get_view_name(self):
