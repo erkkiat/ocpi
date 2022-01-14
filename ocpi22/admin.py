@@ -11,6 +11,12 @@ from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Conn
     PriceComponent, Cdr, Session, Credentials, CredentialsRole, Endpoint, TariffElement
 from ocpi22.tokens import get_admin_token
 
+ALLOW_ADMIN_DELETE_AND_CHANGE = False
+
+from django.conf.locale.en import formats as es_formats
+
+es_formats.DATETIME_FORMAT = "j/n/Y H:i"
+
 
 class TokenAdmin(admin.ModelAdmin):
     model = Token
@@ -22,7 +28,7 @@ class TokenAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete
-        return False
+        return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     # def has_add_permission(self, request, obj=None):
     #     # Disable add
@@ -70,7 +76,7 @@ class LocationAdmin(admin.ModelAdmin):
         return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
 class EvseAdmin(admin.ModelAdmin):
@@ -82,6 +88,7 @@ class EvseAdmin(admin.ModelAdmin):
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
     actions = ['start_charging']
+    # raw_id_fields = ['location']
 
     @staticmethod
     def location_url(evse):
@@ -93,7 +100,7 @@ class EvseAdmin(admin.ModelAdmin):
         return obj and obj.location.country_code == settings.COUNTRY_CODE and obj.location.party_id == settings.PARTY_ID
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     # def delete_model(self, request, obj):
     #     obj.status = 'REMOVED'
@@ -172,15 +179,15 @@ class CdrAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete
-        return False
+        return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request):
         # Disable add
-        return False
+        return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_change_permission(self, request, obj=None):
         # Disable change
-        return False
+        return ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
 class SessionAdmin(admin.ModelAdmin):
@@ -195,6 +202,12 @@ class SessionAdmin(admin.ModelAdmin):
         'cdr_token_uid', 'kwh',
         'cost'
     ]
+    # fields = (
+    #     ('start_date_time', 'end_date_time'),
+    #     ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id'),
+    #     ('status', 'kwh'),
+    #     ('total_cost_excl_vat', 'total_cost_incl_vat', 'currency')
+    # )
     list_display_links = ['start_date_time']
     search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid', 'uid']
     # list_filter = ['status', 'party_id',]
@@ -212,11 +225,11 @@ class SessionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         # Disable delete except for invalid sessions
-        return obj and obj.status == 'INVALID'
+        return (obj and obj.status == 'INVALID') or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request):
         # Disable add
-        return False
+        return ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
 class TariffAdmin(NestedModelAdmin):
@@ -234,10 +247,11 @@ class TariffAdmin(NestedModelAdmin):
     readonly_fields = ['country_code', 'party_id']
 
     def has_change_permission(self, request, obj=None):
-        return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
+        return (obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
+            or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_delete_permission(self, request, obj=None):
-        return self.has_change_permission(request, obj)
+        return ALLOW_ADMIN_DELETE_AND_CHANGE or self.has_change_permission(request, obj)
 
 
 class CredentialsAdmin(admin.ModelAdmin):

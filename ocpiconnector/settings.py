@@ -82,7 +82,7 @@ TIME_ZONE = 'UTC'  # DO NOT CHANGE THIS, or the OCPI date query parameters will 
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en'
 
 SITE_ID = 1
 
@@ -92,7 +92,7 @@ USE_I18N = False
 
 # If you set this to False, Django will not format dates, numbers and
 # calendars according to the current locale.
-USE_L10N = False
+USE_L10N = True
 
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = False  # DO NOT CHANGE THIS, or the OCPI date query parameters will not match
