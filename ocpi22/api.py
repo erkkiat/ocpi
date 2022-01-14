@@ -20,7 +20,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.location import BusinessDetailsSerializer
 from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent, \
     Location, Evse
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, clear_empty, \
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, \
     OCPIResponse, NotOwner, matching_operator
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
@@ -46,15 +46,11 @@ class CommandTokenSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True)
     contract_id = serializers.CharField(required=True)
 
-    # The rest is optional, and actually not stored in Session or Cdr
+    def create(self, validated_data):
+        raise NotImplementedError()
 
-    # visual_number = serializers.CharField()
-    # issuer = serializers.CharField()
-    # group_id = serializers.CharField()
-    # valid = serializers.BooleanField()
-    # whitelist = serializers.ChoiceField(choices=Token.WHITELIST_CHOICES)
-    # language = serializers.CharField(required=False, max_length=2)
-    # default_profile_type = serializers.ChoiceField(choices=Token.PROFILE_TYPE_CHOICES)
+    def update(self, instance, validated_data):
+        raise NotImplementedError()
 
 
 class TokenViewSet(mixins.UpdateModelMixin,
@@ -88,8 +84,8 @@ class TokenViewSet(mixins.UpdateModelMixin,
             serialiser.save()
             # Return 201 if instance was created
             return OCPIResponse(serialiser.data, http_status=200 if token else 201)
-        else:
-            return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
+
+        return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     # Todo: NO_CREDIT and other errors should go all the way back to the charger to be shown
     @csrf_exempt

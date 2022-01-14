@@ -27,8 +27,8 @@ class TokenAdmin(admin.ModelAdmin):
     #     # Disable add
     #     return False
 
-    def has_change_permission(self, request, token: Token = None):
-        return token and token.country_code == settings.COUNTRY_CODE and token.party_id == settings.PARTY_ID
+    def has_change_permission(self, request, obj: Token = None):
+        return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
 
 
 # from django import forms
@@ -82,7 +82,8 @@ class EvseAdmin(admin.ModelAdmin):
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
     actions = ['start_charging']
 
-    def location_url(self, evse):
+    @staticmethod
+    def location_url(evse):
         return format_html("<a href='{url}'>{location}</a>",
                            url=reverse('admin:ocpi22_location_change', args=[evse.location.pk]),
                            location=str(evse.location))
@@ -130,7 +131,7 @@ class FacilityAdmin(admin.ModelAdmin):
         # Disable delete
         return False
 
-    def has_add_permission(self, request, obj=None):
+    def has_add_permission(self, request):
         # Disable add
         return False
 
@@ -147,7 +148,7 @@ class CapabilityAdmin(admin.ModelAdmin):
         # Disable delete
         return False
 
-    def has_add_permission(self, request, obj=None):
+    def has_add_permission(self, request):
         # Disable add
         return False
 
@@ -172,7 +173,7 @@ class CdrAdmin(admin.ModelAdmin):
         # Disable delete
         return False
 
-    def has_add_permission(self, request, obj=None):
+    def has_add_permission(self, request):
         # Disable add
         return False
 
@@ -202,7 +203,7 @@ class SessionAdmin(admin.ModelAdmin):
         # Disable delete except for invalid sessions
         return obj and obj.status == 'INVALID'
 
-    def has_add_permission(self, request, obj=None):
+    def has_add_permission(self, request):
         # Disable add
         return False
 
