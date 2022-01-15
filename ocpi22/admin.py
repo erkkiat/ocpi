@@ -13,10 +13,6 @@ from ocpi22.tokens import get_admin_token
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False
 
-from django.conf.locale.en import formats as locale_formats
-
-locale_formats.DATETIME_FORMAT = "j/n/Y H:i"
-
 
 class TokenAdmin(admin.ModelAdmin):
     model = Token
@@ -173,7 +169,7 @@ class CdrAdmin(admin.ModelAdmin):
         'total_cost', 'total_energy', 'charging_time',
         'session_id', 'auth_method'
     ]
-    list_filter = ['party_id', 'auth_method', 'credit']
+    # list_filter = ['party_id', 'auth_method', 'credit']
     list_display_links = ['start_date_time']
     search_fields = ['party_id', 'country_code', 'session_id']
 

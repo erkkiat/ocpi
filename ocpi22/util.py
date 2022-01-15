@@ -342,3 +342,38 @@ def ocpi_post(url, token_base64, *args, **kwargs) -> Response:
         logging.error(response.text)
         raise exceptions.APIException(f'Got response for {url}: {response.status_code} - {response.reason} ')
     return response
+
+def pretty_currency(c):
+    """
+    Apply a currency symbol if such is known
+    >>> pretty_currency('EUR')
+    '€'
+    """
+    return dict(EUR='€', GBP='£', USD='$').get(c, c)
+
+def format_cost(incl_vat: float, excl_vat: float, currency: str) -> str:
+    """
+    Format a string which hides zero values and shows the price with and without tax, if available
+    >>> format_cost(1.2, 1.0, "EUR")
+    '1,2 €'
+    >>> format_cost(1.2, 0.0, "EUR")
+    '1,2 €'
+    >>> format_cost(0.0, 1.0, "EUR")
+    '1,0 € (VAT 0%)'
+    >>> format_cost(0.0, 0.0, "EUR")
+    '-'
+    """
+
+    cost_format = "{incl_vat} ({excl_vat}) {currency}"
+    if not excl_vat and not incl_vat:
+        return '-'
+    if incl_vat:
+        cost_format = "{incl_vat} {currency}"
+    else:
+        cost_format = "{excl_vat} {currency} (VAT 0%)"
+
+    return cost_format.format(
+        incl_vat=incl_vat,
+        excl_vat=excl_vat,
+        currency=pretty_currency(currency)
+    ).replace('.', settings.DECIMAL_SEPARATOR)

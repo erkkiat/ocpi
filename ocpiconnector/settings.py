@@ -1,5 +1,9 @@
 # Django settings for ocpiconnector project.
 import os
+from django.conf.locale.fi import formats as locale_formats
+
+locale_formats.DATETIME_FORMAT = "j.n.Y H:i"
+DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
 DEBUG = os.environ.get('DEBUG', False)
@@ -82,7 +86,7 @@ TIME_ZONE = 'UTC'  # DO NOT CHANGE THIS, or the OCPI date query parameters will 
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
-LANGUAGE_CODE = 'en'
+LANGUAGE_CODE = 'fi-FI'
 
 SITE_ID = 1
 

@@ -252,11 +252,12 @@ class LocationTests(TestCase):
                          f'{response.data}')
 
         testcases = (
-            ('tariff_1_simple_2hour', 'DE', 'ALL', status.HTTP_201_CREATED, 1000, '2015-06-29T20:39:09Z'),
-            ('tariff_1_simple_2hour_modified', 'DE', 'ALL', status.HTTP_200_OK, 1000, '2015-06-29T20:39:09Z'),
+            ('tariff_1_simple_2hour', 'DE', 'ALL', status.HTTP_201_CREATED, 1000, 1),
+            ('tariff_1_simple_2hour_modified', 'DE', 'ALL', status.HTTP_200_OK, 1000, 2),
         )
 
-        for filename, country_code, party_id, http_status, ocpi_status, last_updated in testcases:
+        for filename, country_code, party_id, http_status, ocpi_status, price_component_count \
+                in testcases:
 
             with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
                 data = json.load(file)
@@ -275,13 +276,16 @@ class LocationTests(TestCase):
             self.assertEqual(response.data['status_code'], ocpi_status,
                              f'Expected an OCPI status code {ocpi_status} for {filename} case.')
 
-            # Check that there are three levels stored from the incoming JSON
+            # Verify the saved data
             uid = data.get('id')
             saved_data = TariffSerializer(Tariff.objects.get(uid=uid)).data
-            ic(saved_data)
+            # ic(saved_data)
 
-            # self.assertEqual(saved_data.get('last_updated'), '2015-06-29T20:39:09Z',
-            #                  'Last_updated is not stored from the incoming data')
+            # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
+            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
+                             'Last_updated is not stored from the incoming data')
+
+            # Check that there are all three levels stored from the incoming JSON
             elements_list = saved_data.get('elements')
             self.assertIsInstance(elements_list, list,
                                   'TariffElements list is missing from the stored Tariff')
@@ -290,8 +294,9 @@ class LocationTests(TestCase):
                 price_components_list = el.get('price_components')
                 self.assertIsInstance(price_components_list, list,
                                       'PriceComponents list is missing from the stored Tariff')
-                self.assertTrue(len(price_components_list),
-                                'PriceComponents list in Tariff is empty')
+                self.assertEqual(len(price_components_list), price_component_count,
+                                f'There should be exactly {price_component_count} '
+                                f'PriceComponents in the Tariff after {filename}.json')
                 for pc in price_components_list:
                     self.assertTrue(pc.get('type'),
                                     'Looks like TariffSerializer is not storing PriceComponents')

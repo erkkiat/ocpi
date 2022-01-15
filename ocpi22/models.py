@@ -13,7 +13,8 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule
+from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule, pretty_currency, \
+    format_cost
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
@@ -97,7 +98,11 @@ class Credentials(models.Model, ModelUtilMixin):
     )
     version = models.CharField(max_length=10, choices=VERSION_CHOICES, blank=True, null=True)
 
-    last_updated = models.DateTimeField(auto_now=True)
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -330,7 +335,11 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
 
     # energy_contract = models.CharField(max_length=80)  # No type documentation available
 
-    last_updated = models.DateTimeField(auto_now=True)
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -434,7 +443,11 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     # min_price
     # max_price
 
-    last_updated = models.DateTimeField(auto_now=True)
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs) -> None:
@@ -547,13 +560,9 @@ class PriceComponent(models.Model, ModelUtilMixin):
         # noinspection PyUnresolvedReferences
         return f'/ {s} {self.get_type_display()}'
 
-    @staticmethod
-    def _pretty_currency(c):
-        return dict(EUR='€', GBP='£', USD='$').get(c, c)
-
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return f'{self.price or 0.0:.2f}{self._pretty_currency(self.tariff.currency)} {self._format_step_and_type()}'
+        return f'{self.price or 0.0:.2f}{pretty_currency(self.tariff.currency)} {self._format_step_and_type()}'
 
 
 class Facility(models.Model, ModelUtilMixin):
@@ -692,7 +701,11 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times
 
-    last_updated = models.DateTimeField(auto_now=True)
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -792,7 +805,11 @@ class Evse(models.Model, ModelUtilMixin):
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses')
 
-    last_updated = models.DateTimeField(auto_now=True)
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -883,7 +900,11 @@ class Connector(models.Model, ModelUtilMixin):
 
     terms_and_conditions = models.URLField(blank=True, default='')
 
-    last_updated = models.DateTimeField(auto_now=True)
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -1029,7 +1050,11 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING')
 
-    last_updated = models.DateTimeField(auto_now=True)
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def calculate_price(self) -> (float, float):
@@ -1075,17 +1100,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return hours_minutes((end - self.start_date_time).seconds/3600)
 
     def cost(self) -> str:
-        cost_format = "{incl_vat} ({excl_vat}) {currency}"
-        if not self.total_cost_excl_vat and not self.total_cost_incl_vat:
-            return 'N/A'
-        if self.total_cost_incl_vat:
-            cost_format = "{incl_vat} {currency}"
-        else:
-            cost_format = "{excl_vat} {currency} (VAT 0%)"
-
-        return cost_format.format(incl_vat=self.total_cost_incl_vat,
-                                  excl_vat=self.total_cost_excl_vat,
-                                  currency=self.currency)
+        return format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)
 
 # Todo: CDR.id must contain the CPO-ID (NLEVN12345ABCDEFG...) [up to 36 characters total]
 # Todo: CDR.id must follow the pattern: Regular Expression: [0-9A-Z]{1,36}
@@ -1128,6 +1143,7 @@ class Cdr(models.Model, ModelUtilMixin):
     # when the CPO has not implemented the Sessions module or this CDR is the result of a reservation
     # that never became a charging session, thus no OCPI Session.
     session_id = models.CharField(max_length=36, blank=True, default='')
+    # Todo: Make this a Foreignkey
 
     # Token used to start this charging session, includes all the relevant information to identify the unique token.
     cdr_token_uid = models.CharField(max_length=36)
@@ -1214,7 +1230,11 @@ class Cdr(models.Model, ModelUtilMixin):
     credit = models.BooleanField(default=False)
     credit_reference = models.ForeignKey('Cdr', blank=True, null=True, on_delete=models.PROTECT)
 
-    last_updated = models.DateTimeField(auto_now=True)
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -1225,8 +1245,8 @@ class Cdr(models.Model, ModelUtilMixin):
         return reverse('cdr-detail', args=[self.uid])
 
     def total_cost(self):
-        return f'{"-" if self.credit else ""}{self.total_cost_incl_vat:.2f}/' \
-               f'{"-" if self.credit else ""}{self.total_cost_excl_vat:.2f} {self.currency}' \
+        return f'{"-" if self.credit else ""}' \
+               f'{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)}' \
                f'{" (credited)" if self.credit else ""}'
 
     def charging_time(self):
@@ -1326,5 +1346,5 @@ def tariff_pre_save(sender, instance, *_args, **_kwargs):
 @receiver(post_save, sender=PriceComponent)
 def price_component_post_save(sender, instance: PriceComponent, *_args, **_kwargs):
     tariff = instance.tariff
-    tariff.last_updated = timezone.now()
+    # Do not update last_updated here, only owner does that
     tariff.save()

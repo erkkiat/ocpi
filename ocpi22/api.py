@@ -70,22 +70,23 @@ class ElementsSaveSerializer(serializers.Serializer):
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
-        exclude = ['created', 'uid']
+        exclude = ['updated', 'created', 'uid']
 
     id = serializers.CharField(source='uid', required=True)
     elements = ElementsSaveSerializer(source='tariff_elements', many=True, required=True)
-    readable = serializers.SerializerMethodField()
+    human_readable = serializers.CharField(source='price', read_only=True)
+    # last_updated = serializers.DateTimeField(read_only=False)
 
-    @staticmethod
-    def get_readable(tariff: Tariff) -> str:
-        return tariff.price()
+    def _delete_children(self, tariff: Tariff) -> None:
+        """
+        Remove TariffElements and PriceComponents from object - cascade delete should be enabled in Tariff child models
+        """
 
-    def _delete_children(self, tariff: Tariff):
         # noinspection PyUnresolvedReferences
         for te in tariff.tariff_elements.all():
             te.delete()
 
-    def _create_children(self, tariff: Tariff, tariff_elements: dict):
+    def _create_children(self, tariff: Tariff, tariff_elements: dict) -> None:
         for te in tariff_elements:
             price_components = te.pop('price_components')
             # noinspection PyUnresolvedReferences
@@ -95,11 +96,11 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
                 PriceComponent.objects.create(**pc, tariff_element=tariff_element)
 
     def update(self, instance: Tariff, validated_data: dict) -> Tariff:
-        ic(instance, validated_data)
         tariff_elements = validated_data.pop('tariff_elements')
         for key, value in validated_data.items():
             setattr(instance, key, value)
         instance.save()
+        self._delete_children(instance)
         self._create_children(instance, tariff_elements)
         return instance
 
@@ -511,7 +512,6 @@ class TariffViewSet(mixins.RetrieveModelMixin,
     @staticmethod
     def put(request) -> OCPIResponse:
         data = request.data.get('data', request.data)
-
         country_code = data.get('country_code')
         party_id = data.get('party_id')
 
