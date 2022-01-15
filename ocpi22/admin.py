@@ -17,8 +17,8 @@ ALLOW_ADMIN_DELETE_AND_CHANGE = False
 class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
-    list_display = ['party', 'valid', 'uid', 'type', 'visual_number', 'contract_id', 'last_updated']
-    list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
+    list_display = ['party', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
+    # list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
     list_display_links = ['uid']
     readonly_fields = ['country_code', 'party_id']
 

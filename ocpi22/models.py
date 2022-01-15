@@ -13,7 +13,7 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule, pretty_currency, \
+from ocpi22.util import hours_minutes, generate_random_token, check_ownership, Ocpi, OcpiModule, format_currency, \
     format_cost
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
@@ -562,7 +562,7 @@ class PriceComponent(models.Model, ModelUtilMixin):
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return f'{self.price or 0.0:.2f}{pretty_currency(self.tariff.currency)} {self._format_step_and_type()}'
+        return f'{format_currency(self.price or 0.0, self.tariff.currency)} {self._format_step_and_type()}'
 
 
 class Facility(models.Model, ModelUtilMixin):
