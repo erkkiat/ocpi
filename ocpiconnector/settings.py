@@ -2,7 +2,7 @@
 import os
 from django.conf.locale.fi import formats as locale_formats
 
-locale_formats.DATETIME_FORMAT = "j.n.Y H:i"
+locale_formats.DATETIME_FORMAT = "D j.n.Y H:i"
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
