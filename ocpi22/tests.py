@@ -15,15 +15,16 @@ from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
-from ocpi22.api import TariffViewSet, TariffSerializer
+from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer
 from ocpi22.location import LocationViewSet
 from ocpi22.models import Credentials, Location, Evse, Connector, CredentialsRole, BusinessDetails, Tariff, \
-    PriceComponent, TariffElement
+    PriceComponent, TariffElement, Cdr
 from ocpi22.util import OCPIResponse, Ocpi
 
 
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.location'))
     # tests.addTests(doctest.DocTestSuite('chargers.vendors.tesla'))
     return tests
 
@@ -235,7 +236,6 @@ class LocationTests(TestCase):
                 self.assertEqual(connector_count, connectors,
                                  f'There should be {connectors} connectors after {filename} case.')
 
-
     def test_put_tariff(self):
         url = reverse('tariff-list')
         dirname = os.path.dirname(os.path.abspath(__file__))
@@ -269,8 +269,8 @@ class LocationTests(TestCase):
 
             # Send the request
             response = self.put(url, data, token_base64, TariffViewSet)
-            if response.status_text:
-                print(f'status_text: "{response.status_text}" for {filename} case.')
+            # if response.status_text:
+            #     print(f'status_text: "{response.status_text}" for {filename} case.')
             self.assertEqual(response.status_code, http_status,
                              f'Expected a HTTP status code {http_status} for {filename} case.')
             self.assertEqual(response.data['status_code'], ocpi_status,
@@ -300,6 +300,60 @@ class LocationTests(TestCase):
                 for pc in price_components_list:
                     self.assertTrue(pc.get('type'),
                                     'Looks like TariffSerializer is not storing PriceComponents')
+
+    def test_put_cdr(self):
+        url = reverse('cdr-list')
+        dirname = os.path.dirname(os.path.abspath(__file__))
+        token_base64 = self.credentials.ours_base64()
+        viewset = CdrViewSet
+
+        invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
+
+        response = self.put(url, invalid_data, 'FALSETOKEN', viewset)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                         f'A {viewset} request should require OCPI authentication. '
+                         f'{response.data}')
+        self.assertEqual(response.data['status_code'], Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                         f'The {viewset} response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
+                         f'{response.data}')
+
+        testcases = (
+            ('cdr_example', status.HTTP_201_CREATED, 1000, 1),
+        )
+
+        for filename, http_status, ocpi_status, price_component_count \
+                in testcases:
+
+            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
+                data = json.load(file)
+
+            country_code = data.get('country_code')
+            party_id = data.get('party_id')
+
+            # Create CretentialsRoles
+            roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
+                                                    party_id=party_id, defaults=dict(business_details=self.business_details))
+            self.credentials.roles.add(roles)
+
+            # Send the request
+            response = self.put(url, data, token_base64, viewset)
+            if response.status_text:
+                print(f'status_text: "{response.status_text}" for {filename} case.')
+                ic(response.data)
+            self.assertEqual(response.status_code, http_status,
+                             f'Expected a HTTP status code {http_status} for {filename} case.')
+            self.assertEqual(response.data['status_code'], ocpi_status,
+                             f'Expected an OCPI status code {ocpi_status} for {filename} case.')
+
+            # Verify the saved data
+            uid = data.get('id')
+            # noinspection PyUnresolvedReferences
+            saved_data = CdrSerializer(Cdr.objects.get(uid=uid)).data
+            ic(saved_data)
+
+            # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
+            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
+                             'Last_updated is not stored from the incoming data')
 
     def test_patch_connector(self):
         # url = reverse('location-connector', self.location, ...)

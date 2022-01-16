@@ -16,10 +16,10 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.location import BusinessDetailsSerializer
+from ocpi22.location import BusinessDetailsSerializer, Coordinate
 from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent, \
     Location, Evse, TariffElement
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, get_total_cost, \
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, \
     OCPIResponse, NotOwner, matching_operator
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
@@ -216,43 +216,50 @@ class TokenViewSet(mixins.UpdateModelMixin,
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
 
+class CdrCoordinatesSerializer(serializers.Serializer):
+    def update(self, instance, validated_data):
+        raise NotImplementedError()
+
+    def create(self, validated_data):
+        raise NotImplementedError()
+
+    latitude = Coordinate(source='cdr_location_latitude')
+    longitude = Coordinate(source='cdr_location_longitude')
+
+
+class CdrLocationSerializer(serializers.Serializer):
+    id = serializers.CharField(source='cdr_location_id')
+    address = serializers.CharField(source='cdr_location_address')
+    city = serializers.CharField(source='cdr_location_city')
+    postal_code = serializers.CharField(source='cdr_location_postal_code')
+    country = serializers.CharField(source='cdr_location_country')
+    coordinates = CdrCoordinatesSerializer(source='*')
+    evse_uid = serializers.CharField(source='cdr_location_evse_uid')
+    evse_id = serializers.CharField(source='cdr_location_evse_id')
+    connector_id = serializers.CharField(source='cdr_location_connector_id')
+    connector_standard = serializers.CharField(source='cdr_location_connector_standard')
+    connector_format = serializers.CharField(source='cdr_location_connector_format')
+    connector_power_type = serializers.CharField(source='cdr_location_connector_power_type')
+
+
 class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Cdr
-        fields = ['detail_url', 'country_code', 'party_id', 'uid', 'start_date_time', 'end_date_time',
+        fields = ['detail_url', 'country_code', 'party_id', 'id', 'start_date_time', 'end_date_time',
                   'session_id', 'cdr_token', 'auth_method', 'authorization_reference',
                   'cdr_location', 'tariffs', 'total_cost', 'total_energy',
                   'total_time', 'credit', 'credit_reference_id', 'last_updated']
 
+    id = serializers.CharField(source='uid')
     cdr_token = CdrTokenSerializer(source='*')
     total_cost = TotalCostSerializer(source='*')
     tariffs = TariffSerializer(many=True)
-    cdr_location = serializers.SerializerMethodField()
+    cdr_location = CdrLocationSerializer(source='*')
 
-    @staticmethod
-    def get_tariffs(cdr):
-        return [t.uid for t in cdr.tariffs.all()]
-
-    @staticmethod
-    def get_cdr_location(cdr):
-        result = dict(
-            id=cdr.cdr_location_id,
-            address=cdr.cdr_location_address,
-            city=cdr.cdr_location_city,
-            postal_code=cdr.cdr_location_postal_code,
-            country=cdr.cdr_location_country,
-            coordinates=dict(
-                latitude=cdr.cdr_location_latitude,
-                longitude=cdr.cdr_location_longitude
-            ),
-            evse_uid=cdr.cdr_location_evse_uid,
-            evse_id=cdr.cdr_location_evse_id,
-            connector_id=cdr.cdr_location_connector_id,
-            connector_standard=cdr.cdr_location_connector_standard,
-            connector_format=cdr.cdr_location_connector_format,
-            connector_power_type=cdr.cdr_location_connector_power_type,
-        )
-        return result
+    def create(self, validated_data):
+        tariffs = validated_data.pop('tariffs')
+        # Todo: Store Tariffs in an unmutable way
+        return super().create(validated_data)
 
 
 class CdrViewSet(mixins.RetrieveModelMixin,
@@ -273,6 +280,21 @@ class CdrViewSet(mixins.RetrieveModelMixin,
         cdr = get_object_or_404(Cdr, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
+
+    @staticmethod
+    def put(request) -> OCPIResponse:
+        data = request.data.get('data', request.data)
+        country_code = data.get('country_code')
+        party_id = data.get('party_id')
+
+        if not matching_operator(request, country_code, party_id):
+            return NotOwner()
+
+        serializer = CdrSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED)
+        return OCPIResponse(errors=serializer.errors)
 
 
 class RolesSerializer(serializers.ModelSerializer):

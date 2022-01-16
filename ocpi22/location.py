@@ -232,6 +232,28 @@ class EvseViewSet(mixins.RetrieveModelMixin,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
 
+class Coordinate(serializers.CharField):
+    def to_representation(self, value):
+        """
+        OCPI standard requires coordinates in string format with six decimals
+        >>> c = Coordinate()
+        >>> c.to_representation(60)
+        '60.000000'
+        """
+        return f"{float(value):.6f}"
+
+
+class CoordinatesSaveSerializer(serializers.Serializer):
+    def update(self, instance, validated_data):
+        pass
+
+    def create(self, validated_data):
+        pass
+
+    latitude = Coordinate()
+    longitude = Coordinate()
+
+
 class LocationSerializerBase(serializers.Serializer):
 
     id = serializers.CharField(source='uid')
@@ -246,6 +268,8 @@ class LocationSerializerBase(serializers.Serializer):
         pass
 
 
+
+
 class LocationSerializer(LocationSerializerBase, HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
@@ -257,10 +281,10 @@ class LocationSerializer(LocationSerializerBase, HyperlinkedModelSerializerClean
 
     lookup_field = 'uid'
 
-    coordinates = serializers.SerializerMethodField()
+    coordinates = CoordinatesSaveSerializer(source='*')
     evses = EvseSerializer(many=True, required=False)
     publish_allowed_to = serializers.SerializerMethodField()
-    facilities = serializers.SerializerMethodField()
+    facilities = FacilitiesSaveSerializer()
 
     # noinspection PyUnresolvedReferences
     # def create(self, validated_data: dict, *args, **kwargs):
@@ -316,17 +340,6 @@ class LocationSerializer(LocationSerializerBase, HyperlinkedModelSerializerClean
     def get_facilities(location: Location):
         # Create a list of facility names
         return [facility.name for facility in location.facilities.all()]
-
-
-class CoordinatesSaveSerializer(serializers.Serializer):
-    def update(self, instance, validated_data):
-        pass
-
-    def create(self, validated_data):
-        pass
-
-    latitude = serializers.CharField()
-    longitude = serializers.CharField()
 
 
 class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerCleanedUp):
