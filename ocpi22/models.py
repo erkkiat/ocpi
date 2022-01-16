@@ -669,11 +669,11 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     # The general type of parking at the charge point location
     PARKING_CHOICES = (
         ('ALONG_MOTORWAY', 'Along a motorway'),
-        ('PARKING_GARAGE', 'In a parking garage'),
-        ('PARKING_LOT', 'On a parking lot'),
-        ('ON_DRIVEWAY', 'On a driveway'),
-        ('ON_STREET', 'On the street'),
-        ('UNDERGROUND_GARAGE', 'In an underground garage'),
+        ('PARKING_GARAGE', 'Parking garage'),
+        ('PARKING_LOT', 'Parking lot'),
+        ('ON_DRIVEWAY', 'Driveway'),
+        ('ON_STREET', 'Street'),
+        ('UNDERGROUND_GARAGE', 'Underground garage'),
     )
     parking_type = models.CharField(max_length=18, null=True, blank=True, choices=PARKING_CHOICES)
 
@@ -875,8 +875,8 @@ class Connector(models.Model, ModelUtilMixin):
     standard = models.CharField(max_length=21, choices=STANDARD_CHOICES)
 
     FORMAT_CHOICES = (
-        ('SOCKET', 'Socket, bring your own cable'),
-        ('CABLE', 'Cable included'),
+        ('SOCKET', 'Socket'),
+        ('CABLE', 'Cable'),
     )
     format = models.CharField(max_length=6, choices=FORMAT_CHOICES)
 

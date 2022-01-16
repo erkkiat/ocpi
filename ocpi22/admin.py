@@ -2,13 +2,14 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
+from icecream import ic
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from requests import Response
 from rest_framework import exceptions
 
 from ocpi22.commands import send_start_command
 from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
-    PriceComponent, Cdr, Session, Credentials, CredentialsRole, Endpoint, TariffElement
+    PriceComponent, Cdr, Session, Credentials, CredentialsRole, Endpoint, TariffElement, ModelUtilMixin
 from ocpi22.tokens import get_admin_token
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False
@@ -18,11 +19,10 @@ class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
     list_display = ['party', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
-    # list_filter = ['party_id', 'country_code', 'type', 'group_id', 'contract_id']
     list_display_links = ['uid']
     readonly_fields = ['country_code', 'party_id']
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
@@ -30,61 +30,113 @@ class TokenAdmin(admin.ModelAdmin):
     #     # Disable add
     #     return False
 
-    def has_change_permission(self, request, obj: Token = None):
+    def has_change_permission(self, request, obj: Token = None) -> bool:
         return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
 
+# Todo: Prevent Connector editing if not owner, get_readonly_fields() doesn't do it
+class ConnectorInline(NestedStackedInline):
+    model = Connector
 
-# from django import forms
+    fieldsets = [
+        (None, dict(fields=[('standard', 'format', 'power_type')])),
+        (None, dict(fields=[('max_voltage', 'max_amperage')])),
+        (None, dict(fields=[('tariff_ids', 'terms_and_conditions')])),
+    ]
+    radio_fields = dict(
+        format=admin.VERTICAL,
+        power_type=admin.VERTICAL
+    )
+    autocomplete_fields = ['tariff_ids']
+    exclude= ['uid']
+
+    # def get_readonly_fields(self, request, obj=None):
+    #     if obj:
+    #         return ['uid']
+    #     return []
+
+    def has_change_permission(self, request, obj: ModelUtilMixin=None) -> bool:
+        # Todo: Admin should only be able to change owned Connectors
+        ic(obj)
+        return hasattr(obj, 'is_ours') and obj.is_ours()
+
+    def has_add_permission(self, request, obj) -> bool:
+        return self.has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
 
 
-# class LocationForm(forms.ModelForm):
-#     def validate_unique(self):
-#         super().validate_unique()
-#         ic(self.data)
-#         latitude = self.data.get('latitude', '')
-#         if "," in latitude:
-#             try:
-#                 lat, long, *_the_rest = latitude.split(",")
-#                 self.data['latitude'] = lat
-#                 self.data['longitude'] = long
-#                 self.cleaned_data['latitude'] = lat
-#                 self.cleaned_data['longitude'] = long
-#             except:
-#                 pass
-#
-#     latitude = forms.CharField()
+class LocationAdmin(NestedModelAdmin):
+    class EvseInline(NestedStackedInline):
 
-class LocationAdmin(admin.ModelAdmin):
-    class EvseInline(admin.TabularInline):
         model = Evse
+        exclude = ['evse_id']
+        inlines = [ConnectorInline]
+        autocomplete_fields = ['capabilities']
+        radio_fields = dict(
+            status=admin.VERTICAL
+        )
 
-    # form = LocationForm
+        def has_change_permission(self, request, obj=None) -> bool:
+            return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
+
+        def has_delete_permission(self, request, obj=None) -> bool:
+            return ALLOW_ADMIN_DELETE_AND_CHANGE
+
+        def get_readonly_fields(self, request, obj=None) -> list:
+            if obj:
+                return ['uid']
+            return []
+
     model = Location
     search_fields = ['country_code', 'party_id', 'uid', 'name', 'address', 'city',
                      'postal_code', 'state', 'country', 'parking_type']
-    fields = ['uid', 'publish', 'publish_allowed_to',
-              ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
-              ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone']
+    # fields = ['uid', 'publish', 'publish_allowed_to',
+    #           ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
+    #           ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone']
+    fieldsets = [
+        (None, dict(fields=('uid', 'publish', 'publish_allowed_to'))),
+        ('Address', dict(
+                fields=('name', 'address', ('postal_code', 'city'), ('state', 'country'),
+                        ('latitude', 'longitude', 'time_zone'), )
+        )),
+        ('Features', dict(
+                fields=(('parking_type', 'facilities'),)
+        )),
+        ('Parties', dict(
+                fields=(('operator', 'suboperator', 'owner'),)
+        )),
+    ]
     list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
+    inlines = [EvseInline]
+    autocomplete_fields = ['publish_allowed_to', 'facilities', 'operator', 'suboperator', 'owner']
+    radio_fields = dict(
+        parking_type=admin.VERTICAL
+    )
 
-    def has_change_permission(self, request, obj=None):
+    def has_change_permission(self, request, obj=None) -> bool:
         return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
+    def get_readonly_fields(self, request, obj=None) -> list:
+        if obj:
+            return ['uid']
+        return []
 
-class EvseAdmin(admin.ModelAdmin):
-    class ConnectorInline(admin.TabularInline):
-        model = Connector
+
+class EvseAdmin(NestedModelAdmin):
 
     model = Evse
+    exclude = ['last_updated']
+    # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
     list_display = ['party', 'evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
     actions = ['start_charging']
-    # raw_id_fields = ['location']
+    autocomplete_fields = ['capabilities', 'location']
 
     @staticmethod
     def location_url(evse):
@@ -92,10 +144,15 @@ class EvseAdmin(admin.ModelAdmin):
                            url=reverse('admin:ocpi22_location_change', args=[evse.location.pk]),
                            location=str(evse.location))
 
-    def has_change_permission(self, request, obj=None):
+    def get_readonly_fields(self, request, obj=None) -> list:
+        if obj:
+            return ['uid']
+        return []
+
+    def has_change_permission(self, request, obj=None) -> bool:
         return obj and obj.location.country_code == settings.COUNTRY_CODE and obj.location.party_id == settings.PARTY_ID
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     # def delete_model(self, request, obj):
@@ -125,21 +182,23 @@ class EvseAdmin(admin.ModelAdmin):
 class BusinessDetailsAdmin(admin.ModelAdmin):
     model = BusinessDetails
     list_display = ['name', 'website', 'logo', 'referenced_locations', 'referenced_credentials']
+    search_fields = ['name', 'website']
 
 
 class FacilityAdmin(admin.ModelAdmin):
     model = Facility
     list_display = ['name', 'description']
+    search_fields = ['name', 'description']
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete
         return False
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request) -> bool:
         # Disable add
         return False
 
-    def has_change_permission(self, request, obj=None):
+    def has_change_permission(self, request, obj=None) -> bool:
         # Disable change
         return False
 
@@ -147,16 +206,17 @@ class FacilityAdmin(admin.ModelAdmin):
 class CapabilityAdmin(admin.ModelAdmin):
     model = Capability
     list_display = ['name', 'description']
+    search_fields = ['name', 'description']
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete
         return False
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request) -> bool:
         # Disable add
         return False
 
-    def has_change_permission(self, request, obj=None):
+    def has_change_permission(self, request, obj=None) -> bool:
         # Disable change
         return False
 
@@ -173,15 +233,15 @@ class CdrAdmin(admin.ModelAdmin):
     list_display_links = ['start_date_time']
     search_fields = ['party_id', 'country_code', 'session_id']
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request) -> bool:
         # Disable add
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    def has_change_permission(self, request, obj=None):
+    def has_change_permission(self, request, obj=None) -> bool:
         # Disable change
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
@@ -209,21 +269,21 @@ class SessionAdmin(admin.ModelAdmin):
     # list_filter = ['status', 'party_id',]
     readonly_fields = ['uid', 'party_id', 'country_code']
 
-    def get_readonly_fields(self, request, obj=None):
+    def get_readonly_fields(self, request, obj=None) -> list:
         if obj:
-            return (
+            return [
                 'country_code', 'party_id', 'meter_id',
                 'authorization_reference', 'uid', 'auth_method',
                 'cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id',
                 'location', 'evse', 'connector', 'start_date_time'
-            )
+            ]
         return []
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete except for invalid sessions
         return (obj and obj.status == 'INVALID') or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request) -> bool:
         # Disable add
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
@@ -240,13 +300,19 @@ class TariffAdmin(NestedModelAdmin):
     list_display = ['party', 'uid', 'price', 'last_updated']
     list_display_links = ['uid']
     inlines = [ElementsInline]
-    readonly_fields = ['country_code', 'party_id']
+    search_fields = ['uid']
 
-    def has_change_permission(self, request, obj=None):
+    def get_readonly_fields(self, request, obj=None) -> list:
+        readonly_fields = ['country_code', 'party_id']
+        if obj:
+            readonly_fields.append('uid')
+        return readonly_fields
+
+    def has_change_permission(self, request, obj=None) -> bool:
         return (obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
             or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    def has_delete_permission(self, request, obj=None):
+    def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE or self.has_change_permission(request, obj)
 
 
