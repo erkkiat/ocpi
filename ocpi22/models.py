@@ -392,9 +392,19 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_module_name = Ocpi.Modules.TARIFFS
 
     class Meta:
-        unique_together = [['country_code', 'party_id', 'uid']]
+        constraints = [
+            models.UniqueConstraint(
+                # Allow only one Tariff to be active for each party & uid combination
+                fields=['country_code', 'party_id', 'uid'],
+                condition=Q(archived=True),
+                name='limit_one_tariff_per_uid_party_not_archived'
+            ),
+        ]
 
     upper_case_fields = ('country_code', 'party_id', 'currency')
+
+    # This object has been archived, but there may be references to it
+    archived = models.BooleanField(default=False)
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
     country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
@@ -484,6 +494,10 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
 
     def get_absolute_url(self):
         return reverse('tariff-by-id', args=[self.country_code, self.party_id, self.uid])
+
+    def references(self):
+        # noinspection PyUnresolvedReferences
+        return Cdr.objects.filter(tariffs=self).count()
 
 
 class TariffElement(models.Model, ModelUtilMixin):

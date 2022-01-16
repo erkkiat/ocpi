@@ -293,14 +293,31 @@ class TariffAdmin(NestedModelAdmin):
     class ElementsInline(NestedStackedInline):
         class PriceComponentsInline(NestedTabularInline):
             model = PriceComponent
+
+            # This is also not working, PriceComponents are always editable
+            def has_change_permission(self, request, obj=None):
+                if isinstance(obj, TariffElement):
+                    obj = obj.tariff
+                return (obj and not obj.archived and
+                        obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
+                       or ALLOW_ADMIN_DELETE_AND_CHANGE
+
         model = TariffElement
         inlines = [PriceComponentsInline]
 
     model = Tariff
-    list_display = ['party', 'uid', 'price', 'last_updated']
+    list_display = [
+        # 'archived',
+        'party', 'uid', 'price', 'references'
+    ]
     list_display_links = ['uid']
     inlines = [ElementsInline]
     search_fields = ['uid']
+    # list_filter = ['archived']
+
+    def get_queryset(self, _request):
+        # Hide archived
+        return Tariff.objects.exclude(archived=True)
 
     def get_readonly_fields(self, request, obj=None) -> list:
         readonly_fields = ['country_code', 'party_id']
@@ -310,7 +327,7 @@ class TariffAdmin(NestedModelAdmin):
 
     def has_change_permission(self, request, obj=None) -> bool:
         return (obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
-            or ALLOW_ADMIN_DELETE_AND_CHANGE
+                or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE or self.has_change_permission(request, obj)

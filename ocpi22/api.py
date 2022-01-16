@@ -532,10 +532,12 @@ class TariffViewSet(mixins.RetrieveModelMixin,
         return OCPIResponse(serializer.data)
 
     @staticmethod
-    def put(request) -> OCPIResponse:
+    def put(request, country_code=None, party_id=None, uid=None) -> OCPIResponse:
+        # This PUT is used both for the Tariff endpoint root and the path with country_code, party_id and Tariff uid
         data = request.data.get('data', request.data)
-        country_code = data.get('country_code')
-        party_id = data.get('party_id')
+        country_code = country_code or data.get('country_code')
+        party_id = party_id or data.get('party_id')
+        uid = uid or data.get('id')
 
         if not matching_operator(request, country_code, party_id):
             return NotOwner()
@@ -543,7 +545,8 @@ class TariffViewSet(mixins.RetrieveModelMixin,
         # noinspection PyUnresolvedReferences
         try:
             # noinspection PyUnresolvedReferences
-            tariff = Tariff.objects.get(country_code=country_code, party_id=party_id, uid=data.get('id'))
+            tariff = Tariff.objects.get(country_code=country_code, party_id=party_id, uid=uid,
+                                        archived=False)
         except Tariff.DoesNotExist:
             tariff = None
         serializer = TariffSerializer(instance=tariff, data=data)

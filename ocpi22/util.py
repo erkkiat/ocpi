@@ -292,10 +292,11 @@ class OcpiModule:
             f'OCPI object class {type(self)} must have an ocpi_module_name specified.'
 
         if not hasattr(self, 'update_sent') and self.is_ours():
-            print('*** This is our object, sending updates to all known parties')
-            self.send_updates()
-            # Send update only once
-            setattr(self, 'update_sent', True)
+            if not hasattr(self, 'archived') or self.archived == False:
+                print('*** This is our object, sending updates to all known parties')
+                self.send_updates()
+                # Send update only once
+                setattr(self, 'update_sent', True)
 
     def send_updates(self) -> None:
         """

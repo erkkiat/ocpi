@@ -278,7 +278,7 @@ class LocationTests(TestCase):
 
             # Verify the saved data
             uid = data.get('id')
-            saved_data = TariffSerializer(Tariff.objects.get(uid=uid)).data
+            saved_data = TariffSerializer(Tariff.objects.get(uid=uid, archived=False)).data
             # ic(saved_data)
 
             # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
