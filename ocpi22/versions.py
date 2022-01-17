@@ -76,6 +76,11 @@ def get_endpoints_dict(request):
                 url=request.build_absolute_uri(reverse('cdr-list'))
             ),
             dict(
+                identifier="cdrs",
+                role=R,
+                url=request.build_absolute_uri(reverse('cdr-list'))
+            ),
+            dict(
                 identifier="commands",
                 role=R,
                 url=request.build_absolute_uri(reverse('commands-list'))

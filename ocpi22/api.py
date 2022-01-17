@@ -263,9 +263,16 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     cdr_location = CdrLocationSerializer(source='*')
 
     def create(self, validated_data):
-        tariffs = validated_data.pop('tariffs')
-        # Todo: Store Tariffs in an unmutable way
-        return super().create(validated_data)
+        try:
+            tariffs = validated_data.pop('tariffs')
+            ic(tariffs)
+            # Todo: Make an archived copy of Tariff and link to the original, clear link when original is changed
+            # Link archived copy to Cdr - Jiihaa!
+            # Todo: Store Tariffs in an unmutable way
+            return super().create(validated_data)
+        except IntegrityError as e:
+            raise ValidationError(f'A CDR with uid `{validated_data.get("uid")}` already exists. '
+                                  'Overwriting an existing CDR is forbidden.')
 
 
 class CdrViewSet(mixins.RetrieveModelMixin,
@@ -288,6 +295,7 @@ class CdrViewSet(mixins.RetrieveModelMixin,
         return OCPIResponse(serializer.data)
 
     @staticmethod
+    @transaction.atomic
     def put(request) -> OCPIResponse:
         data = request.data.get('data', request.data)
         country_code = data.get('country_code')
@@ -522,7 +530,7 @@ class TariffViewSet(mixins.RetrieveModelMixin,
                     mixins.ListModelMixin,
                     GenericViewSet):
     # noinspection PyUnresolvedReferences
-    queryset = Tariff.objects.all().order_by('created')
+    queryset = Tariff.objects.exclude(archived=True).order_by('created')
     serializer_class = TariffSerializer
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
