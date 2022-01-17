@@ -414,7 +414,7 @@ def calculate_partition(coordinate):
 
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(cls, *args, **kwargs) -> object:
+    def get_if_exists(cls, *args: list, **kwargs: dict):
         # noinspection PyUnresolvedReferences
         objects = cls.objects.filter(*args, **kwargs)
         if objects.count():

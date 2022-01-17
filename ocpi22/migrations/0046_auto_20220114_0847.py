@@ -64,7 +64,7 @@ class Migration(migrations.Migration):
                                     ),
             preserve_default=False
         ),
-        migrations.RunPython(link_elements),
+        migrations.RunPython(link_elements, elidable=True),
         migrations.RemoveField(
             model_name='pricecomponent',
             name='tariff',

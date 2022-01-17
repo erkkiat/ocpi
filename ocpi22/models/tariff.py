@@ -1,4 +1,5 @@
 import uuid
+from copy import deepcopy
 
 from django.conf import settings
 from django.db import models
@@ -17,15 +18,16 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.TariffSerializer'
     ocpi_module_name = Ocpi.Modules.TARIFFS
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                # Allow only one Tariff to be active for each party & uid combination
-                fields=['country_code', 'party_id', 'uid'],
-                condition=Q(archived=True),
-                name='limit_one_tariff_per_uid_party_not_archived'
-            ),
-        ]
+    # MySQL didn't support Q-conditions
+    # class Meta:
+    #     constraints = [
+    #         models.UniqueConstraint(
+    #             # Allow only one Tariff to be active for each party & uid combination
+    #             fields=['country_code', 'party_id', 'uid'],
+    #             condition=Q(archived=True),
+    #             name='limit_one_tariff_per_uid_party_not_archived'
+    #         ),
+    #     ]
 
     upper_case_fields = ('country_code', 'party_id', 'currency', 'uid')
 
@@ -122,6 +124,34 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             # noinspection PyUnresolvedReferences
             return Cdr.objects.filter(tariffs=self).count()
         return 'N/A'
+
+    @classmethod
+    def make_copy(cls, tariff):
+        elements = tariff.tariff_elements.all()
+        new_tariff = deepcopy(tariff)
+        new_tariff.pk = None
+        new_tariff.archived = True
+        new_tariff.save()
+
+        for e in elements:
+            price_components = e.price_components.all().select_related()
+            e.pk = None
+            e.tariff = new_tariff
+            e.save()
+
+            for pc in price_components:
+                pc.pk = None
+                pc.tariff_element = e
+                pc.save()
+
+        return new_tariff
+
+    @classmethod
+    def make_copies(cls, tariffs):
+        result = []
+        for t in tariffs:
+            result.append(cls.make_copy(t))
+        return result
 
 
 class TariffElement(models.Model, ModelUtilMixin):

@@ -267,7 +267,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     def create(self, validated_data):
         try:
             tariffs = validated_data.pop('tariffs')
-            ic(tariffs)
+            # ic(tariffs)
             # Todo: Make an archived copy of Tariff and link to the original, clear link when original is changed
             # Link archived copy to Cdr - Jiihaa!
             # Todo: Store Tariffs in an unmutable way
@@ -615,9 +615,7 @@ class SessionViewSet(mixins.ListModelMixin,
         country_code = data.get('country_code')
         party_id = data.get('party_id')
 
-        ic(country_code, party_id, uid)
         session: Session = Session.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
-        ic(session)
         if session and not session.is_owner(request):
             return NotOwner()
         serialiser = SessionSaveSerializer(data=request.data, instance=session, partial=partial)

@@ -33,6 +33,19 @@ def load_tests(_loader, tests, _ignore):
     return tests
 
 
+def create_tariff(*_args, **kwargs) -> Tariff:
+    params = dict(
+        currency='EUR'
+    )
+    params.update(kwargs)
+    tariff = Tariff.objects.create(**params)
+    # noinspection PyUnresolvedReferences
+    tariff_element = TariffElement.objects.create(tariff=tariff)
+    # noinspection PyUnresolvedReferences
+    PriceComponent.objects.create(type='FLAT', price=1.0, step_size=1, tariff_element=tariff_element)
+    return tariff
+
+
 class OcpiTests(TestCase):
     fixtures = ['ocpi22/data/initial.json']
     location_index = 1
@@ -71,20 +84,6 @@ class OcpiTests(TestCase):
         roles1 = CredentialsRole.objects.create(role='CPO', country_code=self.country_code,
                                                 party_id=self.party_id, business_details=self.business_details)
         self.credentials.roles.set([roles1])
-
-    @staticmethod
-    # noinspection PyUnresolvedReferences
-    def create_tariff(*_args, **kwargs):
-        params = dict(
-            currency='EUR'
-        )
-        params.update(kwargs)
-        tariff = Tariff.objects.create(**params)
-        # noinspection PyUnresolvedReferences
-        tariff_element = TariffElement.objects.create(tariff=tariff)
-        # noinspection PyUnresolvedReferences
-        PriceComponent.objects.create(type='FLAT', price=1.0, step_size=1, tariff_element=tariff_element)
-        return tariff
 
     def test_evse_with_same_id(self):
         # Create two locations with the same Evse IDs
@@ -211,7 +210,7 @@ class OcpiTests(TestCase):
 
             # Create the needed Tariffs
             for t in tariffs:
-                self.create_tariff(uid=t, country_code=country_code, party_id=party_id)
+                create_tariff(uid=t, country_code=country_code, party_id=party_id)
 
             # And CretentialsRoles
             # noinspection PyUnresolvedReferences
@@ -350,9 +349,9 @@ class OcpiTests(TestCase):
 
             # Send the request
             response = self.put(url, data, token_base64, viewset)
-            if response.status_text:
-                print(f'status_text: "{response.status_text}" for {filename} case.')
-                ic(response.data)
+            # if response.status_text:
+            #     print(f'status_text: "{response.status_text}" for {filename} case.')
+            #     ic(response.data)
             self.assertEqual(response.status_code, http_status,
                              f'Expected a HTTP status code {http_status} for {filename} case.')
             self.assertEqual(response.data['status_code'], ocpi_status,
@@ -362,7 +361,7 @@ class OcpiTests(TestCase):
             uid = data.get('id')
             # noinspection PyUnresolvedReferences
             saved_data = CdrSerializer(Cdr.objects.get(uid=uid)).data
-            ic(saved_data)
+            # ic(saved_data)
 
             # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
             self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
@@ -407,9 +406,9 @@ class OcpiTests(TestCase):
 
             # Send the request
             response = self.put(url, data, token_base64, viewset)
-            if response.status_text:
-                print(f'status_text: "{response.status_text}" for {filename} case.')
-                ic(response.data)
+            # if response.status_text:
+            #     print(f'status_text: "{response.status_text}" for {filename} case.')
+            #     ic(response.data)
             self.assertEqual(response.status_code, http_status,
                              f'Expected a HTTP status code {http_status} for {filename} case.')
             self.assertEqual(response.data['status_code'], ocpi_status,
@@ -420,7 +419,7 @@ class OcpiTests(TestCase):
                 uid = data.get('uid').upper()
                 # noinspection PyUnresolvedReferences
                 saved_data = TokenSerializer(Token.objects.get(uid=uid)).data
-                ic(saved_data)
+                # ic(saved_data)
             except Token.DoesNotExist as e:
                 print(f"Unable to verify token {uid} from database.")
                 print('Available Tokens:')
@@ -476,3 +475,30 @@ class OcpiTests(TestCase):
         # result = self.client.get(detail_url, HTTP_AUTHORIZATION=f'Token {self.credentials.ours_base64()}')
         # self.assertEqual(result.status_code, 200, 'OCPI token authentication seems not to work.')
         #
+
+
+class TariffTests(TestCase):
+
+    def dump_tariffs(self):
+        # noinspection PyUnresolvedReferences
+        for t in Tariff.objects.all():
+            serializer = TariffSerializer(t)
+            ic(t.pk, serializer.data)
+
+    def check_tariff(self, tariff, tariff_elements, price_components):
+        self.assertEqual(tariff.tariff_elements.count(), tariff_elements,
+                         f"Tariff #{tariff.pk} `{tariff}` doesn't have {tariff_elements} TariffElements")
+        for e in tariff.tariff_elements.all():
+            self.assertEqual(e.price_components.count(), price_components,
+                             f"TariffElement #{e.pk} `{e}` doesn't have {price_components} PriceComponents")
+
+    # noinspection PyUnresolvedReferences
+    def test_tariff_copying(self):
+        Tariff.objects.all().delete()
+        # Create some Tariffs
+        t1 = create_tariff(uid='T1', country_code='FI', party_id='ABC')
+        # self.dump_tariffs()
+        t1_copy = Tariff.make_copy(t1)
+        self.check_tariff(t1_copy, 1, 1)
+        # self.dump_tariffs()
+        self.assertEqual(Tariff.objects.count(), 2, 'There should be exactly 2 Tariffs after creating copies')
