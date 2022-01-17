@@ -312,7 +312,7 @@ class OcpiModule:
             serializer_class = import_string(serializer_class)
 
         if settings.SEND_UPDATES > 0:
-            from ocpi22.models import Endpoint
+            from ocpi22.models.credentials import Endpoint
             # noinspection PyUnresolvedReferences
             endpoints = Endpoint.objects.filter(identifier=ocpi_module, role='RECEIVER')
             serializer = serializer_class(self)
