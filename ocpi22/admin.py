@@ -8,8 +8,14 @@ from requests import Response
 from rest_framework import exceptions
 
 from ocpi22.commands import send_start_command
-from ocpi22.models import Token, Location, BusinessDetails, Facility, Evse, Connector, Capability, Tariff, \
-    PriceComponent, Cdr, Session, Credentials, CredentialsRole, Endpoint, TariffElement, ModelUtilMixin
+from ocpi22.models.cdr import Cdr
+from ocpi22.models.models import BusinessDetails, Facility, Capability
+from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
+from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.session import Session
+from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
+from ocpi22.models.token import Token
+from ocpi22.util import ModelUtilMixin
 from ocpi22.tokens import get_admin_token
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False
@@ -34,6 +40,8 @@ class TokenAdmin(admin.ModelAdmin):
         return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
 
 # Todo: Prevent Connector editing if not owner, get_readonly_fields() doesn't do it
+
+
 class ConnectorInline(NestedStackedInline):
     model = Connector
 
@@ -47,14 +55,14 @@ class ConnectorInline(NestedStackedInline):
         power_type=admin.VERTICAL
     )
     autocomplete_fields = ['tariff_ids']
-    exclude= ['uid']
+    exclude = ['uid']
 
     # def get_readonly_fields(self, request, obj=None):
     #     if obj:
     #         return ['uid']
     #     return []
 
-    def has_change_permission(self, request, obj: ModelUtilMixin=None) -> bool:
+    def has_change_permission(self, request, obj: ModelUtilMixin = None) -> bool:
         # Todo: Admin should only be able to change owned Connectors
         ic(obj)
         return hasattr(obj, 'is_ours') and obj.is_ours()
@@ -299,8 +307,8 @@ class TariffAdmin(NestedModelAdmin):
                 if isinstance(obj, TariffElement):
                     obj = obj.tariff
                 return (obj and not obj.archived and
-                        obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
-                       or ALLOW_ADMIN_DELETE_AND_CHANGE
+                    obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
+                    or ALLOW_ADMIN_DELETE_AND_CHANGE
 
         model = TariffElement
         inlines = [PriceComponentsInline]
@@ -317,6 +325,7 @@ class TariffAdmin(NestedModelAdmin):
 
     def get_queryset(self, _request):
         # Hide archived
+        # noinspection PyUnresolvedReferences
         return Tariff.objects.exclude(archived=True)
 
     def get_readonly_fields(self, request, obj=None) -> list:

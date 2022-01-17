@@ -3,12 +3,13 @@ import logging
 from django.conf import settings
 from icecream import ic
 
-from ocpi22.models import Token
+from ocpi22.models.token import Token
 from ocpi22.util import ocpi_post
 
 
 def authorize_token(token_uid, location=None):
-    from ocpi22.models import Endpoint, Token, Session
+    from ocpi22.models.token import Token
+    from ocpi22.models.session import Session
 
     if settings.DEBUG and 'POSITIVE_TEST_TOKEN' in token_uid:
         return Session.WHITELIST, dict(uid=token_uid, type=Token.RFID, contract_id='123')

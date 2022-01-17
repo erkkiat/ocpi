@@ -11,11 +11,14 @@ from rest_framework.request import Request
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
-from ocpi22.models import Location, Evse, Connector, BusinessDetails, uid_validator, Endpoint, Tariff, Facility, \
+from ocpi22.models.models import BusinessDetails, Facility, \
     Capability
+from ocpi22.models.credentials import Endpoint
+from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.tariff import Tariff
 from ocpi22.tasks import send_evse_status_update
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, OCPIResponse, Ocpi, NotOwner, \
-    matching_operator
+    matching_operator, uid_validator
 from ocpiconnector.settings import UPDATES_DISABLED
 
 

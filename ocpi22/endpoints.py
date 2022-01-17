@@ -1,4 +1,4 @@
-from ocpi22.models import Endpoint
+from ocpi22.models.credentials import Endpoint
 
 
 def find_endpoints(identifier, role, endpoints=Endpoint.objects.all()):

@@ -40,7 +40,7 @@ app.autodiscover_tasks()
 
 @app.task(bind=True)
 def command_start(_self, data, session_uid, update_url, url):
-    from ocpi22.models import Session
+    from ocpi22.models.session import Session
     from rest_framework.generics import get_object_or_404
     session: Session = get_object_or_404(Session, uid=session_uid)
 
@@ -61,7 +61,7 @@ def command_start(_self, data, session_uid, update_url, url):
             result_status = result_data.get('status')
 
         if result.status_code == 200:
-            from ocpi22.models import Connector
+            from ocpi22.models.location import Connector
             session.status = 'ACTIVE'
             session.connector = get_object_or_404(Connector, uid=result_data['connector'], evse=session.evse)
             session.save()
@@ -109,7 +109,8 @@ def send_update(_self, data, url, token_base64) -> None:
 
 @app.task(bind=True)
 def send_evse_status_update(_self, evse_uid, endpoint_pk):
-    from ocpi22.models import Evse, Endpoint
+    from ocpi22.models.credentials import Endpoint
+    from ocpi22.models.location import Evse
     # noinspection PyUnresolvedReferences
     evse = Evse.objects.get(uid=evse_uid)
     location = evse.location
@@ -139,5 +140,3 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
     if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-400:])
         logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')
-
-

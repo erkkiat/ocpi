@@ -5,6 +5,7 @@ import django.db.models.deletion
 from icecream import ic
 
 import ocpi22.models
+import ocpi22.util
 
 
 def link_elements(apps, _schema_editor):
@@ -53,7 +54,7 @@ class Migration(migrations.Migration):
                 ('tariff', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT,
                                              related_name='tariff_elements', to='ocpi22.tariff')),
             ],
-            bases=(models.Model, ocpi22.models.ModelUtilMixin),
+            bases=(models.Model, ocpi22.util.ModelUtilMixin),
         ),
         migrations.AddField(
             model_name='pricecomponent',

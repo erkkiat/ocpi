@@ -1,0 +1,399 @@
+import uuid
+
+from django.db import models
+from django.db.models.signals import pre_save, post_save
+from django.dispatch import receiver
+from django.utils.html import format_html
+from icecream import ic
+from rest_framework.reverse import reverse
+
+from ocpi22.models.models import BusinessDetails, Facility, Capability
+from ocpi22.models.tariff import Tariff
+from ocpi22.models.token import Token
+from ocpi22.util import ModelUtilMixin, OcpiModule, Ocpi, uid_validator, calculate_partition
+from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
+
+
+class Location(models.Model, ModelUtilMixin, OcpiModule):
+    """
+    A physical location with one or more EVSEs
+    """
+
+    ocpi_serializer_class = 'ocpi22.location.LocationSerializer'
+    ocpi_module_name = Ocpi.Modules.LOCATIONS
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['uid', 'party_id'], name='party_uid'),
+            models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
+        ]
+
+    upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id']
+
+    # ISO-3166 alpha-2 country code of the CPO that owns this Location
+    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+
+    # CPO ID of the CPO that 'owns' this Location (following the ISO-15118 standard).
+    party_id = models.CharField(max_length=3, default=PARTY_ID)
+
+    # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
+    # This field can never be changed, modified or renamed.
+    uid = models.CharField(max_length=36)
+
+    # Defines if a Location may be published on an website or app etc.
+    # When this is set to false, only tokens identified in the field:
+    # publish_allowed_to are allowed to be shown this Location.
+    # When the same location has EVSEs that may be published and may not be published,
+    # two 'Locations' should be created.
+    publish = models.BooleanField(default=True)
+
+    # Defines the set of values that identify a token to which a Location might be published.
+    # At least one of the following fields SHALL be set: uid, visual_number, or group_id.
+    #
+    # When uid is set, type SHALL also be set.
+    publish_allowed_to = models.ManyToManyField(Token, related_name='locations', blank=True)
+
+    # Display name of the location
+    name = models.CharField(max_length=255, blank=True)
+
+    # Street/block name and house number if available.
+    address = models.CharField(max_length=45)
+
+    # City or town
+    city = models.CharField(max_length=45)
+
+    # Postal code of the location, may only be omitted when the location has no postal code:
+    # in some countries charging locations at highways don’t have postal codes.
+    postal_code = models.CharField(max_length=45, blank=True)
+
+    # State or province of the location, only to be used when relevant
+    state = models.CharField(max_length=20, blank=True)
+
+    # ISO 3166-1 alpha-3 code for the country of this location
+    country = models.CharField(max_length=3)
+
+    # This class defines the geo location of the Charge Point. The geodetic system to be used is WGS 84.
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+
+    def get_coordinates(self):
+        """Formatting for OCPI (2.2)"""
+        return dict(latitude=self.latitude, longitude=self.longitude)
+
+    def set_coordinates(self, value):
+        ic()
+        ic(value)
+        raise NotImplementedError()
+
+    coordinates = property(get_coordinates, set_coordinates)
+
+    # An index for fast lookup, first 4 digits from lat
+    lat_partition = models.SmallIntegerField(db_index=True, null=True, blank=True)
+    # An index for fast lookup, first 4 digits from long
+    long_partition = models.SmallIntegerField(db_index=True, null=True, blank=True)
+
+    # Geographical location of related points relevant to the user
+    # related_locations
+
+    # The general type of parking at the charge point location
+    PARKING_CHOICES = (
+        ('ALONG_MOTORWAY', 'Along a motorway'),
+        ('PARKING_GARAGE', 'Parking garage'),
+        ('PARKING_LOT', 'Parking lot'),
+        ('ON_DRIVEWAY', 'Driveway'),
+        ('ON_STREET', 'Street'),
+        ('UNDERGROUND_GARAGE', 'Underground garage'),
+    )
+    parking_type = models.CharField(max_length=18, null=True, blank=True, choices=PARKING_CHOICES)
+
+    # List of EVSEs that belong to this Location
+    # evses (comes automatically from Evse class)
+
+    # Human-readable directions on how to reach the location
+    # directions
+
+    operator = models.ForeignKey(BusinessDetails, related_name='operator_locations',
+                                 null=True, blank=True, on_delete=models.PROTECT)
+    suboperator = models.ForeignKey(BusinessDetails, related_name='suboperator_locations',
+                                    null=True, blank=True, on_delete=models.PROTECT)
+    owner = models.ForeignKey(BusinessDetails, related_name='owner_locations',
+                              null=True, blank=True, on_delete=models.PROTECT)
+
+    # Optional list of facilities this charging location directly belongs to
+    facilities = models.ManyToManyField(Facility, related_name='facility_locations', blank=True)
+
+    # Todo: get time zone based on coordinates
+    # One of IANA tzdata’s TZ-values representing the time zone of the location.
+    # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
+    time_zone = models.CharField(max_length=64)
+
+    # The times when the EVSEs at the location can be accessed for charging
+    # opening_times
+
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.name}, {self.address}, {self.city}' or f'[No name, UID: {self.pk}]'
+
+    def save(self, *args, **kwargs):
+        if hasattr(self, 'upper_case_fields'):
+            for field in self.upper_case_fields:
+                f = self.__getattribute__(field)
+                if f:
+                    upper_value = f.upper()
+                    self.__setattr__(field, upper_value)
+        return super(self.__class__, self).save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse('location-by-id', args=[self.country_code, self.party_id, self.uid])
+
+    def get_quick_url(self):
+        return reverse('quick-location-by-id', args=[self.uid])
+
+    def street_address(self):
+        return f'{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}'
+
+    def evse_count(self):
+        # noinspection PyUnresolvedReferences
+        return self.evses.count()
+
+    def evse_list(self):
+        # noinspection PyUnresolvedReferences
+        return format_html(
+            '<hr style="margin: 4px">'.join(
+                [
+                    f'<a href="{reverse("admin:ocpi22_evse_change", args=[e.pk])}">{str(e)}</a>'
+                    for e in self.evses.all()
+                ]
+            )
+        )
+
+
+class Evse(models.Model, ModelUtilMixin):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['uid', 'location'], name='evse_party_uid'),
+        ]
+
+    # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
+    # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.
+    # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
+    # use the field evse_id for that.
+    # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
+    uid = models.CharField(max_length=36, validators=[uid_validator])
+
+    # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
+    # (http://emi3group.com/documents-links/) "Part 2: business objects."
+    # Optional because: if an evse_id is to be re-used in the real world,
+    # the evse_id can be removed from an EVSE object if the status is set to REMOVED.
+
+    evse_id = models.CharField(max_length=48, blank=True, default='')
+
+    # @property
+    # def evse_id(self):
+    #     # The eMI3 1.0 standard ID
+    #     return f'{self.location.country_code}*{self.location.party_id}*E{self.location.uid}*{self.uid}'.upper()
+
+    # Indicates the current status of the EVSE
+    STATUS_CHOICES = (
+        ('AVAILABLE', 'Available'),
+        ('BLOCKED', 'Physically blocked'),
+        ('CHARGING', 'Charging'),
+        ('INOPERATIVE', 'Inoperative (not yet active or it is no longer available)'),
+        ('OUTOFORDER', 'Out of order'),
+        ('PLANNED', 'Planned, will be operating soon'),
+        ('REMOVED', 'Discontinued/removed'),
+        ('RESERVED', 'Reserved for a particular EV driver'),
+        ('UNKNOWN', 'No status information available (also used when offline)'),
+    )
+    status = models.CharField(max_length=11, choices=STATUS_CHOICES)
+
+    CAPABILITY_CHOICES = (
+        ('CHARGING_PROFILE_CAPABLE', 'The EVSE supports charging profiles'),
+        ('CHARGING_PREFERENCES_CAPABLE', 'The EVSE supports charging preferences'),
+        ('CHIP_CARD_SUPPORT', 'EVSE has a payment terminal that supports chip cards'),
+        ('CONTACTLESS_CARD_SUPPORT', 'EVSE has a payment terminal that supports contactless cards'),
+        ('CREDIT_CARD_PAYABLE', 'EVSE has a payment terminal that makes it possible to pay for charging using a credit card'),
+        ('DEBIT_CARD_PAYABLE', 'EVSE has a payment terminal that makes it possible to pay for charging using a debit card'),
+        ('PED_TERMINAL', 'EVSE has a payment terminal with a pin-code entry device'),
+        ('REMOTE_START_STOP_CAPABLE', 'The EVSE can remotely be started / stopped'),
+        ('RESERVABLE', 'The EVSE can be reserved'),
+        ('RFID_READER', 'Charging at this EVSE can be authorized with an RFID token'),
+        ('TOKEN_GROUP_CAPABLE', 'This EVSE supports token groups, two or more tokens work as one'),
+        ('UNLOCK_CAPABLE', 'Connectors can be unlocked remotely'),
+    )
+    capabilities = models.ManyToManyField(Capability, related_name='evses')
+
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses')
+
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.evse_id
+
+    def connector_list(self):
+        # noinspection PyUnresolvedReferences
+        return format_html('<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff()}' for c in self.connectors.all()]))
+
+    def get_absolute_url(self):
+        return reverse('location-by-evse-id',
+                       args=[self.location.country_code, self.location.party_id, self.location.uid, self.uid])
+
+    def get_cpo_url(self):
+        return reverse('cpo-evse-by-id',
+                       args=[self.uid])
+
+    def get_status_url(self):
+        return reverse('cpo-evse-by-id',
+                       args=[self.uid])
+
+
+class Connector(models.Model, ModelUtilMixin):
+    # Identifier of the Connector within the EVSE. Two Connectors may have the same id
+    # as long as they do not belong to the same EVSE object.
+
+    class Meta:
+        unique_together = [['evse', 'uid']]
+
+    uid = models.CharField(max_length=36)
+
+    evse = models.ForeignKey(Evse, on_delete=models.CASCADE, related_name='connectors')
+
+    STANDARD_CHOICES = (
+        ('IEC_62196_T2', 'Type 2 "Mennekes"'),
+        ('IEC_62196_T2_COMBO', 'CCS type 2'),
+        ('CHADEMO', 'CHAdeMO'),
+        ('IEC_62196_T1', 'IEC 62196 Type 1 "SAE J1772"'),
+        ('IEC_62196_T1_COMBO', 'CCS type 1'),
+        ('IEC_62196_T3A', 'IEC 62196 Type 3A'),
+        ('IEC_62196_T3C', 'IEC 62196 Type 3C "Scame"'),
+        ('DOMESTIC_A', 'Type "A", NEMA 1-15, 2 pins'),
+        ('DOMESTIC_B', 'Type "B", NEMA 5-15, 3 pins'),
+        ('DOMESTIC_C', 'Type "C", CEE 7 / 17, 2 pins'),
+        ('DOMESTIC_D', 'Type "D", 3 pin'),
+        ('DOMESTIC_E', 'Type "E", CEE 7 / 5 3 pins'),
+        ('DOMESTIC_F', 'Type "F", CEE 7 / 4, Schuko, 3 pins'),
+        ('DOMESTIC_G', 'Type "G", BS 1363, Commonwealth, 3 pins'),
+        ('DOMESTIC_H', 'Type "H", SI-32, 3 pins'),
+        ('DOMESTIC_I', 'Type "I", AS 3112, 3 pins'),
+        ('DOMESTIC_J', 'Type "J", SEV 1011, 3 pins'),
+        ('DOMESTIC_K', 'Type "K", DS 60884-2-D1, 3 pins'),
+        ('DOMESTIC_L', 'Type "L", CEI 23-16-VII, 3 pins'),
+        ('IEC_60309_2_single_16', 'IEC 60309-2 single phase 16 A (blue)'),
+        ('IEC_60309_2_three_16', 'IEC 60309-2 three phase 16 A (red)'),
+        ('IEC_60309_2_three_32', 'IEC 60309-2 three phase 32 A (red)'),
+        ('IEC_60309_2_three_64', 'IEC 60309-2 three phase 64 A (red)'),
+        ('PANTOGRAPH_BOTTOM_UP', 'On-board Bottom-up-Pantograph'),
+        ('PANTOGRAPH_TOP_DOWN', 'Off-board Top-down-Pantograph'),
+        ('TESLA_R', 'Tesla "Roadster"-type'),
+        ('TESLA_S', 'Tesla "Model-S"-type'),
+    )
+    standard = models.CharField(max_length=21, choices=STANDARD_CHOICES)
+
+    FORMAT_CHOICES = (
+        ('SOCKET', 'Socket'),
+        ('CABLE', 'Cable'),
+    )
+    format = models.CharField(max_length=6, choices=FORMAT_CHOICES)
+
+    POWERTYPES = dict(
+        CHADEMO='DC',
+        IEC_62196_T2_COMBO='DC',
+        IEC_62196_T2='AC_3_PHASE'
+    )
+    POWERTYPE_CHOICES = (
+        ('AC_1_PHASE', 'AC 1-phase'),
+        ('AC_3_PHASE', 'AC 3-phase'),
+        ('DC', 'DC')
+    )
+    power_type = models.CharField(max_length=10, choices=POWERTYPE_CHOICES)
+
+    max_voltage = models.SmallIntegerField()
+    max_amperage = models.SmallIntegerField()
+    max_electric_power = models.IntegerField(null=True, blank=True)
+
+    tariff_ids = models.ManyToManyField(Tariff, related_name='tariffs', blank=True)
+
+    terms_and_conditions = models.URLField(blank=True, default='')
+
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(null=True, blank=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        # noinspection PyUnresolvedReferences
+        return f'{self.power()} {self.get_standard_display()}'
+
+    def power(self):
+        return f'{int((self.max_electric_power or self.max_voltage * self.max_amperage) / 1000)} kW'
+
+    def tariff(self):
+        return format_html('<br>'.join([t.link() for t in self.tariff_ids.all()]))
+
+
+@receiver(pre_save, sender=Connector)
+def connector_pre_save(sender, instance, *_args, **_kwargs):
+    connector: Connector = instance
+    if not connector.uid:
+        connector.uid = uuid.uuid4().hex
+    if not connector.power_type:
+        connector.power_type = Connector.POWERTYPES[connector.standard]
+
+
+@receiver(post_save, sender=Connector)
+def connector_post_save(sender, instance, *_args, **kwargs):
+    # ic()
+    # ic(kwargs)
+    connector: Connector = instance
+    evse = connector.evse
+    # ic('connector_post_save is updating Evse.last_updated')
+    evse.last_updated = connector.last_updated
+    evse.save(update_fields=['last_updated'])
+    # ic('connector_post_save is updating Location.last_updated')
+    location = connector.evse.location
+    location.last_updated = connector.last_updated
+    location.save(update_fields=['last_updated'])
+
+
+@receiver(post_save, sender=Evse)
+def evse_post_save(sender, instance, *_args, **kwargs):
+    """
+    Make sure that only Admin calls Evse.save() without the update_fields list
+    """
+    # ic()
+    # ic(kwargs)
+    update_fields = kwargs.get('update_fields', [])
+    if update_fields and 'last_updated' in update_fields:
+        # If only last_updated has been changed, Location.last_updated has been already updated by connector_post_save
+        # ic('evse_post_save was triggered by connector_post_save, no updating for Location.last_updated')
+        return
+    # ic('evse_post_save is updating Location.last_updated')
+    evse = instance
+    evse.location.last_updated = evse.last_updated
+    evse.location.save(update_fields=['last_updated'])
+    # if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
+    #     ic('*** This is our location, sending updates to all known parties')
+    #     # from ocpi22.location import send_evse_updates
+    #     # send_evse_updates(evse.uid)
+    #     from ocpi22.location import send_location_updates
+    #     send_location_updates(location)
+
+
+@receiver(pre_save, sender=Location)
+def location_pre_save(sender, instance, *_args, **_kwargs):
+    location: Location = instance
+    location.lat_partition = calculate_partition(location.latitude)
+    location.long_partition = calculate_partition(location.longitude)

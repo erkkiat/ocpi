@@ -15,9 +15,12 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22 import models
 from ocpi22.location import send_evse_updates
-from ocpi22.models import Evse, Session, Token, Connector, Cdr, Location
+from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.session import Session
+from ocpi22.models.token import Token
+from ocpi22.models.cdr import Cdr
 from ocpi22.tokens import authorize_token
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
@@ -146,7 +149,7 @@ class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
                   'max_voltage', 'max_amperage', 'max_electric_power',
                   'tariff_ids', 'last_updated']
 
-    uid = serializers.CharField(validators=[models.uid_validator])
+    uid = serializers.CharField(validators=[uid_validator])
     max_electric_power = serializers.SerializerMethodField()
     tariff_ids = serializers.SerializerMethodField()
 
@@ -165,7 +168,7 @@ class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Evse
         fields = ['status_url', 'uid', 'status', 'connectors', 'last_updated']
 
-    uid = serializers.CharField(validators=[models.uid_validator])
+    uid = serializers.CharField(validators=[uid_validator])
     connectors = ConnectorQuickSerializer(many=True)
 
 
@@ -178,7 +181,7 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             'latitude', 'longitude', 'evses',
         ]
 
-    id = serializers.CharField(source='uid', validators=[models.uid_validator])
+    id = serializers.CharField(source='uid', validators=[uid_validator])
     evses = EvseQuickSerializer(many=True)
 
     lookup_field = 'uid'

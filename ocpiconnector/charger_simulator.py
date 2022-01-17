@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from pprint import PrettyPrinter
 
-from ocpi22.models import Evse
+from ocpi22.models.location import Evse
 
 pp = PrettyPrinter(indent=4).pprint
 

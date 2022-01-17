@@ -17,8 +17,11 @@ from rest_framework.test import APIRequestFactory
 
 from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer
 from ocpi22.location import LocationViewSet
-from ocpi22.models import Credentials, Location, Evse, Connector, CredentialsRole, BusinessDetails, Tariff, \
-    PriceComponent, TariffElement, Cdr
+from ocpi22.models.models import BusinessDetails
+from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
+from ocpi22.models.cdr import Cdr
 from ocpi22.util import OCPIResponse, Ocpi
 
 

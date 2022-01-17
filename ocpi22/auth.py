@@ -5,7 +5,7 @@ from rest_framework import exceptions
 from rest_framework.permissions import DjangoModelPermissions
 from rest_framework.reverse import reverse
 
-from ocpi22.models import Credentials
+from ocpi22.models.credentials import Credentials
 
 
 class OcpiAuthTypes:

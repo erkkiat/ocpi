@@ -6,6 +6,7 @@ from datetime import datetime
 
 import requests
 from django.conf import settings
+from django.core.validators import RegexValidator
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.module_loading import import_string
@@ -396,3 +397,43 @@ def format_cost(incl_vat: float, excl_vat: float, currency: str) -> str:
         incl_vat=format_currency(incl_vat, currency),
         excl_vat=format_currency(excl_vat, currency)
     )
+
+
+def calculate_partition(coordinate):
+    if not coordinate:
+        return 0
+    return int(float(coordinate) * 100.0)
+
+
+class ModelUtilMixin:
+    @classmethod
+    def get_if_exists(cls, *args, **kwargs):
+        # noinspection PyUnresolvedReferences
+        objects = cls.objects.filter(*args, **kwargs)
+        if objects.count():
+            return objects[0]
+        return None
+
+    def party(self):
+        if hasattr(self, 'location'):
+            return f'{self.location.country_code}*{self.location.party_id}'
+        if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
+            return f'{self.country_code}*{self.party_id}'
+        return ''
+
+    # noinspection PyUnresolvedReferences
+    def is_ours(self) -> bool:
+        # Returns true if we hold the master data for this object
+        if hasattr(self, 'country_code') and self.country_code != settings.COUNTRY_CODE:
+            return False
+        if hasattr(self, 'party_id') and self.party_id != settings.PARTY_ID:
+            return False
+        return True
+
+    def is_owner(self, request):
+        if not hasattr(self, 'country_code') or not hasattr(self, 'party_id'):
+            return False
+        return check_ownership(request, self.country_code, self.party_id)
+
+
+uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')

@@ -4,12 +4,13 @@ import uuid
 
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
 from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -17,8 +18,13 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.location import BusinessDetailsSerializer, Coordinate
-from ocpi22.models import Token, Tariff, Session, Cdr, Credentials, CredentialsRole, BusinessDetails, PriceComponent, \
-    Location, Evse, TariffElement
+from ocpi22.models.models import BusinessDetails
+from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.models.location import Location, Evse
+from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
+from ocpi22.models.session import Session
+from ocpi22.models.token import Token
+from ocpi22.models.cdr import Cdr
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, \
     OCPIResponse, NotOwner, matching_operator
 from ocpi22.versions import get_endpoints_dict
@@ -527,11 +533,12 @@ class TariffViewSet(mixins.RetrieveModelMixin,
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> Response:
-        tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid)
+        tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
 
     @staticmethod
+    @transaction.atomic
     def put(request, country_code=None, party_id=None, uid=None) -> OCPIResponse:
         # This PUT is used both for the Tariff endpoint root and the path with country_code, party_id and Tariff uid
         data = request.data.get('data', request.data)

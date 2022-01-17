@@ -15,7 +15,10 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer, CommandTokenSerializer
 from ocpi22.auth import OCPIPermission
-from ocpi22.models import Session, Evse, Endpoint, CredentialsRole, Token
+from ocpi22.models.credentials import CredentialsRole, Endpoint
+from ocpi22.models.location import Evse
+from ocpi22.models.session import Session
+from ocpi22.models.token import Token
 from ocpi22.sessions import create_session
 from ocpi22.tasks import command_start
 from ocpi22.util import OCPIResponse, Ocpi, ocpi_post

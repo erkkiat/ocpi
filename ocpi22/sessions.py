@@ -10,7 +10,9 @@ from rest_framework.exceptions import NotFound
 from rest_framework.generics import get_object_or_404
 
 from ocpi22.cpo_api import authorize_token
-from ocpi22.models import Token, Evse, Connector, Session, Location
+from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.session import Session
+from ocpi22.models.token import Token
 
 
 def get_token(token_id, ad_hoc_token):
