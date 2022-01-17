@@ -33,7 +33,7 @@ def load_tests(_loader, tests, _ignore):
     return tests
 
 
-class LocationTests(TestCase):
+class OcpiTests(TestCase):
     fixtures = ['ocpi22/data/initial.json']
     location_index = 1
     factory = APIRequestFactory()
@@ -52,7 +52,7 @@ class LocationTests(TestCase):
 
         location = Location.objects.create(
             uid=uid, name=f"{name} {uid}", country_code='FI', party_id=f"F{uid}", publish=True, address=address,
-            city='City', country='Country', latitude=60, longitude=30, time_zone='Helsinki/Finland'
+            city='City', country='FIN', latitude=60.0, longitude=30.0, time_zone='Helsinki/Finland'
         )
         # Use the same ids to make sure that they are accepted
         for i in range(1, 5):
@@ -168,29 +168,29 @@ class LocationTests(TestCase):
 
         testcases = (
             # Create a Location and then update it by adding one more Connector and then an Evse with a Connector
-            ('location_example', 'BE', 'BEC', status.HTTP_201_CREATED, 1000, ['11', '12', '13'], 'LOC1', 2, 3),
-            ('location_example_added_connector', 'BE', 'BEC', status.HTTP_200_OK, 1000, [], 'LOC1', 2, 4),
-            ('location_example_added_evse', 'BE', 'BEC', status.HTTP_200_OK, 1000, [], 'LOC1', 3, 5),
+            ('location_example', 'BE', 'BEC', status.HTTP_201_CREATED, 1000, ['11', '12', '13'], 2, 3),
+            ('location_example_added_connector', 'BE', 'BEC', status.HTTP_200_OK, 1000, [], 2, 4),
+            ('location_example_added_evse', 'BE', 'BEC', status.HTTP_200_OK, 1000, [], 3, 5),
 
             ('location_example_parking_garage_opening_hours', 'SE', 'EVC', status.HTTP_201_CREATED, 1000, [],
-             'cbb0df21-d17d-40ba-a4aa-dc588c8f98cb', 1, 1),
+             1, 1),
 
             ('location_example_uc2_destination_charger', 'NL', 'ALF', status.HTTP_201_CREATED, 1000, [],
-             '3e7b39c2-10d0-4138-a8b3-8509a25f9920', 1, 1),
+             1, 1),
             ('location_example_uc3_destination_charger_not_published', 'NL', 'ALF', status.HTTP_200_OK, 1000, [],
-             '3e7b39c2-10d0-4138-a8b3-8509a25f9920', 1, 1),
+             1, 1),
             ('location_example_uc3_destination_charger_not_published', 'NL', 'ALF', status.HTTP_200_OK, 1000, [],
-             '3e7b39c2-10d0-4138-a8b3-8509a25f9920', 1, 1),
+             1, 1),
 
             # Todo: Implement parking_restrictions
 
             ('location_example_uc4_limited_visibility', 'NL', 'ALL', status.HTTP_201_CREATED, 1000, [],
-             'f76c2e0c-a6ef-4f67-bf23-6a187e5ca0e0', 1, 1),
+             1, 1),
 
             # Todo: Check for publish_allowed_to below
 
             ('location_example_uc5_home_charge_point', 'DE', 'ALL', status.HTTP_201_CREATED, 1000, [],
-             'a5295927-09b9-4a71-b4b9-a5fffdfa0b77', 1, 1),
+             1, 1),
         )
 
         publish_allowed_to = [{
@@ -204,8 +204,7 @@ class LocationTests(TestCase):
             "type": "RFID"
         }]
 
-        for filename, country_code, party_id, http_status, ocpi_status, tariffs, \
-        uid, evses, connectors in testcases:
+        for filename, country_code, party_id, http_status, ocpi_status, tariffs, evses, connectors in testcases:
 
             with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
                 data = json.load(file)
@@ -215,6 +214,7 @@ class LocationTests(TestCase):
                 self.create_tariff(uid=t, country_code=country_code, party_id=party_id)
 
             # And CretentialsRoles
+            # noinspection PyUnresolvedReferences
             roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
                                                     party_id=party_id, defaults=dict(business_details=self.business_details))
             self.credentials.roles.add(roles)
@@ -229,16 +229,24 @@ class LocationTests(TestCase):
                              f'Expected an OCPI status code {ocpi_status} for {filename} case.')
 
             if evses:
+                uid = data.get('id').upper()
                 # noinspection PyUnresolvedReferences
-                location = Location.objects.get(uid=uid)
-                # print(f"Evses: {location.evses.count()}")
-                self.assertEqual(location.evses.count(), evses, f'There should be {evses} evses after {filename} case.')
-                connector_count = 0
-                for evse in location.evses.all():
-                    connector_count += evse.connectors.count()
-                # print(f"Connectors: {connector_count}")
-                self.assertEqual(connector_count, connectors,
-                                 f'There should be {connectors} connectors after {filename} case.')
+                try:
+                    # noinspection PyUnresolvedReferences
+                    location = Location.objects.get(uid=uid)
+                    # print(f"Evses: {location.evses.count()}")
+                    self.assertEqual(location.evses.count(), evses, f'There should be {evses} evses after {filename} case.')
+                    connector_count = 0
+                    for evse in location.evses.all():
+                        connector_count += evse.connectors.count()
+                    # print(f"Connectors: {connector_count}")
+                    self.assertEqual(connector_count, connectors,
+                                     f'There should be {connectors} connectors after {filename} case.')
+                except Location.DoesNotExist:
+                    print(f'Unable to fetch Location {uid} created from file {filename}.')
+                    # noinspection PyUnresolvedReferences
+                    self.fail(f'Possible options are: {", ".join([l.uid for l in Location.objects.all()])}')
+
 
     def test_put_tariff(self):
         url = reverse('tariff-list')
@@ -267,6 +275,7 @@ class LocationTests(TestCase):
                 data = json.load(file)
 
             # Create CretentialsRoles
+            # noinspection PyUnresolvedReferences
             roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
                                                     party_id=party_id, defaults=dict(business_details=self.business_details))
             self.credentials.roles.add(roles)

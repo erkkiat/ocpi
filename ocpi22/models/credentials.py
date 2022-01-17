@@ -47,12 +47,7 @@ class Credentials(models.Model, ModelUtilMixin):
         return f'Credentials for {" / ".join([str(s) for s in self.roles.all()])}'
 
     def save(self, *args, **kwargs):
-        if hasattr(self, 'upper_case_fields'):
-            for field in self.upper_case_fields:
-                f = self.__getattribute__(field)
-                if f:
-                    upper_value = f.upper()
-                    self.__setattr__(field, upper_value)
+        self.change_fields_to_upper_case()
         return super(self.__class__, self).save(*args, **kwargs)
 
     def party(self):

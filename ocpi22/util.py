@@ -414,14 +414,14 @@ def calculate_partition(coordinate):
 
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(cls, *args, **kwargs):
+    def get_if_exists(cls, *args, **kwargs) -> object:
         # noinspection PyUnresolvedReferences
         objects = cls.objects.filter(*args, **kwargs)
         if objects.count():
             return objects[0]
         return None
 
-    def party(self):
+    def party(self) -> str:
         if hasattr(self, 'location'):
             return f'{self.location.country_code}*{self.location.party_id}'
         if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
@@ -437,12 +437,20 @@ class ModelUtilMixin:
             return False
         return True
 
-    def is_owner(self, request):
+    def is_owner(self, request) -> bool:
         if request.user.is_superuser:
             return True
         if not hasattr(self, 'country_code') or not hasattr(self, 'party_id'):
             return False
         return check_ownership(request, self.country_code, self.party_id)
+
+    def change_fields_to_upper_case(self) -> None:
+        if hasattr(self, 'upper_case_fields'):
+            for field in self.upper_case_fields:
+                f = self.__getattribute__(field)
+                if f and isinstance(f, str):
+                    upper_value = f.upper()
+                    self.__setattr__(field, upper_value)
 
 
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')

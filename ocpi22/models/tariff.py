@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
+from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.util import ModelUtilMixin, OcpiModule, Ocpi, format_currency
@@ -86,12 +87,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     created = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs) -> None:
-        if hasattr(self, 'upper_case_fields'):
-            for field in self.upper_case_fields:
-                f = self.__getattribute__(field)
-                if f:
-                    upper_value = f.upper()
-                    self.__setattr__(field, upper_value)
+        self.change_fields_to_upper_case()
         super(self.__class__, self).save(*args, **kwargs)
 
     def __str__(self):

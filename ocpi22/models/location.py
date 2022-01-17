@@ -141,12 +141,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         return f'{self.name}, {self.address}, {self.city}' or f'[No name, UID: {self.pk}]'
 
     def save(self, *args, **kwargs):
-        if hasattr(self, 'upper_case_fields'):
-            for field in self.upper_case_fields:
-                f = self.__getattribute__(field)
-                if f:
-                    upper_value = f.upper()
-                    self.__setattr__(field, upper_value)
+        self.change_fields_to_upper_case()
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
