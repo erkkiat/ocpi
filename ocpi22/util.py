@@ -268,6 +268,13 @@ class NotOwner(OCPIResponse):
             http_status=status.HTTP_403_FORBIDDEN)
 
 
+class OCPIBadRequestResponse(OCPIResponse):
+    def __init__(self):
+        super().__init__(
+            status_code=2001,
+            http_status=status.HTTP_400_BAD_REQUEST)
+
+
 def matching_operator(request, country_code, party_id) -> bool:
     if request.user.is_staff:
         return True
@@ -284,8 +291,8 @@ class OcpiModule:
     ocpi_module_name = None
 
     def atomic_post_save(self, *args, **kwargs) -> None:
-        # ic("Generic atomic_post_save")
-        # ic(args, kwargs)
+        ic("Generic atomic_post_save")
+        ic(args, kwargs)
 
         assert self.ocpi_serializer_class, \
             f'OCPI object class {type(self)} must have an ocpi_serializer_class specified.'
@@ -431,6 +438,8 @@ class ModelUtilMixin:
         return True
 
     def is_owner(self, request):
+        if request.user.is_superuser:
+            return True
         if not hasattr(self, 'country_code') or not hasattr(self, 'party_id'):
             return False
         return check_ownership(request, self.country_code, self.party_id)

@@ -67,7 +67,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     # (it is called parentId in OCPP 1.5/1.6) with a maximum length of 20.
     group_id = models.CharField(max_length=36, null=True, blank=True)
 
-    valid = models.BooleanField()
+    valid = models.BooleanField(default=True)
 
     ALWAYS = 'ALWAYS'
     ALLOWED_OFFLINE = 'ALLOWED_OFFLINE'

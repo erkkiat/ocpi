@@ -26,7 +26,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, \
-    OCPIResponse, NotOwner, matching_operator
+    OCPIResponse, NotOwner, matching_operator, OCPIBadRequestResponse
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
@@ -47,18 +47,12 @@ class TotalCostSerializer(serializers.Serializer):
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
+    default_error_messages = default_error_messages
     class Meta:
         model = Token
         fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type',
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
-
-    def to_internal_value(self, data):
-        uid = data.get('uid')
-        token = Token.get_if_exists(uid=uid)
-        if not token:
-            self.fail('object-missing', name='Token', uid=uid)
-        return token
 
 
 class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -78,7 +72,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Tariff
         exclude = ['updated', 'created', 'uid']
 
-    id = serializers.CharField(source='uid', required=True)
+    id = serializers.CharField(source='uid', required=False)
     elements = ElementsSaveSerializer(source='tariff_elements', many=True, required=True)
     human_readable = serializers.CharField(source='price', read_only=True)
     # last_updated = serializers.DateTimeField(read_only=False)
@@ -136,9 +130,7 @@ class CommandTokenSerializer(serializers.Serializer):
         raise NotImplementedError()
 
 
-class TokenViewSet(mixins.UpdateModelMixin,
-                   mixins.RetrieveModelMixin,
-                   mixins.ListModelMixin,
+class TokenViewSet(mixins.ListModelMixin,
                    GenericViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Token.objects.all().order_by('created')
@@ -150,23 +142,30 @@ class TokenViewSet(mixins.UpdateModelMixin,
     filterset_fields = ['country_code', 'party_id', 'type']
 
     def get_view_name(self):
-        return 'Tokens'
+        if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
+            return f'Token {self.kwargs.get("uid")}'
+        if self.name:
+            return f'Token detail {self.name.lower()}'
+        return f'Tokens'
 
     @staticmethod
-    def put(request):
-        uid = request.data.get('uid')
-        party_id = request.data.get('party_id')
+    @transaction.atomic
+    def put(request, country_code = None, party_id = None, uid = None):
+        data = request.data.get('data', request.data)
+        uid = uid or data.get('uid')
+        party_id = party_id or data.get('party_id')
+        country_code = country_code or data.get('country_code')
 
-        token: Token = Token.get_if_exists(uid=uid, party_id=party_id)
+        token: Token = Token.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
         if token and not token.is_owner(request):
             return NotOwner()
-        serialiser = TokenSerializer(data=request.data, instance=token, partial=True)
+        serialiser = TokenSerializer(data=data, instance=token, partial=True)
         if serialiser.is_valid():
             serialiser.save()
             # Return 201 if instance was created
-            return OCPIResponse(serialiser.data, http_status=200 if token else 201)
-
-        return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
+            return OCPIResponse(serialiser.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
+        else:
+            return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     # Todo: NO_CREDIT and other errors should go all the way back to the charger to be shown
     @csrf_exempt
@@ -196,14 +195,17 @@ class TokenViewSet(mixins.UpdateModelMixin,
             )
         )
 
-    @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
+    def get(self, request, country_code = None, party_id = None, uid = None):
+        if country_code and party_id and uid:
+            token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
+            serializer = TokenSerializer(token, many=False, context={'request': request})
+            return OCPIResponse(serializer.data)
+        return OCPIBadRequestResponse()
+
+    @action(methods=['PUT', 'PATCH'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
-
-        if request.method == 'GET':
-            serializer = TokenSerializer(token, many=False, context={'request': request})
-            return OCPIResponse(serializer.data)
 
         # Method is PUT or PATCH
         if not token.is_owner(request):
@@ -287,6 +289,7 @@ class CdrViewSet(mixins.RetrieveModelMixin,
     serializer_class = CdrSerializer
     pagination_class = OCPIPaginationAndHeaders
 
+    # Todo: Needs a OCPI standard FI/EON/UID GET (right?)
     @action(methods=['GET'], detail=False, url_name='cdr-by-id',
             url_path='(?P<uid>[^/.]+)')
     def cdr_by_id(self, request, uid) -> Response:

@@ -26,7 +26,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             ),
         ]
 
-    upper_case_fields = ('country_code', 'party_id', 'currency')
+    upper_case_fields = ('country_code', 'party_id', 'currency', 'uid')
 
     # This object has been archived, but there may be references to it
     archived = models.BooleanField(default=False)

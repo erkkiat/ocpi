@@ -28,7 +28,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
             models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
 
-    upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id']
+    upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id', 'uid']
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
     country_code = models.CharField(max_length=2, default=COUNTRY_CODE)

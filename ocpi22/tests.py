@@ -15,13 +15,14 @@ from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
-from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer
+from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer, TokenViewSet, TokenSerializer
 from ocpi22.location import LocationViewSet
 from ocpi22.models.models import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
+from ocpi22.models.token import Token
 from ocpi22.util import OCPIResponse, Ocpi
 
 
@@ -353,6 +354,70 @@ class LocationTests(TestCase):
             # noinspection PyUnresolvedReferences
             saved_data = CdrSerializer(Cdr.objects.get(uid=uid)).data
             ic(saved_data)
+
+            # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
+            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
+                             'Last_updated is not stored from the incoming data')
+
+    def test_put_token(self):
+        url = reverse('token-list')
+        dirname = os.path.dirname(os.path.abspath(__file__))
+        token_base64 = self.credentials.ours_base64()
+        viewset = TokenViewSet
+
+        # invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
+        #
+        # response = self.put(url, invalid_data, 'FALSETOKEN', viewset)
+        # self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+        #                  f'A {viewset} request should require OCPI authentication. '
+        #                  f'{response.data}')
+        # self.assertEqual(response.data['status_code'], Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+        #                  f'The {viewset} response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
+        #                  f'{response.data}')
+
+        testcases = (
+            ('token_example_2_full_rfid', status.HTTP_201_CREATED, 1000),
+            ('token_example_2_full_rfid_modified', status.HTTP_200_OK, 1000),
+            ('token_example_1_app_user', status.HTTP_201_CREATED, 1000),
+        )
+
+        for filename, http_status, ocpi_status \
+                in testcases:
+
+            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
+                data = json.load(file)
+
+            country_code = data.get('country_code')
+            party_id = data.get('party_id')
+
+            # Create CretentialsRoles
+            # noinspection PyUnresolvedReferences
+            roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
+                                                    party_id=party_id, defaults=dict(business_details=self.business_details))
+            self.credentials.roles.add(roles)
+
+            # Send the request
+            response = self.put(url, data, token_base64, viewset)
+            if response.status_text:
+                print(f'status_text: "{response.status_text}" for {filename} case.')
+                ic(response.data)
+            self.assertEqual(response.status_code, http_status,
+                             f'Expected a HTTP status code {http_status} for {filename} case.')
+            self.assertEqual(response.data['status_code'], ocpi_status,
+                             f'Expected an OCPI status code {ocpi_status} for {filename} case.')
+
+            try:
+                # Verify the saved data
+                uid = data.get('uid').upper()
+                # noinspection PyUnresolvedReferences
+                saved_data = TokenSerializer(Token.objects.get(uid=uid)).data
+                ic(saved_data)
+            except Token.DoesNotExist as e:
+                print(f"Unable to verify token {uid} from database.")
+                print('Available Tokens:')
+                for t in Token.objects.all():
+                    print(t)
+                raise
 
             # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
             self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
