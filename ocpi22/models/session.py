@@ -118,6 +118,12 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # For SessionSaveSerializer, OCPI 2.2 format
         return get_total_cost(self)
 
+    ACTIVE='ACTIVE'
+    COMPLETED='COMPLETED'
+    INVALID='INVALID'
+    PENDING='PENDING'
+    RESERVATION='RESERVATION'
+
     # The status of this session
     STATUS_CHOICES = (
         # The session has been accepted and is active. All pre-conditions were met: Communication between EV and EVSE

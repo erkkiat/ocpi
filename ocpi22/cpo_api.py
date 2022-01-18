@@ -361,14 +361,14 @@ class SessionViewSet(viewsets.ViewSet):
             return Response(dict(error='This session cannot be finished, since it already has a final status'),
                             status.HTTP_401_UNAUTHORIZED)
 
-        if session.status == 'PENDING' and not session.kwh:
-            session.status = 'INVALID'
-        elif session.status != 'ACTIVE' and session.kwh:
+        if session.status == Session.PENDING and not session.kwh:
+            session.status = Session.INVALID
+        elif session.status != Session.ACTIVE and session.kwh:
             return Response(dict(
                 error=f'Session {session_id} was already finished. {session}'
             ))
         else:
-            session.status = 'COMPLETED'
+            session.status = Session.COMPLETED
         session.end_date_time = timezone.now()
         session.calculate_price()
         session.save()

@@ -2,7 +2,6 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
-from icecream import ic
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from requests import Response
 from rest_framework import exceptions
@@ -64,7 +63,7 @@ class ConnectorInline(NestedStackedInline):
 
     def has_change_permission(self, request, obj: ModelUtilMixin = None) -> bool:
         # Todo: Admin should only be able to change owned Connectors
-        ic(obj)
+        # ic(obj)
         return hasattr(obj, 'is_ours') and obj.is_ours()
 
     def has_add_permission(self, request, obj) -> bool:
@@ -283,13 +282,19 @@ class SessionAdmin(admin.ModelAdmin):
                 'country_code', 'party_id', 'meter_id',
                 'authorization_reference', 'uid', 'auth_method',
                 'cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id',
-                'location', 'evse', 'connector', 'start_date_time'
+                'location', 'evse', 'start_date_time'
             ]
         return []
 
     def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete except for invalid sessions
         return (obj and obj.status == 'INVALID') or ALLOW_ADMIN_DELETE_AND_CHANGE
+
+    def has_change_permission(self, request, obj: Session=None) -> bool:
+        if obj and obj.status == Session.COMPLETED:
+            return False
+        return (obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
+               or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request) -> bool:
         # Disable add

@@ -372,12 +372,19 @@ def format_currency(number: float, currency: str) -> str:
     '1,12€'
     >>> format_currency(1.0, 'EUR')
     '1€'
+    >>> format_currency(None, 'EUR')
+    '-'
+    >>> format_currency(1.0, None)
+    '1'
     """
-    currency = pretty_currency(currency)
+
+    if number is None:
+        return '-'
+    currency = pretty_currency(currency or '')
     if float(int(number)) == number:
-        result = f"{number:.0f}{currency}"
+        result = f"{number:.0f}{currency or ''}"
     else:
-        result = f"{number:.2f}{currency}"
+        result = f"{number:.2f}{currency or ''}"
     return result.replace(".", settings.DECIMAL_SEPARATOR)
 
 
