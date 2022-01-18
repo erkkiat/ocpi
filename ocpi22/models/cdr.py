@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from rest_framework.reverse import reverse
 
@@ -6,7 +8,6 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.util import OcpiModule, Ocpi, format_cost, hours_minutes, ModelUtilMixin
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
 class Cdr(models.Model, ModelUtilMixin, OcpiModule):
@@ -28,10 +29,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         ]
 
     # ISO-3166 alpha-2 country code of the CPO that owns this CDR
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2)
 
     # CPO ID of the CPO that 'owns' this CDR (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3)
 
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
@@ -157,3 +158,52 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     def charging_time(self):
         return hours_minutes(self.total_time)
+
+    @classmethod
+    def create_based_on_session(cls, session: Session):
+        # noinspection PyUnresolvedReferences
+        cdr = cls.objects.create(
+            uid=uuid.uuid4().hex,
+            country_code=session.country_code,
+            party_id=session.party_id,
+            start_date_time=session.start_date_time,
+            end_date_time=session.end_date_time,
+            session_id=session.uid,
+            cdr_token_uid=session.cdr_token_uid,
+            cdr_token_type=session.cdr_token_type,
+            cdr_token_contract_id=session.cdr_token_contract_id,
+            auth_method=session.auth_method,
+            authorization_reference=session.authorization_reference,
+            cdr_location_id=session.location.uid,
+            cdr_location_address=session.location.address,
+            cdr_location_city=session.location.city,
+            cdr_location_postal_code=session.location.postal_code,
+            cdr_location_country=session.location.country,
+
+            # Make sure coordinates have 6 decimals
+            cdr_location_latitude=f'{float(session.location.latitude):.6f}',
+            cdr_location_longitude=f'{float(session.location.longitude):.6f}',
+
+            cdr_location_evse_uid=session.evse.uid,
+            cdr_location_evse_id=session.evse.evse_id,
+            cdr_location_connector_id=session.connector.uid,
+            cdr_location_connector_standard=session.connector.standard,
+            cdr_location_connector_format=session.connector.format,
+            cdr_location_connector_power_type=session.connector.power_type,
+            currency=session.currency,
+            total_cost_excl_vat=session.total_cost_excl_vat,
+            total_cost_incl_vat=session.total_cost_incl_vat,
+            total_energy=session.kwh,
+            total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5)
+        )
+        tariffs = session.connector.tariff_ids.all()
+        tariff_copies = Tariff.make_copies(tariffs)
+        cdr.tariffs.set(tariff_copies)
+        return cdr
+
+    def create(self, *args, **kwargs):
+        for a in args:
+            if isinstance(a, Session):
+                return self.create_based_on_session(a)
+        # noinspection PyUnresolvedReferences
+        return self.objects.create(*args, **kwargs)

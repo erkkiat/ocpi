@@ -7,7 +7,7 @@ from icecream import ic
 from requests import Response
 
 from ocpi22.location import LocationSerializer
-from ocpi22.models import Endpoint
+from ocpi22.models.credentials import Endpoint
 
 
 class Command(BaseCommand):

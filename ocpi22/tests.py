@@ -1,6 +1,8 @@
 import doctest
 import json
 import os
+from datetime import timedelta
+from django.utils import timezone
 
 from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
@@ -16,10 +18,11 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
 from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer, TokenViewSet, TokenSerializer
-from ocpi22.location import LocationViewSet
+from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.models.models import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
@@ -38,6 +41,7 @@ def create_tariff(*_args, **kwargs) -> Tariff:
         currency='EUR'
     )
     params.update(kwargs)
+    # noinspection PyUnresolvedReferences
     tariff = Tariff.objects.create(**params)
     # noinspection PyUnresolvedReferences
     tariff_element = TariffElement.objects.create(tariff=tariff)
@@ -46,7 +50,7 @@ def create_tariff(*_args, **kwargs) -> Tariff:
     return tariff
 
 
-class OcpiTests(TestCase):
+class ApiPutTests(TestCase):
     fixtures = ['ocpi22/data/initial.json']
     location_index = 1
     factory = APIRequestFactory()
@@ -87,8 +91,8 @@ class OcpiTests(TestCase):
 
     def test_evse_with_same_id(self):
         # Create two locations with the same Evse IDs
-        location1 = self.create_location()
-        location2 = self.create_location()
+        _location1 = self.create_location()
+        _location2 = self.create_location()
 
     def test_evse_format(self):
         loc = self.create_location()
@@ -192,7 +196,7 @@ class OcpiTests(TestCase):
              1, 1),
         )
 
-        publish_allowed_to = [{
+        _publish_allowed_to = [{
             "visual_number": "12345-67",
             "issuer": "NewMotion"
         }, {
@@ -245,7 +249,6 @@ class OcpiTests(TestCase):
                     print(f'Unable to fetch Location {uid} created from file {filename}.')
                     # noinspection PyUnresolvedReferences
                     self.fail(f'Possible options are: {", ".join([l.uid for l in Location.objects.all()])}')
-
 
     def test_put_tariff(self):
         url = reverse('tariff-list')
@@ -414,15 +417,17 @@ class OcpiTests(TestCase):
             self.assertEqual(response.data['status_code'], ocpi_status,
                              f'Expected an OCPI status code {ocpi_status} for {filename} case.')
 
+            # Verify the saved data
+            uid = data.get('uid').upper()
+            # noinspection PyUnresolvedReferences
             try:
-                # Verify the saved data
-                uid = data.get('uid').upper()
                 # noinspection PyUnresolvedReferences
                 saved_data = TokenSerializer(Token.objects.get(uid=uid)).data
                 # ic(saved_data)
-            except Token.DoesNotExist as e:
+            except Token.DoesNotExist:
                 print(f"Unable to verify token {uid} from database.")
                 print('Available Tokens:')
+                # noinspection PyUnresolvedReferences
                 for t in Token.objects.all():
                     print(t)
                 raise
@@ -433,7 +438,7 @@ class OcpiTests(TestCase):
 
     def test_patch_connector(self):
         # url = reverse('location-connector', self.location, ...)
-        data = dict({
+        _data = dict({
             "tariff_ids": ["15"],
             "last_updated": "2019-06-24T12:39:09Z"
         })
@@ -502,3 +507,68 @@ class TariffTests(TestCase):
         self.check_tariff(t1_copy, 1, 1)
         # self.dump_tariffs()
         self.assertEqual(Tariff.objects.count(), 2, 'There should be exactly 2 Tariffs after creating copies')
+
+
+class CdrTests(TestCase):
+    fixtures = ['ocpi22/data/initial.json']
+
+    def load_location(self, filename):
+        dirname = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
+            data = json.load(file)
+        serializer = LocationSaveSerializer(data=data)
+        if not serializer.is_valid():
+            self.fail(serializer.errors)
+        return serializer.save()
+
+
+    def test_session_to_cdr(self):
+        for t in [11, 12, 13]:
+            create_tariff(uid=str(t), country_code='BE', party_id='BEC')
+        location = self.load_location('location_example')
+        evse = location.evses.all()[0]
+        connector = evse.connectors.all()[0]
+
+        # noinspection PyUnresolvedReferences
+        session = Session.objects.create(
+            country_code='FI',
+            party_id='EON',
+            uid='TEST1',
+            start_date_time=timezone.now() - timedelta(minutes=30),
+            end_date_time=timezone.now(),
+            kwh=12.34,
+            cdr_token_uid='TOKEN1',
+            cdr_token_type='RFID',
+            cdr_token_contract_id='CONTRACT1',
+            auth_method=Session.COMMAND,
+            authorization_reference='1234567890',
+            location=location,
+            evse=evse,
+            connector=connector,
+            meter_id='123',
+            currency='EUR',
+            total_cost_excl_vat='1.0',
+            total_cost_incl_vat='1.24',
+            status='COMPLETED',
+            last_updated=timezone.now(),
+        )
+        cdr = Cdr.create_based_on_session(session)
+
+        # Check that Tariffs are archived copies and that they exist
+
+        self.assertTrue(all(t.archived for t in cdr.tariffs.all()),
+                        'Cdr needs to point to only archived Tariffs, so that they are not modified anymore.')
+
+        self.assertEqual(cdr.tariffs.count(), 1,
+                         'Cdr is missing a Tariff')
+
+        # ic(CdrSerializer(cdr).data)
+
+        # ic('All tariffs')
+        # for t in Tariff.objects.all():
+        #     ic(t.pk, TariffSerializer(t).data)
+        #
+        # ic('CDR tariffs')
+        # for t in cdr.tariffs.all():
+        #     ic(t.pk, TariffSerializer(t).data)
+

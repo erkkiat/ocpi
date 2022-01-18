@@ -375,36 +375,7 @@ class SessionViewSet(viewsets.ViewSet):
         result = dict(session=SessionSerializer(session, context={'request': request}).data)
         if session.kwh:
             # noinspection PyUnresolvedReferences
-            cdr = Cdr.objects.create(
-                uid=uuid.uuid4().hex,
-                start_date_time=session.start_date_time,
-                end_date_time=session.end_date_time,
-                session_id=session.uid,
-                cdr_token_uid=session.cdr_token_uid,
-                cdr_token_type=session.cdr_token_type,
-                cdr_token_contract_id=session.cdr_token_contract_id,
-                auth_method=session.auth_method,
-                authorization_reference=session.authorization_reference,
-                cdr_location_id=session.location.uid,
-                cdr_location_address=session.location.address,
-                cdr_location_city=session.location.city,
-                cdr_location_postal_code=session.location.postal_code,
-                cdr_location_country=session.location.country,
-                cdr_location_latitude=f'{session.location.latitude:.6f}',
-                cdr_location_longitude=f'{session.location.longitude:.6f}',
-                cdr_location_evse_uid=session.evse.uid,
-                cdr_location_evse_id=session.evse.evse_id,
-                cdr_location_connector_id=session.connector.uid,
-                cdr_location_connector_standard=session.connector.standard,
-                cdr_location_connector_format=session.connector.format,
-                cdr_location_connector_power_type=session.connector.power_type,
-                currency=session.currency,
-                total_cost_excl_vat=session.total_cost_excl_vat,
-                total_cost_incl_vat=session.total_cost_incl_vat,
-                total_energy=session.kwh,
-                total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5)
-            )
-            cdr.tariffs.set(session.connector.tariff_ids.all())
+            cdr = Cdr.create_based_on_session(session)
             from ocpi22.api import CdrSerializer
             result['cdr'] = CdrSerializer(cdr, context={'request': request}).data
 

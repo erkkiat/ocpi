@@ -145,7 +145,7 @@ class TokenViewSet(mixins.ListModelMixin,
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
             return f'Token {self.kwargs.get("uid")}'
         if self.name:
-            return f'Token detail {self.name.lower()}'
+            return f'Token {self.name.lower()}'
         return f'Tokens'
 
     @staticmethod
