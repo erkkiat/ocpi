@@ -214,6 +214,52 @@ class Ocpi:
         CDRS = 'cdrs'
         COMMANDS = 'commands'
 
+    STANDARD_CHOICES = (
+        ('IEC_62196_T2', 'Type 2 "Mennekes"'),
+        ('IEC_62196_T2_COMBO', 'CCS type 2'),
+        ('CHADEMO', 'CHAdeMO'),
+        ('IEC_62196_T1', 'IEC 62196 Type 1 "SAE J1772"'),
+        ('IEC_62196_T1_COMBO', 'CCS type 1'),
+        ('IEC_62196_T3A', 'IEC 62196 Type 3A'),
+        ('IEC_62196_T3C', 'IEC 62196 Type 3C "Scame"'),
+        ('DOMESTIC_A', 'Type "A", NEMA 1-15, 2 pins'),
+        ('DOMESTIC_B', 'Type "B", NEMA 5-15, 3 pins'),
+        ('DOMESTIC_C', 'Type "C", CEE 7 / 17, 2 pins'),
+        ('DOMESTIC_D', 'Type "D", 3 pin'),
+        ('DOMESTIC_E', 'Type "E", CEE 7 / 5 3 pins'),
+        ('DOMESTIC_F', 'Type "F", CEE 7 / 4, Schuko, 3 pins'),
+        ('DOMESTIC_G', 'Type "G", BS 1363, Commonwealth, 3 pins'),
+        ('DOMESTIC_H', 'Type "H", SI-32, 3 pins'),
+        ('DOMESTIC_I', 'Type "I", AS 3112, 3 pins'),
+        ('DOMESTIC_J', 'Type "J", SEV 1011, 3 pins'),
+        ('DOMESTIC_K', 'Type "K", DS 60884-2-D1, 3 pins'),
+        ('DOMESTIC_L', 'Type "L", CEI 23-16-VII, 3 pins'),
+        ('IEC_60309_2_single_16', 'IEC 60309-2 single phase 16 A (blue)'),
+        ('IEC_60309_2_three_16', 'IEC 60309-2 three phase 16 A (red)'),
+        ('IEC_60309_2_three_32', 'IEC 60309-2 three phase 32 A (red)'),
+        ('IEC_60309_2_three_64', 'IEC 60309-2 three phase 64 A (red)'),
+        ('PANTOGRAPH_BOTTOM_UP', 'On-board Bottom-up-Pantograph'),
+        ('PANTOGRAPH_TOP_DOWN', 'Off-board Top-down-Pantograph'),
+        ('TESLA_R', 'Tesla "Roadster"-type'),
+        ('TESLA_S', 'Tesla "Model-S"-type'),
+    )
+
+    FORMAT_CHOICES = (
+        ('SOCKET', 'Socket'),
+        ('CABLE', 'Cable'),
+    )
+
+    POWERTYPES = dict(
+        CHADEMO='DC',
+        IEC_62196_T2_COMBO='DC',
+        IEC_62196_T2='AC_3_PHASE'
+    )
+    POWERTYPE_CHOICES = (
+        ('AC_1_PHASE', 'AC 1-phase'),
+        ('AC_3_PHASE', 'AC 3-phase'),
+        ('DC', 'DC')
+    )
+
 
 class OCPIResponse(Response):
     def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None,
@@ -290,14 +336,27 @@ class OcpiModule:
     ocpi_serializer_class = None
     ocpi_module_name = None
 
+    def get_party(self) -> (str, str):
+        country_code = self.country_code if hasattr(self, 'country_code') else None
+        party_id = self.party_id if hasattr(self, 'party_id') else None
+        return country_code, party_id
+
+    def update_last_updated(self):
+        if hasattr(self, 'last_updated'):
+            country_code, party_id = self.get_party()
+            if country_code == settings.COUNTRY_CODE and party_id == settings.PARTY_ID:
+                self.last_updated = timezone.now()
+
     def atomic_post_save(self, *args, **kwargs) -> None:
-        ic("Generic atomic_post_save")
-        ic(args, kwargs)
+        # ic("Generic atomic_post_save")
+        # ic(args, kwargs)
 
         assert self.ocpi_serializer_class, \
             f'OCPI object class {type(self)} must have an ocpi_serializer_class specified.'
         assert self.ocpi_module_name, \
             f'OCPI object class {type(self)} must have an ocpi_module_name specified.'
+
+        self.update_last_updated()
 
         if not hasattr(self, 'update_sent') and self.is_ours():
             if not hasattr(self, 'archived') or self.archived == False:
@@ -470,7 +529,7 @@ class Period:
                  session_start: datetime,
                  session_end: datetime,
                  tariff_start: datetime,
-                 tariff_end: datetime) -> int:
+                 tariff_end: datetime):
         """
         Calculate how many seconds two time periods are overlapping. Used for calculating how much of the
         charging session is within each type of Tariff time period

@@ -264,54 +264,11 @@ class Connector(models.Model, ModelUtilMixin):
 
     evse = models.ForeignKey(Evse, on_delete=models.CASCADE, related_name='connectors')
 
-    STANDARD_CHOICES = (
-        ('IEC_62196_T2', 'Type 2 "Mennekes"'),
-        ('IEC_62196_T2_COMBO', 'CCS type 2'),
-        ('CHADEMO', 'CHAdeMO'),
-        ('IEC_62196_T1', 'IEC 62196 Type 1 "SAE J1772"'),
-        ('IEC_62196_T1_COMBO', 'CCS type 1'),
-        ('IEC_62196_T3A', 'IEC 62196 Type 3A'),
-        ('IEC_62196_T3C', 'IEC 62196 Type 3C "Scame"'),
-        ('DOMESTIC_A', 'Type "A", NEMA 1-15, 2 pins'),
-        ('DOMESTIC_B', 'Type "B", NEMA 5-15, 3 pins'),
-        ('DOMESTIC_C', 'Type "C", CEE 7 / 17, 2 pins'),
-        ('DOMESTIC_D', 'Type "D", 3 pin'),
-        ('DOMESTIC_E', 'Type "E", CEE 7 / 5 3 pins'),
-        ('DOMESTIC_F', 'Type "F", CEE 7 / 4, Schuko, 3 pins'),
-        ('DOMESTIC_G', 'Type "G", BS 1363, Commonwealth, 3 pins'),
-        ('DOMESTIC_H', 'Type "H", SI-32, 3 pins'),
-        ('DOMESTIC_I', 'Type "I", AS 3112, 3 pins'),
-        ('DOMESTIC_J', 'Type "J", SEV 1011, 3 pins'),
-        ('DOMESTIC_K', 'Type "K", DS 60884-2-D1, 3 pins'),
-        ('DOMESTIC_L', 'Type "L", CEI 23-16-VII, 3 pins'),
-        ('IEC_60309_2_single_16', 'IEC 60309-2 single phase 16 A (blue)'),
-        ('IEC_60309_2_three_16', 'IEC 60309-2 three phase 16 A (red)'),
-        ('IEC_60309_2_three_32', 'IEC 60309-2 three phase 32 A (red)'),
-        ('IEC_60309_2_three_64', 'IEC 60309-2 three phase 64 A (red)'),
-        ('PANTOGRAPH_BOTTOM_UP', 'On-board Bottom-up-Pantograph'),
-        ('PANTOGRAPH_TOP_DOWN', 'Off-board Top-down-Pantograph'),
-        ('TESLA_R', 'Tesla "Roadster"-type'),
-        ('TESLA_S', 'Tesla "Model-S"-type'),
-    )
-    standard = models.CharField(max_length=21, choices=STANDARD_CHOICES)
+    standard = models.CharField(max_length=21, choices=Ocpi.STANDARD_CHOICES)
 
-    FORMAT_CHOICES = (
-        ('SOCKET', 'Socket'),
-        ('CABLE', 'Cable'),
-    )
-    format = models.CharField(max_length=6, choices=FORMAT_CHOICES)
+    format = models.CharField(max_length=6, choices=Ocpi.FORMAT_CHOICES)
 
-    POWERTYPES = dict(
-        CHADEMO='DC',
-        IEC_62196_T2_COMBO='DC',
-        IEC_62196_T2='AC_3_PHASE'
-    )
-    POWERTYPE_CHOICES = (
-        ('AC_1_PHASE', 'AC 1-phase'),
-        ('AC_3_PHASE', 'AC 3-phase'),
-        ('DC', 'DC')
-    )
-    power_type = models.CharField(max_length=10, choices=POWERTYPE_CHOICES)
+    power_type = models.CharField(max_length=10, choices=Ocpi.POWERTYPE_CHOICES)
 
     max_voltage = models.SmallIntegerField()
     max_amperage = models.SmallIntegerField()
@@ -345,7 +302,7 @@ def connector_pre_save(sender, instance, *_args, **_kwargs):
     if not connector.uid:
         connector.uid = uuid.uuid4().hex
     if not connector.power_type:
-        connector.power_type = Connector.POWERTYPES[connector.standard]
+        connector.power_type = Ocpi.POWERTYPES[connector.standard]
 
 
 @receiver(post_save, sender=Connector)

@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 from icecream import ic
@@ -154,6 +155,19 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # Django automatic dates
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        if self.status == self.COMPLETED and (not self.connector or not self.connector.tariff_ids):
+            self.status = self.PENDING
+            raise ValidationError(dict(
+                connector='A connector with Tariffs needs to be chosen before the session can be completed.')
+            )
+        return super().clean()
+
+    def save(self, *args, **kwargs):
+        # Needed for running self.clean() when doing a save() or create()
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def calculate_price(self) -> (float, float):
         connector = self.connector

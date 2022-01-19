@@ -3,11 +3,10 @@ from copy import deepcopy
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
+from django.db.models import QuerySet
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
-from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.util import ModelUtilMixin, OcpiModule, Ocpi, format_currency
@@ -153,6 +152,12 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             result.append(cls.make_copy(t))
         return result
 
+    @classmethod
+    def get_default_tariffs(cls, standard) -> QuerySet:
+        # noinspection PyUnresolvedReferences
+        default_tariffs = DefaultTariffs.objects.get(standard=standard)
+        return default_tariffs.tariffs.all()
+
 
 class TariffElement(models.Model, ModelUtilMixin):
     tariff = models.ForeignKey(Tariff, related_name='tariff_elements', on_delete=models.CASCADE)
@@ -231,6 +236,21 @@ class PriceComponent(models.Model, ModelUtilMixin):
     def __str__(self):
         # noinspection PyUnresolvedReferences
         return f'{format_currency(self.price or 0.0, self.tariff.currency)} {self._format_step_and_type()}'
+
+
+class DefaultTariffs(models.Model):
+    class Meta:
+        verbose_name_plural = 'default tariffs'
+
+    standard = models.CharField(max_length=21, choices=Ocpi.STANDARD_CHOICES, unique=True)
+    tariffs = models.ManyToManyField(Tariff, related_name='default_standards')
+
+    def __str__(self):
+        # noinspection PyUnresolvedReferences
+        return f'{self.get_standard_display()} defaults to tariffs {", ".join(str(t) for t in self.tariffs.all())}'
+
+    def tariff_list(self):
+        return f'{", ".join(str(t) for t in self.tariffs.all())}'
 
 
 @receiver(pre_save, sender=Tariff)

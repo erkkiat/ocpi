@@ -12,7 +12,7 @@ from ocpi22.models.models import BusinessDetails, Facility, Capability
 from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
+from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin
 from ocpi22.tokens import get_admin_token
@@ -45,7 +45,7 @@ class ConnectorInline(NestedStackedInline):
     model = Connector
 
     fieldsets = [
-        (None, dict(fields=[('standard', 'format', 'power_type')])),
+        (None, dict(fields=[('uid', 'standard', 'format', 'power_type')])),
         (None, dict(fields=[('max_voltage', 'max_amperage')])),
         (None, dict(fields=[('tariff_ids', 'terms_and_conditions')])),
     ]
@@ -54,7 +54,6 @@ class ConnectorInline(NestedStackedInline):
         power_type=admin.VERTICAL
     )
     autocomplete_fields = ['tariff_ids']
-    exclude = ['uid']
 
     # def get_readonly_fields(self, request, obj=None):
     #     if obj:
@@ -239,6 +238,7 @@ class CdrAdmin(admin.ModelAdmin):
     # list_filter = ['party_id', 'auth_method', 'credit']
     list_display_links = ['start_date_time']
     search_fields = ['party_id', 'country_code', 'session_id']
+    autocomplete_fields = ['tariffs']
 
     def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete
@@ -265,6 +265,8 @@ class SessionAdmin(admin.ModelAdmin):
         'cdr_token_uid', 'kwh',
         'cost'
     ]
+    # Todo: Show only connectors for the selected evse
+
     # fields = (
     #     ('start_date_time', 'end_date_time'),
     #     ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id'),
@@ -275,6 +277,11 @@ class SessionAdmin(admin.ModelAdmin):
     search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid', 'uid']
     # list_filter = ['status', 'party_id',]
     readonly_fields = ['uid', 'party_id', 'country_code']
+
+    # def formfield_for_foreignkey(self, db_field, request, **kwargs):
+    #     if db_field.name == "connector":
+    #         kwargs["queryset"] = Connector.objects.filter(evse=??)
+    #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_readonly_fields(self, request, obj=None) -> list:
         if obj:
@@ -298,7 +305,7 @@ class SessionAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request) -> bool:
         # Disable add
-        return ALLOW_ADMIN_DELETE_AND_CHANGE
+        return False
 
 
 class TariffAdmin(NestedModelAdmin):
@@ -308,12 +315,12 @@ class TariffAdmin(NestedModelAdmin):
             model = PriceComponent
 
             # This is also not working, PriceComponents are always editable
-            def has_change_permission(self, request, obj=None):
-                if isinstance(obj, TariffElement):
-                    obj = obj.tariff
-                return (obj and not obj.archived and
-                    obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
-                    or ALLOW_ADMIN_DELETE_AND_CHANGE
+            # def has_change_permission(self, request, obj=None):
+            #     if isinstance(obj, TariffElement) and obj.tariff:
+            #         obj = obj.tariff
+            #     return (obj and not obj.archived and
+            #         obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
+            #         or ALLOW_ADMIN_DELETE_AND_CHANGE
 
         model = TariffElement
         inlines = [PriceComponentsInline]
@@ -327,6 +334,8 @@ class TariffAdmin(NestedModelAdmin):
     inlines = [ElementsInline]
     search_fields = ['uid']
     # list_filter = ['archived']
+    radio_fields = dict(type=admin.HORIZONTAL)
+    exclude = ['archived', 'last_updated']
 
     def get_queryset(self, _request):
         # Hide archived
@@ -367,6 +376,12 @@ class CredentialsAdmin(admin.ModelAdmin):
 class CredentialsRoleAdmin(admin.ModelAdmin):
     model = CredentialsRole
     list_display = ['party', 'business_details', 'references']
+
+@admin.register(DefaultTariffs)
+class DefaultTariffsAdmin(admin.ModelAdmin):
+    model = DefaultTariffs
+    list_display = ['standard', 'tariff_list']
+    autocomplete_fields = ['tariffs']
 
 
 admin.site.register(Token, TokenAdmin)

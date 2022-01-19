@@ -293,6 +293,7 @@ class ApiPutTests(TestCase):
 
             # Verify the saved data
             uid = data.get('id')
+            # noinspection PyUnresolvedReferences
             saved_data = TariffSerializer(Tariff.objects.get(uid=uid, archived=False)).data
             # ic(saved_data)
 
@@ -346,6 +347,7 @@ class ApiPutTests(TestCase):
             party_id = data.get('party_id')
 
             # Create CretentialsRoles
+            # noinspection PyUnresolvedReferences
             roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
                                                     party_id=party_id, defaults=dict(business_details=self.business_details))
             self.credentials.roles.add(roles)
@@ -436,7 +438,8 @@ class ApiPutTests(TestCase):
             self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
                              'Last_updated is not stored from the incoming data')
 
-    def test_patch_connector(self):
+    @staticmethod
+    def test_patch_connector():
         # url = reverse('location-connector', self.location, ...)
         _data = dict({
             "tariff_ids": ["15"],
@@ -482,13 +485,15 @@ class ApiPutTests(TestCase):
         #
 
 
-class TariffTests(TestCase):
+def dump_tariffs():
+    # noinspection PyUnresolvedReferences
+    for t in Tariff.objects.all():
+        serializer = TariffSerializer(t)
+        ic(t.pk, serializer.data)
 
-    def dump_tariffs(self):
-        # noinspection PyUnresolvedReferences
-        for t in Tariff.objects.all():
-            serializer = TariffSerializer(t)
-            ic(t.pk, serializer.data)
+
+class TariffTests(TestCase):
+    fixtures = ['ocpi22/data/defaulttariffs.json']
 
     def check_tariff(self, tariff, tariff_elements, price_components):
         self.assertEqual(tariff.tariff_elements.count(), tariff_elements,
@@ -508,9 +513,17 @@ class TariffTests(TestCase):
         # self.dump_tariffs()
         self.assertEqual(Tariff.objects.count(), 2, 'There should be exactly 2 Tariffs after creating copies')
 
+    def test_default_tariffs(self):
+        tariffs = Tariff.get_default_tariffs('IEC_62196_T2')
+        self.assertEqual(tariffs.count(), 1)
+        self.assertIsInstance(tariffs[0], Tariff)
+        tariff: Tariff = tariffs[0]
+        # noinspection PyUnresolvedReferences
+        self.assertEqual(tariff.tariff_elements.all()[0].price_components.all()[0].price, 0.22)
+
 
 class CdrTests(TestCase):
-    fixtures = ['ocpi22/data/initial.json']
+    fixtures = ['ocpi22/data/initial.json', 'ocpi22/data/defaulttariffs.json']
 
     def load_location(self, filename):
         dirname = os.path.dirname(os.path.abspath(__file__))
@@ -520,7 +533,6 @@ class CdrTests(TestCase):
         if not serializer.is_valid():
             self.fail(serializer.errors)
         return serializer.save()
-
 
     def test_session_to_cdr(self):
         for t in [11, 12, 13]:
@@ -552,23 +564,38 @@ class CdrTests(TestCase):
             status='COMPLETED',
             last_updated=timezone.now(),
         )
+        cdr1 = Cdr.create_based_on_session(session)
+
+        # Check that Tariffs are archived copies and that they exist
+
+        self.assertTrue(all(t.archived for t in cdr1.tariffs.all()),
+                        'Cdr needs to point to only archived Tariffs, so that they are not modified anymore.')
+
+        self.assertEqual(cdr1.tariffs.count(), 1,
+                         'Cdr is missing a Tariff')
+
+        # Remove Tariff from Connector, so that the DefaultTariff would be in use
+        connector.tariff_ids.set([])
+
         cdr = Cdr.create_based_on_session(session)
+
+        # ic(CdrSerializer(cdr).data)
+        #
+        # ic('All tariffs')
+        # for t in Tariff.objects.all():
+        #     ic(t.pk, t.references(), TariffSerializer(t).data)
+        #
+        # ic('CDR tariffs')
+        # for t in cdr.tariffs.all():
+        #     ic(t.pk, t.archived, t.references(), TariffSerializer(t).data)
 
         # Check that Tariffs are archived copies and that they exist
 
         self.assertTrue(all(t.archived for t in cdr.tariffs.all()),
-                        'Cdr needs to point to only archived Tariffs, so that they are not modified anymore.')
+                        'Cdr needs to point to only archived Tariffs, so that they are not modified anymore')
 
         self.assertEqual(cdr.tariffs.count(), 1,
                          'Cdr is missing a Tariff')
 
-        # ic(CdrSerializer(cdr).data)
-
-        # ic('All tariffs')
-        # for t in Tariff.objects.all():
-        #     ic(t.pk, TariffSerializer(t).data)
-        #
-        # ic('CDR tariffs')
-        # for t in cdr.tariffs.all():
-        #     ic(t.pk, TariffSerializer(t).data)
-
+        self.assertEqual(cdr.tariffs.all()[0].uid, 'TTYPE2',
+                         'This CDR should have a DefaultTariff, since no Tariff is specified for the Connector')

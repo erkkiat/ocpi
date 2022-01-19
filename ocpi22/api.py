@@ -70,7 +70,7 @@ class ElementsSaveSerializer(serializers.Serializer):
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
-        exclude = ['updated', 'created', 'uid']
+        exclude = ['updated', 'created', 'uid', 'archived']
 
     id = serializers.CharField(source='uid', required=False)
     elements = ElementsSaveSerializer(source='tariff_elements', many=True, required=True)
@@ -261,7 +261,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     id = serializers.CharField(source='uid')
     cdr_token = CdrTokenSerializer(source='*')
     total_cost = TotalCostSerializer(source='*')
-    tariffs = TariffSerializer(many=True)
+    tariffs = TariffSerializer(many=True, required=True)
     cdr_location = CdrLocationSerializer(source='*')
 
     def create(self, validated_data):

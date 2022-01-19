@@ -1,0 +1,401 @@
+[
+   {
+      "pk" : 2,
+      "model" : "ocpi22.defaulttariffs",
+      "fields" : {
+         "standard" : "IEC_62196_T2",
+         "tariffs" : [
+            18
+         ]
+      }
+   },
+   {
+      "model" : "ocpi22.defaulttariffs",
+      "fields" : {
+         "tariffs" : [
+            19
+         ],
+         "standard" : "IEC_62196_T2_COMBO"
+      },
+      "pk" : 3
+   },
+   {
+      "model" : "ocpi22.defaulttariffs",
+      "fields" : {
+         "tariffs" : [
+            20
+         ],
+         "standard" : "CHADEMO"
+      },
+      "pk" : 4
+   },
+   {
+      "pk" : 1,
+      "fields" : {
+         "type" : "REGULAR",
+         "created" : "2022-01-08T07:51:41.531",
+         "tariff_alt_url" : "",
+         "currency" : "EUR",
+         "uid" : "T1",
+         "last_updated" : "2022-01-14T15:52:22",
+         "country_code" : "FI",
+         "updated" : "2022-01-16T17:50:31.687",
+         "party_id" : "000",
+         "archived" : true
+      },
+      "model" : "ocpi22.tariff"
+   },
+   {
+      "pk" : 2,
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "archived" : false,
+         "party_id" : "000",
+         "updated" : "2022-01-18T18:55:07.589",
+         "country_code" : "FI",
+         "last_updated" : "2022-01-08T07:52:37.772",
+         "uid" : "T2",
+         "created" : "2022-01-08T07:52:37.768",
+         "type" : "REGULAR",
+         "tariff_alt_url" : "",
+         "currency" : "EUR"
+      }
+   },
+   {
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "updated" : "2022-01-16T18:35:19.918",
+         "country_code" : "FI",
+         "party_id" : "000",
+         "archived" : true,
+         "uid" : "T6",
+         "created" : "2022-01-09T14:16:46.932",
+         "type" : "REGULAR",
+         "tariff_alt_url" : "",
+         "currency" : "EUR",
+         "last_updated" : "2022-01-14T10:29:21"
+      },
+      "pk" : 7
+   },
+   {
+      "pk" : 9,
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "last_updated" : "2022-01-14T15:52:22",
+         "created" : "2022-01-16T17:50:31.698",
+         "tariff_alt_url" : "",
+         "type" : "REGULAR",
+         "currency" : "EUR",
+         "uid" : "T1",
+         "archived" : true,
+         "party_id" : "000",
+         "country_code" : "FI",
+         "updated" : "2022-01-16T17:58:16.079"
+      }
+   },
+   {
+      "pk" : 10,
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "last_updated" : "2022-01-14T15:52:22",
+         "uid" : "T1",
+         "created" : "2022-01-16T17:58:16.087",
+         "tariff_alt_url" : "",
+         "type" : "REGULAR",
+         "currency" : "EUR",
+         "archived" : true,
+         "party_id" : "000",
+         "updated" : "2022-01-16T18:34:02.706",
+         "country_code" : "FI"
+      }
+   },
+   {
+      "pk" : 15,
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "updated" : "2022-01-17T05:45:59.285",
+         "country_code" : "FI",
+         "archived" : false,
+         "party_id" : "000",
+         "uid" : "T3",
+         "created" : "2022-01-17T05:45:59.278",
+         "tariff_alt_url" : "",
+         "type" : "REGULAR",
+         "currency" : "EUR",
+         "last_updated" : "2022-01-08T07:52:37.772"
+      }
+   },
+   {
+      "pk" : 16,
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "uid" : "T4",
+         "created" : "2022-01-17T05:46:58.892",
+         "tariff_alt_url" : "",
+         "type" : "REGULAR",
+         "currency" : "EUR",
+         "last_updated" : "2022-01-08T07:52:37.772",
+         "updated" : "2022-01-17T05:46:58.898",
+         "country_code" : "FI",
+         "party_id" : "000",
+         "archived" : false
+      }
+   },
+   {
+      "pk" : 18,
+      "fields" : {
+         "country_code" : "FI",
+         "updated" : "2022-01-19T18:23:33.600",
+         "archived" : false,
+         "party_id" : "000",
+         "created" : "2022-01-19T18:23:33.593",
+         "type" : "REGULAR",
+         "tariff_alt_url" : "",
+         "currency" : "EUR",
+         "uid" : "TTYPE2",
+         "last_updated" : null
+      },
+      "model" : "ocpi22.tariff"
+   },
+   {
+      "pk" : 19,
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "last_updated" : null,
+         "tariff_alt_url" : "",
+         "created" : "2022-01-19T18:23:56.511",
+         "currency" : "EUR",
+         "type" : "REGULAR",
+         "uid" : "TCCS",
+         "party_id" : "000",
+         "archived" : false,
+         "country_code" : "FI",
+         "updated" : "2022-01-19T18:23:56.514"
+      }
+   },
+   {
+      "model" : "ocpi22.tariff",
+      "fields" : {
+         "last_updated" : null,
+         "tariff_alt_url" : "",
+         "created" : "2022-01-19T18:24:14.252",
+         "type" : "REGULAR",
+         "currency" : "EUR",
+         "uid" : "TCHADEMO",
+         "party_id" : "000",
+         "archived" : false,
+         "country_code" : "FI",
+         "updated" : "2022-01-19T18:24:14.256"
+      },
+      "pk" : 20
+   },
+   {
+      "pk" : 1,
+      "model" : "ocpi22.tariffelement",
+      "fields" : {
+         "tariff" : 1
+      }
+   },
+   {
+      "model" : "ocpi22.tariffelement",
+      "pk" : 2,
+      "fields" : {
+         "tariff" : 2
+      }
+   },
+   {
+      "model" : "ocpi22.tariffelement",
+      "pk" : 6,
+      "fields" : {
+         "tariff" : 7
+      }
+   },
+   {
+      "fields" : {
+         "tariff" : 7
+      },
+      "pk" : 7,
+      "model" : "ocpi22.tariffelement"
+   },
+   {
+      "fields" : {
+         "tariff" : 9
+      },
+      "pk" : 10,
+      "model" : "ocpi22.tariffelement"
+   },
+   {
+      "model" : "ocpi22.tariffelement",
+      "pk" : 11,
+      "fields" : {
+         "tariff" : 10
+      }
+   },
+   {
+      "fields" : {
+         "tariff" : 15
+      },
+      "pk" : 12,
+      "model" : "ocpi22.tariffelement"
+   },
+   {
+      "fields" : {
+         "tariff" : 16
+      },
+      "model" : "ocpi22.tariffelement",
+      "pk" : 13
+   },
+   {
+      "fields" : {
+         "tariff" : 18
+      },
+      "model" : "ocpi22.tariffelement",
+      "pk" : 15
+   },
+   {
+      "fields" : {
+         "tariff" : 19
+      },
+      "model" : "ocpi22.tariffelement",
+      "pk" : 16
+   },
+   {
+      "model" : "ocpi22.tariffelement",
+      "pk" : 17,
+      "fields" : {
+         "tariff" : 20
+      }
+   },
+   {
+      "fields" : {
+         "type" : "ENERGY",
+         "price" : 1,
+         "step_size" : 1,
+         "vat" : null,
+         "tariff_element" : 1
+      },
+      "pk" : 1,
+      "model" : "ocpi22.pricecomponent"
+   },
+   {
+      "fields" : {
+         "type" : "ENERGY",
+         "price" : 0.26,
+         "step_size" : 1000,
+         "vat" : null,
+         "tariff_element" : 2
+      },
+      "pk" : 2,
+      "model" : "ocpi22.pricecomponent"
+   },
+   {
+      "fields" : {
+         "tariff_element" : 6,
+         "price" : 1.23,
+         "type" : "ENERGY",
+         "vat" : null,
+         "step_size" : 1000
+      },
+      "model" : "ocpi22.pricecomponent",
+      "pk" : 7
+   },
+   {
+      "fields" : {
+         "tariff_element" : 6,
+         "type" : "TIME",
+         "price" : 0.05,
+         "vat" : null,
+         "step_size" : 60
+      },
+      "model" : "ocpi22.pricecomponent",
+      "pk" : 8
+   },
+   {
+      "pk" : 9,
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "step_size" : 1,
+         "vat" : null,
+         "price" : 1,
+         "type" : "FLAT",
+         "tariff_element" : 7
+      }
+   },
+   {
+      "fields" : {
+         "tariff_element" : 10,
+         "type" : "ENERGY",
+         "price" : 2,
+         "vat" : null,
+         "step_size" : 1
+      },
+      "pk" : 12,
+      "model" : "ocpi22.pricecomponent"
+   },
+   {
+      "pk" : 13,
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "tariff_element" : 11,
+         "price" : 7,
+         "type" : "ENERGY",
+         "step_size" : 1,
+         "vat" : null
+      }
+   },
+   {
+      "pk" : 14,
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "vat" : null,
+         "step_size" : 1,
+         "price" : 2,
+         "type" : "ENERGY",
+         "tariff_element" : 12
+      }
+   },
+   {
+      "pk" : 15,
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "vat" : null,
+         "step_size" : 1,
+         "price" : 2,
+         "type" : "ENERGY",
+         "tariff_element" : 13
+      }
+   },
+   {
+      "fields" : {
+         "price" : 0.22,
+         "type" : "ENERGY",
+         "vat" : null,
+         "step_size" : 1000,
+         "tariff_element" : 15
+      },
+      "model" : "ocpi22.pricecomponent",
+      "pk" : 17
+   },
+   {
+      "pk" : 18,
+      "model" : "ocpi22.pricecomponent",
+      "fields" : {
+         "type" : "ENERGY",
+         "price" : 0.3,
+         "vat" : null,
+         "step_size" : 1000,
+         "tariff_element" : 16
+      }
+   },
+   {
+      "fields" : {
+         "tariff_element" : 17,
+         "step_size" : 1000,
+         "vat" : null,
+         "price" : 0.3,
+         "type" : "ENERGY"
+      },
+      "model" : "ocpi22.pricecomponent",
+      "pk" : 19
+   }
+]

@@ -1,6 +1,10 @@
 import uuid
 
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone
+from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.models.location import Connector
@@ -107,13 +111,13 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     cdr_location_connector_id = models.CharField(max_length=36)
 
     # The standard of the installed connector.
-    cdr_location_connector_standard = models.CharField(max_length=21, choices=Connector.STANDARD_CHOICES)
+    cdr_location_connector_standard = models.CharField(max_length=21, choices=Ocpi.STANDARD_CHOICES)
 
     # The format (socket/cable) of the installed connector.
-    cdr_location_connector_format = models.CharField(max_length=6, choices=Connector.FORMAT_CHOICES)
+    cdr_location_connector_format = models.CharField(max_length=6, choices=Ocpi.FORMAT_CHOICES)
 
     # The power type of the connector (AC/DC, phases)
-    cdr_location_connector_power_type = models.CharField(max_length=10, choices=Connector.POWERTYPE_CHOICES)
+    cdr_location_connector_power_type = models.CharField(max_length=10, choices=Ocpi.POWERTYPE_CHOICES)
 
     # Currency of the CDR in ISO 4217 Code.
     currency = models.CharField(max_length=3)
@@ -161,6 +165,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     @classmethod
     def create_based_on_session(cls, session: Session):
+        if not session.end_date_time:
+            session.end_date_time = timezone.now()
+
         # noinspection PyUnresolvedReferences
         cdr = cls.objects.create(
             uid=uuid.uuid4().hex,
@@ -177,7 +184,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             cdr_location_id=session.location.uid,
             cdr_location_address=session.location.address,
             cdr_location_city=session.location.city,
-            cdr_location_postal_code=session.location.postal_code,
+            cdr_location_postal_code=session.location.postal_code or '-',
             cdr_location_country=session.location.country,
 
             # Make sure coordinates have 6 decimals
@@ -194,11 +201,15 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             total_cost_excl_vat=session.total_cost_excl_vat,
             total_cost_incl_vat=session.total_cost_incl_vat,
             total_energy=session.kwh,
-            total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5)
+            total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5),
+            last_updated=timezone.now(),
         )
         tariffs = session.connector.tariff_ids.all()
-        tariff_copies = Tariff.make_copies(tariffs)
-        cdr.tariffs.set(tariff_copies)
+        if tariffs.count():
+            cdr_tariffs = Tariff.make_copies(tariffs)
+        else:
+            cdr_tariffs = Tariff.make_copies(Tariff.get_default_tariffs(session.connector.standard))
+        cdr.tariffs.set(cdr_tariffs)
         return cdr
 
     def create(self, *args, **kwargs):
@@ -207,3 +218,13 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
                 return self.create_based_on_session(a)
         # noinspection PyUnresolvedReferences
         return self.objects.create(*args, **kwargs)
+
+
+@receiver(post_save, sender=Session)
+def session_post_save(sender, instance: Session, *_args, **_kwargs):
+    if instance.status == Session.COMPLETED and instance.is_ours():
+        existing_cdr = Cdr.get_if_exists(session_id=instance.uid)
+        # ic(existing_cdr)
+        if not existing_cdr:
+            _new_cdr = Cdr.create_based_on_session(instance)
+            # ic(_new_cdr)
