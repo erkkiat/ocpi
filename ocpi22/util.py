@@ -2,7 +2,7 @@ import json
 import logging
 import secrets
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 from django.conf import settings
@@ -458,6 +458,54 @@ class ModelUtilMixin:
                 if f and isinstance(f, str):
                     upper_value = f.upper()
                     self.__setattr__(field, upper_value)
+
+
+class Period:
+
+    seconds = 0
+    start = None
+    end = None
+
+    def __init__(self,
+                 session_start: datetime,
+                 session_end: datetime,
+                 tariff_start: datetime,
+                 tariff_end: datetime) -> int:
+        """
+        Calculate how many seconds two time periods are overlapping. Used for calculating how much of the
+        charging session is within each type of Tariff time period
+
+        @return: How many Seconds of this session is within this Tariff
+
+        >>> dt = datetime(2000, 1, 1, 0, 0)
+        >>> Period(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=60), dt + timedelta(seconds=3*60), )
+        2000-01-01 00:01:00 - 2000-01-01 00:02:00, 60
+        >>> Period(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=10*60), dt + timedelta(seconds=1*60), )
+        2000-01-01 00:00:00 - 2000-01-01 00:01:00, 60
+        >>> Period(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=2*60), dt + timedelta(seconds=3*60), )
+        -
+        >>> Period(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=2*60), dt - timedelta(seconds=60), )
+        -
+        """
+
+        self.seconds = int(max(min(session_end - tariff_start, tariff_end - session_start).total_seconds(), 0))
+        if self.seconds:
+            self.start = max(session_start, tariff_start)
+            self.end = min(session_end, tariff_end)
+
+    def __str__(self):
+        if not self.seconds:
+            return '-'
+        return f'{self.start} - {self.end}, {self.seconds}'
+
+    def __int__(self):
+        return self.seconds
+
+    def __bool__(self):
+        return bool(self.seconds)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')
