@@ -640,6 +640,7 @@ class RootView(routers.APIRootView):
         return Response({
             "OCPI 2.2": request.build_absolute_uri(reverse('ocpi-22')),
             "CPO API": request.build_absolute_uri(reverse('cpo-api')),
+            "OpenAPI": request.build_absolute_uri(reverse('openapi-schema')),
         })
 
     def get_view_name(self):
