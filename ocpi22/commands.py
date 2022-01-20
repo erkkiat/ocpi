@@ -34,7 +34,7 @@ class CommandsSerializer(serializers.Serializer):
     )
     token = CommandTokenSerializer(
         label='Token object the Charge Point has to use to start a new session. '
-              'The Token provided in this request is authorized by the eMSP.'
+              'The Token provided in this request is pre-authorized by the eMSP.'
     )
     location_id = serializers.CharField(
         label='Location.id of the Location (belonging to the CPO this request was sent to) '
@@ -122,16 +122,26 @@ class CommandResult(serializers.Serializer):
         ]
 
 
-class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
-    root_view_name = 'commands'
+class CommandsViewSet(GenericViewSet):
+    # root_view_name = 'commands'
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
     serializer_class = CommandsSerializer
     permission_classes = [OCPIPermission]
 
+    def get_view_name(self):
+        ic(self.kwargs if hasattr(self, 'kwargs') else 'N/A')
+        if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
+            return f'Command {self.kwargs.get("uid")}'
+        if self.name:
+            return f'{self.name.capitalize()}'
+        return f'Commands'
+
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
+        if not request.data:
+            return OCPIResponse(status_message='Please see OPTIONS to learn what you can POST at this endpoint')
         try:
             serializer = self.serializer_class(data=request.data)
             if serializer.is_valid():
@@ -168,9 +178,6 @@ class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
         return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-
-    def get_view_name(self):
-        return 'Commands'
 
     def list(self, request, *args, **kwargs):
         return Response(dict(

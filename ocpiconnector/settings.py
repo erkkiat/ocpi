@@ -30,6 +30,8 @@ TIMEOUT_FOR_COMMANDS = 2 * 60
 
 HOSTNAME = os.environ['HOSTNAME']
 
+OCPI_SPECIFICATION_URL = 'https://github.com/ocpi/ocpi/blob/release-2.2-bugfixes/'
+
 
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split('://')

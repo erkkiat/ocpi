@@ -64,7 +64,10 @@ class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 class ElementsSaveSerializer(serializers.Serializer):
-    price_components = PriceComponentSerializer(many=True)
+    price_components = PriceComponentSerializer(
+        many=True,
+        label=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_pricecomponent_class'
+    )
 
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -72,9 +75,13 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Tariff
         exclude = ['updated', 'created', 'uid', 'archived']
 
-    id = serializers.CharField(source='uid', required=False)
-    elements = ElementsSaveSerializer(source='tariff_elements', many=True, required=True)
-    human_readable = serializers.CharField(source='price', read_only=True)
+    id = serializers.CharField(source='uid', required=False, label='Preferably a human readable, unique identifier')
+    elements = ElementsSaveSerializer(
+        source='tariff_elements', many=True, required=True,
+        label=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_tariffelement_class'
+    )
+    human_readable = serializers.CharField(source='price', read_only=True,
+                                           label='This non-OCPI field exists for educational purposes')
     # last_updated = serializers.DateTimeField(read_only=False)
 
     def _delete_children(self, tariff: Tariff) -> None:
@@ -147,6 +154,12 @@ class TokenViewSet(mixins.ListModelMixin,
         if self.name:
             return f'{self.name.capitalize()}'
         return f'Tokens'
+
+    @staticmethod
+    def get_object(uid=None):
+        # Needed for OPTIONS to work in list view, could just return None
+        if uid:
+            return get_object_or_404(Token, uid=uid)
 
     @staticmethod
     @transaction.atomic
@@ -280,10 +293,10 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
 class CdrViewSet(mixins.ListModelMixin,
                  GenericViewSet):
     """
-    These are the records made for billing. Once a CDR is created, it must not be modified or removed.
+    These are the records created for the purpose of billing. Once a CDR is created, it must not be modified or removed.
     A CDR can be credited to the customer by creating a credit CDR in the admin tools.
-    <b>VISIBILITY</b>: A CDR record is only available to relevant parties,
-    so fetching other party's CDR should not be possible. (When logged in as a superuser, you can see all CDRs)
+    **VISIBILITY**: A CDR record is only available to relevant parties,
+    so fetching another party's CDR should not be allowed. (When logged in as a superuser, you can see all CDRs)
     """
     # noinspection PyUnresolvedReferences
     queryset = Cdr.objects.none()
@@ -310,6 +323,11 @@ class CdrViewSet(mixins.ListModelMixin,
         if self.name:
             return f'CDR {self.name.lower()}'
         return f'Charge Detail Records'
+
+    @staticmethod
+    def get_object(uid=None) -> None:
+        # Needed for OPTIONS to work in list view
+        return None
 
     @action(methods=['GET'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
@@ -573,6 +591,12 @@ class TariffViewSet(mixins.ListModelMixin,
         return OCPIResponse(serializer.data)
 
     @staticmethod
+    def get_object(uid=None) -> Tariff:
+        # Needed for OPTIONS to work in list view, could just return None
+        if uid:
+            return get_object_or_404(Tariff, uid=uid)
+
+    @staticmethod
     @transaction.atomic
     def put(request, country_code=None, party_id=None, uid=None) -> OCPIResponse:
         # This PUT is used both for the Tariff endpoint root and the path with country_code, party_id and Tariff uid
@@ -615,6 +639,12 @@ class SessionViewSet(mixins.ListModelMixin,
         if self.name:
             return f'{self.name.capitalize()}'
         return f'Sessions'
+
+    @staticmethod
+    def get_object(uid=None):
+        # Needed for OPTIONS to work in list view, could just return None
+        if uid:
+            return get_object_or_404(Session, uid=uid)
 
     @transaction.atomic
     @action(methods=['GET'], detail=False, url_name='by-id',
@@ -707,3 +737,5 @@ class OCPIRouter(routers.DefaultRouter):
     def __init__(self):
         super().__init__()
         self.trailing_slash = '/?'
+
+

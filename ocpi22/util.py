@@ -58,11 +58,11 @@ def hours_minutes(hours_float: float) -> str:
     """
 
     hours = int(hours_float)
-    minutes = int((hours_float-hours)*60)
+    minutes = int((hours_float - hours) * 60)
     if hours:
         return f'{hours} h {minutes} min'
     elif not hours and not minutes:
-        seconds = int(hours_float*3600)
+        seconds = int(hours_float * 3600)
         return f'{seconds} seconds'
     else:
         return f'{minutes} min'
@@ -129,10 +129,19 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
             return ''
         return f'{request.build_absolute_uri(obj.get_status_url())}'
 
-    detail_url = serializers.SerializerMethodField(read_only=True)
+    detail_url = serializers.SerializerMethodField(
+        read_only=True,
+        label='This non-OCPI field exists for educational purposes'
+    )
     url = serializers.SerializerMethodField(read_only=True)
-    quick_url = serializers.SerializerMethodField(read_only=True)
-    status_url = serializers.SerializerMethodField(read_only=True)
+    quick_url = serializers.SerializerMethodField(
+        read_only=True,
+        label='This non-OCPI field exists for educational purposes'
+    )
+    status_url = serializers.SerializerMethodField(
+        read_only=True,
+        label='This non-OCPI field exists for educational purposes'
+    )
 
 
 def apply_ocpi22_filters(request, queryset) -> QuerySet:
@@ -254,6 +263,7 @@ class Ocpi:
         IEC_62196_T2_COMBO='DC',
         IEC_62196_T2='AC_3_PHASE'
     )
+
     POWERTYPE_CHOICES = (
         ('AC_1_PHASE', 'AC 1-phase'),
         ('AC_3_PHASE', 'AC 3-phase'),
@@ -545,7 +555,6 @@ class ModelUtilMixin:
 
 
 class Period:
-
     seconds = 0
     start = None
     end = None

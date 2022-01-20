@@ -473,6 +473,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
 
 class LocationViewSet(mixins.ListModelMixin,
                       GenericViewSet):
+
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
     pagination_class = OCPIPaginationAndHeaders
@@ -486,6 +487,12 @@ class LocationViewSet(mixins.ListModelMixin,
         if self.name:
             return f'{self.name.capitalize()}'
         return 'Locations'
+
+    @staticmethod
+    def get_object(uid=None) -> Location:
+        # Needed for OPTIONS to work in list view, could just return None
+        if uid:
+            return get_object_or_404(Location, uid=uid)
 
     @transaction.atomic
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False, url_name='by-evse-id',
