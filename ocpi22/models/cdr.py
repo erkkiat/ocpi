@@ -120,7 +120,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     cdr_location_connector_power_type = models.CharField(max_length=10, choices=Ocpi.POWERTYPE_CHOICES)
 
     # Currency of the CDR in ISO 4217 Code.
-    currency = models.CharField(max_length=3)
+    currency = models.CharField(max_length=3, choices=Ocpi.CURRENCY_CHOICES)
 
     # List of relevant Tariff Elements, see: Tariff. When relevant, a Free of Charge tariff
     # should also be in this list, and point to a defined Free of Charge Tariff.

@@ -260,6 +260,31 @@ class Ocpi:
         ('DC', 'DC')
     )
 
+    CURRENCY_CHOICES = (
+        ('EUR', 'Euro'),
+        ('ALL', 'Albanian lek'),
+        ('BYN', 'Belarusian ruble'),
+        ('BAM', 'Bosnia and Herzegovina convertible mark'),
+        ('BGN', 'Bulgarian lev'),
+        ('HRK', 'Croatian kuna'),
+        ('CZK', 'Czech koruna'),
+        ('DKK', 'Danish krone'),
+        ('ISK', 'Icelandic króna'),
+        ('HUF', 'Hungarian forint'),
+        ('MDL', 'Moldovan leu'),
+        ('NOK', 'Norwegian krone'),
+        ('PLN', 'Polish złoty'),
+        ('GBP', 'Pound sterling'),
+        ('RON', 'Romanian leu'),
+        ('RUB', 'Russian ruble'),
+        ('MKD', 'Second Macedonian denar'),
+        ('RSD', 'Serbian dinar'),
+        ('SEK', 'Swedish krona'),
+        ('CHF', 'Swiss franc'),
+        ('TRY', 'Turkish lira'),
+        ('UAH', 'Ukrainian hryvnia'),
+    )
+
 
 class OCPIResponse(Response):
     def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None,

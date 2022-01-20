@@ -43,7 +43,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     uid = models.CharField(max_length=36)
 
     # ISO-4217 code of the currency of this tariff
-    currency = models.CharField(max_length=3)
+    currency = models.CharField(max_length=3, choices=Ocpi.CURRENCY_CHOICES, default=settings.DEFAULT_CURRENCY)
 
     # Defines the type of the tariff. This allows for distinction in case of given Charging Preferences.
     # When omitted, this tariff is valid for all sessions.

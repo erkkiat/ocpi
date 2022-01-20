@@ -104,7 +104,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     meter_id = models.CharField(max_length=255, blank=True, null=True)
 
     # ISO-4217 code of the currency of this tariff
-    currency = models.CharField(max_length=3)
+    currency = models.CharField(max_length=3, choices=Ocpi.CURRENCY_CHOICES)
 
     # The total cost of the session in the specified currency. This is the price that the eMSP will
     # have to pay to the CPO. A total_cost of 0.00 means free of charge. When omitted, i.e. no price

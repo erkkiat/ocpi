@@ -4,6 +4,7 @@ from django.conf.locale.en import formats as locale_formats
 
 locale_formats.DATETIME_FORMAT = "D j.n.Y H:i"
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
+DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
 DEBUG = os.environ.get('DEBUG', False)
