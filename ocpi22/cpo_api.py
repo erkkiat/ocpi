@@ -354,7 +354,7 @@ class SessionViewSet(viewsets.ViewSet):
         In case this EVSE has one or more unfinished sessions left hanging,
         the response will have a list called "incomplete_sessions_invalidated",
         which shows the sessions which were discarded by changing their status to "INVALID". These sessions will not
-        be billed, but they can still be found in the [admin user interface](/admin/).
+        be billed, but they can still be found in the admin tools.
         """
         session = get_object_or_404(Session, uid=session_id)
         if session.status in self.FINAL_STATUSES:
@@ -453,7 +453,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
     at [/ocpi/cpo/2.2/](/ocpi/cpo/2.2/).
 
     All the objects in the OCPI Connector are available for browsing
-    and selective modification at [the Admin User Interface](/admin/).
+    and selective modification in the admin tools.
     It also provides tools for maintaining users, groups and their access to the OCPI Connector.
 
     To start roaming, these integrations are required from the CPO:

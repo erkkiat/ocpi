@@ -472,7 +472,6 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
 
 
 class LocationViewSet(mixins.ListModelMixin,
-                      mixins.RetrieveModelMixin,
                       GenericViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
@@ -482,6 +481,10 @@ class LocationViewSet(mixins.ListModelMixin,
     lookup_field = "uid"
 
     def get_view_name(self):
+        if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
+            return f'Location {self.kwargs.get("uid")}'
+        if self.name:
+            return f'{self.name.capitalize()}'
         return 'Locations'
 
     @transaction.atomic
@@ -579,9 +582,9 @@ class LocationViewSet(mixins.ListModelMixin,
     #     return OCPIResponse(serializer.data)
 
     @transaction.atomic
-    @action(methods=['GET', 'PUT', 'PATCH'], detail=False,
+    @action(methods=['GET', 'PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def by_id(self, request: Request, country_code, party_id, uid) -> OCPIResponse:
+    def location_by_id(self, request: Request, country_code, party_id, uid) -> OCPIResponse:
         # noinspection PyUnresolvedReferences
         location = get_object_or_404(Location,
                                      country_code=country_code,

@@ -145,7 +145,7 @@ class TokenViewSet(mixins.ListModelMixin,
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
             return f'Token {self.kwargs.get("uid")}'
         if self.name:
-            return f'Token {self.name.lower()}'
+            return f'{self.name.capitalize()}'
         return f'Tokens'
 
     @staticmethod
@@ -202,9 +202,9 @@ class TokenViewSet(mixins.ListModelMixin,
             return OCPIResponse(serializer.data)
         return OCPIBadRequestResponse()
 
-    @action(methods=['PUT', 'PATCH'], detail=False,
+    @action(methods=['PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
+    def token_by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
 
         # Method is PUT or PATCH
@@ -277,23 +277,44 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                                   'Overwriting an existing CDR is forbidden.')
 
 
-class CdrViewSet(mixins.RetrieveModelMixin,
-                 mixins.ListModelMixin,
+class CdrViewSet(mixins.ListModelMixin,
                  GenericViewSet):
     """
-    These are the Charge Detail Records. Once a CDR is created, it must not be modified or removed.
-    A CDR can be credited to the customer by creating a credit CDR in the admin user interface.
+    These are the records made for billing. Once a CDR is created, it must not be modified or removed.
+    A CDR can be credited to the customer by creating a credit CDR in the admin tools.
+    <b>VISIBILITY</b>: A CDR record is only available to relevant parties,
+    so fetching other party's CDR should not be possible. (When logged in as a superuser, you can see all CDRs)
     """
     # noinspection PyUnresolvedReferences
-    queryset = Cdr.objects.all().order_by('created')
+    queryset = Cdr.objects.none()
     serializer_class = CdrSerializer
     pagination_class = OCPIPaginationAndHeaders
 
-    # Todo: Needs a OCPI standard FI/EON/UID GET (right?)
-    @action(methods=['GET'], detail=False, url_name='cdr-by-id',
-            url_path='(?P<uid>[^/.]+)')
-    def cdr_by_id(self, request, uid) -> Response:
-        cdr = get_object_or_404(Cdr, uid=uid)
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            # noinspection PyUnresolvedReferences
+            return Cdr.objects.all().order_by('created')
+        if hasattr(self.request, 'country_code'):
+            ic(self.request.country_code, self.request.party_id)
+            # noinspection PyUnresolvedReferences
+            return Cdr.objects.filter(
+                country_code=self.request.country_code,
+                party_id=self.request.party_id
+            ).order_by('created')
+        # noinspection PyUnresolvedReferences
+        return Cdr.objects.none()
+
+    def get_view_name(self):
+        if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
+            return f'CDR {self.kwargs.get("uid")}'
+        if self.name:
+            return f'CDR {self.name.lower()}'
+        return f'Charge Detail Records'
+
+    @action(methods=['GET'], detail=False,
+            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
+    def by_id(self, request, country_code=None, party_id=None, uid=None) -> Response:
+        cdr = get_object_or_404(Cdr, country_code=country_code, party_id=party_id, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
 
@@ -529,8 +550,7 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
 #         return tariff
 
 
-class TariffViewSet(mixins.RetrieveModelMixin,
-                    mixins.ListModelMixin,
+class TariffViewSet(mixins.ListModelMixin,
                     GenericViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Tariff.objects.exclude(archived=True).order_by('created')
@@ -539,11 +559,15 @@ class TariffViewSet(mixins.RetrieveModelMixin,
     lookup_field = 'uid'
 
     def get_view_name(self):
+        if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
+            return f'Tariff {self.kwargs.get("uid")}'
+        if self.name:
+            return f'{self.name.capitalize()}'
         return 'Tariffs'
 
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
-            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def by_id(self, request, country_code, party_id, uid) -> Response:
+            url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', url_name='by-id')
+    def tariff_by_id(self, request, country_code, party_id, uid) -> Response:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
@@ -576,7 +600,6 @@ class TariffViewSet(mixins.RetrieveModelMixin,
 
 
 class SessionViewSet(mixins.ListModelMixin,
-                     mixins.RetrieveModelMixin,
                      GenericViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token_uid', 'authorization_reference']
@@ -585,6 +608,13 @@ class SessionViewSet(mixins.ListModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.all().order_by('created')
     serializer_class = SessionSaveSerializer
+
+    def get_view_name(self):
+        if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
+            return f'Session {self.kwargs.get("uid")}'
+        if self.name:
+            return f'{self.name.capitalize()}'
+        return f'Sessions'
 
     @transaction.atomic
     @action(methods=['GET'], detail=False, url_name='by-id',

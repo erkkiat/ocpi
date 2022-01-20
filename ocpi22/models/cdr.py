@@ -153,7 +153,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
                f'{(self.total_time / 60.0):.4f} hours - {self.end_date_time}'
 
     def get_absolute_url(self):
-        return reverse('cdr-detail', args=[self.uid])
+        return reverse('cdr-by-id', args=[self.country_code, self.party_id, self.uid])
 
     def total_cost(self):
         return f'{"-" if self.credit else ""}' \

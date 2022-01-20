@@ -124,6 +124,7 @@ class CommandResult(serializers.Serializer):
 
 class CommandsViewSet(mixins.ListModelMixin, GenericViewSet):
     root_view_name = 'commands'
+    # noinspection PyUnresolvedReferences
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
     serializer_class = CommandsSerializer
     permission_classes = [OCPIPermission]
