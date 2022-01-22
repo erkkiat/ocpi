@@ -111,7 +111,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         url = reverse('admin:ocpi22_tariff_change', args=[self.pk])
         # noinspection PyUnresolvedReferences
         return format_html(
-            f"<a href='{url}'>{self.price()} -- {self.get_type_display()}</a>"
+            f"<a href='{url}'>{self.price()}</a>"
         )
 
     def get_absolute_url(self):
