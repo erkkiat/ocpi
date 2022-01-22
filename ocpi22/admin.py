@@ -144,6 +144,10 @@ class EvseAdmin(NestedModelAdmin):
     actions = ['start_charging']
     autocomplete_fields = ['capabilities', 'location']
 
+    def get_queryset(self, request):
+        # noinspection PyUnresolvedReferences
+        return Evse.objects.select_related('location').all()
+
     @staticmethod
     def location_url(evse):
         return format_html("<a href='{url}'>{location}</a>",
