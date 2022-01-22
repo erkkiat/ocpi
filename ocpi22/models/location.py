@@ -287,13 +287,23 @@ class Connector(models.Model, ModelUtilMixin):
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return f'{self.power()} {self.get_standard_display()}'
+        return f'#{self.uid} - {self.get_standard_display()} {self.power()}'
 
     def power(self):
         return f'{int((self.max_electric_power or self.max_voltage * self.max_amperage) / 1000)} kW'
 
     def tariff(self):
         return format_html('<br>'.join([t.link() for t in self.tariff_ids.all()]))
+
+    def get_tariffs(self):
+        # Fetch the Tariffs specified for this Connector or find a DefaultTariff in case no specific Tariffs
+        return self.tariff_ids.all() or Tariff.get_default_tariffs(self.standard)
+
+
+@receiver(pre_save, sender=Evse)
+def evse_pre_save(sender, instance: Evse, *_args, **_kwargs):
+    if not instance.evse_id:
+        instance.evse_id = f'{instance.location.country_code}*{instance.location.party_id}*E{instance.uid}'
 
 
 @receiver(pre_save, sender=Connector)

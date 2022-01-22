@@ -3,6 +3,7 @@ import logging
 import secrets
 from collections import OrderedDict
 from datetime import datetime, timedelta
+from typing import Optional
 
 import requests
 from django.conf import settings
@@ -380,9 +381,9 @@ class OcpiModule:
         if hasattr(self, 'last_updated'):
             country_code, party_id = self.get_party()
             if country_code == settings.COUNTRY_CODE and party_id == settings.PARTY_ID:
-                self.last_updated = timezone.now()
+                setattr(self, 'last_updated', timezone.now())
 
-    def atomic_post_save(self, *args, **kwargs) -> None:
+    def atomic_post_save(self, *_args, **_kwargs) -> None:
         # ic("Generic atomic_post_save")
         # ic(args, kwargs)
 
@@ -394,7 +395,7 @@ class OcpiModule:
         self.update_last_updated()
 
         if not hasattr(self, 'update_sent') and self.is_ours():
-            if not hasattr(self, 'archived') or self.archived == False:
+            if not hasattr(self, 'archived') or not self.archived:
                 print('*** This is our object, sending updates to all known parties')
                 self.send_updates()
                 # Send update only once
@@ -456,7 +457,7 @@ def pretty_currency(c):
     return dict(EUR='€', GBP='£', USD='$').get(c, c)
 
 
-def format_currency(number: float, currency: str) -> str:
+def format_currency(number: Optional[float], currency: Optional[str]) -> str:
     """
     >>> format_currency(1.1, 'EUR')
     '1,10€'
@@ -490,12 +491,12 @@ def format_cost(incl_vat: float, excl_vat: float, currency: str) -> str:
     >>> format_cost(1.2, 0.0, "EUR")
     '1,20€'
     >>> format_cost(0.0, 1.0, "EUR")
-    '1€ (VAT 0%)'
+    '1€ (excl.VAT)'
     >>> format_cost(0.0, 0.0, "EUR")
     '-'
     """
 
-    cost_format = "{excl_vat} (VAT 0%)"
+    cost_format = "{excl_vat} (excl.VAT)"
     if not excl_vat and not incl_vat:
         return '-'
     if incl_vat:
@@ -515,7 +516,7 @@ def calculate_partition(coordinate):
 
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(cls, *args: list, **kwargs: dict):
+    def get_if_exists(cls, *args: list, **kwargs: dict) -> Optional[object]:
         # noinspection PyUnresolvedReferences
         objects = cls.objects.filter(*args, **kwargs)
         if objects.count():

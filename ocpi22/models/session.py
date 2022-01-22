@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -5,7 +6,7 @@ from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.tariff import Tariff, PriceComponent
+from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, OcpiModule, Ocpi, hours_minutes, format_cost
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
@@ -156,46 +157,57 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def clean(self):
-        if self.status == self.COMPLETED and (not self.connector or not self.connector.tariff_ids):
-            self.status = self.PENDING
-            raise ValidationError(dict(
-                connector='A connector with Tariffs needs to be chosen before the session can be completed.')
-            )
-        return super().clean()
+    # def clean(self):
+    #     if self.status == self.COMPLETED and (not self.connector or not self.connector.tariff_ids):
+    #         self.status = self.PENDING
+    #         raise ValidationError(dict(
+    #             connector='A connector with Tariffs needs to be chosen before the session can be completed.')
+    #         )
+    #     return super().clean()
 
     def save(self, *args, **kwargs):
         # Needed for running self.clean() when doing a save() or create()
         self.full_clean()
         return super().save(*args, **kwargs)
 
-    def calculate_price(self) -> (float, float):
+    def calculate_price(self) -> bool:
         connector = self.connector
         kwh: float = float(self.kwh)
-        hours = (self.end_date_time - self.start_date_time).seconds / 3600
+        # Calculate the session duration using either a stored end time or the current time
+        hours = ((self.end_date_time or timezone.now()) - self.start_date_time).seconds / 3600
         result_incl_vat: float = 0.0
         result_excl_vat: float = 0.0
         tariff: Tariff
+        tariffs = connector.get_tariffs()
 
-        for tariff in connector.tariff_ids.all():
+        if not tariffs:
+            # Cannot calculate price
+            return False
+        for tariff in tariffs:
             if tariff.type != 'REGULAR':
                 # Todo: Implement profile types
                 continue
-            pc: PriceComponent
+            e: TariffElement
             # noinspection PyUnresolvedReferences
-            for pc in tariff.price_components.all():
-                excl_vat = dict(
-                    ENERGY=lambda x: kwh * x,
-                    TIME=lambda x: hours * x,
-                    FLAT=lambda x: x
-                ).get(pc.type, lambda x: 0.0)(pc.price)
-                incl_vat = excl_vat * (1.0 + pc.vat / 100) \
-                    if pc.vat else excl_vat
-                ic(pc, excl_vat)
-                result_incl_vat += incl_vat
-                result_excl_vat += excl_vat
+            for e in tariff.tariff_elements.all():
+                pc: PriceComponent
+                # noinspection PyUnresolvedReferences
+                for pc in e.price_components.all():
+                    excl_vat = dict(
+                        ENERGY=lambda x: kwh * x,
+                        TIME=lambda x: hours * x,
+                        FLAT=lambda x: x
+                    ).get(pc.type, lambda x: 0.0)(pc.price)
+                    incl_vat = excl_vat * (1.0 + pc.vat / 100) \
+                        if pc.vat else excl_vat
+                    # ic(pc, excl_vat)
+                    result_incl_vat += incl_vat
+                    result_excl_vat += excl_vat
+
         self.total_cost_incl_vat = round(result_incl_vat, 2)
         self.total_cost_excl_vat = round(result_excl_vat, 2)
+        # If we could figure out a price, it's a success, even if the price is 0.0
+        return True
 
     def __str__(self):
         return f'{self.cdr_token_uid} - {self.start_date_time} - {self.kwh}kWh - ' \

@@ -1,4 +1,6 @@
+import logging
 import uuid
+from typing import Optional
 
 from django.db import models
 from django.db.models.signals import post_save
@@ -160,11 +162,15 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
                f'{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)}' \
                f'{" (credited)" if self.credit else ""}'
 
-    def charging_time(self):
+    def total_session_time(self):
         return hours_minutes(self.total_time)
 
     @classmethod
-    def create_based_on_session(cls, session: Session):
+    def create_based_on_session(cls, session: Session) -> Optional[object]:
+        if session.total_cost_excl_vat is None:
+            logging.error(f'Session {session} has no total cost, not creating a CDR yet')
+            # Todo: Log something for admin to see
+            return None
         if not session.end_date_time:
             session.end_date_time = timezone.now()
 
@@ -218,6 +224,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
                 return self.create_based_on_session(a)
         # noinspection PyUnresolvedReferences
         return self.objects.create(*args, **kwargs)
+
+    def cost(self) -> str:
+        return format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)
 
 
 @receiver(post_save, sender=Session)

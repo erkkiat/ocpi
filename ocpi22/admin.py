@@ -38,6 +38,7 @@ class TokenAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj: Token = None) -> bool:
         return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
 
+
 # Todo: Prevent Connector editing if not owner, get_readonly_fields() doesn't do it
 
 
@@ -103,14 +104,14 @@ class LocationAdmin(NestedModelAdmin):
     fieldsets = [
         (None, dict(fields=('uid', 'publish', 'publish_allowed_to'))),
         ('Address', dict(
-                fields=('name', 'address', ('postal_code', 'city'), ('state', 'country'),
-                        ('latitude', 'longitude', 'time_zone'), )
+            fields=('name', 'address', ('postal_code', 'city'), ('state', 'country'),
+                    ('latitude', 'longitude', 'time_zone'),)
         )),
         ('Features', dict(
-                fields=(('parking_type', 'facilities'),)
+            fields=(('parking_type', 'facilities'),)
         )),
         ('Parties', dict(
-                fields=(('operator', 'suboperator', 'owner'),)
+            fields=(('operator', 'suboperator', 'owner'),)
         )),
     ]
     list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list']
@@ -134,7 +135,6 @@ class LocationAdmin(NestedModelAdmin):
 
 
 class EvseAdmin(NestedModelAdmin):
-
     model = Evse
     exclude = ['last_updated']
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
@@ -180,7 +180,7 @@ class EvseAdmin(NestedModelAdmin):
                 if response:
                     self.message_user(request, f'Starting charging at {evse.location}, '
                                                f'response: {response.status_code} - '
-                                               f'{response.reason if hasattr(response, "reason") else "Ok" }')
+                                               f'{response.reason if hasattr(response, "reason") else "Ok"}')
                 else:
                     self.message_user(request, f'Unable to start charging at {evse.location}.',
                                       level=messages.ERROR)
@@ -236,12 +236,11 @@ class CdrAdmin(admin.ModelAdmin):
     list_display = [
         'party',
         'start_date_time',  # Todo: Show time in local timezone
-        'total_cost', 'total_energy', 'charging_time',
-        'session_id', 'auth_method'
+        'total_session_time', 'total_energy', 'total_cost',
     ]
     # list_filter = ['party_id', 'auth_method', 'credit']
     list_display_links = ['start_date_time']
-    search_fields = ['party_id', 'country_code', 'session_id']
+    search_fields = ['party_id', 'country_code', 'session_id', 'uid']
     autocomplete_fields = ['tariffs']
 
     def has_delete_permission(self, request, obj=None) -> bool:
@@ -264,10 +263,9 @@ class SessionAdmin(admin.ModelAdmin):
         'party',
         'start_date_time',  # Todo: Show time in local timezone
         'status',
-        'total_time',
         'evse', 'connector',
-        'cdr_token_uid', 'kwh',
-        'cost'
+        'cdr_token_uid',
+        'total_time', 'kwh', 'cost'
     ]
     # Todo: Show only connectors for the selected evse
 
@@ -278,7 +276,8 @@ class SessionAdmin(admin.ModelAdmin):
     #     ('total_cost_excl_vat', 'total_cost_incl_vat', 'currency')
     # )
     list_display_links = ['start_date_time']
-    search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid', 'uid']
+    search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid',
+                     'uid']
     # list_filter = ['status', 'party_id',]
     readonly_fields = ['uid', 'party_id', 'country_code']
 
@@ -293,7 +292,7 @@ class SessionAdmin(admin.ModelAdmin):
                 'country_code', 'party_id', 'meter_id',
                 'authorization_reference', 'uid', 'auth_method',
                 'cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id',
-                'location', 'evse', 'start_date_time'
+                'location', 'evse', 'start_date_time', 'total_cost_incl_vat', 'total_cost_excl_vat',
             ]
         return []
 
@@ -301,8 +300,8 @@ class SessionAdmin(admin.ModelAdmin):
         # Disable delete except for invalid sessions
         return (obj and obj.status == 'INVALID') or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    def has_change_permission(self, request, obj: Session=None) -> bool:
-        if obj and obj.status == Session.COMPLETED:
+    def has_change_permission(self, request, obj: Session = None) -> bool:
+        if obj and obj.status == Session.COMPLETED and obj.total_cost_excl_vat:
             return False
         return (obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
                or ALLOW_ADMIN_DELETE_AND_CHANGE
@@ -311,9 +310,20 @@ class SessionAdmin(admin.ModelAdmin):
         # Disable add
         return False
 
+    def response_post_save_change(self, request, obj: Session):
+        if obj.kwh:
+            if obj.calculate_price() == True:
+                obj.save(update_fields=['total_cost_excl_vat', 'total_cost_incl_vat'])
+            else:
+                self.message_user(request, 'Cannot calculate cost for the session, because there are no Tariffs '
+                                           'specified for the Connector. '
+                                           'Please edit the Session or specify a default tariff.',
+                                  level=messages.WARNING)
+
+        return super().response_post_save_change(request, obj)
+
 
 class TariffAdmin(NestedModelAdmin):
-
     class ElementsInline(NestedStackedInline):
         class PriceComponentsInline(NestedTabularInline):
             model = PriceComponent
@@ -354,14 +364,13 @@ class TariffAdmin(NestedModelAdmin):
 
     def has_change_permission(self, request, obj=None) -> bool:
         return (obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
-                or ALLOW_ADMIN_DELETE_AND_CHANGE
+               or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE or self.has_change_permission(request, obj)
 
 
 class CredentialsAdmin(admin.ModelAdmin):
-
     class CredentialRolesInline(admin.TabularInline):
         model = CredentialsRole.credentials.through
 
@@ -380,6 +389,7 @@ class CredentialsAdmin(admin.ModelAdmin):
 class CredentialsRoleAdmin(admin.ModelAdmin):
     model = CredentialsRole
     list_display = ['party', 'business_details', 'references']
+
 
 @admin.register(DefaultTariffs)
 class DefaultTariffsAdmin(admin.ModelAdmin):

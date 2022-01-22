@@ -17,7 +17,9 @@ from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
-from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer, TokenViewSet, TokenSerializer
+from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer, TokenViewSet, TokenSerializer, \
+    SessionSaveSerializer
+from ocpi22.commands import CommandsViewSet
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.models.models import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -117,7 +119,7 @@ class ApiPutTests(TestCase):
         request = self.factory.get(url)
         loc = self.location
         viewset = LocationViewSet()
-        response = viewset.by_id(request, loc.country_code, loc.party_id, loc.uid)
+        response = viewset.location_by_id(request, loc.country_code, loc.party_id, loc.uid)
         # ic(response, response.data)
         data = response.data.get('data')
         self.assertIsInstance(data, dict, msg='There should be a dict element "data" in the Location')
@@ -335,6 +337,7 @@ class ApiPutTests(TestCase):
 
         testcases = (
             ('cdr_example', status.HTTP_201_CREATED, 1000, 1),
+            ('cdr_example2', status.HTTP_201_CREATED, 1000, 1),
         )
 
         for filename, http_status, ocpi_status, price_component_count \
@@ -371,6 +374,10 @@ class ApiPutTests(TestCase):
             # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
             self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
                              'Last_updated is not stored from the incoming data')
+
+            # Check that Tariffs are created
+            self.assertTrue(saved_data.get('tariffs'),
+                             'Tariffs are not stored from the incoming data')
 
     def test_put_token(self):
         url = reverse('token-list')
@@ -453,7 +460,7 @@ class ApiPutTests(TestCase):
         request = self.factory.get(url)
         loc = self.location
         viewset = LocationViewSet()
-        response = viewset.by_id(request, loc.country_code, loc.party_id, loc.uid)
+        response = viewset.location_by_id(request, loc.country_code, loc.party_id, loc.uid)
         # ic(response, response.data)
         data = response.data.get('data')
 
@@ -541,13 +548,15 @@ class CdrTests(TestCase):
         evse = location.evses.all()[0]
         connector = evse.connectors.all()[0]
 
+        # ic(connector, connector.get_tariffs()[0].price())
+
         # noinspection PyUnresolvedReferences
         session = Session.objects.create(
             country_code='FI',
             party_id='EON',
             uid='TEST1',
             start_date_time=timezone.now() - timedelta(minutes=30),
-            end_date_time=timezone.now(),
+            # end_date_time=timezone.now(),
             kwh=12.34,
             cdr_token_uid='TOKEN1',
             cdr_token_type='RFID',
@@ -564,18 +573,35 @@ class CdrTests(TestCase):
             status='COMPLETED',
             last_updated=timezone.now(),
         )
+
+        # Check that the serializer gives the correct connector ID and Tariff
+        serializer = SessionSaveSerializer(session)
+        data = serializer.data
+        self.assertEqual(data['connector_id'], connector.uid,
+                         f"Expecting connector uid {connector.uid}, got {data['connector_id']}")
+
+        self.assertTrue(session.calculate_price(), 'There is sufficient information to calculate the Session price')
+        self.assertEqual(session.total_cost_excl_vat, 1, "Price doesn't seem right.")
+
         cdr1 = Cdr.create_based_on_session(session)
 
         # Check that Tariffs are archived copies and that they exist
 
+        # noinspection PyUnresolvedReferences
         self.assertTrue(all(t.archived for t in cdr1.tariffs.all()),
                         'Cdr needs to point to only archived Tariffs, so that they are not modified anymore.')
 
+        # noinspection PyUnresolvedReferences
         self.assertEqual(cdr1.tariffs.count(), 1,
                          'Cdr is missing a Tariff')
 
         # Remove Tariff from Connector, so that the DefaultTariff would be in use
         connector.tariff_ids.set([])
+
+        self.assertTrue(session.calculate_price(), 'There is sufficient information to calculate the Session price')
+        self.assertEqual(session.total_cost_excl_vat, round(session.kwh * 0.22, 2), "Price without VAT doesn't seem right.")
+        self.assertEqual(session.total_cost_incl_vat, round(session.kwh * 0.22 * 1.24, 2),
+                         "Price with VAT doesn't seem right.")
 
         cdr = Cdr.create_based_on_session(session)
 
@@ -599,3 +625,56 @@ class CdrTests(TestCase):
 
         self.assertEqual(cdr.tariffs.all()[0].uid, 'TTYPE2',
                          'This CDR should have a DefaultTariff, since no Tariff is specified for the Connector')
+
+
+class CommandTests(TestCase):
+    fixtures = ['ocpi22/data/test-database-1.json']
+
+    def test_start_session(self):
+        # for t in [11, 12, 13]:
+        #     create_tariff(uid=str(t), country_code='BE', party_id='BEC')
+
+        url = reverse('commands-start-session')
+        factory = APIRequestFactory()
+        viewset = CommandsViewSet()
+
+        # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
+        request = factory.get(url)
+        request.data = {}
+        response = viewset.start_session(request)
+        # data = response.data.get('data')
+        # ic(response, response.data)
+
+        self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
+        self.assertEqual(response.status_code, 200,
+                         msg='HTTP response should be 200 (and some instructions for the user)')
+
+        # Load up the test message and send it
+        dirname = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(dirname, f'data/examples/command_start_session.json')) as file:
+            data = json.load(file)
+
+        request = factory.post(url)
+        request.data = data
+        response = viewset.start_session(request)
+
+        # ic(response, response.data)
+        self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
+        self.assertEqual(response.status_code, 200,
+                         msg='HTTP response should be 200 (and some instructions for the user)')
+
+        self.assertEqual(response.data.get('data').get('result'), 'ACCEPTED',
+                         msg='Expecting the result "ACCEPTED"')
+
+        # noinspection PyUnresolvedReferences
+        session = Session.objects.get(status='PENDING')
+        self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match to expected")
+
+        # Let's pick a connector and fill out charging details
+        session.connector = session.evse.connectors.all()[0]
+        session.kwh = 10.0
+        session.total_cost_excl_vat = 4
+        session.total_cost_incl_vat = 5
+        session.save()
+
+        # ic([(s.uid, s.status) for s in Session.objects.all()])

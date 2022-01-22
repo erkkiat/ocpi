@@ -152,11 +152,14 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             result.append(cls.make_copy(t))
         return result
 
+    # noinspection PyUnresolvedReferences
     @classmethod
     def get_default_tariffs(cls, standard) -> QuerySet:
-        # noinspection PyUnresolvedReferences
-        default_tariffs = DefaultTariffs.objects.get(standard=standard)
-        return default_tariffs.tariffs.all()
+        try:
+            default_tariffs = DefaultTariffs.objects.get(standard=standard)
+            return default_tariffs.tariffs.all()
+        except DefaultTariffs.DoesNotExist:
+            return DefaultTariffs.objects.none()
 
 
 class TariffElement(models.Model, ModelUtilMixin):

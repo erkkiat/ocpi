@@ -315,7 +315,7 @@
       "model" : "ocpi22.pricecomponent",
       "fields" : {
          "step_size" : 1,
-         "vat" : null,
+         "vat" : 24,
          "price" : 1,
          "type" : "FLAT",
          "tariff_element" : 7
@@ -369,7 +369,7 @@
       "fields" : {
          "price" : 0.22,
          "type" : "ENERGY",
-         "vat" : null,
+         "vat" : 24,
          "step_size" : 1000,
          "tariff_element" : 15
       },

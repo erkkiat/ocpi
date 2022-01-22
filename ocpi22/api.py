@@ -20,7 +20,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.location import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.models import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
-from ocpi22.models.location import Location, Evse
+from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
@@ -42,7 +42,7 @@ class CdrTokenSerializer(serializers.Serializer):
 
 
 class TotalCostSerializer(serializers.Serializer):
-    excl_vat = serializers.FloatField(source='total_cost_excl_vat')
+    excl_vat = serializers.FloatField(source='total_cost_excl_vat', required=False)
     incl_vat = serializers.FloatField(source='total_cost_incl_vat', required=False)
 
 
@@ -96,10 +96,8 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     def _create_children(self, tariff: Tariff, tariff_elements: dict) -> None:
         for te in tariff_elements:
             price_components = te.pop('price_components')
-            # noinspection PyUnresolvedReferences
             tariff_element = TariffElement.objects.create(**te, tariff=tariff)
             for pc in price_components:
-                # noinspection PyUnresolvedReferences
                 PriceComponent.objects.create(**pc, tariff_element=tariff_element)
 
     def update(self, instance: Tariff, validated_data: dict) -> Tariff:
@@ -268,7 +266,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Cdr
         fields = ['detail_url', 'country_code', 'party_id', 'id', 'start_date_time', 'end_date_time',
                   'session_id', 'cdr_token', 'auth_method', 'authorization_reference',
-                  'cdr_location', 'tariffs', 'total_cost', 'total_energy',
+                  'cdr_location', 'tariffs', 'total_cost', 'total_energy', 'currency',
                   'total_time', 'credit', 'credit_reference_id', 'last_updated']
 
     id = serializers.CharField(source='uid')
@@ -283,7 +281,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
             # ic(tariffs)
             # Todo: Make an archived copy of Tariff and link to the original, clear link when original is changed
             # Link archived copy to Cdr - Jiihaa!
-            # Todo: Store Tariffs in an unmutable way
+            # Todo: Store Tariffs in an immutable way
             return super().create(validated_data)
         except IntegrityError as e:
             raise ValidationError(f'A CDR with uid `{validated_data.get("uid")}` already exists. '
@@ -299,7 +297,7 @@ class CdrViewSet(mixins.ListModelMixin,
     so fetching another party's CDR should not be allowed. (When logged in as a superuser, you can see all CDRs)
     """
     # noinspection PyUnresolvedReferences
-    queryset = Cdr.objects.none()
+    queryset = Cdr.objects.none()  # Default to no visibility, fine tune with get_queryset()
     serializer_class = CdrSerializer
     pagination_class = OCPIPaginationAndHeaders
 
@@ -499,6 +497,19 @@ class EvseUidSerializer(serializers.Serializer):
         return dict(evse=evse)
 
 
+class ConnectorIdSerializer(serializers.Serializer):
+    default_error_messages = default_error_messages
+
+    def to_representation(self, instance: Session):
+        return instance.connector.uid if hasattr(instance, 'connector')  and instance.connector else None
+
+    def to_internal_value(self, data: str):
+        connector = Connector.get_if_exists(uid=data)
+        if not connector:
+            self.fail('object_missing', name='Connector', uid=data)
+        return dict(connector=connector)
+
+
 class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
@@ -511,9 +522,11 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     cdr_token = CdrTokenSerializer(required=True, source='*')
     location_id = LocationIdSerializer(source='*')
     evse_uid = EvseUidSerializer(source='*')
+    connector_id = ConnectorIdSerializer(source='*', required=False)
     total_cost = TotalCostSerializer(source='*', required=False)
 
     def create(self, validated_data):
+        # noinspection PyUnresolvedReferences
         return Session.objects.create(
             **validated_data
         )

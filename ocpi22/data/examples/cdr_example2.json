@@ -1,0 +1,62 @@
+{
+  "auth_method": "COMMAND",
+  "authorization_reference": "2e701b0cf65d43a08f695b03354436f3",
+  "cdr_location": {
+    "address": "Nuolihaukantie 25B",
+    "city": "Espoo",
+    "connector_format": "CABLE",
+    "connector_id": "3002",
+    "connector_power_type": "AC_3_PHASE",
+    "connector_standard": "IEC_62196_T2",
+    "coordinates": {
+      "latitude": "61.000000",
+      "longitude": "31.000000"
+    },
+    "country": "FIN",
+    "evse_id": "FI*000*EEKI1",
+    "evse_uid": "EKI1",
+    "id": "EKI1",
+    "postal_code": "-"
+  },
+  "cdr_token": {
+    "contract_id": "INTERNAL",
+    "type": "OTHER",
+    "uid": "FI*001*T*ADMIN*TOKEN"
+  },
+  "country_code": "FI",
+  "credit": false,
+  "end_date_time": "2022-01-22T09:35:19",
+  "id": "8297d92ff7d047c68727750b3b8ca559",
+  "last_updated": "2022-01-22T09:35:19",
+  "party_id": "000",
+  "session_id": "2507071326c34cfead5dd5096e0fc85c",
+  "start_date_time": "2022-01-22T09:28:30",
+  "tariffs": [
+    {
+      "country_code": "FI",
+      "currency": "EUR",
+      "elements": [
+        {
+          "price_components": [
+            {
+              "price": 0.22,
+              "step_size": 1000,
+              "type": "ENERGY",
+              "vat": 24.0
+            }
+          ]
+        }
+      ],
+      "human_readable": "0,22€ / kWh -- Regular profile",
+      "id": "TTYPE2",
+      "party_id": "000",
+      "type": "REGULAR"
+    }
+  ],
+  "total_cost": {
+    "excl_vat": 0.22,
+    "incl_vat": 0.27
+  },
+  "total_energy": 10.0,
+  "total_time": 0.11333
+}
