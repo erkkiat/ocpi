@@ -1,6 +1,8 @@
 import doctest
 import json
 import os
+import logging
+
 from datetime import timedelta
 from django.utils import timezone
 
@@ -84,6 +86,7 @@ class ApiPutTests(TestCase):
 
     # noinspection PyUnresolvedReferences
     def setUp(self):
+        logging.disable(logging.CRITICAL)
         self.location = self.create_location()
         self.credentials = Credentials.objects.create(token_a='TOKEN_A', ours='OURS', theirs='THEIRS')
         self.business_details = BusinessDetails.objects.create(name='Test Business')
@@ -221,7 +224,8 @@ class ApiPutTests(TestCase):
             # And CretentialsRoles
             # noinspection PyUnresolvedReferences
             roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
-                                                    party_id=party_id, defaults=dict(business_details=self.business_details))
+                                                                    party_id=party_id, defaults=dict(
+                    business_details=self.business_details))
             self.credentials.roles.add(roles)
 
             # Send the request
@@ -240,7 +244,8 @@ class ApiPutTests(TestCase):
                     # noinspection PyUnresolvedReferences
                     location = Location.objects.get(uid=uid)
                     # print(f"Evses: {location.evses.count()}")
-                    self.assertEqual(location.evses.count(), evses, f'There should be {evses} evses after {filename} case.')
+                    self.assertEqual(location.evses.count(), evses,
+                                     f'There should be {evses} evses after {filename} case.')
                     connector_count = 0
                     for evse in location.evses.all():
                         connector_count += evse.connectors.count()
@@ -281,7 +286,8 @@ class ApiPutTests(TestCase):
             # Create CretentialsRoles
             # noinspection PyUnresolvedReferences
             roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
-                                                    party_id=party_id, defaults=dict(business_details=self.business_details))
+                                                                    party_id=party_id, defaults=dict(
+                    business_details=self.business_details))
             self.credentials.roles.add(roles)
 
             # Send the request
@@ -300,7 +306,7 @@ class ApiPutTests(TestCase):
             # ic(saved_data)
 
             # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
-            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
+            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated'),
                              'Last_updated is not stored from the incoming data')
 
             # Check that there are all three levels stored from the incoming JSON
@@ -313,8 +319,8 @@ class ApiPutTests(TestCase):
                 self.assertIsInstance(price_components_list, list,
                                       'PriceComponents list is missing from the stored Tariff')
                 self.assertEqual(len(price_components_list), price_component_count,
-                                f'There should be exactly {price_component_count} '
-                                f'PriceComponents in the Tariff after {filename}.json')
+                                 f'There should be exactly {price_component_count} '
+                                 f'PriceComponents in the Tariff after {filename}.json')
                 for pc in price_components_list:
                     self.assertTrue(pc.get('type'),
                                     'Looks like TariffSerializer is not storing PriceComponents')
@@ -352,14 +358,15 @@ class ApiPutTests(TestCase):
             # Create CretentialsRoles
             # noinspection PyUnresolvedReferences
             roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
-                                                    party_id=party_id, defaults=dict(business_details=self.business_details))
+                                                                    party_id=party_id, defaults=dict(
+                    business_details=self.business_details))
             self.credentials.roles.add(roles)
 
             # Send the request
             response = self.put(url, data, token_base64, viewset)
-            # if response.status_text:
-            #     print(f'status_text: "{response.status_text}" for {filename} case.')
-            #     ic(response.data)
+            if response.status_code >= 300:
+                print(f'status_text: "{response.status_text}" for {filename} case.')
+                ic(response.data)
             self.assertEqual(response.status_code, http_status,
                              f'Expected a HTTP status code {http_status} for {filename} case.')
             self.assertEqual(response.data['status_code'], ocpi_status,
@@ -367,33 +374,52 @@ class ApiPutTests(TestCase):
 
             # Verify the saved data
             uid = data.get('id')
-            # noinspection PyUnresolvedReferences
-            saved_data = CdrSerializer(Cdr.objects.get(uid=uid)).data
+            saved_cdr = Cdr.objects.get(uid=uid)
+            saved_data = CdrSerializer(saved_cdr).data
             # ic(saved_data)
 
+            # Check that all Tariffs are archived, so that they won't be modified
+            for t in saved_cdr.tariffs.all():
+                self.assertTrue(
+                    t.archived,
+                    'All Tariffs referred to by CDRs must be archived so that they are not modified anymore'
+                )
+
             # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
-            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
+            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated'),
                              'Last_updated is not stored from the incoming data')
 
-            # Check that Tariffs are created
-            self.assertTrue(saved_data.get('tariffs'),
-                             'Tariffs are not stored from the incoming data')
+            # Check that Tariffs are created and are serialized correctly
+            tariffs = saved_data.get('tariffs')
+            elements = tariffs[0].get('elements')
+            price_components = elements[0].get('price_components')
+
+            self.assertTrue(tariffs, 'Tariffs are not stored from the incoming data')
+            self.assertTrue(elements, 'TariffElements are not stored from the incoming data')
+            self.assertTrue(price_components, 'PriceComponents are not stored from the incoming data')
+
+            # Compare first PriceComponent from JSON data and the saved data
+            first_json_price_component = data.get('tariffs')[0].get('elements')[0].get('price_components')[0]
+            first_price_component = dict(price_components[0])
+            self.assertDictEqual(first_price_component, first_json_price_component,
+                                 f'PriceComponent is not stored accurately')
+
+            self.maxDiff = 10000
+            saved_data = json.loads(json.dumps(saved_data))
+            # Remove non-OCPI and unsupported fields
+            ignored_fields = ('credit', 'total_time_cost', 'charging_periods')
+            for i in ignored_fields:
+                saved_data.pop(i, None)
+                data.pop(i, None)
+            for t in range(0, len(saved_data['tariffs'])):
+                del saved_data['tariffs'][t]['human_readable']
+            self.assertEqual(saved_data, data)
 
     def test_put_token(self):
         url = reverse('token-list')
         dirname = os.path.dirname(os.path.abspath(__file__))
         token_base64 = self.credentials.ours_base64()
         viewset = TokenViewSet
-
-        # invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
-        #
-        # response = self.put(url, invalid_data, 'FALSETOKEN', viewset)
-        # self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
-        #                  f'A {viewset} request should require OCPI authentication. '
-        #                  f'{response.data}')
-        # self.assertEqual(response.data['status_code'], Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-        #                  f'The {viewset} response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
-        #                  f'{response.data}')
 
         testcases = (
             ('token_example_2_full_rfid', status.HTTP_201_CREATED, 1000),
@@ -413,7 +439,8 @@ class ApiPutTests(TestCase):
             # Create CretentialsRoles
             # noinspection PyUnresolvedReferences
             roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
-                                                    party_id=party_id, defaults=dict(business_details=self.business_details))
+                                                                    party_id=party_id, defaults=dict(
+                    business_details=self.business_details))
             self.credentials.roles.add(roles)
 
             # Send the request
@@ -501,6 +528,9 @@ def dump_tariffs():
 
 class TariffTests(TestCase):
     fixtures = ['ocpi22/data/defaulttariffs.json']
+
+    def setUp(self) -> None:
+        logging.disable(logging.CRITICAL)
 
     def check_tariff(self, tariff, tariff_elements, price_components):
         self.assertEqual(tariff.tariff_elements.count(), tariff_elements,
@@ -599,7 +629,8 @@ class CdrTests(TestCase):
         connector.tariff_ids.set([])
 
         self.assertTrue(session.calculate_price(), 'There is sufficient information to calculate the Session price')
-        self.assertEqual(session.total_cost_excl_vat, round(session.kwh * 0.22, 2), "Price without VAT doesn't seem right.")
+        self.assertEqual(session.total_cost_excl_vat, round(session.kwh * 0.22, 2),
+                         "Price without VAT doesn't seem right.")
         self.assertEqual(session.total_cost_incl_vat, round(session.kwh * 0.22 * 1.24, 2),
                          "Price with VAT doesn't seem right.")
 

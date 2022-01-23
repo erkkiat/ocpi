@@ -183,10 +183,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if not tariffs:
             # Cannot calculate price
             return False
+        tariff: Tariff
         for tariff in tariffs:
-            if tariff.type != 'REGULAR':
-                # Todo: Implement profile types
-                continue
             e: TariffElement
             # noinspection PyUnresolvedReferences
             for e in tariff.tariff_elements.all():

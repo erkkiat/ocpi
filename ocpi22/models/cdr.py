@@ -86,6 +86,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Street/block name and house number if available.
     cdr_location_address = models.CharField(max_length=45)
 
+    # Display name of the location.
+    cdr_location_name = models.CharField(max_length=255, blank=True, null=True)
+
     # City or town.
     cdr_location_city = models.CharField(max_length=45)
 
@@ -189,6 +192,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             authorization_reference=session.authorization_reference,
             cdr_location_id=session.location.uid,
             cdr_location_address=session.location.address,
+            cdr_location_name=session.location.name,
             cdr_location_city=session.location.city,
             cdr_location_postal_code=session.location.postal_code or '-',
             cdr_location_country=session.location.country,

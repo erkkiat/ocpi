@@ -82,6 +82,8 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     )
     human_readable = serializers.CharField(source='price', read_only=True,
                                            label='This non-OCPI field exists for educational purposes')
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+
     # last_updated = serializers.DateTimeField(read_only=False)
 
     def _delete_children(self, tariff: Tariff) -> None:
@@ -249,6 +251,7 @@ class CdrCoordinatesSerializer(serializers.Serializer):
 class CdrLocationSerializer(serializers.Serializer):
     id = serializers.CharField(source='cdr_location_id')
     address = serializers.CharField(source='cdr_location_address')
+    name = serializers.CharField(source='cdr_location_name', required=False)
     city = serializers.CharField(source='cdr_location_city')
     postal_code = serializers.CharField(source='cdr_location_postal_code')
     country = serializers.CharField(source='cdr_location_country')
@@ -274,15 +277,21 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     total_cost = TotalCostSerializer(source='*')
     tariffs = TariffSerializer(many=True, required=True)
     cdr_location = CdrLocationSerializer(source='*')
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=True)
+    end_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=True)
 
     def create(self, validated_data):
         try:
             tariffs = validated_data.pop('tariffs')
-            # ic(tariffs)
-            # Todo: Make an archived copy of Tariff and link to the original, clear link when original is changed
-            # Link archived copy to Cdr - Jiihaa!
-            # Todo: Store Tariffs in an immutable way
-            return super().create(validated_data)
+            tariff_serializer = TariffSerializer()
+            tariff_list = []
+            for t in tariffs:
+                t['archived'] = True
+                tariff_list.append(tariff_serializer.create(t))
+            cdr = Cdr.objects.create(**validated_data)
+            cdr.tariffs.set(tariff_list)
+            return cdr
         except IntegrityError as e:
             raise ValidationError(f'A CDR with uid `{validated_data.get("uid")}` already exists. '
                                   'Overwriting an existing CDR is forbidden.')
@@ -344,9 +353,23 @@ class CdrViewSet(mixins.ListModelMixin,
         if not matching_operator(request, country_code, party_id):
             return NotOwner()
 
+        # tariffs = data.pop('tariffs', [])
+        # ic(data)
+        # ic(tariffs)
+        tariff_list = []
+        # for t in tariffs:
+        #     ic(t)
+        #     tariff = Tariff.get_if_exists(uid=t.get('uid', None))
+        #     if not tariff:
+        #         tariff_serializer = TariffSerializer(data=t)
+        #         if tariff_serializer.is_valid():
+        #             tariff = tariff_serializer.save()
+        #     tariff_list.append(tariff)
+        # ic(data)
         serializer = CdrSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
+            cdr = serializer.save()
+            # cdr.tariffs.set(tariff_list)
             return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED)
         return OCPIResponse(errors=serializer.errors)
 
@@ -684,6 +707,7 @@ class SessionViewSet(mixins.ListModelMixin,
     @transaction.atomic
     def put(request, partial=False) -> OCPIResponse:
         data = request.data.get('data', request.data)
+        ic(data)
         uid = data.get('uid')
         country_code = data.get('country_code')
         party_id = data.get('party_id')

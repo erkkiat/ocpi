@@ -66,7 +66,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         ('REGULAR', 'Regular profile'),
     )
 
-    type = models.CharField(max_length=14, choices=TYPE_CHOICES, default='REGULAR')
+    type = models.CharField(max_length=14, choices=TYPE_CHOICES, blank=True, default='')
 
     # URL to a web page that contains an explanation of the tariff information in human readable form.
     tariff_alt_url = models.URLField(blank=True, default='')
