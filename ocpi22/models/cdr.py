@@ -202,7 +202,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             cdr_location_longitude=f'{float(session.location.longitude):.6f}',
 
             cdr_location_evse_uid=session.evse.uid,
-            cdr_location_evse_id=session.evse.evse_id,
+            cdr_location_evse_id=session.evse.evse_id or "#NA",
             cdr_location_connector_id=session.connector.uid,
             cdr_location_connector_standard=session.connector.standard,
             cdr_location_connector_format=session.connector.format,
