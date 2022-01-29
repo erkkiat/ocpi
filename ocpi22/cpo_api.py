@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from typing import Optional
 
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
@@ -383,7 +384,6 @@ class SessionViewSet(viewsets.ViewSet):
                          f'kwh: {session.kwh}, total time: {cdr.total_time*60:.0f} minutes, '
                          f'cost: {session.total_cost_incl_vat} {session.currency}', extra={'notify_slack': True})
 
-        # Todo: Send CDR to MSP
         return Response(result)
 
     @action(methods=['GET'], detail=False, url_name='start',
