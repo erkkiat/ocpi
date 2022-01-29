@@ -11,7 +11,25 @@ div.breadcrumbs {
   margin-bottom: 12px;
 }
 
-/* line 16, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 18, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+fieldset.module .form-row label {
+  padding: 2px 10px 0 0;
+  font-weight: 900;
+}
+
+/* line 22, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+fieldset.module .form-row .readonly {
+  color: blue;
+}
+
+/* line 25, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+fieldset.module .form-row .fieldBox:not(:first-child) {
+  border-left: 1px solid lightgrey;
+  padding: 0 0 0 14px;
+  margin-left: 6px;
+}
+
+/* line 33, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 :root {
   --smoky-black: #14110fff;
   --jet: #34312dff;

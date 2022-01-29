@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -113,13 +114,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     total_cost_excl_vat = models.FloatField(blank=True, null=True)
     total_cost_incl_vat = models.FloatField(blank=True, null=True)
 
-    @property
-    def total_cost(self):
-        # I firmly believe this is not in use
-        raise NotImplementedError()
-        # For SessionSaveSerializer, OCPI 2.2 format
-        return get_total_cost(self)
-
     ACTIVE='ACTIVE'
     COMPLETED='COMPLETED'
     INVALID='INVALID'
@@ -208,9 +202,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return True
 
     def __str__(self):
-        return f'{self.cdr_token_uid} - {self.start_date_time} - {self.kwh}kWh - ' \
-               f'EVSE {self.evse.evse_id} - ' \
-               f'{self.connector.get_standard_display() if self.connector else "no connector"}'
+        start_time = self.start_date_time.strftime(settings.DATETIME_FORMAT)
+        return f'{self.cdr_token_uid} - {start_time} - {self.kwh}kWh - ' \
+               f'EVSE {self.evse.evse_id}'
+               # f'{self.connector.get_standard_display() if self.connector else "no connector"}'
 
     def get_absolute_url(self):
         return reverse('session-by-id', args=[self.country_code, self.party_id, self.uid])

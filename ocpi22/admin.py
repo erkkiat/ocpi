@@ -238,6 +238,15 @@ class CdrAdmin(admin.ModelAdmin):
         'start_date_time',  # Todo: Show time in local timezone
         'total_session_time', 'total_energy', 'total_cost',
     ]
+    fieldsets = (
+        ('Identification', dict(fields=(('country_code', 'party_id', 'uid'),
+                                        ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id')))),
+        ('Location', dict(fields=(('cdr_location_name', 'cdr_location_city', 'cdr_location_country'),
+                                  ('cdr_location_evse_uid', 'cdr_location_connector_id'),))),
+        ('Delivery', dict(fields=(('total_energy', 'total_time', 'auth_method'), ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),))),
+        ('Time period', dict(fields=(('start_date_time', 'end_date_time'), 'last_updated'))),
+        ('Credited or not', dict(fields=(('credit', 'credit_reference'),))),
+    )
     # list_filter = ['party_id', 'auth_method', 'credit']
     list_display_links = ['start_date_time']
     search_fields = ['party_id', 'country_code', 'session_id', 'uid']
@@ -267,6 +276,13 @@ class SessionAdmin(admin.ModelAdmin):
         'cdr_token_uid',
         'total_time', 'kwh', 'cost'
     ]
+    fieldsets = (
+        ('Identification', dict(fields=(('country_code', 'party_id'), ('uid', 'meter_id'),
+                                        ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id')))),
+        ('Delivery', dict(fields=(('status', 'kwh'), ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),
+                                  'auth_method',))),
+        ('Time period', dict(fields=(('start_date_time', 'end_date_time'), 'last_updated'))),
+    )
     # Todo: Show only connectors for the selected evse
 
     # fields = (
