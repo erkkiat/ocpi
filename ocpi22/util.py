@@ -440,7 +440,7 @@ def ocpi_post(url, token_base64, *args, **kwargs) -> Response:
                                  "Authorization": f'Token {token_base64}',
                                  'content-type': 'application/json',
                              })
-    if response.status_code not in (200, 403, 404):
+    if response.status_code >= 300:
         print(f'*** Got response: {response.status_code} - {response.reason}')
         logging.error(response.text)
         raise exceptions.APIException(f'Got response for {url}: {response.status_code} - {response.reason} ')

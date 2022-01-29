@@ -218,3 +218,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     def cost(self) -> str:
         return format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)
+
+    def is_final(self) -> bool:
+        return self.status in ('INVALID', 'COMPLETE')

@@ -226,15 +226,19 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         # noinspection PyUnresolvedReferences
         return self.objects.create(*args, **kwargs)
 
+    @classmethod
+    def session_changed(cls, instance: Session) -> None:
+        if instance.status == Session.COMPLETED and instance.is_ours():
+            existing_cdr = Cdr.get_if_exists(session_id=instance.uid)
+            # ic(existing_cdr)
+            if not existing_cdr:
+                _new_cdr = Cdr.create_based_on_session(instance)
+                # ic(_new_cdr)
+
     def cost(self) -> str:
         return format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)
 
 
 @receiver(post_save, sender=Session)
 def session_post_save(sender, instance: Session, *_args, **_kwargs):
-    if instance.status == Session.COMPLETED and instance.is_ours():
-        existing_cdr = Cdr.get_if_exists(session_id=instance.uid)
-        # ic(existing_cdr)
-        if not existing_cdr:
-            _new_cdr = Cdr.create_based_on_session(instance)
-            # ic(_new_cdr)
+    Cdr.session_changed(instance)

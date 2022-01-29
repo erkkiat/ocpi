@@ -4,6 +4,7 @@ import uuid
 from collections import namedtuple
 
 from django.conf import settings
+from django.db.models import QuerySet
 from django.utils import timezone
 from rest_framework import exceptions
 from rest_framework.exceptions import NotFound
@@ -49,6 +50,8 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
         logging.warning(f'New session starting, invalidating incomplete sessions at {evse.evse_id}: '
                         f'{",".join([str(s) for s in active_sessions])}')
         active_sessions.update(status='INVALID')
+        for session in active_sessions:
+            session.send_updates()
 
     # noinspection PyUnresolvedReferences
     session = Session.objects.create(
@@ -73,3 +76,8 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
 
     # Todo: send update to MSP
     return session
+
+def get_active_sessions(evse) -> QuerySet:
+    from ocpi22.models.session import Session
+    # noinspection PyUnresolvedReferences
+    return Session.objects.filter(evse=evse, status=Session.ACTIVE)

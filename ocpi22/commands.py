@@ -28,7 +28,7 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 
-class CommandsSerializer(serializers.Serializer):
+class StartSessionSerializer(serializers.Serializer):
     response_url = serializers.URLField(
         label='URL that the CommandResult POST should be sent to. '
               'This URL might contain a unique ID to be able to distinguish between StartSession requests.'
@@ -49,6 +49,16 @@ class CommandsSerializer(serializers.Serializer):
         required=False, allow_blank=True,
         label='Reference to the authorization given by the eMSP, '
               'when given, this reference will be provided in the relevant Session and/or CDR.'
+    )
+
+
+class StopSessionSerializer(serializers.Serializer):
+    response_url = serializers.URLField(
+        label='URL that the CommandResult POST should be sent to. '
+              'This URL might contain a unique ID to be able to distinguish between StopSession requests.'
+    )
+    session_id = serializers.CharField(
+        label='Session.id of the Session that is requested to be stopped.'
     )
 
 
@@ -127,7 +137,6 @@ class CommandsViewSet(GenericViewSet):
     # root_view_name = 'commands'
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
-    serializer_class = CommandsSerializer
     permission_classes = [OCPIPermission]
 
     def get_view_name(self):
@@ -144,7 +153,7 @@ class CommandsViewSet(GenericViewSet):
         if not request.data:
             return OCPIResponse(status_message='Please see OPTIONS to learn what you can POST at this endpoint')
         try:
-            serializer = self.serializer_class(data=request.data)
+            serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
                 result = 'ACCEPTED'
                 token = serializer.data.get('token', '')
@@ -187,9 +196,52 @@ class CommandsViewSet(GenericViewSet):
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
+    @transaction.atomic
+    @action(methods=['GET', 'POST'], detail=False, url_name='stop-session', url_path='STOP_SESSION')
+    def stop_session(self, request):
+        if not request.data:
+            return OCPIResponse(status_message='Please see OPTIONS to learn what you can POST at this endpoint')
+        ic(request.data)
+        try:
+            serializer = StopSessionSerializer(data=request.data)
+            if serializer.is_valid():
+                result = 'ACCEPTED'
+                session: Session = Session.get_if_exists(uid=serializer.data.get('session_id'))
+
+                if not CHARGER.remote_stop_transaction(session):
+                    return Response(dict(error=f'Unable to stop session on charger at this time',
+                                         status=status.HTTP_406_NOT_ACCEPTABLE))
+
+                session.status = Session.COMPLETED
+                session.save()
+                # Cdr.session_changed(session)
+
+                command_start.delay(
+                    serializer.data, session.uid,
+                    update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
+                    url=request.build_absolute_uri(reverse('simulate_session_start')))  # Todo: use actual callback
+                response_serializer = CommandResponse(
+                    instance=dict(
+                        result=result,
+                        timeout=120,
+                        message=[
+                            dict(language='EN', text='Stopping charging'),
+                            dict(language='FI', text='Lataus päättyy')
+                        ]
+                    ))
+                return OCPIResponse(response_serializer.data)
+        except (NotFound, Http404, KeyError) as e:
+            return OCPIResponse(None, status_message=str(e),
+                                http_status=status.HTTP_400_BAD_REQUEST,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+        return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
+                            http_status=status.HTTP_400_BAD_REQUEST,
+                            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
     def list(self, request, *args, **kwargs):
         return Response(dict(
             start_session=request.build_absolute_uri(reverse('commands-start-session')),
+            stop_session=request.build_absolute_uri(reverse('commands-stop-session')),
         ))
 
 
@@ -226,7 +278,6 @@ def send_start_command(request, evse: Evse, token: Token) -> Response:
                     authorization_reference=uuid.uuid4().hex,
             )
             ic(data)
-            ic(endpoint.url)
             return ocpi_post(urljoin(f'{endpoint.url}/', 'START_SESSION'), endpoint.get_token_base64(),
                              data=data)
         else:
@@ -234,4 +285,29 @@ def send_start_command(request, evse: Evse, token: Token) -> Response:
             return Response()
     else:
         print(f'Not sending start command to ourself.')
+        return Response()
+
+
+def send_stop_command(request, session: Session) -> Response:
+    if session.location.party() != f'{settings.COUNTRY_CODE}*{settings.PARTY_ID}':
+        country_code = session.location.country_code
+        party_id = session.location.party_id
+        # noinspection PyUnresolvedReferences
+
+        endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
+        if endpoint:
+            print(f'*** Sending stop command for {session}.')
+            data = dict(
+                response_url=request.build_absolute_uri('/'),
+                session_id=session.uid,
+            )
+            ic(data)
+            ic(endpoint.url)
+            return ocpi_post(urljoin(f'{endpoint.url}/', 'STOP_SESSION'), endpoint.get_token_base64(),
+                             data=data)
+        else:
+            print(f'Unable to find endpoint for {session.party()}.')
+            return Response()
+    else:
+        print(f'Not sending commands to ourself.')
         return Response()

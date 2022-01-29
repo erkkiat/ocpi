@@ -320,7 +320,7 @@ class SessionViewSet(viewsets.ViewSet):
         """
         pp(f'*** OCPI Connector got an update from CPO/charger for session {session_id}: {request.data}')
         session = get_object_or_404(Session, uid=session_id)
-        if session.status in self.FINAL_STATUSES:
+        if session.is_final():
             return Response(dict(error='This session cannot be updated, since it already has a final status'),
                             status.HTTP_401_UNAUTHORIZED)
         serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
@@ -356,7 +356,7 @@ class SessionViewSet(viewsets.ViewSet):
         be billed, but they can still be found in the admin tools.
         """
         session = get_object_or_404(Session, uid=session_id)
-        if session.status in self.FINAL_STATUSES:
+        if session.is_final():
             return Response(dict(error='This session cannot be finished, since it already has a final status'),
                             status.HTTP_401_UNAUTHORIZED)
 
@@ -580,10 +580,10 @@ class Charger:
     @staticmethod
     def add_or_update_token(id_token: str, validity: bool) -> bool:
         """
-        New and changed tokens are sent to charge point
+        Send a new or changed token to charge point
 
-        @param id_token:
-        @param status:
+        @param id_token: Token UID
+        @param validity: Is the token valid for use or not
         @return: True, if the token was updated
         """
         ic()

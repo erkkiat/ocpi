@@ -2,11 +2,12 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
+from icecream import ic
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from requests import Response
 from rest_framework import exceptions
 
-from ocpi22.commands import send_start_command
+from ocpi22.commands import send_start_command, send_stop_command
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.models import BusinessDetails, Facility, Capability
 from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
@@ -14,6 +15,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
+from ocpi22.sessions import get_active_sessions
 from ocpi22.util import ModelUtilMixin
 from ocpi22.tokens import get_admin_token
 
@@ -141,7 +143,7 @@ class EvseAdmin(NestedModelAdmin):
     list_display = ['party', 'evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
-    actions = ['start_charging']
+    actions = ['start_charging', 'stop_charging']
     autocomplete_fields = ['capabilities', 'location']
 
     def get_queryset(self, request):
@@ -187,6 +189,32 @@ class EvseAdmin(NestedModelAdmin):
             except exceptions.APIException as e:
                 self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
                                   level=messages.ERROR)
+
+    @admin.action(description='Stop all active charging sessions')
+    def stop_charging(self, request, queryset):
+        ic()
+        evse: Evse
+        for evse in queryset:
+            ic(evse)
+            active_sessions = get_active_sessions(evse)
+            if not active_sessions.count():
+                self.message_user(request, f'There are no active sessions at Evse {evse.evse_id}.',
+                                  level=messages.WARNING)
+            for session in active_sessions.all():
+                ic(session)
+                try:
+                    response: Response = send_stop_command(request, session)
+                    if response:
+                        self.message_user(request, f'Stopping charging at {evse.location}, '
+                                                   f'response: {response.status_code} - '
+                                                   f'{response.reason if hasattr(response, "reason") else "Ok"}')
+                    else:
+                        self.message_user(request, f'Unable to stop charging at {evse.location}.',
+                                          level=messages.ERROR)
+
+                except exceptions.APIException as e:
+                    self.message_user(request, f'Unable to stop charging at {evse.location}. {e}',
+                                      level=messages.ERROR)
 
 
 class BusinessDetailsAdmin(admin.ModelAdmin):
@@ -236,6 +264,8 @@ class CdrAdmin(admin.ModelAdmin):
     list_display = [
         'party',
         'start_date_time',  # Todo: Show time in local timezone
+        'cdr_token_uid',
+        'cdr_location_evse_id',
         'total_session_time', 'total_energy', 'total_cost',
     ]
     fieldsets = (
