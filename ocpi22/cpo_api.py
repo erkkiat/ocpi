@@ -4,6 +4,7 @@ import uuid
 from typing import Optional
 
 from django.utils import timezone
+from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
 from rest_framework import routers, status, mixins, viewsets, serializers

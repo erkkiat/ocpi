@@ -352,7 +352,7 @@ class NotOwner(OCPIResponse):
 class OCPIBadRequestResponse(OCPIResponse):
     def __init__(self):
         super().__init__(
-            status_code=2001,
+            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
             http_status=status.HTTP_400_BAD_REQUEST)
 
 
