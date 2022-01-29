@@ -27,7 +27,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, \
-    OCPIResponse, NotOwner, matching_operator, OCPIBadRequestResponse
+    OCPIResponse, NotOwner, matching_operator, OCPIBadRequestResponse, Ocpi
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
@@ -474,7 +474,8 @@ class CredentialsViewSet(mixins.CreateModelMixin,
                   and serializer.data.get('party_id') == settings.PARTY_ID:
                     return OCPIResponse(status_message=f'You are not allowed to use the same operator ID '
                                         f'"{settings.COUNTRY_CODE}*{settings.PARTY_ID}" as we do.',
-                                        http_status=status.HTTP_400_BAD_REQUEST, status_code=2001)
+                                        http_status=status.HTTP_400_BAD_REQUEST,
+                                        status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
                 data = serializer.data
                 bd = data.pop('business_details')
@@ -715,8 +716,12 @@ class SessionViewSet(mixins.ListModelMixin,
         party_id = data.get('party_id')
 
         session: Session = Session.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
-        if session and not session.is_owner(request):
-            return NotOwner()
+        if session:
+            if not session.is_owner(request):
+                return NotOwner()
+            if session.is_final():
+                return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_403_FORBIDDEN,
+                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         serialiser = SessionSaveSerializer(data=request.data, instance=session, partial=partial)
         if serialiser.is_valid():
             serialiser.save()
