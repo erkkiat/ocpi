@@ -62,7 +62,7 @@ def command_start(_self, data, session_uid, update_url, url):
 
         if result.status_code == 200:
             from ocpi22.models.location import Connector
-            session.status = 'ACTIVE'
+            # session.status = 'ACTIVE'  # Don't activate yet, let's talk with the charge point first
             session.connector = get_object_or_404(Connector, uid=result_data['connector'], evse=session.evse)
             session.save()
             logging.debug('*** Response from CPO/charger to OCPI Connector worker task:')

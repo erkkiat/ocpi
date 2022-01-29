@@ -11,7 +11,6 @@ from django.core.validators import RegexValidator
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.module_loading import import_string
-from icecream import ic
 from requests import Response
 from rest_framework import serializers, status, exceptions
 from rest_framework.pagination import LimitOffsetPagination
@@ -516,7 +515,7 @@ def calculate_partition(coordinate):
 
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(cls, *args: list, **kwargs: dict) -> Optional[object]:
+    def get_if_exists(cls, *args: list, **kwargs: dict) -> any:
         # noinspection PyUnresolvedReferences
         objects = cls.objects.filter(*args, **kwargs)
         if objects.count():

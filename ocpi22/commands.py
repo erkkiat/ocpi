@@ -15,6 +15,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer, CommandTokenSerializer
 from ocpi22.auth import OCPIPermission
+from ocpi22.cpo_api import CHARGER
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
@@ -147,20 +148,27 @@ class CommandsViewSet(GenericViewSet):
             if serializer.is_valid():
                 result = 'ACCEPTED'
                 token = serializer.data.get('token', '')
+                connector_id = serializer.data.get('connector_id', None)
+                evse_uid = serializer.data.get('evse_uid', '')
                 session: Session = create_session(
                     location_id=serializer.data['location_id'],
-                    evse_id=serializer.data.get('evse_uid', ''),
-                    connector_id=serializer.data.get('connector_id'),
+                    evse_id=evse_uid,
+                    connector_id=connector_id,
                     authorization_reference=serializer.data.get('authorization_reference'),
                     ad_hoc_token=token,
                     authorize=False
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
                 )
 
+                connector_id_from_charger = CHARGER.remote_start_transaction(token.get('uid'), session.evse)
+                if not connector_id_from_charger:
+                    return Response(dict(error=f'Unable to start session on charger at this time',
+                                         status=status.HTTP_406_NOT_ACCEPTABLE))
+
                 command_start.delay(
                     serializer.data, session.uid,
                     update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
-                    url=request.build_absolute_uri(reverse('simulate_session_start')))
+                    url=request.build_absolute_uri(reverse('simulate_session_start')))  # Todo: use actual callback
                 response_serializer = CommandResponse(
                     instance=dict(
                         result=result,

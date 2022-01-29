@@ -1,15 +1,12 @@
 import logging
 import uuid
-from typing import Optional
 
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
-from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.models.location import Connector
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
@@ -169,7 +166,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         return hours_minutes(self.total_time)
 
     @classmethod
-    def create_based_on_session(cls, session: Session) -> Optional[object]:
+    def create_based_on_session(cls, session: Session):
         if session.total_cost_excl_vat is None:
             logging.error(f'Session {session} has no total cost, not creating a CDR yet')
             # Todo: Log something for admin to see

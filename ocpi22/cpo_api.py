@@ -73,13 +73,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
         You can try the status update by changing the status
         in the input box below and clicking the "PATCH" button.
 
-        Some available options for status are:
-
-        * AVAILABLE
-        * CHARGING
-        * REMOVED (this is used instead of deleting the EVSE, since there might be references to it)
-        * PLANNED
-        * More options are listed at [/api/cpo/v1/options/](/api/cpo/v1/options/)
+        See OPTIONS for a detailed API schema.
 
         """
         evse = get_object_or_404(Evse, uid=evse_id)
@@ -283,7 +277,11 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     pagination_class = LimitOffsetPagination
     lookup_field = 'uid'
 
-    # Todo: fix OPTIONS button for list view
+    @staticmethod
+    def get_object(uid=None) -> Location:
+        # Needed for OPTIONS to work in list view, could just return None
+        if uid:
+            return get_object_or_404(Location, uid=uid)
 
 
 class SessionViewSet(viewsets.ViewSet):
@@ -516,3 +514,98 @@ class ChargePointOperatorAPIView(routers.APIRootView):
 class CPORouter(routers.DefaultRouter):
     APIRootView = ChargePointOperatorAPIView
     root_view_name = 'cpo-api'
+
+
+class Charger:
+    AUTHORIZATION_CHOICES = (
+        ('Accepted', 'Accepted'),
+        ('Blocked', 'Blocked'),
+        ('Expired', 'Expired'),
+        ('Invalid', 'Invalid'),
+        ('ConcurrentTx', 'ConcurrentTx'),
+    )
+
+    class UnlockStatus:
+        value = None
+
+        def __int__(self, value):
+            assert value in ('Unlocked', 'UnlockFailed', 'NotSupported')
+            self.value = value
+
+        def __str__(self):
+            return self.value
+
+    @staticmethod
+    def remote_start_transaction(token: str, evse: Evse) -> Optional[str]:
+        """
+        Start a charging session
+
+        @param session:
+        @return: Connector ID
+        """
+        ic()
+        ic(token, evse)
+        # noinspection PyUnresolvedReferences
+        connectors = evse.connectors.all()
+        if connectors.count(): return connectors[0]
+        return None
+
+    @staticmethod
+    def remote_stop_transaction(session: Session) -> bool:
+        ic()
+        ic(session)
+        return True
+
+    @staticmethod
+    def authorize(id_token):
+        """
+        Charge point is asking us to authorize a token with the appropriate eMSP
+
+        @param id_token:
+        @return:
+        """
+        ic()
+        ic(id_token)
+
+    # @staticmethod
+    # def change_availability(connector_id, type):
+    #     ic()
+    #     ic(connector_id, type)
+
+    @staticmethod
+    def unlock_connector(connector_id):
+        ic()
+        ic(connector_id)
+
+    @staticmethod
+    def add_or_update_token(id_token: str, validity: bool) -> bool:
+        """
+        New and changed tokens are sent to charge point
+
+        @param id_token:
+        @param status:
+        @return: True, if the token was updated
+        """
+        ic()
+        ic(id_token, validity)
+        return True
+
+    @staticmethod
+    def status_change(connector_id, error_code, info, status, timestamp, vendor_id, vendor_error_code):
+        """
+        StatusNotification.req from charge point
+
+        @param connector_id:
+        @param error_code:
+        @param info:
+        @param status:
+        @param timestamp:
+        @param vendor_id:
+        @param vendor_error_code:
+        @return:
+        """
+        ic()
+
+
+charger_class = os.environ.get('CHARGER_CLASS', 'ocpi22.cpo_api.Charger')
+CHARGER = import_string(charger_class)

@@ -17,6 +17,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
+from ocpi22.cpo_api import CHARGER
 from ocpi22.location import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.models import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -174,7 +175,8 @@ class TokenViewSet(mixins.ListModelMixin,
             return NotOwner()
         serialiser = TokenSerializer(data=data, instance=token, partial=True)
         if serialiser.is_valid():
-            serialiser.save()
+            token = serialiser.save()
+            CHARGER.add_or_update_token(token.uid, token.valid)
             # Return 201 if instance was created
             return OCPIResponse(serialiser.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
         else:
