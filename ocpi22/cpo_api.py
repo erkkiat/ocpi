@@ -574,9 +574,10 @@ class Charger:
     #     ic(connector_id, type)
 
     @staticmethod
-    def unlock_connector(connector_id):
+    def unlock_connector(location_id, evse_uid, connector_id, **kwargs) -> bool:
         ic()
-        ic(connector_id)
+        ic(location_id, evse_uid, connector_id, kwargs)
+        return True
 
     @staticmethod
     def add_or_update_token(id_token: str, validity: bool, created=None) -> bool:

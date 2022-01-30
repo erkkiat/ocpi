@@ -21,7 +21,7 @@ from rest_framework.test import APIRequestFactory
 
 from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer, TokenViewSet, TokenSerializer, \
     SessionSaveSerializer
-from ocpi22.commands import CommandsViewSet
+from ocpi22.commands import CommandsViewSet, CommandResponse
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.models.models import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -676,9 +676,7 @@ class CommandTests(TestCase):
         # data = response.data.get('data')
         # ic(response, response.data)
 
-        self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
-        self.assertEqual(response.status_code, 200,
-                         msg='HTTP response should be 200 (and some instructions for the user)')
+        check_ok_result(self, response)
 
         # Load up the test message and send it
         dirname = os.path.dirname(os.path.abspath(__file__))
@@ -689,10 +687,7 @@ class CommandTests(TestCase):
         request.data = data
         response = viewset.start_session(request)
 
-        # ic(response, response.data)
-        self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
-        self.assertEqual(response.status_code, 200,
-                         msg='HTTP response should be 200 (and some instructions for the user)')
+        check_ok_result(self, response)
 
         self.assertEqual(response.data.get('data').get('result'), 'ACCEPTED',
                          msg='Expecting the result "ACCEPTED"')
@@ -709,3 +704,47 @@ class CommandTests(TestCase):
         session.save()
 
         # ic([(s.uid, s.status) for s in Session.objects.all()])
+
+    def test_unlock_connector(self):
+        url = reverse('commands-unlock-connector')
+        factory = APIRequestFactory()
+        viewset = CommandsViewSet()
+
+        # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
+        request = factory.get(url)
+        request.data = {}
+        response = viewset.unlock_connector(request)
+
+        check_ok_result(self, response)
+
+        # Load up the test message and send it
+        dirname = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(dirname, f'data/examples/command_unlock_connector.json')) as file:
+            data = json.load(file)
+
+        request = factory.post(url)
+        request.data = data
+        response = viewset.unlock_connector(request)
+
+        check_ok_result(self, response, command_result=CommandResponse.ACCEPTED)
+
+        with open(os.path.join(dirname, f'data/examples/command_unlock_connector_unknown_location.json')) as file:
+            data = json.load(file)
+
+        request = factory.post(url)
+        request.data = data
+        response = viewset.unlock_connector(request)
+
+        check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST,
+                        status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
+
+def check_ok_result(testcase: TestCase, response, status_code: int = 1000, http_status: int = 200,
+                    command_result: str = None) -> None:
+    testcase.assertEqual(response.data.get('status_code'), status_code,
+                         msg=f'Expecting OCPI status code {status_code}')
+    testcase.assertEqual(response.status_code, http_status,
+                         msg=f'Expecting HTTP status code {http_status}')
+    if command_result:
+        testcase.assertEqual(response.data.get('data').get('result'), command_result,
+                             msg=f'Expecting the result "{command_result}"')

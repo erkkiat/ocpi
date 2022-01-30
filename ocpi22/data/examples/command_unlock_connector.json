@@ -1,0 +1,6 @@
+{
+  "response_url": "http://localhost:8000/",
+  "location_id": "HELSINKI-1",
+  "evse_uid": "2",
+  "connector_id": "3"
+}

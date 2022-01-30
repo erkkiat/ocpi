@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from typing import Union
 
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
@@ -32,7 +33,7 @@ from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 default_error_messages = dict(
-    object_missing='There is no {name} with UID {uid} in our database'
+    object_missing='There is no {name} with UID `{uid}` in our database'
 )
 
 
@@ -495,12 +496,18 @@ class CredentialsViewSet(mixins.CreateModelMixin,
         return OCPIResponse(serializer.data)
 
 
-class LocationIdSerializer(serializers.Serializer):
-    location_id = serializers.CharField(required=True)
+class LocationIdSerializer(serializers.CharField):
+    # location_id = serializers.CharField(required=True)
     default_error_messages = default_error_messages
 
-    def to_representation(self, instance: Session):
-        return instance.location.uid
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_representation(self, instance: Union[Session, Location]):
+        if isinstance(instance, Session): return instance.location.uid
+        if isinstance(instance, dict): instance = instance.get('location')
+        if instance:
+            return instance.uid
 
     def to_internal_value(self, data: str):
         location = Location.get_if_exists(uid=data)

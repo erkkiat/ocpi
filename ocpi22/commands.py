@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.api import TokenSerializer, CommandTokenSerializer
+from ocpi22.api import TokenSerializer, CommandTokenSerializer, LocationIdSerializer
 from ocpi22.auth import OCPIPermission
 from ocpi22.cpo_api import CHARGER
 from ocpi22.models.credentials import CredentialsRole, Endpoint
@@ -30,35 +30,60 @@ pp = pprint.PrettyPrinter(indent=4).pprint
 
 class StartSessionSerializer(serializers.Serializer):
     response_url = serializers.URLField(
-        label='URL that the CommandResult POST should be sent to. '
-              'This URL might contain a unique ID to be able to distinguish between StartSession requests.'
+        help_text='URL that the CommandResult POST should be sent to. '
+                  'This URL might contain a unique ID to be able to distinguish between StartSession requests.'
     )
     token = CommandTokenSerializer(
-        label='Token object the Charge Point has to use to start a new session. '
-              'The Token provided in this request is pre-authorized by the eMSP.'
+        help_text='Token object the Charge Point has to use to start a new session. '
+                  'The Token provided in this request is pre-authorized by the eMSP.'
     )
     location_id = serializers.CharField(
-        label='Location.id of the Location (belonging to the CPO this request was sent to) '
-              'on which a session is to be started.'
+        max_length=36,
+        help_text='Location.id of the Location (belonging to the CPO this request was sent to) '
+                  'on which a session is to be started.'
     )
     evse_uid = serializers.CharField(
+        max_length=36,
         required=False, allow_blank=True,
-        label='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
+        help_text='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
     )
     authorization_reference = serializers.CharField(
+        max_length=36,
         required=False, allow_blank=True,
-        label='Reference to the authorization given by the eMSP, '
-              'when given, this reference will be provided in the relevant Session and/or CDR.'
+        help_text='Reference to the authorization given by the eMSP, '
+                  'when given, this reference will be provided in the relevant Session and/or CDR.'
     )
 
 
 class StopSessionSerializer(serializers.Serializer):
     response_url = serializers.URLField(
-        label='URL that the CommandResult POST should be sent to. '
-              'This URL might contain a unique ID to be able to distinguish between StopSession requests.'
+        help_text='URL that the CommandResult POST should be sent to. '
+                  'This URL might contain a unique ID to be able to distinguish between StopSession requests.'
     )
     session_id = serializers.CharField(
-        label='Session.id of the Session that is requested to be stopped.'
+        max_length=36,
+        help_text='Session.id of the Session that is requested to be stopped.'
+    )
+
+
+class UnlockConnectorSerializer(serializers.Serializer):
+    response_url = serializers.URLField(
+        help_text='URL that the CommandResult POST should be sent to. '
+                  'This URL might contain an unique ID to be able to distinguish between UnlockConnector requests.'
+    )
+    location_id = LocationIdSerializer(
+        max_length=36,
+        help_text='Location.id of the Location (belonging to the CPO this request is send to) '
+                  'of which it is requested to unlock the connector.'
+    )
+    evse_uid = serializers.CharField(
+        max_length=36,
+        required=False, allow_blank=True,
+        help_text='EVSE.uid of the EVSE of this Location of which it is requested to unlock the connector.'
+    )
+    connector_id = serializers.CharField(
+        max_length=36,
+        help_text='Connector.id of the Connector of this Location of which it is requested to unlock.'
     )
 
 
@@ -71,15 +96,19 @@ class DisplayTextSerializer(serializers.Serializer):
 
 
 class CommandResponse(serializers.Serializer):
+    NOT_SUPPORTED = 'NOT_SUPPORTED'
+    REJECTED = 'REJECTED'
+    ACCEPTED = 'ACCEPTED'
+    UNKNOWN_SESSION = 'UNKNOWN_SESSION'
 
     RESULT_OPTIONS = (
-        ('NOT_SUPPORTED', 'Not supported'),             # The requested command is not supported by this CPO,
-                                                        # Charge Point, EVSE etc.
-        ('REJECTED', 'Rejected'),                       # Command request rejected by the CPO.
-                                                        # (Session might not be from a customer
-                                                        # of the eMSP that send this request)
-        ('ACCEPTED', 'Accepted'),                       # Command request accepted by the CPO.
-        ('UNKNOWN_SESSION', 'Session is not valid'),    # The Session in the requested command is not known by this CPO.
+        ('NOT_SUPPORTED', 'Not supported'),  # The requested command is not supported by this CPO,
+        # Charge Point, EVSE etc.
+        ('REJECTED', 'Rejected'),  # Command request rejected by the CPO.
+        # (Session might not be from a customer
+        # of the eMSP that send this request)
+        ('ACCEPTED', 'Accepted'),  # Command request accepted by the CPO.
+        ('UNKNOWN_SESSION', 'Session is not valid'),  # The Session in the requested command is not known by this CPO.
     )
 
     # Response from the CPO on the command request.
@@ -139,8 +168,26 @@ class CommandsViewSet(GenericViewSet):
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
     permission_classes = [OCPIPermission]
 
+    def get_serializer_class(self):
+        if not hasattr(self, 'action_map'): return serializers.Serializer
+        ic(self.action_map['post'])
+        serializer = dict(
+            start_session=StartSessionSerializer,
+            stop_session=StopSessionSerializer,
+            unlock_connector=UnlockConnectorSerializer,
+        ).get(self.action_map['post'])
+        return serializer
+
+    # def options(self, request, *args, **kwargs):
+    #     ic(request, args, kwargs)
+    #     return Response(
+    #         dict(
+    #             helptext='Please see OPTIONS for specific commands, such as START_SESSION or UNLOCK_CONNECTOR'
+    #         )
+    #     )
+
     def get_view_name(self):
-        ic(self.kwargs if hasattr(self, 'kwargs') else 'N/A')
+        # ic(self.kwargs if hasattr(self, 'kwargs') else 'N/A')
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
             return f'Command {self.kwargs.get("uid")}'
         if self.name:
@@ -197,11 +244,10 @@ class CommandsViewSet(GenericViewSet):
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @transaction.atomic
-    @action(methods=['GET', 'POST'], detail=False, url_name='stop-session', url_path='STOP_SESSION')
+    @action(methods=['GET', 'POST'], detail=False, url_path='STOP_SESSION')
     def stop_session(self, request):
         if not request.data:
             return OCPIResponse(status_message='Please see OPTIONS to learn what you can POST at this endpoint')
-        ic(request.data)
         try:
             serializer = StopSessionSerializer(data=request.data)
             if serializer.is_valid():
@@ -238,10 +284,43 @@ class CommandsViewSet(GenericViewSet):
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
+    @transaction.atomic
+    @action(methods=['GET', 'POST'], detail=False, url_path='UNLOCK_CONNECTOR')
+    def unlock_connector(self, request):
+        if not request.data:
+            return OCPIResponse(status_message='Please see OPTIONS to learn what you can POST at this endpoint')
+        try:
+            serializer = UnlockConnectorSerializer(data=request.data)
+            if serializer.is_valid():
+                result = 'ACCEPTED'
+                if not CHARGER.unlock_connector(**serializer.data):
+                    return OCPIResponse(status_message=f'Unable to unlock connector at this time',
+                                        http_status=status.HTTP_404_NOT_FOUND,
+                                        status_code=Ocpi.ClientError.UNKNOWN_LOCATION)
+
+                response_serializer = CommandResponse(
+                    instance=dict(
+                        result=result,
+                        timeout=120,
+                        message=[
+                            dict(language='EN', text='Unlocking connector'),
+                            dict(language='FI', text='Liittimen lukitus vapautetaan')
+                        ]
+                    ))
+                return OCPIResponse(response_serializer.data)
+        except (NotFound, Http404, KeyError) as e:
+            return OCPIResponse(None, status_message=str(e),
+                                http_status=status.HTTP_400_BAD_REQUEST,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+        return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
+                            http_status=status.HTTP_400_BAD_REQUEST,
+                            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
     def list(self, request, *args, **kwargs):
         return Response(dict(
             start_session=request.build_absolute_uri(reverse('commands-start-session')),
             stop_session=request.build_absolute_uri(reverse('commands-stop-session')),
+            unlock_connector=request.build_absolute_uri(reverse('commands-unlock-connector')),
         ))
 
 
@@ -277,7 +356,6 @@ def send_start_command(request, evse: Evse, token: Token) -> Response:
                     evse_uid=evse.uid,
                     authorization_reference=uuid.uuid4().hex,
             )
-            ic(data)
             return ocpi_post(urljoin(f'{endpoint.url}/', 'START_SESSION'), endpoint.get_token_base64(),
                              data=data)
         else:
