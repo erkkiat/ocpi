@@ -190,6 +190,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                         TIME=lambda x: hours * x,
                         FLAT=lambda x: x
                     ).get(pc.type, lambda x: 0.0)(pc.price)
+                    # Todo: Price is per STEP SIZE
                     incl_vat = excl_vat * (1.0 + pc.vat / 100) \
                         if pc.vat else excl_vat
                     # ic(pc, excl_vat)

@@ -12,14 +12,14 @@ div.breadcrumbs {
 }
 
 /* line 18, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
-fieldset.module .form-row label {
+fieldset.module .form-row label.required {
   padding: 2px 10px 0 0;
   font-weight: 900;
 }
 
 /* line 22, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 fieldset.module .form-row .readonly {
-  color: blue;
+  color: darkred;
 }
 
 /* line 25, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
@@ -29,7 +29,12 @@ fieldset.module .form-row .fieldBox:not(:first-child) {
   margin-left: 6px;
 }
 
-/* line 33, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 31, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+fieldset.module .form-row .fieldBox label.vCheckboxLabel {
+  padding: 9px 6px;
+}
+
+/* line 38, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 :root {
   --smoky-black: #14110fff;
   --jet: #34312dff;

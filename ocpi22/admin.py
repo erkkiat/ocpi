@@ -29,6 +29,23 @@ class TokenAdmin(admin.ModelAdmin):
     list_display_links = ['uid']
     readonly_fields = ['country_code', 'party_id']
 
+    fieldsets = [
+        ('Identification', dict(
+            fields=(
+                ('country_code', 'party_id'),
+                ('uid', 'visual_number'),
+                ('issuer', 'group_id'),
+                'contract_id',
+            )
+        )),
+        ('Specifics', dict(
+            fields=(
+                ('valid', 'type', 'whitelist'),
+                ('language', 'default_profile_type'),
+            )
+        )),
+    ]
+
     def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete
         return ALLOW_ADMIN_DELETE_AND_CHANGE
@@ -273,7 +290,9 @@ class CdrAdmin(admin.ModelAdmin):
                                         ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id')))),
         ('Location', dict(fields=(('cdr_location_name', 'cdr_location_city', 'cdr_location_country'),
                                   ('cdr_location_evse_uid', 'cdr_location_connector_id'),))),
-        ('Delivery', dict(fields=(('total_energy', 'total_time', 'auth_method'), ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),))),
+        ('Delivery', dict(fields=(
+            ('total_energy', 'total_time', 'auth_method'),
+            ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),))),
         ('Time period', dict(fields=(('start_date_time', 'end_date_time'), 'last_updated'))),
         ('Credited or not', dict(fields=(('credit', 'credit_reference'),))),
     )

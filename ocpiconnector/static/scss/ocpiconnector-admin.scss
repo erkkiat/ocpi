@@ -15,17 +15,22 @@ div.breadcrumbs {
 
 fieldset.module {
     .form-row {
-        label {
+        label.required {
             padding: 2px 10px 0 0;
             font-weight: 900;
         }
         .readonly {
-            color: blue;
+            color: darkred;
         }
         .fieldBox:not(:first-child) {
             border-left: 1px solid lightgrey;
             padding: 0 0 0 14px;
             margin-left: 6px;
+        }
+        .fieldBox {
+            label.vCheckboxLabel {
+                padding: 9px 6px;
+            }
         }
     }
 }
