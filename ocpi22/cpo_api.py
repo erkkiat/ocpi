@@ -579,7 +579,7 @@ class Charger:
         ic(connector_id)
 
     @staticmethod
-    def add_or_update_token(id_token: str, validity: bool) -> bool:
+    def add_or_update_token(id_token: str, validity: bool, created=None) -> bool:
         """
         Send a new or changed token to charge point
 
@@ -588,7 +588,7 @@ class Charger:
         @return: True, if the token was updated
         """
         ic()
-        ic(id_token, validity)
+        ic(id_token, validity, created)
         return True
 
     @staticmethod
