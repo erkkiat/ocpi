@@ -3,6 +3,7 @@ import os
 import uuid
 from typing import Optional
 
+from django.db import transaction
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
@@ -15,7 +16,6 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22 import models
 from ocpi22.location import send_evse_updates
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -79,6 +79,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
 
         """
         evse = get_object_or_404(Evse, uid=evse_id)
+        # Todo: Handle overlapping EVSE UIDs (how to refer to Evse.location.country_code...)
 
         if request.method == 'GET':
             serializer = EvseSerializer(evse, context={'request': request})
@@ -234,7 +235,10 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     def put(self, request, uid=None):
         if uid:
             # Write over an existing Location
-            location: Location = get_object_or_404(Location, uid=uid)
+            location: Location = get_object_or_404(Location,
+                                                   uid=uid,
+                                                   country_code=settings.COUNTRY_CODE,
+                                                   party_id=settings.PARTY_ID)
             serializer = self.get_serializer(location, data=request.data)
         else:
             # Create a new object
@@ -243,7 +247,10 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 
         if serializer.is_valid():
             serializer.save()
-            location: Location = get_object_or_404(Location, uid=uid)
+            location: Location = get_object_or_404(Location,
+                                                   uid=uid,
+                                                   country_code=settings.COUNTRY_CODE,
+                                                   party_id=settings.PARTY_ID)
             serializer = self.get_serializer(location)
             ic(serializer.data)
             return Response(serializer.data)
@@ -254,7 +261,9 @@ class LocationQuickViewSet(mixins.ListModelMixin,
             url_path='(?P<uid>[^/.]+)')
     def by_id(self, request, uid) -> Response:
         # noinspection PyUnresolvedReferences
-        location = get_object_or_404(Location, uid=uid)
+        location = get_object_or_404(Location, uid=uid,
+                                     country_code=settings.COUNTRY_CODE,
+                                     party_id=settings.PARTY_ID)
 
         if request.method == 'GET':
             serializer = LocationQuickSerializer(location, context={'request': request})
@@ -302,8 +311,6 @@ class SessionViewSet(viewsets.ViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.all().order_by('created')
     pagination_class = LimitOffsetPagination
-
-    FINAL_STATUSES = ('INVALID', 'COMPLETE')
 
     @action(methods=['PATCH'], detail=False, url_name='update',
             url_path='update/(?P<session_id>[^/.]+)')
@@ -375,7 +382,7 @@ class SessionViewSet(viewsets.ViewSet):
         result = dict(session=SessionSerializer(session, context={'request': request}).data)
         if session.kwh:
             # noinspection PyUnresolvedReferences
-            cdr = Cdr.create_based_on_session(session)
+            cdr: Cdr = Cdr.create_based_on_session(session)
             from ocpi22.api import CdrSerializer
             result['cdr'] = CdrSerializer(cdr, context={'request': request}).data
 
@@ -387,6 +394,7 @@ class SessionViewSet(viewsets.ViewSet):
 
         return Response(result)
 
+    @transaction.atomic
     @action(methods=['GET'], detail=False, url_name='start',
             url_path='start/(?P<evse_id>[^/.]+)/(?P<connector_id>[^/.]+)/(?P<token_uid>[^/.]+)')
     def start_session(self, request, evse_id, connector_id, token_uid) -> Response:
@@ -558,7 +566,7 @@ class Charger:
         return True
 
     @staticmethod
-    def authorize(id_token):
+    def authorize(id_token) -> bool:
         """
         Charge point is asking us to authorize a token with the appropriate eMSP
 
@@ -567,6 +575,7 @@ class Charger:
         """
         ic()
         ic(id_token)
+        return False  # Default to false for security purposes
 
     # @staticmethod
     # def change_availability(connector_id, type):
