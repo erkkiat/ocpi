@@ -3,6 +3,7 @@ import os
 from urllib.parse import urljoin
 
 import celery
+import cronitor.celery
 import requests
 import pprint
 import logging
@@ -26,6 +27,19 @@ app = celery.Celery('ocpi22.tasks')
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
+app.conf.beat_schedule = {
+    'run-me-every-minute': {
+        'task': 'tasks.celery_heartbeat',
+        'schedule': 60
+    }
+}
+
+
+@app.task
+def celery_heartbeat() -> bool:
+    # This will just trigger a ping to Cronitor, but you can use it for once-per-minute tasks also
+    return True
+
 
 REDIS_URL = os.environ['REDIS_URL']
 if 'rediss' in REDIS_URL and 'ssl_cert_reqs' not in REDIS_URL:
@@ -36,6 +50,9 @@ app.conf.update(broker_url=REDIS_URL,
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
+
+# Send pings automatically to Cronitor for Celery background tasks
+cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
 
 
 @app.task(bind=True)
