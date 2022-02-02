@@ -9,10 +9,11 @@ import pprint
 import logging
 
 from celery import exceptions
+from celery.schedules import crontab
 from django.http import Http404
 from rest_framework import status
 
-from ocpiconnector import slack_logging
+from ocpiconnector import slack_logging, nordpool
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 slack_logging.init()
@@ -29,16 +30,38 @@ app = celery.Celery('ocpi22.tasks')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.conf.beat_schedule = {
     'run-me-every-minute': {
-        'task': 'tasks.celery_heartbeat',
+        'task': 'ocpi22.tasks.celery_heartbeat',
         'schedule': 60
-    }
+    },
+    'add-every-monday-morning': {
+        'task': 'ocpi22.tasks.set_spot_price',
+        'schedule': crontab(minute=1),
+    },
 }
 
 
 @app.task
 def celery_heartbeat() -> bool:
-    # This will just trigger a ping to Cronitor, but you can use it for once-per-minute tasks also
     return True
+
+
+@app.task
+def set_spot_price() -> bool:
+    # This will just trigger a ping to Cronitor, but you can use it for once-per-minute tasks also
+    from ocpi22.models.tariff import Tariff
+    tariff = Tariff.get_if_exists(uid='TNORDPOOL')
+    if tariff:
+        electricity_spot_price = nordpool.get_current_price('FI')
+        # Find the first energy based price_component Set the spot price
+        for te in tariff.tariff_elements.all():
+            for pc in te.price_components.all():
+                if pc.type == 'ENERGY':
+                    pc.price = electricity_spot_price
+                    pc.save()
+                    logging.error(f'Spot price {electricity_spot_price}€ set')
+                    return True
+    logging.error('Cannot set spot price')
+    raise celery.exceptions.CeleryWarning('Cannot set spot price')
 
 
 REDIS_URL = os.environ['REDIS_URL']

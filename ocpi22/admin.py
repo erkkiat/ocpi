@@ -65,9 +65,9 @@ class ConnectorInline(NestedStackedInline):
     model = Connector
 
     fieldsets = [
-        (None, dict(fields=[('uid', 'standard', 'format', 'power_type')])),
-        (None, dict(fields=[('max_voltage', 'max_amperage')])),
-        (None, dict(fields=[('tariff_ids', 'terms_and_conditions')])),
+        (None, dict(fields=[('uid', 'standard'), ('format', 'power_type'),
+                            ('max_voltage', 'max_amperage'),
+                            ('tariff_ids',), ('terms_and_conditions',)])),
     ]
     radio_fields = dict(
         format=admin.VERTICAL,

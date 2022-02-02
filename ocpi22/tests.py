@@ -36,6 +36,7 @@ from ocpi22.util import OCPIResponse, Ocpi
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
+    tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     # tests.addTests(doctest.DocTestSuite('chargers.vendors.tesla'))
     return tests
 
