@@ -15,7 +15,8 @@ prices_spot = elspot.Prices()
 
 def get_current_price(area) -> Optional[float]:
     """
-    >>> type(get_current_price('FI'))
+    The Nordpool API seems to malfunction or deny our queries
+    # >>> type(get_current_price('FI'))
     <class 'float'>
 
     @param area:

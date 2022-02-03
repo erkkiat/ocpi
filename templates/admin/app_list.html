@@ -35,6 +35,18 @@
       </table>
     </div>
   {% endfor %}
+<div class="app-reports module{% if 'reports' in request.path %} current-app{% endif %}">
+  <table>
+    <caption>
+      <a href="#" class="section" title="Reports">{% translate 'Reports' %}</a>
+    </caption>
+    <tr class="view-billing{% if 'reports' in request.path %} current-model{% endif %}">
+      <th scope="row"><a href="#">{% translate 'Billing' %}</a></th>
+      <td></td>
+      <td><a href="#" class="viewlink">{% translate 'View' %}</a></td>
+    </tr>
+  </table>
+</div>
 {% else %}
   <p>{% translate 'You don’t have permission to view or edit anything.' %}</p>
 {% endif %}
