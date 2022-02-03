@@ -33,9 +33,9 @@ app.conf.beat_schedule = {
         'task': 'ocpi22.tasks.celery_heartbeat',
         'schedule': 60
     },
-    'add-every-monday-morning': {
+    'set-spot-price-every-hour': {
         'task': 'ocpi22.tasks.set_spot_price',
-        'schedule': crontab(minute=1),
+        'schedule': crontab(minute=0),
     },
 }
 
