@@ -13,7 +13,7 @@ class DebugMiddleware:
         # the view (and later middleware) are called.
 
         ic()
-        ic(request)
+        ic(request, request.headers)
 
         if hasattr(request, 'body'):
             try:

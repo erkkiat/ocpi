@@ -23,14 +23,14 @@ from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerialize
     SessionSaveSerializer
 from ocpi22.commands import CommandsViewSet, CommandResponse
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
-from ocpi22.models.models import BusinessDetails
+from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
-from ocpi22.util import OCPIResponse, Ocpi
+from ocpi22.ocpi_util import OCPIResponse, Ocpi
 
 
 def load_tests(_loader, tests, _ignore):

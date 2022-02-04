@@ -10,6 +10,7 @@ import logging
 
 from celery import exceptions
 from celery.schedules import crontab
+from django.conf import settings
 from django.http import Http404
 from rest_framework import status
 
@@ -133,6 +134,20 @@ def command_start(_self, data, session_uid, update_url, url):
         logging.error(str(e))
 
 
+def get_headers(token_base64,
+                receiver_party_id,
+                receiver_country_code,
+                sender_party_id=settings.PARTY_ID,
+                sender_country_code=settings.COUNTRY_CODE) -> dict:
+    return {
+        "Authorization": f'Token {token_base64}',
+        "OCPI-from-party-id": sender_party_id,
+        "OCPI-from-country-code": sender_country_code,
+        "OCPI-to-party-id": receiver_party_id,
+        "OCPI-to-country-code": receiver_country_code,
+    }
+
+
 @app.task(bind=True)
 def send_update(_self, data, url, token_base64) -> None:
     logging.info(f'Sending update to {url}')
@@ -140,7 +155,7 @@ def send_update(_self, data, url, token_base64) -> None:
     result = requests.put(
         url,
         json=data,
-        headers=dict(Authorization=f'Token {token_base64}'))
+        headers=get_headers(token_base64, 'EON', 'FI'))
     logging.info(f"Response: {result.status_code} - {result.reason}")
     if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-500:])

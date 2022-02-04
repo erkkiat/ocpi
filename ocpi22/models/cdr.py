@@ -10,7 +10,8 @@ from rest_framework.reverse import reverse
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.util import OcpiModule, Ocpi, format_cost, hours_minutes, ModelUtilMixin
+from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin
+from ocpi22.ocpi_util import OcpiModule, Ocpi
 
 
 class Cdr(models.Model, ModelUtilMixin, OcpiModule):
@@ -24,6 +25,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     ocpi_module_name = Ocpi.Modules.CDRS
     ocpi_serializer_class = 'ocpi22.api.CdrSerializer'
+    send_updates_to = ['EMSP']
 
     class Meta:
         constraints = [

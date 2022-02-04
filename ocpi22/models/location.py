@@ -7,10 +7,12 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
-from ocpi22.models.models import BusinessDetails, Facility, Capability
+from ocpi22.models.models import Facility, Capability
+from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
-from ocpi22.util import ModelUtilMixin, OcpiModule, Ocpi, uid_validator, calculate_partition
+from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition
+from ocpi22.ocpi_util import OcpiModule, Ocpi
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
@@ -21,6 +23,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
 
     ocpi_serializer_class = 'ocpi22.location.LocationSerializer'
     ocpi_module_name = Ocpi.Modules.LOCATIONS
+    send_updates_to = ['EMSP', 'NAP', 'NSP', 'HUB']
 
     class Meta:
         constraints = [

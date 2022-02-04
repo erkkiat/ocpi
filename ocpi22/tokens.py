@@ -4,7 +4,7 @@ from django.conf import settings
 from icecream import ic
 
 from ocpi22.models.token import Token
-from ocpi22.util import ocpi_post
+from ocpi22.ocpi_util import ocpi_post
 
 
 def authorize_token(token_uid, location=None):

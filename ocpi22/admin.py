@@ -9,7 +9,8 @@ from rest_framework import exceptions
 
 from ocpi22.commands import send_start_command, send_stop_command
 from ocpi22.models.cdr import Cdr
-from ocpi22.models.models import BusinessDetails, Facility, Capability
+from ocpi22.models.models import Facility, Capability
+from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session

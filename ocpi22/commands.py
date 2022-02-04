@@ -22,7 +22,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.sessions import create_session
 from ocpi22.tasks import command_start
-from ocpi22.util import OCPIResponse, Ocpi, ocpi_post
+from ocpi22.ocpi_util import ocpi_post, OCPIResponse, Ocpi
 
 import pprint
 pp = pprint.PrettyPrinter(indent=4).pprint

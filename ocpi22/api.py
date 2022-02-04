@@ -20,21 +20,28 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.cpo_api import CHARGER
 from ocpi22.location import BusinessDetailsSerializer, Coordinate
-from ocpi22.models.models import BusinessDetails
+from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, OCPIPaginationAndHeaders, \
-    OCPIResponse, NotOwner, matching_operator, OCPIBadRequestResponse, Ocpi
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator
+from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 default_error_messages = dict(
     object_missing='There is no {name} with UID `{uid}` in our database'
 )
+
+
+# Todo: In case a PATCH request fails, the client is expected to call the GET method to check the state
+#  of the object in the other party’s system. If the object doesn’t exist, the client should do a PUT.
+
+# Todo: Only requests/responses from Function Modules: such as: Tokens, Locations, CDRs etc. SHALL be routed,
+#  so need the routing headers.
 
 
 class CdrTokenSerializer(serializers.Serializer):

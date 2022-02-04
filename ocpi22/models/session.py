@@ -9,7 +9,8 @@ from rest_framework.reverse import reverse
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
-from ocpi22.util import ModelUtilMixin, OcpiModule, Ocpi, hours_minutes, format_cost
+from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost
+from ocpi22.ocpi_util import OcpiModule, Ocpi
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
@@ -30,6 +31,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     ocpi_module_name = Ocpi.Modules.SESSIONS
     ocpi_serializer_class = 'ocpi22.api.SessionSaveSerializer'
+    send_updates_to = ['EMSP']
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
     country_code = models.CharField(max_length=2, default=COUNTRY_CODE)

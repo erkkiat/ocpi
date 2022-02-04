@@ -9,13 +9,15 @@ from django.dispatch import receiver
 from django.utils.html import format_html
 from rest_framework.reverse import reverse
 
-from ocpi22.util import ModelUtilMixin, OcpiModule, Ocpi, format_currency
+from ocpi22.util import ModelUtilMixin, format_currency
+from ocpi22.ocpi_util import OcpiModule, Ocpi
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
 class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.TariffSerializer'
     ocpi_module_name = Ocpi.Modules.TARIFFS
+    send_updates_to = ['EMSP', 'NAP', 'NSP', 'HUB']
 
     # MySQL didn't support Q-conditions
     # class Meta:

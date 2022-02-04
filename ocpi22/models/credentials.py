@@ -6,9 +6,13 @@ from django.db.models import Q
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 
-from ocpi22.models.models import BusinessDetails
+from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import ModelUtilMixin, generate_random_token
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
+
+
+# Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
+#  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
 
 
 class Credentials(models.Model, ModelUtilMixin):

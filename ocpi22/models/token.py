@@ -1,7 +1,8 @@
 from django.db import models
 from rest_framework.reverse import reverse
 
-from ocpi22.util import ModelUtilMixin, OcpiModule, Ocpi
+from ocpi22.util import ModelUtilMixin
+from ocpi22.ocpi_util import OcpiModule, Ocpi
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
@@ -12,6 +13,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
 
     ocpi_serializer_class = 'ocpi22.api.TokenSerializer'
     ocpi_module_name = Ocpi.Modules.TOKENS
+    send_updates_to = ['CPO', 'HUB']
 
     SENDER = None
 
