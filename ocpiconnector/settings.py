@@ -22,7 +22,7 @@ SEND_UPDATES = os.environ.get('SEND_UPDATES', True)
 UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'
 
 # Send updates asynchronously using Celery
-BACKGROUND_SEND = False  # os.environ.get('BACKGROUND_SEND', True)
+BACKGROUND_SEND = os.environ.get('BACKGROUND_SEND', True)
 
 ADMINS = [('Erkki Tapola', 'erkki.tapola@chargerhub.eu')]
 MANAGERS = ADMINS
@@ -156,7 +156,7 @@ MIDDLEWARE = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'ocpi22.middleware.DebugMiddleware',
+    # 'ocpi22.middleware.DebugMiddleware',
 )
 
 ROOT_URLCONF = 'ocpiconnector.urls'
