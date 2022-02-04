@@ -63,26 +63,27 @@ class OcpiModule:
             serializer_class = import_string(serializer_class)
 
         if settings.SEND_UPDATES > 0:
-            ic('Sending updates', self.__class__, self.send_updates_to)
+            # ic('Sending updates', self.__class__, self.send_updates_to)
+            recipients = CredentialsRole.objects.filter(role__in=self.send_updates_to). \
+                values_list('credentials', 'country_code', 'party_id')
             # noinspection PyUnresolvedReferences
-            credentials = [
-                c.credentials.all() for c in CredentialsRole.objects.
-                    prefetch_related('credentials').filter(role__in=self.send_updates_to)
-            ]
-            ic(credentials)
-            # noinspection PyUnresolvedReferences
-            for c in credentials:
-                ic(c)
-                endpoints = c.endpoints.filter(identifier=ocpi_module, role='RECEIVER')
+            for c, country_code, party_id in set(recipients):
+                # ic(c, country_code, party_id)
+                # noinspection PyUnresolvedReferences
+                endpoints = Endpoint.objects.filter(
+                    identifier=ocpi_module,
+                    role=Endpoint.RECEIVER,
+                    credentials__id=c
+                )
                 serializer = serializer_class(self)
                 e: Endpoint
                 for e in endpoints:
                     print(f'Send update to {ocpi_module} module at {e.url}')
                     from ocpi22.tasks import send_update
                     if settings.BACKGROUND_SEND:
-                        send_update.delay(serializer.data, e.url, e.get_token_base64())
+                        send_update.delay(serializer.data, e.url, e.get_token_base64(), country_code, party_id)
                     else:
-                        send_update(serializer.data, e.url, e.get_token_base64())
+                        send_update(serializer.data, e.url, e.get_token_base64(), country_code, party_id)
         else:
             logging.warning(settings.UPDATES_DISABLED)
 
