@@ -43,7 +43,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
-    # tests.addTests(doctest.DocTestSuite('chargers.vendors.tesla'))
+    tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))
     return tests
 
 

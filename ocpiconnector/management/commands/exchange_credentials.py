@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 
 import requests
@@ -10,6 +11,42 @@ from ocpi22.models.credentials import Credentials, Endpoint
 from ocpi22.util import generate_random_token
 
 from colorama import Back, Style
+
+role_options = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')
+
+
+def get_our_roles(source: dict = os.environ) -> list:
+    """
+    Get the OCPI roles list of dicts for sending during Credentials exchange
+
+    >>> get_our_roles(source=dict(CPO='FI*EON', HUB='FI*HUB', \
+    BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://example.com'))
+    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'HUB'}]
+
+    >>> get_our_roles(source=dict())
+    []
+
+    @param source: For testing purposes, you can set the source for role settings
+    @return:
+    """
+
+    roles = []
+    business_name = source.get('BUSINESS_NAME', 'N/A')
+    website = source.get('BUSINESS_WEBSITE', '')
+
+    for role in role_options:
+        country_code, party_id = source.get(role, "*").split('*')
+        if country_code and party_id:
+            roles.append(
+                dict(
+                    role=role,
+                    country_code=country_code,
+                    business_details=dict(name=business_name, website=website),
+                    party_id=party_id,
+                )
+            )
+    return roles
+    # Todo: Support multi-country CPOs / eMSPs
 
 
 class Command(BaseCommand):
@@ -43,12 +80,6 @@ class Command(BaseCommand):
         # Positional arguments
         parser.add_argument('token_a', type=str, help='The TOKEN_A provided by the other party')
         parser.add_argument('versions_endpoint_url', type=str, help='The versions URL provided by the other party')
-
-        # parser.add_argument(
-        #     '--delete',
-        #     action='store_true',
-        #     help='Delete poll instead of closing it',
-        # )
 
     def __select_version(self, url, token):
         selected_version = None
@@ -123,22 +154,16 @@ class Command(BaseCommand):
 
             heading('3) Sending our Credentials Roles to the other party')
 
+            # Get information for all roles present in environment variables
+            roles = get_our_roles()
+            if not roles:
+                logging.error(f'You need to set the OCPI roles of this Platform in environment variables, '
+                              f'e.g. "CPO=NL*EON". The options are: {", ".join(role_options)}')
+
             data_to_send = dict(
                 token=token_b,
                 url=f'http://{settings.HOSTNAME}{reverse("base-versions")}',
-                roles=[dict(
-                    role='CPO',
-                    business_details=dict(name=os.environ.get('BUSINESS_NAME', 'N/A')),
-                    party_id=os.environ.get('PARTY_ID', 'XXX'),
-                    country_code=os.environ.get('COUNTRY_CODE', 'XX')
-                ),
-                    dict(
-                        role='EMSP',
-                        business_details=dict(name=os.environ.get('BUSINESS_NAME', 'N/A')),
-                        party_id=os.environ.get('PARTY_ID', 'XXX'),
-                        country_code=os.environ.get('COUNTRY_CODE', 'XX')
-                    )
-                ],
+                roles=roles,
             )
             _credentials_response = self.ocpi_post(
                 self.find_endpoint_url(endpoints, 'credentials', 'receiver'),
