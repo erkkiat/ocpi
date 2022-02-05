@@ -3,7 +3,12 @@ import json
 import os
 import logging
 
-from datetime import timedelta
+from datetime import timedelta, datetime
+from unittest.mock import Mock, patch
+
+import pytz
+import time_machine
+from django.conf import settings
 from django.utils import timezone
 
 from django.contrib.auth.models import AnonymousUser
@@ -37,6 +42,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
     # tests.addTests(doctest.DocTestSuite('chargers.vendors.tesla'))
     return tests
 
@@ -470,7 +476,7 @@ class ApiPutTests(TestCase):
                 raise
 
             # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
-            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated').rstrip('Z'),
+            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated'),
                              'Last_updated is not stored from the incoming data')
 
     @staticmethod
@@ -738,6 +744,108 @@ class CommandTests(TestCase):
 
         check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST,
                         status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
+
+# This method will be used by the mock to replace requests.get
+class MockedRequests:
+    class MockResponse:
+        def __init__(self, json_data, status_code):
+            ic()
+            self.json_data = json_data
+            self.status_code = status_code
+
+        def json(self):
+            ic()
+            return self.json_data
+
+        @property
+        def status_code(self):
+            # Always successful
+            return 200
+
+    def get(self, *args, **kwargs):
+
+        ic()
+        if args[0] == 'http://someurl.com/test.json':
+            return self.MockResponse({"key1": "value1"}, 200)
+        elif args[0] == 'http://someotherurl.com/anothertest.json':
+            return self.MockResponse({"key2": "value2"}, 200)
+
+        return self.MockResponse(None, 404)
+
+
+class UpdatePartiesTest(TestCase):
+    fixtures = ['ocpi22/data/test-database-1.json']
+
+    def mocked_token_put(*args, **kwargs):
+        class MockResponse:
+            def __init__(self, json_data, status_code, headers, data, reason='Mocked function'):
+                self.json_data = json_data
+                self._status_code = status_code
+                self.reason = reason
+                self.headers = headers
+                self.data = data
+
+            def json(self):
+                ic()
+                return self.json_data
+
+            def get_status_code(self):
+                return self._status_code
+
+            def set_status_code(self, value):
+                self._status_code = value
+
+            status_code = property(get_status_code, set_status_code)
+
+        # ic(args, kwargs)
+        headers = {'Authorization': 'Token '
+                                    'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0'
+                                    'ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+                   'OCPI-from-country-code': 'FI',
+                   'OCPI-from-party-id': 'TST',
+                   'OCPI-to-country-code': 'FI',
+                   'OCPI-to-party-id': '001'}
+        return MockResponse(dict(hello=1), 200, headers=kwargs.get('headers'), data=kwargs.get('json'))
+
+    @time_machine.travel(datetime(2000, 1, 1, 12, 0, tzinfo=pytz.utc))
+    @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
+    def test_update_new_token(self, mock_put: Mock):
+        settings.COUNTRY_CODE = 'CC'
+        settings.PARTY_ID = 'PAR'
+        settings.SEND_UPDATES = True
+        settings.BACKGROUND_SEND = False
+        token: Token = Token(country_code='cc', party_id='par', uid='uid', type='RFID', contract_id='contract',
+                             issuer='issuer', whitelist='ALWAYS', last_updated=timezone.now())
+        token.save()
+        token.send_updates()
+
+        # Let's examine what send_updates() was actually sending
+
+        args, kwargs = mock_put.call_args
+
+        expected_headers = {'Authorization': 'Token '
+                                             'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+                            'OCPI-from-country-code': 'FI',
+                            'OCPI-from-party-id': 'TST',
+                            'OCPI-to-country-code': 'FI',
+                            'OCPI-to-party-id': '001'}
+        expected_json = {'contract_id': 'CONTRACT',
+                         'country_code': 'CC',
+                         'issuer': 'issuer',
+                         'last_updated': '2000-01-01T12:00:00Z',
+                         'party_id': 'PAR',
+                         'type': 'RFID',
+                         'uid': 'UID',
+                         'valid': True,
+                         'whitelist': 'ALWAYS'}
+
+        self.assertEqual(args, ('http://localhost:8001/ocpi/cpo/2.2/tokens',),
+                         'Expected to send the update to another address')
+        self.assertDictEqual(kwargs['headers'], expected_headers,
+                             'Headers differ from expected')
+        self.assertDictEqual(kwargs['json'], expected_json,
+                             'JSON content differs from expected')
 
 
 def check_ok_result(testcase: TestCase, response, status_code: int = 1000, http_status: int = 200,

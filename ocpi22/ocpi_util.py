@@ -55,7 +55,6 @@ class OcpiModule:
         Find all endpoints interested in Tariff updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
         """
-
         ocpi_module = self.ocpi_module_name
         serializer_class = self.ocpi_serializer_class
 
@@ -78,12 +77,13 @@ class OcpiModule:
                 serializer = serializer_class(self)
                 e: Endpoint
                 for e in endpoints:
-                    print(f'Send update to {ocpi_module} module at {e.url}')
+                    logging.info(f'Send update to {ocpi_module} module at {e.url}')
                     from ocpi22.tasks import send_update
+                    parameters = serializer.data, e.url, e.get_token_base64(), country_code, party_id
                     if settings.BACKGROUND_SEND:
-                        send_update.delay(serializer.data, e.url, e.get_token_base64(), country_code, party_id)
+                        send_update.delay(*parameters)
                     else:
-                        send_update(serializer.data, e.url, e.get_token_base64(), country_code, party_id)
+                        send_update(*parameters)
         else:
             logging.warning(settings.UPDATES_DISABLED)
 

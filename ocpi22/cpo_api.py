@@ -37,6 +37,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['url', 'uid', 'status', 'last_updated']
 
     uid = serializers.CharField(read_only=True)
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
 
 class CpoEvseViewSet(mixins.RetrieveModelMixin,
@@ -117,6 +118,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     location_id = serializers.SerializerMethodField(read_only=True)
     evse_uid = serializers.SerializerMethodField(read_only=True)
     connector_id = serializers.SerializerMethodField(read_only=True)
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     @staticmethod
     def get_token(session):
@@ -149,6 +151,7 @@ class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     uid = serializers.CharField(validators=[uid_validator])
     max_electric_power = serializers.SerializerMethodField()
     tariff_ids = serializers.SerializerMethodField()
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     @staticmethod
     def get_tariff_ids(connector: Connector) -> list:
@@ -552,8 +555,8 @@ class Charger:
         @param session:
         @return: Connector ID
         """
-        ic()
-        ic(token, evse)
+        # ic()
+        # ic(token, evse)
         # noinspection PyUnresolvedReferences
         connectors = evse.connectors.all()
         if connectors.count(): return connectors[0]
@@ -561,8 +564,8 @@ class Charger:
 
     @staticmethod
     def remote_stop_transaction(session: Session) -> bool:
-        ic()
-        ic(session)
+        # ic()
+        # ic(session)
         return True
 
     @staticmethod
@@ -573,8 +576,8 @@ class Charger:
         @param id_token:
         @return:
         """
-        ic()
-        ic(id_token)
+        # ic()
+        # ic(id_token)
         return False  # Default to false for security purposes
 
     # @staticmethod
@@ -584,8 +587,8 @@ class Charger:
 
     @staticmethod
     def unlock_connector(location_id, evse_uid, connector_id, **kwargs) -> bool:
-        ic()
-        ic(location_id, evse_uid, connector_id, kwargs)
+        # ic()
+        # ic(location_id, evse_uid, connector_id, kwargs)
         return True
 
     @staticmethod
@@ -597,8 +600,8 @@ class Charger:
         @param validity: Is the token valid for use or not
         @return: True, if the token was updated
         """
-        ic()
-        ic(id_token, validity, created)
+        # ic()
+        # ic(id_token, validity, created)
         return True
 
     @staticmethod

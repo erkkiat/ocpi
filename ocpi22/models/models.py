@@ -68,5 +68,3 @@ def atomic_post_save(sender, instance, **kwargs):
 
 
 # Todo: Prevent creating EVSE linked to a Location owned by another party
-
-

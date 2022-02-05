@@ -138,6 +138,17 @@ def make_headers(token_base64,
                  to_party_id,
                  from_country_code=settings.COUNTRY_CODE,
                  from_party_id=settings.PARTY_ID) -> dict:
+    """
+    >>> make_headers('123456', 'TO', 'TOO', 'FR', 'FRM')
+    {'Authorization': 'Token 123456', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO'}
+
+    @param token_base64: OCPI Credentials Token in base64
+    @param to_country_code: Recipient party OCPI country_code
+    @param to_party_id: Recipient party OCPI party_id
+    @param from_country_code: Sender party OCPI country_code (ours)
+    @param from_party_id: Sender party OCPI party_id (ours)
+    @return: HTTP headers ready for sending
+    """
     return {
         "Authorization": f'Token {token_base64}',
         "OCPI-from-country-code": from_country_code, "OCPI-from-party-id": from_party_id,

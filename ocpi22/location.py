@@ -59,6 +59,7 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     id = serializers.CharField(source='uid')
     max_electric_power = serializers.SerializerMethodField()
     tariff_ids = serializers.SerializerMethodField(required=False)
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     @staticmethod
     def get_tariff_ids(connector: Connector) -> list:
@@ -121,8 +122,8 @@ class ConnectorSaveSerializer(HyperlinkedModelSerializerCleanedUp):
                   'tariff_ids', 'terms_and_conditions', 'last_updated']
 
     id = serializers.CharField(source='uid')
-    # max_electric_power = serializers.SerializerMethodField()
     tariff_ids = TariffField(many=True, required=False)
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
 
 evse_validator = RegexValidator(r'[A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}$',
@@ -137,10 +138,7 @@ class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorSaveSerializer(many=True, required=False)
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySaveSerializer(many=True, required=False)
-    # evse_id = serializers.CharField(required=False,
-    #                                 # validators=[evse_validator],
-    #                                 # label="A valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)"
-    #                                 )
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     @staticmethod
     def process_connectors(evse: Evse, connectors: dict) -> None:
@@ -190,6 +188,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorSerializer(many=True)
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySaveSerializer(many=True, required=False)
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
 
 class EvseViewSet(mixins.RetrieveModelMixin,
@@ -289,36 +288,7 @@ class LocationSerializer(LocationSerializerBase, HyperlinkedModelSerializerClean
     evses = EvseSerializer(many=True, required=False)
     publish_allowed_to = serializers.SerializerMethodField()
     facilities = FacilitiesSaveSerializer()
-
-    # noinspection PyUnresolvedReferences
-    # def create(self, validated_data: dict, *args, **kwargs):
-    #     ic('create', validated_data)
-    #     evses = validated_data.pop('evses', [])
-    #     location = Location.objects.create(**validated_data)
-    #     for evse_dict in evses:
-    #         connectors = evse_dict.pop('connectors', [])
-    #         evse = Evse.objects.create(location=location, **evse_dict)
-    #         for connector_dict in connectors:
-    #             Connector.objects.create(evse=evse, **connector_dict)
-    #     return location
-
-    # noinspection PyUnresolvedReferences
-    # def update(self, location, validated_data, *args, **kwargs):
-    #     evses = validated_data.pop('evses', [])
-    #     Location.objects.filter(uid=location.uid).update(**validated_data)
-    #     for evse_dict in evses:
-    #         connectors = evse_dict.pop('connectors', [])
-    #         evse, created = Evse.objects.get_or_create(location=location, uid=evse_dict.pop('uid'),
-    #                                                    defaults=evse_dict)
-    #         if not created:
-    #             Evse.objects.filter(uid=evse.uid).update(**evse_dict)
-    #         for connector_dict in connectors:
-    #             connector, created = Connector.objects.get_or_create(evse=evse,
-    #                                                                  uid=connector_dict.pop('uid'),
-    #                                                                  defaults=connector_dict)
-    #             if not created:
-    #                 Connector.objects.filter(uid=connector.uid).update(**connector_dict)
-    #     return location
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     @staticmethod
     def get_coordinates(location: Location) -> dict:
@@ -368,6 +338,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
     owner = BusinessDetailsSerializer(required=False)
     operator = BusinessDetailsSerializer(required=False)
     suboperator = BusinessDetailsSerializer(required=False)
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     @staticmethod
     def process_coordinates(validated_data: dict):

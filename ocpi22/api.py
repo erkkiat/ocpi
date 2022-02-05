@@ -57,11 +57,14 @@ class TotalCostSerializer(serializers.Serializer):
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     default_error_messages = default_error_messages
+
     class Meta:
         model = Token
         fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type',
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
+
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
 
 class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -138,6 +141,7 @@ class CommandTokenSerializer(serializers.Serializer):
     uid = serializers.CharField(required=True)
     type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True)
     contract_id = serializers.CharField(required=True)
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     def create(self, validated_data):
         raise NotImplementedError()
@@ -564,6 +568,7 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     evse_uid = EvseUidSerializer(source='*')
     connector_id = ConnectorIdSerializer(source='*', required=False)
     total_cost = TotalCostSerializer(source='*', required=False)
+    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     def create(self, validated_data):
         # noinspection PyUnresolvedReferences
