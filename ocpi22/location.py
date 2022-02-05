@@ -75,10 +75,10 @@ class TariffField(serializers.StringRelatedField):
     # noinspection PyUnresolvedReferences
     def to_internal_value(self, data):
         try:
-            tariff = Tariff.objects.get(uid=data)
+            tariff = Tariff.objects.get(uid=data, archived=False)
             return tariff
-        except Tariff.DoesNotExist:
-            raise ValidationError(f'Tariff with UID `{data}` does not exist in our database')
+        except (Tariff.DoesNotExist, Tariff.MultipleObjectsReturned) as e:
+            raise ValidationError(f'Tariff with UID `{data}` cannot be fetched: {e}')
 
     def to_representation(self, value: Tariff):
         return value.uid
@@ -383,7 +383,8 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
                             # noinspection PyUnresolvedReferences
                             tariff = Tariff.objects.get(uid=t,
                                                         country_code=location.country_code,
-                                                        party_id=location.party_id)
+                                                        party_id=location.party_id,
+                                                        archived=False)
                             tariffs.append(tariff)
                         except Tariff.DoesNotExist:
                             raise ValidationError(f"Tariff `{t}` for {location.country_code}*{location.party_id} "
