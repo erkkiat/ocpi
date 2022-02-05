@@ -42,7 +42,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         # Positional arguments
         parser.add_argument('token_a', type=str, help='The TOKEN_A provided by the other party')
-        parser.add_argument('credentials_url', type=str, help='The credentials URL provided by the other party')
+        parser.add_argument('versions_endpoint_url', type=str, help='The versions URL provided by the other party')
 
         # parser.add_argument(
         #     '--delete',
@@ -90,7 +90,7 @@ class Command(BaseCommand):
             self.stdout.write(f"\n\n{Style.BRIGHT}{s}\n{Style.RESET_ALL}")
 
         token_base64 = options['token_a']
-        url = options['credentials_url']
+        url = options['versions_endpoint_url']
         token_b = generate_random_token().upper()
         try:
             heading('1) Getting version info from other party '
