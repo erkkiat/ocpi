@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from rest_framework.reverse import reverse
 
-from ocpi22.models import Endpoint, Credentials
+from ocpi22.models.credentials import Credentials, Endpoint
 from ocpi22.util import generate_random_token
 
 from colorama import Back, Style
