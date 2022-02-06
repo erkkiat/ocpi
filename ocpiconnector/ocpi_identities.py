@@ -16,6 +16,12 @@ class OCPIIdentities:
     None
     >>> i.get('AAA', 'BBB')
     'BBB'
+    >>> 'FI*CCC' in i
+    True
+    >>> 'CPO' in i
+    True
+    >>> 'BBB' in i
+    False
     """
     _identities_list = []
     _identities_dict = dict()
@@ -35,7 +41,7 @@ class OCPIIdentities:
         return bool(len(self._identities_list))
 
     def __contains__(self, item):
-        return item in self._identities_list
+        return item in self._identities_list or item in self._identities_dict
 
     def __sizeof__(self):
         return len(self._identities_list)

@@ -36,6 +36,7 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
 from ocpi22.ocpi_util import OCPIResponse, Ocpi
+from ocpi22.tokens import get_admin_token
 
 
 def load_tests(_loader, tests, _ignore):
@@ -834,6 +835,25 @@ class UpdatePartiesTest(TestCase):
         token = Token.objects.get(uid='FIMSP-1')
         # ic(token.country_code, token.party_id, ocpi_identities)
         self.assertTrue(token.is_ours(), 'Token ownership is misintepreted')
+
+    def test_get_admin_token(self):
+        # Get the existing admin token
+        token = get_admin_token()
+        serializer = TokenSerializer(token)
+        expected = {'contract_id': 'INTERNAL',
+                    'country_code': 'FI',
+                    'issuer': 'FI*MSP',
+                    'party_id': 'MSP',
+                    'type': 'OTHER',
+                    'uid': 'FI*MSP*T*ADMIN*TOKEN',
+                    'valid': True}
+        self.assertDictEqual(serializer.data, expected, 'Getting the admin token seems not to work')
+
+        # Creating the admin token
+        token.delete()
+        token = get_admin_token()
+        serializer = TokenSerializer(token)
+        self.assertDictEqual(serializer.data, expected, 'Creating the admin token seems not to work')
 
     @time_machine.travel(datetime(2000, 1, 1, 12, 0, tzinfo=pytz.utc))
     @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
