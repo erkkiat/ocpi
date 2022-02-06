@@ -808,6 +808,14 @@ class UpdatePartiesTest(TestCase):
                    'OCPI-to-party-id': '001'}
         return MockResponse(dict(hello=1), 200, headers=kwargs.get('headers'), data=kwargs.get('json'))
 
+    faketime = datetime(2000, 1, 1, 12, 0)
+
+    @time_machine.travel(faketime)
+    def test_update_last_updated(self):
+        token = Token.objects.get(uid='T1')
+        token.update_last_updated()
+        self.assertEqual(token.last_updated, self.faketime)
+
     @time_machine.travel(datetime(2000, 1, 1, 12, 0, tzinfo=pytz.utc))
     @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
     def test_update_new_token(self, mock_put: Mock):
