@@ -31,6 +31,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     ocpi_module_name = Ocpi.Modules.SESSIONS
     ocpi_serializer_class = 'ocpi22.api.SessionSaveSerializer'
+    ocpi_object_owner = 'CPO'
     send_updates_to = ['EMSP']
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session

@@ -237,11 +237,13 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     # noinspection PyUnresolvedReferences
     def put(self, request, uid=None):
         if uid:
+            our_country_code, our_party_id = Location.get_owner_party().split('*')
+
             # Write over an existing Location
             location: Location = get_object_or_404(Location,
                                                    uid=uid,
-                                                   country_code=settings.COUNTRY_CODE,
-                                                   party_id=settings.PARTY_ID)
+                                                   country_code=our_country_code,
+                                                   party_id=our_party_id)
             serializer = self.get_serializer(location, data=request.data)
         else:
             # Create a new object
@@ -250,10 +252,12 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 
         if serializer.is_valid():
             serializer.save()
+            our_country_code, our_party_id = Location.get_owner_party().split('*')
+
             location: Location = get_object_or_404(Location,
                                                    uid=uid,
-                                                   country_code=settings.COUNTRY_CODE,
-                                                   party_id=settings.PARTY_ID)
+                                                   country_code=our_country_code,
+                                                   party_id=our_party_id)
             serializer = self.get_serializer(location)
             ic(serializer.data)
             return Response(serializer.data)
@@ -264,9 +268,11 @@ class LocationQuickViewSet(mixins.ListModelMixin,
             url_path='(?P<uid>[^/.]+)')
     def by_id(self, request, uid) -> Response:
         # noinspection PyUnresolvedReferences
+        our_country_code, our_party_id = Location.get_owner_party().split('*')
+
         location = get_object_or_404(Location, uid=uid,
-                                     country_code=settings.COUNTRY_CODE,
-                                     party_id=settings.PARTY_ID)
+                                     country_code=our_country_code,
+                                     party_id=our_party_id)
 
         if request.method == 'GET':
             serializer = LocationQuickSerializer(location, context={'request': request})

@@ -44,6 +44,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))
+    tests.addTests(doctest.DocTestSuite('ocpiconnector.settings'))
     return tests
 
 
@@ -812,9 +813,27 @@ class UpdatePartiesTest(TestCase):
 
     @time_machine.travel(faketime)
     def test_update_last_updated(self):
-        token = Token.objects.get(uid='T1')
+        # Let's try our Token
+        token = Token.objects.get(uid='FIMSP-1')
         token.update_last_updated()
         self.assertEqual(token.last_updated, self.faketime)
+
+        # Then someone else's
+        token = Token.objects.get(uid='T1')
+        token.update_last_updated()
+        self.assertNotEqual(token.last_updated, self.faketime)
+
+    def test_is_ours(self):
+        # Let's try someone elses token
+        token = Token.objects.get(uid='T1')
+        # from ocpiconnector.ocpi_identities import ocpi_identities
+        # ic(token.country_code, token.party_id, ocpi_identities)
+        self.assertFalse(token.is_ours(), 'Token ownership is misintepreted')
+
+        # Then our own token
+        token = Token.objects.get(uid='FIMSP-1')
+        # ic(token.country_code, token.party_id, ocpi_identities)
+        self.assertTrue(token.is_ours(), 'Token ownership is misintepreted')
 
     @time_machine.travel(datetime(2000, 1, 1, 12, 0, tzinfo=pytz.utc))
     @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
@@ -823,7 +842,9 @@ class UpdatePartiesTest(TestCase):
         settings.PARTY_ID = 'PAR'
         settings.SEND_UPDATES = True
         settings.BACKGROUND_SEND = False
-        token: Token = Token(country_code='cc', party_id='par', uid='uid', type='RFID', contract_id='contract',
+        our_country_code, our_party_id = Token.get_owner_party().split('*')
+        token: Token = Token(country_code=our_country_code, party_id=our_party_id,
+                             uid='uid', type='RFID', contract_id='contract',
                              issuer='issuer', whitelist='ALWAYS', last_updated=timezone.now())
         token.save()
         token.send_updates()
@@ -835,14 +856,14 @@ class UpdatePartiesTest(TestCase):
         expected_headers = {'Authorization': 'Token '
                                              'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
                             'OCPI-from-country-code': 'FI',
-                            'OCPI-from-party-id': 'TST',
+                            'OCPI-from-party-id': 'MSP',  # Tokens are owned by MSP, we should send with MSP identity
                             'OCPI-to-country-code': 'FI',
-                            'OCPI-to-party-id': '001'}
+                            'OCPI-to-party-id': '001'}  # The recipient comes from the Credentials in the fixture
         expected_json = {'contract_id': 'CONTRACT',
-                         'country_code': 'CC',
+                         'country_code': 'FI',
                          'issuer': 'issuer',
                          'last_updated': '2000-01-01T12:00:00Z',
-                         'party_id': 'PAR',
+                         'party_id': 'MSP',
                          'type': 'RFID',
                          'uid': 'UID',
                          'valid': True,

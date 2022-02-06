@@ -23,6 +23,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
 
     ocpi_serializer_class = 'ocpi22.location.LocationSerializer'
     ocpi_module_name = Ocpi.Modules.LOCATIONS
+    ocpi_object_owner = 'CPO'
     send_updates_to = ['EMSP', 'NAP', 'NSP', 'HUB']
 
     class Meta:
@@ -349,7 +350,7 @@ def evse_post_save(sender, instance, *_args, **kwargs):
     evse = instance
     evse.location.last_updated = evse.last_updated
     evse.location.save(update_fields=['last_updated'])
-    # if location.country_code == settings.COUNTRY_CODE and location.party_id == settings.PARTY_ID:
+    # if location.is_ours():
     #     ic('*** This is our location, sending updates to all known parties')
     #     # from ocpi22.location import send_evse_updates
     #     # send_evse_updates(evse.uid)

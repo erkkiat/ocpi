@@ -15,11 +15,13 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 from ocpi22.models.credentials import CredentialsRole, Endpoint
+from ocpiconnector.ocpi_identities import ocpi_identities
 
 
 class OcpiModule:
     ocpi_serializer_class = None
     ocpi_module_name = None
+    ocpi_object_owner = None
     send_updates_to = []
 
     def get_party(self) -> (str, str):
@@ -27,10 +29,16 @@ class OcpiModule:
         party_id = self.party_id if hasattr(self, 'party_id') else None
         return country_code, party_id
 
+    @classmethod
+    def get_owner_party(cls) -> str:
+        assert cls.ocpi_object_owner, \
+            f'The OCPI object {cls} needs to have ocpi_object_owner specified ' \
+            f'so that the sender identity is clear when sending updates to other parties.'
+        return ocpi_identities.get(cls.ocpi_object_owner)
+
     def update_last_updated(self):
         if hasattr(self, 'last_updated'):
-            country_code, party_id = self.get_party()
-            if country_code == settings.COUNTRY_CODE and party_id == settings.PARTY_ID:
+            if self.is_ours():
                 setattr(self, 'last_updated', timezone.now())
 
     def atomic_post_save(self, *_args, **_kwargs) -> None:
@@ -79,7 +87,9 @@ class OcpiModule:
                 for e in endpoints:
                     logging.info(f'Send update to {ocpi_module} module at {e.url}')
                     from ocpi22.tasks import send_update
-                    parameters = serializer.data, e.url, e.get_token_base64(), country_code, party_id
+                    our_country_code, our_party_id = self.get_owner_party().split('*')
+                    parameters = serializer.data, e.url, e.get_token_base64(), country_code, party_id, \
+                                 our_country_code, our_party_id
                     if settings.BACKGROUND_SEND:
                         send_update.delay(*parameters)
                     else:

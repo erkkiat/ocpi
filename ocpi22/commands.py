@@ -170,7 +170,7 @@ class CommandsViewSet(GenericViewSet):
 
     def get_serializer_class(self):
         if not hasattr(self, 'action_map'): return serializers.Serializer
-        ic(self.action_map['post'])
+        # ic(self.action_map['post'])
         serializer = dict(
             start_session=StartSessionSerializer,
             stop_session=StopSessionSerializer,
@@ -325,8 +325,10 @@ class CommandsViewSet(GenericViewSet):
 
 
 def get_our_first_token():
+    our_country_code, our_party_id = Token.get_owner_party().split('*')
+
     try:
-        return Token.objects.filter(country_code=settings.COUNTRY_CODE, party_id=settings.PARTY_ID)[0]
+        return Token.objects.filter(country_code=our_country_code, party_id=our_party_id)[0]
     except IndexError:
         raise ValueError('Please create a Token first.')
 

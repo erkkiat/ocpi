@@ -47,12 +47,14 @@ def authorize_token(token_uid, location=None):
 
 
 def get_admin_token() -> Token:
+    our_country_code, our_party_id = Token.get_owner_party().split('*')
+    our_identity = Token.get_owner_party()
     token, _created = Token.objects.get_or_create(
-        country_code=settings.COUNTRY_CODE,
-        party_id=settings.PARTY_ID,
-        uid=f'{settings.COUNTRY_CODE}*{settings.PARTY_ID}*T*ADMIN*TOKEN',
+        country_code=our_country_code,
+        party_id=our_party_id,
+        uid=f'{our_identity}*T*ADMIN*TOKEN',
         defaults=dict(
-            type='OTHER', contract_id='INTERNAL', issuer=f'{settings.COUNTRY_CODE}*{settings.PARTY_ID}', valid=True
+            type='OTHER', contract_id='INTERNAL', issuer=our_identity, valid=True
         )
     )
     return token

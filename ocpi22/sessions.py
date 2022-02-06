@@ -53,10 +53,12 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
         for session in active_sessions:
             session.send_updates()
 
+    our_country_code, our_party_id = Session.get_owner_party().split('*')
+
     # noinspection PyUnresolvedReferences
     session = Session.objects.create(
-        country_code=settings.COUNTRY_CODE,
-        party_id=settings.PARTY_ID,
+        country_code=our_country_code,
+        party_id=our_party_id,
         uid=uuid.uuid4().hex,
         kwh=0.0,
         start_date_time=timezone.now(),

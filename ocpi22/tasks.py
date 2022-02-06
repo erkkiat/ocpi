@@ -136,8 +136,8 @@ def command_start(_self, data, session_uid, update_url, url):
 def make_headers(token_base64,
                  to_country_code,
                  to_party_id,
-                 from_country_code=settings.COUNTRY_CODE,
-                 from_party_id=settings.PARTY_ID) -> dict:
+                 from_country_code,
+                 from_party_id) -> dict:
     """
     >>> make_headers('123456', 'TO', 'TOO', 'FR', 'FRM')
     {'Authorization': 'Token 123456', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO'}
@@ -158,9 +158,10 @@ def make_headers(token_base64,
 
 @app.task(bind=True)
 def send_update(_self, data, url: str, token_base64: str,
-                to_country_code: str, to_party_id: str) -> None:
+                to_country_code: str, to_party_id: str,
+                from_country_code: str, from_party_id: str) -> None:
     logging.info(f'Sending update to {url}')
-    headers = make_headers(token_base64, to_country_code, to_party_id)
+    headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
     result = requests.put(
         url,
         json=data,

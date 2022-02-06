@@ -482,12 +482,12 @@ class CredentialsViewSet(mixins.CreateModelMixin,
             if serializer.is_valid():
                 # They should definitely not have the same operator ID as we do
                 # ic(serializer.data, settings.COUNTRY_CODE, settings.PARTY_ID)
-                if serializer.data.get('country_code') == settings.COUNTRY_CODE \
-                  and serializer.data.get('party_id') == settings.PARTY_ID:
-                    return OCPIResponse(status_message=f'You are not allowed to use the same operator ID '
-                                        f'"{settings.COUNTRY_CODE}*{settings.PARTY_ID}" as we do.',
-                                        http_status=status.HTTP_400_BAD_REQUEST,
-                                        status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+                # if serializer.data.get('country_code') == settings.COUNTRY_CODE \
+                #   and serializer.data.get('party_id') == settings.PARTY_ID:
+                #     return OCPIResponse(status_message=f'You are not allowed to use the same operator ID '
+                #                         f'"{settings.COUNTRY_CODE}*{settings.PARTY_ID}" as we do.',
+                #                         http_status=status.HTTP_400_BAD_REQUEST,
+                #                         status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
                 data = serializer.data
                 bd = data.pop('business_details')
@@ -729,7 +729,7 @@ class SessionViewSet(mixins.ListModelMixin,
     @transaction.atomic
     def put(request, partial=False) -> OCPIResponse:
         data = request.data.get('data', request.data)
-        ic(data)
+        # ic(data)
         uid = data.get('uid')
         country_code = data.get('country_code')
         party_id = data.get('party_id')

@@ -56,7 +56,7 @@ class TokenAdmin(admin.ModelAdmin):
     #     return False
 
     def has_change_permission(self, request, obj: Token = None) -> bool:
-        return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
+        return obj and obj.is_ours()
 
 
 # Todo: Prevent Connector editing if not owner, get_readonly_fields() doesn't do it
@@ -105,7 +105,7 @@ class LocationAdmin(NestedModelAdmin):
         )
 
         def has_change_permission(self, request, obj=None) -> bool:
-            return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
+            return obj and obj.is_ours()
 
         def has_delete_permission(self, request, obj=None) -> bool:
             return ALLOW_ADMIN_DELETE_AND_CHANGE
@@ -143,7 +143,7 @@ class LocationAdmin(NestedModelAdmin):
     )
 
     def has_change_permission(self, request, obj=None) -> bool:
-        return obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID
+        return obj and obj.is_ours()
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE
@@ -180,7 +180,7 @@ class EvseAdmin(NestedModelAdmin):
         return []
 
     def has_change_permission(self, request, obj=None) -> bool:
-        return obj and obj.location.country_code == settings.COUNTRY_CODE and obj.location.party_id == settings.PARTY_ID
+        return obj and obj.is_ours()
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE
@@ -369,8 +369,7 @@ class SessionAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj: Session = None) -> bool:
         if obj and obj.status == Session.COMPLETED and obj.total_cost_excl_vat:
             return False
-        return (obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
-               or ALLOW_ADMIN_DELETE_AND_CHANGE
+        return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request) -> bool:
         # Disable add
@@ -399,7 +398,7 @@ class TariffAdmin(NestedModelAdmin):
             #     if isinstance(obj, TariffElement) and obj.tariff:
             #         obj = obj.tariff
             #     return (obj and not obj.archived and
-            #         obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
+            #         obj.is_ours()) \
             #         or ALLOW_ADMIN_DELETE_AND_CHANGE
 
         model = TariffElement
@@ -429,7 +428,7 @@ class TariffAdmin(NestedModelAdmin):
         return readonly_fields
 
     def has_change_permission(self, request, obj=None) -> bool:
-        return (obj and obj.country_code == settings.COUNTRY_CODE and obj.party_id == settings.PARTY_ID) \
+        return (obj and obj.is_ours()) \
                or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_delete_permission(self, request, obj=None) -> bool:

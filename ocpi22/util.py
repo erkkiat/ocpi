@@ -7,6 +7,8 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from rest_framework import serializers
 
+from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities
+
 
 def clear_empty(dict_with_possibly_empty_values):
     """
@@ -237,6 +239,38 @@ def calculate_partition(coordinate):
     return int(float(coordinate) * 100.0)
 
 
+# def _get_identities_list(source: dict=os.environ) -> [str]:
+#     """
+#     Get the country_codes and party_ids for different roles of this Platform
+#
+#     >>> _get_identities_list(source=dict(CPO='FI*CPO', EMSP='FI*MSP'))
+#     ['FI*CPO', 'FI*MSP']
+#
+#     @param source: For testing purposes
+#     @return: List of identity strings
+#     """
+#     return list(filter(None, [source.get(i) for i in role_options if source.get(i)]))
+
+
+def is_our_identifier(country_code, party_id, identities=None) -> bool:
+    """
+    Check if the given country_code and party_id match one of our identities
+
+    >>> is_our_identifier('FI', 'MSP', identities=OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP')))
+    True
+
+    @param country_code:
+    @param party_id:
+    @param identities:
+    @return:
+    """
+    if identities is None:
+        identities = ocpi_identities
+    # ic(f'{country_code}*{party_id}', identities)
+    result = bool(f'{country_code}*{party_id}' in identities)
+    return result
+
+
 class ModelUtilMixin:
     @classmethod
     def get_if_exists(cls, *args: list, **kwargs: dict) -> any:
@@ -253,14 +287,11 @@ class ModelUtilMixin:
             return f'{self.country_code}*{self.party_id}'
         return ''
 
-    # noinspection PyUnresolvedReferences
     def is_ours(self) -> bool:
         # Returns true if we hold the master data for this object
-        if hasattr(self, 'country_code') and self.country_code != settings.COUNTRY_CODE:
+        if not (hasattr(self, 'country_code') and hasattr(self, 'party_id')):
             return False
-        if hasattr(self, 'party_id') and self.party_id != settings.PARTY_ID:
-            return False
-        return True
+        return bool(is_our_identifier(self.country_code, self.party_id))
 
     def is_owner(self, request) -> bool:
         if request.user.is_superuser:

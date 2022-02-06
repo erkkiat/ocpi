@@ -9,10 +9,9 @@ from rest_framework.reverse import reverse
 
 from ocpi22.models.credentials import Credentials, Endpoint
 from ocpi22.util import generate_random_token
+from ocpiconnector.ocpi_identities import role_options
 
 from colorama import Back, Style
-
-role_options = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')
 
 
 def get_our_roles(source: dict = os.environ) -> list:
