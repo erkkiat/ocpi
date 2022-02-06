@@ -17,8 +17,8 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
 from ocpi22.sessions import get_active_sessions
-from ocpi22.util import ModelUtilMixin
 from ocpi22.tokens import get_admin_token
+from ocpiconnector.ocpi_identities import ocpi_identities
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False
 
@@ -51,9 +51,9 @@ class TokenAdmin(admin.ModelAdmin):
         # Disable delete
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    # def has_add_permission(self, request, obj=None):
-    #     # Disable add
-    #     return False
+    def has_add_permission(self, request) -> bool:
+        # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
+        return Token.ocpi_object_owner in ocpi_identities
 
     def has_change_permission(self, request, obj: Token = None) -> bool:
         return obj and obj.is_ours()
@@ -81,13 +81,16 @@ class ConnectorInline(NestedStackedInline):
     #         return ['uid']
     #     return []
 
-    def has_change_permission(self, request, obj: ModelUtilMixin = None) -> bool:
+    def has_change_permission(self, request, obj: Evse = None) -> bool:
         # Todo: Admin should only be able to change owned Connectors
         # ic(obj)
-        return hasattr(obj, 'is_ours') and obj.is_ours()
+        if obj:
+            obj = obj.location
+        return obj and hasattr(obj, 'is_ours') and obj.is_ours()
 
-    def has_add_permission(self, request, obj) -> bool:
-        return self.has_change_permission(request, obj)
+    def has_add_permission(self, request, obj=None) -> bool:
+        # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
+        return Location.ocpi_object_owner in ocpi_identities
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return False
@@ -109,6 +112,10 @@ class LocationAdmin(NestedModelAdmin):
 
         def has_delete_permission(self, request, obj=None) -> bool:
             return ALLOW_ADMIN_DELETE_AND_CHANGE
+
+        def has_add_permission(self, request, obj=None) -> bool:
+            # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
+            return Location.ocpi_object_owner in ocpi_identities
 
         def get_readonly_fields(self, request, obj=None) -> list:
             if obj:
@@ -147,6 +154,10 @@ class LocationAdmin(NestedModelAdmin):
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE
+
+    def has_add_permission(self, request) -> bool:
+        # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
+        return Location.ocpi_object_owner in ocpi_identities
 
     def get_readonly_fields(self, request, obj=None) -> list:
         if obj:
@@ -433,6 +444,10 @@ class TariffAdmin(NestedModelAdmin):
 
     def has_delete_permission(self, request, obj=None) -> bool:
         return ALLOW_ADMIN_DELETE_AND_CHANGE or self.has_change_permission(request, obj)
+
+    def has_add_permission(self, request) -> bool:
+        # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
+        return Tariff.ocpi_object_owner in ocpi_identities
 
 
 class CredentialsAdmin(admin.ModelAdmin):
