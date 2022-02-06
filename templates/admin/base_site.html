@@ -11,7 +11,7 @@
 <h1 id="site-name">
     <a href="{% url 'admin:index' %}">
         <img alt="ChargerHub logo" src="{% static 'images/chargerhub-logo-black.svg' %}">
-        OCPI Connector Admin - {{ country_code }}*{{ party_id }}
+        {{ roles }} - <span class="muted">OCPI Connector Admin</span>
     </a>
 </h1>
 {% endblock %}

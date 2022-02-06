@@ -86,4 +86,10 @@ fieldset.module .form-row .fieldBox label.vCheckboxLabel {
   --object-tools-hover-bg: var(--close-button-hover-bg);
 }
 
+/* line 97, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+.muted {
+  color: #cccccc;
+  font-size: smaller;
+}
+
 /*# sourceMappingURL=ocpiconnector-admin.css.map */

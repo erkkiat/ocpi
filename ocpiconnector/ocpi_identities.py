@@ -57,6 +57,9 @@ class OCPIIdentities:
     def __repr__(self):
         return self.__str__()
 
+    def items(self):
+        return self._identities_dict.items()
+
     def get(self, item, default=None) -> str:
         return self._identities_dict[item] if item in self._identities_dict else default
 
