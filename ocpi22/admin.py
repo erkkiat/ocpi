@@ -412,8 +412,31 @@ class TariffAdmin(NestedModelAdmin):
             #         obj.is_ours()) \
             #         or ALLOW_ADMIN_DELETE_AND_CHANGE
 
+            def has_change_permission(self, request, obj=None) -> bool:
+                ic(obj)
+                if isinstance(obj, TariffElement):
+                    obj = obj.tariff
+                return (obj and obj.is_ours()) \
+                       or ALLOW_ADMIN_DELETE_AND_CHANGE
+
+            def has_add_permission(self, request, obj) -> bool:
+                return self.has_change_permission(request, obj)
+
+            def has_delete_permission(self, request, obj=None) -> bool:
+                return self.has_change_permission(request, obj)
+
         model = TariffElement
         inlines = [PriceComponentsInline]
+
+        def has_change_permission(self, request, obj=None) -> bool:
+            return (obj and obj.is_ours()) \
+                   or ALLOW_ADMIN_DELETE_AND_CHANGE
+
+        def has_add_permission(self, request, obj) -> bool:
+            return self.has_change_permission(request, obj)
+
+        def has_delete_permission(self, request, obj=None) -> bool:
+            return self.has_change_permission(request, obj)
 
     model = Tariff
     list_display = [
