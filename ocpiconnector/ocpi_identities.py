@@ -52,7 +52,7 @@ class OCPIIdentities(metaclass=Singleton):
     def __contains__(self, item):
         return item in self._identities_list or item in self._identities_dict
 
-    def __sizeof__(self):
+    def __sizeof__(self) -> int:
         return len(self._identities_list)
 
     def __getitem__(self, item) -> str:
@@ -60,17 +60,24 @@ class OCPIIdentities(metaclass=Singleton):
             return self._identities_dict[item]
         return self._identities_list[item]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ", ".join(self._identities_list)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
+
+    def get_dict(self) -> dict:
+        return self._identities_dict
 
     def items(self):
         return self._identities_dict.items()
 
     def get(self, item, default=None) -> str:
         return self._identities_dict[item] if item in self._identities_dict else default
+
+    @property
+    def roles(self):
+        return self._identities_dict.keys()
 
 
 ocpi_identities = OCPIIdentities()

@@ -5,6 +5,7 @@ from typing import Optional
 
 from django.conf import settings
 from django.core.validators import RegexValidator
+from icecream import ic
 from rest_framework import serializers
 
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities
@@ -151,6 +152,10 @@ class UpperCaseSerializerField(serializers.CharField):
 def check_ownership(request, country_code, party_id, check_operator_id_from_request_data=True):
     if not hasattr(request, 'credentials'):
         return False
+    # ic(request.credentials.roles.filter(role='HUB'))
+    if request.credentials.roles.filter(role='HUB').count():
+        # We trust hubs
+        return True
     if check_operator_id_from_request_data and hasattr(request, 'data'):
         cc = request.data.get('country_code')
         pi = request.data.get('party_id')
@@ -167,6 +172,10 @@ def matching_operator(request, country_code, party_id) -> bool:
         return True
     if not hasattr(request, 'credentials'):
         return False
+    # ic(request.credentials.roles.filter(role='HUB'))
+    if request.credentials.roles.filter(role='HUB').count():
+        # We trust hubs
+        return True
     for r in request.credentials.roles.all():
         if r.country_code == country_code and r.party_id == party_id:
             return True

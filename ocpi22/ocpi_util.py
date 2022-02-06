@@ -15,7 +15,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 from ocpi22.models.credentials import CredentialsRole, Endpoint
-from ocpiconnector.ocpi_identities import ocpi_identities
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
 
 
 class OcpiModule:
@@ -34,7 +34,8 @@ class OcpiModule:
         assert cls.ocpi_object_owner, \
             f'The OCPI object {cls} needs to have ocpi_object_owner specified ' \
             f'so that the sender identity is clear when sending updates to other parties.'
-        return ocpi_identities.get(cls.ocpi_object_owner)
+        # ic(cls.ocpi_object_owner, ocpi_identities.get_dict())
+        return ocpi_identities.get(cls.ocpi_object_owner, default='*')
 
     def update_last_updated(self):
         if hasattr(self, 'last_updated'):
@@ -63,39 +64,57 @@ class OcpiModule:
         Find all endpoints interested in Tariff updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
         """
-        ocpi_module = self.ocpi_module_name
-        serializer_class = self.ocpi_serializer_class
+        # Do we possess the role who controls the master data for this type of object?
+        if settings.SEND_UPDATES in (True, 1, 'true', 'True'):
+            if self.ocpi_object_owner not in ocpi_identities.roles:
+                logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
+                return
+            serializer_class = self.ocpi_serializer_class
 
-        if isinstance(serializer_class, str):
-            serializer_class = import_string(serializer_class)
+            if isinstance(serializer_class, str):
+                serializer_class = import_string(serializer_class)
 
-        if settings.SEND_UPDATES > 0:
-            # ic('Sending updates', self.__class__, self.send_updates_to)
-            recipients = CredentialsRole.objects.filter(role__in=self.send_updates_to). \
-                values_list('credentials', 'country_code', 'party_id')
-            # noinspection PyUnresolvedReferences
-            for c, country_code, party_id in set(recipients):
-                # ic(c, country_code, party_id)
-                # noinspection PyUnresolvedReferences
-                endpoints = Endpoint.objects.filter(
-                    identifier=ocpi_module,
-                    role=Endpoint.RECEIVER,
-                    credentials__id=c
-                )
-                serializer = serializer_class(self)
-                e: Endpoint
-                for e in endpoints:
-                    logging.info(f'Send update to {ocpi_module} module at {e.url}')
-                    from ocpi22.tasks import send_update
-                    our_country_code, our_party_id = self.get_owner_party().split('*')
-                    parameters = serializer.data, e.url, e.get_token_base64(), country_code, party_id, \
-                                 our_country_code, our_party_id
-                    if settings.BACKGROUND_SEND:
-                        send_update.delay(*parameters)
-                    else:
-                        send_update(*parameters)
+            serializer = serializer_class(self)
+            self._send_updates(serializer.data)
         else:
             logging.warning(settings.UPDATES_DISABLED)
+
+    @classmethod
+    def _send_updates(cls, data):
+        our_country_code, our_party_id = cls.get_owner_party().split('*')
+        ic('Sending updates', cls, cls.send_updates_to)
+        # noinspection PyUnresolvedReferences
+        recipients = CredentialsRole.objects.filter(role__in=cls.send_updates_to). \
+            values_list('credentials', 'country_code', 'party_id')
+        # noinspection PyUnresolvedReferences
+        for c, country_code, party_id in set(recipients):
+            ic(c, country_code, party_id)
+            # noinspection PyUnresolvedReferences
+            endpoints = Endpoint.objects.filter(
+                identifier=cls.ocpi_module_name,
+                role=Endpoint.RECEIVER,
+                credentials__id=c
+            )
+            e: Endpoint
+            for e in endpoints:
+                logging.info(f'Send update to {cls.ocpi_module_name} module at {e.url}')
+                from ocpi22.tasks import send_update
+                parameters = data, e.url, e.get_token_base64(), country_code, party_id, \
+                             our_country_code, our_party_id
+                if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
+                    ic()
+                    send_update.delay(*parameters)
+                else:
+                    ic()
+                    send_update(*parameters)
+
+    @classmethod
+    def send_hub_updates(cls, data) -> None:
+        ic()
+        if ocpi_platform.is_hub and settings.SEND_UPDATES in (True, 1, 'true', 'True'):
+            print(f'Sending HUB updates for {cls}.')
+            ic(data)
+            cls._send_updates(data)
 
 
 def ocpi_post(url, token_base64, *args, **kwargs) -> Response:

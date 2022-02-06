@@ -28,16 +28,18 @@ app = celery.Celery('ocpi22.tasks')
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
-app.conf.beat_schedule = {
-    'run-me-every-minute': {
-        'task': 'ocpi22.tasks.celery_heartbeat',
-        'schedule': 60
-    },
-    # 'set-spot-price-every-hour': {
-    #     'task': 'ocpi22.tasks.set_spot_price',
-    #     'schedule': crontab(minute=0),
-    # },
-}
+
+
+# app.conf.beat_schedule = {
+#     'run-me-every-minute': {
+#         'task': 'ocpi22.tasks.celery_heartbeat',
+#         'schedule': 60
+#     },
+#     # 'set-spot-price-every-hour': {
+#     #     'task': 'ocpi22.tasks.set_spot_price',
+#     #     'schedule': crontab(minute=0),
+#     # },
+# }
 
 
 @app.task
@@ -160,7 +162,7 @@ def make_headers(token_base64,
 def send_update(_self, data, url: str, token_base64: str,
                 to_country_code: str, to_party_id: str,
                 from_country_code: str, from_party_id: str) -> None:
-    logging.info(f'Sending update to {url}')
+    logging.info(f"Sending {data.get('uid', data.get('id', ''))} update to {url}")
     headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
     result = requests.put(
         url,

@@ -191,7 +191,7 @@ class TokenViewSet(mixins.ListModelMixin,
             new_token = serialiser.save()
             if ocpi_platform.is_cpo:
                 CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
-            # Return 201 if instance was created
+            token.send_hub_updates(serialiser.data)
             return OCPIResponse(serialiser.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
         else:
             return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
@@ -678,6 +678,7 @@ class TariffViewSet(mixins.ListModelMixin,
         serializer = TariffSerializer(instance=tariff, data=data)
         if serializer.is_valid():
             serializer.save()
+            Tariff.send_hub_updates(data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if tariff else status.HTTP_201_CREATED)
         else:
             return OCPIResponse(errors=serializer.errors)
