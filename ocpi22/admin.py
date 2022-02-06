@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
@@ -53,10 +52,10 @@ class TokenAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request) -> bool:
         # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
-        return Token.ocpi_object_owner in ocpi_identities
+        return Token.ocpi_object_owner in ocpi_identities or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_change_permission(self, request, obj: Token = None) -> bool:
-        return obj and obj.is_ours()
+        return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
 # Todo: Prevent Connector editing if not owner, get_readonly_fields() doesn't do it
@@ -413,7 +412,6 @@ class TariffAdmin(NestedModelAdmin):
             #         or ALLOW_ADMIN_DELETE_AND_CHANGE
 
             def has_change_permission(self, request, obj=None) -> bool:
-                ic(obj)
                 if isinstance(obj, TariffElement):
                     obj = obj.tariff
                 return (obj and obj.is_ours()) \
