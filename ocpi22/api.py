@@ -1,7 +1,7 @@
 import logging
 import os
 import uuid
-from typing import Union
+from typing import Union, Optional
 
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
@@ -30,6 +30,7 @@ from ocpi22.models.cdr import Cdr
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator
 from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpi22.versions import get_endpoints_dict
+from ocpiconnector.ocpi_identities import ocpi_platform
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 default_error_messages = dict(
@@ -169,7 +170,7 @@ class TokenViewSet(mixins.ListModelMixin,
         return f'Tokens'
 
     @staticmethod
-    def get_object(uid=None):
+    def get_object(uid=None) -> Optional[Token]:
         # Needed for OPTIONS to work in list view, could just return None
         if uid:
             return get_object_or_404(Token, uid=uid)
@@ -188,7 +189,8 @@ class TokenViewSet(mixins.ListModelMixin,
         serialiser = TokenSerializer(data=data, instance=token, partial=True)
         if serialiser.is_valid():
             new_token = serialiser.save()
-            CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
+            if ocpi_platform.is_cpo:
+                CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
             # Return 201 if instance was created
             return OCPIResponse(serialiser.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
         else:

@@ -3,7 +3,16 @@ import os
 role_options = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')
 
 
-class OCPIIdentities:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class OCPIIdentities(metaclass=Singleton):
     """
     Store the identities of this OCPI Platform in list and dict form for convenient access
 
@@ -65,3 +74,14 @@ class OCPIIdentities:
 
 
 ocpi_identities = OCPIIdentities()
+
+
+class OCPIPlatform(metaclass=Singleton):
+    is_hub = bool('HUB' in ocpi_identities)
+    is_cpo = bool('CPO' in ocpi_identities)
+    is_emsp = bool('EMSP' in ocpi_identities)
+
+
+ocpi_platform = OCPIPlatform()
+
+# ic(ocpi_platform.is_hub, ocpi_platform.is_cpo, ocpi_platform.is_emsp)
