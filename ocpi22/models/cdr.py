@@ -10,7 +10,7 @@ from rest_framework.reverse import reverse
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin
+from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHOICES
 from ocpi22.ocpi_util import OcpiModule, Ocpi
 
 
@@ -125,7 +125,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     cdr_location_connector_power_type = models.CharField(max_length=10, choices=Ocpi.POWERTYPE_CHOICES)
 
     # Currency of the CDR in ISO 4217 Code.
-    currency = models.CharField(max_length=3, choices=Ocpi.CURRENCY_CHOICES)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)
 
     # List of relevant Tariff Elements, see: Tariff. When relevant, a Free of Charge tariff
     # should also be in this list, and point to a defined Free of Charge Tariff.

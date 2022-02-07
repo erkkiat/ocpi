@@ -9,7 +9,8 @@ from django.dispatch import receiver
 from django.utils.html import format_html
 from rest_framework.reverse import reverse
 
-from ocpi22.util import ModelUtilMixin, format_currency
+from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
+from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES
 from ocpi22.ocpi_util import OcpiModule, Ocpi
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
@@ -46,7 +47,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     uid = models.CharField(max_length=36)
 
     # ISO-4217 code of the currency of this tariff
-    currency = models.CharField(max_length=3, choices=Ocpi.CURRENCY_CHOICES, default=settings.DEFAULT_CURRENCY)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=settings.DEFAULT_CURRENCY)
 
     # Defines the type of the tariff. This allows for distinction in case of given Charging Preferences.
     # When omitted, this tariff is valid for all sessions.
@@ -205,6 +206,12 @@ class PriceComponent(models.Model, ModelUtilMixin):
     # For example: if type is TIME and step_size has a value of 300, then time will be billed in blocks of 5 minutes.
     # If 6 minutes were used, 10 minutes (2 blocks of step_size) will be billed.
     step_size = models.IntegerField()
+
+    # Connect this price component to a dynamic price source, which will overwrite price and set type='ENERGY'
+    dynamic_price_source = models.CharField(
+        max_length=10, null=True, blank=True, choices=DYNAMIC_PRICE_SOURCE_CHOICES,
+        help_text="Connect this price component to a dynamic price source, "
+                  "which will get the hourly or daily price from a source and set type='ENERGY'.")
 
     @property
     def tariff(self):

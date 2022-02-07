@@ -42,6 +42,7 @@ from ocpi22.tokens import get_admin_token
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))

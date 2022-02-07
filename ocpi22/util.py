@@ -5,7 +5,6 @@ from typing import Optional
 
 from django.conf import settings
 from django.core.validators import RegexValidator
-from icecream import ic
 from rest_framework import serializers
 
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities
@@ -180,6 +179,32 @@ def matching_operator(request, country_code, party_id) -> bool:
         if r.country_code == country_code and r.party_id == party_id:
             return True
     return False
+
+
+CURRENCY_CHOICES = (
+    ('EUR', 'Euro'),
+    ('ALL', 'Albanian lek'),
+    ('BYN', 'Belarusian ruble'),
+    ('BAM', 'Bosnia and Herzegovina convertible mark'),
+    ('BGN', 'Bulgarian lev'),
+    ('HRK', 'Croatian kuna'),
+    ('CZK', 'Czech koruna'),
+    ('DKK', 'Danish krone'),
+    ('ISK', 'Icelandic króna'),
+    ('HUF', 'Hungarian forint'),
+    ('MDL', 'Moldovan leu'),
+    ('NOK', 'Norwegian krone'),
+    ('PLN', 'Polish złoty'),
+    ('GBP', 'Pound sterling'),
+    ('RON', 'Romanian leu'),
+    ('RUB', 'Russian ruble'),
+    ('MKD', 'Second Macedonian denar'),
+    ('RSD', 'Serbian dinar'),
+    ('SEK', 'Swedish krona'),
+    ('CHF', 'Swiss franc'),
+    ('TRY', 'Turkish lira'),
+    ('UAH', 'Ukrainian hryvnia'),
+)
 
 
 def pretty_currency(c):

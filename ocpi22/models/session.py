@@ -9,7 +9,7 @@ from rest_framework.reverse import reverse
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
-from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost
+from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES
 from ocpi22.ocpi_util import OcpiModule, Ocpi
 from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
@@ -109,7 +109,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     meter_id = models.CharField(max_length=255, blank=True, null=True)
 
     # ISO-4217 code of the currency of this tariff
-    currency = models.CharField(max_length=3, choices=Ocpi.CURRENCY_CHOICES)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)
 
     # The total cost of the session in the specified currency. This is the price that the eMSP will
     # have to pay to the CPO. A total_cost of 0.00 means free of charge. When omitted, i.e. no price

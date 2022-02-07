@@ -191,7 +191,7 @@ class TokenViewSet(mixins.ListModelMixin,
             new_token = serialiser.save()
             if ocpi_platform.is_cpo:
                 CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
-            token.send_hub_updates(serialiser.data)
+            Token.send_hub_updates(serialiser.data)
             return OCPIResponse(serialiser.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
         else:
             return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)

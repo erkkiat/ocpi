@@ -8,6 +8,7 @@ from rest_framework import exceptions
 
 from ocpi22.commands import send_start_command, send_stop_command
 from ocpi22.models.cdr import Cdr
+from ocpi22.models.dynamic_price import DynamicPrice
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
@@ -497,6 +498,12 @@ class DefaultTariffsAdmin(admin.ModelAdmin):
     model = DefaultTariffs
     list_display = ['standard', 'tariff_list']
     autocomplete_fields = ['tariffs']
+
+
+@admin.register(DynamicPrice)
+class DynamicPriceAdmin(admin.ModelAdmin):
+    model = DynamicPrice
+    list_display = ['dynamic_price_source', 'price', 'start_datetime', 'end_datetime']
 
 
 admin.site.register(Token, TokenAdmin)

@@ -9,11 +9,12 @@ import pprint
 import logging
 
 from celery import exceptions
-from django.conf import settings
+from celery.schedules import crontab
 from django.http import Http404
+from django.utils import timezone
 from rest_framework import status
 
-from ocpiconnector import slack_logging, nordpool
+from ocpiconnector import slack_logging
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 slack_logging.init()
@@ -29,17 +30,16 @@ app = celery.Celery('ocpi22.tasks')
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
-
-# app.conf.beat_schedule = {
-#     'run-me-every-minute': {
-#         'task': 'ocpi22.tasks.celery_heartbeat',
-#         'schedule': 60
-#     },
-#     # 'set-spot-price-every-hour': {
-#     #     'task': 'ocpi22.tasks.set_spot_price',
-#     #     'schedule': crontab(minute=0),
-#     # },
-# }
+app.conf.beat_schedule = {
+    #     'run-me-every-minute': {
+    #         'task': 'ocpi22.tasks.celery_heartbeat',
+    #         'schedule': 60
+    #     },
+    'set-spot-prices-every-hour': {
+        'task': 'ocpi22.tasks.set_spot_prices',
+        'schedule': crontab(minute=0)
+    },
+}
 
 
 @app.task
@@ -48,22 +48,27 @@ def celery_heartbeat() -> bool:
 
 
 @app.task
-def set_spot_price() -> bool:
-    # This will just trigger a ping to Cronitor, but you can use it for once-per-minute tasks also
-    from ocpi22.models.tariff import Tariff
-    tariff = Tariff.get_if_exists(uid='TNORDPOOL')
-    if tariff:
-        electricity_spot_price = nordpool.get_current_price('FI')
-        # Find the first energy based price_component Set the spot price
-        for te in tariff.tariff_elements.all():
-            for pc in te.price_components.all():
-                if pc.type == 'ENERGY':
-                    pc.price = electricity_spot_price
-                    pc.save()
-                    logging.error(f'Spot price {electricity_spot_price}€ set')
-                    return True
-    logging.error('Cannot set spot price')
-    raise celery.exceptions.CeleryWarning('Cannot set spot price')
+def set_spot_prices() -> bool:
+    from ocpi22.models.dynamic_price import dynamic_price_sources, get_price
+    for source in dynamic_price_sources:
+        price = get_price(source.key, timezone.now())
+        logging.info(f'Spot price at {source.key}: {price}')
+        if not price:
+            logging.warning(f"No price for {source.key}")
+            continue
+        from ocpi22.models.tariff import PriceComponent
+        # noinspection PyUnresolvedReferences
+        pcs = PriceComponent.objects.filter(dynamic_price_source=source.key).select_related('tariff_element__tariff')
+        pcs.update(price=price, type='ENERGY')
+        for pc in pcs:
+            logging.info(str(pc))
+            tariff = pc.tariff_element.tariff
+            logging.info(str(tariff))
+            tariff.currency = source.currency
+            tariff.save()
+            tariff.send_updates()
+            logging.info(f'Spot price {price} {source.currency} set')
+        return True
 
 
 REDIS_URL = os.environ['REDIS_URL']

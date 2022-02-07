@@ -82,13 +82,13 @@ class OcpiModule:
     @classmethod
     def _send_updates(cls, data):
         our_country_code, our_party_id = cls.get_owner_party().split('*')
-        ic('Sending updates', cls, cls.send_updates_to)
+        # ic('Sending updates', cls, cls.send_updates_to)
         # noinspection PyUnresolvedReferences
         recipients = CredentialsRole.objects.filter(role__in=cls.send_updates_to). \
             values_list('credentials', 'country_code', 'party_id')
         # noinspection PyUnresolvedReferences
         for c, country_code, party_id in set(recipients):
-            ic(c, country_code, party_id)
+            # ic(c, country_code, party_id)
             # noinspection PyUnresolvedReferences
             endpoints = Endpoint.objects.filter(
                 identifier=cls.ocpi_module_name,
@@ -102,18 +102,15 @@ class OcpiModule:
                 parameters = data, e.url, e.get_token_base64(), country_code, party_id, \
                              our_country_code, our_party_id
                 if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
-                    ic()
                     send_update.delay(*parameters)
                 else:
-                    ic()
                     send_update(*parameters)
 
     @classmethod
     def send_hub_updates(cls, data) -> None:
-        ic()
         if ocpi_platform.is_hub and settings.SEND_UPDATES in (True, 1, 'true', 'True'):
             print(f'Sending HUB updates for {cls}.')
-            ic(data)
+            # ic(data)
             cls._send_updates(data)
 
 
@@ -244,31 +241,6 @@ class Ocpi:
         ('AC_1_PHASE', 'AC 1-phase'),
         ('AC_3_PHASE', 'AC 3-phase'),
         ('DC', 'DC')
-    )
-
-    CURRENCY_CHOICES = (
-        ('EUR', 'Euro'),
-        ('ALL', 'Albanian lek'),
-        ('BYN', 'Belarusian ruble'),
-        ('BAM', 'Bosnia and Herzegovina convertible mark'),
-        ('BGN', 'Bulgarian lev'),
-        ('HRK', 'Croatian kuna'),
-        ('CZK', 'Czech koruna'),
-        ('DKK', 'Danish krone'),
-        ('ISK', 'Icelandic króna'),
-        ('HUF', 'Hungarian forint'),
-        ('MDL', 'Moldovan leu'),
-        ('NOK', 'Norwegian krone'),
-        ('PLN', 'Polish złoty'),
-        ('GBP', 'Pound sterling'),
-        ('RON', 'Romanian leu'),
-        ('RUB', 'Russian ruble'),
-        ('MKD', 'Second Macedonian denar'),
-        ('RSD', 'Serbian dinar'),
-        ('SEK', 'Swedish krona'),
-        ('CHF', 'Swiss franc'),
-        ('TRY', 'Turkish lira'),
-        ('UAH', 'Ukrainian hryvnia'),
     )
 
 
