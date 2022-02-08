@@ -41,7 +41,7 @@ app.conf.beat_schedule = {
     },
     'update-spot-prices-daily': {
         'task': 'ocpi22.tasks.update_spot_prices',
-        'schedule': crontab(minute=1, hour=22)
+        'schedule': crontab(minute=59)
     },
 }
 
@@ -71,7 +71,7 @@ def set_spot_prices() -> bool:
         from ocpi22.models.tariff import PriceComponent
         # noinspection PyUnresolvedReferences
         pcs = PriceComponent.objects.filter(dynamic_price_source=source.key).select_related('tariff_element__tariff')
-        pcs.update(price=price, type='ENERGY')
+        pcs.update(price=round(price, 3), type='ENERGY')
         for pc in pcs:
             logging.info(str(pc))
             tariff = pc.tariff_element.tariff

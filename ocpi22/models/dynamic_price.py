@@ -1,6 +1,7 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
+import requests
 from django.db import models
 
 DYNAMIC_PRICE_SOURCE_CHOICES = (
@@ -53,13 +54,48 @@ class PriceSource:
     def update(self):
         raise NotImplementedError()
 
+    def _upsert_to_database(self, start: datetime, end: datetime, price: float):
+        assert end > start
+        dynamic_price, _created = DynamicPrice.objects.get_or_create(
+            dynamic_price_source=self.key,
+            start_datetime=start,
+            end_datetime=end,
+            defaults=dict(price=price)
+        )
+        print(str(dynamic_price))
+        return dynamic_price
+
 
 class IbexBgIdm(PriceSource):
     key = 'IBEXBGIDM'
     currency = "BGN"
 
+    @staticmethod
+    def _convert_date_format(d) -> datetime:
+        """
+        >>> IbexBgIdm._convert_date_format('220208-01:00')
+        datetime.datetime(2022, 2, 8, 1, 0)
+        >>> IbexBgIdm._convert_date_format('220131-24:00')  # Midnight on the next day
+        datetime.datetime(2022, 2, 1, 0, 0)
+        >>> IbexBgIdm._convert_date_format('120809-16:53')
+        datetime.datetime(2012, 8, 9, 16, 53)
+        """
+        date, time = d.split('-')
+        year, month, day = [int(i) for i in (d[0:2], d[2:4], d[4:6])]
+        hour, minute = [int(i) for i in time.split(':')]
+        if hour >= 24:
+            return datetime(2000 + year, month, day, hour - 24, minute) + timedelta(days=1)
+        return datetime(2000 + year, month, day, hour, minute)
+
     def update(self):
-        pass
+        response = requests.get('https://node-red-electro.eu-gb.mybluemix.net/prices_3333_electro')
+        prices = response.json()
+        for p in prices:
+            end_date = self._convert_date_format(p['Date/Hour'])
+            start_date = end_date - timedelta(hours=1)
+            price = float(p['Avg.price']) / 1000.0
+            # print(p, start_date, end_date, price)
+            self._upsert_to_database(start_date, end_date, price)
 
 
 class NordpoolFr(PriceSource):
@@ -109,7 +145,7 @@ class NordPool(PriceSource):
 
 dynamic_price_sources = (
     IbexBgIdm(),
-    NordPool(),
+    # NordPool(),
 )
 
 

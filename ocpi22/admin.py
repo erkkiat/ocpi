@@ -503,7 +503,9 @@ class DefaultTariffsAdmin(admin.ModelAdmin):
 @admin.register(DynamicPrice)
 class DynamicPriceAdmin(admin.ModelAdmin):
     model = DynamicPrice
+    ordering = ['-start_datetime']
     list_display = ['dynamic_price_source', 'price', 'start_datetime', 'end_datetime']
+    list_filter = ['dynamic_price_source']
 
 
 admin.site.register(Token, TokenAdmin)

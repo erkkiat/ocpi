@@ -171,7 +171,7 @@ class TariffElement(models.Model, ModelUtilMixin):
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return ", ".join([str(pc) for pc in self.price_components.all()])
+        return " + ".join([str(pc) for pc in self.price_components.all()])
 
 
 class PriceComponent(models.Model, ModelUtilMixin):
