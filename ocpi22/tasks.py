@@ -39,11 +39,23 @@ app.conf.beat_schedule = {
         'task': 'ocpi22.tasks.set_spot_prices',
         'schedule': crontab(minute=0)
     },
+    'update-spot-prices-daily': {
+        'task': 'ocpi22.tasks.update_spot_prices',
+        'schedule': crontab(minute=1, hour=22)
+    },
 }
 
 
 @app.task
 def celery_heartbeat() -> bool:
+    return True
+
+
+@app.task
+def update_spot_prices() -> bool:
+    from ocpi22.models.dynamic_price import dynamic_price_sources
+    for source in dynamic_price_sources:
+        source.update()
     return True
 
 

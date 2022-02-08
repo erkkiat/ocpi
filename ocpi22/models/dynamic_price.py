@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from django.db import models
@@ -5,6 +6,23 @@ from django.db import models
 DYNAMIC_PRICE_SOURCE_CHOICES = (
     ('IBEXBGIDM', 'IBEX.bg Intraday'),
     ('IBEXBGDAM', 'IBEX.bg Day ahead'),
+    ('NPFI', 'Nordpool Finland'),
+    ('NPEE', 'Nordpool Estonia'),
+    ('NPLV', 'Nordpool Latvia'),
+    ('NPLT', 'Nordpool Lithuania'),
+    ('NPOslo', 'Nordpool Oslo'),
+    ('NPBergen', 'Nordpool Bergen'),
+    ('NPMolde', 'Nordpool Molde'),
+    ('NPSE1', 'Nordpool Sweden 1'),
+    ('NPSE2', 'Nordpool Sweden 2'),
+    ('NPSE3', 'Nordpool Sweden 3'),
+    ('NPSE4', 'Nordpool Sweden 4'),
+    ('NPDK1', 'Nordpool Denmark 1'),
+    ('NPDK2', 'Nordpool Denmark 2'),
+    ('NPAT', 'Nordpool Austria'),
+    ('NPBE', 'Nordpool Belgium'),
+    ('NPFR', 'Nordpool France'),
+    ('NPNL', 'Nordpool Netherlands'),
 )
 
 
@@ -26,20 +44,72 @@ class DynamicPrice(models.Model):
 
 class PriceSource:
     class TooManyPrices(Exception):
-        def __init__(self, str='More than one price matched a single datetime'):
-            super().__init__(str)
+        def __init__(self, s='More than one price matched a single datetime'):
+            super().__init__(s)
 
     key = None
     currency = 'EUR'
 
+    def update(self):
+        raise NotImplementedError()
 
-class IbexBgIdm:
+
+class IbexBgIdm(PriceSource):
     key = 'IBEXBGIDM'
     currency = "BGN"
+
+    def update(self):
+        pass
+
+
+class NordpoolFr(PriceSource):
+    key = 'NPFR'
+    currency = "EUR"
+
+    def update(self):
+        pass
+
+
+class NordpoolFi(PriceSource):
+    key = 'NPFI'
+    currency = "EUR"
+
+    def update(self):
+        pass
+
+
+class NordPool(PriceSource):
+    key = ''
+    currency = 'EUR'
+
+    def update(self):
+        from nordpool import elspot
+        prices_spot = elspot.Prices()
+        prices = prices_spot.hourly()
+        for key, area in prices['areas'].items():
+            source_name = f'NP{key}'
+            print(source_name)
+            for p in area['values']:
+                value = None
+                try:
+                    value = p.get('value', 0.0)
+                    if value == float('inf'):
+                        value = 0.0
+                    print(value, p['start'])
+                    # noinspection PyUnresolvedReferences
+                    DynamicPrice.objects.get_or_create(
+                        dynamic_price_source=source_name,
+                        start_datetime=p['start'].replace(tzinfo=None),
+                        end_datetime=p['end'].replace(tzinfo=None),
+                        defaults=dict(price=value)
+                    )
+                except KeyError:
+                    logging.warning(f'Unable to set value {value} for {source_name} at {p["start"]}.')
 
 
 dynamic_price_sources = (
     IbexBgIdm(),
+    NordPool(),
 )
 
 
