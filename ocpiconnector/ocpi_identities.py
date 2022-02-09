@@ -72,7 +72,7 @@ class OCPIIdentities(metaclass=Singleton):
     def items(self):
         return self._identities_dict.items()
 
-    def get(self, item, default=None) -> str:
+    def get(self, item, default='*') -> str:
         return self._identities_dict[item] if item in self._identities_dict else default
 
     @property
@@ -90,5 +90,29 @@ class OCPIPlatform(metaclass=Singleton):
 
 
 ocpi_platform = OCPIPlatform()
+
+
+def get_our_country_code(role: str, identities=ocpi_identities) -> str:
+    """
+    >>> i = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
+    >>> get_our_country_code('CPO', i)
+    'CI'
+    >>> get_our_country_code('MSP', i)
+    'MI'
+    """
+    country_code, _party_id = identities.get(role).split('*')
+    return country_code
+
+
+def get_our_party_id(role: str, identities=ocpi_identities) -> str:
+    """
+    >>> i = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
+    >>> get_our_party_id('CPO', i)
+    'CCC'
+    >>> get_our_party_id('MSP', i)
+    'MMM'
+    """
+    _country_code, party_id = identities.get(role).split('*')
+    return party_id
 
 # ic(ocpi_platform.is_hub, ocpi_platform.is_cpo, ocpi_platform.is_emsp)

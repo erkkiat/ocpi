@@ -12,7 +12,7 @@ from rest_framework.reverse import reverse
 from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
 from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES
 from ocpi22.ocpi_util import OcpiModule, Ocpi
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
+from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
 class Tariff(models.Model, ModelUtilMixin, OcpiModule):
@@ -38,10 +38,10 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     archived = models.BooleanField(default=False)
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner))
 
     # CPO ID of the CPO that 'owns' this Tariff (following the ISO-15118 standard)
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner))
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
     uid = models.CharField(max_length=36)

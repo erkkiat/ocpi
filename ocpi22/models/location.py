@@ -13,7 +13,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition
 from ocpi22.ocpi_util import OcpiModule, Ocpi
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
+from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
 class Location(models.Model, ModelUtilMixin, OcpiModule):
@@ -35,10 +35,10 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id', 'uid']
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner))
 
     # CPO ID of the CPO that 'owns' this Location (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner))
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.

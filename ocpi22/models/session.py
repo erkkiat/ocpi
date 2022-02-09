@@ -11,7 +11,6 @@ from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES
 from ocpi22.ocpi_util import OcpiModule, Ocpi
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
 class Session(models.Model, ModelUtilMixin, OcpiModule):
@@ -35,10 +34,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     send_updates_to = ['EMSP']
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2)
 
     # CPO ID of the CPO that 'owns' this Session (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3)
 
     # The unique id that identifies the charging session in the CPO platform.
     uid = models.CharField(max_length=36)

@@ -343,51 +343,43 @@ def find_endpoint(country_code, party_id, identifier, endpoint_role) -> Endpoint
 
 
 def send_start_command(request, evse: Evse, token: Token) -> Response:
-    if evse.location.party() != f'{settings.COUNTRY_CODE}*{settings.PARTY_ID}':
-        country_code = evse.location.country_code
-        party_id = evse.location.party_id
-        # noinspection PyUnresolvedReferences
+    country_code = evse.location.country_code
+    party_id = evse.location.party_id
+    # noinspection PyUnresolvedReferences
 
-        endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
-        if endpoint:
-            print(f'*** Sending start command for {evse.location.name}.')
-            data = dict(
-                    response_url=request.build_absolute_uri('/'),
-                    token=TokenSerializer(token).data,
-                    location_id=evse.location.uid,
-                    evse_uid=evse.uid,
-                    authorization_reference=uuid.uuid4().hex,
-            )
-            return ocpi_post(urljoin(f'{endpoint.url}/', 'START_SESSION'), endpoint.get_token_base64(),
-                             data=data)
-        else:
-            print(f'Unable to find endpoint for {evse.location.party()}.')
-            return Response()
+    endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
+    if endpoint:
+        print(f'*** Sending start command for {evse.location.name}.')
+        data = dict(
+            response_url=request.build_absolute_uri('/'),
+            token=TokenSerializer(token).data,
+            location_id=evse.location.uid,
+            evse_uid=evse.uid,
+            authorization_reference=uuid.uuid4().hex,
+        )
+        return ocpi_post(urljoin(f'{endpoint.url}/', 'START_SESSION'), endpoint.get_token_base64(),
+                         data=data)
     else:
-        print(f'Not sending start command to ourself.')
+        print(f'Unable to find endpoint for {evse.location.party()}.')
         return Response()
 
 
 def send_stop_command(request, session: Session) -> Response:
-    if session.location.party() != f'{settings.COUNTRY_CODE}*{settings.PARTY_ID}':
-        country_code = session.location.country_code
-        party_id = session.location.party_id
-        # noinspection PyUnresolvedReferences
+    country_code = session.location.country_code
+    party_id = session.location.party_id
+    # noinspection PyUnresolvedReferences
 
-        endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
-        if endpoint:
-            print(f'*** Sending stop command for {session}.')
-            data = dict(
-                response_url=request.build_absolute_uri('/'),
-                session_id=session.uid,
-            )
-            ic(data)
-            ic(endpoint.url)
-            return ocpi_post(urljoin(f'{endpoint.url}/', 'STOP_SESSION'), endpoint.get_token_base64(),
-                             data=data)
-        else:
-            print(f'Unable to find endpoint for {session.party()}.')
-            return Response()
+    endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
+    if endpoint:
+        print(f'*** Sending stop command for {session}.')
+        data = dict(
+            response_url=request.build_absolute_uri('/'),
+            session_id=session.uid,
+        )
+        ic(data)
+        ic(endpoint.url)
+        return ocpi_post(urljoin(f'{endpoint.url}/', 'STOP_SESSION'), endpoint.get_token_base64(),
+                         data=data)
     else:
-        print(f'Not sending commands to ourself.')
+        print(f'Unable to find endpoint for {session.party()}.')
         return Response()

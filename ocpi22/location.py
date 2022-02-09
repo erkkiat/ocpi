@@ -528,6 +528,7 @@ class LocationViewSet(mixins.ListModelMixin,
             serializer = LocationSaveSerializer(location, data=data)
             if serializer.is_valid():
                 serializer.save()
+                Location.send_hub_updates(serializer.data)
                 http_status = status.HTTP_200_OK if location else status.HTTP_201_CREATED
                 return OCPIResponse(serializer.data, http_status=http_status)
             else:

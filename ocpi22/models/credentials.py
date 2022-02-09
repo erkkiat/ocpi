@@ -8,7 +8,6 @@ from django.dispatch import receiver
 
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import ModelUtilMixin, generate_random_token
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
@@ -110,10 +109,10 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     business_details = models.ForeignKey(BusinessDetails, on_delete=models.PROTECT, related_name='credentialsroles')
 
     # ISO-3166 alpha-2 country code
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2)
 
     # ID of the party
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3)
 
     credentials = models.ManyToManyField(Credentials, related_name='roles')
 

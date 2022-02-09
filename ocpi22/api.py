@@ -30,8 +30,8 @@ from ocpi22.models.cdr import Cdr
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator
 from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpi22.versions import get_endpoints_dict
+from ocpiconnector.management.commands.exchange_credentials import get_our_roles
 from ocpiconnector.ocpi_identities import ocpi_platform
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
 
 default_error_messages = dict(
     object_missing='There is no {name} with UID `{uid}` in our database'
@@ -407,21 +407,6 @@ class CredentialsSerializer(serializers.ModelSerializer):
     url = serializers.URLField()
     roles = RolesSerializer(many=True)
 
-    # noinspection PyUnresolvedReferences
-    # def create(self, validated_data):
-    #     try:
-    #         roles = validated_data.pop('roles')
-    #         credentials = Credentials.objects.create(**validated_data)
-    #         for role_dict in roles:
-    #             business_details_dict = role_dict.pop('business_details')
-    #             business_details = BusinessDetails.objects.create(**business_details_dict)
-    #             CredentialsRole.objects.create(credentials=credentials,
-    #                                            business_details=business_details,
-    #                                            **role_dict)
-    #         return credentials
-    #     except IntegrityError:
-    #         raise NotFound(code=405, detail='This Credentials already exists. Try doing a PUT or DELETE.')
-
 
 class CredentialsViewSet(mixins.CreateModelMixin,
                          GenericViewSet):
@@ -448,14 +433,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
                 url=request.build_absolute_uri(reverse('base-versions')),
 
                 # Todo: Check this, should be "Retrieves the credentials object to access the server’s platform"
-                roles=[dict(
-                    role='CPO',
-                    country_code=COUNTRY_CODE,
-                    party_id=PARTY_ID,
-                    business_details=dict(
-                        name=os.environ.get('BUSINESS_NAME', 'Please set BUSINESS_NAME in server environment')
-                    )
-                )]
+                roles=get_our_roles(),
             )
         )
 
@@ -482,15 +460,6 @@ class CredentialsViewSet(mixins.CreateModelMixin,
             assert isinstance(role, dict)
             serializer = RolesSerializer(data=role)
             if serializer.is_valid():
-                # They should definitely not have the same operator ID as we do
-                # ic(serializer.data, settings.COUNTRY_CODE, settings.PARTY_ID)
-                # if serializer.data.get('country_code') == settings.COUNTRY_CODE \
-                #   and serializer.data.get('party_id') == settings.PARTY_ID:
-                #     return OCPIResponse(status_message=f'You are not allowed to use the same operator ID '
-                #                         f'"{settings.COUNTRY_CODE}*{settings.PARTY_ID}" as we do.',
-                #                         http_status=status.HTTP_400_BAD_REQUEST,
-                #                         status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-
                 data = serializer.data
                 bd = data.pop('business_details')
                 business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(**bd)

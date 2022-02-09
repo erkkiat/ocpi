@@ -14,9 +14,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get('SECRET_KEY', 'idnty9dyt3178oxr3xfgxr328oxntr')
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
 
-PARTY_ID = os.environ.get('PARTY_ID', 'XXX')
-COUNTRY_CODE = os.environ.get('COUNTRY_CODE', 'XX')
-
 # Send updates to partners who we have Credentials for
 SEND_UPDATES = os.environ.get('SEND_UPDATES', True)
 UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'

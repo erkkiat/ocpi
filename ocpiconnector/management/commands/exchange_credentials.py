@@ -119,7 +119,7 @@ class Command(BaseCommand):
         def heading(s):
             self.stdout.write(f"\n\n{Style.BRIGHT}{s}\n{Style.RESET_ALL}")
 
-        token_base64 = options['token_a']
+        token_base64 = base64.b64encode(str(options['token_a']).encode('ascii')).decode('ascii')
         url = options['versions_endpoint_url']
         token_b = generate_random_token().upper()
         try:

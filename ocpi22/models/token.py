@@ -3,7 +3,7 @@ from rest_framework.reverse import reverse
 
 from ocpi22.util import ModelUtilMixin
 from ocpi22.ocpi_util import OcpiModule, Ocpi
-from ocpiconnector.settings import COUNTRY_CODE, PARTY_ID
+from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
 class Token(models.Model, ModelUtilMixin, OcpiModule):
@@ -27,10 +27,10 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     upper_case_fields = ('country_code', 'party_id', 'uid', 'contract_id', 'language')
 
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
-    country_code = models.CharField(max_length=2, default=COUNTRY_CODE)
+    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner))
 
     # CPO ID of the MSP that 'owns' this Token (following the ISO-15118)
-    party_id = models.CharField(max_length=3, default=PARTY_ID)
+    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner))
 
     # Unique ID by which this Token can be identified.
     # This is the field used by CPO system (RFID reader on the Charge Point) to identify this token.

@@ -859,8 +859,6 @@ class UpdatePartiesTest(TestCase):
     @time_machine.travel(datetime(2000, 1, 1, 12, 0, tzinfo=pytz.utc))
     @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
     def test_update_new_token(self, mock_put: Mock):
-        settings.COUNTRY_CODE = 'CC'
-        settings.PARTY_ID = 'PAR'
         settings.SEND_UPDATES = True
         settings.BACKGROUND_SEND = False
         our_country_code, our_party_id = Token.get_owner_party().split('*')
