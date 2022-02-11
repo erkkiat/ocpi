@@ -1,8 +1,11 @@
 import logging
+import os
 from datetime import datetime, timedelta
 
 import requests
 from django.db import models
+from requests import JSONDecodeError
+from requests.auth import HTTPBasicAuth
 
 DYNAMIC_PRICE_SOURCE_CHOICES = (
     ('IBEXBGIDM', 'IBEX.bg Intraday'),
@@ -88,14 +91,19 @@ class IbexBgIdm(PriceSource):
         return datetime(2000 + year, month, day, hour, minute)
 
     def update(self):
-        response = requests.get('https://node-red-electro.eu-gb.mybluemix.net/prices_3333_electro')
-        prices = response.json()
-        for p in prices:
-            end_date = self._convert_date_format(p['Date/Hour'])
-            start_date = end_date - timedelta(hours=1)
-            price = float(p['Avg.price']) / 1000.0
-            # print(p, start_date, end_date, price)
-            self._upsert_to_database(start_date, end_date, price)
+        try:
+            credentials = os.environ.get('IBEX_CREDENTIALS', ':')
+            user, password = credentials.split(':')
+            response = requests.get(os.environ.get('IBEX_URL'), verify=False, auth=HTTPBasicAuth(user, password))
+            prices = response.json()
+            for p in prices:
+                end_date = self._convert_date_format(p['Date/Hour'])
+                start_date = end_date - timedelta(hours=1)
+                price = float(p['Avg.price']) / 1000.0
+                # print(p, start_date, end_date, price)
+                self._upsert_to_database(start_date, end_date, price)
+        except JSONDecodeError as e:
+            raise requests.exceptions.ConnectionError('Missing IBEX_CREDENTIALS or JSON format error.')
 
 
 class NordpoolFr(PriceSource):
