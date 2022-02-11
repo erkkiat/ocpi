@@ -36,7 +36,11 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
 from ocpi22.ocpi_util import OCPIResponse, Ocpi
+from ocpi22.test_data import ocpi_endpoints_response
 from ocpi22.tokens import get_admin_token
+from ocpiconnector.management.commands import exchange_credentials
+
+faketime = datetime(2000, 1, 1, 12, 0)
 
 
 def load_tests(_loader, tests, _ignore):
@@ -376,7 +380,7 @@ class ApiPutTests(TestCase):
             response = self.put(url, data, token_base64, viewset)
             if response.status_code >= 300:
                 print(f'status_text: "{response.status_text}" for {filename} case.')
-                ic(response.data)
+                # ic(response.data)
             self.assertEqual(response.status_code, http_status,
                              f'Expected a HTTP status code {http_status} for {filename} case.')
             self.assertEqual(response.data['status_code'], ocpi_status,
@@ -750,56 +754,59 @@ class CommandTests(TestCase):
 
 
 # This method will be used by the mock to replace requests.get
-class MockedRequests:
-    class MockResponse:
-        def __init__(self, json_data, status_code):
-            ic()
-            self.json_data = json_data
-            self.status_code = status_code
+# class MockedRequests:
+#     class MockResponse:
+#         def __init__(self, json_data, status_code):
+#             ic()
+#             self.json_data = json_data
+#             self.status_code = status_code
+#
+#         def json(self):
+#             ic()
+#             return self.json_data
+#
+#         @property
+#         def status_code(self):
+#             # Always successful
+#             return 200
+#
+#     def get(self, *args, **_kwargs):
+#         if args[0] == 'http://someurl.com/test.json':
+#             return self.MockResponse({"key1": "value1"}, 200)
+#         elif args[0] == 'http://someotherurl.com/anothertest.json':
+#             return self.MockResponse({"key2": "value2"}, 200)
+#
+#         return self.MockResponse(None, 404)
 
-        def json(self):
-            ic()
-            return self.json_data
 
-        @property
-        def status_code(self):
-            # Always successful
-            return 200
+class MockResponse:
+    def __init__(self, json_data, status_code, headers=None, data=None, reason='Mocked function'):
+        self.json_data = json_data
+        self._status_code = status_code
+        self.reason = reason
+        self.headers = headers
+        self.data = data
 
-    def get(self, *args, **kwargs):
+    def json(self):
+        return self.json_data
 
-        ic()
-        if args[0] == 'http://someurl.com/test.json':
-            return self.MockResponse({"key1": "value1"}, 200)
-        elif args[0] == 'http://someotherurl.com/anothertest.json':
-            return self.MockResponse({"key2": "value2"}, 200)
+    @property
+    def text(self):
+        return self.json_data
 
-        return self.MockResponse(None, 404)
+    def get_status_code(self):
+        return self._status_code
+
+    def set_status_code(self, value):
+        self._status_code = value
+
+    status_code = property(get_status_code, set_status_code)
 
 
 class UpdatePartiesTest(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
     def mocked_token_put(*args, **kwargs):
-        class MockResponse:
-            def __init__(self, json_data, status_code, headers, data, reason='Mocked function'):
-                self.json_data = json_data
-                self._status_code = status_code
-                self.reason = reason
-                self.headers = headers
-                self.data = data
-
-            def json(self):
-                ic()
-                return self.json_data
-
-            def get_status_code(self):
-                return self._status_code
-
-            def set_status_code(self, value):
-                self._status_code = value
-
-            status_code = property(get_status_code, set_status_code)
 
         # ic(args, kwargs)
         headers = {'Authorization': 'Token '
@@ -811,19 +818,17 @@ class UpdatePartiesTest(TestCase):
                    'OCPI-to-party-id': '001'}
         return MockResponse(dict(hello=1), 200, headers=kwargs.get('headers'), data=kwargs.get('json'))
 
-    faketime = datetime(2000, 1, 1, 12, 0)
-
     @time_machine.travel(faketime)
     def test_update_last_updated(self):
         # Let's try our Token
         token = Token.objects.get(uid='FIMSP-1')
         token.update_last_updated()
-        self.assertEqual(token.last_updated, self.faketime)
+        self.assertEqual(token.last_updated, faketime)
 
         # Then someone else's
         token = Token.objects.get(uid='T1')
         token.update_last_updated()
-        self.assertNotEqual(token.last_updated, self.faketime)
+        self.assertNotEqual(token.last_updated, faketime)
 
     def test_is_ours(self):
         # Let's try someone elses token
@@ -905,3 +910,65 @@ def check_ok_result(testcase: TestCase, response, status_code: int = 1000, http_
     if command_result:
         testcase.assertEqual(response.data.get('data').get('result'), command_result,
                              msg=f'Expecting the result "{command_result}"')
+
+
+fake_token = '1234567890'
+
+
+class TestCredentials(TestCase):
+    fixtures = ['ocpi22/data/test-database-1.json']
+
+    def mocked_credentials_get(url, *args, **kwargs):
+        assert isinstance(url, str)
+        # ic(url, args, kwargs)
+
+        response_data = {
+            'http://localhost/versions': [{'url': 'http://localhost/ocpi/cpo/2.2/', 'version': '2.2'}],
+            'http://localhost/ocpi/cpo/2.2/': ocpi_endpoints_response,
+            'http://localhost/ocpi/cpo/2.2/credentials': ocpi_endpoints_response,
+        }
+        return MockResponse(response_data[url], 200)
+
+    def mocked_credentials_post(url, *args, **kwargs):
+        # ic(args, kwargs)
+        response = {"status_code": 1000, "status_message": "", "timestamp": timezone.now(),
+                    "data": {"token": fake_token + fake_token,
+                             "url": "http://localhost:8000/ocpi/versions/", "roles": [
+                            {"country_code": "FI", "party_id": "HUB", "role": "HUB",
+                             "business_details": {"name": "ChargerHub.EU"}}]}}
+
+        return MockResponse(response, 200)
+
+    @time_machine.travel(faketime)
+    @patch('ocpiconnector.management.commands.exchange_credentials.generate_random_token', side_effect=[fake_token])
+    @patch('ocpiconnector.management.commands.exchange_credentials.requests.post', side_effect=mocked_credentials_post)
+    @patch('ocpiconnector.management.commands.exchange_credentials.requests.get', side_effect=mocked_credentials_get)
+    def test_exchange(self, mock_get: Mock, mock_post: Mock, _mock_generate_random_token):
+        command = exchange_credentials.Command()
+        result = command.handle(token_a='918273', versions_endpoint_url='http://localhost/versions')
+
+        # Let's examine what was actually sent
+        args, kwargs = mock_get.call_args
+
+        expected_headers = {'Authorization': 'Token OTE4Mjcz'}
+
+        self.assertDictEqual(kwargs['headers'], expected_headers,
+                             'Headers differ from expected')
+
+        args, kwargs = mock_post.call_args
+
+        expected_data = {'roles': [{'business_details': {'name': 'ChargerHub.EU', 'website': ''},
+                                    'country_code': 'FI',
+                                    'party_id': 'CPO',
+                                    'role': 'CPO'},
+                                   {'business_details': {'name': 'ChargerHub.EU', 'website': ''},
+                                    'country_code': 'FI',
+                                    'party_id': 'MSP',
+                                    'role': 'EMSP'}],
+                         'token': fake_token,
+                         'url': 'http://localhost:8000/ocpi/versions/'}
+
+        json_data = kwargs['json']
+        # ic(json_data)
+        # ic(kwargs['headers'])
+        self.assertDictEqual(json_data, expected_data, 'Credentials endpoint gives an unexpected response')
