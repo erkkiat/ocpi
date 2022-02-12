@@ -92,6 +92,9 @@ class Credentials(models.Model, ModelUtilMixin):
         # noinspection PyUnresolvedReferences
         return Credentials.objects.create(token_a=token) if create else None
 
+    def is_complete(self) -> bool:
+        return bool(self.ours and self.theirs)
+
 
 class CredentialsRole(models.Model, ModelUtilMixin):
     class Meta:

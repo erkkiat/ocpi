@@ -95,6 +95,11 @@ form .submit-row a.deletelink {
 }
 
 /* line 86, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+.delete-confirmation form div .cancel-link {
+  height: 40px;
+}
+
+/* line 90, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 :root {
   --smoky-black: #14110fff;
   --jet: #34312dff;
@@ -146,7 +151,7 @@ form .submit-row a.deletelink {
   --object-tools-hover-bg: var(--close-button-hover-bg);
 }
 
-/* line 145, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 149, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .muted {
   color: #ffffff80;
   font-size: smaller;

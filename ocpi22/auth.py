@@ -38,8 +38,8 @@ def check_auth_token(request, token):
             # NOTE: At a given time, one party may possess all three tokens while the other has only two
 
             credentials = credentials_matches[0]
-            if credentials.ours and credentials.theirs:
-                raise exceptions.NotAuthenticated(f'TOKEN_A has expired when TOKEN_B and TOKEN_C were exchanged')
+            if credentials.is_complete():
+                raise exceptions.NotAuthenticated(f'TOKEN_A has expired when the credentials exchange was completed')
 
             request.ocpi_auth = OcpiAuthTypes.TOKEN_A
             request.credentials = credentials

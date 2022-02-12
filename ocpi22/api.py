@@ -73,7 +73,7 @@ class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
         model = PriceComponent
         fields = ('type', 'price', 'vat', 'step_size')
 
-    step_size = serializers.IntegerField(min_value=1, max_value=24*60*60)
+    step_size = serializers.IntegerField(min_value=1, max_value=24 * 60 * 60)
 
 
 class ElementsSaveSerializer(serializers.Serializer):
@@ -177,7 +177,7 @@ class TokenViewSet(mixins.ListModelMixin,
 
     @staticmethod
     @transaction.atomic
-    def put(request, country_code = None, party_id = None, uid = None):
+    def put(request, country_code=None, party_id=None, uid=None):
         data = request.data.get('data', request.data)
         uid = uid or data.get('uid')
         party_id = party_id or data.get('party_id')
@@ -224,7 +224,7 @@ class TokenViewSet(mixins.ListModelMixin,
             )
         )
 
-    def get(self, request, country_code = None, party_id = None, uid = None):
+    def get(self, request, country_code=None, party_id=None, uid=None):
         if country_code and party_id and uid:
             token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
             serializer = TokenSerializer(token, many=False, context={'request': request})
@@ -462,7 +462,9 @@ class CredentialsViewSet(mixins.CreateModelMixin,
             if serializer.is_valid():
                 data = serializer.data
                 bd = data.pop('business_details')
-                business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(**bd)
+                business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(
+                    name=bd.get('name'), website=bd.get('website', ''), defaults=dict(logo=bd.get('logo', ''))
+                )
 
                 role, _role_created = CredentialsRole.objects.get_or_create(
                     **data, defaults=dict(business_details=business_details))
@@ -473,8 +475,16 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
         # Delay storing tokens until now, in case the roles have some issue
         credentials.save()
-
         serializer = CredentialsSerializer(instance=credentials)
+
+        if not credentials.is_complete():
+            # Let's respond, we are only half way through
+            from ocpi22 import tasks
+            tasks.exchange_credentials.apply_async(
+                (credentials.token_a, credentials.url),
+                countdown=2,
+                retry=True, retry_policy=dict(max_retries=5, interval_start=2))
+
         return OCPIResponse(serializer.data)
 
 
@@ -516,7 +526,7 @@ class ConnectorIdSerializer(serializers.Serializer):
     default_error_messages = default_error_messages
 
     def to_representation(self, instance: Session):
-        return instance.connector.uid if hasattr(instance, 'connector')  and instance.connector else None
+        return instance.connector.uid if hasattr(instance, 'connector') and instance.connector else None
 
     def to_internal_value(self, data: str):
         connector = Connector.get_if_exists(uid=data)
@@ -772,5 +782,3 @@ class OCPIRouter(routers.DefaultRouter):
     def __init__(self):
         super().__init__()
         self.trailing_slash = '/?'
-
-

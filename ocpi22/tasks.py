@@ -31,10 +31,10 @@ app = celery.Celery('ocpi22.tasks')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 app.conf.beat_schedule = {
-    #     'run-me-every-minute': {
-    #         'task': 'ocpi22.tasks.celery_heartbeat',
-    #         'schedule': 60
-    #     },
+    'run-me-every-minute': {
+        'task': 'ocpi22.tasks.celery_heartbeat',
+        'schedule': 60 * 5
+    },
     'set-spot-prices-every-hour': {
         'task': 'ocpi22.tasks.set_spot_prices',
         'schedule': crontab(minute=0)
@@ -225,3 +225,10 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
     if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-400:])
         logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')
+
+
+@app.task()
+def exchange_credentials(token, url):
+    from ocpiconnector.management.commands import exchange_credentials
+    command = exchange_credentials.Command()
+    command.handle(token_a=token, versions_endpoint_url=url)
