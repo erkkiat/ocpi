@@ -154,8 +154,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.cdr_token_type} {self.cdr_token_uid} - {self.total_cost_incl_vat} {self.currency} - ' \
-               f'{(self.total_time / 60.0):.4f} hours - {self.end_date_time}'
+        return f'{self.end_date_time:%d.%m.%Y} - {self.cdr_token_uid} - ' \
+               f'{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)} - ' \
+               f'{hours_minutes(self.total_time)}'
 
     def get_absolute_url(self):
         return reverse('cdr-by-id', args=[self.country_code, self.party_id, self.uid])

@@ -310,7 +310,7 @@ class CdrAdmin(admin.ModelAdmin):
     )
     # list_filter = ['party_id', 'auth_method', 'credit']
     list_display_links = ['start_date_time']
-    search_fields = ['party_id', 'country_code', 'session_id', 'uid']
+    search_fields = ['party_id', 'country_code', 'session_id', 'uid', 'cdr_location_evse_id', 'cdr_location_name']
     autocomplete_fields = ['tariffs']
 
     def has_delete_permission(self, request, obj=None) -> bool:
@@ -334,7 +334,6 @@ class SessionAdmin(admin.ModelAdmin):
         'start_date_time',  # Todo: Show time in local timezone
         'status',
         'evse', 'connector',
-        'cdr_token_uid',
         'total_time', 'kwh', 'cost'
     ]
     fieldsets = (
