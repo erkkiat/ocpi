@@ -164,7 +164,7 @@ WSGI_APPLICATION = 'ocpiconnector.wsgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['ocpiconnector/templates', 'templates'],
+        'DIRS': ['templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -179,6 +179,8 @@ TEMPLATES = [
     },
 ]
 
+# Todo: Use Redis as Messages backend
+
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -186,10 +188,10 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.admin',
     # 'django.contrib.admindocs',
     'ocpi22',
     'ocpiconnector',
+    'django.contrib.admin',
     'whitenoise',
     'rest_framework',
     'django_filters',

@@ -1,10 +1,11 @@
 import base64
-import logging
 import os
 
 import requests
 from django.conf import settings
+from django.core import exceptions
 from django.core.management.base import BaseCommand
+from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.models.credentials import Credentials, Endpoint
@@ -48,14 +49,20 @@ def get_our_roles(source: dict = os.environ) -> list:
     # Todo: Support multi-country CPOs / eMSPs
 
 
+class NoCommonVersion(SyntaxError):
+    pass
+
+
+class OCPIProtocolError(SyntaxError):
+    errno = None
+
+    def __init__(self, msg, errno=None):
+        super().__init__(msg)
+        self.errno = errno
+
+
 class Command(BaseCommand):
     help = 'Exchange the credentials tokens with a new or existing partner.'
-
-    class NoCommonVersion(Exception):
-        pass
-
-    class ProtocolError(Exception):
-        pass
 
     def ocpi_get(self, url, token_base64):
         self.stdout.write(f'Getting {url}')
@@ -63,7 +70,8 @@ class Command(BaseCommand):
         if response.status_code != 200:
             self.stdout.write(f'{Back.RED}*** Got response: {response.status_code} - {response.reason}')
             self.stdout.write(response.text)
-            raise self.ProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}')
+            raise OCPIProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}',
+                                    errno=response.status_code)
         return response
 
     def ocpi_post(self, url, token_base64, *args, **kwargs):
@@ -72,7 +80,8 @@ class Command(BaseCommand):
         if response.status_code != 200:
             self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
             self.stdout.write(response.text)
-            raise self.ProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}')
+            raise OCPIProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}',
+                                    errno=response.status_code)
         return response
 
     def add_arguments(self, parser):
@@ -87,8 +96,8 @@ class Command(BaseCommand):
             # ic(versions_response.json())
             for version_option in versions_response.json():
                 if "version" not in version_option or "url" not in version_option:
-                    raise SyntaxError('Version information not found in received data. '
-                                      'Make sure you have the OCPI versions URL.')
+                    raise OCPIProtocolError('Version information not found in received data. '
+                                            'Make sure you have the OCPI versions URL.')
                 # ic(version_option)
                 # Todo: Support earlier versions also
                 if version_option['version'] == '2.2':
@@ -97,7 +106,7 @@ class Command(BaseCommand):
             if not selected_version:
                 raise self.NoCommonVersion('There is no common version available.')
         else:
-            print(f'*** Error connecting: {versions_response.status_code} {versions_response.reason}')
+            raise ConnectionError(f'Error connecting: {versions_response.status_code} {versions_response.reason}')
 
         return selected_version
 
@@ -113,7 +122,7 @@ class Command(BaseCommand):
                 credentials_url = endpoint.get('url')
                 # self.stdout.write(f'Credentials receiver URL: {credentials_url}')
                 return credentials_url
-        raise self.ProtocolError('There is no credentials_url provided by the other party')
+        raise OCPIProtocolError('There is no credentials_url provided by the other party')
 
     def handle(self, *args, **options):
         def heading(s):
@@ -156,8 +165,9 @@ class Command(BaseCommand):
             # Get information for all roles present in environment variables
             roles = get_our_roles()
             if not roles:
-                logging.error(f'You need to set the OCPI roles of this Platform in environment variables, '
-                              f'e.g. "CPO=NL*EON". The options are: {", ".join(role_options)}')
+                raise exceptions.ImproperlyConfigured(
+                    f'You need to set the OCPI roles of this Platform in environment variables, '
+                    f'e.g. "CPO=NL*EON". The options are: {", ".join(role_options)}')
 
             data_to_send = dict(
                 token=token_b,
@@ -169,12 +179,16 @@ class Command(BaseCommand):
                 token_base64,
                 json=data_to_send
             )
+            ic(_credentials_response)
             if credentials.ours and credentials.theirs:
                 heading(Style.BRIGHT + 'Credentials exchange has been finished successfully.' + Style.RESET_ALL)
             else:
                 heading('Credentials exchange first part was successful, now initiate from the other end.')
+            return True
 
         except requests.exceptions.ConnectionError as e:
             print(f'{Back.RED}*** Cannot reach the URL you specified: {str(e)}')
-        except self.ProtocolError as e:
+            raise
+        except OCPIProtocolError as e:
             print(f'{Back.RED}*** There has been a protocol error: {str(e)}')
+            raise

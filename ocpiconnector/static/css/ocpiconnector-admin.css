@@ -84,7 +84,17 @@ div.model:hover {
   transform: scale(1.05);
 }
 
-/* line 79, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 78, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+.w-10 {
+  width: 10%;
+}
+
+/* line 82, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+form .submit-row a.deletelink {
+  height: 35px;
+}
+
+/* line 86, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 :root {
   --smoky-black: #14110fff;
   --jet: #34312dff;
@@ -136,7 +146,7 @@ div.model:hover {
   --object-tools-hover-bg: var(--close-button-hover-bg);
 }
 
-/* line 138, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 145, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .muted {
   color: #ffffff80;
   font-size: smaller;

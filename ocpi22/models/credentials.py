@@ -1,10 +1,15 @@
 import base64
 import secrets
 
+from django import forms
+from django.contrib import messages
 from django.db import models
 from django.db.models import Q
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from icecream import ic
 
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import ModelUtilMixin, generate_random_token
@@ -164,6 +169,34 @@ class Endpoint(models.Model, ModelUtilMixin):
     def get_token_base64(self):
         token = self.credentials.theirs
         return base64.b64encode(str(token).encode('ascii')).decode('ascii')
+
+
+class NewConnection(forms.Form):
+    versions_url = forms.URLField()
+    token_a = forms.CharField(max_length=64)
+
+
+def new_connection(request):
+    try:
+        if request.method == 'POST':
+            form = NewConnection(request.POST)
+            ic(request.POST, form.fields)
+            if form.is_valid():
+                from ocpiconnector.management.commands import exchange_credentials
+                command = exchange_credentials.Command()
+                result = command.handle(token_a=form.cleaned_data.get('token_a'),
+                                        versions_endpoint_url=form.cleaned_data.get('versions_url'))
+                messages.success(request,
+                                 result if isinstance(result, str) else 'A new connection has been established')
+            else:
+                messages.error(request, form.errors)
+    except SyntaxError as e:
+        msg = str(e)
+        if e.errno == 403:
+            msg = 'The token is not accepted by the other party (HTTP 403)'
+        messages.error(request, msg)
+
+    return HttpResponseRedirect(reverse('admin:ocpi22_credentials_changelist'))
 
 
 @receiver(pre_save, sender=Credentials)

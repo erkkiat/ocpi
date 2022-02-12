@@ -11,6 +11,7 @@ from ocpi22.cpo_api import CPORouter, \
     SessionViewSet as CpoSessionViewSet, LocationQuickViewSet
 
 from ocpi22.location import LocationViewSet
+from ocpi22.models.credentials import new_connection
 from ocpi22.versions import VersionsViewSet, BaseRouter
 from ocpiconnector import charger_simulator
 
@@ -41,6 +42,7 @@ urlpatterns = [
     path('ocpi/', include(common_router.urls)),
     path('simulator/', include(charger_simulator.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    path('admin/ocpi22/credentials/connection/new', new_connection, name='new-connection'),
     path('admin/', admin.site.urls),
     path('_nested_admin/', include('nested_admin.urls')),
     path('openapi', get_schema_view(
