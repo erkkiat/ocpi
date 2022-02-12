@@ -35,6 +35,47 @@ fieldset.module {
     }
 }
 
+.container {
+    h1 {
+        margin-top: 1em;
+    }
+}
+
+div.model {
+    border: 2px solid #606060;
+    border-radius: 13px;
+    text-align: left;
+    min-width: 12em;
+    line-height: 1.1em;
+    max-width: 260px;
+    font-size: larger;
+    a:not(.secondary) {
+        display: block;
+    }
+    div {
+        display: inline;
+    }
+    .secondary {
+        font-size: x-small;
+        margin-left: 4px;
+    }
+    transition: transform .2s;
+    .button-image {
+        display: inline;
+//         position: relative;
+        img {
+            height: 80px;
+            padding-right: 10px;
+            margin: -12px 0;
+        }
+    }
+}
+    div.model:hover {
+        transform: scale(1.05);
+//         cursor: pointer;
+    }
+
+
 :root {
 --smoky-black: #14110fff;
 --jet: #34312dff;

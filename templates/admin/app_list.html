@@ -1,52 +1,90 @@
-{% load i18n %}
+{% load i18n %}{% load static %}
 
-{% if app_list %}
-  {% for app in app_list %}
-    <div class="app-{{ app.app_label }} module{% if app.app_url in request.path %} current-app{% endif %}">
-      <table>
-        <caption>
-          <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>
-        </caption>
-        {% for model in app.models %}
-          <tr class="model-{{ model.object_name|lower }}{% if model.admin_url in request.path %} current-model{% endif %}">
-            {% if model.admin_url %}
-              <th scope="row"><a href="{{ model.admin_url }}"{% if model.admin_url in request.path %} aria-current="page"{% endif %}>{{ model.name }}</a></th>
-            {% else %}
-              <th scope="row">{{ model.name }}</th>
-            {% endif %}
-
-            {% if model.add_url %}
-              <td><a href="{{ model.add_url }}" class="addlink">{% translate 'Add' %}</a></td>
-            {% else %}
-              <td></td>
-            {% endif %}
-
-            {% if model.admin_url and show_changelinks %}
-              {% if model.view_only %}
-                <td><a href="{{ model.admin_url }}" class="viewlink">{% translate 'View' %}</a></td>
-              {% else %}
-                <td><a href="{{ model.admin_url }}" class="changelink">{% translate 'Change' %}</a></td>
-              {% endif %}
-            {% elif show_changelinks %}
-              <td></td>
-            {% endif %}
-          </tr>
-        {% endfor %}
-      </table>
+<div class="row mt-5">
+    <div class="col-lg-4 col-md-6 pb-md-5 pb-2">
+        <div class="model row ml-3">
+            <div class="col">
+                <div class="button-image">
+                    <img src="{% static 'images/buttons/charge-point.svg' %}">
+                </div>
+            </div>
+            <div class="col pt-2">
+                <a href="{% url 'admin:ocpi22_location_changelist' %}">
+                    {% translate "Locations" %}
+                </a>
+                <a class="secondary" href="{% url 'admin:ocpi22_evse_changelist' %}">
+                    {% translate "EVSEs" %}
+                </a>
+            </div>
+        </div>
     </div>
-  {% endfor %}
-<div class="app-reports module{% if 'reports' in request.path %} current-app{% endif %}">
-  <table>
-    <caption>
-      <a href="#" class="section" title="Reports">{% translate 'Reports' %}</a>
-    </caption>
-    <tr class="view-billing{% if 'reports' in request.path %} current-model{% endif %}">
-      <th scope="row"><a href="#">{% translate 'Billing' %}</a></th>
-      <td></td>
-      <td><a href="#" class="viewlink">{% translate 'View' %}</a></td>
-    </tr>
-  </table>
+
+    <div class="col-lg-4 col-md-6 pb-md-5 pb-2 pb-md-5 pb-2">
+        <div class="model row">
+            <div class="col">
+                <div class="button-image">
+                    <img src="{% static 'images/buttons/user.svg' %}">
+                </div>
+            </div>
+            <div class="col pt-2">
+                <a href="{% url 'admin:auth_user_changelist' %}">
+                    {% translate "Users" %}
+                </a>
+                <a class="muted secondary" href="{% url 'admin:auth_group_changelist' %}">
+                    {% translate "Groups" %}
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6 pb-md-5 pb-2">
+        <div class="model row">
+            <div class="col">
+                <div class="button-image">
+                    <img src="{% static 'images/buttons/credentials.svg' %}">
+                </div>
+            </div>
+            <div class="col pt-2">
+                <a href="{% url 'admin:ocpi22_credentials_changelist' %}">
+                    {% translate "Credentials" %}
+                </a>
+                <a class="muted secondary" href="{% url 'admin:ocpi22_credentialsrole_changelist' %}">
+                    {% translate "Roles" %}
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6 pb-md-5 pb-2">
+        <div class="model row">
+            <div class="col">
+                <div class="button-image">
+                    <img src="{% static 'images/buttons/money.svg' %}">
+                </div>
+            </div>
+            <div class="col pt-2">
+                <a href="{% url 'admin:ocpi22_cdr_changelist' %}">
+                    {% translate "Billing records" %}
+                </a>
+                <a class="muted secondary" href="{% url 'admin:ocpi22_session_changelist' %}">
+                    {% translate "Sessions" %}
+                </a>
+                <a class="muted secondary" href="{% url 'admin:ocpi22_tariff_changelist' %}">
+                    {% translate "Tariffs" %}
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6 pb-md-5 pb-2">
+        <div class="model row">
+            <div class="col">
+                <div class="button-image">
+                    <img src="{% static 'images/buttons/token.svg' %}">
+                </div>
+            </div>
+            <div class="col pt-2">
+                <a href="{% url 'admin:ocpi22_token_changelist' %}">
+                    {% translate "Tokens" %}
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
-{% else %}
-  <p>{% translate 'You don’t have permission to view or edit anything.' %}</p>
-{% endif %}

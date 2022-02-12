@@ -34,7 +34,57 @@ fieldset.module .form-row .fieldBox label.vCheckboxLabel {
   padding: 9px 6px;
 }
 
-/* line 38, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 39, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+.container h1 {
+  margin-top: 1em;
+}
+
+/* line 44, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+div.model {
+  border: 2px solid #606060;
+  border-radius: 13px;
+  text-align: left;
+  min-width: 12em;
+  line-height: 1.1em;
+  max-width: 260px;
+  font-size: larger;
+  transition: transform .2s;
+}
+
+/* line 52, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+div.model a:not(.secondary) {
+  display: block;
+}
+
+/* line 55, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+div.model div {
+  display: inline;
+}
+
+/* line 58, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+div.model .secondary {
+  font-size: x-small;
+  margin-left: 4px;
+}
+
+/* line 63, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+div.model .button-image {
+  display: inline;
+}
+
+/* line 66, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+div.model .button-image img {
+  height: 80px;
+  padding-right: 10px;
+  margin: -12px 0;
+}
+
+/* line 73, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+div.model:hover {
+  transform: scale(1.05);
+}
+
+/* line 79, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 :root {
   --smoky-black: #14110fff;
   --jet: #34312dff;
@@ -86,7 +136,7 @@ fieldset.module .form-row .fieldBox label.vCheckboxLabel {
   --object-tools-hover-bg: var(--close-button-hover-bg);
 }
 
-/* line 97, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 138, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .muted {
   color: #ffffff80;
   font-size: smaller;
