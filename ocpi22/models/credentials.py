@@ -52,6 +52,13 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     )
     version = models.CharField(max_length=10, choices=VERSION_CHOICES, blank=True, null=True)
 
+    # Connections are only accepted for valid Credentials
+    valid = models.BooleanField(default=True)
+
+    def soft_delete(self):
+        self.valid = False
+        self.save(update_fields=['valid'])
+
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 

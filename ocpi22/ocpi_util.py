@@ -8,6 +8,7 @@ from django.conf import settings
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.module_loading import import_string
+from icecream import ic
 from requests import Response
 from rest_framework import exceptions, status
 from rest_framework.pagination import LimitOffsetPagination
@@ -17,10 +18,20 @@ from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
 
 
 class OcpiModule:
+    # The serializer class to use when sending updates to other OCPI parties
     ocpi_serializer_class = None
+
+    # The module name to be used when looking for endpoints to send updates to
     ocpi_module_name = None
+
+    # This determines which identity of ours we will use when sending updates for this type of object
     ocpi_object_owner = None
+
+    # A list of roles to receive updates on this type of objects
+    # If you set this to INTERESTED_PARTIES, updates will only be sent to the party which is billed for the transaction
     send_updates_to = []
+
+    INTERESTED_PARTIES = -1
 
     def get_party(self) -> (str, str):
         country_code = self.country_code if hasattr(self, 'country_code') else None
@@ -28,7 +39,7 @@ class OcpiModule:
         return country_code, party_id
 
     @classmethod
-    def get_owner_party(cls) -> str:
+    def get_owner_identity(cls) -> str:
         assert hasattr(cls, 'ocpi_object_owner'), \
             f'The OCPI object {cls} needs to have ocpi_object_owner specified ' \
             f'so that the sender identity is clear when sending updates to other parties.'
@@ -74,38 +85,56 @@ class OcpiModule:
                 serializer_class = import_string(serializer_class)
 
             serializer = serializer_class(self)
-            self._send_updates(serializer.data)
+            if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
+                self.send_update_to_interested_parties(serializer.data)
+            else:
+                self._send_updates(serializer.data)
         else:
             logging.warning(settings.UPDATES_DISABLED)
 
     @classmethod
-    def _send_updates(cls, data, method='put'):
+    def _send_updates(cls, data, method='put') -> bool:
         from ocpi22.models.credentials import Endpoint, CredentialsRole
-        our_country_code, our_party_id = cls.get_owner_party().split('*')
+        our_country_code, our_party_id = cls.get_owner_identity().split('*')
         # ic('Sending updates', cls, cls.send_updates_to)
 
         # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis
-        recipients = CredentialsRole.objects.filter(role__in=cls.send_updates_to). \
-            values_list('credentials', 'country_code', 'party_id')
-        # noinspection PyUnresolvedReferences
-        for c, country_code, party_id in set(recipients):
-            # ic(c, country_code, party_id)
+
+        if isinstance(cls.send_updates_to, list):
+            recipients = CredentialsRole.objects.filter(role__in=cls.send_updates_to). \
+                values_list('credentials', 'country_code', 'party_id')
             # noinspection PyUnresolvedReferences
-            endpoints = Endpoint.objects.filter(
-                identifier=cls.ocpi_module_name,
-                role=Endpoint.RECEIVER,
-                credentials__id=c
-            )
-            e: Endpoint
-            for e in endpoints:
-                logging.info(f'Send update to {cls.ocpi_module_name} module at {e.url}')
-                from ocpi22.tasks import send_update
-                args = data, e.url, e.get_token_base64(), country_code, party_id, \
-                       our_country_code, our_party_id, method
-                if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
-                    send_update.apply_async(args, retry=False)
-                else:
-                    send_update(*args)
+            for c, country_code, party_id in set(recipients):
+                # ic(c, country_code, party_id)
+                # noinspection PyUnresolvedReferences
+                endpoints = Endpoint.objects.filter(
+                    identifier=cls.ocpi_module_name,
+                    role=Endpoint.RECEIVER,
+                    credentials__id=c
+                )
+                e: Endpoint
+                for e in endpoints:
+                    cls._send_update(data, e, country_code, party_id, our_country_code, our_party_id, method)
+            return True
+        logging.error(f"Unable to send updates for {cls}, don't know where to send.")
+        return False
+
+    @classmethod
+    def _send_update(cls, data: dict, e, country_code: str, party_id: str,
+                     our_country_code: str, our_party_id: str, method='put'):
+        ic()
+        ic(e, country_code, party_id, our_country_code, our_party_id)
+        if e and country_code and party_id and our_country_code and our_party_id:
+            logging.info(f'Send update to {cls.ocpi_module_name} module at {e.url}')
+            from ocpi22.tasks import send_update
+            args = data, e.url, e.get_token_base64(), country_code, party_id, \
+                   our_country_code, our_party_id, method
+            if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
+                send_update.apply_async(args, retry=False)
+            else:
+                send_update(*args)
+        else:
+            logging.warning(f"Skipping send for {cls}")
 
     @classmethod
     def send_hub_updates(cls, data) -> None:
@@ -113,6 +142,18 @@ class OcpiModule:
             print(f'Sending HUB updates for {cls}.')
             # ic(data)
             cls._send_updates(data)
+
+    def send_update_to_interested_parties(self, data):
+        if hasattr(self, 'credentials'):
+            ic()
+            our_country_code, our_party_id = self.get_owner_identity().split('*')
+            role = self.credentials.roles.all().first()
+            country_code = role.country_code
+            party_id = role.party_id
+            ic(role, country_code, party_id)
+            endpoint = self.credentials.endpoints.filter(identifier=self.ocpi_module_name, role='RECEIVER').first()
+            ic(endpoint)
+            self._send_update(data, endpoint, country_code, party_id, our_country_code, our_party_id, 'put')
 
 
 def ocpi_post(url, token_base64, *args, **kwargs) -> Response:

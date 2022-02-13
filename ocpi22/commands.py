@@ -212,8 +212,9 @@ class CommandsViewSet(GenericViewSet):
                     connector_id=connector_id,
                     authorization_reference=serializer.data.get('authorization_reference'),
                     ad_hoc_token=token,
-                    authorize=False
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
+                    authorize=False,
+                    credentials=request.credentials,  # The Credentials of the party who will be billed
                 )
 
                 connector_id_from_charger = CHARGER.remote_start_transaction(token.get('uid'), session.evse)
@@ -325,7 +326,7 @@ class CommandsViewSet(GenericViewSet):
 
 
 def get_our_first_token():
-    our_country_code, our_party_id = Token.get_owner_party().split('*')
+    our_country_code, our_party_id = Token.get_owner_identity().split('*')
 
     try:
         return Token.objects.filter(country_code=our_country_code, party_id=our_party_id)[0]

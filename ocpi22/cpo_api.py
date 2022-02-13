@@ -237,7 +237,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     # noinspection PyUnresolvedReferences
     def put(self, request, uid=None):
         if uid:
-            our_country_code, our_party_id = Location.get_owner_party().split('*')
+            our_country_code, our_party_id = Location.get_owner_identity().split('*')
 
             # Write over an existing Location
             location: Location = get_object_or_404(Location,
@@ -252,7 +252,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 
         if serializer.is_valid():
             serializer.save()
-            our_country_code, our_party_id = Location.get_owner_party().split('*')
+            our_country_code, our_party_id = Location.get_owner_identity().split('*')
 
             location: Location = get_object_or_404(Location,
                                                    uid=uid,
@@ -268,7 +268,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
             url_path='(?P<uid>[^/.]+)')
     def by_id(self, request, uid) -> Response:
         # noinspection PyUnresolvedReferences
-        our_country_code, our_party_id = Location.get_owner_party().split('*')
+        our_country_code, our_party_id = Location.get_owner_identity().split('*')
 
         location = get_object_or_404(Location, uid=uid,
                                      country_code=our_country_code,

@@ -444,8 +444,8 @@ class CredentialsViewSet(mixins.CreateModelMixin,
             return OCPIResponse("There seem to be no credentials in use for this request.",
                                 http_status=status.HTTP_405_METHOD_NOT_ALLOWED,
                                 status_code=Ocpi.ClientError.UNKNOWN_TOKEN)
-        logging.warning(f'Deleting {request.credentials} on request by Credential owner.')
-        request.credentials.delete()
+        logging.warning(f'Soft deleting {request.credentials} on request by Credential owner (valid=False).')
+        request.credentials.soft_delete()
         return OCPIResponse(status_message='Your credentials have been deleted, as requested.')
 
     def create(self, request: Request, *args, **kwargs):
@@ -567,46 +567,6 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
                 print(f'Skipping key {key}')
         instance.save()
         return instance
-
-
-# class TariffSaveSerializer(HyperlinkedModelSerializerCleanedUp):
-#     class Meta:
-#         model = Tariff
-#         fields = ('country_code', 'party_id', 'id', 'type',
-#                   'tariff_alt_url', 'elements',
-#                   'last_updated')
-#
-#     id = serializers.CharField(source='uid')
-#     elements = ElementsSaveSerializer(write_only=True, validators=[])
-#
-#     @transaction.atomic
-#     def create(self, validated_data):
-#         elements = validated_data.pop('elements')
-#         price_components = elements.pop('price_components')
-#         tariff = Tariff.objects.create(**validated_data)
-#         for pc in price_components:
-#             # noinspection PyUnresolvedReferences
-#             price_component = PriceComponent.objects.create(**pc, tariff=tariff)
-#         return tariff
-#
-#     @transaction.atomic
-#     def update(self, tariff, validated_data):
-#         # ic()
-#         elements = validated_data.pop('elements')
-#         price_components = elements.pop('price_components')
-#         for key, value in validated_data.items():
-#             setattr(tariff, key, value)
-#
-#         tariff.price_components.all().delete()
-#
-#         for pc in price_components:
-#             # ic(pc)
-#             # noinspection PyUnresolvedReferences
-#             price_component = PriceComponent.objects.create(**pc, tariff=tariff)
-#             # ic(price_component)
-#
-#         tariff.save()
-#         return tariff
 
 
 class TariffViewSet(mixins.ListModelMixin,

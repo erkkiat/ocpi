@@ -26,7 +26,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_module_name = Ocpi.Modules.CDRS
     ocpi_serializer_class = 'ocpi22.api.CdrSerializer'
     ocpi_object_owner = 'CPO'
-    send_updates_to = ['EMSP']
+    send_updates_to = OcpiModule.INTERESTED_PARTIES
 
     class Meta:
         constraints = [
@@ -146,6 +146,12 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     credit = models.BooleanField(default=False)
     credit_reference = models.ForeignKey('Cdr', blank=True, null=True, on_delete=models.PROTECT)
 
+    # The party who will be billed for the transaction
+    billed_to = models.CharField(max_length=6, blank=True)
+
+    # The party who will be billed for this Session
+    credentials = models.ForeignKey('Credentials', on_delete=models.PROTECT, null=True, blank=True)
+
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 
@@ -213,6 +219,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             total_cost_incl_vat=session.total_cost_incl_vat,
             total_energy=session.kwh,
             total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5),
+            credentials=session.credentials,
+            billed_to=session.get_billed_party(),
             last_updated=timezone.now(),
         )
         tariffs = session.connector.tariff_ids.all()

@@ -27,7 +27,7 @@ def check_auth_token(request, token):
 
         # First check for TOKEN_A, are we still getting to know each other?
         # noinspection PyUnresolvedReferences
-        credentials_matches = Credentials.objects.filter(token_a=token_ascii)
+        credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
         if credentials_matches.count():
             if request.path not in allowed_for_token_a:
                 raise exceptions.NotAuthenticated(
@@ -47,7 +47,7 @@ def check_auth_token(request, token):
         else:
             # Or are we already friends?
             # noinspection PyUnresolvedReferences
-            credentials_matches = Credentials.objects.filter(ours=token_ascii)
+            credentials_matches = Credentials.objects.filter(ours=token_ascii, valid=True)
             if credentials_matches.count():
                 credentials = credentials_matches[0]
                 request.ocpi_auth = OcpiAuthTypes.FINAL

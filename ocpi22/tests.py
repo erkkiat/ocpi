@@ -867,7 +867,7 @@ class UpdatePartiesTest(TestCase):
     def test_update_new_token(self, mock_put: Mock):
         settings.SEND_UPDATES = True
         settings.BACKGROUND_SEND = False
-        our_country_code, our_party_id = Token.get_owner_party().split('*')
+        our_country_code, our_party_id = Token.get_owner_identity().split('*')
         token: Token = Token(country_code=our_country_code, party_id=our_party_id,
                              uid='uid', type='RFID', contract_id='contract',
                              issuer='issuer', whitelist='ALWAYS', last_updated=timezone.now())

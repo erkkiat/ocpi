@@ -26,7 +26,7 @@ ALLOW_ADMIN_DELETE_AND_CHANGE = False
 class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
-    list_display = ['party', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
+    list_display = ['owner', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
     list_display_links = ['uid']
     readonly_fields = ['country_code', 'party_id']
 
@@ -141,7 +141,7 @@ class LocationAdmin(NestedModelAdmin):
             fields=(('operator', 'suboperator', 'owner'),)
         )),
     ]
-    list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list']
+    list_display = ['owner', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
     inlines = [EvseInline]
     autocomplete_fields = ['publish_allowed_to', 'facilities', 'operator', 'suboperator', 'owner']
@@ -169,7 +169,7 @@ class EvseAdmin(NestedModelAdmin):
     model = Evse
     exclude = ['last_updated']
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
-    list_display = ['party', 'evse_id', 'location_url', 'status', 'connector_list']
+    list_display = ['owner', 'evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
     actions = ['start_charging', 'stop_charging']
@@ -291,7 +291,7 @@ class CapabilityAdmin(admin.ModelAdmin):
 class CdrAdmin(admin.ModelAdmin):
     model = Cdr
     list_display = [
-        'party',
+        'owner', 'billed_to',
         'start_date_time',  # Todo: Show time in local timezone
         'cdr_token_uid',
         'cdr_location_evse_id',
@@ -310,12 +310,13 @@ class CdrAdmin(admin.ModelAdmin):
     )
     # list_filter = ['party_id', 'auth_method', 'credit']
     list_display_links = ['start_date_time']
-    search_fields = ['party_id', 'country_code', 'session_id', 'uid', 'cdr_location_evse_id', 'cdr_location_name']
+    search_fields = ['party_id', 'country_code', 'session_id', 'uid', 'cdr_location_evse_id', 'cdr_location_name',
+                     'billed_to']
     autocomplete_fields = ['tariffs']
 
-    def has_delete_permission(self, request, obj=None) -> bool:
-        # Disable delete
-        return ALLOW_ADMIN_DELETE_AND_CHANGE
+    # def has_delete_permission(self, request, obj=None) -> bool:
+    #     # Disable delete
+    #     return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request) -> bool:
         # Disable add
@@ -330,7 +331,7 @@ class SessionAdmin(admin.ModelAdmin):
     model = Session
     ordering = ['-created']
     list_display = [
-        'party',
+        'owner', 'billed_to',
         'start_date_time',  # Todo: Show time in local timezone
         'status',
         'evse', 'connector',
@@ -372,14 +373,14 @@ class SessionAdmin(admin.ModelAdmin):
             ]
         return []
 
-    def has_delete_permission(self, request, obj=None) -> bool:
-        # Disable delete except for invalid sessions
-        return (obj and obj.status == 'INVALID') or ALLOW_ADMIN_DELETE_AND_CHANGE
+    # def has_delete_permission(self, request, obj=None) -> bool:
+    #     # Disable delete except for invalid sessions
+    #     return (obj and obj.status == 'INVALID') or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    def has_change_permission(self, request, obj: Session = None) -> bool:
-        if obj and obj.status == Session.COMPLETED and obj.total_cost_excl_vat:
-            return False
-        return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
+    # def has_change_permission(self, request, obj: Session = None) -> bool:
+    #     if obj and obj.status == Session.COMPLETED and obj.total_cost_excl_vat:
+    #         return False
+    #     return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request) -> bool:
         # Disable add
@@ -439,7 +440,7 @@ class TariffAdmin(NestedModelAdmin):
     model = Tariff
     list_display = [
         # 'archived',
-        'party', 'uid', 'price', 'references'
+        'owner', 'uid', 'price', 'references'
     ]
     list_display_links = ['uid']
     inlines = [ElementsInline]
@@ -479,7 +480,7 @@ class CredentialsAdmin(admin.ModelAdmin):
         model = Endpoint
 
     model = Credentials
-    list_display = ['party', 'token_a_base64', 'ours_base64', 'theirs_base64']
+    list_display = ['valid', 'party', 'token_a_base64', 'ours_base64', 'theirs_base64']
     readonly_fields = ['theirs_base64', 'last_updated', 'created']
     inlines = [CredentialRolesInline, EndpointsInline]
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a']

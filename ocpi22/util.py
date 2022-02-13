@@ -321,6 +321,10 @@ class ModelUtilMixin:
             return f'{self.country_code}*{self.party_id}'
         return ''
 
+    def owner(self) -> str:
+        # For admin UI
+        return self.party()
+
     def is_ours(self) -> bool:
         # Returns true if we hold the master data for this object
         if not (hasattr(self, 'country_code') and hasattr(self, 'party_id')):

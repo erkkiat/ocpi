@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.models.location import Location, Evse, Connector
@@ -28,7 +29,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_module_name = Ocpi.Modules.SESSIONS
     ocpi_serializer_class = 'ocpi22.api.SessionSaveSerializer'
     ocpi_object_owner = 'CPO'
-    send_updates_to = ['EMSP']
+    send_updates_to = OcpiModule.INTERESTED_PARTIES
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
     country_code = models.CharField(max_length=2)
@@ -143,6 +144,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING')
 
+    # The party who will be billed for this Session
+    credentials = models.ForeignKey('Credentials', on_delete=models.PROTECT, null=True, blank=True)
+
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 
@@ -162,6 +166,17 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # Needed for running self.clean() when doing a save() or create()
         self.full_clean()
         return super().save(*args, **kwargs)
+
+    def get_billed_party(self) -> str:
+        if self.credentials:
+            role = self.credentials.roles.filter(role='EMSP').first()
+            ic(role)
+            return f'{role.country_code}*{role.party_id}'
+        return '*'
+
+    def billed_to(self) -> str:
+        # For Admin
+        return self.get_billed_party()
 
     def calculate_price(self) -> bool:
         connector = self.connector

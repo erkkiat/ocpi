@@ -47,8 +47,8 @@ def authorize_token(token_uid, location=None):
 
 
 def get_admin_token() -> Token:
-    our_country_code, our_party_id = Token.get_owner_party().split('*')
-    our_identity = Token.get_owner_party()
+    our_country_code, our_party_id = Token.get_owner_identity().split('*')
+    our_identity = Token.get_owner_identity()
     token, _created = Token.objects.get_or_create(
         country_code=our_country_code,
         party_id=our_party_id,
