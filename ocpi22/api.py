@@ -441,7 +441,9 @@ class CredentialsViewSet(mixins.CreateModelMixin,
     def delete(request: Request, *_args, **_kwargs):
         # Todo: Make sure deletition is not possible for others than owner
         if not hasattr(request, 'credentials'):
-            return OCPIResponse("There seem to be no credentials in use for this request.")
+            return OCPIResponse("There seem to be no credentials in use for this request.",
+                                http_status=status.HTTP_405_METHOD_NOT_ALLOWED,
+                                status_code=Ocpi.ClientError.UNKNOWN_TOKEN)
         logging.warning(f'Deleting {request.credentials} on request by Credential owner.')
         request.credentials.delete()
         return OCPIResponse(status_message='Your credentials have been deleted, as requested.')

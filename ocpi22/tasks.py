@@ -178,14 +178,17 @@ def make_headers(token_base64,
 @app.task(bind=True)
 def send_update(_self, data, url: str, token_base64: str,
                 to_country_code: str, to_party_id: str,
-                from_country_code: str, from_party_id: str) -> None:
+                from_country_code: str, from_party_id: str, method='put') -> None:
     logging.info(f"Sending {data.get('uid', data.get('id', ''))} update to {url}")
     headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
-    result = requests.put(
-        url,
-        json=data,
-        headers=headers
-    )
+
+    if method == 'put':
+        result = requests.put(url, json=data, headers=headers)
+    elif method == 'delete':
+        result = requests.delete(url, json=data, headers=headers)
+    else:
+        raise NotImplementedError(f'Method {method} is not supported for send_update')
+
     logging.info(f"Response: {result.status_code} - {result.reason}")
     if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-500:])

@@ -1,9 +1,6 @@
 from django.conf import settings
-from django.contrib import messages
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
-from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.models.location import Location, Evse, Connector

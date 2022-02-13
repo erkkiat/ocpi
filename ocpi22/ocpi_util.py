@@ -8,13 +8,11 @@ from django.conf import settings
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.module_loading import import_string
-from icecream import ic
 from requests import Response
 from rest_framework import exceptions, status
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
-from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
 
 
@@ -31,7 +29,7 @@ class OcpiModule:
 
     @classmethod
     def get_owner_party(cls) -> str:
-        assert cls.ocpi_object_owner, \
+        assert hasattr(cls, 'ocpi_object_owner'), \
             f'The OCPI object {cls} needs to have ocpi_object_owner specified ' \
             f'so that the sender identity is clear when sending updates to other parties.'
         # ic(cls.ocpi_object_owner, ocpi_identities.get_dict())
@@ -46,7 +44,8 @@ class OcpiModule:
         # ic("Generic atomic_post_save")
         # ic(args, kwargs)
 
-        assert self.ocpi_serializer_class and self.ocpi_module_name and self.send_updates_to, \
+        assert hasattr(self, 'ocpi_serializer_class') and hasattr(self, 'ocpi_module_name') \
+               and hasattr(self, 'send_updates_to'), \
             f'OCPI object class {type(self)} must have an ocpi_serializer_class (str), ' \
             f'ocpi_module_name (str) and send_updates_to (roles list) specified.'
 
@@ -80,10 +79,12 @@ class OcpiModule:
             logging.warning(settings.UPDATES_DISABLED)
 
     @classmethod
-    def _send_updates(cls, data):
+    def _send_updates(cls, data, method='put'):
+        from ocpi22.models.credentials import Endpoint, CredentialsRole
         our_country_code, our_party_id = cls.get_owner_party().split('*')
         # ic('Sending updates', cls, cls.send_updates_to)
-        # noinspection PyUnresolvedReferences
+
+        # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis
         recipients = CredentialsRole.objects.filter(role__in=cls.send_updates_to). \
             values_list('credentials', 'country_code', 'party_id')
         # noinspection PyUnresolvedReferences
@@ -99,12 +100,12 @@ class OcpiModule:
             for e in endpoints:
                 logging.info(f'Send update to {cls.ocpi_module_name} module at {e.url}')
                 from ocpi22.tasks import send_update
-                parameters = data, e.url, e.get_token_base64(), country_code, party_id, \
-                             our_country_code, our_party_id
+                args = data, e.url, e.get_token_base64(), country_code, party_id, \
+                       our_country_code, our_party_id, method
                 if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
-                    send_update.delay(*parameters)
+                    send_update.apply_async(args, retry=False)
                 else:
-                    send_update(*parameters)
+                    send_update(*args)
 
     @classmethod
     def send_hub_updates(cls, data) -> None:

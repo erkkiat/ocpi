@@ -1,25 +1,34 @@
 import base64
+import logging
 import secrets
 
 from django import forms
+from django.conf import settings
 from django.contrib import messages
 from django.db import models
 from django.db.models import Q
-from django.db.models.signals import pre_save
+from django.db.models.signals import pre_save, pre_delete
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from icecream import ic
 
 from ocpi22.models.business_details import BusinessDetails
+from ocpi22.ocpi_util import OcpiModule
 from ocpi22.util import ModelUtilMixin, generate_random_token
 
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
+from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
-class Credentials(models.Model, ModelUtilMixin):
+class Credentials(models.Model, ModelUtilMixin, OcpiModule):
+    ocpi_serializer_class = 'ocpi22.api.CredentialsSerializer'
+    ocpi_module_name = 'credentials'
+    ocpi_object_owner = None
+    send_updates_to = []
+
     class Meta:
         verbose_name_plural = 'credentials'
 
@@ -209,3 +218,31 @@ def credentials_pre_save(sender, instance, *_args, **_kwargs):
         credentials.token_a = generate_random_token()
     # if not credentials.ours:
     #     credentials.ours = generate_random_token()
+
+
+@receiver(pre_delete, sender=Credentials)
+def credentials_delete(sender, instance, *_args, **_kwargs):
+    # Send a DELETE to the other party, no reason to keep an expired Credentials
+    credentials: Credentials = instance
+    our_country_code = get_our_country_code()
+    our_party_id = get_our_party_id()
+    if our_country_code and our_party_id:
+        from ocpi22.tasks import send_update
+        data = dict()
+        # noinspection PyUnresolvedReferences
+        e = credentials.endpoints.filter(identifier=Endpoint.CREDENTIALS, role=Endpoint.RECEIVER).first()
+        if e:
+            logging.info(f'Send delete to Credentials module at {e.url}')
+            role: CredentialsRole = credentials.roles.first()
+            if not role:
+                logging.error(f'Cannot find a Credentials endpoint for {credentials} to send a DELETE')
+                return
+            args = data, e.url, e.get_token_base64(), role.country_code, role.party_id, \
+                   our_country_code, our_party_id, 'delete'
+            retry_policy = dict(max_retries=5, interval_start=5)
+            if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
+                send_update.apply_async(args, retry=True, retry_policy=retry_policy)
+            else:
+                send_update(*args)
+            return
+    logging.error(f'Cannot find our party ID to send a Credentials DELETE for {credentials}')

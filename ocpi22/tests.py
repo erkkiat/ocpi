@@ -49,6 +49,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.endpoints'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.settings'))
     return tests
@@ -939,6 +940,16 @@ class TestCredentials(TestCase):
 
         return MockResponse(response, 200)
 
+    def mocked_credentials_delete(url, *args, **kwargs):
+        # ic(args, kwargs)
+        response = {"status_code": 1000, "status_message": "", "timestamp": timezone.now(),
+                    "data": {"token": fake_token + fake_token,
+                             "url": "http://localhost:8000/ocpi/versions/", "roles": [
+                            {"country_code": "FI", "party_id": "HUB", "role": "HUB",
+                             "business_details": {"name": "ChargerHub.EU"}}]}}
+
+        return MockResponse(response, 200)
+
     @time_machine.travel(faketime)
     @patch('ocpiconnector.management.commands.exchange_credentials.generate_random_token', side_effect=[fake_token])
     @patch('ocpiconnector.management.commands.exchange_credentials.requests.post', side_effect=mocked_credentials_post)
@@ -972,3 +983,27 @@ class TestCredentials(TestCase):
         # ic(json_data)
         # ic(kwargs['headers'])
         self.assertDictEqual(json_data, expected_data, 'Credentials endpoint gives an unexpected response')
+
+    @time_machine.travel(faketime)
+    @patch('ocpiconnector.management.commands.exchange_credentials.requests.delete',
+           side_effect=mocked_credentials_delete)
+    def test_delete(self, mock_delete: Mock):
+        credentials = Credentials.objects.get(pk=2)
+        self.assertTrue(credentials.roles.count())
+        self.assertTrue(credentials.endpoints.count())
+        ic(credentials)
+
+        credentials.delete()
+
+        # Let's examine what was actually sent
+        args, kwargs = mock_delete.call_args
+
+        ic(args, kwargs)
+        expected_headers = {'Authorization': 'Token '
+                                             'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+                            'OCPI-from-country-code': 'FI',
+                            'OCPI-from-party-id': 'CPO',
+                            'OCPI-to-country-code': 'FI',
+                            'OCPI-to-party-id': '001'},
+        self.assertDictEqual(kwargs.get('headers'), expected_headers,
+                             f'Headers differ from expected')
