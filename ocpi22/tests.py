@@ -12,7 +12,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from django.contrib.auth.models import AnonymousUser
-from django.test import TestCase
+from django.test import TestCase, RequestFactory, Client
 
 # Todo: evse_id Regular Expression: [A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30} // [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-
 #  Za-z0-9\*]{0,30}
@@ -36,11 +36,15 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
 from ocpi22.ocpi_util import OCPIResponse, Ocpi
-from ocpi22.test_data import ocpi_endpoints_response
+from ocpi22.pull import schedule_full_update
+from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
 from ocpi22.tokens import get_admin_token
 from ocpiconnector.management.commands import exchange_credentials
+from ocpi22.test_data import expected_get_responses
 
 faketime = datetime(2000, 1, 1, 12, 0)
+factory = RequestFactory()
+client = Client()
 
 
 def load_tests(_loader, tests, _ignore):
@@ -700,6 +704,7 @@ class CommandTests(TestCase):
 
         request = factory.post(url)
         request.data = data
+        request.credentials = Credentials.objects.get(pk=2)
         response = viewset.start_session(request)
 
         check_ok_result(self, response)
@@ -819,7 +824,7 @@ class UpdatePartiesTest(TestCase):
                    'OCPI-to-party-id': '001'}
         return MockResponse(dict(hello=1), 200, headers=kwargs.get('headers'), data=kwargs.get('json'))
 
-    @time_machine.travel(faketime)
+    @time_machine.travel(faketime, tick=False)
     def test_update_last_updated(self):
         # Let's try our Token
         token = Token.objects.get(uid='FIMSP-1')
@@ -862,7 +867,7 @@ class UpdatePartiesTest(TestCase):
         serializer = TokenSerializer(token)
         self.assertDictEqual(serializer.data, expected, 'Creating the admin token seems not to work')
 
-    @time_machine.travel(datetime(2000, 1, 1, 12, 0, tzinfo=pytz.utc))
+    @time_machine.travel(datetime(2000, 1, 1, 12, 0, tzinfo=pytz.utc), tick=False)
     @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
     def test_update_new_token(self, mock_put: Mock):
         settings.SEND_UPDATES = True
@@ -894,8 +899,10 @@ class UpdatePartiesTest(TestCase):
                          'valid': True,
                          'whitelist': 'ALWAYS'}
 
-        self.assertEqual(args, ('http://localhost:8001/ocpi/cpo/2.2/tokens',),
+        self.assertEqual(kwargs['url'], 'http://localhost:8001/ocpi/cpo/2.2/tokens',
                          'Expected to send the update to another address')
+        assert (isinstance(expected_headers, dict))
+        assert (isinstance(kwargs['headers'], dict))
         self.assertDictEqual(kwargs['headers'], expected_headers,
                              'Headers differ from expected')
         self.assertDictEqual(kwargs['json'], expected_json,
@@ -950,7 +957,7 @@ class TestCredentials(TestCase):
 
         return MockResponse(response, 200)
 
-    @time_machine.travel(faketime)
+    @time_machine.travel(faketime, tick=False)
     @patch('ocpiconnector.management.commands.exchange_credentials.generate_random_token', side_effect=[fake_token])
     @patch('ocpiconnector.management.commands.exchange_credentials.requests.post', side_effect=mocked_credentials_post)
     @patch('ocpiconnector.management.commands.exchange_credentials.requests.get', side_effect=mocked_credentials_get)
@@ -984,7 +991,7 @@ class TestCredentials(TestCase):
         # ic(kwargs['headers'])
         self.assertDictEqual(json_data, expected_data, 'Credentials endpoint gives an unexpected response')
 
-    @time_machine.travel(faketime)
+    @time_machine.travel(faketime, tick=False)
     @patch('ocpiconnector.management.commands.exchange_credentials.requests.delete',
            side_effect=mocked_credentials_delete)
     def test_delete(self, mock_delete: Mock):
@@ -1004,6 +1011,37 @@ class TestCredentials(TestCase):
                             'OCPI-from-country-code': 'FI',
                             'OCPI-from-party-id': 'CPO',
                             'OCPI-to-country-code': 'FI',
-                            'OCPI-to-party-id': '001'},
+                            'OCPI-to-party-id': '001'}
         self.assertDictEqual(kwargs.get('headers'), expected_headers,
                              f'Headers differ from expected')
+
+
+class TestObjectPull(TestCase):
+    fixtures = ['ocpi22/data/test-database-1.json']
+
+    def mocked_object_get(url, *args, **kwargs):
+        # ic(url, args, kwargs)
+        credentials = Credentials.objects.get(pk=2)
+        headers = kwargs['headers']
+        # Let's swap the other token and receive this request as if it comes from outside
+        headers['HTTP_AUTHORIZATION'] = f'Token {credentials.ours_base64()}'
+        result = client.get(url, **headers)
+        content = json.loads(result.content.decode('utf-8'))
+        response_headers = dict(result.headers)
+        # ic(url, response_headers)
+        # ic(content)
+        # ic(content, expected_get_responses[url])
+        assert content == expected_get_responses[url], f"Expecting a different result for {url}."
+        assert response_headers == expected_get_headers[url], f"Expecting different headers for {url}."
+        return result
+
+    @time_machine.travel(faketime, tick=False)
+    @patch('ocpiconnector.management.commands.exchange_credentials.requests.get', side_effect=mocked_object_get)
+    def test_pull(self, mock_get: Mock):
+        settings.SEND_UPDATES = True
+        settings.BACKGROUND_SEND = False
+
+        credentials = Credentials.objects.get(pk=2)
+        schedule_full_update(credentials, countdown=0, limit=3)
+
+        # Content is verified in mocked_object_get

@@ -9,6 +9,7 @@ from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.models.credentials import Credentials, Endpoint
+from ocpi22.pull import schedule_full_update
 from ocpi22.util import generate_random_token
 from ocpiconnector.ocpi_identities import role_options
 
@@ -179,11 +180,13 @@ class Command(BaseCommand):
                 token_base64,
                 json=data_to_send
             )
-            ic(_credentials_response)
+            # ic(_credentials_response)
             if credentials.ours and credentials.theirs:
                 heading(Style.BRIGHT + 'Credentials exchange has been finished successfully.' + Style.RESET_ALL)
+                schedule_full_update(credentials, countdown=3)
             else:
                 heading('Credentials exchange first part was successful, now initiate from the other end.')
+
             return True
 
         except requests.exceptions.ConnectionError as e:

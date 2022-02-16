@@ -177,14 +177,14 @@ class TokenViewSet(mixins.ListModelMixin,
 
     @staticmethod
     @transaction.atomic
-    def put(request, country_code=None, party_id=None, uid=None):
-        data = request.data.get('data', request.data)
+    def put(request, country_code=None, party_id=None, uid=None, data=None):
+        data = data or request.data.get('data', request.data)
         uid = uid or data.get('uid')
         party_id = party_id or data.get('party_id')
         country_code = country_code or data.get('country_code')
 
         token: Token = Token.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
-        if token and not token.is_owner(request):
+        if token and request and not token.is_owner(request):
             return NotOwner()
         serialiser = TokenSerializer(data=data, instance=token, partial=True)
         if serialiser.is_valid():
@@ -599,14 +599,14 @@ class TariffViewSet(mixins.ListModelMixin,
 
     @staticmethod
     @transaction.atomic
-    def put(request, country_code=None, party_id=None, uid=None) -> OCPIResponse:
+    def put(request, country_code=None, party_id=None, uid=None, data=None) -> OCPIResponse:
         # This PUT is used both for the Tariff endpoint root and the path with country_code, party_id and Tariff uid
-        data = request.data.get('data', request.data)
+        data = data or request.data.get('data', request.data)
         country_code = country_code or data.get('country_code')
         party_id = party_id or data.get('party_id')
         uid = uid or data.get('id')
 
-        if not matching_operator(request, country_code, party_id):
+        if request and not matching_operator(request, country_code, party_id):
             return NotOwner()
 
         # noinspection PyUnresolvedReferences

@@ -234,7 +234,7 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
     our_country_code = get_our_country_code()
     our_party_id = get_our_party_id()
     if our_country_code and our_party_id:
-        from ocpi22.tasks import send_update
+        from ocpi22.tasks import send_ocpi_request
         data = dict()
         # noinspection PyUnresolvedReferences
         e = credentials.endpoints.filter(identifier=Endpoint.CREDENTIALS, role=Endpoint.RECEIVER).first()
@@ -248,8 +248,8 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
                    our_country_code, our_party_id, 'delete'
             retry_policy = dict(max_retries=5, interval_start=5)
             if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
-                send_update.apply_async(args, retry=True, retry_policy=retry_policy)
+                send_ocpi_request.apply_async(args, retry=True, retry_policy=retry_policy)
             else:
-                send_update(*args)
+                send_ocpi_request(*args)
             return
     logging.error(f'Cannot find our party ID to send a Credentials DELETE for {credentials}')

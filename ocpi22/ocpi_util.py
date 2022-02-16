@@ -122,17 +122,17 @@ class OcpiModule:
     @classmethod
     def _send_update(cls, data: dict, e, country_code: str, party_id: str,
                      our_country_code: str, our_party_id: str, method='put'):
-        ic()
-        ic(e, country_code, party_id, our_country_code, our_party_id)
+        # ic()
+        # ic(e, country_code, party_id, our_country_code, our_party_id)
         if e and country_code and party_id and our_country_code and our_party_id:
             logging.info(f'Send update to {cls.ocpi_module_name} module at {e.url}')
-            from ocpi22.tasks import send_update
+            from ocpi22.tasks import send_ocpi_request
             args = data, e.url, e.get_token_base64(), country_code, party_id, \
                    our_country_code, our_party_id, method
             if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
-                send_update.apply_async(args, retry=False)
+                send_ocpi_request.apply_async(args, retry=False)
             else:
-                send_update(*args)
+                send_ocpi_request(*args)
         else:
             logging.warning(f"Skipping send for {cls}")
 
@@ -188,7 +188,7 @@ class OCPIResponse(Response):
         result = dict(
             status_code=status_code,
             status_message=status_message,
-            timestamp=timezone.now(),
+            timestamp=timezone.now(),  # .strftime("%Y-%m-%dT%H:%M:%SZ"),
             data=data
         )
         super().__init__(result, status=http_status, *args, **kwargs)
@@ -301,7 +301,7 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
         return Response(OrderedDict([
             ('status_code', 1000),
-            ('timestamp', timezone.now()),
+            ('timestamp', timezone.now()),  # .strftime("%Y-%m-%dT%H:%M:%SZ")), if you want the date without fractions
             ('data', data),
         ]), headers=headers)
 

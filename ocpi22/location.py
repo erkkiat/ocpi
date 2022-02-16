@@ -506,15 +506,16 @@ class LocationViewSet(mixins.ListModelMixin,
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
+    @staticmethod
     @transaction.atomic
-    def put(self, request, *_args, **_kwargs):
-        data = request.data.get('data', request.data)
+    def put(request, data=None, **_kwargs):
+        data = data or request.data.get('data', request.data)
         # print(data)
         uid = data.get('id')
-        country_code = request.data.get('country_code')
-        party_id = request.data.get('party_id')
+        country_code = data.get('country_code')
+        party_id = data.get('party_id')
 
-        if not matching_operator(request, country_code, party_id):
+        if request and not matching_operator(request, country_code, party_id):
             return NotOwner()
 
         if uid:

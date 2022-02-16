@@ -1,5 +1,6 @@
 import json
 import os
+import random
 from urllib.parse import urljoin
 
 import celery
@@ -8,10 +9,13 @@ import requests
 import pprint
 import logging
 
-from celery import exceptions
+from celery import exceptions, shared_task
 from celery.schedules import crontab
+from django.conf import settings
 from django.http import Http404
 from django.utils import timezone
+from django.utils.module_loading import import_string
+from requests import Response
 from rest_framework import status
 
 from ocpiconnector import slack_logging
@@ -97,8 +101,8 @@ app.autodiscover_tasks()
 cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
 
 
-@app.task(bind=True)
-def command_start(_self, data, session_uid, update_url, url):
+@shared_task
+def command_start(data, session_uid, update_url, url):
     from ocpi22.models.session import Session
     from rest_framework.generics import get_object_or_404
     session: Session = get_object_or_404(Session, uid=session_uid)
@@ -106,7 +110,8 @@ def command_start(_self, data, session_uid, update_url, url):
     try:
         # POST the start command to CPO system
         result = requests.post(
-            os.environ.get('ENDPOINT_SESSION_START', default=url),  # For testing, append: + '?force_result=EVSE_OCCUPIED',
+            os.environ.get('ENDPOINT_SESSION_START', default=url),
+            # For testing, append: + '?force_result=EVSE_OCCUPIED',
             data=dict(
                 location=session.location.uid,
                 evse=session.evse.uid,
@@ -175,28 +180,32 @@ def make_headers(token_base64,
     }
 
 
-@app.task(bind=True)
-def send_update(_self, data, url: str, token_base64: str,
-                to_country_code: str, to_party_id: str,
-                from_country_code: str, from_party_id: str, method='put') -> None:
+@shared_task
+def send_ocpi_request(data, url: str, token_base64: str,
+                      to_country_code: str, to_party_id: str,
+                      from_country_code: str, from_party_id: str, method='put') -> Response:
     logging.info(f"Sending {data.get('uid', data.get('id', ''))} update to {url}")
     headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
 
+    kwargs = dict(url=url, json=data, headers=headers)
     if method == 'put':
-        result = requests.put(url, json=data, headers=headers)
+        result = requests.put(**kwargs)
     elif method == 'delete':
-        result = requests.delete(url, json=data, headers=headers)
+        result = requests.delete(**kwargs)
+    elif method == 'get':
+        result = requests.get(**kwargs)
     else:
-        raise NotImplementedError(f'Method {method} is not supported for send_update')
+        raise NotImplementedError(f'Method {method} is not supported for send_ocpi_request')
 
-    logging.info(f"Response: {result.status_code} - {result.reason}")
+    logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
     if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-500:])
         logging.error(f'Unable to send update to {url}: {result.status_code} - {result.reason}')
+    return result
 
 
-@app.task(bind=True)
-def send_evse_status_update(_self, evse_uid, endpoint_pk):
+@shared_task
+def send_evse_status_update(evse_uid, endpoint_pk):
     from ocpi22.models.credentials import Endpoint
     from ocpi22.models.location import Evse
     # noinspection PyUnresolvedReferences
@@ -230,8 +239,32 @@ def send_evse_status_update(_self, evse_uid, endpoint_pk):
         logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')
 
 
-@app.task()
+@shared_task
 def exchange_credentials(token, url):
     from ocpiconnector.management.commands import exchange_credentials
     command = exchange_credentials.Command()
     command.handle(token_a=token, versions_endpoint_url=url)
+
+
+@shared_task
+def pull_objects(object_list, limit=20, **kwargs) -> None:
+    if not object_list:
+        return
+    obj = object_list[0]
+    url = kwargs.pop('url', None) or obj.get('url') + f'?limit={limit}'
+    response = send_ocpi_request(data=dict(), url=url, **kwargs)
+    next_url, _rel = response.headers.get('Link', ';').strip('<>').split(';')
+
+    viewset = import_string(obj.get('viewset'))
+    for i in response.json().get('data'):
+        viewset.put(request=None, data=i)
+
+    if next_url:
+        kwargs['url'] = next_url
+    else:
+        object_list.pop(0)
+
+    if settings.BACKGROUND_SEND:
+        pull_objects.apply_async((object_list,), kwargs=kwargs, countdown=random.randint(2, 10))
+    else:
+        pull_objects(object_list, limit, **kwargs)
