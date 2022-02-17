@@ -84,7 +84,7 @@ class ConnectorInline(NestedStackedInline):
     def has_change_permission(self, request, obj: Evse = None) -> bool:
         # Todo: Admin should only be able to change owned Connectors
         # ic(obj)
-        if obj:
+        if obj and hasattr(obj, 'location'):
             obj = obj.location
         return obj and hasattr(obj, 'is_ours') and obj.is_ours()
 
@@ -127,7 +127,7 @@ class LocationAdmin(NestedModelAdmin):
                      'postal_code', 'state', 'country', 'parking_type']
     # fields = ['uid', 'publish', 'publish_allowed_to',
     #           ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
-    #           ('parking_type', 'facilities'), ('operator', 'suboperator', 'object_owner'), 'time_zone']
+    #           ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone']
     fieldsets = [
         (None, dict(fields=('uid', 'publish', 'publish_allowed_to'))),
         ('Address', dict(
@@ -141,7 +141,7 @@ class LocationAdmin(NestedModelAdmin):
             fields=(('operator', 'suboperator', 'owner'),)
         )),
     ]
-    list_display = ['object_owner', 'uid', 'publish', 'name', 'street_address', 'evse_list']
+    list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
     inlines = [EvseInline]
     autocomplete_fields = ['publish_allowed_to', 'facilities', 'operator', 'suboperator', 'owner']
