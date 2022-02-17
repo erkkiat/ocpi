@@ -92,8 +92,8 @@ class ConnectorInline(NestedStackedInline):
         # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
         return Location.ocpi_object_owner in ocpi_identities
 
-    def has_delete_permission(self, request, obj=None) -> bool:
-        return False
+    # def has_delete_permission(self, request, obj=None) -> bool:
+    #     return False
 
 
 class LocationAdmin(NestedModelAdmin):
@@ -110,8 +110,8 @@ class LocationAdmin(NestedModelAdmin):
         def has_change_permission(self, request, obj=None) -> bool:
             return obj and obj.is_ours()
 
-        def has_delete_permission(self, request, obj=None) -> bool:
-            return ALLOW_ADMIN_DELETE_AND_CHANGE
+        # def has_delete_permission(self, request, obj=None) -> bool:
+        #     return ALLOW_ADMIN_DELETE_AND_CHANGE
 
         def has_add_permission(self, request, obj=None) -> bool:
             # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
@@ -193,8 +193,8 @@ class EvseAdmin(NestedModelAdmin):
     def has_change_permission(self, request, obj=None) -> bool:
         return obj and obj.is_ours()
 
-    def has_delete_permission(self, request, obj=None) -> bool:
-        return ALLOW_ADMIN_DELETE_AND_CHANGE
+    # def has_delete_permission(self, request, obj=None) -> bool:
+    #     return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     # def delete_model(self, request, obj):
     #     obj.status = 'REMOVED'
@@ -421,8 +421,8 @@ class TariffAdmin(NestedModelAdmin):
             def has_add_permission(self, request, obj) -> bool:
                 return self.has_change_permission(request, obj)
 
-            def has_delete_permission(self, request, obj=None) -> bool:
-                return self.has_change_permission(request, obj)
+            # def has_delete_permission(self, request, obj=None) -> bool:
+            #     return self.has_change_permission(request, obj)
 
         model = TariffElement
         inlines = [PriceComponentsInline]
@@ -434,8 +434,8 @@ class TariffAdmin(NestedModelAdmin):
         def has_add_permission(self, request, obj) -> bool:
             return self.has_change_permission(request, obj)
 
-        def has_delete_permission(self, request, obj=None) -> bool:
-            return self.has_change_permission(request, obj)
+        # def has_delete_permission(self, request, obj=None) -> bool:
+        #     return self.has_change_permission(request, obj)
 
     model = Tariff
     list_display = [
