@@ -55,11 +55,14 @@ def celery_heartbeat() -> bool:
     return True
 
 
-@app.task
+@shared_task(max_retries=12, retry_backoff=300)
 def update_spot_prices() -> bool:
     from ocpi22.models.dynamic_price import dynamic_price_sources
     for source in dynamic_price_sources:
-        source.update()
+        try:
+            source.update()
+        except Exception as e:
+            logging.warning(f'Unable to fetch prices for {source.__class__}: {e}.')
     return True
 
 

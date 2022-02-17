@@ -1,13 +1,17 @@
 import logging
 import os
 from datetime import datetime, timedelta
+from json import JSONDecodeError
 
+import pytz
 import requests
+from dateutil.parser import isoparse
 from django.db import models
-from requests import JSONDecodeError
 from requests.auth import HTTPBasicAuth
 
 DYNAMIC_PRICE_SOURCE_CHOICES = (
+    ('BGDA', 'Bulgaria day ahead'),
+    ('BGID', 'Bulgaria intraday'),
     ('IBEXBGIDM', 'IBEX.bg Intraday'),
     ('IBEXBGDAM', 'IBEX.bg Day ahead'),
     ('NPFI', 'Nordpool Finland'),
@@ -35,6 +39,12 @@ class DynamicPrice(models.Model):
     start_datetime = models.DateTimeField()
     end_datetime = models.DateTimeField()
     price = models.FloatField()
+    # country = models.CharField(max_length=2)
+    # TYPE_CHOICES = (
+    #     ('DA', 'Day ahead'),
+    #     ('ID', 'Intraday'),
+    # )
+    # type = models.CharField(max_length=2, choices=TYPE_CHOICES)
 
     # Django automatic dates
     updated = models.DateTimeField(auto_now=True)
@@ -57,38 +67,24 @@ class PriceSource:
     def update(self):
         raise NotImplementedError()
 
-    def _upsert_to_database(self, start: datetime, end: datetime, price: float):
+    def _upsert_to_database(self, start: datetime, end: datetime, **kwargs) -> DynamicPrice:
         assert end > start
-        dynamic_price, _created = DynamicPrice.objects.get_or_create(
+        dynamic_price, created = DynamicPrice.objects.get_or_create(
             dynamic_price_source=self.key,
             start_datetime=start,
             end_datetime=end,
-            defaults=dict(price=price)
+            defaults=kwargs
         )
-        print(str(dynamic_price))
+        dynamic_price.price = kwargs.get('price')
+        dynamic_price.save(update_fields=['price'])
+        logging.info(f"{'Created' if created else 'Updated'} price {kwargs.get('price')} starting at {start}.")
+        # print(str(dynamic_price))
         return dynamic_price
 
 
 class IbexBgIdm(PriceSource):
     key = 'IBEXBGIDM'
     currency = "BGN"
-
-    @staticmethod
-    def _convert_date_format(d) -> datetime:
-        """
-        >>> IbexBgIdm._convert_date_format('220208-01:00')
-        datetime.datetime(2022, 2, 8, 1, 0)
-        >>> IbexBgIdm._convert_date_format('220131-24:00')  # Midnight on the next day
-        datetime.datetime(2022, 2, 1, 0, 0)
-        >>> IbexBgIdm._convert_date_format('120809-16:53')
-        datetime.datetime(2012, 8, 9, 16, 53)
-        """
-        date, time = d.split('-')
-        year, month, day = [int(i) for i in (d[0:2], d[2:4], d[4:6])]
-        hour, minute = [int(i) for i in time.split(':')]
-        if hour >= 24:
-            return datetime(2000 + year, month, day, hour - 24, minute) + timedelta(days=1)
-        return datetime(2000 + year, month, day, hour, minute)
 
     def update(self):
         try:
@@ -104,6 +100,34 @@ class IbexBgIdm(PriceSource):
                 self._upsert_to_database(start_date, end_date, price)
         except JSONDecodeError as e:
             raise requests.exceptions.ConnectionError('Missing IBEX_CREDENTIALS or JSON format error.')
+
+
+class BgDa(PriceSource):
+    key = 'BGDA'
+    currency = 'EUR'
+    env = 'BGDA_URL'
+    country = 'BG'
+
+    def update(self):
+        url = os.environ.get(self.env)
+        if url:
+            credentials = os.environ.get('IBEX_CREDENTIALS', ':')
+            user, password = credentials.split(':')
+            response = requests.get(url, verify=False, auth=HTTPBasicAuth(user, password))
+            # pprint(response.text)
+            data = response.json()
+            assert data.get('Currency').upper() == self.currency.upper(), \
+                f"Currency mismatch at BgDa: {data.get('Currency')}"
+            assert data.get('Country').upper() == self.country.upper(), \
+                f"Country mismatch at BgDa: {data.get('Country')}"
+            country = data.get('Country')
+            for p in data.get('Prices'):
+                start_date = isoparse(p.get('start_datetime')).astimezone(pytz.UTC).replace(tzinfo=None)
+                end_date = start_date + timedelta(hours=1)
+                price = float(p.get('price')) / 1000
+                self._upsert_to_database(start_date, end_date, price=price)
+        else:
+            logging.warning(f'No url found from environment {self.env} for {self.__class__}')
 
 
 class NordpoolFr(PriceSource):
@@ -152,7 +176,8 @@ class NordPool(PriceSource):
 
 
 dynamic_price_sources = (
-    IbexBgIdm(),
+    BgDa(),
+    # IbexBgIdm(),
     # NordPool(),
 )
 
@@ -165,10 +190,6 @@ def get_price(key: str, when: datetime) -> float:
     <DynamicPrice: ABC: 2000-01-01 02:00:00 - 2000-01-01 03:00:00 :: 2.0>
     >>> get_price('ABC', datetime(2000,1,1,2,0))
     2.0
-
-    @param key:
-    @param when:
-    @return:
     """
     # noinspection PyUnresolvedReferences
     prices = DynamicPrice.objects.filter(dynamic_price_source=key, start_datetime__lte=when, end_datetime__gt=when)
