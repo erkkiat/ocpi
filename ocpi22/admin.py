@@ -138,7 +138,7 @@ class LocationAdmin(NestedModelAdmin):
             fields=(('parking_type', 'facilities'),)
         )),
         ('Parties', dict(
-            fields=(('operator', 'suboperator', 'object_owner'),)
+            fields=(('operator', 'suboperator', 'owner'),)
         )),
     ]
     list_display = ['object_owner', 'uid', 'publish', 'name', 'street_address', 'evse_list']
