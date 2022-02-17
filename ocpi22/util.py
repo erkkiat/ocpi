@@ -307,11 +307,11 @@ def is_our_identifier(country_code, party_id, identities=None) -> bool:
 
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(cls, *args: list, **kwargs: dict) -> any:
+    def get_if_exists(cls, *args, **kwargs) -> any:
         # noinspection PyUnresolvedReferences
         objects = cls.objects.filter(*args, **kwargs)
         if objects.count():
-            return objects[0]
+            return objects.first()
         return None
 
     def party(self) -> str:
@@ -321,7 +321,7 @@ class ModelUtilMixin:
             return f'{self.country_code}*{self.party_id}'
         return ''
 
-    def owner(self) -> str:
+    def object_owner(self) -> str:
         # For admin UI
         return self.party()
 

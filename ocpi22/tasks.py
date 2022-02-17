@@ -37,7 +37,7 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.conf.beat_schedule = {
     'run-me-every-minute': {
         'task': 'ocpi22.tasks.celery_heartbeat',
-        'schedule': 60 * 5
+        'schedule': 60 * 60
     },
     'set-spot-prices-every-hour': {
         'task': 'ocpi22.tasks.set_spot_prices',
@@ -184,7 +184,12 @@ def make_headers(token_base64,
 def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
                       from_country_code: str, from_party_id: str, method='put') -> Response:
-    logging.info(f"Sending {data.get('uid', data.get('id', ''))} update to {url}")
+    # print(f'Type(data): {type(data)}')
+    # for x in ('text', 'status_code', 'content'):
+    #     if hasattr(data, x):
+    #         print(f'Data.{x}: {data.x}')
+
+    logging.info(f"Sending {method.upper()} request {data.get('uid', data.get('id', ''))} to {url}")
     headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
 
     kwargs = dict(url=url, json=data, headers=headers)
@@ -246,7 +251,7 @@ def exchange_credentials(token, url):
     command.handle(token_a=token, versions_endpoint_url=url)
 
 
-@shared_task
+@shared_task(max_retries=2, retry_jitter=True, retry_backoff=120)
 def pull_objects(object_list, limit=20, **kwargs) -> None:
     if not object_list:
         return

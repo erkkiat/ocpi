@@ -225,6 +225,8 @@ def credentials_pre_save(sender, instance, *_args, **_kwargs):
         credentials.token_a = generate_random_token()
     # if not credentials.ours:
     #     credentials.ours = generate_random_token()
+    from ocpi22.pull import schedule_full_update
+    schedule_full_update(credentials, countdown=10)
 
 
 @receiver(pre_delete, sender=Credentials)

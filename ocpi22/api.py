@@ -184,10 +184,16 @@ class TokenViewSet(mixins.ListModelMixin,
         country_code = country_code or data.get('country_code')
 
         token: Token = Token.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
+        if token and token.is_ours():
+            return OCPIResponse(f'Object {token} is owned by us and cannot be updated from outside.',
+                                http_status=status.HTTP_403_FORBIDDEN,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
         if token and request and not token.is_owner(request):
             return NotOwner()
         serialiser = TokenSerializer(data=data, instance=token, partial=True)
         if serialiser.is_valid():
+            logging.info(f'Creating or updating Token {token.uid}.')
             new_token = serialiser.save()
             if ocpi_platform.is_cpo:
                 CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
@@ -609,15 +615,15 @@ class TariffViewSet(mixins.ListModelMixin,
         if request and not matching_operator(request, country_code, party_id):
             return NotOwner()
 
-        # noinspection PyUnresolvedReferences
-        try:
-            # noinspection PyUnresolvedReferences
-            tariff = Tariff.objects.get(country_code=country_code, party_id=party_id, uid=uid,
-                                        archived=False)
-        except Tariff.DoesNotExist:
-            tariff = None
+        tariff: Tariff = Tariff.get_if_exists(country_code=country_code, party_id=party_id, uid=uid,
+                                              archived=False)
+        if tariff and tariff.is_ours():
+            return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
+                                http_status=status.HTTP_403_FORBIDDEN,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         serializer = TariffSerializer(instance=tariff, data=data)
         if serializer.is_valid():
+            logging.info(f'Creating or updating Tariff {tariff.uid}.')
             serializer.save()
             Tariff.send_hub_updates(data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if tariff else status.HTTP_201_CREATED)

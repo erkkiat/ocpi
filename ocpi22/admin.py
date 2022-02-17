@@ -26,7 +26,7 @@ ALLOW_ADMIN_DELETE_AND_CHANGE = False
 class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
-    list_display = ['owner', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
+    list_display = ['object_owner', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
     list_display_links = ['uid']
     readonly_fields = ['country_code', 'party_id']
 
@@ -47,9 +47,9 @@ class TokenAdmin(admin.ModelAdmin):
         )),
     ]
 
-    def has_delete_permission(self, request, obj=None) -> bool:
-        # Disable delete
-        return ALLOW_ADMIN_DELETE_AND_CHANGE
+    # def has_delete_permission(self, request, obj=None) -> bool:
+    #     # Disable delete
+    #     return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request) -> bool:
         # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
@@ -127,7 +127,7 @@ class LocationAdmin(NestedModelAdmin):
                      'postal_code', 'state', 'country', 'parking_type']
     # fields = ['uid', 'publish', 'publish_allowed_to',
     #           ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
-    #           ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone']
+    #           ('parking_type', 'facilities'), ('operator', 'suboperator', 'object_owner'), 'time_zone']
     fieldsets = [
         (None, dict(fields=('uid', 'publish', 'publish_allowed_to'))),
         ('Address', dict(
@@ -138,10 +138,10 @@ class LocationAdmin(NestedModelAdmin):
             fields=(('parking_type', 'facilities'),)
         )),
         ('Parties', dict(
-            fields=(('operator', 'suboperator', 'owner'),)
+            fields=(('operator', 'suboperator', 'object_owner'),)
         )),
     ]
-    list_display = ['owner', 'uid', 'publish', 'name', 'street_address', 'evse_list']
+    list_display = ['object_owner', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
     inlines = [EvseInline]
     autocomplete_fields = ['publish_allowed_to', 'facilities', 'operator', 'suboperator', 'owner']
@@ -152,8 +152,8 @@ class LocationAdmin(NestedModelAdmin):
     def has_change_permission(self, request, obj=None) -> bool:
         return obj and obj.is_ours()
 
-    def has_delete_permission(self, request, obj=None) -> bool:
-        return ALLOW_ADMIN_DELETE_AND_CHANGE
+    # def has_delete_permission(self, request, obj=None) -> bool:
+    #     return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request) -> bool:
         # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
@@ -169,7 +169,7 @@ class EvseAdmin(NestedModelAdmin):
     model = Evse
     exclude = ['last_updated']
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
-    list_display = ['owner', 'evse_id', 'location_url', 'status', 'connector_list']
+    list_display = ['object_owner', 'evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
     actions = ['start_charging', 'stop_charging']
@@ -291,7 +291,7 @@ class CapabilityAdmin(admin.ModelAdmin):
 class CdrAdmin(admin.ModelAdmin):
     model = Cdr
     list_display = [
-        'owner', 'billed_to',
+        'object_owner', 'billed_to',
         'start_date_time',  # Todo: Show time in local timezone
         'cdr_token_uid',
         'cdr_location_evse_id',
@@ -331,7 +331,7 @@ class SessionAdmin(admin.ModelAdmin):
     model = Session
     ordering = ['-created']
     list_display = [
-        'owner', 'billed_to',
+        'object_owner', 'billed_to',
         'start_date_time',  # Todo: Show time in local timezone
         'status',
         'evse', 'connector',
@@ -440,7 +440,7 @@ class TariffAdmin(NestedModelAdmin):
     model = Tariff
     list_display = [
         # 'archived',
-        'owner', 'uid', 'price', 'references'
+        'object_owner', 'uid', 'price', 'references'
     ]
     list_display_links = ['uid']
     inlines = [ElementsInline]
@@ -464,8 +464,8 @@ class TariffAdmin(NestedModelAdmin):
         return (obj and obj.is_ours()) \
                or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    def has_delete_permission(self, request, obj=None) -> bool:
-        return ALLOW_ADMIN_DELETE_AND_CHANGE or self.has_change_permission(request, obj)
+    # def has_delete_permission(self, request, obj=None) -> bool:
+    #     return ALLOW_ADMIN_DELETE_AND_CHANGE or self.has_change_permission(request, obj)
 
     def has_add_permission(self, request) -> bool:
         # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)

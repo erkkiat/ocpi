@@ -11,7 +11,11 @@ from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 # Todo: Full object pull for Sessions and Cdrs
 
 def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
+    if not credentials.is_complete():
+        return
     endpoints = credentials.endpoints
+    if not endpoints.count():
+        return
     object_list = [
         dict(model='ocpi22.models.tariffs.Tariff', viewset='ocpi22.api.TariffViewSet',
              url=endpoints.filter(role=Endpoint.SENDER, identifier=Tariff.ocpi_module_name).first().url),
@@ -28,6 +32,6 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
                   limit=limit)
     if settings.BACKGROUND_SEND:
         pull_objects.apply_async((object_list,), kwargs=kwargs, countdown=countdown, retry=True,
-                                 retry_policy=dict(max_retries=10, interval_start=60 * 5))
+                                 retry_policy=dict(max_retries=3, interval_start=60 * 5))
     else:
         pull_objects(object_list, **kwargs)

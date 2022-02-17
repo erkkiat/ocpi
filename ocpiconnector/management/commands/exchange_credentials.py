@@ -183,7 +183,6 @@ class Command(BaseCommand):
             # ic(_credentials_response)
             if credentials.ours and credentials.theirs:
                 heading(Style.BRIGHT + 'Credentials exchange has been finished successfully.' + Style.RESET_ALL)
-                schedule_full_update(credentials, countdown=3)
             else:
                 heading('Credentials exchange first part was successful, now initiate from the other end.')
 
