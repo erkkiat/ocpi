@@ -259,10 +259,14 @@ def pull_objects(object_list, limit=20, **kwargs) -> None:
     url = kwargs.pop('url', None) or obj.get('url') + f'?limit={limit}'
     response = send_ocpi_request(data=dict(), url=url, **kwargs)
     next_url, _rel = response.headers.get('Link', ';').strip('<>').split(';')
-
+    model = obj.get('model')
     viewset = import_string(obj.get('viewset'))
     for i in response.json().get('data'):
-        viewset.put(request=None, data=i)
+        try:
+            viewset.put(request=None, data=i)
+        except Exception as e:
+            logging.error(f"Unable to update {model} using data pulled from url {url} "
+                          f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
 
     if next_url:
         kwargs['url'] = next_url

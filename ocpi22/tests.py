@@ -998,14 +998,14 @@ class TestCredentials(TestCase):
         credentials = Credentials.objects.get(pk=2)
         self.assertTrue(credentials.roles.count())
         self.assertTrue(credentials.endpoints.count())
-        ic(credentials)
+        # ic(credentials)
 
         credentials.delete()
 
         # Let's examine what was actually sent
         args, kwargs = mock_delete.call_args
 
-        ic(args, kwargs)
+        # ic(args, kwargs)
         expected_headers = {'Authorization': 'Token '
                                              'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
                             'OCPI-from-country-code': 'FI',
