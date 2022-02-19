@@ -180,6 +180,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     def calculate_price(self) -> bool:
         connector = self.connector
+        if not connector:
+            return False
         kwh: float = float(self.kwh)
         # Calculate the session duration using either a stored end time or the current time
         hours = ((self.end_date_time or timezone.now()) - self.start_date_time).seconds / 3600

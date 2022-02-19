@@ -104,7 +104,7 @@ app.autodiscover_tasks()
 cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
 
 
-@shared_task
+@shared_task(max_retries=0)
 def command_start(data, session_uid, update_url, url):
     from ocpi22.models.session import Session
     from rest_framework.generics import get_object_or_404
@@ -247,7 +247,7 @@ def send_evse_status_update(evse_uid, endpoint_pk):
         logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')
 
 
-@shared_task
+@shared_task(max_retries=2, retry_backoff=2)
 def exchange_credentials(token, url):
     from ocpiconnector.management.commands import exchange_credentials
     command = exchange_credentials.Command()
