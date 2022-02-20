@@ -64,42 +64,41 @@ div.model div {
 /* line 58, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model .secondary {
   font-size: x-small;
-  margin-left: 4px;
 }
 
-/* line 63, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 62, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model .button-image {
   display: inline;
 }
 
-/* line 66, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 65, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model .button-image img {
   height: 80px;
   padding-right: 10px;
   margin: -12px 0;
 }
 
-/* line 73, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 72, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model:hover {
   transform: scale(1.05);
 }
 
-/* line 78, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 77, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .w-10 {
   width: 10%;
 }
 
-/* line 82, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 81, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 form .submit-row a.deletelink {
   height: 35px;
 }
 
-/* line 86, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 85, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .delete-confirmation form div .cancel-link {
   height: 40px;
 }
 
-/* line 90, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 89, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 :root {
   --smoky-black: #14110fff;
   --jet: #34312dff;
@@ -151,7 +150,7 @@ form .submit-row a.deletelink {
   --object-tools-hover-bg: var(--close-button-hover-bg);
 }
 
-/* line 149, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 148, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .muted {
   color: #ffffff80;
   font-size: smaller;
