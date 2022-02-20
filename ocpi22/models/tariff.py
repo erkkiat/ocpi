@@ -225,7 +225,7 @@ class PriceComponent(models.Model, ModelUtilMixin):
 
     TYPE_CHOICES = (
         # Defined in kWh, step_size multiplier: 1 Wh
-        ('ENERGY', 'Wh'),
+        ('ENERGY', 'kWh'),
 
         # Flat fee without unit for step_size
         ('FLAT', 'Flat'),

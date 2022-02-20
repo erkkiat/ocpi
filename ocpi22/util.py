@@ -225,8 +225,10 @@ def pretty_currency(c):
     Apply a currency symbol if such is known
     >>> pretty_currency('EUR')
     '€'
+    >>> pretty_currency('PLN')
+    'zł'
     """
-    return dict(EUR='€', GBP='£', USD='$').get(c, c)
+    return dict(EUR='€', GBP='£', USD='$', PLN='zł').get(c, c)
 
 
 def format_currency(number: Optional[float], currency: Optional[str]) -> str:
