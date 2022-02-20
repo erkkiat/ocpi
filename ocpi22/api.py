@@ -107,6 +107,11 @@ class ElementsSaveSerializer(SerializerCleanedUp):
     restrictions = RestrictionSerializer(source='*', required=False)
 
 
+class TariffAltTextSerializer(SerializerCleanedUp):
+    language = serializers.CharField(default='EN')
+    text = serializers.CharField(source='price')
+
+
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
@@ -118,8 +123,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         source='tariff_elements', many=True, required=True,
         help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_tariffelement_class'
     )
-    human_readable = serializers.CharField(source='price', read_only=True,
-                                           help_text='This non-OCPI field exists for educational purposes')
+    tariff_alt_text = TariffAltTextSerializer(source='*', read_only=True)
     last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     # last_updated = serializers.DateTimeField(read_only=False)
