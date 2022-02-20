@@ -124,16 +124,16 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
 
     detail_url = serializers.SerializerMethodField(
         read_only=True,
-        label='This non-OCPI field exists for educational purposes'
+        help_text='This non-OCPI field exists for educational purposes'
     )
     url = serializers.SerializerMethodField(read_only=True)
     quick_url = serializers.SerializerMethodField(
         read_only=True,
-        label='This non-OCPI field exists for educational purposes'
+        help_text='This non-OCPI field exists for educational purposes'
     )
     status_url = serializers.SerializerMethodField(
         read_only=True,
-        label='This non-OCPI field exists for educational purposes'
+        help_text='This non-OCPI field exists for educational purposes'
     )
 
 

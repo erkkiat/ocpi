@@ -79,7 +79,7 @@ class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
 class ElementsSaveSerializer(serializers.Serializer):
     price_components = PriceComponentSerializer(
         many=True,
-        label=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_pricecomponent_class'
+        help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_pricecomponent_class'
     )
 
 
@@ -88,13 +88,14 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Tariff
         exclude = ['updated', 'created', 'uid', 'archived']
 
-    id = serializers.CharField(source='uid', required=False, label='Preferably a human readable, unique identifier')
+    id = serializers.CharField(source='uid', required=False,
+                               help_text='Preferably a human readable, unique identifier')
     elements = ElementsSaveSerializer(
         source='tariff_elements', many=True, required=True,
-        label=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_tariffelement_class'
+        help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_tariffelement_class'
     )
     human_readable = serializers.CharField(source='price', read_only=True,
-                                           label='This non-OCPI field exists for educational purposes')
+                                           help_text='This non-OCPI field exists for educational purposes')
     last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     # last_updated = serializers.DateTimeField(read_only=False)
