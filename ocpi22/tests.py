@@ -292,15 +292,33 @@ class ApiPutTests(TestCase):
                          f'{response.data}')
 
         testcases = (
-            ('tariff_1_simple_2hour', 'DE', 'ALL', status.HTTP_201_CREATED, 1000, 1),
-            ('tariff_1_simple_2hour_modified', 'DE', 'ALL', status.HTTP_200_OK, 1000, 2),
+            ('tariff_1_simple_2hour', status.HTTP_201_CREATED, 1000, 1),
+            ('tariff_1_simple_2hour_modified', status.HTTP_200_OK, 1000, 2),
+            ('tariff_4_complex', status.HTTP_201_CREATED, 1000, 6),
+            ('tariff_5_free_of_charge', status.HTTP_201_CREATED, 1000, 1),
+            ('tariff_7_first_hour_kwh_free', status.HTTP_201_CREATED, 1000, 5),
+            ('tariff_8_simple_025kwh', status.HTTP_201_CREATED, 1000, 1),
+            ('tariff_9_025kwh_start', status.HTTP_201_CREATED, 1000, 2),
+            ('tariff_10_025kwh_parking_start', status.HTTP_201_CREATED, 1000, 3),
+            ('tariff_13_simple_3hour_5parking', status.HTTP_201_CREATED, 1000, 2),
+            ('tariff_14_step_size', status.HTTP_201_CREATED, 1000, 5),
+            ('tariff_15_reservation_5_euro_per_hour', status.HTTP_201_CREATED, 1000, 3),
+            ('tariff_16_reservation_2_euro_fee_5_euro_per_hour', status.HTTP_200_OK, 1000, 4),
+            ('tariff_17_reservation_with_expire_fee', status.HTTP_200_OK, 1000, 4),
+            ('tariff_18_reservation_with_expire_time', status.HTTP_200_OK, 1000, 4),
+            ('tariff_put_example', status.HTTP_200_OK, 1000, 1),
+            ('tariffrestriction_example_max_duration', status.HTTP_201_CREATED, 1000, 3),
+            ('tariffrestriction_example_max_power', status.HTTP_201_CREATED, 1000, 3),
         )
 
-        for filename, country_code, party_id, http_status, ocpi_status, price_component_count \
+        for filename, http_status, ocpi_status, price_component_count \
                 in testcases:
 
             with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
                 data = json.load(file)
+
+            country_code = data.get('country_code')
+            party_id = data.get('party_id')
 
             # Create CretentialsRoles
             # noinspection PyUnresolvedReferences
@@ -323,26 +341,30 @@ class ApiPutTests(TestCase):
             # noinspection PyUnresolvedReferences
             saved_data = TariffSerializer(Tariff.objects.get(uid=uid, archived=False)).data
             # ic(saved_data)
+            last_updated = data.get('last_updated')
 
-            # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
-            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated'),
-                             'Last_updated is not stored from the incoming data')
+            if last_updated:
+                # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
+                self.assertEqual(saved_data.get('last_updated'), last_updated,
+                                 f'Last_updated is not stored from the incoming data with file {filename}')
 
             # Check that there are all three levels stored from the incoming JSON
             elements_list = saved_data.get('elements')
             self.assertIsInstance(elements_list, list,
                                   'TariffElements list is missing from the stored Tariff')
             self.assertTrue(len(elements_list), 'Stored TariffElement list is empty')
+            total_price_components = 0
             for el in elements_list:
                 price_components_list = el.get('price_components')
+                total_price_components += len(price_components_list)
                 self.assertIsInstance(price_components_list, list,
                                       'PriceComponents list is missing from the stored Tariff')
-                self.assertEqual(len(price_components_list), price_component_count,
-                                 f'There should be exactly {price_component_count} '
-                                 f'PriceComponents in the Tariff after {filename}.json')
                 for pc in price_components_list:
                     self.assertTrue(pc.get('type'),
                                     'Looks like TariffSerializer is not storing PriceComponents')
+            self.assertEqual(total_price_components, price_component_count,
+                             f'There should be exactly {price_component_count} '
+                             f'PriceComponents in the Tariff after {filename}.json')
 
     def test_put_cdr(self):
         url = reverse('cdr-list')
@@ -517,25 +539,6 @@ class ApiPutTests(TestCase):
         # This should fail without authentication
         result = self.client.get(detail_url)
         self.assertEqual(result.status_code, 403, 'A Location request should require OCPI authentication.')
-
-        # Todo: Create Credentials or preferably negotiate them with self
-        # # Fail with the other party's token
-        # result = self.client.get(detail_url, HTTP_AUTHORIZATION=f'Token {self.credentials.theirs_base64()}')
-        # self.assertEqual(result.status_code, 403, "OCPI token authentication allows the other party's token.")
-        #
-        # # Fail with token_a after the credentials exchange has been done
-        # result = self.client.get(detail_url, HTTP_AUTHORIZATION=f'Token {self.credentials.token_a_base64()}')
-        # self.assertEqual(result.status_code, 403,
-        #                  "OCPI token authentication allows token_a after the credentials exchange has been finished.")
-        #
-        # # ...and work with a proper OCPI token
-        # url = f'{detail_url}?auth-test={self.credentials.ours_base64()}'
-        # result = self.client.get(url)
-        # self.assertEqual(result.status_code, 200, 'Token auth-test seems not to work.')
-        #
-        # result = self.client.get(detail_url, HTTP_AUTHORIZATION=f'Token {self.credentials.ours_base64()}')
-        # self.assertEqual(result.status_code, 200, 'OCPI token authentication seems not to work.')
-        #
 
 
 def dump_tariffs():

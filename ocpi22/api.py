@@ -73,7 +73,7 @@ class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
         model = PriceComponent
         fields = ('type', 'price', 'vat', 'step_size')
 
-    step_size = serializers.IntegerField(min_value=1, max_value=24 * 60 * 60)
+    step_size = serializers.IntegerField(min_value=0)
 
 
 class RestrictionSerializer(SerializerCleanedUp):
