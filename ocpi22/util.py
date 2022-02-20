@@ -71,6 +71,14 @@ def generate_random_token() -> str:
     return secrets.token_hex(32)
 
 
+class SerializerCleanedUp(serializers.Serializer):
+    def to_representation(self, value):
+        # Remove empty values
+        repr_dict = super().to_representation(value)
+        result = clear_empty(repr_dict)
+        return result
+
+
 class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
     def to_representation(self, value):
         # Remove empty values

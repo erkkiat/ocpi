@@ -27,7 +27,7 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, SerializerCleanedUp
 from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles
@@ -45,13 +45,13 @@ default_error_messages = dict(
 #  so need the routing headers.
 
 
-class CdrTokenSerializer(serializers.Serializer):
+class CdrTokenSerializer(SerializerCleanedUp):
     uid = serializers.CharField(required=True, source='cdr_token_uid')
     type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True, source='cdr_token_type')
     contract_id = serializers.CharField(required=True, source='cdr_token_contract_id')
 
 
-class TotalCostSerializer(serializers.Serializer):
+class TotalCostSerializer(SerializerCleanedUp):
     excl_vat = serializers.FloatField(source='total_cost_excl_vat', required=False)
     incl_vat = serializers.FloatField(source='total_cost_incl_vat', required=False)
 
@@ -76,11 +76,35 @@ class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
     step_size = serializers.IntegerField(min_value=1, max_value=24 * 60 * 60)
 
 
-class ElementsSaveSerializer(serializers.Serializer):
+class RestrictionSerializer(SerializerCleanedUp):
+    start_time = serializers.TimeField(required=False)
+    end_time = serializers.TimeField(required=False)
+
+    start_date = serializers.DateField(required=False)
+    end_date = serializers.DateField(required=False)
+
+    min_kwh = serializers.FloatField(required=False)
+    max_kwh = serializers.FloatField(required=False)
+
+    min_current = serializers.FloatField(required=False)
+    max_current = serializers.FloatField(required=False)
+
+    min_power = serializers.FloatField(required=False)
+    max_power = serializers.FloatField(required=False)
+
+    min_duration = serializers.IntegerField(required=False)
+    max_duration = serializers.IntegerField(required=False)
+
+    day_of_week = serializers.MultipleChoiceField(choices=TariffElement.DAY_OF_WEEK_CHOICES, required=False)
+    reservation = serializers.ChoiceField(choices=TariffElement.RESERVATION_CHOICES, required=False)
+
+
+class ElementsSaveSerializer(SerializerCleanedUp):
     price_components = PriceComponentSerializer(
         many=True,
         help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_pricecomponent_class'
     )
+    restrictions = RestrictionSerializer(source='*', required=False)
 
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -132,7 +156,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         return tariff
 
 
-class CommandTokenSerializer(serializers.Serializer):
+class CommandTokenSerializer(SerializerCleanedUp):
     class Meta:
         fields = ['country_code', 'party_id', 'uid', 'type',
                   'contract_id', 'visual_number', 'issuer', 'group_id',
@@ -260,7 +284,7 @@ class TokenViewSet(mixins.ListModelMixin,
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
 
-class CdrCoordinatesSerializer(serializers.Serializer):
+class CdrCoordinatesSerializer(SerializerCleanedUp):
     def update(self, instance, validated_data):
         raise NotImplementedError()
 
@@ -271,7 +295,7 @@ class CdrCoordinatesSerializer(serializers.Serializer):
     longitude = Coordinate(source='cdr_location_longitude')
 
 
-class CdrLocationSerializer(serializers.Serializer):
+class CdrLocationSerializer(SerializerCleanedUp):
     id = serializers.CharField(source='cdr_location_id')
     address = serializers.CharField(source='cdr_location_address')
     name = serializers.CharField(source='cdr_location_name', required=False)

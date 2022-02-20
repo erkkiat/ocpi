@@ -406,38 +406,38 @@ class TariffAdmin(NestedModelAdmin):
         class PriceComponentsInline(NestedTabularInline):
             model = PriceComponent
 
-            # This is also not working, PriceComponents are always editable
-            # def has_change_permission(self, request, obj=None):
-            #     if isinstance(obj, TariffElement) and obj.tariff:
-            #         obj = obj.tariff
-            #     return (obj and not obj.archived and
-            #         obj.is_ours()) \
-            #         or ALLOW_ADMIN_DELETE_AND_CHANGE
-
             def has_change_permission(self, request, obj=None) -> bool:
-                if isinstance(obj, TariffElement):
+                if obj and hasattr(obj, 'tariff'):
                     obj = obj.tariff
-                return (obj and obj.is_ours()) \
+                return (not obj or obj.is_ours()) \
                        or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-            def has_add_permission(self, request, obj) -> bool:
-                return self.has_change_permission(request, obj)
-
-            # def has_delete_permission(self, request, obj=None) -> bool:
-            #     return self.has_change_permission(request, obj)
+            def has_add_permission(self, request, obj=None) -> bool:
+                return Tariff.ocpi_object_owner in ocpi_identities or self.has_change_permission(request, obj)
 
         model = TariffElement
         inlines = [PriceComponentsInline]
 
+        fieldsets = [
+            ('Scope of the below price components', dict(
+                fields=(
+                    ('start_date', 'end_date'),
+                    ('start_time', 'end_time'),
+                    ('min_kwh', 'max_kwh'),
+                    ('min_power', 'max_power'),
+                    ('min_current', 'max_current'),
+                    ('min_duration', 'max_duration'),
+                    ('day_of_week', 'reservation'),
+                )
+            )),
+        ]
+
         def has_change_permission(self, request, obj=None) -> bool:
-            return (obj and obj.is_ours()) \
+            return (not obj or obj.is_ours()) \
                    or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-        def has_add_permission(self, request, obj) -> bool:
-            return self.has_change_permission(request, obj)
-
-        # def has_delete_permission(self, request, obj=None) -> bool:
-        #     return self.has_change_permission(request, obj)
+        def has_add_permission(self, request, obj=None) -> bool:
+            return Tariff.ocpi_object_owner in ocpi_identities or self.has_change_permission(request, obj)
 
     model = Tariff
     list_display = [
@@ -466,11 +466,7 @@ class TariffAdmin(NestedModelAdmin):
         return (obj and obj.is_ours()) \
                or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    # def has_delete_permission(self, request, obj=None) -> bool:
-    #     return ALLOW_ADMIN_DELETE_AND_CHANGE or self.has_change_permission(request, obj)
-
     def has_add_permission(self, request) -> bool:
-        # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
         return Tariff.ocpi_object_owner in ocpi_identities
 
 

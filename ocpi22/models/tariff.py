@@ -7,6 +7,7 @@ from django.db.models import QuerySet
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
+from multiselectfield import MultiSelectField
 from rest_framework.reverse import reverse
 
 from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
@@ -176,6 +177,42 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
 
 
 class TariffElement(models.Model, ModelUtilMixin):
+    start_time = models.TimeField(null=True, blank=True, help_text='This is in charger local time')
+    end_time = models.TimeField(null=True, blank=True, help_text='This is in charger local time')
+
+    start_date = models.DateField(null=True, blank=True, help_text='This is in charger local time')
+    end_date = models.DateField(null=True, blank=True, help_text='This is in charger local time')
+
+    min_kwh = models.FloatField(null=True, blank=True)
+    max_kwh = models.FloatField(null=True, blank=True)
+
+    min_current = models.FloatField(null=True, blank=True)
+    max_current = models.FloatField(null=True, blank=True)
+
+    min_power = models.FloatField(null=True, blank=True)
+    max_power = models.FloatField(null=True, blank=True)
+
+    min_duration = models.IntegerField(null=True, blank=True)
+    max_duration = models.IntegerField(null=True, blank=True)
+
+    DAY_OF_WEEK_CHOICES = (
+        ('MONDAY', 'Monday'),
+        ('TUESDAY', 'Tuesday'),
+        ('WEDNESDAY', 'Wednesday'),
+        ('THURSDAY', 'Thursday'),
+        ('FRIDAY', 'Friday'),
+        ('SATURDAY', 'Saturday'),
+        ('SUNDAY', 'Sunday')
+    )
+
+    day_of_week = MultiSelectField(max_length=56, null=True, blank=True, choices=DAY_OF_WEEK_CHOICES)
+
+    RESERVATION_CHOICES = (
+        ('RESERVATION', 'Costs for a reservation'),
+        ('RESERVATION_EXPIRES', 'Costs for a reservation that expires'),
+    )
+    reservation = models.CharField(max_length=19, null=True, blank=True, choices=RESERVATION_CHOICES)
+
     tariff = models.ForeignKey(Tariff, related_name='tariff_elements', on_delete=models.CASCADE)
 
     def __str__(self):
@@ -194,8 +231,9 @@ class PriceComponent(models.Model, ModelUtilMixin):
         ('FLAT', 'Flat'),
 
         # Time not charging: defined in hours, step_size multiplier: 1 second
-        # ('PARKING_TIME', 'Parking seconds'),
+        ('PARKING_TIME', 'Parking seconds'),
         # Todo: Implement PARKING_TIME PriceComponent
+        # Todo: How to prevent people from stopping session on app without disconnecting?
 
         # Time charging: defined in hours, step_size multiplier: 1 second
         # Can also be used in combination with a RESERVATION restriction to describe the price of the reservation time.
