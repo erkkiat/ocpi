@@ -43,9 +43,11 @@ def get_total_cost(obj):
 def hours_minutes(hours_float: float) -> str:
     """
     >>> hours_minutes(1.5)
-    '1 h 30 min'
+    '1h 30min'
+    >>> hours_minutes(2)
+    '2h'
     >>> hours_minutes(.5)
-    '30 min'
+    '30min'
     >>> hours_minutes(2/3600)
     '2 seconds'
     """
@@ -53,12 +55,15 @@ def hours_minutes(hours_float: float) -> str:
     hours = int(hours_float)
     minutes = int((hours_float - hours) * 60)
     if hours:
-        return f'{hours} h {minutes} min'
+        if minutes:
+            return f'{hours}h {minutes}min'
+        else:
+            return f'{hours}h'
     elif not hours and not minutes:
         seconds = int(hours_float * 3600)
         return f'{seconds} seconds'
     else:
-        return f'{minutes} min'
+        return f'{minutes}min'
 
 
 def generate_random_token() -> str:

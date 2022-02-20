@@ -54,6 +54,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
     tests.addTests(doctest.DocTestSuite('ocpi22.endpoints'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.models.tariff'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.settings'))
     return tests
@@ -448,12 +449,12 @@ class ApiPutTests(TestCase):
             self.maxDiff = 10000
             saved_data = json.loads(json.dumps(saved_data))
             # Remove non-OCPI and unsupported fields
-            ignored_fields = ('credit', 'total_time_cost', 'charging_periods')
+            ignored_fields = ('credit', 'total_time_cost', 'charging_periods', 'tariff_alt_text')
             for i in ignored_fields:
                 saved_data.pop(i, None)
                 data.pop(i, None)
             for t in range(0, len(saved_data['tariffs'])):
-                del saved_data['tariffs'][t]['human_readable']
+                del saved_data['tariffs'][t]['tariff_alt_text']
             self.assertEqual(saved_data, data)
 
     def test_put_token(self):

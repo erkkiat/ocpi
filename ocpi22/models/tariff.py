@@ -11,7 +11,7 @@ from multiselectfield import MultiSelectField
 from rest_framework.reverse import reverse
 
 from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
-from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES
+from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes
 from ocpi22.ocpi_util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
@@ -119,7 +119,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             ]
         ]
         # noinspection PyUnresolvedReferences
-        return f"{' + '.join(components or [f'{self.uid}'])} -- {self.get_type_display()}"
+        return f"{' + '.join(components or [f'{self.uid}'])}"
 
     def link(self):
         url = reverse('admin:ocpi22_tariff_change', args=[self.pk])
@@ -231,13 +231,13 @@ class PriceComponent(models.Model, ModelUtilMixin):
         ('FLAT', 'Flat'),
 
         # Time not charging: defined in hours, step_size multiplier: 1 second
-        ('PARKING_TIME', 'Parking seconds'),
+        ('PARKING_TIME', 'Parking per hour'),
         # Todo: Implement PARKING_TIME PriceComponent
         # Todo: How to prevent people from stopping session on app without disconnecting?
 
         # Time charging: defined in hours, step_size multiplier: 1 second
         # Can also be used in combination with a RESERVATION restriction to describe the price of the reservation time.
-        ('TIME', 'Charging seconds'),
+        ('TIME', 'Charging per hour'),
     )
     type = models.CharField(max_length=12, choices=TYPE_CHOICES)
 
@@ -266,36 +266,40 @@ class PriceComponent(models.Model, ModelUtilMixin):
 
     tariff_element = models.ForeignKey(TariffElement, related_name='price_components', on_delete=models.CASCADE)
 
-    def _format_step_and_type(self):
-        t = self.type
-        s = self.step_size
-        if t == 'ENERGY':
-            if s == 1000:
-                return '/ kWh'
-            else:
-                return f'/ {s} Wh'
-        elif t == 'FLAT':
-            return 'flat'
-        elif t == 'TIME':
-            if s == 60:
-                return '/ minute'
-            elif s == 3600:
-                return '/ hour'
-            else:
-                return f'/ {s} seconds'
-        elif t == 'PARKING_TIME':
-            if s == 60:
-                return '/ parking minute'
-            elif s == 3600:
-                return '/ hour parking'
-            else:
-                return f'/ {s} parking seconds'
-        # noinspection PyUnresolvedReferences
-        return f'/ {s} {self.get_type_display()}'
+    def _format_step_and_type(self, tariff_type=None, step_size=None):
+        """
+        >>> s = PriceComponent()
+        >>> s._format_step_and_type('ENERGY', 1)
+        '/kWh'
+        >>> s._format_step_and_type('ENERGY', 1000)
+        '/kWh'
+        >>> s._format_step_and_type('FLAT', 1)
+        ' flat'
+        >>> s._format_step_and_type('TIME', 1)
+        '/h'
+        """
+        t = tariff_type or self.type
+        s = step_size or self.step_size
+        return {
+            'ENERGY': '/kWh',
+            'FLAT': ' flat',
+            'TIME': '/h',
+            'PARKING_TIME': '/h parking',
+        }.get(t, '')
+
+    def _format_duration(self):
+        result = ''
+        e: TariffElement = self.tariff_element
+        if e.min_duration:
+            result += f' when over {hours_minutes(e.min_duration / 3600)}'
+        if e.max_duration:
+            result += f' until {hours_minutes(e.max_duration / 3600)}'
+        return result
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return f'{format_currency(self.price or 0.0, self.tariff.currency)} {self._format_step_and_type()}'
+        return f'{format_currency(self.price or 0.0, self.tariff.currency)}' \
+               f'{self._format_step_and_type()}{self._format_duration()}'
 
 
 class DefaultTariffs(models.Model):
