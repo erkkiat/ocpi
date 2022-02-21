@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 
 import requests
@@ -66,21 +67,21 @@ class Command(BaseCommand):
     help = 'Exchange the credentials tokens with a new or existing partner.'
 
     def ocpi_get(self, url, token_base64):
-        self.stdout.write(f'Getting {url}')
+        logging.info(f'Getting {url}')
         response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'))
         if response.status_code != 200:
-            self.stdout.write(f'{Back.RED}*** Got response: {response.status_code} - {response.reason}')
-            self.stdout.write(response.text)
+            logging.info(f'{Back.RED}*** Got response: {response.status_code} - {response.reason}')
+            logging.info(response.text)
             raise OCPIProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}',
                                     errno=response.status_code)
         return response
 
     def ocpi_post(self, url, token_base64, *args, **kwargs):
-        self.stdout.write(f'Posting to {url}')
+        logging.info(f'Posting to {url}')
         response = requests.post(url=url, headers=dict(Authorization=f'Token {token_base64}'), *args, **kwargs)
         if response.status_code != 200:
-            self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
-            self.stdout.write(response.text)
+            logging.info(f'*** Got response: {response.status_code} - {response.reason}')
+            logging.info(response.text)
             raise OCPIProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}',
                                     errno=response.status_code)
         return response
@@ -121,13 +122,13 @@ class Command(BaseCommand):
             ep_role = endpoint.get('role').lower()
             if ep_identifier == identifier and ep_role == role:
                 credentials_url = endpoint.get('url')
-                # self.stdout.write(f'Credentials receiver URL: {credentials_url}')
+                # logging.info(f'Credentials receiver URL: {credentials_url}')
                 return credentials_url
         raise OCPIProtocolError('There is no credentials_url provided by the other party')
 
     def handle(self, *args, **options):
         def heading(s):
-            self.stdout.write(f"\n\n{Style.BRIGHT}{s}\n{Style.RESET_ALL}")
+            logging.info(f"\n\n{Style.BRIGHT}{s}\n{Style.RESET_ALL}")
 
         token_base64 = base64.b64encode(str(options['token_a']).encode('ascii')).decode('ascii')
         url = options['versions_endpoint_url']
@@ -137,13 +138,13 @@ class Command(BaseCommand):
                     'and selecting a version we both understand')
 
             selected_version = self.__select_version(url, token_base64)
-            self.stdout.write(f'Selected version: {selected_version}.')
+            logging.info(f'Selected version: {selected_version}.')
 
             heading('2) Getting endpoints from other party')
 
             endpoints = self.__get_endpoints(selected_version['url'], token_base64)
             endpoints_str = ", ".join(set([e['identifier'] for e in endpoints['endpoints']]))
-            self.stdout.write(f'Got endpoints: {endpoints_str}')
+            logging.info(f'Got endpoints: {endpoints_str}')
 
             token = base64.b64decode(token_base64).decode('ascii')
 

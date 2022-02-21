@@ -7,7 +7,7 @@ from rest_framework.reverse import reverse
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
-from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES
+from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, apply_step_size
 from ocpi22.ocpi_util import OcpiModule, Ocpi
 
 
@@ -178,17 +178,23 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # For Admin
         return self.get_billed_party()
 
-    def calculate_price(self) -> bool:
-        connector = self.connector
-        if not connector:
+    def calculate_price(self, connector=None, tariffs=None) -> bool:
+        """
+        @param connector: For testing purposes
+        @param tariffs: For testing purposes
+        @return: If price is calculated, store price in self.total_cost_* and return True
+        """
+        connector = connector or self.connector
+        if not connector and not tariffs:
             return False
         kwh: float = float(self.kwh)
+
         # Calculate the session duration using either a stored end time or the current time
         hours = ((self.end_date_time or timezone.now()) - self.start_date_time).seconds / 3600
         result_incl_vat: float = 0.0
         result_excl_vat: float = 0.0
         tariff: Tariff
-        tariffs = connector.get_tariffs()
+        tariffs = tariffs or connector.get_tariffs()
 
         if not tariffs:
             # Cannot calculate price
@@ -202,19 +208,20 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 # noinspection PyUnresolvedReferences
                 for pc in e.price_components.all():
                     excl_vat = dict(
-                        ENERGY=lambda x: kwh * x,
-                        TIME=lambda x: hours * x,
+                        ENERGY=lambda x: apply_step_size(kwh, pc.step_size, divisor=1000) * x,
+                        TIME=lambda x: apply_step_size(hours, pc.step_size, divisor=3600) * x,
                         FLAT=lambda x: x
                     ).get(pc.type, lambda x: 0.0)(pc.price)
-                    # Todo: Price is per STEP SIZE
                     incl_vat = excl_vat * (1.0 + pc.vat / 100) \
                         if pc.vat else excl_vat
                     # ic(pc, excl_vat)
                     result_incl_vat += incl_vat
                     result_excl_vat += excl_vat
+            result_incl_vat = apply_min_and_max(result_incl_vat, tariff.min_price_incl_vat, tariff.max_price_incl_vat)
+            result_excl_vat = apply_min_and_max(result_excl_vat, tariff.min_price_excl_vat, tariff.max_price_excl_vat)
 
-        self.total_cost_incl_vat = round(result_incl_vat, 2)
-        self.total_cost_excl_vat = round(result_excl_vat, 2)
+        self.total_cost_incl_vat = round(result_incl_vat + 0.001, 2)  # Try round(5.625, 2) without the + 0.001
+        self.total_cost_excl_vat = round(result_excl_vat + 0.001, 2)
         # If we could figure out a price, it's a success, even if the price is 0.0
         return True
 

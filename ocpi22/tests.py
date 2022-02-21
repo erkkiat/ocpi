@@ -2,6 +2,7 @@ import doctest
 import json
 import os
 import logging
+import uuid
 
 from datetime import timedelta, datetime
 from unittest.mock import Mock, patch
@@ -277,9 +278,14 @@ class ApiPutTests(TestCase):
                     # noinspection PyUnresolvedReferences
                     self.fail(f'Possible options are: {", ".join([l.uid for l in Location.objects.all()])}')
 
+    dirname = os.path.dirname(os.path.abspath(__file__))
+
+    def _load_example(self, filename_segment: str) -> dict:
+        with open(os.path.join(self.dirname, f'data/examples/{filename_segment}.json')) as file:
+            return json.load(file)
+
     def test_put_tariff(self):
         url = reverse('tariff-list')
-        dirname = os.path.dirname(os.path.abspath(__file__))
         token_base64 = self.credentials.ours_base64()
 
         invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
@@ -315,18 +321,12 @@ class ApiPutTests(TestCase):
         for filename, http_status, ocpi_status, price_component_count \
                 in testcases:
 
-            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
-                data = json.load(file)
+            data = self._load_example(filename)
 
             country_code = data.get('country_code')
             party_id = data.get('party_id')
 
-            # Create CretentialsRoles
-            # noinspection PyUnresolvedReferences
-            roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
-                                                                    party_id=party_id, defaults=dict(
-                    business_details=self.business_details))
-            self.credentials.roles.add(roles)
+            self._create_credentials(country_code, party_id)
 
             # Send the request
             response = self.put(url, data, token_base64, TariffViewSet)
@@ -366,6 +366,53 @@ class ApiPutTests(TestCase):
             self.assertEqual(total_price_components, price_component_count,
                              f'There should be exactly {price_component_count} '
                              f'PriceComponents in the Tariff after {filename}.json')
+
+    def test_cost_calculation(self):
+        start_date_time = datetime(2000, 1, 1, 0, 0)
+        evse = Evse.objects.all().first()
+        location = evse.location
+        session_params = dict(
+            country_code='FI', party_id='FFF', start_date_time=start_date_time,
+            cdr_token_uid='123', cdr_token_type='RFID', cdr_token_contract_id='123', auth_method='COMMAND',
+            location=location, evse=evse, currency='EUR', status='ACTIVE',
+            end_date_time=start_date_time + timedelta(hours=1)
+        )
+        testcases = (
+            ('tariff_1_simple_2hour', dict(kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 5, 5.5),
+            ('tariff_8_simple_025kwh', dict(kwh=20), 5, 5.5),
+            ('tariff_9_025kwh_start', dict(kwh=20), 5.5, 6.1),
+            ('tariff_12_025kwh_min_price', dict(kwh=20), 5, 5.5),
+            ('tariff_12_025kwh_min_price', dict(kwh=1), .5, .55),
+
+            # ('tariff_10_025kwh_parking_start', dict(kwh=20, parking=40*60), 7, 7.9),
+            ('tariff_6_025kwh_start_max_price', dict(kwh=50), 10, 11),
+            ('tariff_6_025kwh_start_max_price', dict(kwh=30), 8, 8.85),
+
+            # Parking
+            # ('tariff_13_simple_3hour_5parking', dict(kwh=20)),
+            ('tariff_2_alt_text', dict(kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 4.75, 5),
+            ('tariff_3_alt_url', dict(kwh=20.45), 5.63, 6.24),
+
+            # Parking, weekdays, times
+            # ('tariff_4_complex', dict(kwh=20.45), 5.63, 6.24),
+
+        )
+        for filename, case_params, excl_vat, incl_vat in testcases:
+            params = session_params.copy()
+            params.update(case_params)
+            session: Session = Session.objects.create(uid=uuid.uuid4(),
+                                                      **params)
+            data = self._load_example(filename)
+            serializer = TariffSerializer(data=data)
+            self.assertTrue(serializer.is_valid(),
+                            f"Tariff doesn't serialize for file {filename}: {serializer.errors}")
+            tariff = serializer.save()
+            self.assertTrue(session.calculate_price(tariffs=[tariff]), 'Cannot calculate price.')
+            # ic(filename, session.total_cost_excl_vat, session.total_cost_incl_vat)
+            self.assertEqual(session.total_cost_excl_vat, excl_vat,
+                             f"Total cost excluding VAT doesn't match in case {filename}")
+            self.assertEqual(session.total_cost_incl_vat, incl_vat,
+                             f"Total cost including VAT doesn't match in case {filename}")
 
     def test_put_cdr(self):
         url = reverse('cdr-list')
@@ -541,6 +588,14 @@ class ApiPutTests(TestCase):
         result = self.client.get(detail_url)
         self.assertEqual(result.status_code, 403, 'A Location request should require OCPI authentication.')
 
+    def _create_credentials(self, country_code, party_id):
+        # noinspection PyUnresolvedReferences
+        roles, _created = CredentialsRole.objects.get_or_create(
+            role='CPO', country_code=country_code,
+            party_id=party_id, defaults=dict(business_details=self.business_details)
+        )
+        self.credentials.roles.add(roles)
+
 
 def dump_tariffs():
     # noinspection PyUnresolvedReferences
@@ -652,9 +707,9 @@ class CdrTests(TestCase):
         connector.tariff_ids.set([])
 
         self.assertTrue(session.calculate_price(), 'There is sufficient information to calculate the Session price')
-        self.assertEqual(session.total_cost_excl_vat, round(session.kwh * 0.22, 2),
+        self.assertEqual(session.total_cost_excl_vat, 2.86,
                          "Price without VAT doesn't seem right.")
-        self.assertEqual(session.total_cost_incl_vat, round(session.kwh * 0.22 * 1.24, 2),
+        self.assertEqual(session.total_cost_incl_vat, 3.55,
                          "Price with VAT doesn't seem right.")
 
         cdr = Cdr.create_based_on_session(session)
@@ -817,7 +872,6 @@ class UpdatePartiesTest(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
     def mocked_token_put(*args, **kwargs):
-
         # ic(args, kwargs)
         headers = {'Authorization': 'Token '
                                     'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0'

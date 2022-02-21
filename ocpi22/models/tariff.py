@@ -86,13 +86,15 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     tariff_alt_url = models.URLField(blank=True, default='')
 
     # When this field is set, a Charging Session with this tariff will at least cost this amount.
-    # This is different from a FLAT fee (Start Tariff, Transaction Fee), as a FLAT fee is
-    # a fixed amount that has to be paid for any Charging Session.
-    # A minimum price indicates that when the cost of a Charging Session is lower than this amount,
-    # the cost of the Session will be equal to this amount. (Also see note below)
+    # This is different from a FLAT fee (Start Tariff, Transaction Fee), as a FLAT fee is a fixed
+    # amount that has to be paid for any Charging Session. A minimum price indicates that when
+    # the cost of a Charging Session is lower than this amount, the cost of the Session will be
+    # equal to this amount.
+    min_price_excl_vat = models.FloatField(null=True, blank=True)
+    min_price_incl_vat = models.FloatField(null=True, blank=True)
 
-    # min_price
-    # max_price
+    max_price_excl_vat = models.FloatField(null=True, blank=True)
+    max_price_incl_vat = models.FloatField(null=True, blank=True)
 
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)

@@ -449,7 +449,27 @@ class TariffAdmin(NestedModelAdmin):
     search_fields = ['uid']
     # list_filter = ['archived']
     radio_fields = dict(type=admin.HORIZONTAL)
-    exclude = ['archived', 'last_updated']
+    # exclude = ['archived', 'last_updated']
+    fieldsets = [
+        ('',
+         dict(
+             fields=(
+                 ('country_code', 'party_id'),
+                 ('uid', 'currency'),
+                 ('type',),
+                 ('tariff_alt_url',),
+             )
+         )
+         ),
+        ('Price limits',
+         dict(
+             fields=(
+                 ('min_price_excl_vat', 'min_price_incl_vat'),
+                 ('max_price_excl_vat', 'max_price_incl_vat'),
+             )
+         )
+         ),
+    ]
 
     def get_queryset(self, _request):
         # Hide archived

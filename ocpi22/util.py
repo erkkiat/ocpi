@@ -1,7 +1,7 @@
 import secrets
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Any
 
 from django.conf import settings
 from django.core.validators import RegexValidator
@@ -218,6 +218,47 @@ CURRENCY_CHOICES = (
     ('TRY', 'Turkish lira'),
     ('UAH', 'Ukrainian hryvnia'),
 )
+
+
+def apply_min_and_max(value: Any, minimum: Any, maximum: Any) -> Any:
+    """
+    >>> apply_min_and_max(10, 3, 9)
+    9
+    >>> apply_min_and_max(2, 3, 9)
+    3
+    """
+    minimum = minimum or -99999999
+    maximum = maximum or 99999999
+    return max(minimum, min(maximum, value))
+
+
+def apply_step_size(value, step_size, divisor=1) -> float:
+    """
+    >>> apply_step_size(26/60, 60*15, 3600)  # 26 minutes, 15 minute step, seconds/hour
+    0.5
+    >>> apply_step_size(16/60, 60*15, 3600)  # 16 minutes, 15 minute step, seconds/hour
+    0.5
+    >>> apply_step_size(3, 2)  # 3 kWh, round up to 2 kWh, 1-to-1 comparison
+    4.0
+    >>> apply_step_size(5.1, 5)  # 5.1 kWh, round up to 5 kWh, 1-to-1 comparison
+    10.0
+    >>> apply_step_size(5.1, .5)  # 5.1 kWh, round up to 0.5 kWh, 1-to-1 comparison
+    5.5
+    >>> apply_step_size(2.5, 60, 3600)  # 2h 30min, 1 minute step, seconds/hour
+    2.5
+
+    @param value:
+    @param step_size:
+    @param divisor: If value and step_size have different units, such as value in hours and step_size in seconds, \
+                    convert hours into seconds by using divisor=3600
+    @return:
+    """
+    assert value > 0 and step_size > 0 and divisor > 0, 'apply_step_size() requires positive parameters'
+    value = value * divisor
+    modulo = (value % step_size)
+    if modulo:
+        value += step_size - modulo
+    return value / divisor
 
 
 def pretty_currency(c):
