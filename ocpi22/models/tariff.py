@@ -110,7 +110,17 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     def __str__(self):
         return self.uid
 
-    def price(self):
+    def min_and_max_price(self) -> str:
+        result = ''
+        if self.min_price_incl_vat or self.min_price_excl_vat:
+            result = f", min {format_currency(self.min_price_incl_vat, self.currency) or '-'} " \
+                     f"({format_currency(self.min_price_excl_vat, self.currency) or '-'} VAT 0%)"
+        if self.max_price_incl_vat or self.max_price_excl_vat:
+            result += f", max {format_currency(self.max_price_incl_vat, self.currency) or '-'} " \
+                      f"({format_currency(self.max_price_excl_vat, self.currency) or '-'} VAT 0%)"
+        return result
+
+    def price(self) -> str:
         """Format the price components in a readable form"""
         # noinspection PyUnresolvedReferences
         components = [
@@ -121,7 +131,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             ]
         ]
         # noinspection PyUnresolvedReferences
-        return f"{' + '.join(components or [f'{self.uid}'])}"
+        return f"{' + '.join(components or [f'{self.uid}'])}{self.min_and_max_price()}"
 
     def link(self):
         url = reverse('admin:ocpi22_tariff_change', args=[self.pk])
