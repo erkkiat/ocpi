@@ -8,7 +8,6 @@ from rest_framework import exceptions
 
 from ocpi22.commands import send_start_command, send_stop_command
 from ocpi22.models.cdr import Cdr
-from ocpi22.models.clientinfo import ClientInfo
 from ocpi22.models.dynamic_price import DynamicPrice
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
@@ -499,11 +498,12 @@ class CredentialsAdmin(admin.ModelAdmin):
         model = Endpoint
 
     model = Credentials
-    list_display = ['valid', 'party', 'token_a_base64', 'ours_base64', 'theirs_base64']
-    readonly_fields = ['theirs_base64', 'last_updated', 'created']
+    list_display = ['valid', 'party', 'last_connection', 'connection_status', 'token_a_base64', 'ours_base64',
+                    'theirs_base64']
+    readonly_fields = ['theirs_base64', 'last_updated', 'created', 'last_connection']
     inlines = [CredentialRolesInline, EndpointsInline]
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a']
-    list_display_links = ['token_a_base64']
+    list_display_links = ['party']
 
 
 @admin.register(CredentialsRole)
@@ -526,13 +526,6 @@ class DynamicPriceAdmin(admin.ModelAdmin):
     list_display = ['dynamic_price_source', 'price', 'start_datetime', 'end_datetime']
     list_filter = ['dynamic_price_source']
     search_fields = ['dynamic_price_source']
-
-
-@admin.register(ClientInfo)
-class ClientInfoAdmin(admin.ModelAdmin):
-    model = ClientInfo
-    list_display = ['party', 'role', 'status', 'last_updated']
-    readonly_fields = ['last_updated']
 
 
 admin.site.register(Token, TokenAdmin)

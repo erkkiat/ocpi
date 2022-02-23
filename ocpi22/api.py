@@ -21,7 +21,6 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.cpo_api import CHARGER
 from ocpi22.location import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.clientinfo import ClientInfo
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
@@ -745,10 +744,23 @@ class SessionViewSet(mixins.ListModelMixin,
         return self.put(request, partial=True)
 
 
+class ConnectionStatusSerializer(serializers.Serializer):
+    def to_representation(self, instance: CredentialsRole):
+        return instance.credentials.connection_status
+
+
+class LastConnectionSerializer(serializers.Serializer):
+    def to_representation(self, instance: CredentialsRole):
+        return instance.credentials.last_connection
+
+
 class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
-        model = ClientInfo
-        exclude = []
+        model = CredentialsRole
+        fields = ('country_code', 'party_id', 'role', 'status', 'last_updated')
+
+    status = ConnectionStatusSerializer(source='*')
+    last_updated = LastConnectionSerializer(source='*')
 
 
 class ClientInfoViewSet(mixins.ListModelMixin,
@@ -757,7 +769,7 @@ class ClientInfoViewSet(mixins.ListModelMixin,
     pagination_class = OCPIPaginationAndHeaders
     # lookup_field = 'pk'
     # noinspection PyUnresolvedReferences
-    queryset = ClientInfo.objects.all().order_by('country_code', 'party_id')
+    queryset = CredentialsRole.objects.all().order_by('country_code', 'party_id')
     serializer_class = ClientInfoSerializer
 
     def get_view_name(self):

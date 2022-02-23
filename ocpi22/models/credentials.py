@@ -13,7 +13,7 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from icecream import ic
 
-from ocpi22.choices import ROLE_CHOICES
+from ocpi22.choices import ROLE_CHOICES, CONNECTION_STATUS_CHOICES
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi_util import OcpiModule
 from ocpi22.util import ModelUtilMixin, generate_random_token
@@ -46,6 +46,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     # URL to the other party's versions endpoint
     url = models.URLField(blank=True, default='')
+
+    # Status of the connection to the party.
+    connection_status = models.CharField(max_length=9, choices=CONNECTION_STATUS_CHOICES, default='CONNECTED')
+
+    # The timestamp for the last message received or succesfully sent to the other party
+    last_connection = models.DateTimeField(null=True, blank=True)
 
     VERSION_CHOICES = (
         ('22', '2.2'),
