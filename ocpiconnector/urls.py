@@ -4,7 +4,7 @@ from django.urls import path
 from rest_framework.schemas import get_schema_view
 
 from ocpi22.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
-    RootRouter
+    RootRouter, ClientInfoViewSet
 from ocpi22.commands import CommandsViewSet
 from ocpi22.cpo_api import CPORouter, \
     CpoEvseViewSet, \
@@ -17,6 +17,7 @@ from ocpiconnector import charger_simulator
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
+ocpi_router.register(r'clientinfo', ClientInfoViewSet, basename='clientinfo')
 ocpi_router.register(r'tokens', TokenViewSet)
 ocpi_router.register(r'locations', LocationViewSet)
 ocpi_router.register(r'tariffs', TariffViewSet)

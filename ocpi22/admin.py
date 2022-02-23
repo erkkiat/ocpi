@@ -8,6 +8,7 @@ from rest_framework import exceptions
 
 from ocpi22.commands import send_start_command, send_stop_command
 from ocpi22.models.cdr import Cdr
+from ocpi22.models.clientinfo import ClientInfo
 from ocpi22.models.dynamic_price import DynamicPrice
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
@@ -524,6 +525,14 @@ class DynamicPriceAdmin(admin.ModelAdmin):
     ordering = ['-start_datetime']
     list_display = ['dynamic_price_source', 'price', 'start_datetime', 'end_datetime']
     list_filter = ['dynamic_price_source']
+    search_fields = ['dynamic_price_source']
+
+
+@admin.register(ClientInfo)
+class ClientInfoAdmin(admin.ModelAdmin):
+    model = ClientInfo
+    list_display = ['party', 'role', 'status', 'last_updated']
+    readonly_fields = ['last_updated']
 
 
 admin.site.register(Token, TokenAdmin)

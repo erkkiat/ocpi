@@ -237,6 +237,7 @@ class Ocpi:
         SESSIONS = 'sessions'
         CDRS = 'cdrs'
         COMMANDS = 'commands'
+        CLIENTINFO = 'clientinfo'
 
     STANDARD_CHOICES = (
         ('IEC_62196_T2', 'Type 2 "Mennekes"'),

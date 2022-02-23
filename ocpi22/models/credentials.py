@@ -13,6 +13,7 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from icecream import ic
 
+from ocpi22.choices import ROLE_CHOICES
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi_util import OcpiModule
 from ocpi22.util import ModelUtilMixin, generate_random_token
@@ -117,16 +118,6 @@ class CredentialsRole(models.Model, ModelUtilMixin):
         constraints = [
             models.UniqueConstraint(fields=['country_code', 'party_id', 'role'], name='unique_credentialsroles'),
         ]
-
-    ROLE_CHOICES = (
-        ('CPO', 'Charge Point operator'),
-        ('EMSP', 'Emobility Service Provider'),
-        ('HUB', 'Hub'),
-        ('NAP', 'National Access Point'),
-        ('NSP', 'Navigation Service Provider'),
-        ('OTHER', 'Other'),
-        ('SCSP', 'Smart Charging Service Provider'),
-    )
 
     role = models.CharField(max_length=5, choices=ROLE_CHOICES)
 

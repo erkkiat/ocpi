@@ -21,6 +21,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.cpo_api import CHARGER
 from ocpi22.location import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.business_details import BusinessDetails
+from ocpi22.models.clientinfo import ClientInfo
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
@@ -742,6 +743,35 @@ class SessionViewSet(mixins.ListModelMixin,
 
     def patch(self, request):
         return self.put(request, partial=True)
+
+
+class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
+    class Meta:
+        model = ClientInfo
+        exclude = []
+
+
+class ClientInfoViewSet(mixins.ListModelMixin,
+                        GenericViewSet):
+    filterset_fields = ['country_code', 'party_id']
+    pagination_class = OCPIPaginationAndHeaders
+    # lookup_field = 'pk'
+    # noinspection PyUnresolvedReferences
+    queryset = ClientInfo.objects.all().order_by('country_code', 'party_id')
+    serializer_class = ClientInfoSerializer
+
+    def get_view_name(self):
+        if hasattr(self, 'kwargs') and 'id' in self.kwargs:
+            return f'Clientinfo {self.kwargs.get("id")}'
+        # if self.name:
+        #     return f'{self.name.capitalize()}'
+        return f'Clientinfo'
+
+    @staticmethod
+    def get_object(id=None):
+        # Needed for OPTIONS to work in list view, could just return None
+        if id:
+            return get_object_or_404(ClientInfo, uid=id)
 
 
 class RootView(routers.APIRootView):
