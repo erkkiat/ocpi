@@ -108,8 +108,10 @@ cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
 def command_start(data, session_uid, update_url, url):
     from ocpi22.models.session import Session
     from rest_framework.generics import get_object_or_404
-    session: Session = get_object_or_404(Session, uid=session_uid)
-
+    session: Session = Session.get_if_exists(uid=session_uid)
+    if not session:
+        logging.error(f"Unable to find session {session_uid} to start charging.")
+        return False
     try:
         # POST the start command to CPO system
         result = requests.post(
