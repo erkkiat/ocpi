@@ -308,13 +308,11 @@
       "pk" : 3,
       "model" : "ocpi22.credentialsrole",
       "fields" : {
-         "business_details" : 1,
-         "role" : "CPO",
-         "credentials" : [
-            2
-         ],
-         "party_id" : "001",
-         "country_code" : "FI"
+         "business_details": 1,
+         "role": "CPO",
+         "credentials": 2,
+         "party_id": "001",
+         "country_code": "FI"
       }
    },
    {
@@ -325,9 +323,7 @@
          "country_code" : "FI",
          "party_id" : "001",
          "role" : "EMSP",
-         "credentials" : [
-            2
-         ]
+         "credentials": 2
       }
    },
    {

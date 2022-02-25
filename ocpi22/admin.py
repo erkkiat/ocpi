@@ -492,7 +492,7 @@ class TariffAdmin(NestedModelAdmin):
 
 class CredentialsAdmin(admin.ModelAdmin):
     class CredentialRolesInline(admin.TabularInline):
-        model = CredentialsRole.credentials.through
+        model = CredentialsRole
 
     class EndpointsInline(admin.TabularInline):
         model = Endpoint
@@ -503,7 +503,7 @@ class CredentialsAdmin(admin.ModelAdmin):
     readonly_fields = ['theirs_base64', 'last_updated', 'created', 'last_connection']
     inlines = [CredentialRolesInline, EndpointsInline]
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a']
-    list_display_links = ['party']
+    list_display_links = ['token_a_base64']
 
 
 @admin.register(CredentialsRole)
