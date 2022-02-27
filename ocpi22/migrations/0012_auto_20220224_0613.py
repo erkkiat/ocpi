@@ -25,16 +25,16 @@ class Migration(migrations.Migration):
         #     name='country_code',
         #     field=models.CharField(max_length=2),
         # ),
-        # migrations.RemoveField(
-        #     model_name='credentialsrole',
-        #     name='credentials',
-        # ),
-        # migrations.AddField(
-        #     model_name='credentialsrole',
-        #     name='credentials',
-        #     field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='roles',
-        #                             to='ocpi22.credentials'),
-        # ),
+        migrations.RemoveField(
+            model_name='credentialsrole',
+            name='credentials',
+        ),
+        migrations.AddField(
+            model_name='credentialsrole',
+            name='credentials',
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='roles',
+                                    to='ocpi22.credentials'),
+        ),
         # migrations.AlterField(
         #     model_name='credentialsrole',
         #     name='party_id',
