@@ -75,9 +75,9 @@ class PriceSource:
             end_datetime=end,
             defaults=kwargs
         )
-        dynamic_price.price = kwargs.get('price')
+        dynamic_price.price = round(float(kwargs.get('price')) + 0.00001, 4)
         dynamic_price.save(update_fields=['price'])
-        logging.info(f"{'Created' if created else 'Updated'} price {kwargs.get('price')} starting at {start}.")
+        logging.info(f"{'Created' if created else 'Updated'} price {dynamic_price.price} starting at {start}.")
         # print(str(dynamic_price))
         return dynamic_price
 

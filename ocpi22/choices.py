@@ -8,9 +8,11 @@ ROLE_CHOICES = (
     ('SCSP', 'Smart Charging Service Provider'),
 )
 
-CONNECTION_STATUS_CHOICES = (
-    ('CONNECTED', 'Connected'),
-    ('OFFLINE', 'Offline'),
-    ('PLANNED', 'Planned'),
-    ('SUSPENDED', 'Suspended'),
-)
+CONNECTED = 'CONNECTED'
+OFFLINE = 'OFFLINE'
+PLANNED = 'PLANNED'
+SUSPENDED = 'SUSPENDED'
+
+CONNECTION_STATUS_CHOICES = [
+    (x, x.capitalize()) for x in (CONNECTED, OFFLINE, PLANNED, SUSPENDED)
+]

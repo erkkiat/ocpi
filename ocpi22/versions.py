@@ -30,12 +30,12 @@ def get_endpoints_dict(request):
                 url=request.build_absolute_uri(reverse('credentials-list'))
             ),
             dict(
-                identifier="clientinfo",
+                identifier="hubclientinfo",
                 role=R,
                 url=request.build_absolute_uri(reverse('clientinfo-list'))
             ),
             dict(
-                identifier="clientinfo",
+                identifier="hubclientinfo",
                 role=S,
                 url=request.build_absolute_uri(reverse('clientinfo-list'))
             ),

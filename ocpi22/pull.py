@@ -1,4 +1,7 @@
+import logging
+
 from django.conf import settings
+from icecream import ic
 
 from ocpi22.models.credentials import Credentials, Endpoint, CredentialsRole
 from ocpi22.models.location import Location
@@ -11,7 +14,9 @@ from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 # Todo: Full object pull for Sessions and Cdrs
 
 def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
-    if not credentials.is_complete():
+    logging.info(f'Scheduling full update: {credentials}')
+    # Don't waste effort on offline parties, let still_alive continue trying
+    if not credentials.is_complete() or not credentials.connection_state():
         return
     endpoints = credentials.endpoints
     if not endpoints.count():
@@ -29,7 +34,7 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
     kwargs = dict(token_base64=token,
                   to_country_code=role.country_code, to_party_id=role.party_id,
                   from_country_code=get_our_country_code(), from_party_id=get_our_party_id(), method='get',
-                  limit=limit)
+                  limit=limit, credentials_id=credentials.pk)
     if settings.BACKGROUND_SEND:
         pull_objects.apply_async((object_list,), kwargs=kwargs, countdown=countdown, retry=True,
                                  retry_policy=dict(max_retries=3, interval_start=60 * 5))

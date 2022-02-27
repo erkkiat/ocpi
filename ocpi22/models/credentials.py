@@ -11,6 +11,7 @@ from django.db.models.signals import pre_save, pre_delete
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.utils import timezone
 from icecream import ic
 
 from ocpi22.choices import ROLE_CHOICES, CONNECTION_STATUS_CHOICES
@@ -75,11 +76,16 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return f'Credentials for {" / ".join([str(s) for s in self.roles.all()])}'
+        return " / ".join([str(s) for s in self.roles.all()])
 
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
         return super(self.__class__, self).save(*args, **kwargs)
+
+    def atomic_post_save(self, *_args, **_kwargs) -> None:
+        # This should trigger when Credentials is modified in Admin UI
+        from ocpi22.pull import schedule_full_update
+        schedule_full_update(self, countdown=10)
 
     def party(self):
         # noinspection PyUnresolvedReferences
@@ -116,7 +122,18 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return Credentials.objects.create(token_a=token) if create else None
 
     def is_complete(self) -> bool:
-        return bool(self.ours and self.theirs)
+        return bool(self.ours and self.theirs and self.roles.count())
+
+    def connection_state(self) -> bool:
+        return self.valid and self.connection_status == 'CONNECTED'
+
+    # For admin so that there is a pretty boolean icon
+    connection_state.boolean = True
+    connection_state.admin_order_field = 'connection_status'
+
+    def update_last_connection(self):
+        self.last_connection = timezone.now()
+        self.save(update_fields=['last_connection'])
 
 
 class CredentialsRole(models.Model, ModelUtilMixin):
@@ -152,6 +169,7 @@ class Endpoint(models.Model, ModelUtilMixin):
     TARIFFS = 'tariffs'
     CDRS = 'cdrs'
     SESSIONS = 'sessions'
+    HUBCLIENTINFO = 'hubclientinfo'
 
     IDENTIFIER_CHOICES = (
         (CREDENTIALS, 'Credentials'),
@@ -161,8 +179,9 @@ class Endpoint(models.Model, ModelUtilMixin):
         (TARIFFS, 'Tariffs'),
         (CDRS, 'Charge Detail Records'),
         (SESSIONS, 'Sessions'),
+        (HUBCLIENTINFO, 'Hubclientinfo'),
     )
-    identifier = models.CharField(max_length=12, choices=IDENTIFIER_CHOICES)
+    identifier = models.CharField(max_length=13, choices=IDENTIFIER_CHOICES)
 
     url = models.URLField()
 
@@ -220,10 +239,6 @@ def credentials_pre_save(sender, instance, *_args, **_kwargs):
     credentials: Credentials = instance
     if not credentials.token_a:
         credentials.token_a = generate_random_token()
-    # if not credentials.ours:
-    #     credentials.ours = generate_random_token()
-    from ocpi22.pull import schedule_full_update
-    schedule_full_update(credentials, countdown=10)
 
 
 @receiver(pre_delete, sender=Credentials)

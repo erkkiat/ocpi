@@ -18,6 +18,9 @@ SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
 SEND_UPDATES = os.environ.get('SEND_UPDATES', True)
 UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'
 
+# How often to check that other party is alive
+STILL_ALIVE_FREQUENCY = os.environ.get('STILL_ALIVE_FREQUENCY', 60 * 5)
+
 # Send updates asynchronously using Celery
 BACKGROUND_SEND = os.environ.get('BACKGROUND_SEND', True)
 

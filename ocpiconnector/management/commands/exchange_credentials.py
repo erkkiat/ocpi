@@ -6,7 +6,7 @@ import requests
 from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
-from icecream import ic
+from django.utils import timezone
 from rest_framework.reverse import reverse
 
 from ocpi22.models.credentials import Credentials, Endpoint
@@ -151,6 +151,7 @@ class Command(BaseCommand):
             credentials: Credentials = Credentials.find(token, create=True)
             credentials.ours = token_b
             credentials.version = endpoints['version'].replace('.', '')  # "2.2" => "22"
+            credentials.last_connection = timezone.now()
             credentials.save()
 
             # Replace any existing endpoints for this specific party

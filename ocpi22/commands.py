@@ -222,10 +222,15 @@ class CommandsViewSet(GenericViewSet):
                     return Response(dict(error=f'Unable to start session on charger at this time',
                                          status=status.HTTP_406_NOT_ACCEPTABLE))
 
-                command_start.delay(
-                    serializer.data, session.uid,
+                kwargs = dict(
+                    data=serializer.data, session_uid=session.uid,
                     update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
-                    url=request.build_absolute_uri(reverse('simulate_session_start')))  # Todo: use actual callback
+                    url=request.build_absolute_uri(reverse('simulate_session_start'))  # Todo: use actual callback
+                )
+                if settings.BACKGROUND_SEND in (True, 1, '1', 'true', 'True'):
+                    command_start.delay(**kwargs)  # Todo: use actual callback
+                else:
+                    command_start(**kwargs)
                 response_serializer = CommandResponse(
                     instance=dict(
                         result=result,

@@ -17,7 +17,7 @@ from ocpiconnector import charger_simulator
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
-ocpi_router.register(r'clientinfo', ClientInfoViewSet, basename='clientinfo')
+ocpi_router.register(r'hubclientinfo', ClientInfoViewSet, basename='clientinfo')
 ocpi_router.register(r'tokens', TokenViewSet)
 ocpi_router.register(r'locations', LocationViewSet)
 ocpi_router.register(r'tariffs', TariffViewSet)

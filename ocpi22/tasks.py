@@ -1,6 +1,7 @@
 import json
 import os
 import random
+from datetime import timedelta
 from urllib.parse import urljoin
 
 import celery
@@ -19,6 +20,7 @@ from requests import Response
 from rest_framework import status
 
 from ocpiconnector import slack_logging
+from ocpiconnector.settings import STILL_ALIVE_FREQUENCY
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 slack_logging.init()
@@ -38,6 +40,10 @@ app.conf.beat_schedule = {
     'run-me-every-minute': {
         'task': 'ocpi22.tasks.celery_heartbeat',
         'schedule': 60 * 60
+    },
+    'still-alive': {
+        'task': 'ocpi22.tasks.check_still_alive',
+        'schedule': STILL_ALIVE_FREQUENCY
     },
     'set-spot-prices-every-hour': {
         'task': 'ocpi22.tasks.set_spot_prices',
@@ -102,6 +108,9 @@ app.autodiscover_tasks()
 
 # Send pings automatically to Cronitor for Celery background tasks
 cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
+
+
+# Todo: Route commands through HUB
 
 
 @shared_task(max_retries=0)
@@ -188,30 +197,36 @@ def make_headers(token_base64,
 @shared_task
 def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
-                      from_country_code: str, from_party_id: str, method='put') -> Response:
-    # print(f'Type(data): {type(data)}')
-    # for x in ('text', 'status_code', 'content'):
-    #     if hasattr(data, x):
-    #         print(f'Data.{x}: {data.x}')
+                      from_country_code: str, from_party_id: str, method='put',
+                      credentials_id=None, **_kwargs) -> Response:
+    try:
+        logging.info(f"Sending {method.upper()} request {data.get('uid', data.get('id', ''))} to {url}")
+        headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
 
-    logging.info(f"Sending {method.upper()} request {data.get('uid', data.get('id', ''))} to {url}")
-    headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
+        kwargs = dict(url=url, json=data, headers=headers)
+        if method == 'put':
+            result = requests.put(**kwargs)
+        elif method == 'delete':
+            result = requests.delete(**kwargs)
+        elif method == 'get':
+            result = requests.get(**kwargs)
+        else:
+            raise NotImplementedError(f'Method {method} is not supported for send_ocpi_request')
 
-    kwargs = dict(url=url, json=data, headers=headers)
-    if method == 'put':
-        result = requests.put(**kwargs)
-    elif method == 'delete':
-        result = requests.delete(**kwargs)
-    elif method == 'get':
-        result = requests.get(**kwargs)
-    else:
-        raise NotImplementedError(f'Method {method} is not supported for send_ocpi_request')
-
-    logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
-    if result.status_code >= status.HTTP_400_BAD_REQUEST:
-        logging.error(result.text[-500:])
-        logging.error(f'Unable to send update to {url}: {result.status_code} - {result.reason}')
-    return result
+        logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
+        if result.status_code >= status.HTTP_400_BAD_REQUEST:
+            logging.error(result.text[-500:])
+            logging.error(f'Unable to send update to {url}: {result.status_code} - {result.reason}')
+        if credentials_id:
+            from ocpi22.models.credentials import Credentials
+            credentials = Credentials.get_if_exists(pk=credentials_id)
+            if credentials: credentials.update_last_connection()
+        return result
+    except requests.exceptions.ConnectionError as e:
+        logging.error(f"Unable to send an OCPI request to {to_country_code}*{to_party_id} at {url}.")
+        from ocpi22.models.credentials import Credentials
+        if credentials_id:
+            Credentials.objects.filter(pk=credentials_id).update(connection_status='OFFLINE')
 
 
 @shared_task
@@ -258,27 +273,60 @@ def exchange_credentials(token, url):
 
 @shared_task(max_retries=2, retry_jitter=True, retry_backoff=120)
 def pull_objects(object_list, limit=20, **kwargs) -> None:
-    if not object_list:
-        return
-    obj = object_list[0]
-    url = kwargs.pop('url', None) or obj.get('url') + f'?limit={limit}'
-    response = send_ocpi_request(data=dict(), url=url, **kwargs)
-    next_url, _rel = response.headers.get('Link', ';').strip('<>').split(';')
-    model = obj.get('model')
-    viewset = import_string(obj.get('viewset'))
-    for i in response.json().get('data'):
+    try:
+        if not object_list:
+            return
+        obj = object_list[0]
+        url = kwargs.pop('url', None) or f"{obj.get('url')}?limit={limit}"
+        response = send_ocpi_request(data=dict(), url=url, **kwargs)
+        if response and response.status_code < status.HTTP_400_BAD_REQUEST:
+            next_url, _rel = response.headers.get('Link', ';').strip('<>').split(';')
+            model = obj.get('model')
+            viewset = import_string(obj.get('viewset'))
+            for i in response.json().get('data'):
+                try:
+                    viewset.put(request=None, data=i)
+                except Exception as e:
+                    logging.error(f"Unable to update {model} using data pulled from url {url} "
+                                  f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
+
+            if next_url:
+                kwargs['url'] = next_url
+            else:
+                object_list.pop(0)
+
+            if settings.BACKGROUND_SEND:
+                pull_objects.apply_async((object_list,), kwargs=kwargs, countdown=random.randint(2, 10))
+            else:
+                pull_objects(object_list, limit, **kwargs)
+    except requests.exceptions.ConnectionError as e:
+        logging.error(f"Unable to pull objects: {e}")
+
+
+@shared_task(max_retries=0)  # We will do this every 5 minutes anyways
+def check_still_alive(credentials_id: int = None) -> None:
+    from ocpi22.models.credentials import Credentials
+    if credentials_id:
         try:
-            viewset.put(request=None, data=i)
+            credentials = Credentials.objects.get(pk=credentials_id)
+            requests.get(credentials.url)
+            credentials.last_connection = timezone.now()
+            credentials.connection_status = 'CONNECTED'
+            logging.info(f"{credentials} is alive")
         except Exception as e:
-            logging.error(f"Unable to update {model} using data pulled from url {url} "
-                          f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
-
-    if next_url:
-        kwargs['url'] = next_url
-    else:
-        object_list.pop(0)
-
-    if settings.BACKGROUND_SEND:
-        pull_objects.apply_async((object_list,), kwargs=kwargs, countdown=random.randint(2, 10))
-    else:
-        pull_objects(object_list, limit, **kwargs)
+            logging.error(f"STILL ALIVE CHECK: Unable to connect to {credentials} ({credentials.url}): {e}")
+            credentials.connection_status = 'OFFLINE'
+        credentials.save(update_fields=['last_connection', 'connection_status'])
+        return
+    stale_credentials = Credentials.objects.filter(
+        last_connection__lte=timezone.now() - timedelta(seconds=STILL_ALIVE_FREQUENCY),
+        valid=True
+    )
+    logging.info(f"Checking {stale_credentials.count()} parties for alive")
+    c: Credentials
+    for c in stale_credentials:
+        if c.is_complete():
+            since_last_time = (timezone.now() - c.last_connection).seconds
+            logging.info(f"{timezone.now()} - {c.last_connection}")
+            logging.info(f"Checking that {c} is alive and well, last time was {int(since_last_time / 60)} min ago")
+            check_still_alive.apply_async((c.pk,), countdown=random.randint(0, stale_credentials.count()))
