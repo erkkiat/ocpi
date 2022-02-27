@@ -25,10 +25,10 @@ class Migration(migrations.Migration):
         #     name='country_code',
         #     field=models.CharField(max_length=2),
         # ),
-        migrations.RemoveField(
-            model_name='credentialsrole',
-            name='credentials',
-        ),
+        # migrations.RemoveField(
+        #     model_name='credentialsrole',
+        #     name='credentials',
+        # ),
         migrations.AddField(
             model_name='credentialsrole',
             name='credentials',
