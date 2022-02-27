@@ -96,19 +96,23 @@ def set_spot_prices() -> bool:
         return True
 
 
-REDIS_URL = os.environ['REDIS_URL']
+# For Heroku Redis and Redis Enterprise Cloud
+REDIS_URL = os.environ.get('REDIS_URL', os.environ.get('REDISCLOUD_URL'))  # This needs to fail if neither is set
+assert settings.DEBUG or REDIS_URL, 'REDIS_URL needs to be set at least in the production'
 if 'rediss' in REDIS_URL and 'ssl_cert_reqs' not in REDIS_URL:
     REDIS_URL += '?ssl_cert_reqs=CERT_NONE'
 
-app.conf.update(broker_url=REDIS_URL,
-                result_backend=REDIS_URL)
+if REDIS_URL:
+    app.conf.update(broker_url=REDIS_URL,
+                    result_backend=REDIS_URL)
 
-# Load task modules from all registered Django apps.
-app.autodiscover_tasks()
+    # Load task modules from all registered Django apps.
+    app.autodiscover_tasks()
 
-# Send pings automatically to Cronitor for Celery background tasks
-cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
-
+    # Send pings automatically to Cronitor for Celery background tasks
+    cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
+else:
+    logging.error('REDIS_URL not set, no connection to REDIS')
 
 # Todo: Route commands through HUB
 
