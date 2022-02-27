@@ -10,10 +10,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveConstraint(
-            model_name='session',
-            name='session_party_id_uid',
-        ),
+        # migrations.RemoveConstraint(
+        #     model_name='session',
+        #     name='session_party_id_uid',
+        # ),
         migrations.AlterField(
             model_name='credentials',
             name='token_a',
