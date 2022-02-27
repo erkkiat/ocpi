@@ -10,21 +10,21 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveConstraint(
-            model_name='session',
-            name='session_party_id_uid',
-        ),
-        migrations.AlterField(
-            model_name='credentials',
-            name='token_a',
-            field=models.CharField(default='99632d2443125361f309faaf3685a4d26a920925a817688ba43a63cd3e451967',
-                                   max_length=64),
-        ),
-        migrations.AlterField(
-            model_name='credentialsrole',
-            name='country_code',
-            field=models.CharField(max_length=2),
-        ),
+        # migrations.RemoveConstraint(
+        #     model_name='session',
+        #     name='session_party_id_uid',
+        # ),
+        # migrations.AlterField(
+        #     model_name='credentials',
+        #     name='token_a',
+        #     field=models.CharField(default='99632d2443125361f309faaf3685a4d26a920925a817688ba43a63cd3e451967',
+        #                            max_length=64),
+        # ),
+        # migrations.AlterField(
+        #     model_name='credentialsrole',
+        #     name='country_code',
+        #     field=models.CharField(max_length=2),
+        # ),
         migrations.RemoveField(
             model_name='credentialsrole',
             name='credentials',
@@ -35,55 +35,55 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='roles',
                                     to='ocpi22.credentials'),
         ),
-        migrations.AlterField(
-            model_name='credentialsrole',
-            name='party_id',
-            field=models.CharField(max_length=3),
-        ),
-        migrations.AlterField(
-            model_name='location',
-            name='country_code',
-            field=models.CharField(default='', max_length=2),
-        ),
-        migrations.AlterField(
-            model_name='location',
-            name='party_id',
-            field=models.CharField(default='', max_length=3),
-        ),
-        migrations.AlterField(
-            model_name='session',
-            name='country_code',
-            field=models.CharField(max_length=2),
-        ),
-        migrations.AlterField(
-            model_name='session',
-            name='party_id',
-            field=models.CharField(max_length=3),
-        ),
-        migrations.AlterField(
-            model_name='tariff',
-            name='country_code',
-            field=models.CharField(default='', max_length=2),
-        ),
-        migrations.AlterField(
-            model_name='tariff',
-            name='party_id',
-            field=models.CharField(default='', max_length=3),
-        ),
-        migrations.AlterField(
-            model_name='token',
-            name='country_code',
-            field=models.CharField(default='', max_length=2),
-        ),
-        migrations.AlterField(
-            model_name='token',
-            name='party_id',
-            field=models.CharField(default='', max_length=3),
-        ),
-        migrations.AlterUniqueTogether(
-            name='token',
-            unique_together=set(),
-        ),
+        # migrations.AlterField(
+        #     model_name='credentialsrole',
+        #     name='party_id',
+        #     field=models.CharField(max_length=3),
+        # ),
+        # migrations.AlterField(
+        #     model_name='location',
+        #     name='country_code',
+        #     field=models.CharField(default='', max_length=2),
+        # ),
+        # migrations.AlterField(
+        #     model_name='location',
+        #     name='party_id',
+        #     field=models.CharField(default='', max_length=3),
+        # ),
+        # migrations.AlterField(
+        #     model_name='session',
+        #     name='country_code',
+        #     field=models.CharField(max_length=2),
+        # ),
+        # migrations.AlterField(
+        #     model_name='session',
+        #     name='party_id',
+        #     field=models.CharField(max_length=3),
+        # ),
+        # migrations.AlterField(
+        #     model_name='tariff',
+        #     name='country_code',
+        #     field=models.CharField(default='', max_length=2),
+        # ),
+        # migrations.AlterField(
+        #     model_name='tariff',
+        #     name='party_id',
+        #     field=models.CharField(default='', max_length=3),
+        # ),
+        # migrations.AlterField(
+        #     model_name='token',
+        #     name='country_code',
+        #     field=models.CharField(default='', max_length=2),
+        # ),
+        # migrations.AlterField(
+        #     model_name='token',
+        #     name='party_id',
+        #     field=models.CharField(default='', max_length=3),
+        # ),
+        # migrations.AlterUniqueTogether(
+        #     name='token',
+        #     unique_together=set(),
+        # ),
         migrations.AlterField(
             model_name='endpoint',
             name='identifier',
