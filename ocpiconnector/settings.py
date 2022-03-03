@@ -2,27 +2,36 @@
 import os
 from django.conf.locale.en import formats as locale_formats
 
+
+def _env_bool(key, default=False) -> bool:
+    TRUE_OPTIONS = (1, '1', True, 'True', 'true')
+    return bool(os.environ.get(key, default) in TRUE_OPTIONS)
+
+
 DATETIME_FORMAT = "%d.%m.%Y %H:%M"
 locale_formats.DATETIME_FORMAT = "D j.n.Y H:i"
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
-DEBUG = os.environ.get('DEBUG', False)
+DEBUG = _env_bool('DEBUG', False)
 TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SECRET_KEY = os.environ.get('SECRET_KEY', 'idnty9dyt3178oxr3xfgxr328oxntr')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY and DEBUG:
+    SECRET_KEY = '1234567890'
+assert SECRET_KEY, 'Please set a SECRET_KEY in environment'
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
 
 # Send updates to partners who we have Credentials for
-SEND_UPDATES = os.environ.get('SEND_UPDATES', True)
+SEND_UPDATES = _env_bool('SEND_UPDATES', True)
 UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'
 
 # How often to check that other party is alive
 STILL_ALIVE_FREQUENCY = os.environ.get('STILL_ALIVE_FREQUENCY', 60 * 5)
 
 # Send updates asynchronously using Celery
-BACKGROUND_SEND = os.environ.get('BACKGROUND_SEND', True)
+BACKGROUND_SEND = _env_bool('BACKGROUND_SEND', True)
 
 ADMINS = [('Erkki Tapola', 'erkki.tapola@chargerhub.eu')]
 MANAGERS = ADMINS
@@ -77,10 +86,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
+def hostname_variants(hostname):
+    """
+    >>> hostname_variants('testi10-ocpi.herokuapp.com')
+    ['testi10-ocpi.herokuapp.com', 'testi10-ocpi.ocpiconnector.com', 'testi10-ocpi.roamingconnector.com', 'testi10-ocpi.ocpiguide.com', 'testi10-ocpi.chargerhub.eu']
+    >>> hostname_variants('cpo-ocpi.ocpiconnector.com')
+    ['cpo-ocpi.herokuapp.com', 'cpo-ocpi.ocpiconnector.com', 'cpo-ocpi.roamingconnector.com', 'cpo-ocpi.ocpiguide.com', 'cpo-ocpi.chargerhub.eu']
+    >>> hostname_variants('cpo')
+    ['cpo.herokuapp.com', 'cpo.ocpiconnector.com', 'cpo.roamingconnector.com', 'cpo.ocpiguide.com', 'cpo.chargerhub.eu']
+    """
+    components = hostname.split('.')
+    return [
+        f'{components[0]}.{x}'
+        for x in ['herokuapp.com', 'ocpiconnector.com', 'roamingconnector.com', 'ocpiguide.com', 'chargerhub.eu']
+    ]
+
+
 ALLOWED_HOSTS = [
-    'localhost', '127.0.0.1',
-    HOSTNAME
-]
+                    'localhost', '127.0.0.1',
+                ] + hostname_variants(HOSTNAME)
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
