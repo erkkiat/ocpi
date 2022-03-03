@@ -13,12 +13,15 @@ if [ -z "$2" ]
     ROLE2="EMSP='FI*MSP'"
 fi
 
-if [ `export $(cat .env | xargs)` ]
+export $(cat .env | xargs)
+
+if [ -z "$CRONITOR_API_KEY" ] || [ -z "$BGDA_URL" ] || [ -z "$IBEX_CREDENTIALS" ]
   then
     echo 'You should have CRONITOR_API_KEY, BGDA_URL and IBEX_CREDENTIALS defined in .env'
     exit 1
 fi
 
+HOST=$1
 HEROKU_APP=$1-ocpi
 
 echo "Creating app $HEROKU_APP..."
@@ -27,11 +30,13 @@ heroku create --region eu $HEROKU_APP \
  && heroku addons:create jawsdb-maria \
  && heroku addons:create papertrail \
  && heroku addons:create rediscloud \
- && heroku config:set CRONITOR_API_KEY=$CRONITOR_API_KEY HOSTNAME=$HEROKU_APP.herokuapp.com \
+ && heroku config:set CRONITOR_API_KEY=$CRONITOR_API_KEY HOSTNAME=$HOST.ocpiconnector.com \
  SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` \
  BGDA_URL=$BGDA_URL IBEX_CREDENTIALS=$IBEX_CREDENTIALS $2 $3 $4 $ROLE1 $ROLE2 \
  && heroku pipelines:add ocpi-connector --stage=production \
  && heroku pipelines:promote --app=cpo-ocpi --to=$HEROKU_APP \
  && heroku run ./manage.py loaddata ocpi22/data/initial.json \
- && heroku run ./manage.py createsuperuser --username eki --email erkki.tapola@pohdinto.com \
- && heroku ps:scale worker=1
+ && heroku run ./manage.py createsuperuser --username eki --email erkki.tapola@pohdinto.com
+
+# Too many connections for the free database
+# && heroku ps:scale worker=1
