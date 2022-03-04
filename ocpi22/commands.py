@@ -224,7 +224,7 @@ class CommandsViewSet(GenericViewSet):
 
                 kwargs = dict(
                     data=serializer.data, session_uid=session.uid,
-                    update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
+                    update_url=request.build_absolute_uri(reverse('session-list', args=[session.uid])),
                     url=request.build_absolute_uri(reverse('simulate_session_start'))  # Todo: use actual callback
                 )
                 if settings.BACKGROUND_SEND in (True, 1, '1', 'true', 'True'):

@@ -461,6 +461,8 @@ class SessionViewSet(viewsets.ViewSet):
 
 class ChargePointOperatorAPIView(routers.APIRootView):
     """
+    This API is not a part of the OCPI protocol. It is intended as an optional way to connect to OCPI roaming.
+
     Here you can try out the CPO API interfaces to support your development and integration work.
     These streamlined interfaces provide the necessary tools for quickly connecting
     a CPO backend to eMSPs and hubs which use the OCPI protocol.

@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from rest_framework import serializers
 
+from ocpi22.ocpi_util import OCPIResponse
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities
 
 
@@ -403,7 +404,13 @@ class ModelUtilMixin:
                     self.__setattr__(field, upper_value)
 
 
-class Period:
+PREMIUM_RESPONSE = OCPIResponse(
+    status_message='This view is available in the OCPI Connector Premium. Upgrade at http://ocpi.guide/compare/',
+    status_code=2999, http_status=403
+)
+
+
+class TimePeriod:
     seconds = 0
     start = None
     end = None
@@ -420,13 +427,13 @@ class Period:
         @return: How many Seconds of this session is within this Tariff
 
         >>> dt = datetime(2000, 1, 1, 0, 0)
-        >>> Period(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=60), dt + timedelta(seconds=3*60), )
+        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=60), dt + timedelta(seconds=3*60), )
         2000-01-01 00:01:00 - 2000-01-01 00:02:00, 60
-        >>> Period(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=10*60), dt + timedelta(seconds=1*60), )
+        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=10*60), dt + timedelta(seconds=1*60), )
         2000-01-01 00:00:00 - 2000-01-01 00:01:00, 60
-        >>> Period(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=2*60), dt + timedelta(seconds=3*60), )
+        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=2*60), dt + timedelta(seconds=3*60), )
         -
-        >>> Period(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=2*60), dt - timedelta(seconds=60), )
+        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=2*60), dt - timedelta(seconds=60), )
         -
         """
 

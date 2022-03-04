@@ -16,7 +16,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.viewsets import GenericViewSet, ViewSet
 
 from ocpi22.cpo_api import CHARGER
 from ocpi22.location import BusinessDetailsSerializer, Coordinate
@@ -27,7 +27,7 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, SerializerCleanedUp
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, SerializerCleanedUp, PREMIUM_RESPONSE
 from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles
@@ -774,29 +774,29 @@ class ClientInfoViewSet(mixins.ListModelMixin,
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'id' in self.kwargs:
-            return f'Clientinfo {self.kwargs.get("id")}'
+            return f'HubClientInfo {self.kwargs.get("id")}'
         # if self.name:
         #     return f'{self.name.capitalize()}'
-        return f'Clientinfo'
+        return f'HubClientInfo'
 
     @staticmethod
     def get_object(id=None):
         # Needed for OPTIONS to work in list view, could just return None
         if id:
-            return get_object_or_404(ClientInfo, uid=id)
+            return get_object_or_404(CredentialsRole, pk=id)
 
 
 class RootView(routers.APIRootView):
     """
-    Welcome to the OCPI Connector Developer Central. Here you can access the OCPI 2.2 endpoints with examples
-    and the CPO interface for quick integration to popular roaming networks.
+    Welcome to the OCPI Connector Developer Central.
+    Here you have interactive access to the OCPI 2.2 endpoints with examples.
     """
 
     @staticmethod
     def get(request: WSGIRequest, **kwargs):
         return Response({
             "OCPI 2.2": request.build_absolute_uri(reverse('ocpi-22')),
-            "CPO API": request.build_absolute_uri(reverse('cpo-api')),
+            # "CPO API": request.build_absolute_uri(reverse('cpo-api')),
             "OpenAPI": request.build_absolute_uri(reverse('openapi-schema')),
         })
 
@@ -814,8 +814,8 @@ class OcpiApi22View(routers.APIRootView):
     This portal provides ways to test OCPI 2.2 interaction, view the information in the database and
     to read the API documentation.
 
-    The streamlined interfaces for the CPO are available at [/api/cpo/v1/](/api/cpo/v1/).
-    You can contact [support@chargerhub.eu](support@chargerhub.eu) for training.
+    The streamlined interfaces (not part of OCPI) for the CPO are available at [/api/cpo/v1/](/api/cpo/v1/).
+    You can contact [support@chargerhub.eu](support@chargerhub.eu) for training and consultation.
     """
 
     @staticmethod
@@ -834,3 +834,19 @@ class OCPIRouter(routers.DefaultRouter):
     def __init__(self):
         super().__init__()
         self.trailing_slash = '/?'
+
+
+class NoPremiumViewSet(ViewSet):
+    queryset = Location.objects.none()
+
+    def get_view_name(self):
+        return 'This is a Premium Feature'
+
+    def put(self, _request):
+        return PREMIUM_RESPONSE
+
+    def get(self, _request):
+        return PREMIUM_RESPONSE
+
+    def list(self, _request):
+        return PREMIUM_RESPONSE

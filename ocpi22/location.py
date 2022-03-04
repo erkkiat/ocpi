@@ -446,7 +446,6 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
 
 class LocationViewSet(mixins.ListModelMixin,
                       GenericViewSet):
-
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
     pagination_class = OCPIPaginationAndHeaders

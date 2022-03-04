@@ -1,10 +1,11 @@
+from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path
 from rest_framework.schemas import get_schema_view
 
 from ocpi22.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
-    RootRouter, ClientInfoViewSet
+    RootRouter, ClientInfoViewSet, NoPremiumViewSet
 from ocpi22.commands import CommandsViewSet
 from ocpi22.cpo_api import CPORouter, \
     CpoEvseViewSet, \
@@ -16,13 +17,14 @@ from ocpi22.versions import VersionsViewSet, BaseRouter
 from ocpiconnector import charger_simulator
 
 ocpi_router = OCPIRouter()
-ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
+ocpi_router.register(r'credentials', CredentialsViewSet if settings.PREMIUM else NoPremiumViewSet,
+                     basename='credentials')
 ocpi_router.register(r'hubclientinfo', ClientInfoViewSet, basename='clientinfo')
 ocpi_router.register(r'tokens', TokenViewSet)
-ocpi_router.register(r'locations', LocationViewSet)
-ocpi_router.register(r'tariffs', TariffViewSet)
+ocpi_router.register(r'locations', LocationViewSet if settings.PREMIUM else NoPremiumViewSet, basename='location')
+ocpi_router.register(r'tariffs', TariffViewSet if settings.PREMIUM else NoPremiumViewSet, basename='tariff')
 ocpi_router.register(r'sessions', SessionViewSet)
-ocpi_router.register(r'cdrs', CdrViewSet)
+ocpi_router.register(r'cdrs', CdrViewSet if settings.PREMIUM else NoPremiumViewSet, basename='cdr')
 ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
 
 cpo_router = CPORouter()
@@ -39,7 +41,7 @@ common_router.register(r'', VersionsViewSet, basename='base')
 urlpatterns = [
     path('', include(root_router.urls), name='root-view'),
     path('ocpi/cpo/2.2/', include(ocpi_router.urls), name='ocpi-22-root'),
-    path('api/cpo/v1/', include(cpo_router.urls), name='cpo-interface'),
+    # path('api/cpo/v1/', include(cpo_router.urls), name='cpo-interface'),
     path('ocpi/', include(common_router.urls)),
     path('simulator/', include(charger_simulator.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),

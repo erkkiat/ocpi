@@ -12,6 +12,7 @@ DATETIME_FORMAT = "%d.%m.%Y %H:%M"
 locale_formats.DATETIME_FORMAT = "D j.n.Y H:i"
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
+PREMIUM = _env_bool('PREMIUM', False)
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
 DEBUG = _env_bool('DEBUG', False)
@@ -83,6 +84,7 @@ else:
     }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
