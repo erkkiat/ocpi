@@ -16,7 +16,6 @@ from django.conf import settings
 from django.http import Http404
 from django.utils import timezone
 from django.utils.module_loading import import_string
-from requests import Response
 from rest_framework import status
 
 from ocpiconnector import slack_logging
@@ -114,6 +113,7 @@ if REDIS_URL:
 else:
     logging.error('REDIS_URL not set, no connection to REDIS')
 
+
 # Todo: Route commands through HUB
 
 
@@ -153,7 +153,7 @@ def command_start(data, session_uid, update_url, url):
             status_text = (result_status or 'ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
         else:
             logging.warning(f'Unable to start charging at {session.location}, EVSE: {session.evse.evse_id} '
-                         f'status code {result.status_code} - response text: {result.text}')
+                            f'status code {result.status_code} - response text: {result.text}')
             status_text = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
     except (requests.exceptions.ConnectionError, Http404, Exception) as e:
         status_text = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
@@ -202,7 +202,7 @@ def make_headers(token_base64,
 def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
                       from_country_code: str, from_party_id: str, method='put',
-                      credentials_id=None, **_kwargs) -> Response:
+                      credentials_id=None, **_kwargs) -> dict:
     try:
         logging.info(f"Sending {method.upper()} request {data.get('uid', data.get('id', ''))} to {url}")
         headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
@@ -225,7 +225,11 @@ def send_ocpi_request(data, url: str, token_base64: str,
             from ocpi22.models.credentials import Credentials
             credentials = Credentials.get_if_exists(pk=credentials_id)
             if credentials: credentials.update_last_connection()
-        return result
+        return dict(
+            status_code=result.status_code,
+            json=result.json(),
+            headers=dict(result.headers) if result.headers else {},
+        )
     except requests.exceptions.ConnectionError as e:
         logging.error(f"Unable to send an OCPI request to {to_country_code}*{to_party_id} at {url}.")
         from ocpi22.models.credentials import Credentials
@@ -283,11 +287,11 @@ def pull_objects(object_list, limit=20, **kwargs) -> None:
         obj = object_list[0]
         url = kwargs.pop('url', None) or f"{obj.get('url')}?limit={limit}"
         response = send_ocpi_request(data=dict(), url=url, **kwargs)
-        if response and response.status_code < status.HTTP_400_BAD_REQUEST:
-            next_url, _rel = response.headers.get('Link', ';').strip('<>').split(';')
+        if response and response.get('status_code') < status.HTTP_400_BAD_REQUEST:
+            next_url, _rel = response.get('headers').get('Link', ';').strip('<>').split(';')
             model = obj.get('model')
             viewset = import_string(obj.get('viewset'))
-            for i in response.json().get('data'):
+            for i in response.get('json').get('data'):
                 try:
                     viewset.put(request=None, data=i)
                 except Exception as e:

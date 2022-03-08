@@ -1008,6 +1008,7 @@ class TestCredentials(TestCase):
     def mocked_credentials_delete(url, *args, **kwargs):
         # ic(args, kwargs)
         response = {"status_code": 1000, "status_message": "", "timestamp": timezone.now(),
+                    "headers": {"fakeheader": 1},
                     "data": {"token": fake_token + fake_token,
                              "url": "http://localhost:8000/ocpi/versions/", "roles": [
                             {"country_code": "FI", "party_id": "HUB", "role": "HUB",

@@ -64,7 +64,6 @@ class OcpiModule:
 
         if not hasattr(self, 'update_sent') and self.is_ours():
             if not hasattr(self, 'archived') or not self.archived:
-                print('*** This is our object, sending updates to all known parties')
                 self.send_updates()
                 # Send update only once
                 setattr(self, 'update_sent', True)
@@ -86,8 +85,10 @@ class OcpiModule:
 
             serializer = serializer_class(self)
             if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
+                logging.info('Sending updates to INTERESTED PARTIES')
                 self.send_update_to_interested_parties(serializer.data)
             else:
+                logging.info('Sending updates to ALL connected parties')
                 self._send_updates(serializer.data)
         else:
             logging.warning(settings.UPDATES_DISABLED)
@@ -96,9 +97,9 @@ class OcpiModule:
     def _send_updates(cls, data, method='put') -> bool:
         from ocpi22.models.credentials import Endpoint, CredentialsRole
         our_country_code, our_party_id = cls.get_owner_identity().split('*')
-        # ic('Sending updates', cls, cls.send_updates_to)
+        logging.info(f'Sending updates for {cls} to {cls.send_updates_to}')
 
-        # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis
+        # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis or cache them
 
         if isinstance(cls.send_updates_to, list):
             recipients = CredentialsRole.objects.filter(role__in=cls.send_updates_to). \
