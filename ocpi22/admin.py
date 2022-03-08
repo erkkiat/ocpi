@@ -167,7 +167,6 @@ class LocationAdmin(NestedModelAdmin):
 
 class EvseAdmin(NestedModelAdmin):
     model = Evse
-    exclude = ['last_updated']
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
     list_display = ['object_owner', 'evse_id', 'location_url', 'status', 'connector_list']
     inlines = [ConnectorInline]
@@ -177,7 +176,7 @@ class EvseAdmin(NestedModelAdmin):
 
     def get_queryset(self, request):
         # noinspection PyUnresolvedReferences
-        return Evse.objects.select_related('location').all()
+        return Evse.objects.select_related('location').all().order_by('-last_updated')
 
     @staticmethod
     def location_url(evse):
@@ -187,11 +186,11 @@ class EvseAdmin(NestedModelAdmin):
 
     def get_readonly_fields(self, request, obj=None) -> list:
         if obj:
-            return ['uid']
+            return ['uid', 'last_updated']
         return []
 
     def has_change_permission(self, request, obj=None) -> bool:
-        return obj and obj.is_ours()
+        return not obj or (hasattr(obj, 'location') and obj.location.is_ours())
 
     # def has_delete_permission(self, request, obj=None) -> bool:
     #     return ALLOW_ADMIN_DELETE_AND_CHANGE
