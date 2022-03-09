@@ -244,9 +244,11 @@ class ApiPutTests(TestCase):
 
             # And CretentialsRoles
             # noinspection PyUnresolvedReferences
-            roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
-                                                                    party_id=party_id, defaults=dict(
-                    business_details=self.business_details))
+            roles, _created = CredentialsRole.objects.get_or_create(
+                role='CPO', country_code=country_code,
+                party_id=party_id, defaults=dict(
+                    business_details=self.business_details)
+            )
             self.credentials.roles.add(roles)
 
             # Send the request
@@ -369,6 +371,7 @@ class ApiPutTests(TestCase):
 
     def test_cost_calculation(self):
         start_date_time = datetime(2000, 1, 1, 0, 0)
+        # noinspection PyUnresolvedReferences
         evse = Evse.objects.all().first()
         location = evse.location
         session_params = dict(
@@ -400,6 +403,7 @@ class ApiPutTests(TestCase):
         for filename, case_params, excl_vat, incl_vat in testcases:
             params = session_params.copy()
             params.update(case_params)
+            # noinspection PyUnresolvedReferences
             session: Session = Session.objects.create(uid=uuid.uuid4(),
                                                       **params)
             data = self._load_example(filename)
@@ -446,9 +450,11 @@ class ApiPutTests(TestCase):
 
             # Create CretentialsRoles
             # noinspection PyUnresolvedReferences
-            roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
-                                                                    party_id=party_id, defaults=dict(
-                    business_details=self.business_details))
+            roles, _created = CredentialsRole.objects.get_or_create(
+                role='CPO', country_code=country_code,
+                party_id=party_id, defaults=dict(
+                    business_details=self.business_details)
+            )
             self.credentials.roles.add(roles)
 
             # Send the request
@@ -463,6 +469,7 @@ class ApiPutTests(TestCase):
 
             # Verify the saved data
             uid = data.get('id')
+            # noinspection PyUnresolvedReferences
             saved_cdr = Cdr.objects.get(uid=uid)
             saved_data = CdrSerializer(saved_cdr).data
             # ic(saved_data)
@@ -527,9 +534,11 @@ class ApiPutTests(TestCase):
 
             # Create CretentialsRoles
             # noinspection PyUnresolvedReferences
-            roles, _created = CredentialsRole.objects.get_or_create(role='CPO', country_code=country_code,
-                                                                    party_id=party_id, defaults=dict(
-                    business_details=self.business_details))
+            roles, _created = CredentialsRole.objects.get_or_create(
+                role='CPO', country_code=country_code,
+                party_id=party_id, defaults=dict(
+                    business_details=self.business_details)
+            )
             self.credentials.roles.add(roles)
 
             # Send the request
@@ -744,11 +753,11 @@ class CommandTests(TestCase):
         #     create_tariff(uid=str(t), country_code='BE', party_id='BEC')
 
         url = reverse('commands-start-session')
-        factory = APIRequestFactory()
+        api_factory = APIRequestFactory()
         viewset = CommandsViewSet()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
-        request = factory.get(url)
+        request = api_factory.get(url)
         request.data = {}
         response = viewset.start_session(request)
         # data = response.data.get('data')
@@ -761,8 +770,9 @@ class CommandTests(TestCase):
         with open(os.path.join(dirname, f'data/examples/command_start_session.json')) as file:
             data = json.load(file)
 
-        request = factory.post(url)
+        request = api_factory.post(url)
         request.data = data
+        # noinspection PyUnresolvedReferences
         request.credentials = Credentials.objects.get(pk=2)
         response = viewset.start_session(request)
 
@@ -786,11 +796,11 @@ class CommandTests(TestCase):
 
     def test_unlock_connector(self):
         url = reverse('commands-unlock-connector')
-        factory = APIRequestFactory()
+        api_factory = APIRequestFactory()
         viewset = CommandsViewSet()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
-        request = factory.get(url)
+        request = api_factory.get(url)
         request.data = {}
         response = viewset.unlock_connector(request)
 
@@ -801,7 +811,7 @@ class CommandTests(TestCase):
         with open(os.path.join(dirname, f'data/examples/command_unlock_connector.json')) as file:
             data = json.load(file)
 
-        request = factory.post(url)
+        request = api_factory.post(url)
         request.data = data
         response = viewset.unlock_connector(request)
 
@@ -810,7 +820,7 @@ class CommandTests(TestCase):
         with open(os.path.join(dirname, f'data/examples/command_unlock_connector_unknown_location.json')) as file:
             data = json.load(file)
 
-        request = factory.post(url)
+        request = api_factory.post(url)
         request.data = data
         response = viewset.unlock_connector(request)
 
@@ -871,8 +881,8 @@ class MockResponse:
 class UpdatePartiesTest(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
-    def mocked_token_put(*args, **kwargs):
-        # ic(args, kwargs)
+    def mocked_token_put(*_args, **kwargs):
+        # ic(_args, kwargs)
         headers = {'Authorization': 'Token '
                                     'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0'
                                     'ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
@@ -880,28 +890,32 @@ class UpdatePartiesTest(TestCase):
                    'OCPI-from-party-id': 'TST',
                    'OCPI-to-country-code': 'FI',
                    'OCPI-to-party-id': '001'}
-        return MockResponse(dict(hello=1), 200, headers=kwargs.get('headers'), data=kwargs.get('json'))
+        return MockResponse(dict(hello=1), 200, headers=kwargs.get('headers') or headers, data=kwargs.get('json'))
 
     @time_machine.travel(faketime, tick=False)
     def test_update_last_updated(self):
         # Let's try our Token
+        # noinspection PyUnresolvedReferences
         token = Token.objects.get(uid='FIMSP-1')
         token.update_last_updated()
         self.assertEqual(token.last_updated, faketime)
 
         # Then someone else's
+        # noinspection PyUnresolvedReferences
         token = Token.objects.get(uid='T1')
         token.update_last_updated()
         self.assertNotEqual(token.last_updated, faketime)
 
     def test_is_ours(self):
         # Let's try someone elses token
+        # noinspection PyUnresolvedReferences
         token = Token.objects.get(uid='T1')
         # from ocpiconnector.ocpi_identities import ocpi_identities
         # ic(token.country_code, token.party_id, ocpi_identities)
         self.assertFalse(token.is_ours(), 'Token ownership is misintepreted')
 
         # Then our own token
+        # noinspection PyUnresolvedReferences
         token = Token.objects.get(uid='FIMSP-1')
         # ic(token.country_code, token.party_id, ocpi_identities)
         self.assertTrue(token.is_ours(), 'Token ownership is misintepreted')
@@ -984,9 +998,9 @@ fake_token = '1234567890'
 class TestCredentials(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
-    def mocked_credentials_get(url, *args, **kwargs):
+    def mocked_credentials_get(url, *_args, **_kwargs):
         assert isinstance(url, str)
-        # ic(url, args, kwargs)
+        # ic(url, _args, _kwargs)
 
         response_data = {
             'http://localhost/versions': [{'url': 'http://localhost/ocpi/cpo/2.2/', 'version': '2.2'}],
@@ -995,24 +1009,40 @@ class TestCredentials(TestCase):
         }
         return MockResponse(response_data[url], 200)
 
-    def mocked_credentials_post(url, *args, **kwargs):
-        # ic(args, kwargs)
-        response = {"status_code": 1000, "status_message": "", "timestamp": timezone.now(),
-                    "data": {"token": fake_token + fake_token,
-                             "url": "http://localhost:8000/ocpi/versions/", "roles": [
-                            {"country_code": "FI", "party_id": "HUB", "role": "HUB",
-                             "business_details": {"name": "ChargerHub.EU"}}]}}
+    def mocked_credentials_post(url, *_args, **_kwargs):
+        # ic(_args, _kwargs)
+        response = {
+            "status_code": 1000, "status_message": "", "timestamp": timezone.now(),
+            "data": {"token": fake_token + fake_token,
+                     "url": "http://localhost:8000/ocpi/versions/",
+                     "roles":
+                         [
+                             {
+                                 "country_code": "FI", "party_id": "HUB", "role": "HUB",
+                                 "business_details": {"name": "ChargerHub.EU"}
+                             }
+                         ]
+                     }
+        }
 
         return MockResponse(response, 200)
 
-    def mocked_credentials_delete(url, *args, **kwargs):
-        # ic(args, kwargs)
-        response = {"status_code": 1000, "status_message": "", "timestamp": timezone.now(),
-                    "headers": {"fakeheader": 1},
-                    "data": {"token": fake_token + fake_token,
-                             "url": "http://localhost:8000/ocpi/versions/", "roles": [
-                            {"country_code": "FI", "party_id": "HUB", "role": "HUB",
-                             "business_details": {"name": "ChargerHub.EU"}}]}}
+    def mocked_credentials_delete(url, *_args, **_kwargs):
+        # ic(_args, _kwargs)
+        response = {
+            "status_code": 1000, "status_message": "", "timestamp": timezone.now(),
+            "headers": {"fakeheader": 1},
+            "data": {"token": fake_token + fake_token,
+                     "url": "http://localhost:8000/ocpi/versions/",
+                     "roles":
+                         [
+                             {
+                                 "country_code": "FI", "party_id": "HUB", "role": "HUB",
+                                 "business_details": {"name": "ChargerHub.EU"}
+                             }
+                         ]
+                     }
+        }
 
         return MockResponse(response, 200)
 
@@ -1022,7 +1052,7 @@ class TestCredentials(TestCase):
     @patch('ocpiconnector.management.commands.exchange_credentials.requests.get', side_effect=mocked_credentials_get)
     def test_exchange(self, mock_get: Mock, mock_post: Mock, _mock_generate_random_token):
         command = exchange_credentials.Command()
-        result = command.handle(token_a='918273', versions_endpoint_url='http://localhost/versions')
+        _result = command.handle(token_a='918273', versions_endpoint_url='http://localhost/versions')
 
         # Let's examine what was actually sent
         args, kwargs = mock_get.call_args
@@ -1054,6 +1084,7 @@ class TestCredentials(TestCase):
     @patch('ocpiconnector.management.commands.exchange_credentials.requests.delete',
            side_effect=mocked_credentials_delete)
     def test_delete(self, mock_delete: Mock):
+        # noinspection PyUnresolvedReferences
         credentials = Credentials.objects.get(pk=2)
         self.assertTrue(credentials.roles.count())
         self.assertTrue(credentials.endpoints.count())
@@ -1078,8 +1109,9 @@ class TestCredentials(TestCase):
 class TestObjectPull(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
-    def mocked_object_get(url, *args, **kwargs):
-        # ic(url, args, kwargs)
+    def mocked_object_get(url, *_args, **kwargs):
+        # ic(url, _args, kwargs)
+        # noinspection PyUnresolvedReferences
         credentials = Credentials.objects.get(pk=2)
         headers = kwargs['headers']
         # Let's swap the other token and receive this request as if it comes from outside
@@ -1096,10 +1128,11 @@ class TestObjectPull(TestCase):
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpiconnector.management.commands.exchange_credentials.requests.get', side_effect=mocked_object_get)
-    def test_pull(self, mock_get: Mock):
+    def test_pull(self, _mock_get: Mock):
         settings.SEND_UPDATES = True
         settings.BACKGROUND_SEND = False
 
+        # noinspection PyUnresolvedReferences
         credentials = Credentials.objects.get(pk=2)
         schedule_full_update(credentials, countdown=0, limit=3)
 

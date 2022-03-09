@@ -224,16 +224,18 @@ def send_ocpi_request(data, url: str, token_base64: str,
         if credentials_id:
             from ocpi22.models.credentials import Credentials
             credentials = Credentials.get_if_exists(pk=credentials_id)
-            if credentials: credentials.update_last_connection()
+            if credentials:
+                credentials.update_last_connection()
         return dict(
             status_code=result.status_code,
             json=result.json(),
             headers=dict(result.headers) if result.headers else {},
         )
-    except requests.exceptions.ConnectionError as e:
+    except requests.exceptions.ConnectionError:
         logging.error(f"Unable to send an OCPI request to {to_country_code}*{to_party_id} at {url}.")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
+            # noinspection PyUnresolvedReferences
             Credentials.objects.filter(pk=credentials_id).update(connection_status='OFFLINE')
 
 
@@ -315,7 +317,9 @@ def pull_objects(object_list, limit=20, **kwargs) -> None:
 def check_still_alive(credentials_id: int = None) -> None:
     from ocpi22.models.credentials import Credentials
     if credentials_id:
+        credentials = None
         try:
+            # noinspection PyUnresolvedReferences
             credentials = Credentials.objects.get(pk=credentials_id)
             requests.get(credentials.url)
             credentials.last_connection = timezone.now()
@@ -326,6 +330,7 @@ def check_still_alive(credentials_id: int = None) -> None:
             credentials.connection_status = 'OFFLINE'
         credentials.save(update_fields=['last_connection', 'connection_status'])
         return
+    # noinspection PyUnresolvedReferences
     stale_credentials = Credentials.objects.filter(
         last_connection__lte=timezone.now() - timedelta(seconds=STILL_ALIVE_FREQUENCY),
         valid=True
