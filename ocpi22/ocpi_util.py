@@ -95,40 +95,30 @@ class OcpiModule:
 
     @classmethod
     def _send_updates(cls, data, method='put') -> bool:
-        from ocpi22.models.credentials import Endpoint, CredentialsRole
+        from ocpi22.models.credentials import find_endpoints_by_roles
         our_country_code, our_party_id = cls.get_owner_identity().split('*')
         logging.info(f'Sending updates for {cls} to {cls.send_updates_to}')
 
         # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis or cache them
 
-        if isinstance(cls.send_updates_to, list):
-            recipients = CredentialsRole.objects.filter(role__in=cls.send_updates_to). \
-                values_list('credentials', 'country_code', 'party_id')
-            # noinspection PyUnresolvedReferences
-            for c, country_code, party_id in set(recipients):
-                # ic(c, country_code, party_id)
-                # noinspection PyUnresolvedReferences
-                endpoints = Endpoint.objects.filter(
-                    identifier=cls.ocpi_module_name,
-                    role=Endpoint.RECEIVER,
-                    credentials__id=c
-                )
-                e: Endpoint
-                for e in endpoints:
-                    cls._send_update(data, e, country_code, party_id, our_country_code, our_party_id, method)
+        if isinstance(cls.send_updates_to, tuple):
+            for url, token_base64, country_code, party_id in find_endpoints_by_roles(
+                    cls.send_updates_to, cls.ocpi_module_name):
+                cls._send_update(data, url, token_base64, country_code, party_id, our_country_code, our_party_id,
+                                 method)
             return True
         logging.error(f"Unable to send updates for {cls}, don't know where to send.")
         return False
 
     @classmethod
-    def _send_update(cls, data: dict, e, country_code: str, party_id: str,
+    def _send_update(cls, data: dict, url, token_base64, country_code: str, party_id: str,
                      our_country_code: str, our_party_id: str, method='put'):
         # ic()
         # ic(e, country_code, party_id, our_country_code, our_party_id)
-        if e and country_code and party_id and our_country_code and our_party_id:
-            logging.info(f'Send update to {cls.ocpi_module_name} module at {e.url}')
+        if url and token_base64 and country_code and party_id and our_country_code and our_party_id:
+            logging.info(f'Send update to {cls.ocpi_module_name} module at {url}')
             from ocpi22.tasks import send_ocpi_request
-            args = data, e.url, e.get_token_base64(), country_code, party_id, \
+            args = data, url, token_base64, country_code, party_id, \
                    our_country_code, our_party_id, method
             if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
                 send_ocpi_request.apply_async(args, retry=False)
@@ -154,7 +144,8 @@ class OcpiModule:
             ic(role, country_code, party_id)
             endpoint = self.credentials.endpoints.filter(identifier=self.ocpi_module_name, role='RECEIVER').first()
             ic(endpoint)
-            self._send_update(data, endpoint, country_code, party_id, our_country_code, our_party_id, 'put')
+            self._send_update(data, endpoint.url, self.credentials.theirs_base64(),
+                              country_code, party_id, our_country_code, our_party_id, 'put')
 
 
 def ocpi_post(url, token_base64, *args, **kwargs) -> Response:

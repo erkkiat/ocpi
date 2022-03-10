@@ -9,8 +9,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from rest_framework.reverse import reverse
 
-from ocpi22.models.credentials import Credentials, Endpoint
-from ocpi22.pull import schedule_full_update
+from ocpi22.models.credentials import Credentials, Endpoint, find_endpoints_by_roles
 from ocpi22.util import generate_random_token
 from ocpiconnector.ocpi_identities import role_options
 
@@ -185,6 +184,7 @@ class Command(BaseCommand):
             # ic(_credentials_response)
             if credentials.ours and credentials.theirs:
                 heading(Style.BRIGHT + 'Credentials exchange has been finished successfully.' + Style.RESET_ALL)
+                find_endpoints_by_roles.cache_clear()
             else:
                 heading('Credentials exchange first part was successful, now initiate from the other end.')
 

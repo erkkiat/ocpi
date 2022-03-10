@@ -1,6 +1,8 @@
 import base64
 import logging
 import secrets
+from functools import lru_cache
+from typing import Optional
 
 from django import forms
 from django.conf import settings
@@ -29,7 +31,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.CredentialsSerializer'
     ocpi_module_name = 'credentials'
     ocpi_object_owner = None
-    send_updates_to = []
+    send_updates_to = None
 
     class Meta:
         verbose_name_plural = 'credentials'
@@ -84,6 +86,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def atomic_post_save(self, *_args, **_kwargs) -> None:
         # This should trigger when Credentials is modified in Admin UI
+        find_endpoints_by_roles.cache_clear()
         from ocpi22.pull import schedule_full_update
         schedule_full_update(self, countdown=10)
 
@@ -267,3 +270,25 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
                 send_ocpi_request(*args)
             return
     logging.error(f'Cannot find our party ID to send a Credentials DELETE for {credentials}')
+
+
+@lru_cache(maxsize=None)
+def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module_name: str) -> list:
+    logging.info(f'Reading module {ocpi_module_name} endpoints for {roles} from database.')
+    result = []
+    role: CredentialsRole
+    for role in CredentialsRole.objects.filter(role__in=roles). \
+            select_related('credentials'):
+        credentials = role.credentials
+        country_code = role.country_code
+        party_id = role.party_id
+        # noinspection PyUnresolvedReferences
+        result += [
+            (endpoint.url, credentials.theirs_base64(), country_code, party_id)
+            for endpoint in Endpoint.objects.filter(
+                identifier=ocpi_module_name,
+                role=Endpoint.RECEIVER,
+                credentials=credentials,
+            )
+        ]
+    return result

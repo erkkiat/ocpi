@@ -30,13 +30,13 @@ from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerialize
 from ocpi22.commands import CommandsViewSet, CommandResponse
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.models.credentials import Credentials, CredentialsRole, find_endpoints_by_roles
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
-from ocpi22.ocpi_util import OCPIResponse, Ocpi
+from ocpi22.ocpi_util import OCPIResponse, Ocpi, OcpiModule
 from ocpi22.pull import schedule_full_update
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
 from ocpi22.tokens import get_admin_token
@@ -960,7 +960,7 @@ class UpdatePartiesTest(TestCase):
                             'OCPI-from-country-code': 'FI',
                             'OCPI-from-party-id': 'MSP',  # Tokens are owned by MSP, we should send with MSP identity
                             'OCPI-to-country-code': 'FI',
-                            'OCPI-to-party-id': '001'}  # The recipient comes from the Credentials in the fixture
+                            'OCPI-to-party-id': 'HUB'}  # The recipient comes from the Credentials in the fixture
         expected_json = {'contract_id': 'CONTRACT',
                          'country_code': 'FI',
                          'issuer': 'issuer',
@@ -1101,7 +1101,7 @@ class TestCredentials(TestCase):
                             'OCPI-from-country-code': 'FI',
                             'OCPI-from-party-id': 'CPO',
                             'OCPI-to-country-code': 'FI',
-                            'OCPI-to-party-id': '001'}
+                            'OCPI-to-party-id': 'CP1'}
         self.assertDictEqual(kwargs.get('headers'), expected_headers,
                              f'Headers differ from expected')
 
@@ -1137,3 +1137,62 @@ class TestObjectPull(TestCase):
         schedule_full_update(credentials, countdown=0, limit=3)
 
         # Content is verified in mocked_object_get
+
+
+class CredentialsTest(TestCase):
+    fixtures = ['ocpi22/data/test-database-1.json']
+
+    def test_cached_partylist(self):
+        location_url = f"http://localhost:8001{reverse('location-list')}"
+        token_url = f"http://localhost:8001{reverse('token-list')}"
+        tariff_url = f"http://localhost:8001{reverse('tariff-list')}"
+        token = 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw=='
+
+        testcases = (
+            (Location, [(location_url, token, 'FI', 'MSP'),
+                        (location_url, token, 'FI', 'NAP'),
+                        (location_url, token, 'FI', 'HUB')]),
+            (Token, [(token_url, token, 'FI', 'CP1'),
+                     (token_url, token, 'FI', 'HUB')]),
+            (Tariff, [(tariff_url, token, 'FI', 'MSP'),
+                      (tariff_url, token, 'FI', 'NAP'),
+                      (tariff_url, token, 'FI', 'HUB')]),
+        )
+        counter = 0
+        ocpi_object: OcpiModule
+        for ocpi_object, endpoints_result in testcases:
+            roles = ocpi_object.send_updates_to
+            self.assertIsInstance(
+                roles, tuple,
+                f'{ocpi_object} needs to have a send_updates_to specified as a tuple, so that caching works.'
+            )
+
+            cache_info = find_endpoints_by_roles.cache_info()
+            self.assertEqual((cache_info.hits, cache_info.misses), (counter, counter),
+                             f"Cache doesn't work as expected for {ocpi_object}")
+            # Check that the cache is in use
+            find_endpoints_by_roles(roles, ocpi_object.ocpi_module_name)
+            cache_info = find_endpoints_by_roles.cache_info()
+            self.assertEqual((cache_info.hits, cache_info.misses), (counter, counter + 1),
+                             f"Cache doesn't work as expected for {ocpi_object}")
+
+            endpoints = find_endpoints_by_roles(roles, ocpi_object.ocpi_module_name)
+            cache_info = find_endpoints_by_roles.cache_info()
+            self.assertEqual((cache_info.hits, cache_info.misses), (counter + 1, counter + 1),
+                             f"Cache doesn't work as expected for {ocpi_object}")
+            counter += 1
+
+            self.assertEqual(
+                endpoints, endpoints_result,
+                f'Cannot find the right endpoints for {roles} to send updates to'
+            )
+
+        # Check that changes to Credentials reset the endpoint cache
+        # noinspection PyUnresolvedReferences
+        self.assertGreater(find_endpoints_by_roles.cache_info().currsize, 0)
+        # noinspection PyUnresolvedReferences
+        c: Credentials = Credentials.objects.get(pk=2)
+        c.update_last_updated()
+        c.atomic_post_save()
+        self.assertFalse(find_endpoints_by_roles.cache_info().currsize,
+                         'There should be nothing in endpoint cache after changing a Credentials')

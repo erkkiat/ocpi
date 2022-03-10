@@ -14,7 +14,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.TokenSerializer'
     ocpi_module_name = Ocpi.Modules.TOKENS
     ocpi_object_owner = 'EMSP'
-    send_updates_to = ['CPO', 'HUB']
+    send_updates_to = ('CPO', 'HUB')
 
     SENDER = None
 

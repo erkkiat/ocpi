@@ -29,7 +29,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.TariffSerializer'
     ocpi_module_name = Ocpi.Modules.TARIFFS
     ocpi_object_owner = 'CPO'
-    send_updates_to = ['EMSP', 'NAP', 'NSP', 'HUB']
+    send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')
 
     # MySQL didn't support Q-conditions
     # class Meta:

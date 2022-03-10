@@ -311,29 +311,51 @@
          "business_details": 1,
          "role": "CPO",
          "credentials": 2,
-         "party_id": "001",
+         "party_id": "CP1",
          "country_code": "FI"
       }
    },
    {
-      "pk" : 4,
-      "model" : "ocpi22.credentialsrole",
-      "fields" : {
-         "business_details" : 1,
-         "country_code" : "FI",
-         "party_id" : "001",
-         "role" : "EMSP",
+      "pk": 4,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "country_code": "FI",
+         "party_id": "MSP",
+         "role": "EMSP",
          "credentials": 2
       }
    },
    {
-      "fields" : {
-         "credentials" : 2,
-         "identifier" : "credentials",
-         "role" : "RECEIVER",
-         "url" : "http://localhost:8001/ocpi/cpo/2.2/credentials"
+      "pk": 5,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "country_code": "FI",
+         "party_id": "NAP",
+         "role": "NAP",
+         "credentials": 2
+      }
+   },
+   {
+      "pk": 6,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "country_code": "FI",
+         "party_id": "HUB",
+         "role": "HUB",
+         "credentials": 2
+      }
+   },
+   {
+      "fields": {
+         "credentials": 2,
+         "identifier": "credentials",
+         "role": "RECEIVER",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/credentials"
       },
-      "model" : "ocpi22.endpoint",
+      "model": "ocpi22.endpoint",
       "pk" : 12
    },
    {

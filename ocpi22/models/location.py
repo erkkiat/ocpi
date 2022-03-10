@@ -24,7 +24,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.location.LocationSerializer'
     ocpi_module_name = Ocpi.Modules.LOCATIONS
     ocpi_object_owner = 'CPO'
-    send_updates_to = ['EMSP', 'NAP', 'NSP', 'HUB']
+    send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')
 
     class Meta:
         constraints = [
