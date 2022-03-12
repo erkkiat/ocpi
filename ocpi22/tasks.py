@@ -228,7 +228,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
                 credentials.update_last_connection()
         return dict(
             status_code=result.status_code,
-            json=result.json(),
+            json=result.json() if result.status_code < 300 else '',
             headers=dict(result.headers) if result.headers else {},
         )
     except requests.exceptions.ConnectionError:

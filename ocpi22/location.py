@@ -7,6 +7,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
@@ -18,7 +19,8 @@ from ocpi22.models.credentials import Endpoint
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff
 from ocpi22.tasks import send_evse_status_update
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, uid_validator
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, uid_validator, \
+    OnlyRawBrowsableAPIRenderer
 from ocpi22.ocpi_util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpiconnector.settings import UPDATES_DISABLED
 
@@ -450,6 +452,7 @@ class LocationViewSet(mixins.ListModelMixin,
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = 'locations'
+    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
 
     lookup_field = "uid"
 

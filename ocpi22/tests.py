@@ -1117,7 +1117,9 @@ class TestObjectPull(TestCase):
         # Let's swap the other token and receive this request as if it comes from outside
         headers['HTTP_AUTHORIZATION'] = f'Token {credentials.ours_base64()}'
         result = client.get(url, **headers)
-        content = json.loads(result.content.decode('utf-8'))
+        json_text = result.content.decode('utf-8')
+        assert 'DOCTYPE' not in json_text, f"URL {url} is returning HTML, when excepting JSON"
+        content = json.loads(json_text)
         response_headers = dict(result.headers)
         # ic(url, response_headers)
         # ic(content)

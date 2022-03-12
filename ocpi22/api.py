@@ -1,5 +1,4 @@
 import logging
-import os
 import uuid
 from typing import Union, Optional
 
@@ -13,6 +12,7 @@ from rest_framework import routers, serializers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
@@ -27,7 +27,8 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, SerializerCleanedUp, PREMIUM_RESPONSE
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, SerializerCleanedUp, PREMIUM_RESPONSE, \
+    OnlyRawBrowsableAPIRenderer
 from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles
@@ -200,6 +201,7 @@ class TokenViewSet(mixins.ListModelMixin,
     serializer_class = TokenSerializer
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
+    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'type']
@@ -373,6 +375,7 @@ class CdrViewSet(mixins.ListModelMixin,
     queryset = Cdr.objects.none()  # Default to no visibility, fine tune with get_queryset()
     serializer_class = CdrSerializer
     pagination_class = OCPIPaginationAndHeaders
+    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
 
     def get_queryset(self):
         if self.request.user.is_superuser:
@@ -456,8 +459,7 @@ class CredentialsSerializer(serializers.ModelSerializer):
     roles = RolesSerializer(many=True)
 
 
-class CredentialsViewSet(mixins.CreateModelMixin,
-                         GenericViewSet):
+class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     """
     Credential tokens exchange. Please note that the tokens are base64 encoded for transport, except in the
     credentials exchange module. For testing purposes, you can include the token by using
@@ -467,12 +469,13 @@ class CredentialsViewSet(mixins.CreateModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Credentials.objects.none()
     serializer_class = CredentialsSerializer
+    renderer_classes = [OnlyRawBrowsableAPIRenderer, JSONRenderer]
 
     def get_view_name(self):
         return 'Credentials'
 
     @staticmethod
-    def get(request):
+    def list(request, *_args, **_kwargs):
         return Response(
             dict(
                 token=request.credentials.ours_base64()
@@ -496,7 +499,8 @@ class CredentialsViewSet(mixins.CreateModelMixin,
         request.credentials.soft_delete()
         return OCPIResponse(status_message='Your credentials have been deleted, as requested.')
 
-    def create(self, request: Request, *args, **kwargs):
+    @csrf_exempt
+    def post(self, request: Request, *_args, **_kwargs):
         assert hasattr(request, 'credentials')
         # noinspection PyUnresolvedReferences
         data = request.data
@@ -529,6 +533,7 @@ class CredentialsViewSet(mixins.CreateModelMixin,
 
         if not credentials.is_complete():
             # Let's respond, we are only half way through
+            # This can only be done async
             from ocpi22 import tasks
             tasks.exchange_credentials.apply_async(
                 (credentials.token_a, credentials.url),
@@ -624,6 +629,7 @@ class TariffViewSet(mixins.ListModelMixin,
     serializer_class = TariffSerializer
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
+    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
@@ -682,6 +688,7 @@ class SessionViewSet(mixins.ListModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.all().order_by('created')
     serializer_class = SessionSaveSerializer
+    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:

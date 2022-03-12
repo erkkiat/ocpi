@@ -9,6 +9,7 @@ from icecream import ic
 from rest_framework import mixins, serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
@@ -25,6 +26,9 @@ from ocpi22.tasks import command_start
 from ocpi22.ocpi_util import ocpi_post, OCPIResponse, Ocpi
 
 import pprint
+
+from ocpi22.util import OnlyRawBrowsableAPIRenderer
+
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 
@@ -167,6 +171,7 @@ class CommandsViewSet(GenericViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
     permission_classes = [OCPIPermission]
+    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
 
     def get_serializer_class(self):
         if not hasattr(self, 'action_map'): return serializers.Serializer

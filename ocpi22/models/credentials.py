@@ -218,7 +218,7 @@ def new_connection(request):
     try:
         if request.method == 'POST':
             form = NewConnection(request.POST)
-            ic(request.POST, form.fields)
+            # ic(request.POST, form.fields)
             if form.is_valid():
                 from ocpiconnector.management.commands import exchange_credentials
                 command = exchange_credentials.Command()

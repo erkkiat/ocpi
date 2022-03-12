@@ -6,6 +6,7 @@ from typing import Optional, Any
 from django.conf import settings
 from django.core.validators import RegexValidator
 from rest_framework import serializers
+from rest_framework.renderers import BrowsableAPIRenderer
 
 from ocpi22.ocpi_util import OCPIResponse
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities
@@ -458,3 +459,8 @@ class TimePeriod:
 
 
 uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and letters only')
+
+
+class OnlyRawBrowsableAPIRenderer(BrowsableAPIRenderer):
+    def render_form_for_serializer(self, serializer):
+        return ""
