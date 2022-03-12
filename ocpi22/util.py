@@ -405,8 +405,10 @@ class ModelUtilMixin:
                     self.__setattr__(field, upper_value)
 
 
+PREMIUM_MESSAGE = 'This feature is available in the OCPI Connector Premium. ' \
+                  'You can upgrade at http://ocpi.guide/compare/'
 PREMIUM_RESPONSE = OCPIResponse(
-    status_message='This view is available in the OCPI Connector Premium. Upgrade at http://ocpi.guide/compare/',
+    status_message=PREMIUM_MESSAGE,
     status_code=2999, http_status=403
 )
 

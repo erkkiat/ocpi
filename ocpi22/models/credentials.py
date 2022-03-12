@@ -19,8 +19,7 @@ from icecream import ic
 from ocpi22.choices import ROLE_CHOICES, CONNECTION_STATUS_CHOICES
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi_util import OcpiModule
-from ocpi22.util import ModelUtilMixin, generate_random_token
-
+from ocpi22.util import ModelUtilMixin, generate_random_token, PREMIUM_MESSAGE
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
@@ -215,24 +214,27 @@ class NewConnection(forms.Form):
 
 
 def new_connection(request):
-    try:
-        if request.method == 'POST':
-            form = NewConnection(request.POST)
-            # ic(request.POST, form.fields)
-            if form.is_valid():
-                from ocpiconnector.management.commands import exchange_credentials
-                command = exchange_credentials.Command()
-                result = command.handle(token_a=form.cleaned_data.get('token_a'),
-                                        versions_endpoint_url=form.cleaned_data.get('versions_url'))
-                messages.success(request,
-                                 result if isinstance(result, str) else 'A new connection has been established')
-            else:
-                messages.error(request, form.errors)
-    except SyntaxError as e:
-        msg = str(e)
-        if e.errno == 403:
-            msg = 'The token is not accepted by the other party (HTTP 403)'
-        messages.error(request, msg)
+    if not settings.PREMIUM:
+        messages.warning(request, PREMIUM_MESSAGE)
+    else:
+        try:
+            if request.method == 'POST':
+                form = NewConnection(request.POST)
+                # ic(request.POST, form.fields)
+                if form.is_valid():
+                    from ocpiconnector.management.commands import exchange_credentials
+                    command = exchange_credentials.Command()
+                    result = command.handle(token_a=form.cleaned_data.get('token_a'),
+                                            versions_endpoint_url=form.cleaned_data.get('versions_url'))
+                    messages.success(request,
+                                     result if isinstance(result, str) else 'A new connection has been established')
+                else:
+                    messages.error(request, form.errors)
+        except SyntaxError as e:
+            msg = str(e)
+            if e.errno == 403:
+                msg = 'The token is not accepted by the other party (HTTP 403)'
+            messages.error(request, msg)
 
     return HttpResponseRedirect(reverse('admin:ocpi22_credentials_changelist'))
 
