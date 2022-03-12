@@ -114,13 +114,13 @@ class TariffAltTextSerializer(SerializerCleanedUp):
 
 
 class MinPriceSerializer(SerializerCleanedUp):
-    excl_vat = serializers.FloatField(source='min_price_excl_vat')
-    incl_vat = serializers.FloatField(source='min_price_incl_vat')
+    excl_vat = serializers.FloatField(source='min_price_excl_vat', default=None)
+    incl_vat = serializers.FloatField(source='min_price_incl_vat', default=None)
 
 
 class MaxPriceSerializer(SerializerCleanedUp):
-    excl_vat = serializers.FloatField(source='max_price_excl_vat')
-    incl_vat = serializers.FloatField(source='max_price_incl_vat')
+    excl_vat = serializers.FloatField(source='max_price_excl_vat', default=None)
+    incl_vat = serializers.FloatField(source='max_price_incl_vat', default=None)
 
 
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -134,8 +134,10 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         source='tariff_elements', many=True, required=True,
         help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_tariffelement_class'
     )
-    min_price = MinPriceSerializer(source='*', required=False)
-    max_price = MaxPriceSerializer(source='*', required=False)
+    min_price = MinPriceSerializer(source='*', required=False,
+                                   default=dict(min_price_excl_vat=None, min_price_incl_vat=None))
+    max_price = MaxPriceSerializer(source='*', required=False,
+                                   default=dict(max_price_excl_vat=None, max_price_incl_vat=None))
 
     tariff_alt_text = TariffAltTextSerializer(source='*', read_only=True)
     last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)

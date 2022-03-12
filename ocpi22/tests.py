@@ -75,6 +75,10 @@ def create_tariff(*_args, **kwargs) -> Tariff:
     return tariff
 
 
+def make_sure_no_min_price(tariff: Tariff) -> bool:
+    return not tariff.min_price_excl_vat and not tariff.min_price_incl_vat
+
+
 class ApiPutTests(TestCase):
     fixtures = ['ocpi22/data/initial.json']
     location_index = 1
@@ -286,6 +290,7 @@ class ApiPutTests(TestCase):
         with open(os.path.join(self.dirname, f'data/examples/{filename_segment}.json')) as file:
             return json.load(file)
 
+
     def test_put_tariff(self):
         url = reverse('tariff-list')
         token_base64 = self.credentials.ours_base64()
@@ -309,9 +314,13 @@ class ApiPutTests(TestCase):
             ('tariff_8_simple_025kwh', status.HTTP_201_CREATED, 1000, 1),
             ('tariff_9_025kwh_start', status.HTTP_201_CREATED, 1000, 2),
             ('tariff_10_025kwh_parking_start', status.HTTP_201_CREATED, 1000, 3),
+            ('tariff_11_not_possible_alt_text', status.HTTP_201_CREATED, 1000, 2),
+            ('tariff_12_025kwh_min_price', status.HTTP_201_CREATED, 1000, 1),
+            ('tariff_12_025kwh', status.HTTP_200_OK, 1000, 1,
+             dict(check_function=make_sure_no_min_price)),
             ('tariff_13_simple_3hour_5parking', status.HTTP_201_CREATED, 1000, 2),
             ('tariff_14_step_size', status.HTTP_201_CREATED, 1000, 5),
-            ('tariff_15_reservation_5_euro_per_hour', status.HTTP_201_CREATED, 1000, 3),
+            ('tariff_15_reservation_5_euro_per_hour', status.HTTP_200_OK, 1000, 3),
             ('tariff_16_reservation_2_euro_fee_5_euro_per_hour', status.HTTP_200_OK, 1000, 4),
             ('tariff_17_reservation_with_expire_fee', status.HTTP_200_OK, 1000, 4),
             ('tariff_18_reservation_with_expire_time', status.HTTP_200_OK, 1000, 4),
@@ -320,11 +329,12 @@ class ApiPutTests(TestCase):
             ('tariffrestriction_example_max_power', status.HTTP_201_CREATED, 1000, 3),
         )
 
-        for filename, http_status, ocpi_status, price_component_count \
+        for filename, http_status, ocpi_status, price_component_count, *extra \
                 in testcases:
 
             data = self._load_example(filename)
 
+            # ic(filename, data.get('id'))
             country_code = data.get('country_code')
             party_id = data.get('party_id')
 
@@ -342,7 +352,8 @@ class ApiPutTests(TestCase):
             # Verify the saved data
             uid = data.get('id')
             # noinspection PyUnresolvedReferences
-            saved_data = TariffSerializer(Tariff.objects.get(uid=uid, archived=False)).data
+            tariff = Tariff.objects.get(uid=uid, archived=False)
+            saved_data = TariffSerializer(tariff).data
             # ic(saved_data)
             last_updated = data.get('last_updated')
 
@@ -368,6 +379,10 @@ class ApiPutTests(TestCase):
             self.assertEqual(total_price_components, price_component_count,
                              f'There should be exactly {price_component_count} '
                              f'PriceComponents in the Tariff after {filename}.json')
+            if extra:
+                check_function = extra[0].get('check_function')
+                if check_function:
+                    self.assertTrue(check_function(tariff), f'Check function failed for {filename}')
 
     def test_cost_calculation(self):
         start_date_time = datetime(2000, 1, 1, 0, 0)
