@@ -183,11 +183,14 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'ocpi22.middleware.OCPIHubMiddleware',  # Load this conditionally
 ]
 
 if os.environ.get('DEBUG_MIDDLEWARE') in TRUE_OPTIONS:
     MIDDLEWARE.append('ocpi22.middleware.DebugMiddleware')
+
+if os.environ.get('HUB'):
+    # Running as a hub, start acting like one
+    MIDDLEWARE.append('ocpi22.middleware.OCPIHubMiddleware')
 
 ROOT_URLCONF = 'ocpiconnector.urls'
 

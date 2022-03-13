@@ -3,6 +3,7 @@ import json
 import os
 import logging
 import uuid
+from dataclasses import asdict
 
 from datetime import timedelta, datetime
 from unittest.mock import Mock, patch
@@ -30,7 +31,7 @@ from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerialize
 from ocpi22.commands import CommandsViewSet, CommandResponse
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import Credentials, CredentialsRole, find_endpoints_by_roles
+from ocpi22.models.credentials import Credentials, CredentialsRole, find_endpoints_by_roles, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
@@ -38,6 +39,7 @@ from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
 from ocpi22.ocpi_util import OCPIResponse, Ocpi, OcpiModule
 from ocpi22.pull import schedule_full_update
+from ocpi22.routing import find_route, Route
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
 from ocpi22.tokens import get_admin_token
 from ocpiconnector.management.commands import exchange_credentials
@@ -1213,3 +1215,25 @@ class CredentialsTest(TestCase):
         c.atomic_post_save()
         self.assertFalse(find_endpoints_by_roles.cache_info().currsize,
                          'There should be nothing in endpoint cache after changing a Credentials')
+
+
+class TestRouting(TestCase):
+    fixtures = ['ocpi22/data/test-database-1.json']
+
+    def test_find_route(self):
+        try:
+            route: Route = find_route('fi', 'msp', Endpoint.LOCATIONS)
+
+            # Does caching work?
+            find_route('fi', 'msp', Endpoint.LOCATIONS)
+            self.assertEqual(find_route.cache_info().hits, 1, "find_route() should be cached")
+
+            self.assertDictEqual(
+                asdict(route),
+                {'credentials_id': 2,
+                 'direct': True,
+                 'identifier': 'LOCATIONS',
+                 'url': 'http://localhost:8001/ocpi/cpo/2.2/locations'},
+                'Expected route not found')
+        except AttributeError as e:
+            self.fail(f"find_route() is probably not cached: {e}")
