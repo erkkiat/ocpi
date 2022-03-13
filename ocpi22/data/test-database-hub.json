@@ -1,0 +1,1979 @@
+[
+   {
+      "fields": {
+         "name": "ChargerHub.eu",
+         "logo": "",
+         "website": "http://www.chargerhub.eu/"
+      },
+      "pk": 1,
+      "model": "ocpi22.businessdetails"
+   },
+   {
+      "pk": 2,
+      "model": "ocpi22.businessdetails",
+      "fields": {
+         "name": "Tesla",
+         "logo": "",
+         "website": "http://www.tesla.com/"
+      }
+   },
+   {
+      "fields": {
+         "logo": "",
+         "name": "Tesla",
+         "website": "http://www.tesla.com"
+      },
+      "model": "ocpi22.businessdetails",
+      "pk": 3
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 1,
+      "fields": {
+         "description": "Hotels and other lodging",
+         "name": "HOTEL"
+      }
+   },
+   {
+      "pk": 2,
+      "model": "ocpi22.facility",
+      "fields": {
+         "description": "A restaurant",
+         "name": "RESTAURANT"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 3,
+      "fields": {
+         "description": "",
+         "name": "CAFE"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 4,
+      "fields": {
+         "description": "",
+         "name": "SPORT"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 5,
+      "fields": {
+         "description": "",
+         "name": "MALL"
+      }
+   },
+   {
+      "fields": {
+         "name": "SUPERMARKET",
+         "description": ""
+      },
+      "pk": 6,
+      "model": "ocpi22.facility"
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "RECREATION_AREA"
+      },
+      "model": "ocpi22.facility",
+      "pk": 7
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 8,
+      "fields": {
+         "description": "",
+         "name": "NATURE"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 9,
+      "fields": {
+         "description": "",
+         "name": "MUSEUM"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 10,
+      "fields": {
+         "name": "BIKE_SHARING",
+         "description": ""
+      }
+   },
+   {
+      "fields": {
+         "name": "BUS_STOP",
+         "description": ""
+      },
+      "pk": 11,
+      "model": "ocpi22.facility"
+   },
+   {
+      "fields": {
+         "name": "TAXI_STAND",
+         "description": ""
+      },
+      "model": "ocpi22.facility",
+      "pk": 12
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 13,
+      "fields": {
+         "description": "",
+         "name": "TRAM_STOP"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 14,
+      "fields": {
+         "description": "",
+         "name": "METRO_STATION"
+      }
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "TRAIN_STATION"
+      },
+      "model": "ocpi22.facility",
+      "pk": 15
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "AIRPORT"
+      },
+      "model": "ocpi22.facility",
+      "pk": 16
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "PARKING_LOT"
+      },
+      "pk": 17,
+      "model": "ocpi22.facility"
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "CARPOOL_PARKING"
+      },
+      "model": "ocpi22.facility",
+      "pk": 18
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 19,
+      "fields": {
+         "description": "",
+         "name": "FUEL_STATION"
+      }
+   },
+   {
+      "fields": {
+         "name": "WIFI",
+         "description": ""
+      },
+      "pk": 20,
+      "model": "ocpi22.facility"
+   },
+   {
+      "model": "ocpi22.capability",
+      "pk": 1,
+      "fields": {
+         "description": "Charging at this EVSE can be authorized with an RFID token.",
+         "name": "RFID_READER"
+      }
+   },
+   {
+      "fields": {
+         "description": "EVSE has a payment terminal that makes it possible to pay for charging using a debit card.",
+         "name": "DEBIT_CARD_PAYABLE"
+      },
+      "pk": 2,
+      "model": "ocpi22.capability"
+   },
+   {
+      "pk": 3,
+      "model": "ocpi22.capability",
+      "fields": {
+         "name": "CHARGING_PROFILE_CAPABLE",
+         "description": "The EVSE supports charging profiles."
+      }
+   },
+   {
+      "fields": {
+         "name": "CHARGING_PREFERENCES_CAPABLE",
+         "description": "The EVSE supports charging preferences."
+      },
+      "pk": 4,
+      "model": "ocpi22.capability"
+   },
+   {
+      "fields": {
+         "description": "EVSE has a payment terminal that supports chip cards.",
+         "name": "CHIP_CARD_SUPPORT"
+      },
+      "pk": 5,
+      "model": "ocpi22.capability"
+   },
+   {
+      "model": "ocpi22.capability",
+      "pk": 6,
+      "fields": {
+         "description": "EVSE has a payment terminal that supports contactless cards.",
+         "name": "CONTACTLESS_CARD_SUPPORT"
+      }
+   },
+   {
+      "fields": {
+         "description": "EVSE has a payment terminal that makes it possible to pay for charging using a credit card.",
+         "name": "CREDIT_CARD_PAYABLE"
+      },
+      "model": "ocpi22.capability",
+      "pk": 7
+   },
+   {
+      "model": "ocpi22.capability",
+      "pk": 9,
+      "fields": {
+         "description": "EVSE has a payment terminal with a pin-code entry device.",
+         "name": "PED_TERMINAL"
+      }
+   },
+   {
+      "model": "ocpi22.capability",
+      "pk": 10,
+      "fields": {
+         "name": "REMOTE_START_STOP_CAPABLE",
+         "description": "The EVSE can remotely be started/stopped."
+      }
+   },
+   {
+      "fields": {
+         "name": "RESERVABLE",
+         "description": "The EVSE can be reserved."
+      },
+      "model": "ocpi22.capability",
+      "pk": 11
+   },
+   {
+      "pk": 12,
+      "model": "ocpi22.capability",
+      "fields": {
+         "name": "START_SESSION_CONNECTOR_REQUIRED",
+         "description": "When a StartSession is sent to this EVSE, the MSP is required to add the optional connector_id field in the StartSession object."
+      }
+   },
+   {
+      "fields": {
+         "description": "This EVSE supports token groups, two or more tokens work as one, so that a session can be started with one token and stopped with another (handy when a card and key-fob are given to the EV-driver).",
+         "name": "TOKEN_GROUP_CAPABLE"
+      },
+      "pk": 13,
+      "model": "ocpi22.capability"
+   },
+   {
+      "fields": {
+         "description": "Connectors have mechanical lock that can be requested by the eMSP to be unlocked.",
+         "name": "UNLOCK_CAPABLE"
+      },
+      "model": "ocpi22.capability",
+      "pk": 14
+   },
+   {
+      "fields": {
+         "url": "http://localhost:8001/ocpi/versions/",
+         "theirs": "ACB82158EC136A92BEEC004E3010B8D823FA95B9635558F2F8140C9EE8219E3C",
+         "version": "22",
+         "last_updated": "2022-01-13T18:57:11.301",
+         "updated": "2022-01-17T04:49:23.253",
+         "ours": "BF60351F296E9E1B339646C8B57338BFE84B61C18E50BCBE822A72D8DDC60A26",
+         "created": "2022-01-08T07:56:40.267",
+         "token_a": "123"
+      },
+      "model": "ocpi22.credentials",
+      "pk": 2
+   },
+   {
+      "fields": {
+         "url": "http://localhost:8001/ocpi/versions/",
+         "theirs": "ACB82158EC136A92BEEC004E3010B8D823FA95B9635558F2F8140C9EE8219E3C",
+         "version": "22",
+         "last_updated": "2022-01-13T18:57:11.301",
+         "updated": "2022-01-17T04:49:23.253",
+         "ours": "BF60351F296E9E1B339646C8B57338BFE84B61C18E50BCBE822A72D8DDC60A26",
+         "created": "2022-01-08T07:56:40.267",
+         "token_a": "123"
+      },
+      "model": "ocpi22.credentials",
+      "pk": 3
+   },
+   {
+      "pk": 3,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "role": "CPO",
+         "credentials": 2,
+         "party_id": "CP1",
+         "country_code": "FI"
+      }
+   },
+   {
+      "pk": 4,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "country_code": "FI",
+         "party_id": "MSP",
+         "role": "EMSP",
+         "credentials": 2
+      }
+   },
+   {
+      "pk": 5,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "country_code": "FI",
+         "party_id": "NAP",
+         "role": "NAP",
+         "credentials": 2
+      }
+   },
+   {
+      "pk": 6,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "country_code": "FI",
+         "party_id": "HUB",
+         "role": "HUB",
+         "credentials": 3
+      }
+   },
+   {
+      "fields": {
+         "credentials": 2,
+         "identifier": "credentials",
+         "role": "RECEIVER",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/credentials"
+      },
+      "model": "ocpi22.endpoint",
+      "pk": 12
+   },
+   {
+      "pk": 13,
+      "model": "ocpi22.endpoint",
+      "fields": {
+         "url": "http://localhost:8001/ocpi/cpo/2.2/credentials",
+         "credentials": 2,
+         "role": "SENDER",
+         "identifier": "credentials"
+      }
+   },
+   {
+      "model": "ocpi22.endpoint",
+      "pk": 14,
+      "fields": {
+         "identifier": "locations",
+         "credentials": 2,
+         "role": "SENDER",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/locations"
+      }
+   },
+   {
+      "model": "ocpi22.endpoint",
+      "pk": 15,
+      "fields": {
+         "url": "http://localhost:8001/ocpi/cpo/2.2/locations",
+         "role": "RECEIVER",
+         "credentials": 2,
+         "identifier": "locations"
+      }
+   },
+   {
+      "model": "ocpi22.endpoint",
+      "pk": 315,
+      "fields": {
+         "url": "http://localhost:8001/ocpi/hub/2.2/locations",
+         "role": "RECEIVER",
+         "credentials": 3,
+         "identifier": "locations"
+      }
+   },
+   {
+      "pk": 16,
+      "model": "ocpi22.endpoint",
+      "fields": {
+         "role": "RECEIVER",
+         "credentials": 2,
+         "identifier": "tokens",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/tokens"
+      }
+   },
+   {
+      "fields": {
+         "role": "SENDER",
+         "credentials": 2,
+         "identifier": "tokens",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/tokens"
+      },
+      "pk": 17,
+      "model": "ocpi22.endpoint"
+   },
+   {
+      "fields": {
+         "credentials": 2,
+         "role": "SENDER",
+         "identifier": "tariffs",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/tariffs"
+      },
+      "model": "ocpi22.endpoint",
+      "pk": 18
+   },
+   {
+      "pk": 19,
+      "model": "ocpi22.endpoint",
+      "fields": {
+         "role": "RECEIVER",
+         "credentials": 2,
+         "identifier": "tariffs",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/tariffs"
+      }
+   },
+   {
+      "fields": {
+         "credentials": 2,
+         "identifier": "sessions",
+         "role": "SENDER",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/sessions"
+      },
+      "model": "ocpi22.endpoint",
+      "pk": 20
+   },
+   {
+      "pk": 21,
+      "model": "ocpi22.endpoint",
+      "fields": {
+         "identifier": "cdrs",
+         "credentials": 2,
+         "role": "SENDER",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/cdrs"
+      }
+   },
+   {
+      "fields": {
+         "url": "http://localhost:8001/ocpi/cpo/2.2/commands",
+         "identifier": "commands",
+         "credentials": 2,
+         "role": "RECEIVER"
+      },
+      "pk": 22,
+      "model": "ocpi22.endpoint"
+   },
+   {
+      "pk": 23,
+      "model": "ocpi22.endpoint",
+      "fields": {
+         "identifier": "sessions",
+         "credentials": 2,
+         "role": "RECEIVER",
+         "url": "http://localhost:8001/ocpi/cpo/2.2/sessions"
+      }
+   },
+   {
+      "fields": {
+         "url": "http://localhost:8001/ocpi/cpo/2.2/cdrs",
+         "role": "RECEIVER",
+         "credentials": 2,
+         "identifier": "cdrs"
+      },
+      "model": "ocpi22.endpoint",
+      "pk": 24
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 1,
+      "fields": {
+         "currency": "EUR",
+         "updated": "2022-01-16T17:50:31.687",
+         "last_updated": "2022-01-14T15:52:22",
+         "party_id": "000",
+         "created": "2022-01-08T07:51:41.531",
+         "country_code": "FI",
+         "archived": true,
+         "type": "REGULAR",
+         "tariff_alt_url": "",
+         "uid": "T1"
+      }
+   },
+   {
+      "fields": {
+         "uid": "T2",
+         "archived": false,
+         "type": "REGULAR",
+         "tariff_alt_url": "",
+         "party_id": "000",
+         "created": "2022-01-08T07:52:37.768",
+         "country_code": "FI",
+         "currency": "EUR",
+         "last_updated": "2022-01-08T07:52:37.772",
+         "updated": "2022-01-18T18:55:07.589"
+      },
+      "model": "ocpi22.tariff",
+      "pk": 2
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 7,
+      "fields": {
+         "archived": true,
+         "tariff_alt_url": "",
+         "type": "REGULAR",
+         "uid": "T6",
+         "currency": "EUR",
+         "last_updated": "2022-01-14T10:29:21",
+         "updated": "2022-01-16T18:35:19.918",
+         "country_code": "FI",
+         "party_id": "000",
+         "created": "2022-01-09T14:16:46.932"
+      }
+   },
+   {
+      "pk": 9,
+      "model": "ocpi22.tariff",
+      "fields": {
+         "tariff_alt_url": "",
+         "type": "REGULAR",
+         "archived": true,
+         "uid": "T1",
+         "last_updated": "2022-01-14T15:52:22",
+         "updated": "2022-01-16T17:58:16.079",
+         "currency": "EUR",
+         "country_code": "FI",
+         "party_id": "000",
+         "created": "2022-01-16T17:50:31.698"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 10,
+      "fields": {
+         "tariff_alt_url": "",
+         "type": "REGULAR",
+         "archived": true,
+         "uid": "T1",
+         "updated": "2022-01-16T18:34:02.706",
+         "last_updated": "2022-01-14T15:52:22",
+         "currency": "EUR",
+         "country_code": "FI",
+         "created": "2022-01-16T17:58:16.087",
+         "party_id": "000"
+      }
+   },
+   {
+      "fields": {
+         "updated": "2022-01-17T05:45:59.285",
+         "last_updated": "2022-01-08T07:52:37.772",
+         "currency": "EUR",
+         "country_code": "FI",
+         "created": "2022-01-17T05:45:59.278",
+         "party_id": "000",
+         "tariff_alt_url": "",
+         "type": "REGULAR",
+         "archived": false,
+         "uid": "T3"
+      },
+      "pk": 15,
+      "model": "ocpi22.tariff"
+   },
+   {
+      "fields": {
+         "country_code": "FI",
+         "party_id": "000",
+         "created": "2022-01-17T05:46:58.892",
+         "last_updated": "2022-01-08T07:52:37.772",
+         "updated": "2022-01-17T05:46:58.898",
+         "currency": "EUR",
+         "uid": "T4",
+         "type": "REGULAR",
+         "tariff_alt_url": "",
+         "archived": false
+      },
+      "model": "ocpi22.tariff",
+      "pk": 16
+   },
+   {
+      "fields": {
+         "tariff_alt_url": "",
+         "type": "REGULAR",
+         "archived": false,
+         "uid": "TTYPE2",
+         "updated": "2022-01-19T18:23:33.600",
+         "last_updated": null,
+         "currency": "EUR",
+         "created": "2022-01-19T18:23:33.593",
+         "party_id": "000",
+         "country_code": "FI"
+      },
+      "model": "ocpi22.tariff",
+      "pk": 18
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 19,
+      "fields": {
+         "last_updated": null,
+         "updated": "2022-01-19T18:23:56.514",
+         "currency": "EUR",
+         "party_id": "000",
+         "created": "2022-01-19T18:23:56.511",
+         "country_code": "FI",
+         "type": "REGULAR",
+         "tariff_alt_url": "",
+         "archived": false,
+         "uid": "TCCS"
+      }
+   },
+   {
+      "fields": {
+         "party_id": "000",
+         "created": "2022-01-19T18:24:14.252",
+         "country_code": "FI",
+         "currency": "EUR",
+         "last_updated": null,
+         "updated": "2022-01-19T18:24:14.256",
+         "uid": "TCHADEMO",
+         "archived": false,
+         "type": "REGULAR",
+         "tariff_alt_url": ""
+      },
+      "pk": 20,
+      "model": "ocpi22.tariff"
+   },
+   {
+      "fields": {
+         "tariff": 1
+      },
+      "pk": 1,
+      "model": "ocpi22.tariffelement"
+   },
+   {
+      "fields": {
+         "tariff": 2
+      },
+      "model": "ocpi22.tariffelement",
+      "pk": 2
+   },
+   {
+      "pk": 6,
+      "model": "ocpi22.tariffelement",
+      "fields": {
+         "tariff": 7
+      }
+   },
+   {
+      "pk": 7,
+      "model": "ocpi22.tariffelement",
+      "fields": {
+         "tariff": 7
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 10,
+      "fields": {
+         "tariff": 9
+      }
+   },
+   {
+      "pk": 11,
+      "model": "ocpi22.tariffelement",
+      "fields": {
+         "tariff": 10
+      }
+   },
+   {
+      "pk": 12,
+      "model": "ocpi22.tariffelement",
+      "fields": {
+         "tariff": 15
+      }
+   },
+   {
+      "pk": 13,
+      "model": "ocpi22.tariffelement",
+      "fields": {
+         "tariff": 16
+      }
+   },
+   {
+      "pk": 15,
+      "model": "ocpi22.tariffelement",
+      "fields": {
+         "tariff": 18
+      }
+   },
+   {
+      "fields": {
+         "tariff": 19
+      },
+      "pk": 16,
+      "model": "ocpi22.tariffelement"
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 17,
+      "fields": {
+         "tariff": 20
+      }
+   },
+   {
+      "fields": {
+         "type": "ENERGY",
+         "tariff_element": 1,
+         "vat": null,
+         "step_size": 1,
+         "price": 1
+      },
+      "model": "ocpi22.pricecomponent",
+      "pk": 1
+   },
+   {
+      "fields": {
+         "type": "ENERGY",
+         "step_size": 1000,
+         "price": 0.26,
+         "vat": null,
+         "tariff_element": 2
+      },
+      "model": "ocpi22.pricecomponent",
+      "pk": 2
+   },
+   {
+      "fields": {
+         "type": "ENERGY",
+         "step_size": 1000,
+         "price": 1.23,
+         "tariff_element": 6,
+         "vat": null
+      },
+      "pk": 7,
+      "model": "ocpi22.pricecomponent"
+   },
+   {
+      "fields": {
+         "tariff_element": 6,
+         "vat": null,
+         "price": 0.05,
+         "step_size": 60,
+         "type": "TIME"
+      },
+      "pk": 8,
+      "model": "ocpi22.pricecomponent"
+   },
+   {
+      "pk": 9,
+      "model": "ocpi22.pricecomponent",
+      "fields": {
+         "tariff_element": 7,
+         "vat": null,
+         "price": 1,
+         "step_size": 1,
+         "type": "FLAT"
+      }
+   },
+   {
+      "pk": 12,
+      "model": "ocpi22.pricecomponent",
+      "fields": {
+         "type": "ENERGY",
+         "step_size": 1,
+         "price": 2,
+         "tariff_element": 10,
+         "vat": null
+      }
+   },
+   {
+      "pk": 13,
+      "model": "ocpi22.pricecomponent",
+      "fields": {
+         "type": "ENERGY",
+         "tariff_element": 11,
+         "vat": null,
+         "price": 7,
+         "step_size": 1
+      }
+   },
+   {
+      "fields": {
+         "type": "ENERGY",
+         "tariff_element": 12,
+         "vat": null,
+         "price": 2,
+         "step_size": 1
+      },
+      "model": "ocpi22.pricecomponent",
+      "pk": 14
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 15,
+      "fields": {
+         "vat": null,
+         "tariff_element": 13,
+         "step_size": 1,
+         "price": 2,
+         "type": "ENERGY"
+      }
+   },
+   {
+      "fields": {
+         "vat": 24,
+         "tariff_element": 15,
+         "price": 0.22,
+         "step_size": 1000,
+         "type": "ENERGY"
+      },
+      "pk": 17,
+      "model": "ocpi22.pricecomponent"
+   },
+   {
+      "fields": {
+         "step_size": 1000,
+         "price": 0.3,
+         "tariff_element": 16,
+         "vat": null,
+         "type": "ENERGY"
+      },
+      "pk": 18,
+      "model": "ocpi22.pricecomponent"
+   },
+   {
+      "pk": 19,
+      "model": "ocpi22.pricecomponent",
+      "fields": {
+         "type": "ENERGY",
+         "tariff_element": 17,
+         "vat": null,
+         "price": 0.3,
+         "step_size": 1000
+      }
+   },
+   {
+      "pk": 2,
+      "model": "ocpi22.defaulttariffs",
+      "fields": {
+         "standard": "IEC_62196_T2",
+         "tariffs": [
+            18
+         ]
+      }
+   },
+   {
+      "pk": 3,
+      "model": "ocpi22.defaulttariffs",
+      "fields": {
+         "standard": "IEC_62196_T2_COMBO",
+         "tariffs": [
+            19
+         ]
+      }
+   },
+   {
+      "pk": 4,
+      "model": "ocpi22.defaulttariffs",
+      "fields": {
+         "standard": "CHADEMO",
+         "tariffs": [
+            20
+         ]
+      }
+   },
+   {
+      "model": "ocpi22.token",
+      "pk": 2,
+      "fields": {
+         "group_id": null,
+         "whitelist": "NEVER",
+         "visual_number": "12345",
+         "uid": "T1",
+         "type": "RFID",
+         "valid": true,
+         "default_profile_type": "FAST",
+         "contract_id": "CONTRACT3",
+         "language": null,
+         "country_code": "FI",
+         "created": "2022-01-08T13:54:30.740",
+         "party_id": "001",
+         "issuer": "EKI",
+         "last_updated": "2017-12-10T17:25:10",
+         "updated": "2022-01-17T11:18:18.777"
+      }
+   },
+   {
+      "fields": {
+         "group_id": null,
+         "whitelist": "NEVER",
+         "uid": "T2",
+         "visual_number": "123B",
+         "type": "RFID",
+         "valid": true,
+         "default_profile_type": null,
+         "contract_id": "CONTRACT6",
+         "language": null,
+         "country_code": "FI",
+         "created": "2022-01-09T13:20:46.085",
+         "party_id": "000",
+         "issuer": "eki",
+         "last_updated": "2022-01-09T14:11:32.146",
+         "updated": "2022-01-15T09:06:31.476"
+      },
+      "pk": 3,
+      "model": "ocpi22.token"
+   },
+   {
+      "fields": {
+         "country_code": "FI",
+         "issuer": "eki",
+         "created": "2022-01-09T14:12:45.863",
+         "party_id": "000",
+         "updated": "2022-01-17T06:44:52.754",
+         "last_updated": "2022-01-10T07:00:18",
+         "group_id": null,
+         "visual_number": "123C",
+         "whitelist": "NEVER",
+         "uid": "T7",
+         "valid": true,
+         "type": "APP_USER",
+         "language": null,
+         "contract_id": "CONTRACT_F",
+         "default_profile_type": null
+      },
+      "model": "ocpi22.token",
+      "pk": 4
+   },
+   {
+      "model": "ocpi22.token",
+      "pk": 5,
+      "fields": {
+         "country_code": "FI",
+         "issuer": "FI*001",
+         "party_id": "001",
+         "created": "2022-01-12T19:44:39.298",
+         "last_updated": "2022-01-12T19:44:39.298",
+         "updated": "2022-01-17T10:55:29.812",
+         "group_id": null,
+         "uid": "FI*001*T*ADMIN*TOKEN",
+         "whitelist": "",
+         "visual_number": null,
+         "valid": true,
+         "type": "OTHER",
+         "language": null,
+         "contract_id": "INTERNAL 1",
+         "default_profile_type": null
+      }
+   },
+   {
+      "pk": 6,
+      "model": "ocpi22.token",
+      "fields": {
+         "party_id": "TNM",
+         "created": "2022-01-17T11:06:05.458",
+         "issuer": "TheNewMotion",
+         "country_code": "DE",
+         "last_updated": "2018-12-10T17:25:10",
+         "updated": "2022-01-17T11:06:05.458",
+         "visual_number": "DF000-2001-8999-1",
+         "whitelist": "ALLOWED",
+         "uid": "12345678905880",
+         "group_id": "DF000-2001-8999",
+         "contract_id": "DE8ACC12E46L89",
+         "default_profile_type": "GREEN",
+         "language": "IT",
+         "type": "RFID",
+         "valid": true
+      }
+   },
+   {
+      "pk": 7,
+      "model": "ocpi22.token",
+      "fields": {
+         "party_id": "MSP",
+         "created": "2022-01-17T11:06:05.458",
+         "issuer": "TheNewMotion",
+         "country_code": "FI",
+         "last_updated": "2018-12-10T17:25:10",
+         "updated": "2022-01-17T11:06:05.458",
+         "visual_number": "DF000-2001-8999-1",
+         "whitelist": "ALLOWED",
+         "uid": "FIMSP-1",
+         "group_id": "DF000-2001-8999",
+         "contract_id": "DE8ACC12E46L89",
+         "default_profile_type": "GREEN",
+         "language": "IT",
+         "type": "RFID",
+         "valid": true
+      }
+   },
+   {
+      "fields": {
+         "publish": true,
+         "postal_code": "",
+         "publish_allowed_to": [],
+         "time_zone": "Europe/Warsaw",
+         "created": "2022-01-08T14:01:58.803",
+         "party_id": "000",
+         "suboperator": null,
+         "country": "POL",
+         "city": "Warsaw",
+         "lat_partition": 4000,
+         "operator": 2,
+         "state": "",
+         "uid": "WARSAW-1",
+         "long_partition": 1000,
+         "parking_type": "UNDERGROUND_GARAGE",
+         "address": "Warsawskaya 1",
+         "facilities": [
+            1,
+            2
+         ],
+         "country_code": "FI",
+         "longitude": 10,
+         "updated": "2022-01-15T09:06:31.139",
+         "last_updated": "2022-01-08T14:05:06.894",
+         "owner": null,
+         "latitude": 40,
+         "name": "Warsaw Supercharger"
+      },
+      "model": "ocpi22.location",
+      "pk": 1
+   },
+   {
+      "fields": {
+         "country": "FIN",
+         "city": "Lahti",
+         "party_id": "000",
+         "created": "2022-01-08T14:12:36.913",
+         "suboperator": null,
+         "time_zone": "Europe/Helsinki",
+         "publish_allowed_to": [],
+         "publish": true,
+         "postal_code": "",
+         "name": "Vierumäki Supercharger",
+         "last_updated": "2022-01-08T14:32:14.068",
+         "updated": "2022-01-15T09:06:31.139",
+         "latitude": 61,
+         "owner": null,
+         "longitude": 31,
+         "facilities": [
+            2,
+            6
+         ],
+         "country_code": "FI",
+         "address": "Vierumäki 2",
+         "parking_type": "PARKING_LOT",
+         "operator": 2,
+         "state": "",
+         "lat_partition": 6100,
+         "uid": "VM-1",
+         "long_partition": 3100
+      },
+      "model": "ocpi22.location",
+      "pk": 2
+   },
+   {
+      "fields": {
+         "address": "Oulu 1",
+         "parking_type": "UNDERGROUND_GARAGE",
+         "long_partition": 2700,
+         "operator": 3,
+         "lat_partition": 6400,
+         "state": "",
+         "uid": "TSL-OULU",
+         "name": "Supercharger Oulu",
+         "last_updated": null,
+         "updated": "2022-01-15T09:06:31.139",
+         "owner": null,
+         "latitude": 64,
+         "longitude": 27,
+         "country_code": "FI",
+         "facilities": [
+            1,
+            2,
+            5
+         ],
+         "time_zone": "Europe/Helsinki",
+         "publish_allowed_to": [],
+         "postal_code": "",
+         "publish": true,
+         "city": "Oulu",
+         "country": "FIN",
+         "suboperator": null,
+         "created": "2022-01-08T14:37:27.713",
+         "party_id": "001"
+      },
+      "model": "ocpi22.location",
+      "pk": 3
+   },
+   {
+      "pk": 4,
+      "model": "ocpi22.location",
+      "fields": {
+         "facilities": [
+            2
+         ],
+         "country_code": "FI",
+         "updated": "2022-01-15T09:06:31.139",
+         "last_updated": "2022-01-08T14:55:22.541",
+         "owner": null,
+         "latitude": 63,
+         "longitude": 31,
+         "name": "Vaasa Supercharger",
+         "lat_partition": 6300,
+         "operator": 2,
+         "state": "",
+         "uid": "VAASA-1",
+         "long_partition": 3100,
+         "parking_type": "PARKING_GARAGE",
+         "address": "Vaasa 1",
+         "created": "2022-01-08T14:54:41.193",
+         "party_id": "000",
+         "suboperator": null,
+         "country": "FIN",
+         "city": "Vaasa",
+         "publish": true,
+         "postal_code": "",
+         "publish_allowed_to": [],
+         "time_zone": "Europe/Helsinki"
+      }
+   },
+   {
+      "model": "ocpi22.location",
+      "pk": 5,
+      "fields": {
+         "address": "Paimio 2",
+         "parking_type": "ALONG_MOTORWAY",
+         "long_partition": 2900,
+         "operator": 2,
+         "state": "",
+         "lat_partition": 6000,
+         "uid": "PAIMIO-1",
+         "name": "Paimio Supercharger",
+         "last_updated": "2022-01-09T06:18:12.081",
+         "updated": "2022-01-15T09:06:31.139",
+         "owner": null,
+         "longitude": 29,
+         "latitude": 60,
+         "country_code": "FI",
+         "facilities": [
+            2,
+            3,
+            6
+         ],
+         "time_zone": "Europe/Helsinki",
+         "publish_allowed_to": [],
+         "postal_code": "",
+         "publish": true,
+         "city": "Salo",
+         "country": "FIN",
+         "suboperator": null,
+         "created": "2022-01-08T15:05:18.427",
+         "party_id": "000"
+      }
+   },
+   {
+      "fields": {
+         "time_zone": "Europe/Helsinki",
+         "publish_allowed_to": [],
+         "postal_code": "",
+         "publish": true,
+         "country": "FIN",
+         "city": "Helsinki",
+         "suboperator": 1,
+         "party_id": "000",
+         "created": "2022-01-09T06:25:25.023",
+         "address": "Helsinki 12",
+         "parking_type": "PARKING_LOT",
+         "long_partition": 3000,
+         "lat_partition": 6000,
+         "operator": 2,
+         "state": "",
+         "uid": "HELSINKI-1",
+         "name": "Helsinki Supercharger",
+         "last_updated": "2022-01-09T10:50:58.562",
+         "updated": "2022-01-15T19:14:14.602",
+         "owner": 2,
+         "latitude": 60,
+         "longitude": 30,
+         "country_code": "FI",
+         "facilities": [
+            1
+         ]
+      },
+      "model": "ocpi22.location",
+      "pk": 6
+   },
+   {
+      "model": "ocpi22.location",
+      "pk": 7,
+      "fields": {
+         "country": "SWE",
+         "city": "Stockholm",
+         "party_id": "000",
+         "created": "2022-01-09T08:56:12.056",
+         "suboperator": null,
+         "publish_allowed_to": [],
+         "publish": true,
+         "postal_code": "",
+         "time_zone": "Europe/Stockholm",
+         "facilities": [
+            2
+         ],
+         "country_code": "FI",
+         "name": "Stockholm Supercharger",
+         "updated": "2022-01-15T09:06:31.139",
+         "last_updated": "2022-01-09T08:56:12.056",
+         "longitude": 25,
+         "owner": null,
+         "latitude": 60,
+         "parking_type": "ALONG_MOTORWAY",
+         "uid": "STOCKHOLM-1",
+         "operator": 3,
+         "lat_partition": 6000,
+         "state": "",
+         "long_partition": 2500,
+         "address": "Stockholm 1"
+      }
+   },
+   {
+      "model": "ocpi22.evse",
+      "pk": 1,
+      "fields": {
+         "evse_id": "PL*TSL*EWARSAW1",
+         "created": "2022-01-08T14:05:05.972",
+         "capabilities": [
+            10,
+            12
+         ],
+         "last_updated": "2022-01-08T14:05:06.892",
+         "updated": "2022-01-15T09:06:31.007",
+         "location": 1,
+         "status": "AVAILABLE",
+         "uid": "1"
+      }
+   },
+   {
+      "pk": 2,
+      "model": "ocpi22.evse",
+      "fields": {
+         "evse_id": "FI*TSL*EVM1",
+         "capabilities": [
+            7
+         ],
+         "created": "2022-01-08T14:15:25.039",
+         "updated": "2022-01-15T09:06:31.007",
+         "last_updated": "2022-01-08T14:15:25.972",
+         "uid": "VM-1",
+         "status": "AVAILABLE",
+         "location": 2
+      }
+   },
+   {
+      "fields": {
+         "uid": "TSL-OULU",
+         "location": 3,
+         "status": "AVAILABLE",
+         "updated": "2022-01-15T09:06:31.007",
+         "last_updated": "2022-01-08T14:37:27.796",
+         "capabilities": [
+            2
+         ],
+         "created": "2022-01-08T14:37:27.717",
+         "evse_id": "FI*TSL*EOULU1"
+      },
+      "model": "ocpi22.evse",
+      "pk": 3
+   },
+   {
+      "fields": {
+         "status": "AVAILABLE",
+         "location": 4,
+         "uid": "1",
+         "evse_id": "FI*TSL*EVAASA1",
+         "capabilities": [
+            3
+         ],
+         "created": "2022-01-08T14:55:22.173",
+         "updated": "2022-01-15T09:06:31.007",
+         "last_updated": "2022-01-08T14:55:22.540"
+      },
+      "pk": 4,
+      "model": "ocpi22.evse"
+   },
+   {
+      "fields": {
+         "uid": "PA-1",
+         "location": 5,
+         "status": "AVAILABLE",
+         "evse_id": "FI*TSL*EPAIMIO1",
+         "capabilities": [
+            1,
+            2,
+            3,
+            4
+         ],
+         "created": "2022-01-08T15:06:54.824",
+         "updated": "2022-01-15T09:06:31.007",
+         "last_updated": "2022-01-09T06:15:08.661"
+      },
+      "pk": 6,
+      "model": "ocpi22.evse"
+   },
+   {
+      "model": "ocpi22.evse",
+      "pk": 7,
+      "fields": {
+         "created": "2022-01-09T06:27:14.931",
+         "capabilities": [
+            1
+         ],
+         "evse_id": "FI*TSL*EHELSINKI1",
+         "updated": "2022-01-18T19:46:46.556",
+         "last_updated": "2022-01-09T10:50:58.562",
+         "location": 6,
+         "status": "AVAILABLE",
+         "uid": "HELSINKI-1"
+      }
+   },
+   {
+      "pk": 8,
+      "model": "ocpi22.evse",
+      "fields": {
+         "status": "AVAILABLE",
+         "location": 6,
+         "uid": "HELSINKI-2",
+         "created": "2022-01-09T06:38:44.357",
+         "capabilities": [
+            3
+         ],
+         "evse_id": "FI*TSL*EHELSINKI2",
+         "updated": "2022-01-18T19:46:34.867",
+         "last_updated": "2022-01-09T06:38:44.362"
+      }
+   },
+   {
+      "fields": {
+         "uid": "HELSINKI-3",
+         "status": "AVAILABLE",
+         "location": 6,
+         "evse_id": "FI*TSL*EHELSINKI3",
+         "capabilities": [
+            9
+         ],
+         "created": "2022-01-09T06:40:43.558",
+         "updated": "2022-01-16T11:42:34.776",
+         "last_updated": "2022-01-09T10:48:07.901"
+      },
+      "pk": 9,
+      "model": "ocpi22.evse"
+   },
+   {
+      "fields": {
+         "uid": "NEWEVSE",
+         "status": "AVAILABLE",
+         "location": 3,
+         "updated": "2022-01-16T11:49:19.582",
+         "last_updated": null,
+         "evse_id": "FI*TSL*EOULU2",
+         "capabilities": [
+            1
+         ],
+         "created": "2022-01-16T11:49:19.582"
+      },
+      "pk": 10,
+      "model": "ocpi22.evse"
+   },
+   {
+      "fields": {
+         "uid": "1",
+         "evse": 1,
+         "max_voltage": 400,
+         "standard": "TESLA_S",
+         "terms_and_conditions": "",
+         "max_amperage": 375,
+         "tariff_ids": [],
+         "format": "CABLE",
+         "created": "2022-01-08T14:05:06.834",
+         "power_type": "DC",
+         "last_updated": "2022-01-08T14:05:06.834",
+         "updated": "2022-01-15T09:06:30.771",
+         "max_electric_power": null
+      },
+      "model": "ocpi22.connector",
+      "pk": 1
+   },
+   {
+      "fields": {
+         "format": "CABLE",
+         "tariff_ids": [],
+         "max_amperage": 375,
+         "created": "2022-01-08T14:05:06.890",
+         "power_type": "DC",
+         "max_electric_power": null,
+         "updated": "2022-01-15T09:06:30.771",
+         "last_updated": "2022-01-08T14:05:06.890",
+         "uid": "2",
+         "max_voltage": 400,
+         "evse": 1,
+         "standard": "TESLA_S",
+         "terms_and_conditions": ""
+      },
+      "model": "ocpi22.connector",
+      "pk": 2
+   },
+   {
+      "model": "ocpi22.connector",
+      "pk": 3,
+      "fields": {
+         "tariff_ids": [],
+         "max_amperage": 375,
+         "format": "CABLE",
+         "created": "2022-01-08T14:15:25.972",
+         "power_type": "DC",
+         "updated": "2022-01-15T09:06:30.771",
+         "last_updated": "2022-01-08T14:15:25.972",
+         "max_electric_power": null,
+         "uid": "1",
+         "max_voltage": 400,
+         "evse": 2,
+         "standard": "TESLA_S",
+         "terms_and_conditions": ""
+      }
+   },
+   {
+      "pk": 4,
+      "model": "ocpi22.connector",
+      "fields": {
+         "power_type": "DC",
+         "max_electric_power": 150000,
+         "last_updated": "2022-01-08T14:37:27.796",
+         "updated": "2022-01-15T09:06:30.771",
+         "format": "CABLE",
+         "tariff_ids": [],
+         "max_amperage": 375,
+         "created": "2022-01-08T14:37:27.796",
+         "standard": "TESLA_S",
+         "terms_and_conditions": "",
+         "uid": "1",
+         "max_voltage": 400,
+         "evse": 3
+      }
+   },
+   {
+      "model": "ocpi22.connector",
+      "pk": 5,
+      "fields": {
+         "terms_and_conditions": "",
+         "standard": "TESLA_S",
+         "max_voltage": 400,
+         "uid": "1",
+         "evse": 4,
+         "max_electric_power": null,
+         "last_updated": "2022-01-08T14:55:22.539",
+         "updated": "2022-01-15T09:06:30.771",
+         "power_type": "DC",
+         "created": "2022-01-08T14:55:22.539",
+         "max_amperage": 375,
+         "tariff_ids": [],
+         "format": "CABLE"
+      }
+   },
+   {
+      "fields": {
+         "created": "2022-01-08T15:06:54.872",
+         "max_amperage": 375,
+         "tariff_ids": [],
+         "format": "CABLE",
+         "last_updated": "2022-01-08T15:06:54.872",
+         "updated": "2022-01-15T09:06:30.771",
+         "max_electric_power": null,
+         "power_type": "DC",
+         "evse": 6,
+         "uid": "1",
+         "max_voltage": 400,
+         "terms_and_conditions": "",
+         "standard": "TESLA_S"
+      },
+      "pk": 6,
+      "model": "ocpi22.connector"
+   },
+   {
+      "pk": 7,
+      "model": "ocpi22.connector",
+      "fields": {
+         "terms_and_conditions": "",
+         "standard": "TESLA_S",
+         "uid": "3050",
+         "max_voltage": 400,
+         "evse": 7,
+         "last_updated": "2022-01-09T10:50:58.562",
+         "updated": "2022-01-18T19:46:46.564",
+         "max_electric_power": null,
+         "power_type": "DC",
+         "created": "2022-01-09T06:27:14.942",
+         "max_amperage": 375,
+         "tariff_ids": [
+            16
+         ],
+         "format": "CABLE"
+      }
+   },
+   {
+      "pk": 8,
+      "model": "ocpi22.connector",
+      "fields": {
+         "tariff_ids": [
+            2
+         ],
+         "format": "CABLE",
+         "max_amperage": 375,
+         "created": "2022-01-09T06:38:44.362",
+         "power_type": "DC",
+         "last_updated": "2022-01-09T06:38:44.362",
+         "updated": "2022-01-18T19:46:34.877",
+         "max_electric_power": null,
+         "evse": 8,
+         "max_voltage": 400,
+         "uid": "1",
+         "standard": "TESLA_S",
+         "terms_and_conditions": ""
+      }
+   },
+   {
+      "fields": {
+         "uid": "1",
+         "max_voltage": 400,
+         "evse": 9,
+         "terms_and_conditions": "",
+         "standard": "TESLA_S",
+         "created": "2022-01-09T06:40:43.567",
+         "tariff_ids": [
+            2
+         ],
+         "format": "CABLE",
+         "max_amperage": 375,
+         "last_updated": "2022-01-09T10:48:07.901",
+         "updated": "2022-01-16T11:42:34.822",
+         "max_electric_power": null,
+         "power_type": "DC"
+      },
+      "pk": 9,
+      "model": "ocpi22.connector"
+   },
+   {
+      "pk": 10,
+      "model": "ocpi22.connector",
+      "fields": {
+         "max_voltage": 400,
+         "uid": "b3e536ab1cf14d18bc3824e99a809384",
+         "evse": 10,
+         "terms_and_conditions": "",
+         "standard": "TESLA_S",
+         "created": "2022-01-16T11:49:19.617",
+         "format": "CABLE",
+         "tariff_ids": [],
+         "max_amperage": 375,
+         "last_updated": null,
+         "updated": "2022-01-16T11:49:19.617",
+         "max_electric_power": null,
+         "power_type": "DC"
+      }
+   },
+   {
+      "fields": {
+         "uid": "6cc56f6fbc484443b738e32c282e1f29",
+         "evse": 9,
+         "total_cost_incl_vat": 2,
+         "status": "COMPLETED",
+         "kwh": 10,
+         "start_date_time": "2022-01-18T19:19:20.755",
+         "meter_id": null,
+         "country_code": "FI",
+         "updated": "2022-01-18T19:23:16.641",
+         "last_updated": null,
+         "end_date_time": null,
+         "cdr_token_contract_id": "INTERNAL",
+         "connector": 1,
+         "location": 6,
+         "authorization_reference": "671fd9b8f21441d5b540fed607e6e9a0",
+         "total_cost_excl_vat": 1,
+         "cdr_token_type": "OTHER",
+         "auth_method": "COMMAND",
+         "party_id": "000",
+         "created": "2022-01-18T19:19:20.759",
+         "currency": "EUR",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN"
+      },
+      "model": "ocpi22.session",
+      "pk": 35
+   },
+   {
+      "pk": 37,
+      "model": "ocpi22.session",
+      "fields": {
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "currency": "EUR",
+         "party_id": "000",
+         "created": "2022-01-18T19:41:07.301",
+         "auth_method": "COMMAND",
+         "cdr_token_type": "OTHER",
+         "total_cost_excl_vat": 2,
+         "authorization_reference": "19d546b6038b4a07941c4775e8ce2083",
+         "location": 6,
+         "connector": 1,
+         "cdr_token_contract_id": "INTERNAL",
+         "end_date_time": null,
+         "updated": "2022-01-18T19:42:38.295",
+         "last_updated": null,
+         "country_code": "FI",
+         "meter_id": null,
+         "start_date_time": "2022-01-18T19:41:07.297",
+         "total_cost_incl_vat": 3,
+         "status": "COMPLETED",
+         "kwh": 12,
+         "evse": 7,
+         "uid": "a399a9eed3fc4c89bfe5e7f6b3b68336"
+      }
+   },
+   {
+      "fields": {
+         "uid": "4c95538ac0544606949cf66911ca2191",
+         "evse": 8,
+         "total_cost_incl_vat": 5,
+         "status": "COMPLETED",
+         "kwh": 32,
+         "start_date_time": "2022-01-18T19:44:07.801",
+         "meter_id": null,
+         "country_code": "FI",
+         "updated": "2022-01-18T19:44:24.791",
+         "last_updated": null,
+         "end_date_time": null,
+         "cdr_token_contract_id": "INTERNAL",
+         "connector": 1,
+         "location": 6,
+         "authorization_reference": "4ae5a33d3de946e69d373b8411a3bb31",
+         "total_cost_excl_vat": 4,
+         "cdr_token_type": "OTHER",
+         "auth_method": "COMMAND",
+         "party_id": "000",
+         "created": "2022-01-18T19:44:07.808",
+         "currency": "EUR",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN"
+      },
+      "model": "ocpi22.session",
+      "pk": 38
+   },
+   {
+      "fields": {
+         "start_date_time": "2022-01-18T19:47:01.478",
+         "status": "COMPLETED",
+         "total_cost_incl_vat": 6,
+         "kwh": 13,
+         "evse": 7,
+         "uid": "3f843ead6aa64047a46c057fb7ebfe07",
+         "country_code": "FI",
+         "meter_id": null,
+         "end_date_time": null,
+         "last_updated": null,
+         "updated": "2022-01-18T19:47:42.143",
+         "location": 6,
+         "connector": 1,
+         "cdr_token_contract_id": "INTERNAL",
+         "auth_method": "COMMAND",
+         "cdr_token_type": "OTHER",
+         "total_cost_excl_vat": 5,
+         "authorization_reference": "cc015db27578422ab9f5f7aa0e91d62b",
+         "created": "2022-01-18T19:47:01.483",
+         "party_id": "000",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "currency": "EUR"
+      },
+      "model": "ocpi22.session",
+      "pk": 39
+   },
+   {
+      "model": "ocpi22.session",
+      "pk": 40,
+      "fields": {
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "currency": "EUR",
+         "created": "2022-01-19T14:07:35.712",
+         "party_id": "000",
+         "auth_method": "COMMAND",
+         "authorization_reference": "375ef8eb25b94c3498889abeb73e5eea",
+         "total_cost_excl_vat": 4,
+         "cdr_token_type": "OTHER",
+         "location": 6,
+         "cdr_token_contract_id": "INTERNAL",
+         "connector": 1,
+         "end_date_time": null,
+         "updated": "2022-01-19T14:09:33.871",
+         "last_updated": null,
+         "country_code": "FI",
+         "meter_id": null,
+         "total_cost_incl_vat": 5,
+         "status": "COMPLETED",
+         "kwh": 13,
+         "start_date_time": "2022-01-19T14:07:35.707",
+         "evse": 9,
+         "uid": "fdc6a79a80144aa591df3876e1d158c0"
+      }
+   },
+   {
+      "pk": 41,
+      "model": "ocpi22.session",
+      "fields": {
+         "location": 6,
+         "connector": null,
+         "cdr_token_contract_id": "INTERNAL",
+         "auth_method": "COMMAND",
+         "cdr_token_type": "OTHER",
+         "authorization_reference": "e86baa82cee14ac5bfd00b85371aa798",
+         "total_cost_excl_vat": null,
+         "created": "2022-01-20T16:05:59.895",
+         "party_id": "000",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "currency": "EUR",
+         "start_date_time": "2022-01-20T16:05:59.883",
+         "kwh": 0,
+         "status": "PENDING",
+         "total_cost_incl_vat": null,
+         "uid": "0f8a681462344bb78f79c0f553b1371c",
+         "evse": 9,
+         "country_code": "FI",
+         "meter_id": null,
+         "end_date_time": null,
+         "last_updated": null,
+         "updated": "2022-01-20T16:05:59.895"
+      }
+   },
+   {
+      "fields": {
+         "cdr_location_evse_uid": "HELSINKI-3",
+         "cdr_token_contract_id": "INTERNAL",
+         "total_cost_excl_vat": 1,
+         "credit_reference": null,
+         "created": "2022-01-18T19:23:17.009",
+         "cdr_location_connector_standard": "TESLA_S",
+         "start_date_time": "2022-01-18T19:19:20",
+         "cdr_location_city": "Helsinki",
+         "cdr_location_postal_code": "01234",
+         "total_time": 0.06556,
+         "country_code": "FI",
+         "session_id": "6cc56f6fbc484443b738e32c282e1f29",
+         "cdr_location_connector_format": "CABLE",
+         "end_date_time": "2022-01-18T19:23:17",
+         "credit": false,
+         "last_updated": null,
+         "updated": "2022-01-18T19:26:45.768",
+         "cdr_location_longitude": "30.000000",
+         "cdr_location_country": "FIN",
+         "auth_method": "COMMAND",
+         "cdr_location_id": "HELSINKI-1",
+         "cdr_location_connector_power_type": "DC",
+         "authorization_reference": "671fd9b8f21441d5b540fed607e6e9a0",
+         "cdr_token_type": "OTHER",
+         "cdr_location_address": "Helsinki 12B",
+         "cdr_location_evse_id": "FI*TSL*EHELSINKI3",
+         "party_id": "000",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "currency": "EUR",
+         "total_cost_incl_vat": 2,
+         "cdr_location_latitude": "60.000000",
+         "tariffs": [
+            1
+         ],
+         "uid": "9a0cf69a3f3745ef95c33296dc290fac",
+         "cdr_location_connector_id": "1",
+         "total_energy": 10
+      },
+      "pk": 13,
+      "model": "ocpi22.cdr"
+   },
+   {
+      "fields": {
+         "cdr_location_evse_uid": "HELSINKI-1",
+         "cdr_token_contract_id": "INTERNAL",
+         "total_cost_excl_vat": 2,
+         "credit_reference": null,
+         "created": "2022-01-18T19:42:38.359",
+         "cdr_location_connector_standard": "TESLA_S",
+         "start_date_time": "2022-01-18T19:41:07.297",
+         "cdr_location_postal_code": "-",
+         "cdr_location_city": "Helsinki",
+         "total_time": 0.02528,
+         "session_id": "a399a9eed3fc4c89bfe5e7f6b3b68336",
+         "country_code": "FI",
+         "cdr_location_connector_format": "CABLE",
+         "end_date_time": "2022-01-18T19:42:38.355",
+         "updated": "2022-01-18T19:42:38.359",
+         "last_updated": "2022-01-18T19:42:38.359",
+         "credit": false,
+         "cdr_location_country": "FIN",
+         "cdr_location_longitude": "30.000000",
+         "cdr_location_id": "HELSINKI-1",
+         "auth_method": "COMMAND",
+         "cdr_token_type": "OTHER",
+         "cdr_location_address": "Helsinki 12",
+         "cdr_location_connector_power_type": "DC",
+         "authorization_reference": "19d546b6038b4a07941c4775e8ce2083",
+         "cdr_location_evse_id": "FI*TSL*EHELSINKI1",
+         "party_id": "000",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "currency": "EUR",
+         "tariffs": [],
+         "cdr_location_latitude": "60.000000",
+         "total_cost_incl_vat": 3,
+         "uid": "359f19a78aeb4960846862be2d8155e8",
+         "cdr_location_connector_id": "1",
+         "total_energy": 12
+      },
+      "pk": 14,
+      "model": "ocpi22.cdr"
+   },
+   {
+      "model": "ocpi22.cdr",
+      "pk": 15,
+      "fields": {
+         "total_cost_incl_vat": 5,
+         "cdr_location_latitude": "60.000000",
+         "tariffs": [],
+         "uid": "0580dd5b54a445f4a56a8d0ef100ca18",
+         "cdr_location_connector_id": "1",
+         "total_energy": 32,
+         "auth_method": "COMMAND",
+         "cdr_location_id": "HELSINKI-1",
+         "cdr_location_connector_power_type": "DC",
+         "authorization_reference": "4ae5a33d3de946e69d373b8411a3bb31",
+         "cdr_location_address": "Helsinki 12",
+         "cdr_token_type": "OTHER",
+         "cdr_location_longitude": "30.000000",
+         "cdr_location_country": "FIN",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "currency": "EUR",
+         "cdr_location_evse_id": "FI*TSL*EHELSINKI2",
+         "party_id": "000",
+         "total_time": 0.00472,
+         "start_date_time": "2022-01-18T19:44:07.801",
+         "cdr_location_city": "Helsinki",
+         "cdr_location_postal_code": "-",
+         "end_date_time": "2022-01-18T19:44:24.837",
+         "credit": false,
+         "last_updated": "2022-01-18T19:44:24.840",
+         "updated": "2022-01-18T19:44:24.840",
+         "country_code": "FI",
+         "session_id": "4c95538ac0544606949cf66911ca2191",
+         "cdr_location_connector_format": "CABLE",
+         "total_cost_excl_vat": 4,
+         "cdr_location_evse_uid": "HELSINKI-2",
+         "cdr_token_contract_id": "INTERNAL",
+         "cdr_location_connector_standard": "TESLA_S",
+         "credit_reference": null,
+         "created": "2022-01-18T19:44:24.840"
+      }
+   },
+   {
+      "fields": {
+         "cdr_location_longitude": "30.000000",
+         "cdr_location_country": "FIN",
+         "auth_method": "COMMAND",
+         "cdr_location_id": "HELSINKI-1",
+         "authorization_reference": "cc015db27578422ab9f5f7aa0e91d62b",
+         "cdr_location_connector_power_type": "DC",
+         "cdr_location_address": "Helsinki 12",
+         "cdr_token_type": "OTHER",
+         "cdr_location_evse_id": "FI*TSL*EHELSINKI1",
+         "party_id": "000",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "currency": "EUR",
+         "cdr_location_latitude": "60.000000",
+         "total_cost_incl_vat": 6,
+         "tariffs": [],
+         "uid": "6913f528af7449c1b7ac45a88ea245c1",
+         "cdr_location_connector_id": "1",
+         "total_energy": 13,
+         "cdr_location_evse_uid": "HELSINKI-1",
+         "cdr_token_contract_id": "INTERNAL",
+         "total_cost_excl_vat": 5,
+         "credit_reference": null,
+         "created": "2022-01-18T19:47:42.153",
+         "cdr_location_connector_standard": "TESLA_S",
+         "start_date_time": "2022-01-18T19:47:01.478",
+         "cdr_location_city": "Helsinki",
+         "cdr_location_postal_code": "-",
+         "total_time": 0.01111,
+         "country_code": "FI",
+         "session_id": "3f843ead6aa64047a46c057fb7ebfe07",
+         "cdr_location_connector_format": "CABLE",
+         "end_date_time": "2022-01-18T19:47:42.149",
+         "credit": false,
+         "updated": "2022-01-18T19:47:42.153",
+         "last_updated": "2022-01-18T19:47:42.152"
+      },
+      "model": "ocpi22.cdr",
+      "pk": 16
+   },
+   {
+      "pk": 17,
+      "model": "ocpi22.cdr",
+      "fields": {
+         "cdr_location_longitude": "30.000000",
+         "cdr_location_country": "FIN",
+         "cdr_location_connector_power_type": "DC",
+         "authorization_reference": "375ef8eb25b94c3498889abeb73e5eea",
+         "cdr_location_address": "Helsinki 12",
+         "cdr_token_type": "OTHER",
+         "auth_method": "COMMAND",
+         "cdr_location_id": "HELSINKI-1",
+         "party_id": "000",
+         "cdr_location_evse_id": "FI*TSL*EHELSINKI3",
+         "currency": "EUR",
+         "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
+         "uid": "13cbfd8ab4f949abafa41cbd18b7c1f5",
+         "cdr_location_latitude": "60.000000",
+         "total_cost_incl_vat": 5,
+         "tariffs": [],
+         "total_energy": 13,
+         "cdr_location_connector_id": "1",
+         "cdr_token_contract_id": "INTERNAL",
+         "cdr_location_evse_uid": "HELSINKI-3",
+         "total_cost_excl_vat": 4,
+         "created": "2022-01-19T14:09:33.952",
+         "credit_reference": null,
+         "cdr_location_connector_standard": "TESLA_S",
+         "cdr_location_city": "Helsinki",
+         "cdr_location_postal_code": "-",
+         "start_date_time": "2022-01-19T14:07:35.707",
+         "total_time": 0.03278,
+         "cdr_location_connector_format": "CABLE",
+         "country_code": "FI",
+         "session_id": "fdc6a79a80144aa591df3876e1d158c0",
+         "credit": false,
+         "updated": "2022-01-19T14:09:33.952",
+         "last_updated": "2022-01-19T14:09:33.952",
+         "end_date_time": "2022-01-19T14:09:33.948"
+      }
+   }
+]

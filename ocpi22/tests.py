@@ -1218,14 +1218,14 @@ class CredentialsTest(TestCase):
 
 
 class TestRouting(TestCase):
-    fixtures = ['ocpi22/data/test-database-1.json']
+    fixtures = ['ocpi22/data/test-database-hub.json']
 
     def test_find_route(self):
         try:
             route: Route = find_route('fi', 'msp', Endpoint.LOCATIONS)
 
             # Does caching work?
-            find_route('fi', 'msp', Endpoint.LOCATIONS)
+            find_route('fi', 'msp', Endpoint.LOCATIONS)  # These should be acceptable in lower case
             self.assertEqual(find_route.cache_info().hits, 1, "find_route() should be cached")
 
             self.assertDictEqual(
@@ -1237,3 +1237,15 @@ class TestRouting(TestCase):
                 'Expected route not found')
         except AttributeError as e:
             self.fail(f"find_route() is probably not cached: {e}")
+
+    def test_find_hub_route(self):
+        # Route to an unknown party
+        route: Route = find_route('no', 'exi', Endpoint.LOCATIONS)
+        self.assertTrue(route.hub, 'Seems that a hub route is not found')
+        self.assertDictEqual(
+            asdict(route),
+            {'credentials_id': 3,
+             'direct': False,
+             'identifier': 'locations',
+             'url': 'http://localhost:8001/ocpi/hub/2.2/locations'},
+            'Expecting a different route through hub')
