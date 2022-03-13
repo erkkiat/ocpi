@@ -1,6 +1,7 @@
 import secrets
 from collections import OrderedDict
 from datetime import datetime, timedelta
+from functools import lru_cache
 from typing import Optional, Any
 
 from django.conf import settings
@@ -343,19 +344,23 @@ def calculate_partition(coordinate):
 #     """
 #     return list(filter(None, [source.get(i) for i in role_options if source.get(i)]))
 
-
+@lru_cache(maxsize=None)
 def is_our_identifier(country_code, party_id, identities=None) -> bool:
     """
     Check if the given country_code and party_id match one of our identities
 
     >>> is_our_identifier('FI', 'MSP', identities=OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP')))
     True
+    >>> is_our_identifier(None, 'MSP', identities=OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP')))
+    False
 
     @param country_code:
     @param party_id:
     @param identities:
     @return:
     """
+    if not country_code or not party_id:
+        return False
     if identities is None:
         identities = ocpi_identities
     # ic(f'{country_code}*{party_id}', identities)

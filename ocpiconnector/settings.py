@@ -2,9 +2,10 @@
 import os
 from django.conf.locale.en import formats as locale_formats
 
+TRUE_OPTIONS = (1, '1', True, 'True', 'true')
+
 
 def _env_bool(key, default=False) -> bool:
-    TRUE_OPTIONS = (1, '1', True, 'True', 'true')
     return bool(os.environ.get(key, default) in TRUE_OPTIONS)
 
 
@@ -174,16 +175,19 @@ TEMPLATE_LOADERS = (
     #     'django.template.loaders.eggs.Loader',
 )
 
-MIDDLEWARE = (
+MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # Make sure this stays above OCPIHubMiddleware
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'ocpi22.middleware.DebugMiddleware',
-)
+    # 'ocpi22.middleware.OCPIHubMiddleware',  # Load this conditionally
+]
+
+if os.environ.get('DEBUG_MIDDLEWARE') in TRUE_OPTIONS:
+    MIDDLEWARE.append('ocpi22.middleware.DebugMiddleware')
 
 ROOT_URLCONF = 'ocpiconnector.urls'
 

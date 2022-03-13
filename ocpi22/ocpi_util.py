@@ -321,3 +321,8 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
         date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
         queryset = queryset.filter(last_updated__lt=date_to)
     return queryset
+
+
+def ocpi_route_request(request, country_code, party_id):
+    # ic(country_code, party_id, request.body)
+    return Response('Routing is not implemented yet')
