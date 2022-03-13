@@ -291,6 +291,6 @@ def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module_name: str) -> li
                 identifier=ocpi_module_name,
                 role=Endpoint.RECEIVER,
                 credentials=credentials,
-            )
+            ) if credentials.valid
         ]
     return result
