@@ -34,6 +34,7 @@ app = celery.Celery('ocpi22.tasks')
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
+# app.conf.task_default_queue = settings.CELERY_TASK_DEFAULT_QUEUE  # This is taken care of in settings.py
 
 app.conf.beat_schedule = {
     'run-me-every-minute': {
