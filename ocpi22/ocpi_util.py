@@ -14,7 +14,7 @@ from rest_framework import exceptions, status
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
-from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity
 
 
 class OcpiModule:
@@ -40,6 +40,9 @@ class OcpiModule:
 
     @classmethod
     def get_owner_identity(cls) -> str:
+        if ocpi_platform.is_hub:
+            return get_identity('HUB')
+
         assert hasattr(cls, 'ocpi_object_owner'), \
             f'The OCPI object {cls} needs to have ocpi_object_owner specified ' \
             f'so that the sender identity is clear when sending updates to other parties.'
@@ -70,12 +73,12 @@ class OcpiModule:
 
     def send_updates(self) -> None:
         """
-        Find all endpoints interested in Tariff updates and send update in a background task.
+        Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
         """
-        # Do we possess the role who controls the master data for this type of object?
         if settings.SEND_UPDATES in (True, 1, 'true', 'True'):
-            if self.ocpi_object_owner not in ocpi_identities.roles:
+            # Do we possess the role who controls the master data for this type of object or are we acting as HUB
+            if self.ocpi_object_owner not in ocpi_identities.roles and not ocpi_platform.is_hub:
                 logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
                 return
             serializer_class = self.ocpi_serializer_class
@@ -97,7 +100,10 @@ class OcpiModule:
     def _send_updates(cls, data, method='put') -> bool:
         from ocpi22.models.credentials import find_endpoints_by_roles
         our_country_code, our_party_id = cls.get_owner_identity().split('*')
-        logging.info(f'Sending updates for {cls} to {cls.send_updates_to}')
+        uid = data.get('uid', data.get('id', 'N/A'))
+        logging.info(
+            f'Sending updates for {cls} #{uid} from {our_country_code}*{our_party_id} to {cls.send_updates_to}'
+        )
 
         # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis or cache them
 

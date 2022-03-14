@@ -1249,3 +1249,7 @@ class TestRouting(TestCase):
              'identifier': 'locations',
              'url': 'http://localhost:8001/ocpi/hub/2.2/locations'},
             'Expecting a different route through hub')
+
+# DONE: Next, make sure updates go through your hub
+# Todo: Then, make sure start_session Command goes EMSP => HUB => CPO
+# Todo: Hub to relay Evse PATCH to everybody as PATCH
