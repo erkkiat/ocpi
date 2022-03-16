@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from rest_framework.reverse import reverse
 
+from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
@@ -23,7 +24,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     parties to send them, for example, once a month, that is also allowed by OCPI.
     """
 
-    ocpi_module_name = Ocpi.Modules.CDRS
+    ocpi_module_name = OcpiModuleEnum.CDRS
     ocpi_serializer_class = 'ocpi22.api.CdrSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES

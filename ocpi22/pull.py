@@ -5,6 +5,7 @@ from icecream import ic
 
 from ocpi22.models.credentials import Credentials, Endpoint, CredentialsRole
 from ocpi22.models.location import Location
+from ocpi22.choices import EndpointRoleEnum
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.tasks import pull_objects
@@ -22,12 +23,21 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
     if not endpoints.count():
         return
     object_list = [
-        dict(model='ocpi22.models.tariffs.Tariff', viewset='ocpi22.api.TariffViewSet',
-             url=endpoints.filter(role=Endpoint.SENDER, identifier=Tariff.ocpi_module_name).first().url),
-        dict(model='ocpi22.models.tokens.Token', viewset='ocpi22.api.TokenViewSet',
-             url=endpoints.filter(role=Endpoint.SENDER, identifier=Token.ocpi_module_name).first().url),
-        dict(model='ocpi22.models.locations.Location', viewset='ocpi22.location.LocationViewSet',
-             url=endpoints.filter(role=Endpoint.SENDER, identifier=Location.ocpi_module_name).first().url),
+        dict(
+            model='ocpi22.models.tariffs.Tariff', viewset='ocpi22.api.TariffViewSet',
+            url=endpoints.filter(role=EndpointRoleEnum.SENDER.value,
+                                 identifier=Tariff.ocpi_module_name.value).first().url
+        ),
+        dict(
+            model='ocpi22.models.tokens.Token', viewset='ocpi22.api.TokenViewSet',
+            url=endpoints.filter(role=EndpointRoleEnum.SENDER.value,
+                                 identifier=Token.ocpi_module_name.value).first().url
+        ),
+        dict(
+            model='ocpi22.models.locations.Location', viewset='ocpi22.location.LocationViewSet',
+            url=endpoints.filter(role=EndpointRoleEnum.SENDER.value,
+                                 identifier=Location.ocpi_module_name.value).first().url
+        ),
     ]
     token = credentials.theirs_base64()
     role: CredentialsRole = credentials.roles.first()

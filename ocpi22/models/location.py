@@ -7,6 +7,7 @@ from django.utils.html import format_html
 from icecream import ic
 from rest_framework.reverse import reverse
 
+from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.tariff import Tariff
@@ -22,7 +23,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     """
 
     ocpi_serializer_class = 'ocpi22.location.LocationSerializer'
-    ocpi_module_name = Ocpi.Modules.LOCATIONS
+    ocpi_module_name = OcpiModuleEnum.LOCATIONS
     ocpi_object_owner = 'CPO'
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')
 

@@ -28,6 +28,7 @@ from rest_framework.test import APIRequestFactory
 
 from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer, TokenViewSet, TokenSerializer, \
     SessionSaveSerializer
+from ocpi22.choices import OcpiModuleEnum
 from ocpi22.commands import CommandsViewSet, CommandResponse
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.models.business_details import BusinessDetails
@@ -1222,17 +1223,19 @@ class TestRouting(TestCase):
 
     def test_find_route(self):
         try:
-            route: Route = find_route('fi', 'msp', Endpoint.LOCATIONS)
+            route: Route = find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)
 
             # Does caching work?
-            find_route('fi', 'msp', Endpoint.LOCATIONS)  # These should be acceptable in lower case
+            find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)  # These should be acceptable in lower case
+            self.assertTrue(hasattr(find_route, 'cache_info'), "find_route() should be cached")
             self.assertEqual(find_route.cache_info().hits, 1, "find_route() should be cached")
 
             self.assertDictEqual(
                 asdict(route),
                 {'credentials_id': 2,
                  'direct': True,
-                 'identifier': 'LOCATIONS',
+                 'identifier': OcpiModuleEnum.LOCATIONS.value,
+                 'token_base64': 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
                  'url': 'http://localhost:8001/ocpi/cpo/2.2/locations'},
                 'Expected route not found')
         except AttributeError as e:
@@ -1240,8 +1243,8 @@ class TestRouting(TestCase):
 
     def test_find_hub_route(self):
         # Route to an unknown party
-        route: Route = find_route('no', 'exi', Endpoint.LOCATIONS)
-        self.assertTrue(route.hub, 'Seems that a hub route is not found')
+        route: Route = find_route(Party('no', 'exi'), OcpiModuleEnum.LOCATIONS)
+        self.assertTrue(route.through_hub, 'Seems that a hub route is not found')
         self.assertDictEqual(
             asdict(route),
             {'credentials_id': 3,

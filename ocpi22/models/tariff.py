@@ -10,6 +10,7 @@ from django.utils.html import format_html
 from multiselectfield import MultiSelectField
 from rest_framework.reverse import reverse
 
+from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
 from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes
 from ocpi22.ocpi_util import OcpiModule, Ocpi
@@ -27,7 +28,7 @@ from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.TariffSerializer'
-    ocpi_module_name = Ocpi.Modules.TARIFFS
+    ocpi_module_name = OcpiModuleEnum.TARIFFS
     ocpi_object_owner = 'CPO'
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')
 

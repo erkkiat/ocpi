@@ -12,9 +12,11 @@ from icecream import ic
 from requests import Response
 from rest_framework import exceptions, status
 from rest_framework.pagination import LimitOffsetPagination
+from ocpi22.choices import EndpointRoleEnum
 from rest_framework.response import Response
 
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity
+
 
 
 class OcpiModule:
@@ -122,7 +124,7 @@ class OcpiModule:
         # ic()
         # ic(e, country_code, party_id, our_country_code, our_party_id)
         if url and token_base64 and country_code and party_id and our_country_code and our_party_id:
-            logging.info(f'Send update to {cls.ocpi_module_name} module at {url}')
+            logging.info(f'Send update to {cls.ocpi_module_name.value} module at {url}')
             from ocpi22.tasks import send_ocpi_request
             args = data, url, token_base64, country_code, party_id, \
                    our_country_code, our_party_id, method
@@ -148,7 +150,8 @@ class OcpiModule:
             country_code = role.country_code
             party_id = role.party_id
             ic(role, country_code, party_id)
-            endpoint = self.credentials.endpoints.filter(identifier=self.ocpi_module_name, role='RECEIVER').first()
+            endpoint = self.credentials.endpoints.filter(identifier=self.ocpi_module_name.value,
+                                                         role=EndpointRoleEnum.RECEIVER.value).first()
             ic(endpoint)
             self._send_update(data, endpoint.url, self.credentials.theirs_base64(),
                               country_code, party_id, our_country_code, our_party_id, 'put')

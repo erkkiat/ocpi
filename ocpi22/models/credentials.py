@@ -28,7 +28,7 @@ from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.CredentialsSerializer'
-    ocpi_module_name = 'credentials'
+    ocpi_module_name = OcpiModuleEnum.CREDENTIALS
     ocpi_object_owner = None
     send_updates_to = None
 
@@ -187,15 +187,7 @@ class Endpoint(models.Model, ModelUtilMixin):
 
     url = models.URLField()
 
-    # Todo: Everything should be case-insensitive
-    SENDER = 'SENDER'
-    RECEIVER = 'RECEIVER'
-
-    ROLE_CHOICES = (
-        (SENDER, 'Sender'),
-        (RECEIVER, 'Receiver')
-    )
-    role = models.CharField(max_length=8, choices=ROLE_CHOICES)
+    role = models.CharField(max_length=8, choices=ENDPOINT_ROLE_CHOICES)
 
     credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='endpoints')
 
@@ -256,7 +248,10 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
         from ocpi22.tasks import send_ocpi_request
         data = dict()
         # noinspection PyUnresolvedReferences
-        e = credentials.endpoints.filter(identifier=Endpoint.CREDENTIALS, role=Endpoint.RECEIVER).first()
+        e = credentials.endpoints.filter(
+            identifier=OcpiModuleEnum.CREDENTIALS.value,
+            role=EndpointRoleEnum.RECEIVER.value
+        ).first()
         if e:
             logging.info(f'Send delete to Credentials module at {e.url}')
             role: CredentialsRole = credentials.roles.first()
@@ -275,8 +270,8 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
 
 
 @lru_cache(maxsize=None)
-def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module_name: str) -> list:
-    logging.info(f'Reading module {ocpi_module_name} endpoints for {roles} from database.')
+def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: OcpiModuleEnum) -> list:
+    logging.info(f'Reading module {ocpi_module.value} endpoints for {roles} from database.')
     result = []
     role: CredentialsRole
     for role in CredentialsRole.objects.filter(role__in=roles). \
@@ -288,8 +283,8 @@ def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module_name: str) -> li
         result += [
             (endpoint.url, credentials.theirs_base64(), country_code, party_id)
             for endpoint in Endpoint.objects.filter(
-                identifier=ocpi_module_name,
-                role=Endpoint.RECEIVER,
+                identifier=ocpi_module.value,
+                role=EndpointRoleEnum.RECEIVER.value,
                 credentials=credentials,
             ) if credentials.valid
         ]

@@ -4,6 +4,7 @@ from django.utils import timezone
 from icecream import ic
 from rest_framework.reverse import reverse
 
+from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
@@ -26,7 +27,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             # models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
 
-    ocpi_module_name = Ocpi.Modules.SESSIONS
+    ocpi_module_name = OcpiModuleEnum.SESSIONS
     ocpi_serializer_class = 'ocpi22.api.SessionSaveSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES

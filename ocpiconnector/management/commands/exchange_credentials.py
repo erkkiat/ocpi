@@ -11,7 +11,7 @@ from rest_framework.reverse import reverse
 
 from ocpi22.models.credentials import Credentials, Endpoint, find_endpoints_by_roles
 from ocpi22.util import generate_random_token
-from ocpiconnector.ocpi_identities import role_options
+from ocpiconnector.ocpi_identities import ROLE_OPTIONS
 
 from colorama import Back, Style
 
@@ -35,7 +35,7 @@ def get_our_roles(source: dict = os.environ) -> list:
     business_name = source.get('BUSINESS_NAME', 'N/A')
     website = source.get('BUSINESS_WEBSITE', '')
 
-    for role in role_options:
+    for role in ROLE_OPTIONS:
         country_code, party_id = source.get(role, "*").split('*')
         if country_code and party_id:
             roles.append(

@@ -1,4 +1,14 @@
 import os
+from dataclasses import dataclass
+from functools import lru_cache
+
+from ocpi22.choices import ROLE_OPTIONS
+
+
+@dataclass(eq=True, frozen=True)
+class Party:
+    country_code: str
+    party_id: str
 
 role_options = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')
 
@@ -36,8 +46,8 @@ class OCPIIdentities(metaclass=Singleton):
     _identities_dict = dict()
 
     def __init__(self, source: dict = os.environ):
-        self._identities_list = list(filter(None, [source.get(i) for i in role_options if source.get(i)]))
-        for n in role_options:
+        self._identities_list = list(filter(None, [source.get(i) for i in ROLE_OPTIONS if source.get(i)]))
+        for n in ROLE_OPTIONS:
             item = source.get(n)
             if item:
                 self._identities_dict[n] = item
@@ -135,5 +145,6 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
     """
     _country_code, party_id = get_identity(role, identities).split('*')
     return party_id
+
 
 # ic(ocpi_platform.is_hub, ocpi_platform.is_cpo, ocpi_platform.is_emsp)
