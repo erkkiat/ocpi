@@ -823,7 +823,6 @@ class OcpiApi22View(routers.APIRootView):
     This portal provides ways to test OCPI 2.2 interaction, view the information in the database and
     to read the API documentation.
 
-    The streamlined interfaces (not part of OCPI) for the CPO are available at [/api/cpo/v1/](/api/cpo/v1/).
     You can contact [support@chargerhub.eu](support@chargerhub.eu) for training and consultation.
     """
 
