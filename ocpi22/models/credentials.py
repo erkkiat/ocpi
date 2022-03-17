@@ -14,16 +14,16 @@ from django.dispatch import receiver
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
-from icecream import ic
 
-from ocpi22.choices import ROLE_CHOICES, CONNECTION_STATUS_CHOICES
+from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
+    ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi_util import OcpiModule
 from ocpi22.util import ModelUtilMixin, generate_random_token, PREMIUM_MESSAGE
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
-from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
+from ocpiconnector.ocpi_identities import get_our_party, Party
 
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
@@ -124,6 +124,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return Credentials.objects.create(token_a=token) if create else None
 
     def is_complete(self) -> bool:
+        # noinspection PyUnresolvedReferences
         return bool(self.ours and self.theirs and self.roles.count())
 
     def connection_state(self) -> bool:
@@ -164,25 +165,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
 
 class Endpoint(models.Model, ModelUtilMixin):
-    CREDENTIALS = 'credentials'
-    LOCATIONS = 'locations'
-    TOKENS = 'tokens'
-    COMMANDS = 'commands'
-    TARIFFS = 'tariffs'
-    CDRS = 'cdrs'
-    SESSIONS = 'sessions'
-    HUBCLIENTINFO = 'hubclientinfo'
 
-    IDENTIFIER_CHOICES = (
-        (CREDENTIALS, 'Credentials'),
-        (LOCATIONS, 'Locations'),
-        (TOKENS, 'Tokens'),
-        (COMMANDS, 'Commands'),
-        (TARIFFS, 'Tariffs'),
-        (CDRS, 'Charge Detail Records'),
-        (SESSIONS, 'Sessions'),
-        (HUBCLIENTINFO, 'Hubclientinfo'),
-    )
     identifier = models.CharField(max_length=13, choices=IDENTIFIER_CHOICES)
 
     url = models.URLField()
@@ -224,6 +207,7 @@ def new_connection(request):
                     messages.error(request, form.errors)
         except SyntaxError as e:
             msg = str(e)
+            # noinspection PyUnresolvedReferences
             if e.errno == 403:
                 msg = 'The token is not accepted by the other party (HTTP 403)'
             messages.error(request, msg)
@@ -242,9 +226,8 @@ def credentials_pre_save(sender, instance, *_args, **_kwargs):
 def credentials_delete(sender, instance, *_args, **_kwargs):
     # Send a DELETE to the other party, no reason to keep an expired Credentials
     credentials: Credentials = instance
-    our_country_code = get_our_country_code()
-    our_party_id = get_our_party_id()
-    if our_country_code and our_party_id:
+    our_party: Party = get_our_party()
+    if our_party:
         from ocpi22.tasks import send_ocpi_request
         data = dict()
         # noinspection PyUnresolvedReferences
@@ -254,12 +237,13 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
         ).first()
         if e:
             logging.info(f'Send delete to Credentials module at {e.url}')
+            # noinspection PyUnresolvedReferences
             role: CredentialsRole = credentials.roles.first()
             if not role:
                 logging.error(f'Cannot find a Credentials endpoint for {credentials} to send a DELETE')
                 return
             args = data, e.url, e.get_token_base64(), role.country_code, role.party_id, \
-                   our_country_code, our_party_id, 'delete'
+                   our_party.country_code, our_party.party_id, 'delete'
             retry_policy = dict(max_retries=5, interval_start=5)
             if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
                 send_ocpi_request.apply_async(args, retry=True, retry_policy=retry_policy)
@@ -274,6 +258,7 @@ def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: OcpiModuleEnum)
     logging.info(f'Reading module {ocpi_module.value} endpoints for {roles} from database.')
     result = []
     role: CredentialsRole
+    # noinspection PyUnresolvedReferences
     for role in CredentialsRole.objects.filter(role__in=roles). \
             select_related('credentials'):
         credentials = role.credentials

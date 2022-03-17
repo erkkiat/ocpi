@@ -45,6 +45,7 @@ from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
 from ocpi22.tokens import get_admin_token
 from ocpiconnector.management.commands import exchange_credentials
 from ocpi22.test_data import expected_get_responses
+from ocpiconnector.ocpi_identities import Party
 
 faketime = datetime(2000, 1, 1, 12, 0)
 factory = RequestFactory()
@@ -53,6 +54,7 @@ client = Client()
 
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.ocpi_util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
@@ -978,7 +980,8 @@ class UpdatePartiesTest(TestCase):
                             'OCPI-from-country-code': 'FI',
                             'OCPI-from-party-id': 'MSP',  # Tokens are owned by MSP, we should send with MSP identity
                             'OCPI-to-country-code': 'FI',
-                            'OCPI-to-party-id': 'HUB'}  # The recipient comes from the Credentials in the fixture
+                            'OCPI-to-party-id': 'HUB',  # The recipient comes from the Credentials in the fixture
+                            'content-type': 'application/json'}
         expected_json = {'contract_id': 'CONTRACT',
                          'country_code': 'FI',
                          'issuer': 'issuer',
@@ -1119,7 +1122,8 @@ class TestCredentials(TestCase):
                             'OCPI-from-country-code': 'FI',
                             'OCPI-from-party-id': 'CPO',
                             'OCPI-to-country-code': 'FI',
-                            'OCPI-to-party-id': 'CP1'}
+                            'OCPI-to-party-id': 'CP1',
+                            'content-type': 'application/json'}
         self.assertDictEqual(kwargs.get('headers'), expected_headers,
                              f'Headers differ from expected')
 
@@ -1232,7 +1236,8 @@ class TestRouting(TestCase):
 
             self.assertDictEqual(
                 asdict(route),
-                {'credentials_id': 2,
+                {'alive': True,
+                 'credentials_id': 2,
                  'direct': True,
                  'identifier': OcpiModuleEnum.LOCATIONS.value,
                  'token_base64': 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
@@ -1247,9 +1252,11 @@ class TestRouting(TestCase):
         self.assertTrue(route.through_hub, 'Seems that a hub route is not found')
         self.assertDictEqual(
             asdict(route),
-            {'credentials_id': 3,
+            {'alive': True,
+             'credentials_id': 3,
              'direct': False,
              'identifier': 'locations',
+             'token_base64': 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
              'url': 'http://localhost:8001/ocpi/hub/2.2/locations'},
             'Expecting a different route through hub')
 

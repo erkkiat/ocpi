@@ -18,6 +18,8 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 from rest_framework import status
 
+from ocpi22.ocpi_util import make_headers
+from ocpiconnector.ocpi_identities import Party
 from ocpiconnector import slack_logging
 from ocpiconnector.settings import STILL_ALIVE_FREQUENCY
 
@@ -25,7 +27,8 @@ pp = pprint.PrettyPrinter(indent=4).pprint
 slack_logging.init()
 
 # Set the default Django settings module for the 'celery' program.
-os.environ['DJANGO_SETTINGS_MODULE'] = 'ocpiconnector.settings'
+if not 'DJANGO_SETTINGS_MODULE' in os.environ:
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'ocpiconnector.settings'
 
 app = celery.Celery('ocpi22.tasks')
 
@@ -176,29 +179,6 @@ def command_start(data, session_uid, update_url, url):
         logging.error(str(e))
 
 
-def make_headers(token_base64,
-                 to_country_code,
-                 to_party_id,
-                 from_country_code,
-                 from_party_id) -> dict:
-    """
-    >>> make_headers('123456', 'TO', 'TOO', 'FR', 'FRM')
-    {'Authorization': 'Token 123456', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO'}
-
-    @param token_base64: OCPI Credentials Token in base64
-    @param to_country_code: Recipient party OCPI country_code
-    @param to_party_id: Recipient party OCPI party_id
-    @param from_country_code: Sender party OCPI country_code (ours)
-    @param from_party_id: Sender party OCPI party_id (ours)
-    @return: HTTP headers ready for sending
-    """
-    return {
-        "Authorization": f'Token {token_base64}',
-        "OCPI-from-country-code": from_country_code, "OCPI-from-party-id": from_party_id,
-        "OCPI-to-country-code": to_country_code, "OCPI-to-party-id": to_party_id,
-    }
-
-
 @shared_task
 def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
@@ -206,7 +186,9 @@ def send_ocpi_request(data, url: str, token_base64: str,
                       credentials_id=None, **_kwargs) -> dict:
     try:
         logging.info(f"Sending {method.upper()} request {data.get('uid', data.get('id', ''))} to {url}")
-        headers = make_headers(token_base64, to_country_code, to_party_id, from_country_code, from_party_id)
+        headers = make_headers(
+            token_base64, to=Party(to_country_code, to_party_id), sender=Party(from_country_code, from_party_id)
+        )
 
         kwargs = dict(url=url, json=data, headers=headers)
         if method == 'put':
@@ -233,7 +215,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
             headers=dict(result.headers) if result.headers else {},
         )
     except requests.exceptions.ConnectionError:
-        logging.error(f"Unable to send an OCPI request to {to_country_code}*{to_party_id} at {url}.")
+        logging.error(f"Unable to send an OCPI request to {str(to)} at {url}.")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
             # noinspection PyUnresolvedReferences
@@ -294,7 +276,7 @@ def pull_objects(object_list, limit=20, **kwargs) -> None:
             next_url, _rel = response.get('headers').get('Link', ';').strip('<>').split(';')
             model = obj.get('model')
             viewset = import_string(obj.get('viewset'))
-            for i in response.get('json').get('data'):
+            for i in response.get('json', {}).get('data', []):
                 try:
                     viewset.put(request=None, data=i)
                 except Exception as e:

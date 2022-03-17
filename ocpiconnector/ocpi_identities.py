@@ -10,7 +10,11 @@ class Party:
     country_code: str
     party_id: str
 
-role_options = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')
+    def __str__(self):
+        return f'{self.country_code}*{self.party_id}'
+
+    def __bool__(self):
+        return bool(self.country_code and self.party_id)
 
 
 class Singleton(type):
@@ -102,6 +106,7 @@ class OCPIPlatform(metaclass=Singleton):
 ocpi_platform = OCPIPlatform()
 
 
+@lru_cache(maxsize=None)
 def get_identity(role: str = None, identities=ocpi_identities) -> str:
     """
     >>> identities = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
@@ -119,6 +124,7 @@ def get_identity(role: str = None, identities=ocpi_identities) -> str:
     return identities.get(role)
 
 
+@lru_cache(maxsize=None)
 def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     """
     >>> i = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
@@ -133,6 +139,7 @@ def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     return country_code
 
 
+@lru_cache(maxsize=None)
 def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
     """
     >>> i = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
@@ -148,3 +155,18 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
 
 
 # ic(ocpi_platform.is_hub, ocpi_platform.is_cpo, ocpi_platform.is_emsp)
+
+
+@lru_cache(maxsize=None)
+def get_our_party(role: str = None, identities=ocpi_identities) -> Party:
+    """
+    >>> i = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
+    >>> get_our_party_id('CPO', i)
+    'CCC'
+    >>> get_our_party_id('MSP', i)
+    'MMM'
+    >>> get_our_party_id(None, i)  # Return the first one (for Credentials DELETE)
+    'CCC'
+    """
+    country_code, party_id = get_identity(role, identities).split('*')
+    return Party(country_code, party_id)

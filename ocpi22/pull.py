@@ -1,9 +1,8 @@
 import logging
 
 from django.conf import settings
-from icecream import ic
 
-from ocpi22.models.credentials import Credentials, Endpoint, CredentialsRole
+from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location
 from ocpi22.choices import EndpointRoleEnum
 from ocpi22.models.tariff import Tariff
@@ -40,6 +39,7 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
         ),
     ]
     token = credentials.theirs_base64()
+    # noinspection PyUnresolvedReferences
     role: CredentialsRole = credentials.roles.first()
     kwargs = dict(token_base64=token,
                   to_country_code=role.country_code, to_party_id=role.party_id,

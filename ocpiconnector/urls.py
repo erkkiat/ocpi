@@ -10,11 +10,13 @@ from ocpi22.commands import CommandsViewSet
 from ocpi22.cpo_api import CPORouter, \
     CpoEvseViewSet, \
     SessionViewSet as CpoSessionViewSet, LocationQuickViewSet
+from ocpi22.hub import CommandsHubViewSet
 
 from ocpi22.location import LocationViewSet
 from ocpi22.models.credentials import new_connection
 from ocpi22.versions import VersionsViewSet, BaseRouter
 from ocpiconnector import charger_simulator
+from ocpiconnector.ocpi_identities import ocpi_platform
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials', CredentialsViewSet if settings.PREMIUM else NoPremiumViewSet,
@@ -25,7 +27,10 @@ ocpi_router.register(r'locations', LocationViewSet if settings.PREMIUM else NoPr
 ocpi_router.register(r'tariffs', TariffViewSet if settings.PREMIUM else NoPremiumViewSet, basename='tariff')
 ocpi_router.register(r'sessions', SessionViewSet)
 ocpi_router.register(r'cdrs', CdrViewSet if settings.PREMIUM else NoPremiumViewSet, basename='cdr')
-ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
+if ocpi_platform.is_hub:
+    ocpi_router.register(r'commands', CommandsHubViewSet, basename='commands')
+if ocpi_platform.is_cpo:
+    ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
 
 cpo_router = CPORouter()
 cpo_router.register(r'evses', CpoEvseViewSet, basename='cpo-evse')

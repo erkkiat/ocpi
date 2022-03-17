@@ -1,16 +1,17 @@
 import secrets
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Any
 
 from django.conf import settings
 from django.core.validators import RegexValidator
-from rest_framework import serializers
+from rest_framework import serializers, status
 from rest_framework.renderers import BrowsableAPIRenderer
 
 from ocpi22.ocpi_util import OCPIResponse
-from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities
+from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 
 
 def clear_empty(dict_with_possibly_empty_values):
@@ -345,26 +346,24 @@ def calculate_partition(coordinate):
 #     return list(filter(None, [source.get(i) for i in role_options if source.get(i)]))
 
 @lru_cache(maxsize=None)
-def is_our_identifier(country_code, party_id, identities=None) -> bool:
+def is_our_identifier(party: Party, identities=None) -> bool:
     """
     Check if the given country_code and party_id match one of our identities
-
-    >>> is_our_identifier('FI', 'MSP', identities=OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP')))
+    >>> identities = OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP'))
+    >>> is_our_identifier(Party('FI', 'MSP'), identities=identities)
     True
-    >>> is_our_identifier(None, 'MSP', identities=OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP')))
+    >>> is_our_identifier(Party('', 'MSP'), identities=identities)
+    False
+    >>> is_our_identifier(Party('', ''), identities=identities)
     False
 
-    @param country_code:
-    @param party_id:
-    @param identities:
-    @return:
     """
-    if not country_code or not party_id:
+    if not party.country_code or not party.party_id:
         return False
     if identities is None:
         identities = ocpi_identities
     # ic(f'{country_code}*{party_id}', identities)
-    result = bool(f'{country_code}*{party_id}' in identities)
+    result = bool(str(party) in identities)
     return result
 
 
@@ -384,6 +383,13 @@ class ModelUtilMixin:
             return f'{self.country_code}*{self.party_id}'
         return ''
 
+    def get_party(self):
+        if hasattr(self, 'location'):
+            return Party(self.location.country_code, self.location.party_id)
+        if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
+            return Party(self.country_code, self.party_id)
+        raise NotImplementedError(f'Object type {self.__class__} has no country_code and party_id')
+
     def object_owner(self) -> str:
         # For admin UI
         return self.party()
@@ -392,7 +398,7 @@ class ModelUtilMixin:
         # Returns true if we hold the master data for this object
         if not (hasattr(self, 'country_code') and hasattr(self, 'party_id')):
             return False
-        return bool(is_our_identifier(self.country_code, self.party_id))
+        return bool(is_our_identifier(self.get_party()))
 
     def is_owner(self, request) -> bool:
         if request.user.is_superuser:
@@ -414,7 +420,7 @@ PREMIUM_MESSAGE = 'This feature is available in the OCPI Connector Premium. ' \
                   'You can upgrade at http://ocpi.guide/compare/'
 PREMIUM_RESPONSE = OCPIResponse(
     status_message=PREMIUM_MESSAGE,
-    status_code=2999, http_status=403
+    status_code=2999, http_status=status.HTTP_426_UPGRADE_REQUIRED
 )
 
 
@@ -471,3 +477,9 @@ uid_validator = RegexValidator(r'^[0-9a-zA-Z\*\-]+$', message='Numbers and lette
 class OnlyRawBrowsableAPIRenderer(BrowsableAPIRenderer):
     def render_form_for_serializer(self, serializer):
         return ""
+
+
+@dataclass
+class CommandResponse:
+    success: bool
+    message: str

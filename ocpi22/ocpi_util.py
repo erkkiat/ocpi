@@ -1,22 +1,27 @@
 import json
 import logging
 from collections import OrderedDict
+from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
+from urllib.parse import urljoin
 
 import requests
 from django.conf import settings
 from django.db.models import QuerySet
+from django.http import JsonResponse, HttpResponse, HttpRequest
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from icecream import ic
 from requests import Response
 from rest_framework import exceptions, status
 from rest_framework.pagination import LimitOffsetPagination
-from ocpi22.choices import EndpointRoleEnum
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
 from rest_framework.response import Response
+from rest_framework.reverse import reverse
 
-from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity
-
+from ocpi22.routing import find_route
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party
 
 
 class OcpiModule:
@@ -104,7 +109,7 @@ class OcpiModule:
         our_country_code, our_party_id = cls.get_owner_identity().split('*')
         uid = data.get('uid', data.get('id', 'N/A'))
         logging.info(
-            f'Sending updates for {cls} #{uid} from {our_country_code}*{our_party_id} to {cls.send_updates_to}'
+            f'Sending updates for {cls} {uid} from {our_country_code}*{our_party_id} to {cls.send_updates_to}'
         )
 
         # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis or cache them
@@ -157,17 +162,17 @@ class OcpiModule:
                               country_code, party_id, our_country_code, our_party_id, 'put')
 
 
-def ocpi_post(url, token_base64, *args, **kwargs) -> Response:
+def ocpi_post(url, token_base64,
+              to: Party,
+              sender: Party,
+              *args, **kwargs) -> Response:
     print(f'Posting to {url}')
     data = ''
     if 'data' in kwargs:
         data = json.dumps(kwargs.pop('data'))
         # ic(data)
     response = requests.post(url, *args, **kwargs, data=data,
-                             headers={
-                                 "Authorization": f'Token {token_base64}',
-                                 'content-type': 'application/json',
-                             })
+                             headers=make_headers(token_base64, to, sender))
     if response.status_code >= 300:
         print(f'*** Got response: {response.status_code} - {response.reason}')
         logging.error(response.text)
@@ -332,6 +337,94 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
     return queryset
 
 
-def ocpi_route_request(request, country_code, party_id):
-    # ic(country_code, party_id, request.body)
-    return Response('Routing is not implemented yet')
+ocpi_modules = [x.value for x in OcpiModuleEnum]
+
+
+@dataclass(eq=True, frozen=True)
+class OCPIUrlComponents:
+    path: str
+    module: OcpiModuleEnum
+    parameters: str
+
+
+@lru_cache(maxsize=100)
+def parse_ocpi_url(url: str) -> OCPIUrlComponents:
+    """
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION?a=1')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='start_session?a=1')
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/locations?limit=5')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/LOCATIONS/')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='')
+    """
+    url = url.lower().rstrip('/')
+    path = ''
+    module = ''
+    parameters = ''
+
+    # Figure out the OCPI module
+    for m in ocpi_modules:
+        if m in url:
+            module = m
+            break
+
+    # Find the OCPI module path part and separate URL parameters (of course query, but also possible OCPI Command)
+    for name in ('location-list', 'commands-list'):
+        p = reverse(name)
+        if p in url:
+            path = p
+            parameters = url.replace(p, '').strip('/')
+            break
+
+    return OCPIUrlComponents(path, OcpiModuleEnum(module), parameters)
+
+
+def ocpi_route_request(request: HttpRequest, party: Party):
+    try:
+        ocpi_url = parse_ocpi_url(request.path)
+        logging.info(f'Routing to {party}, module {ocpi_url}')
+        route = find_route(party, ocpi_url.module)
+        if route and hasattr(request, 'body') and hasattr(request, 'headers'):
+            data = json.loads(request.body)
+            ic(data, request.content_type)
+            in_headers = request.headers
+            out_headers = make_headers(
+                route.token_base64,
+                to=Party(in_headers.get('Ocpi-To-Country-Code'), in_headers.get('Ocpi-To-Party-Id')),
+                sender=Party(in_headers.get('Ocpi-From-Country-Code'), in_headers.get('Ocpi-From-Party-Id')),
+            )
+            ic(in_headers, out_headers, route)
+            logging.info(f'Forwarding message to {str(party)}')
+            response: requests.Response = requests.request(
+                method=request.method, url=urljoin(f'{route.url}/', 'START_SESSION'),
+                data=request.body, headers=out_headers)
+            ic(response.json())
+            return HttpResponse(response.text, status=response.status_code, content_type='application/json')
+        if not route.alive:
+            return JsonResponse({'error': f'Party {str(party)} is currently offline'},
+                                status=status.HTTP_406_NOT_ACCEPTABLE)
+        return JsonResponse({'error': f'Unable to find route to {str(party)}'}, status=status.HTTP_404_NOT_FOUND)
+
+    except json.JSONDecodeError as e:
+        print(f'Unable to route request: {e}')
+    return JsonResponse({'error': f'Unable to route to {str(party)}: {e}'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+
+def make_headers(token_base64: str, to: Party, sender: Party) -> dict:
+    """
+    >>> make_headers('123456', Party('TO', 'TOO'), Party('FR', 'FRM'))
+    {'Authorization': 'Token 123456', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO', 'content-type': 'application/json'}
+
+    @param token_base64: OCPI Credentials Token in base64
+    @param to_country_code: Recipient party OCPI country_code
+    @param to_party_id: Recipient party OCPI party_id
+    @param from_country_code: Sender party OCPI country_code (ours)
+    @param from_party_id: Sender party OCPI party_id (ours)
+    @return: HTTP headers ready for sending
+    """
+    return {
+        "Authorization": f'Token {token_base64}',
+        "OCPI-from-country-code": sender.country_code, "OCPI-from-party-id": sender.party_id,
+        "OCPI-to-country-code": to.country_code, "OCPI-to-party-id": to.party_id,
+        'content-type': 'application/json',
+    }

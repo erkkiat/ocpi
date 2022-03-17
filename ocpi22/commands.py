@@ -1,3 +1,4 @@
+import logging
 import uuid
 from collections import OrderedDict
 from urllib.parse import urljoin
@@ -6,7 +7,7 @@ from django.conf import settings
 from django.db import transaction
 from django.http import Http404
 from icecream import ic
-from rest_framework import mixins, serializers, status
+from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.renderers import JSONRenderer
@@ -16,18 +17,21 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer, CommandTokenSerializer, LocationIdSerializer
 from ocpi22.auth import OCPIPermission
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
 from ocpi22.cpo_api import CHARGER
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.routing import find_route, Route
 from ocpi22.sessions import create_session
 from ocpi22.tasks import command_start
 from ocpi22.ocpi_util import ocpi_post, OCPIResponse, Ocpi
 
 import pprint
 
-from ocpi22.util import OnlyRawBrowsableAPIRenderer
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, CommandResponse
+from ocpiconnector.ocpi_identities import get_our_party, Party
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 
@@ -134,21 +138,20 @@ class CommandResponse(serializers.Serializer):
 
 
 class CommandResult(serializers.Serializer):
-
     RESULT_OPTIONS = (
-        ('ACCEPTED', 'Accepted'),                               # Command request accepted by the Charge Point.
+        ('ACCEPTED', 'Accepted'),  # Command request accepted by the Charge Point.
         ('CANCELED_RESERVATION', 'CPO cancelled reservation'),  # The Reservation has been canceled by the CPO.
-        ('EVSE_OCCUPIED', 'EVSE is currently in use'),          # EVSE is currently occupied, another session is ongoing
-                                                                # Cannot start a new session
-        ('EVSE_INOPERATIVE', 'EVSE is inoperative'),            # EVSE is currently inoperative or faulted.
-        ('FAILED', 'Command failed'),                           # Execution of the command failed at the Charge Point.
-        ('NOT_SUPPORTED', 'Command is not supported'),          # The requested command is not supported
-                                                                # by this Charge Point, EVSE etc.
-        ('REJECTED', 'Command rejected'),                       # Command request rejected by the Charge Point.
-        ('TIMEOUT', 'Command timeout'),                         # Command request timeout, no response received
-                                                                # from the Charge Point in a reasonable time.
-        ('UNKNOWN_RESERVATION', 'No matching reservation'),     # The Reservation in the requested command
-                                                                # is not known by this Charge Point.
+        ('EVSE_OCCUPIED', 'EVSE is currently in use'),  # EVSE is currently occupied, another session is ongoing
+        # Cannot start a new session
+        ('EVSE_INOPERATIVE', 'EVSE is inoperative'),  # EVSE is currently inoperative or faulted.
+        ('FAILED', 'Command failed'),  # Execution of the command failed at the Charge Point.
+        ('NOT_SUPPORTED', 'Command is not supported'),  # The requested command is not supported
+        # by this Charge Point, EVSE etc.
+        ('REJECTED', 'Command rejected'),  # Command request rejected by the Charge Point.
+        ('TIMEOUT', 'Command timeout'),  # Command request timeout, no response received
+        # from the Charge Point in a reasonable time.
+        ('UNKNOWN_RESERVATION', 'No matching reservation'),  # The Reservation in the requested command
+        # is not known by this Charge Point.
     )
 
     # Result of the command request as sent by the Charge Point to the CPO.
@@ -174,7 +177,8 @@ class CommandsViewSet(GenericViewSet):
     renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
 
     def get_serializer_class(self):
-        if not hasattr(self, 'action_map'): return serializers.Serializer
+        if not hasattr(self, 'action_map'):
+            return serializers.Serializer
         # ic(self.action_map['post'])
         serializer = dict(
             start_session=StartSessionSerializer,
@@ -182,14 +186,6 @@ class CommandsViewSet(GenericViewSet):
             unlock_connector=UnlockConnectorSerializer,
         ).get(self.action_map['post'])
         return serializer
-
-    # def options(self, request, *args, **kwargs):
-    #     ic(request, args, kwargs)
-    #     return Response(
-    #         dict(
-    #             helptext='Please see OPTIONS for specific commands, such as START_SESSION or UNLOCK_CONNECTOR'
-    #         )
-    #     )
 
     def get_view_name(self):
         # ic(self.kwargs if hasattr(self, 'kwargs') else 'N/A')
@@ -327,7 +323,8 @@ class CommandsViewSet(GenericViewSet):
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    def list(self, request, *args, **kwargs):
+    @staticmethod
+    def list(request, *_args, **_kwargs):
         return Response(dict(
             start_session=request.build_absolute_uri(reverse('commands-start-session')),
             stop_session=request.build_absolute_uri(reverse('commands-stop-session')),
@@ -339,40 +336,45 @@ def get_our_first_token():
     our_country_code, our_party_id = Token.get_owner_identity().split('*')
 
     try:
+        # noinspection PyUnresolvedReferences
         return Token.objects.filter(country_code=our_country_code, party_id=our_party_id)[0]
     except IndexError:
         raise ValueError('Please create a Token first.')
 
 
-def find_endpoint(country_code, party_id, identifier, endpoint_role) -> Endpoint:
+def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_role: EndpointRoleEnum) -> Endpoint:
+    # noinspection PyUnresolvedReferences
     for role in CredentialsRole.objects.filter(country_code=country_code, party_id=party_id):
         for credentials in role.credentials.all():
             # noinspection PyUnresolvedReferences
-            endpoints = credentials.endpoints.filter(identifier=identifier, role=endpoint_role)
+            endpoints = credentials.endpoints.filter(identifier=identifier.value, role=endpoint_role.value)
             if endpoints.count():
                 return endpoints[0]
 
 
-def send_start_command(request, evse: Evse, token: Token) -> Response:
+def send_start_command(request, evse: Evse, token: Token) -> CommandResponse:
     country_code = evse.location.country_code
     party_id = evse.location.party_id
-    # noinspection PyUnresolvedReferences
 
-    endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
-    if endpoint:
-        print(f'*** Sending start command for {evse.location.name}.')
+    route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
+    if route:
+        logging.info(f'*** Sending start command for {evse.location.name} to {route.url}.')
         data = dict(
             response_url=request.build_absolute_uri('/'),
             token=TokenSerializer(token).data,
             location_id=evse.location.uid,
             evse_uid=evse.uid,
-            authorization_reference=uuid.uuid4().hex,
+            authorization_reference=uuid.uuid4().hex,  # Todo: Store authorization for verifying CDR
         )
-        return ocpi_post(urljoin(f'{endpoint.url}/', 'START_SESSION'), endpoint.get_token_base64(),
-                         data=data)
+        response: Response = ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
+                                       to=Party(country_code, party_id), sender=get_our_party('EMSP'),
+                                       data=data)
+        if response.status_code < 300:
+            return CommandResponse(success=True, message='Starting to charge')
     else:
-        print(f'Unable to find endpoint for {evse.location.party()}.')
-        return Response()
+        message = f"{evse.location.party()} is unreachable"
+        logging.error(message)
+        return CommandResponse(success=False, message=message)
 
 
 def send_stop_command(request, session: Session) -> Response:
@@ -380,7 +382,7 @@ def send_stop_command(request, session: Session) -> Response:
     party_id = session.location.party_id
     # noinspection PyUnresolvedReferences
 
-    endpoint = find_endpoint(country_code, party_id, Endpoint.COMMANDS, Endpoint.RECEIVER)
+    endpoint = find_endpoint(country_code, party_id, OcpiModuleEnum.COMMANDS, EndpointRoleEnum.RECEIVER)
     if endpoint:
         print(f'*** Sending stop command for {session}.')
         data = dict(

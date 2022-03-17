@@ -169,7 +169,7 @@ class Command(BaseCommand):
             if not roles:
                 raise exceptions.ImproperlyConfigured(
                     f'You need to set the OCPI roles of this Platform in environment variables, '
-                    f'e.g. "CPO=NL*EON". The options are: {", ".join(role_options)}')
+                    f'e.g. "CPO=NL*EON". The options are: {", ".join(ROLE_OPTIONS)}')
 
             data_to_send = dict(
                 token=token_b,

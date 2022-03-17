@@ -606,7 +606,8 @@ def send_evse_updates(evse_uid):
 
     if settings.SEND_UPDATES:
         # noinspection PyUnresolvedReferences
-        endpoints = Endpoint.objects.filter(identifier='locations', role='RECEIVER')
+        endpoints = Endpoint.objects.filter(
+            identifier=OcpiModuleEnum.LOCATIONS.value, role=EndpointRoleEnum.RECEIVER.value)
         e: Endpoint
         for e in endpoints:
             print(f'Send EVSE update to {e.url}')

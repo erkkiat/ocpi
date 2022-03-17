@@ -18,6 +18,7 @@ from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultT
 from ocpi22.models.token import Token
 from ocpi22.sessions import get_active_sessions
 from ocpi22.tokens import get_admin_token
+from ocpi22.util import CommandResponse
 from ocpiconnector.ocpi_identities import ocpi_identities
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False
@@ -206,13 +207,11 @@ class EvseAdmin(NestedModelAdmin):
         evse: Evse
         for evse in queryset:
             try:
-                response: Response = send_start_command(request, evse, get_admin_token())
-                if response:
-                    self.message_user(request, f'Starting charging at {evse.location}, '
-                                               f'response: {response.status_code} - '
-                                               f'{response.reason if hasattr(response, "reason") else "Ok"}')
+                response: CommandResponse = send_start_command(request, evse, get_admin_token())
+                if response.success:
+                    self.message_user(request, f'Starting charging at {evse.location}')
                 else:
-                    self.message_user(request, f'Unable to start charging at {evse.location}.',
+                    self.message_user(request, f'Unable to start charging at {evse.location}: {response.message}.',
                                       level=messages.ERROR)
             except exceptions.APIException as e:
                 self.message_user(request, f'Unable to start charging at {evse.location}. {e}',

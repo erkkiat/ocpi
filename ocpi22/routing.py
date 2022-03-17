@@ -4,38 +4,47 @@ from functools import lru_cache
 
 from django.db.models import QuerySet
 
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
+
+from ocpiconnector.ocpi_identities import Party
 
 
 @dataclass
-class Route():
+class Route:
     url: str
-    identifier: str
+    identifier: OcpiModuleEnum
     credentials_id: int
+    token_base64: str
+    alive: bool
     direct: bool
 
     @property
-    def hub(self):
+    def through_hub(self):
         return not self.direct
+
+    def __bool__(self):
+        return self.url and self.alive
 
 
 def get_hub_credentials() -> QuerySet:
+    from ocpi22.models.credentials import Credentials
     # noinspection PyUnresolvedReferences
     return Credentials.objects.filter(roles__role='HUB')
 
 
-def find_credentials(country_code, party_id) -> Credentials:
+def find_credentials(party: Party):
+    from ocpi22.models.credentials import CredentialsRole
     # noinspection PyUnresolvedReferences
     roles = CredentialsRole.objects.filter(
-        country_code=country_code.upper(),
-        party_id=party_id.upper()
+        country_code=party.country_code.upper(),
+        party_id=party.party_id.upper()
     ).select_related('credentials')
     roles_count = roles.count()
     if roles_count:
         # We found a direct connection
         if roles_count > 1:
-            logging.error(f'Multiple Credentials for {country_code}*{party_id} in the database')
-        role: CredentialsRole = roles.first()
+            logging.error(f'Multiple Credentials for {str(party)} in the database')
+        role = roles.first()
         return role.credentials
 
 
@@ -57,7 +66,6 @@ def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum, role: 
 
 def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Route:
     credentials = get_hub_credentials().first()
-    # noinspection PyUnresolvedReferences
     endpoints = credentials.endpoints.filter(credentials=credentials, identifier=ocpi_module.value,
                                              role=EndpointRoleEnum.RECEIVER.value)
     endpoint = endpoints.first()

@@ -32,14 +32,14 @@ class OcpiModuleEnum(Enum):
 
 
 IDENTIFIER_CHOICES = (
-    (OcpiModuleEnum.CREDENTIALS.name, 'Credentials'),
-    (OcpiModuleEnum.LOCATIONS.name, 'Locations'),
-    (OcpiModuleEnum.TOKENS.name, 'Tokens'),
-    (OcpiModuleEnum.COMMANDS.name, 'Commands'),
-    (OcpiModuleEnum.TARIFFS.name, 'Tariffs'),
-    (OcpiModuleEnum.CDRS.name, 'Charge Detail Records'),
-    (OcpiModuleEnum.SESSIONS.name, 'Sessions'),
-    (OcpiModuleEnum.HUBCLIENTINFO.name, 'Hubclientinfo'),
+    (OcpiModuleEnum.CREDENTIALS.value, 'Credentials'),
+    (OcpiModuleEnum.LOCATIONS.value, 'Locations'),
+    (OcpiModuleEnum.TOKENS.value, 'Tokens'),
+    (OcpiModuleEnum.COMMANDS.value, 'Commands'),
+    (OcpiModuleEnum.TARIFFS.value, 'Tariffs'),
+    (OcpiModuleEnum.CDRS.value, 'Charge Detail Records'),
+    (OcpiModuleEnum.SESSIONS.value, 'Sessions'),
+    (OcpiModuleEnum.HUBCLIENTINFO.value, 'Hubclientinfo'),
 )
 
 ROLE_OPTIONS = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')

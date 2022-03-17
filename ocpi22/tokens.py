@@ -20,7 +20,7 @@ def authorize_token(token_uid, location=None):
         serializer = TokenSerializer(instance=token)
         return Session.WHITELIST, serializer.data
     # noinspection PyUnresolvedReferences
-    endpoints = Endpoint.objects.filter(identifier=Endpoint.TOKENS, role=Endpoint.SENDER)
+    endpoints = Endpoint.objects.filter(identifier=OcpiModuleEnum.TOKENS.value, role=EndpointRoleEnum.SENDER.value)
     for endpoint in endpoints:
         url = f'{endpoint.url}{token_uid}/authorize'
         ic(url)

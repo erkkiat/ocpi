@@ -3,6 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+from ocpiconnector.ocpi_identities import ocpi_platform
+
 
 def get_versions_dict(request):
     return [
@@ -16,7 +18,7 @@ def get_endpoints_dict(request):
     R = "RECEIVER"
     S = "SENDER"
 
-    return dict(
+    result = dict(
         version="2.2",
         endpoints=[
             dict(
@@ -34,69 +36,81 @@ def get_endpoints_dict(request):
                 role=R,
                 url=request.build_absolute_uri(reverse('clientinfo-list'))
             ),
+            # Todo: Locations receiver and Tokens sender are for simulator, and should only be active when in debug
+        ]
+    )
+
+    if ocpi_platform.is_hub:
+        result['endpoints'] += [
             dict(
                 identifier="hubclientinfo",
                 role=S,
                 url=request.build_absolute_uri(reverse('clientinfo-list'))
             ),
+        ]
+
+    if ocpi_platform.is_cpo or ocpi_platform.is_hub:
+        result['endpoints'] += [
             dict(
                 identifier="locations",
                 role=S,
                 url=request.build_absolute_uri(reverse('location-list'))
-            ),
-            # Todo: Locations receiver and Tokens sender are for simulator, and should only be active when in debug
-            dict(
-                identifier="locations",
-                role=R,
-                url=request.build_absolute_uri(reverse('location-list'))
-            ),
-            dict(
-                identifier="tokens",
-                role=R,
-                url=request.build_absolute_uri(reverse('token-list'))
-            ),
-            dict(
-                identifier="tokens",
-                role=S,
-                url=request.build_absolute_uri(reverse('token-list'))
-            ),
-            dict(
-                identifier="tariffs",
-                role=S,
-                url=request.build_absolute_uri(reverse('tariff-list'))
-            ),
-            dict(
-                identifier="tariffs",
-                role=R,
-                url=request.build_absolute_uri(reverse('tariff-list'))
-            ),
-            dict(
-                identifier="sessions",
-                role=S,
-                url=request.build_absolute_uri(reverse('session-list'))
-            ),
-            dict(
-                identifier="sessions",
-                role=R,
-                url=request.build_absolute_uri(reverse('session-list'))
-            ),
-            dict(
-                identifier="cdrs",
-                role=S,
-                url=request.build_absolute_uri(reverse('cdr-list'))
-            ),
-            dict(
-                identifier="cdrs",
-                role=R,
-                url=request.build_absolute_uri(reverse('cdr-list'))
             ),
             dict(
                 identifier="commands",
                 role=R,
                 url=request.build_absolute_uri(reverse('commands-list'))
             ),
+            dict(
+                identifier="tariffs",
+                role=S,
+                url=request.build_absolute_uri(reverse('tariff-list'))
+            ),
+            dict(
+                identifier="sessions",
+                role=S,
+                url=request.build_absolute_uri(reverse('session-list'))
+            ),
+            dict(
+                identifier="cdrs",
+                role=S,
+                url=request.build_absolute_uri(reverse('cdr-list'))
+            ),
+            dict(
+                identifier="tokens",
+                role=R,
+                url=request.build_absolute_uri(reverse('token-list'))
+            ),
         ]
-    )
+    if ocpi_platform.is_emsp or ocpi_platform.is_hub:
+        result['endpoints'] += [
+            dict(
+                identifier="locations",
+                role=R,
+                url=request.build_absolute_uri(reverse('location-list'))
+            ),
+            dict(
+                identifier="cdrs",
+                role=R,
+                url=request.build_absolute_uri(reverse('cdr-list'))
+            ),
+            dict(
+                identifier="tokens",
+                role=S,
+                url=request.build_absolute_uri(reverse('token-list'))
+            ),
+            dict(
+                identifier="tariffs",
+                role=R,
+                url=request.build_absolute_uri(reverse('tariff-list'))
+            ),
+            dict(
+                identifier="sessions",
+                role=R,
+                url=request.build_absolute_uri(reverse('session-list'))
+            ),
+        ]
+    return result
 
 
 class OCPIBaseView(routers.APIRootView):
