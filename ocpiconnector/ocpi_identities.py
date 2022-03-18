@@ -50,7 +50,7 @@ class OCPIIdentities(metaclass=Singleton):
     _identities_dict = dict()
 
     def __init__(self, source: dict = os.environ):
-        self._identities_list = list(filter(None, [source.get(i) for i in ROLE_OPTIONS if source.get(i)]))
+        self._identities_list = list([source.get(i) for i in ROLE_OPTIONS if source.get(i)])
         for n in ROLE_OPTIONS:
             item = source.get(n)
             if item:

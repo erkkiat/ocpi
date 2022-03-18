@@ -4,23 +4,20 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
-from urllib.parse import urljoin
 
 import requests
 from django.conf import settings
 from django.db.models import QuerySet
-from django.http import JsonResponse, HttpResponse, HttpRequest
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from icecream import ic
 from requests import Response
 from rest_framework import exceptions, status
 from rest_framework.pagination import LimitOffsetPagination
-from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
+from ocpi22.choices import OcpiModuleEnum
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
-from ocpi22.routing import find_route
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party
 
 
@@ -117,22 +114,21 @@ class OcpiModule:
         if isinstance(cls.send_updates_to, tuple):
             for url, token_base64, country_code, party_id in find_endpoints_by_roles(
                     cls.send_updates_to, cls.ocpi_module_name):
-                cls._send_update(data, url, token_base64, country_code, party_id, our_country_code, our_party_id,
-                                 method)
+                cls._send_update(data, url, token_base64, to=Party(country_code, party_id),
+                                 sender=Party(our_country_code, our_party_id), method=method)
             return True
         logging.error(f"Unable to send updates for {cls}, don't know where to send.")
         return False
 
     @classmethod
-    def _send_update(cls, data: dict, url, token_base64, country_code: str, party_id: str,
-                     our_country_code: str, our_party_id: str, method='put'):
+    def _send_update(cls, data: dict, url, token_base64, to: Party, sender: Party, method='put'):
         # ic()
         # ic(e, country_code, party_id, our_country_code, our_party_id)
-        if url and token_base64 and country_code and party_id and our_country_code and our_party_id:
-            logging.info(f'Send update to {cls.ocpi_module_name.value} module at {url}')
+        if url and token_base64 and to and sender:
+            logging.info(f'Send update {cls.ocpi_module_name.value}@{str(to)}, url {url}')
             from ocpi22.tasks import send_ocpi_request
-            args = data, url, token_base64, country_code, party_id, \
-                   our_country_code, our_party_id, method
+            args = data, url, token_base64, to.country_code, to.party_id, \
+                   sender.country_code, sender.party_id, method
             if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
                 send_ocpi_request.apply_async(args, retry=False)
             else:
@@ -151,15 +147,18 @@ class OcpiModule:
         if hasattr(self, 'credentials'):
             ic()
             our_country_code, our_party_id = self.get_owner_identity().split('*')
-            role = self.credentials.roles.all().first()
-            country_code = role.country_code
-            party_id = role.party_id
-            ic(role, country_code, party_id)
-            endpoint = self.credentials.endpoints.filter(identifier=self.ocpi_module_name.value,
-                                                         role=EndpointRoleEnum.RECEIVER.value).first()
-            ic(endpoint)
-            self._send_update(data, endpoint.url, self.credentials.theirs_base64(),
-                              country_code, party_id, our_country_code, our_party_id, 'put')
+
+            # Todo: Find route to self.billed_to
+
+            # role = self.credentials.roles.all().first()
+            # country_code = role.country_code
+            # party_id = role.party_id
+            # ic(role, country_code, party_id)
+            # endpoint = self.credentials.endpoints.filter(identifier=self.ocpi_module_name.value,
+            #                                              role=EndpointRoleEnum.RECEIVER.value).first()
+            # ic(endpoint)
+            # self._send_update(data, endpoint.url, self.credentials.theirs_base64(),
+            #                   country_code, party_id, our_country_code, our_party_id, 'put')
 
 
 def ocpi_post(url, token_base64,
@@ -351,13 +350,13 @@ class OCPIUrlComponents:
 def parse_ocpi_url(url: str) -> OCPIUrlComponents:
     """
     >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION?a=1')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='start_session?a=1')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION?a=1')
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION/')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION')
     >>> parse_ocpi_url('/ocpi/cpo/2.2/locations?limit=5')
     OCPIUrlComponents(path='/ocpi/cpo/2.2/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/LOCATIONS/')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='')
     """
-    url = url.lower().rstrip('/')
+    url = url.rstrip('/')
     path = ''
     module = ''
     parameters = ''
@@ -377,37 +376,6 @@ def parse_ocpi_url(url: str) -> OCPIUrlComponents:
             break
 
     return OCPIUrlComponents(path, OcpiModuleEnum(module), parameters)
-
-
-def ocpi_route_request(request: HttpRequest, party: Party):
-    try:
-        ocpi_url = parse_ocpi_url(request.path)
-        logging.info(f'Routing to {party}, module {ocpi_url}')
-        route = find_route(party, ocpi_url.module)
-        if route and hasattr(request, 'body') and hasattr(request, 'headers'):
-            data = json.loads(request.body)
-            ic(data, request.content_type)
-            in_headers = request.headers
-            out_headers = make_headers(
-                route.token_base64,
-                to=Party(in_headers.get('Ocpi-To-Country-Code'), in_headers.get('Ocpi-To-Party-Id')),
-                sender=Party(in_headers.get('Ocpi-From-Country-Code'), in_headers.get('Ocpi-From-Party-Id')),
-            )
-            ic(in_headers, out_headers, route)
-            logging.info(f'Forwarding message to {str(party)}')
-            response: requests.Response = requests.request(
-                method=request.method, url=urljoin(f'{route.url}/', 'START_SESSION'),
-                data=request.body, headers=out_headers)
-            ic(response.json())
-            return HttpResponse(response.text, status=response.status_code, content_type='application/json')
-        if not route.alive:
-            return JsonResponse({'error': f'Party {str(party)} is currently offline'},
-                                status=status.HTTP_406_NOT_ACCEPTABLE)
-        return JsonResponse({'error': f'Unable to find route to {str(party)}'}, status=status.HTTP_404_NOT_FOUND)
-
-    except json.JSONDecodeError as e:
-        print(f'Unable to route request: {e}')
-    return JsonResponse({'error': f'Unable to route to {str(party)}: {e}'}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 def make_headers(token_base64: str, to: Party, sender: Party) -> dict:

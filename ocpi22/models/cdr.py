@@ -221,7 +221,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             total_energy=session.kwh,
             total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5),
             credentials=session.credentials,
-            billed_to=session.get_billed_party(),
+            billed_to=session.billed_to,
             last_updated=timezone.now(),
         )
         tariffs = session.connector.tariff_ids.all()

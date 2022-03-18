@@ -31,6 +31,7 @@ from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerialize
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.commands import CommandsViewSet, CommandResponse
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
+from ocpi22.middleware import OCPIHubMiddleware
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole, find_endpoints_by_roles, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
@@ -56,6 +57,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.ocpi_util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.commands'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
@@ -294,7 +296,6 @@ class ApiPutTests(TestCase):
     def _load_example(self, filename_segment: str) -> dict:
         with open(os.path.join(self.dirname, f'data/examples/{filename_segment}.json')) as file:
             return json.load(file)
-
 
     def test_put_tariff(self):
         url = reverse('tariff-list')
@@ -709,6 +710,7 @@ class CdrTests(TestCase):
             total_cost_incl_vat='1.24',
             status='COMPLETED',
             last_updated=timezone.now(),
+            billed_to='FI*EON'
         )
 
         # Check that the serializer gives the correct connector ID and Tariff
@@ -741,7 +743,7 @@ class CdrTests(TestCase):
         self.assertEqual(session.total_cost_incl_vat, 3.55,
                          "Price with VAT doesn't seem right.")
 
-        cdr = Cdr.create_based_on_session(session)
+        cdr: Cdr = Cdr.create_based_on_session(session)
 
         # ic(CdrSerializer(cdr).data)
         #
@@ -763,6 +765,8 @@ class CdrTests(TestCase):
 
         self.assertEqual(cdr.tariffs.all()[0].uid, 'TTYPE2',
                          'This CDR should have a DefaultTariff, since no Tariff is specified for the Connector')
+
+        self.assertEqual(cdr.billed_to, session.billed_to, 'Billed_to seems not to be copied correctly')
 
 
 class CommandTests(TestCase):
@@ -790,11 +794,23 @@ class CommandTests(TestCase):
         with open(os.path.join(dirname, f'data/examples/command_start_session.json')) as file:
             data = json.load(file)
 
-        request = api_factory.post(url)
+        billed_party = Party('FI', 'EON')
+        headers = {
+            'Ocpi-From-Country-Code': billed_party.country_code,
+            'Ocpi-From-Party-Id': billed_party.party_id
+        }
+        request = api_factory.post(url, **headers)
         request.data = data
         # noinspection PyUnresolvedReferences
-        request.credentials = Credentials.objects.get(pk=2)
+        # request.credentials = Credentials.objects.get(pk=2)
+
+        self.assertFalse(Session.objects.all().exists(),
+                         'Please make sure there are no Sessions at the start of this test')
         response = viewset.start_session(request)
+
+        # Let's guess the new Session
+        session = Session.objects.all().first()
+        self.assertEqual(session.billed_to, str(billed_party), 'Billed party appears not to be stored properly')
 
         check_ok_result(self, response)
 
@@ -1222,6 +1238,9 @@ class CredentialsTest(TestCase):
                          'There should be nothing in endpoint cache after changing a Credentials')
 
 
+routed_response_text = 'Hello from the other side'
+
+
 class TestRouting(TestCase):
     fixtures = ['ocpi22/data/test-database-hub.json']
 
@@ -1241,7 +1260,7 @@ class TestRouting(TestCase):
                  'direct': True,
                  'identifier': OcpiModuleEnum.LOCATIONS.value,
                  'token_base64': 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
-                 'url': 'http://localhost:8001/ocpi/cpo/2.2/locations'},
+                 'url': 'http://localhost:8001/ocpi/nap/2.2/locations'},
                 'Expected route not found')
         except AttributeError as e:
             self.fail(f"find_route() is probably not cached: {e}")
@@ -1260,6 +1279,56 @@ class TestRouting(TestCase):
              'url': 'http://localhost:8001/ocpi/hub/2.2/locations'},
             'Expecting a different route through hub')
 
-# DONE: Next, make sure updates go through your hub
-# Todo: Then, make sure start_session Command goes EMSP => HUB => CPO
+    def mocked_request(*_args, **kwargs):
+        # ic(_args, kwargs)
+        return MockResponse(
+            json.dumps(dict(message=routed_response_text)), 200,
+            headers=kwargs.get('headers'),
+            data=kwargs.get('json')
+        )
+
+    @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.routing.requests.request', side_effect=mocked_request)
+    def test_message_routing(self, mock_request: Mock):
+        url = reverse('commands-start-session')
+        api_factory = APIRequestFactory()
+
+        data = {'message': 'This is a message routing test'}
+
+        headers = {
+            'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'HUB',
+            'Ocpi-To-Country-Code': 'FI', 'Ocpi-To-Party-Id': 'NAP',
+        }
+        request = api_factory.post(url, **headers)
+        request.data = json.dumps(data)
+        # noinspection PyUnresolvedReferences
+        request.credentials = Credentials.objects.get(pk=2)
+
+        def fake_get_response(_request):
+            self.fail('We got our request back, routing middleware was not triggering for message')
+
+        middleware = OCPIHubMiddleware(fake_get_response)
+        response = middleware(request)
+
+        # Todo: make sure routing doesn't happen without TOKEN
+
+        args, kwargs = mock_request.call_args
+        # ic(args, kwargs)
+        self.assertDictEqual(
+            kwargs,
+            {'data': '{"message": "This is a message routing test"}',
+             'headers': {'Authorization': 'Token '
+                                          'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+                         'OCPI-from-country-code': 'FI',
+                         'OCPI-from-party-id': 'HUB',
+                         'OCPI-to-country-code': 'FI',
+                         'OCPI-to-party-id': 'NAP',
+                         'content-type': 'application/json'},
+             'method': 'POST',
+             'url': 'http://localhost:8001/ocpi/cpo/2.2/commands/START_SESSION'},
+            f'The relayed hub routed message is not as expected'
+        )
+        self.assertEqual(response.content, b'{"message": "Hello from the other side"}',
+                         'Hub routed message response is not as expected')
+
 # Todo: Hub to relay Evse PATCH to everybody as PATCH

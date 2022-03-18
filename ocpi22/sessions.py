@@ -26,7 +26,7 @@ def get_token(token_id, ad_hoc_token):
 
 
 def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None,
-                   authorization_reference=None, authorize=True, credentials=None) -> Session:
+                   authorization_reference=None, authorize=True, billed_to=None) -> Session:
     # ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
     token = get_token(token_id, ad_hoc_token)
     location = Location.get_if_exists(uid=location_id)
@@ -55,6 +55,8 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
 
     our_country_code, our_party_id = Session.get_owner_identity().split('*')
 
+    assert billed_to, 'Unable to bill session without billed_to'
+
     # noinspection PyUnresolvedReferences
     session = Session.objects.create(
         country_code=our_country_code,
@@ -71,13 +73,13 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
         evse=evse,
         connector=connector,
         currency=os.environ.get('CPO_CURRENCY', 'EUR'),
-        credentials=credentials,
+        billed_to=billed_to,
     )
     if active_sessions.count():
         # Todo: put this on error list
         pass
 
-    # Todo: send update to MSP
+    # Todo: send update to billed_to eMSP
     return session
 
 def get_active_sessions(evse) -> QuerySet:

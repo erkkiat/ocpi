@@ -6,7 +6,6 @@ from urllib.parse import urljoin
 from django.conf import settings
 from django.db import transaction
 from django.http import Http404
-from icecream import ic
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -169,6 +168,32 @@ class CommandResult(serializers.Serializer):
         ]
 
 
+def get_sender_party(headers,
+                     country_code_key='Ocpi-From-Country-Code',
+                     party_id_key='Ocpi-From-Party-Id'
+                     ) -> Party:
+    """
+    >>> get_sender_party({'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'EON'})
+    Party(country_code='FI', party_id='EON')
+    >>> get_sender_party({'ocpi-from-country-code': 'fi', 'ocpi-from-party-id': 'eon'})
+    Party(country_code='FI', party_id='EON')
+    >>> str(get_sender_party({'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'EON'}))
+    'FI*EON'
+    """
+    # ic(type(headers), headers.get('Ocpi-From-Country-Code'))
+    if not isinstance(headers, CaseInsensitiveDict):
+        headers = CaseInsensitiveDict(dict(headers))
+    return Party(headers.get(country_code_key).upper(), headers.get(party_id_key).upper())
+
+
+def get_to_party(headers) -> Party:
+    """
+    >>> get_to_party({'Ocpi-To-Country-Code': 'FI', 'Ocpi-To-Party-Id': 'EON'})
+    Party(country_code='FI', party_id='EON')
+    """
+    return get_sender_party(headers, 'Ocpi-To-Country-Code', 'Ocpi-To-Party-Id')
+
+
 class CommandsViewSet(GenericViewSet):
     # root_view_name = 'commands'
     # noinspection PyUnresolvedReferences
@@ -201,6 +226,9 @@ class CommandsViewSet(GenericViewSet):
         if not request.data:
             return OCPIResponse(status_message='Please see OPTIONS to learn what you can POST at this endpoint')
         try:
+            billed_to = get_sender_party(request.META)
+            assert isinstance(billed_to, Party) and len(str(billed_to)) == 6, \
+                f'Billed_to needs to be set with party ID: {billed_to}'
             serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
                 result = 'ACCEPTED'
@@ -215,7 +243,7 @@ class CommandsViewSet(GenericViewSet):
                     ad_hoc_token=token,
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
                     authorize=False,
-                    credentials=request.credentials,  # The Credentials of the party who will be billed
+                    billed_to=str(billed_to),
                 )
 
                 connector_id_from_charger = CHARGER.remote_start_transaction(token.get('uid'), session.evse)
@@ -389,8 +417,8 @@ def send_stop_command(request, session: Session) -> Response:
             response_url=request.build_absolute_uri('/'),
             session_id=session.uid,
         )
-        ic(data)
-        ic(endpoint.url)
+        # ic(data)
+        # ic(endpoint.url)
         return ocpi_post(urljoin(f'{endpoint.url}/', 'STOP_SESSION'), endpoint.get_token_base64(),
                          data=data)
     else:
