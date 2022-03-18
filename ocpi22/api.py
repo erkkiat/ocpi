@@ -355,6 +355,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
             tariff_serializer = TariffSerializer()
             tariff_list = []
             for t in tariffs:
+                # Create archived copies of the relevant Tariffs, so that they don't change anymore
                 t['archived'] = True
                 tariff_list.append(tariff_serializer.create(t))
             cdr = Cdr.objects.create(**validated_data)

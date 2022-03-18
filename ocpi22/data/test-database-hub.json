@@ -396,10 +396,10 @@
       "model": "ocpi22.endpoint",
       "pk": 15,
       "fields": {
-         "url": "http://localhost:8001/ocpi/cpo/2.2/locations",
-         "role": "RECEIVER",
-         "credentials": 2,
-         "identifier": "locations"
+        "url": "http://localhost:8001/ocpi/nap/2.2/locations",
+        "role": "RECEIVER",
+        "credentials": 2,
+        "identifier": "locations"
       }
    },
    {

@@ -145,8 +145,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING')
 
+    # Credentials is not a good pointer to billing party, if start_session came through a hub
     # The party who will be billed for this Session
     credentials = models.ForeignKey('Credentials', on_delete=models.PROTECT, null=True, blank=True)
+    billed_to = models.CharField(max_length=6, null=True, blank=True)
 
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
@@ -167,17 +169,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # Needed for running self.clean() when doing a save() or create()
         self.full_clean()
         return super().save(*args, **kwargs)
-
-    def get_billed_party(self) -> str:
-        if self.credentials:
-            role = self.credentials.roles.filter(role='EMSP').first()
-            ic(role)
-            return f'{role.country_code}*{role.party_id}'
-        return '*'
-
-    def billed_to(self) -> str:
-        # For Admin
-        return self.get_billed_party()
 
     def calculate_price(self, connector=None, tariffs=None) -> bool:
         """

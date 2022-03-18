@@ -5,7 +5,8 @@ from pprint import pprint
 
 from icecream import ic
 
-from ocpi22.ocpi_util import ocpi_route_request
+from ocpi22.commands import get_to_party
+from ocpi22.routing import ocpi_route_request
 from ocpi22.util import is_our_identifier
 from ocpiconnector.ocpi_identities import Party
 
@@ -17,9 +18,10 @@ class OCPIHubMiddleware:
 
     def __call__(self, request):
         if hasattr(request, 'body'):
+            to = None
             try:
-                headers = request.headers
-                to = Party(headers.get('Ocpi-To-Country-Code'), headers.get('Ocpi-To-Party-Id'))
+                headers = request.META
+                to = get_to_party(headers)
                 # ic(party)
                 if to:
                     if not is_our_identifier(to):
@@ -30,7 +32,7 @@ class OCPIHubMiddleware:
                 # Ok, it's not JSON, we can't route it over OCPI
                 pass
             except Exception as e:
-                logging.error(f'Unable to route to {to}: {e}')
+                logging.error(f'Unable to route to {to if to else ""}: {e}')
                 # return Response('Hub is unable to route this request due to its malformed json data')
 
         response = self.get_response(request)
