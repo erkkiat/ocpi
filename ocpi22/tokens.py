@@ -33,9 +33,9 @@ def authorize_token(token_uid, location=None):
             token_base64=endpoint.get_token_base64(),
             data=dict(LocationReferences=location_references) if location else dict()
         )
-        if result.status_code == 403:
+        if result.status_code > 400:
             logging.warning(f'No authorization for token {token_uid} at {location or "<not known>"} '
-                            f'from {endpoint.credentials.party()}. ')
+                            f'from {endpoint.credentials.party()} (HTTP {result.status_code}). ')
             # raise exception.PermissionDenied("You don't have enough balance on your account.")
         if result.status_code == 200:
             data = result.json()

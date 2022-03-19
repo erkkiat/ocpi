@@ -211,7 +211,7 @@ class NotOwner(OCPIResponse):
         super().__init__(
             status_message="Country ID and Party ID need to match your credentials.",
             status_code=2002,
-            http_status=status.HTTP_403_FORBIDDEN)
+            http_status=status.HTTP_401_UNAUTHORIZED)
 
 
 class Ocpi:
@@ -378,21 +378,28 @@ def parse_ocpi_url(url: str) -> OCPIUrlComponents:
     return OCPIUrlComponents(path, OcpiModuleEnum(module), parameters)
 
 
-def make_headers(token_base64: str, to: Party, sender: Party) -> dict:
+def make_headers(token_base64: str, to: Party = None, sender: Party = None, extra: dict = None) -> dict:
     """
     >>> make_headers('123456', Party('TO', 'TOO'), Party('FR', 'FRM'))
-    {'Authorization': 'Token 123456', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO', 'content-type': 'application/json'}
+    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO'}
+    >>> make_headers('123456', extra=dict(one=1, two=2))
+    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'one': 1, 'two': 2}
 
     @param token_base64: OCPI Credentials Token in base64
-    @param to_country_code: Recipient party OCPI country_code
-    @param to_party_id: Recipient party OCPI party_id
-    @param from_country_code: Sender party OCPI country_code (ours)
-    @param from_party_id: Sender party OCPI party_id (ours)
+    @param to: Recipient party
+    @param sender: Sender party
+    @param extra: Any additional headers
     @return: HTTP headers ready for sending
     """
-    return {
+    result = {
         "Authorization": f'Token {token_base64}',
-        "OCPI-from-country-code": sender.country_code, "OCPI-from-party-id": sender.party_id,
-        "OCPI-to-country-code": to.country_code, "OCPI-to-party-id": to.party_id,
         'content-type': 'application/json',
     }
+    if extra:
+        result.update(extra)
+    if to and sender:
+        result.update({
+            "OCPI-from-country-code": sender.country_code, "OCPI-from-party-id": sender.party_id,
+            "OCPI-to-country-code": to.country_code, "OCPI-to-party-id": to.party_id,
+        })
+    return result

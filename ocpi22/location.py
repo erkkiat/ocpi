@@ -524,7 +524,7 @@ class LocationViewSet(mixins.ListModelMixin,
             location: Location = Location.get_if_exists(uid=uid, country_code=country_code, party_id=party_id)
             if location and location.is_ours():
                 return OCPIResponse(f'Location {location} is owned by us and cannot be updated from outside.',
-                                    http_status=status.HTTP_403_FORBIDDEN,
+                                    http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
             serializer = LocationSaveSerializer(location, data=data)
             if serializer.is_valid():
@@ -548,7 +548,7 @@ class LocationViewSet(mixins.ListModelMixin,
     #     if request.method != 'GET' and not hasattr(request, 'credentials'):
     #         return OCPIResponse('Credentials are needed for creating Locations.',
     #                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-    #                             http_status=status.HTTP_403_FORBIDDEN)
+    #                             http_status=status.HTTP_401_UNAUTHORIZED)
     #     location = get_object_or_404(Location, uid=uid, party_id=party_id, country_code=country_code)
     #     evse = get_object_or_404(Evse, uid=evse_uid, location=location)
     #     if request.method == 'PATCH':

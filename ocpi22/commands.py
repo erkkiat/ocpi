@@ -169,6 +169,14 @@ class CommandResult(serializers.Serializer):
         ]
 
 
+def dict_keys_to_lower_and_filter(d: dict, filter_word: str) -> dict:
+    """
+    >>> dict_keys_to_lower_and_filter({'OCPI-this': 'that', 'ocpi-THAT': 'THIS', 'others': 'ignored'}, 'ocpi')
+    {'ocpi-this': 'that', 'ocpi-that': 'THIS'}
+    """
+    return dict((key.lower(), value) for key, value in d.items() if filter_word in key.lower())
+
+
 def get_sender_party(headers,
                      country_code_key='Ocpi-From-Country-Code',
                      party_id_key='Ocpi-From-Party-Id'
@@ -181,10 +189,8 @@ def get_sender_party(headers,
     >>> str(get_sender_party({'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'EON'}))
     'FI*EON'
     """
-    # ic(type(headers), headers.get('Ocpi-From-Country-Code'))
-    if not isinstance(headers, CaseInsensitiveDict):
-        headers = CaseInsensitiveDict(dict(headers))
-    return Party(headers.get(country_code_key).upper(), headers.get(party_id_key).upper())
+    headers = dict_keys_to_lower_and_filter(headers, 'ocpi')
+    return Party(headers.get(country_code_key.lower(), '').upper(), headers.get(party_id_key.lower(), '').upper())
 
 
 def get_to_party(headers) -> Party:

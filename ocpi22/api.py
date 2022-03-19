@@ -232,7 +232,7 @@ class TokenViewSet(mixins.ListModelMixin,
         token: Token = Token.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
         if token and token.is_ours():
             return OCPIResponse(f'Object {token} is owned by us and cannot be updated from outside.',
-                                http_status=status.HTTP_403_FORBIDDEN,
+                                http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
         if token and request and not token.is_owner(request):
@@ -670,7 +670,7 @@ class TariffViewSet(mixins.ListModelMixin,
                                               archived=False)
         if tariff and tariff.is_ours():
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
-                                http_status=status.HTTP_403_FORBIDDEN,
+                                http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         serializer = TariffSerializer(instance=tariff, data=data)
         if serializer.is_valid():
@@ -741,7 +741,7 @@ class SessionViewSet(mixins.ListModelMixin,
             if not session.is_owner(request):
                 return NotOwner()
             if session.is_final():
-                return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_403_FORBIDDEN,
+                return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         serialiser = SessionSaveSerializer(data=request.data, instance=session, partial=partial)
         if serialiser.is_valid():

@@ -362,7 +362,7 @@ def is_our_identifier(party: Party, identities=None) -> bool:
         return False
     if identities is None:
         identities = ocpi_identities
-    # ic(f'{country_code}*{party_id}', identities)
+    # ic(str(party), identities)
     result = bool(str(party) in identities)
     return result
 

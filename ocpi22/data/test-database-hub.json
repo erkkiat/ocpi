@@ -293,13 +293,13 @@
    {
       "fields": {
          "url": "http://localhost:8001/ocpi/versions/",
-         "theirs": "ACB82158EC136A92BEEC004E3010B8D823FA95B9635558F2F8140C9EE8219E3C",
+         "theirs": "theirs-2",
          "version": "22",
          "last_updated": "2022-01-13T18:57:11.301",
          "updated": "2022-01-17T04:49:23.253",
-         "ours": "BF60351F296E9E1B339646C8B57338BFE84B61C18E50BCBE822A72D8DDC60A26",
+         "ours": "ours-2",
          "created": "2022-01-08T07:56:40.267",
-         "token_a": "123"
+         "token_a": "a-2"
       },
       "model": "ocpi22.credentials",
       "pk": 2
@@ -307,13 +307,27 @@
    {
       "fields": {
          "url": "http://localhost:8001/ocpi/versions/",
-         "theirs": "ACB82158EC136A92BEEC004E3010B8D823FA95B9635558F2F8140C9EE8219E3C",
+         "theirs": "theirs-9",
          "version": "22",
          "last_updated": "2022-01-13T18:57:11.301",
          "updated": "2022-01-17T04:49:23.253",
-         "ours": "BF60351F296E9E1B339646C8B57338BFE84B61C18E50BCBE822A72D8DDC60A26",
+         "ours": "ours-9",
          "created": "2022-01-08T07:56:40.267",
-         "token_a": "123"
+         "token_a": "a-9"
+      },
+      "model": "ocpi22.credentials",
+      "pk": 9
+   },
+   {
+      "fields": {
+         "url": "http://localhost:8001/ocpi/versions/",
+         "theirs": "theirs-3",
+         "version": "22",
+         "last_updated": "2022-01-13T18:57:11.301",
+         "updated": "2022-01-17T04:49:23.253",
+         "ours": "ours-3",
+         "created": "2022-01-08T07:56:40.267",
+         "token_a": "a-3"
       },
       "model": "ocpi22.credentials",
       "pk": 3
@@ -360,6 +374,17 @@
          "party_id": "HUB",
          "role": "HUB",
          "credentials": 3
+      }
+   },
+   {
+      "pk": 9,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "country_code": "FI",
+         "party_id": "CPO",
+         "role": "CPO",
+         "credentials": 9
       }
    },
    {
@@ -477,6 +502,16 @@
          "url": "http://localhost:8001/ocpi/cpo/2.2/commands",
          "identifier": "commands",
          "credentials": 2,
+         "role": "RECEIVER"
+      },
+      "pk": 22,
+      "model": "ocpi22.endpoint"
+   },
+   {
+      "fields": {
+         "url": "http://localhost:9002/ocpi/cpo-fi/2.2/commands",
+         "identifier": "commands",
+         "credentials": 9,
          "role": "RECEIVER"
       },
       "pk": 22,

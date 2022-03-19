@@ -39,14 +39,15 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
-from ocpi22.ocpi_util import OCPIResponse, Ocpi, OcpiModule
+from ocpi22.ocpi_util import OCPIResponse, Ocpi, OcpiModule, make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
 from ocpi22.tokens import get_admin_token
+from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpi22.test_data import expected_get_responses
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.ocpi_identities import Party, get_our_party, OCPIIdentities
 
 faketime = datetime(2000, 1, 1, 12, 0)
 factory = RequestFactory()
@@ -616,7 +617,7 @@ class ApiPutTests(TestCase):
 
         # This should fail without authentication
         result = self.client.get(detail_url)
-        self.assertEqual(result.status_code, 403, 'A Location request should require OCPI authentication.')
+        self.assertTrue(result.status_code in [401, 403], 'A Location request should require OCPI authentication.')
 
     def _create_credentials(self, country_code, party_id):
         # noinspection PyUnresolvedReferences
@@ -1244,6 +1245,11 @@ routed_response_text = 'Hello from the other side'
 class TestRouting(TestCase):
     fixtures = ['ocpi22/data/test-database-hub.json']
 
+    def test_middleware(self):
+        # Check that the middleware stack works
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200, 'Middleware may not work together properly')
+
     def test_find_route(self):
         try:
             route: Route = find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)
@@ -1259,7 +1265,7 @@ class TestRouting(TestCase):
                  'credentials_id': 2,
                  'direct': True,
                  'identifier': OcpiModuleEnum.LOCATIONS.value,
-                 'token_base64': 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+                 'token_base64': 'dGhlaXJzLTI=',
                  'url': 'http://localhost:8001/ocpi/nap/2.2/locations'},
                 'Expected route not found')
         except AttributeError as e:
@@ -1275,11 +1281,12 @@ class TestRouting(TestCase):
              'credentials_id': 3,
              'direct': False,
              'identifier': 'locations',
-             'token_base64': 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+             'token_base64': 'dGhlaXJzLTM=',
              'url': 'http://localhost:8001/ocpi/hub/2.2/locations'},
             'Expecting a different route through hub')
 
     def mocked_request(*_args, **kwargs):
+        # ic()
         # ic(_args, kwargs)
         return MockResponse(
             json.dumps(dict(message=routed_response_text)), 200,
@@ -1288,21 +1295,23 @@ class TestRouting(TestCase):
         )
 
     @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.middleware.is_our_identifier', return_value=False)
     @patch('ocpi22.routing.requests.request', side_effect=mocked_request)
-    def test_message_routing(self, mock_request: Mock):
+    def test_message_routing(self, mock_request: Mock, _mock_is_our_identifier: Mock):
+        # Let's fake we are FI*HUB, need to clear cache first not to get old info
+        is_our_identifier.cache_clear()
+
         url = reverse('commands-start-session')
         api_factory = APIRequestFactory()
 
         data = {'message': 'This is a message routing test'}
+        credentials = Credentials.objects.get(pk=2)
 
-        headers = {
-            'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'HUB',
-            'Ocpi-To-Country-Code': 'FI', 'Ocpi-To-Party-Id': 'NAP',
-        }
+        headers = make_headers('', get_our_party(), Party('FI', 'NAP'))
         request = api_factory.post(url, **headers)
         request.data = json.dumps(data)
         # noinspection PyUnresolvedReferences
-        request.credentials = Credentials.objects.get(pk=2)
+        request.credentials = credentials
 
         def fake_get_response(_request):
             self.fail('We got our request back, routing middleware was not triggering for message')
@@ -1310,23 +1319,34 @@ class TestRouting(TestCase):
         middleware = OCPIHubMiddleware(fake_get_response)
         response = middleware(request)
 
-        # Todo: make sure routing doesn't happen without TOKEN
+        self.assertEqual(response.status_code, 401, 'Hub routing should fail without authorization token')
+
+        headers = make_headers(credentials.ours_base64(), get_our_party(), Party('FI', 'NAP'))
+        request = api_factory.post(url, **headers)
+        request.data = json.dumps(data)
+        # noinspection PyUnresolvedReferences
+        request.credentials = credentials
+
+        middleware = OCPIHubMiddleware(fake_get_response)
+        response = middleware(request)
+
+        self.assertEqual(response.status_code, 200, 'Hub routing was expected to succeed')
 
         args, kwargs = mock_request.call_args
         # ic(args, kwargs)
+        self.maxDiff = 99999
         self.assertDictEqual(
             kwargs,
             {'data': '{"message": "This is a message routing test"}',
-             'headers': {'Authorization': 'Token '
-                                          'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+             'headers': {'Authorization': 'Token dGhlaXJzLTk=',
                          'OCPI-from-country-code': 'FI',
-                         'OCPI-from-party-id': 'HUB',
+                         'OCPI-from-party-id': 'NAP',
                          'OCPI-to-country-code': 'FI',
-                         'OCPI-to-party-id': 'NAP',
+                         'OCPI-to-party-id': 'CPO',
                          'content-type': 'application/json'},
              'method': 'POST',
-             'url': 'http://localhost:8001/ocpi/cpo/2.2/commands/START_SESSION'},
-            f'The relayed hub routed message is not as expected'
+             'url': 'http://localhost:9002/ocpi/cpo-fi/2.2/commands/START_SESSION'},
+            f'The routed hub message is not as expected'
         )
         self.assertEqual(response.content, b'{"message": "Hello from the other side"}',
                          'Hub routed message response is not as expected')

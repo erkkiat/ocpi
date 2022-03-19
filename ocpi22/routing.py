@@ -90,31 +90,38 @@ def find_route(party: Party, ocpi_module: OcpiModuleEnum) -> Route:
         return find_first_hub_route(ocpi_module)  # Nothing too fancy at this point
 
 
-def ocpi_route_request(request: HttpRequest, party: Party):
+def route_ocpi_request(request: HttpRequest, party: Party):
+    """
+    This is OCPI HUB functionality. It authorizes the incoming message and relayes it forward if it can find the
+    route to the final recipient.
+    """
     try:
         ocpi_url = parse_ocpi_url(request.path)
         logging.info(f'Routing to {party}, module {ocpi_url}')
         route = find_route(party, ocpi_url.module)
         if route and hasattr(request, 'body') and hasattr(request, 'headers'):
-            data = json.loads(getattr(request, 'body') or getattr(request, 'data'))
-            # ic(data, request.content_type)
-            in_headers = request.META
+            # Pick the OCPI related incoming headers
+            ocpi_keys = dict((key, value) for key, value in request.META.items() if 'ocpi' in key.lower())
+
+            # Include all of them in outgoing headers
             out_headers = make_headers(
                 route.token_base64,
-                to=Party(in_headers.get('Ocpi-To-Country-Code'), in_headers.get('Ocpi-To-Party-Id')),
-                sender=Party(in_headers.get('Ocpi-From-Country-Code'), in_headers.get('Ocpi-From-Party-Id')),
+                extra=ocpi_keys
             )
-            # ic(in_headers, out_headers, route)
+
             logging.info(f'Forwarding message to {str(party)}')
+
             response: requests.Response = requests.request(
                 method=request.method, url=urljoin(f'{route.url}/', ocpi_url.parameters),
                 data=getattr(request, 'body') or getattr(request, 'data'),
                 headers=out_headers)
-            # ic(response.json())
+
             return HttpResponse(response.text, status=response.status_code, content_type='application/json')
+
         if not route.alive:
             return JsonResponse({'error': f'Party {str(party)} is currently offline'},
                                 status=status.HTTP_406_NOT_ACCEPTABLE)
+
         return JsonResponse({'error': f'Unable to find route to {str(party)}'}, status=status.HTTP_404_NOT_FOUND)
 
     except json.JSONDecodeError as e:

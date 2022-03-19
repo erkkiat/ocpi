@@ -14,12 +14,12 @@ class OcpiAuthTypes:
     FINAL = 2
 
 
-def check_auth_token(request, token):
+def check_auth_token(request, token: str) -> bool:
     # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
     allowed_for_token_a = (
-        reverse('base-versions'),       # The "Versions" endpoint
-        reverse('credentials-list'),    # Getting the Credentials
-        reverse('ocpi-22')              # The "Endpoints" endpoint
+        reverse('base-versions'),  # The "Versions" endpoint
+        reverse('credentials-list'),  # Getting the Credentials
+        reverse('ocpi-22')  # The "Endpoints" endpoint
     )
     try:
         token_ascii = base64.b64decode(token).decode('ascii')
@@ -30,7 +30,7 @@ def check_auth_token(request, token):
         credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
         if credentials_matches.count():
             if request.path not in allowed_for_token_a:
-                raise exceptions.NotAuthenticated(
+                raise exceptions.NotAuthenticated(  # HTTP 401
                     f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
                 )
 
@@ -67,15 +67,21 @@ class OCPIPermission(DjangoModelPermissions):
     Check for valid OCPI authentication header and secondarily basic auth with local user IDs
     """
 
-    def has_permission(self, request, view):
+    @staticmethod
+    def get_token(request) -> str:
+        return request.META.get('HTTP_AUTHORIZATION',
+                                request.META.get('Authorization',
+                                                 request.GET.get('auth-test', ''))).replace('Token ', '')
+
+    def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
         # Remove the "Token" keyword if present to get just the token value
-        auth_id = request.META.get('HTTP_AUTHORIZATION',
-                                   request.GET.get('auth-test', '')).replace('Token ', '')
+        token = self.get_token(request)
         # Check for token authentication, secondarily basic auth
-        if check_auth_token(request, auth_id) or \
-          hasattr(view, 'publicly_visible') or \
-          super().has_permission(request, view):
+        if check_auth_token(request, token):
+            return True
+        if view and (hasattr(view, 'publicly_visible') or
+                     super().has_permission(request, view)):
             return True
 
         raise exceptions.NotAuthenticated

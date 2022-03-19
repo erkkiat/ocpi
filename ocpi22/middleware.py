@@ -3,10 +3,12 @@ import logging
 from json import JSONDecodeError
 from pprint import pprint
 
-from icecream import ic
+from rest_framework import status
 
+from ocpi22.auth import OCPIPermission, check_auth_token
 from ocpi22.commands import get_to_party
-from ocpi22.routing import ocpi_route_request
+from ocpi22.ocpi_util import OCPIResponse
+from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
 from ocpiconnector.ocpi_identities import Party
 
@@ -25,7 +27,13 @@ class OCPIHubMiddleware:
                 # ic(party)
                 if to:
                     if not is_our_identifier(to):
-                        return ocpi_route_request(request, to)
+                        permissions = OCPIPermission()
+                        token = permissions.get_token(request)
+                        if check_auth_token(request, token):
+                            return route_ocpi_request(request, to)
+                        else:
+                            return OCPIResponse(status_message=f'Token "{token}" not recognized', status_code=2000,
+                                                http_status=status.HTTP_401_UNAUTHORIZED)
                     else:
                         logging.info(f'{to} is ours, no routing done')
             except JSONDecodeError:
@@ -33,7 +41,9 @@ class OCPIHubMiddleware:
                 pass
             except Exception as e:
                 logging.error(f'Unable to route to {to if to else ""}: {e}')
-                # return Response('Hub is unable to route this request due to its malformed json data')
+                return OCPIResponse(status_message=f'Unable to route this message due to unknown reason',
+                                    status_code=2000,
+                                    http_status=status.HTTP_400_BAD_REQUEST)
 
         response = self.get_response(request)
 

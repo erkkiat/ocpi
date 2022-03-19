@@ -208,8 +208,8 @@ def new_connection(request):
         except SyntaxError as e:
             msg = str(e)
             # noinspection PyUnresolvedReferences
-            if e.errno == 403:
-                msg = 'The token is not accepted by the other party (HTTP 403)'
+            if e.errno > 400:
+                msg = f'The token is not accepted by the other party (HTTP {e.errno})'
             messages.error(request, msg)
 
     return HttpResponseRedirect(reverse('admin:ocpi22_credentials_changelist'))
