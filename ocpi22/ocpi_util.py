@@ -179,6 +179,15 @@ def ocpi_post(url, token_base64,
     return response
 
 
+def format_ocpi_response(status_code: int = 1000, status_message: str = '', data='') -> dict:
+    return dict(
+        status_code=status_code,
+        status_message=status_message,
+        timestamp=timezone.now(),  # .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        data=data
+    )
+
+
 class OCPIResponse(Response):
     def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None,
                  *args, **kwargs):
@@ -190,12 +199,7 @@ class OCPIResponse(Response):
             status_code = Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS
             http_status = status.HTTP_400_BAD_REQUEST
             logging.error(status_message)
-        result = dict(
-            status_code=status_code,
-            status_message=status_message,
-            timestamp=timezone.now(),  # .strftime("%Y-%m-%dT%H:%M:%SZ"),
-            data=data
-        )
+        result = format_ocpi_response(status_code, status_message, data)
         super().__init__(result, status=http_status, *args, **kwargs)
 
 

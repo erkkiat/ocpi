@@ -2,6 +2,7 @@ import json
 import logging
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import Optional
 from urllib.parse import urljoin
 
 import requests
@@ -65,15 +66,17 @@ def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum, role: 
         endpoint = endpoints.first()
         return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
                      token_base64=credentials.theirs_base64(), direct=True, alive=credentials.connection_state())
-    error_text = f'Endpoint {ocpi_module.value} not found for {credentials}'
+    error_text = f'Endpoint `{ocpi_module.value}` not found for party {credentials}'
     logging.error(error_text)
     raise ValueError(error_text)
 
 
-def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Route:
+def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
     credentials = get_hub_credentials().first()
     endpoints = credentials.endpoints.filter(credentials=credentials, identifier=ocpi_module.value,
                                              role=EndpointRoleEnum.RECEIVER.value)
+    if not endpoints.exists():
+        return None
     endpoint = endpoints.first()
     return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
                  token_base64=credentials.theirs_base64(), direct=False, alive=credentials.connection_state())
@@ -118,7 +121,7 @@ def route_ocpi_request(request: HttpRequest, party: Party):
 
             return HttpResponse(response.text, status=response.status_code, content_type='application/json')
 
-        if not route.alive:
+        if route and not route.alive:
             return JsonResponse({'error': f'Party {str(party)} is currently offline'},
                                 status=status.HTTP_406_NOT_ACCEPTABLE)
 

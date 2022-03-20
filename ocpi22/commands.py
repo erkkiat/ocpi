@@ -407,7 +407,7 @@ def send_start_command(request, evse: Evse, token: Token) -> CommandResponse:
         if response.status_code < 300:
             return CommandResponse(success=True, message='Starting to charge')
     else:
-        message = f"{evse.location.party()} is unreachable"
+        message = f"{evse.location.party()} is unreachable through this hub"
         logging.error(message)
         return CommandResponse(success=False, message=message)
 
