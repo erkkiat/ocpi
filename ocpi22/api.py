@@ -237,16 +237,16 @@ class TokenViewSet(mixins.ListModelMixin,
 
         if token and request and not token.is_owner(request):
             return NotOwner()
-        serialiser = TokenSerializer(data=data, instance=token, partial=True)
-        if serialiser.is_valid():
+        serializer = TokenSerializer(data=data, instance=token, partial=True)
+        if serializer.is_valid():
             logging.info(f'Creating or updating Token {token.uid if token else ""}.')
-            new_token = serialiser.save()
+            new_token = serializer.save()
             if ocpi_platform.is_cpo:
                 CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
-            Token.send_hub_updates(serialiser.data)
-            return OCPIResponse(serialiser.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
+            Token.send_hub_updates(serializer.data)
+            return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
         else:
-            return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
+            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     # Todo: NO_CREDIT and other errors should go all the way back to the charger to be shown
     @csrf_exempt
@@ -440,6 +440,7 @@ class CdrViewSet(mixins.ListModelMixin,
         if serializer.is_valid():
             cdr = serializer.save()
             # cdr.tariffs.set(tariff_list)
+            Cdr.send_hub_updates(serializer.data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED)
         return OCPIResponse(errors=serializer.errors)
 
@@ -619,8 +620,8 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
         for key, value in validated_data.items():
             if key not in ('uid', 'location', 'evse'):
                 setattr(instance, key, value)
-            else:
-                print(f'Skipping key {key}')
+            # else:
+            #     print(f'Skipping key {key}')
         instance.save()
         return instance
 
@@ -743,12 +744,13 @@ class SessionViewSet(mixins.ListModelMixin,
             if session.is_final():
                 return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        serialiser = SessionSaveSerializer(data=request.data, instance=session, partial=partial)
-        if serialiser.is_valid():
-            serialiser.save()
-            return OCPIResponse(serialiser.data,
+        serializer = SessionSaveSerializer(data=request.data, instance=session, partial=partial)
+        if serializer.is_valid():
+            serializer.save()
+            Session.send_hub_updates(serializer.data)
+            return OCPIResponse(serializer.data,
                                 http_status=status.HTTP_200_OK if session else status.HTTP_201_CREATED)
-        return OCPIResponse(errors=serialiser.errors, http_status=status.HTTP_400_BAD_REQUEST)
+        return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
         return self.put(request, partial=True)

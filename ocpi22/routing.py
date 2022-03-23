@@ -128,5 +128,5 @@ def route_ocpi_request(request: HttpRequest, party: Party):
         return JsonResponse({'error': f'Unable to find route to {str(party)}'}, status=status.HTTP_404_NOT_FOUND)
 
     except json.JSONDecodeError as e:
-        print(f'Unable to route request: {e}')
+        logging.error(f'Unable to route request: {e}')
     return JsonResponse({'error': f'Unable to route to {str(party)}'}, status=status.HTTP_406_NOT_ACCEPTABLE)

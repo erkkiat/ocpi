@@ -26,6 +26,7 @@ class OCPIHubMiddleware:
                 to = get_to_party(headers)
                 # ic(party)
                 if to:
+                    # Todo: Check that Command has the same Party as Credentials (maybe in auth.py)
                     if not is_our_identifier(to):
                         # Do some routing
                         permissions = OCPIPermission()
@@ -41,15 +42,7 @@ class OCPIHubMiddleware:
                     else:
                         # No routing needed, message is for us
                         logging.info(f'{to} is ours, no routing done')
-                # else:
-                #     # Recipient is not specified in the message routing headers as required by OCPI 2.2
-                #     return JsonResponse(
-                #         data=format_ocpi_response(
-                #             status_message=f'Headers missing: OCPI-to-country-code and OCPI-to-party-id',
-                #             status_code=2000
-                #         ),
-                #         status=status.HTTP_400_BAD_REQUEST
-                #     )
+
             except JSONDecodeError:
                 # Ok, it's not JSON, we can't route it over OCPI
                 pass

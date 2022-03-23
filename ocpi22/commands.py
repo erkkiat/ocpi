@@ -6,7 +6,6 @@ from urllib.parse import urljoin
 from django.conf import settings
 from django.db import transaction
 from django.http import Http404
-from requests.structures import CaseInsensitiveDict
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -387,7 +386,7 @@ def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_r
                 return endpoints[0]
 
 
-def send_start_command(request, evse: Evse, token: Token) -> CommandResponse:
+def send_start_command(request, evse: Evse, token: Token) -> MyCommandResponse:
     country_code = evse.location.country_code
     party_id = evse.location.party_id
 
@@ -419,7 +418,7 @@ def send_stop_command(request, session: Session) -> Response:
 
     endpoint = find_endpoint(country_code, party_id, OcpiModuleEnum.COMMANDS, EndpointRoleEnum.RECEIVER)
     if endpoint:
-        print(f'*** Sending stop command for {session}.')
+        logging.info(f'*** Sending stop command for {session}.')
         data = dict(
             response_url=request.build_absolute_uri('/'),
             session_id=session.uid,
@@ -429,5 +428,5 @@ def send_stop_command(request, session: Session) -> Response:
         return ocpi_post(urljoin(f'{endpoint.url}/', 'STOP_SESSION'), endpoint.get_token_base64(),
                          data=data)
     else:
-        print(f'Unable to find endpoint for {session.party()}.')
+        logging.error(f'Unable to find endpoint for {session.party()}.')
         return Response()

@@ -610,7 +610,7 @@ def send_evse_updates(evse_uid):
             identifier=OcpiModuleEnum.LOCATIONS.value, role=EndpointRoleEnum.RECEIVER.value)
         e: Endpoint
         for e in endpoints:
-            print(f'Send EVSE update to {e.url}')
+            logging.info(f'Send EVSE update to {e.url}')
             if settings.BACKGROUND_SEND:
                 send_evse_status_update.delay(evse_uid, e.pk)
             else:

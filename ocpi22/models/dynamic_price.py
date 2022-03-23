@@ -78,7 +78,7 @@ class PriceSource:
         dynamic_price.price = round(float(kwargs.get('price')) + 0.00001, 4)
         dynamic_price.save(update_fields=['price'])
         logging.info(f"{'Created' if created else 'Updated'} price {dynamic_price.price} starting at {start}.")
-        # print(str(dynamic_price))
+        # logging.info(str(dynamic_price))
         return dynamic_price
 
 
@@ -156,14 +156,14 @@ class NordPool(PriceSource):
         prices = prices_spot.hourly()
         for key, area in prices['areas'].items():
             source_name = f'NP{key}'
-            print(source_name)
+            # print(source_name)
             for p in area['values']:
                 value = None
                 try:
                     value = p.get('value', 0.0)
                     if value == float('inf'):
                         value = 0.0
-                    print(value, p['start'])
+                    # print(value, p['start'])
                     # noinspection PyUnresolvedReferences
                     DynamicPrice.objects.get_or_create(
                         dynamic_price_source=source_name,

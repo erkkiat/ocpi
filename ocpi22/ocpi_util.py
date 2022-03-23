@@ -139,7 +139,7 @@ class OcpiModule:
     @classmethod
     def send_hub_updates(cls, data) -> None:
         if ocpi_platform.is_hub and settings.SEND_UPDATES in (True, 1, 'true', 'True'):
-            print(f'Sending HUB updates for {cls}.')
+            logging.info(f'Sending HUB updates for {cls}.')
             # ic(data)
             cls._send_updates(data)
 
@@ -165,7 +165,7 @@ def ocpi_post(url, token_base64,
               to: Party,
               sender: Party,
               *args, **kwargs) -> Response:
-    print(f'Posting to {url}')
+    logging.info(f'Posting to {url}')
     data = ''
     if 'data' in kwargs:
         data = json.dumps(kwargs.pop('data'))
@@ -173,7 +173,7 @@ def ocpi_post(url, token_base64,
     response = requests.post(url, *args, **kwargs, data=data,
                              headers=make_headers(token_base64, to, sender))
     if response.status_code >= 300:
-        print(f'*** Got response: {response.status_code} - {response.reason}')
+        logging.info(f'*** Got response: {response.status_code} - {response.reason}')
         logging.error(response.text)
         raise exceptions.APIException(f'Got response for {url}: {response.status_code} - {response.reason} ')
     return response
