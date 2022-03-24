@@ -480,6 +480,6 @@ class OnlyRawBrowsableAPIRenderer(BrowsableAPIRenderer):
 
 
 @dataclass
-class CommandResponse:
+class MyCommandResponse:
     success: bool
     message: str

@@ -30,7 +30,7 @@ from ocpi22.ocpi_util import ocpi_post, OCPIResponse, Ocpi
 
 import pprint
 
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, CommandResponse
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, MyCommandResponse
 from ocpiconnector.ocpi_identities import get_our_party, Party
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -424,11 +424,11 @@ def send_start_command(request, evse: Evse, token: Token) -> MyCommandResponse:
                                        to=Party(country_code, party_id), sender=get_our_party('EMSP'),
                                        data=data)
         if response.status_code < 300:
-            return CommandResponse(success=True, message='Starting to charge')
+            return MyCommandResponse(success=True, message='Starting to charge')
     else:
         message = f"{evse.location.party()} is unreachable through this hub"
         logging.error(message)
-        return CommandResponse(success=False, message=message)
+        return MyCommandResponse(success=False, message=message)
 
 
 def send_stop_command(request, session: Session) -> Response:
