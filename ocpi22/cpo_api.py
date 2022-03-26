@@ -16,16 +16,17 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
+from ocpi22.choices import OCPP_STATUS_CHOICES, OcppStatusEnum
 from ocpi22.location import send_evse_updates
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.tokens import authorize_token
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
+
 pp = PrettyPrinter(indent=4).pprint
 
 slack_logging.init()
@@ -224,12 +225,6 @@ class LocationQuickViewSet(mixins.ListModelMixin,
                            GenericViewSet):
     """
     This is the endpoint for testing your data format for updating locations.
-    OCPI Connector will fetch your locations nightly using this format.
-    Contact support@chargerhub.eu with the URL where you provide this data.
-    So, during testing you can send your development version
-    data using the below input field and PUT/PATCH, and in production the OCPI Connector will fetch
-    the data automatically using GET.
-
     Please note that all IDs should remain constant, since they are referred to by many systems.
 
     """
@@ -398,7 +393,7 @@ class SessionViewSet(viewsets.ViewSet):
             # from ocpi22.commands import sh
             # logging.basicConfig(handlers=[sh], level=logging.INFO)
             logging.info(f'Successful charging session finished at {session.location}, EVSE: {session.evse.evse_id}, '
-                         f'kwh: {session.kwh}, total time: {cdr.total_time*60:.0f} minutes, '
+                         f'kwh: {session.kwh}, total time: {cdr.total_time * 60:.0f} minutes, '
                          f'cost: {session.total_cost_incl_vat} {session.currency}', extra={'notify_slack': True})
 
         return Response(result)
@@ -459,16 +454,101 @@ class SessionViewSet(viewsets.ViewSet):
         return Response(result)
 
 
+class StatusChangeSerializer(serializers.Serializer):
+    serial_number = serializers.CharField(
+        help_text='The serial number of the physical charge point cabinet'
+    )
+    # connector_id = serializers.IntegerField(
+    #     help_text='The ID of the connector within the physical change point cabinet, such as a CCS connector'
+    # )
+    status = serializers.ChoiceField(choices=OCPP_STATUS_CHOICES)
+
+
+# Todo: limit access to certain privilege holders
+class ChargePointViewSet(viewsets.GenericViewSet):
+    """
+    The charge point is connected to roaming networks through this API. It interprets the OCPP
+    status and other data from the charge point.
+    """
+
+    # noinspection PyUnresolvedReferences
+    queryset = Location.objects.all()  # Todo: Just in case, show only our Locations
+    serializer_class = StatusChangeSerializer
+    lookup_field = 'uid'
+
+    @action(methods=('GET', 'POST'), detail=False)
+    def status_change(self, request):
+        """
+        Update the charge point availability to the roaming network parties
+        """
+        if request.method == 'POST':
+            serializer = StatusChangeSerializer(data=request.data)
+            if serializer.is_valid():
+                serial_number = serializer.validated_data.get('serial_number')
+                # connector_id = serializer.validated_data.get('connector_id')
+                ocpp_status = serializer.validated_data.get('status')
+
+                # Todo: Filter just our evses
+                evse: Evse = Evse.get_if_exists(uid=serial_number)
+                if not evse:
+                    return Response(
+                        dict(error=f'Cannot find evse with serial_number {serial_number}'),
+                        status=status.HTTP_404_NOT_FOUND)
+
+                # # noinspection PyUnresolvedReferences
+                # connector: Connector = evse.connectors.filter(uid=connector_id).first()
+                # if not connector:
+                #     return Response(
+                #         dict(error=f'EVSE was found with serial_number {serial_number}, '
+                #                    f'but cannot find connector #{connector_id}'),
+                #         status=status.HTTP_404_NOT_FOUND)
+
+                new_ocpi_status = {
+                    OcppStatusEnum.AVAILABLE.value: 'AVAILABLE',
+                    OcppStatusEnum.PREPARING.value: 'CHARGING',
+                    OcppStatusEnum.CHARGING.value: 'CHARGING',
+                    OcppStatusEnum.SUSPENDEDEV.value: 'CHARGING',
+                    OcppStatusEnum.SUSPENDEDEVSE.value: 'CHARGING',
+                    OcppStatusEnum.FINISHING.value: 'CHARGING',
+                    OcppStatusEnum.RESERVED.value: 'RESERVED',
+                    OcppStatusEnum.UNAVAILABLE.value: 'CHARGING',
+                    OcppStatusEnum.FAULTED.value: 'OUTOFORDER',
+                }.get(ocpp_status)
+
+                if new_ocpi_status:
+                    evse.status = new_ocpi_status
+                    evse.save()
+                return Response(dict(status=f'OCPI status of EVSE {evse.evse_id} is now `{evse.status}`'))
+            else:
+                return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(dict(help='Please see `OPTIONS` for the schema'))
+
+    @action(methods=('GET', 'PUT', 'PATCH'), detail=False)
+    def authorize(self, request, token=None):
+        """
+        Authorize charging using a specific RFID
+        """
+        return Response(dict(authorized=True))
+
+    def get_view_name(self):
+        if self.name:
+            return f'{self.name.capitalize()}'
+        return f'Status Change'
+
+    @staticmethod
+    def get_object(uid=None) -> None:
+        # Needed for OPTIONS to work in list view
+        return None
+
+
 class ChargePointOperatorAPIView(routers.APIRootView):
     """
-    This API is not a part of the OCPI protocol. It is intended as an optional way to connect to OCPI roaming.
+    This API is not a part of the OCPI protocol. It is intended as fast shortcut to OCPI roaming.
 
     Here you can try out the CPO API interfaces to support your development and integration work.
     These streamlined interfaces provide the necessary tools for quickly connecting
     a CPO backend to eMSPs and hubs which use the OCPI protocol.
-
-    Some additional data is available from the OCPI Connector using the OCPI 2.2 interfaces
-    at [/ocpi/cpo/2.2/](/ocpi/cpo/2.2/).
 
     All the objects in the OCPI Connector are available for browsing
     and selective modification in the admin tools.
@@ -476,10 +556,12 @@ class ChargePointOperatorAPIView(routers.APIRootView):
 
     To start roaming, these integrations are required from the CPO:
 
-    1. Location, evse and connector export (CPO => OCPI Connector)
     1. Charge point status change (CPO => OCPI Connector)
+    1. Metervalues (CPO => OCPI Connector)
     1. Remote commands (eMSP => OCPI Connector => CPO)
-    1. Session start, update and end (CPO => OCPI Connector)
+
+    If you have more than 10 charge points, you can optionally implement
+    Location, evse and connector export (CPO => OCPI Connector)
 
     For more details, click the examples below and you will find the step-by-step technical documentation.
 
@@ -490,42 +572,36 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         """
         Compile the example URLs for the front page
         """
-        try:
-            evse = Evse.objects.none()
-            connector = Connector.objects.none()
-            evses = Evse.objects.all()
-            if evses.count():
-                evse = evses[0]
-                connectors = Connector.objects.filter(evse=evse)
-                connector = connectors[0] if connectors else Connector.objects.none()
-            tokens = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')
-            token = tokens[0] if tokens.count() else Token.objects.none()
-            sessions = Session.objects.filter(status='ACTIVE')
-            session = sessions[0] if sessions.count() else ''
+        # evse = Evse.objects.none()
+        # connector = Connector.objects.none()
+        # evses = Evse.objects.all()
+        # if evses.count():
+        #     evse = evses[0]
+        #     connectors = Connector.objects.filter(evse=evse)
+        #     connector = connectors[0] if connectors else Connector.objects.none()
+        # tokens = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')
+        # token = tokens[0] if tokens.count() else Token.objects.none()
+        # sessions = Session.objects.filter(status='ACTIVE')
+        # session = sessions[0] if sessions.count() else ''
 
-            result = dict(
-                session_tutorial=request.build_absolute_uri(
-                    reverse('session-start', args=[evse.uid, connector.uid, 'POSITIVE_TEST_TOKEN'])
-                ) if evse and connector else 'Please create an EVSE with a connector first',
-                example_session_not_authorised=request.build_absolute_uri(
-                    reverse('session-start', args=[evse.uid, connector.uid, token.uid])
-                ) if token else 'Please create a token first',
-                example_session_update=request.build_absolute_uri(
-                    reverse('session-update', args=[session.uid])
-                ) if session else 'Please start a new session first',
-                how_to_export_locations=request.build_absolute_uri(
-                    reverse('quick-location-list')
-                ),
-                how_to_update_charger_status=request.build_absolute_uri(
-                    reverse('cpo-evse-by-id', args=[evse.uid])
-                ),
-            )
-            return Response(result)
-        except (IndexError, AttributeError):
-            return Response(dict(
-                tutorial='After creating some Evses with Connectors, '
-                         'and some Tokens, you will see some example links here.')
-            )
+        result = dict(
+            # session_tutorial=request.build_absolute_uri(
+            #     reverse('session-start', args=[evse.uid, connector.uid, 'POSITIVE_TEST_TOKEN'])
+            # ) if evse and connector else 'Please create an EVSE with a connector first',
+            # example_session_not_authorised=request.build_absolute_uri(
+            #     reverse('session-start', args=[evse.uid, connector.uid, token.uid])
+            # ) if token else 'Please create a token first',
+            # example_session_update=request.build_absolute_uri(
+            #     reverse('session-update', args=[session.uid])
+            # ) if session else 'Please start a new session first',
+            status_change=request.build_absolute_uri(
+                reverse('chargepoint-status-change')
+            ),
+            # how_to_update_charger_status=request.build_absolute_uri(
+            #     reverse('cpo-evse-by-id', args=[evse.uid])
+            # ),
+        )
+        return Response(result)
 
     def get_view_name(self):
         return 'Charge Point Operator API'

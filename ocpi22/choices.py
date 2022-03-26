@@ -54,3 +54,21 @@ ENDPOINT_ROLE_CHOICES = (
     (EndpointRoleEnum.SENDER.value, 'Sender'),
     (EndpointRoleEnum.RECEIVER.value, 'Receiver')
 )
+
+
+class OcppStatusEnum(Enum):
+    AVAILABLE = 'AVAILABLE'
+    PREPARING = 'PREPARING'
+    CHARGING = 'CHARGING'
+    SUSPENDEDEV = 'SUSPENDEDEV'
+    SUSPENDEDEVSE = 'SUSPENDEDEVSE'
+    FINISHING = 'FINISHING'
+    RESERVED = 'RESERVED'
+    UNAVAILABLE = 'UNAVAILABLE'
+    FAULTED = 'FAULTED'
+
+
+OCPP_STATUS_CHOICES = [
+    (e.value, e.value.capitalize())
+    for e in OcppStatusEnum
+]
