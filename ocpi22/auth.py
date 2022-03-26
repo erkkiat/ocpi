@@ -69,9 +69,12 @@ class OCPIPermission(DjangoModelPermissions):
 
     @staticmethod
     def get_token(request) -> str:
-        return request.META.get('HTTP_AUTHORIZATION',
-                                request.META.get('Authorization',
-                                                 request.GET.get('auth-test', ''))).replace('Token ', '')
+        authorization = request.META.get('HTTP_AUTHORIZATION',
+                                         request.META.get('Authorization',
+                                                          request.GET.get('auth-test', '')))
+        if "Token " in authorization:
+            return authorization.replace('Token ', '')
+        return ''
 
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
