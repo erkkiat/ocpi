@@ -21,6 +21,7 @@ from ocpi22.location import send_evse_updates
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.cdr import Cdr
+from ocpi22.models.token import Token
 from ocpi22.tokens import authorize_token
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator
 from ocpiconnector import slack_logging
@@ -458,10 +459,19 @@ class StatusChangeSerializer(serializers.Serializer):
     serial_number = serializers.CharField(
         help_text='The serial number of the physical charge point cabinet'
     )
-    # connector_id = serializers.IntegerField(
-    #     help_text='The ID of the connector within the physical change point cabinet, such as a CCS connector'
-    # )
     status = serializers.ChoiceField(choices=OCPP_STATUS_CHOICES)
+
+
+class AuthorizationSerializer(serializers.Serializer):
+    serial_number = serializers.CharField(
+        help_text='The serial number of the physical charge point cabinet'
+    )
+    token_id = serializers.CharField(
+        help_text='The hidden ID of the RFID token, separate from the visual one'
+    )
+
+
+# Todo: class Authorization: evse, token_id, authorization_id, expiration_timestamp
 
 
 # Todo: limit access to certain privilege holders
@@ -473,8 +483,13 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
     # noinspection PyUnresolvedReferences
     queryset = Location.objects.all()  # Todo: Just in case, show only our Locations
-    serializer_class = StatusChangeSerializer
     lookup_field = 'uid'
+
+    def get_serializer_class(self):
+        return dict(
+            authorize=AuthorizationSerializer,
+            status_change=StatusChangeSerializer,
+        ).get(self.action_map.get('post'), StatusChangeSerializer)
 
     @action(methods=('GET', 'POST'), detail=False)
     def status_change(self, request):
@@ -492,16 +507,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 evse: Evse = Evse.get_if_exists(uid=serial_number)
                 if not evse:
                     return Response(
-                        dict(error=f'Cannot find evse with serial_number {serial_number}'),
+                        dict(status=f'Cannot find evse with serial_number {serial_number}'),
                         status=status.HTTP_404_NOT_FOUND)
-
-                # # noinspection PyUnresolvedReferences
-                # connector: Connector = evse.connectors.filter(uid=connector_id).first()
-                # if not connector:
-                #     return Response(
-                #         dict(error=f'EVSE was found with serial_number {serial_number}, '
-                #                    f'but cannot find connector #{connector_id}'),
-                #         status=status.HTTP_404_NOT_FOUND)
 
                 new_ocpi_status = {
                     OcppStatusEnum.AVAILABLE.value: 'AVAILABLE',
@@ -522,14 +529,38 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             else:
                 return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # method == GET
         return Response(dict(help='Please see `OPTIONS` for the schema'))
 
-    @action(methods=('GET', 'PUT', 'PATCH'), detail=False)
-    def authorize(self, request, token=None):
+    @action(methods=('GET', 'POST'), detail=False)
+    def authorize(self, request):
         """
-        Authorize charging using a specific RFID
+        Authorize charging using a specific RFID token
         """
-        return Response(dict(authorized=True))
+        if request.method == 'POST':
+            serializer = AuthorizationSerializer(data=request.data)
+            if serializer.is_valid():
+                serial_number = serializer.validated_data.get('serial_number')
+                evse: Evse = Evse.get_if_exists(uid=serial_number)
+                if not evse:
+                    return Response(
+                        dict(status=f'Cannot find evse with serial_number {serial_number}'),
+                        status=status.HTTP_404_NOT_FOUND)
+
+                token_id = serializer.validated_data.get('token_id')
+                token: Token = Token.get_if_exists(uid=token_id)
+                if not token:
+                    return Response(
+                        dict(status=f'Token `{token_id}` is unknown'),
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                return Response(dict(status=f'Token `{token_id}` authorized for charging '
+                                            f'at charge point `{serial_number}`'))
+            else:
+                return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # method == GET
+        return Response(dict(help='Please see `OPTIONS` for the schema'))
 
     def get_view_name(self):
         if self.name:
@@ -570,36 +601,16 @@ class ChargePointOperatorAPIView(routers.APIRootView):
     # noinspection PyUnresolvedReferences
     def get(self, request, *args, **kwargs):
         """
-        Compile the example URLs for the front page
+        Compile the example URLs for the root page
         """
-        # evse = Evse.objects.none()
-        # connector = Connector.objects.none()
-        # evses = Evse.objects.all()
-        # if evses.count():
-        #     evse = evses[0]
-        #     connectors = Connector.objects.filter(evse=evse)
-        #     connector = connectors[0] if connectors else Connector.objects.none()
-        # tokens = Token.objects.exclude(uid='POSITIVE_TEST_TOKEN')
-        # token = tokens[0] if tokens.count() else Token.objects.none()
-        # sessions = Session.objects.filter(status='ACTIVE')
-        # session = sessions[0] if sessions.count() else ''
 
         result = dict(
-            # session_tutorial=request.build_absolute_uri(
-            #     reverse('session-start', args=[evse.uid, connector.uid, 'POSITIVE_TEST_TOKEN'])
-            # ) if evse and connector else 'Please create an EVSE with a connector first',
-            # example_session_not_authorised=request.build_absolute_uri(
-            #     reverse('session-start', args=[evse.uid, connector.uid, token.uid])
-            # ) if token else 'Please create a token first',
-            # example_session_update=request.build_absolute_uri(
-            #     reverse('session-update', args=[session.uid])
-            # ) if session else 'Please start a new session first',
             status_change=request.build_absolute_uri(
                 reverse('chargepoint-status-change')
             ),
-            # how_to_update_charger_status=request.build_absolute_uri(
-            #     reverse('cpo-evse-by-id', args=[evse.uid])
-            # ),
+            authorize=request.build_absolute_uri(
+                reverse('chargepoint-authorize')
+            ),
         )
         return Response(result)
 
@@ -653,23 +664,6 @@ class Charger:
         return True
 
     @staticmethod
-    def authorize(id_token) -> bool:
-        """
-        Charge point is asking us to authorize a token with the appropriate eMSP
-
-        @param id_token:
-        @return:
-        """
-        # ic()
-        # ic(id_token)
-        return False  # Default to false for security purposes
-
-    # @staticmethod
-    # def change_availability(connector_id, type):
-    #     ic()
-    #     ic(connector_id, type)
-
-    @staticmethod
     def unlock_connector(location_id, evse_uid, connector_id, **kwargs) -> bool:
         # ic()
         # ic(location_id, evse_uid, connector_id, kwargs)
@@ -687,22 +681,6 @@ class Charger:
         # ic()
         # ic(id_token, validity, created)
         return True
-
-    @staticmethod
-    def status_change(connector_id, error_code, info, status, timestamp, vendor_id, vendor_error_code):
-        """
-        StatusNotification.req from charge point
-
-        @param connector_id:
-        @param error_code:
-        @param info:
-        @param status:
-        @param timestamp:
-        @param vendor_id:
-        @param vendor_error_code:
-        @return:
-        """
-        ic()
 
 
 charger_class = os.environ.get('CHARGER_CLASS', 'ocpi22.cpo_api.Charger')

@@ -253,7 +253,6 @@ class TokenViewSet(mixins.ListModelMixin,
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
-        assert settings.DEBUG, 'Simulator endpoints work only in debug mode. Try exchanging Credentials again.'
         ic(request.data, request.get_full_path())
         token = get_object_or_404(Token, uid=token_uid)
         allowed = Token.ALLOWED
