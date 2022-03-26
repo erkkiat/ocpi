@@ -246,16 +246,25 @@ class Evse(models.Model, ModelUtilMixin):
         return format_html('<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff()}' for c in self.connectors.all()]))
 
     def get_absolute_url(self):
-        return reverse('location-by-evse-id',
-                       args=[self.location.country_code, self.location.party_id, self.location.uid, self.uid])
+        try:
+            return reverse('location-by-evse-id',
+                           args=[self.location.country_code, self.location.party_id, self.location.uid, self.uid])
+        except NoReverseMatch:
+            return ''
 
     def get_cpo_url(self):
-        return reverse('cpo-evse-by-id',
-                       args=[self.uid])
+        try:
+            return reverse('cpo-evse-by-id',
+                           args=[self.uid])
+        except NoReverseMatch:
+            return ''
 
     def get_status_url(self):
-        return reverse('cpo-evse-by-id',
-                       args=[self.uid])
+        try:
+            return reverse('cpo-evse-by-id',
+                           args=[self.uid])
+        except NoReverseMatch:
+            return ''
 
 
 class Connector(models.Model, ModelUtilMixin):

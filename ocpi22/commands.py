@@ -183,7 +183,7 @@ class CommandsViewSet(GenericViewSet):
             start_session=StartSessionSerializer,
             stop_session=StopSessionSerializer,
             unlock_connector=UnlockConnectorSerializer,
-        ).get(self.action_map['post'])
+        ).get(self.action_map.get('post'), StartSessionSerializer)
         return serializer
 
     def get_view_name(self):
