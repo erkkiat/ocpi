@@ -536,6 +536,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     def authorize(self, request):
         """
         Authorize charging using a specific RFID token
+
+        Authorize request will return one of the following: HTTP_200_OK, HTTP_404_NOT_FOUND or
+        HTTP_401_UNAUTHORIZED.
         """
         if request.method == 'POST':
             serializer = AuthorizationSerializer(data=request.data)
@@ -553,6 +556,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(
                         dict(status=f'Token `{token_id}` is unknown'),
                         status=status.HTTP_404_NOT_FOUND
+                    )
+                if not token.valid:
+                    return Response(
+                        dict(status=f'Token `{token_id}` is (temporarily) not valid'),
+                        status=status.HTTP_401_UNAUTHORIZED
                     )
                 return Response(dict(status=f'Token `{token_id}` authorized for charging '
                                             f'at charge point `{serial_number}`'))
