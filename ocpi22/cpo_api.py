@@ -1,15 +1,16 @@
 import logging
 import os
 import uuid
-from typing import Optional
+from typing import Optional, Union
 
 from django.db import transaction
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
-from rest_framework import routers, status, mixins, viewsets, serializers
+from rest_framework import routers, status, mixins, viewsets, serializers, fields
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
@@ -455,19 +456,47 @@ class SessionViewSet(viewsets.ViewSet):
         return Response(result)
 
 
+class EvseSerialnumberSerializer(fields.CharField):
+    def to_internal_value(self, data):
+        try:
+            return Evse.objects.get(uid=data)
+        except Evse.DoesNotExist:
+            raise ValidationError(f'Evse with ID `{data}` does not exist')
+
+
+class TokenIdSerializer(fields.CharField):
+    def to_internal_value(self, data):
+        try:
+            return Token.objects.get(uid=data)
+        except Token.DoesNotExist:
+            raise ValidationError(f'Token with ID `{data}` does not exist')
+
+
 class StatusChangeSerializer(serializers.Serializer):
-    serial_number = serializers.CharField(
-        help_text='The serial number of the physical charge point cabinet'
-    )
+    serial_number = EvseSerialnumberSerializer(source='evse',
+                                               help_text='The serial number of the physical charge point cabinet'
+                                               )
     status = serializers.ChoiceField(choices=OCPP_STATUS_CHOICES)
 
 
 class AuthorizationSerializer(serializers.Serializer):
-    serial_number = serializers.CharField(
-        help_text='The serial number of the physical charge point cabinet'
-    )
-    token_id = serializers.CharField(
-        help_text='The hidden ID of the RFID token, separate from the visual one'
+    serial_number = EvseSerialnumberSerializer(source='evse',
+                                               help_text='The serial number of the physical charge point cabinet'
+                                               )
+    token_id = TokenIdSerializer(source='token',
+                                 help_text='The hidden ID of the RFID token, separate from the visual one'
+                                 )
+
+
+class TransactionSerializer(serializers.Serializer):
+    serial_number = EvseSerialnumberSerializer(source='evse',
+                                               help_text='The serial number of the physical charge point cabinet'
+                                               )
+    token_id = TokenIdSerializer(source='token',
+                                 help_text='The hidden ID of the RFID token, separate from the visual one'
+                                 )
+    kwh = serializers.FloatField(
+        help_text='The kWh measurement at the time of this message'
     )
 
 
@@ -496,41 +525,40 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         Update the charge point availability to the roaming network parties
         """
-        if request.method == 'POST':
-            serializer = StatusChangeSerializer(data=request.data)
-            if serializer.is_valid():
-                serial_number = serializer.validated_data.get('serial_number')
-                # connector_id = serializer.validated_data.get('connector_id')
-                ocpp_status = serializer.validated_data.get('status')
+        try:
+            if request.method == 'POST':
+                serializer = StatusChangeSerializer(data=request.data)
+                if serializer.is_valid():
+                    ocpp_status = serializer.validated_data.get('status')
 
-                # Todo: Filter just our evses
-                evse: Evse = Evse.get_if_exists(uid=serial_number)
-                if not evse:
-                    return Response(
-                        dict(status=f'Cannot find evse with serial_number {serial_number}'),
-                        status=status.HTTP_404_NOT_FOUND)
+                    # Todo: Filter just our evses
+                    evse: Evse = serializer.validated_data.get('evse')
 
-                new_ocpi_status = {
-                    OcppStatusEnum.AVAILABLE.value: 'AVAILABLE',
-                    OcppStatusEnum.PREPARING.value: 'CHARGING',
-                    OcppStatusEnum.CHARGING.value: 'CHARGING',
-                    OcppStatusEnum.SUSPENDEDEV.value: 'CHARGING',
-                    OcppStatusEnum.SUSPENDEDEVSE.value: 'CHARGING',
-                    OcppStatusEnum.FINISHING.value: 'CHARGING',
-                    OcppStatusEnum.RESERVED.value: 'RESERVED',
-                    OcppStatusEnum.UNAVAILABLE.value: 'CHARGING',
-                    OcppStatusEnum.FAULTED.value: 'OUTOFORDER',
-                }.get(ocpp_status)
+                    new_ocpi_status = {
+                        OcppStatusEnum.AVAILABLE.value: 'AVAILABLE',
+                        OcppStatusEnum.PREPARING.value: 'CHARGING',
+                        OcppStatusEnum.CHARGING.value: 'CHARGING',
+                        OcppStatusEnum.SUSPENDEDEV.value: 'CHARGING',
+                        OcppStatusEnum.SUSPENDEDEVSE.value: 'CHARGING',
+                        OcppStatusEnum.FINISHING.value: 'CHARGING',
+                        OcppStatusEnum.RESERVED.value: 'RESERVED',
+                        OcppStatusEnum.UNAVAILABLE.value: 'CHARGING',
+                        OcppStatusEnum.FAULTED.value: 'OUTOFORDER',
+                    }.get(ocpp_status)
 
-                if new_ocpi_status:
-                    evse.status = new_ocpi_status
-                    evse.save()
-                return Response(dict(status=f'OCPI status of EVSE {evse.evse_id} is now `{evse.status}`'))
-            else:
-                return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    if new_ocpi_status:
+                        evse.status = new_ocpi_status
+                        evse.save()
+                    return Response(dict(status=f'OCPI status of EVSE {evse} is now `{evse.status}`'))
+                else:
+                    return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # method == GET
-        return Response(dict(help='Please see `OPTIONS` for the schema'))
+            # method == GET
+            return Response(dict(help='Please see `OPTIONS` for the schema'))
+        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=('GET', 'POST'), detail=False)
     def authorize(self, request):
@@ -540,35 +568,28 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         Authorize request will return one of the following: HTTP_200_OK, HTTP_404_NOT_FOUND or
         HTTP_401_UNAUTHORIZED.
         """
-        if request.method == 'POST':
-            serializer = AuthorizationSerializer(data=request.data)
-            if serializer.is_valid():
-                serial_number = serializer.validated_data.get('serial_number')
-                evse: Evse = Evse.get_if_exists(uid=serial_number)
-                if not evse:
-                    return Response(
-                        dict(status=f'Cannot find evse with serial_number {serial_number}'),
-                        status=status.HTTP_404_NOT_FOUND)
+        try:
+            if request.method == 'POST':
+                serializer = AuthorizationSerializer(data=request.data)
+                if serializer.is_valid():
+                    evse: Evse = serializer.validated_data.get('evse')
+                    token: Token = serializer.validated_data.get('token')
+                    if not token.valid:
+                        return Response(
+                            dict(status=f'Token `{token}` is (temporarily) not valid'),
+                            status=status.HTTP_401_UNAUTHORIZED
+                        )
+                    return Response(dict(status=f'Token `{token}` authorized for charging '
+                                                f'at charge point `{evse}`'))
+                else:
+                    return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-                token_id = serializer.validated_data.get('token_id')
-                token: Token = Token.get_if_exists(uid=token_id)
-                if not token:
-                    return Response(
-                        dict(status=f'Token `{token_id}` is unknown'),
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-                if not token.valid:
-                    return Response(
-                        dict(status=f'Token `{token_id}` is (temporarily) not valid'),
-                        status=status.HTTP_401_UNAUTHORIZED
-                    )
-                return Response(dict(status=f'Token `{token_id}` authorized for charging '
-                                            f'at charge point `{serial_number}`'))
-            else:
-                return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # method == GET
-        return Response(dict(help='Please see `OPTIONS` for the schema'))
+            # method == GET
+            return Response(dict(help='Please see `OPTIONS` for the schema'))
+        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_404_NOT_FOUND)
 
     def get_view_name(self):
         if self.name:
