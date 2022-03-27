@@ -23,7 +23,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['uid', 'party_id', 'country_code'], name='session_party_id_uid_country_code'),
+            models.UniqueConstraint(fields=['uid', 'party_id', 'country_code'],
+                                    name='session_party_id_uid_country_code'),
             # models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
 
@@ -31,6 +32,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.SessionSaveSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
+    # send_updates_to = ('EMSP', 'HUB')
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
     country_code = models.CharField(max_length=2)

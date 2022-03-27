@@ -28,6 +28,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.api.CdrSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
+    # send_updates_to = ('EMSP', 'HUB')
 
     class Meta:
         constraints = [
