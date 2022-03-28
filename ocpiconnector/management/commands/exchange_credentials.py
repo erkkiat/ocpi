@@ -115,7 +115,7 @@ class Command(BaseCommand):
         endpoints_response = self.ocpi_get(url, token)
         return endpoints_response.json()
 
-    def find_endpoint_url(self, endpoints, identifier, role):
+    def _find_endpoint_url(self, endpoints, identifier, role):
         for endpoint in endpoints['endpoints']:
             ep_identifier = endpoint.get('identifier').lower()
             ep_role = endpoint.get('role').lower()
@@ -177,7 +177,7 @@ class Command(BaseCommand):
                 roles=roles,
             )
             _credentials_response = self.ocpi_post(
-                self.find_endpoint_url(endpoints, 'credentials', 'receiver'),
+                self._find_endpoint_url(endpoints, 'credentials', 'receiver'),
                 token_base64,
                 json=data_to_send
             )

@@ -206,14 +206,14 @@ class CommandsViewSet(GenericViewSet):
             serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
                 result = 'ACCEPTED'
-                token = serializer.data.get('token', '')
-                connector_id = serializer.data.get('connector_id', None)
-                evse_uid = serializer.data.get('evse_uid', '')
+                token = serializer.validated_data.get('token', '')
+                connector_id = serializer.validated_data.get('connector_id', None)
+                evse_uid = serializer.validated_data.get('evse_uid', '')
                 session: Session = create_session(
                     location_id=serializer.data['location_id'],
                     evse_id=evse_uid,
                     connector_id=connector_id,
-                    authorization_reference=serializer.data.get('authorization_reference'),
+                    authorization_reference=serializer.validated_data.get('authorization_reference'),
                     ad_hoc_token=token,
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
                     authorize=False,
@@ -261,7 +261,7 @@ class CommandsViewSet(GenericViewSet):
             serializer = StopSessionSerializer(data=request.data)
             if serializer.is_valid():
                 result = 'ACCEPTED'
-                session: Session = Session.get_if_exists(uid=serializer.data.get('session_id'))
+                session: Session = Session.get_if_exists(uid=serializer.validated_data.get('session_id'))
 
                 if not CHARGER.remote_stop_transaction(session):
                     return Response(dict(error=f'Unable to stop session on charger at this time',
