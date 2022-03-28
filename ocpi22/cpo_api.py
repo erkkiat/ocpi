@@ -4,6 +4,7 @@ import uuid
 from typing import Optional, Union
 
 from django.db import transaction
+from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
@@ -301,159 +302,159 @@ class LocationQuickViewSet(mixins.ListModelMixin,
             return get_object_or_404(Location, uid=uid)
 
 
-class SessionViewSet(viewsets.ViewSet):
-    """
-    Congratulations, you have started a session!
-
-    This step should happen when the driver starts charging using an RFID at the charge point.
-    The first step is that the CPO sends a "start session" GET to the below URL.
-
-    * The start session URL: GET /api/cpo/v1/session/start/{evse_id}/{connector_id}/{token_id}/
-
-    If the response contains a "incomplete_sessions_invalidated" node, that means that there was a session in progress
-    at this specific EVSE. That session was invalidated, although your response shows the EVSE's earlier status.
-
-    """
-    # noinspection PyUnresolvedReferences
-    queryset = Session.objects.all().order_by('created')
-    pagination_class = LimitOffsetPagination
-
-    @action(methods=['PATCH'], detail=False, url_name='update',
-            url_path='update/(?P<session_id>[^/.]+)')
-    def update_session(self, request, session_id) -> Response:
-        """
-        After the session has been started, it is recommended to send an update with each kWh consumed,
-        so that the driver can monitor the progress of
-        the charging session. This is done by sending a PATCH to this URL, for example { "kwh": 10 }. You can
-        try it in the input box below.
-
-        * To update a session, send a PATCH to /api/cpo/v1/session/update/{session_id}/
-        with a body containing the updated fields in JSON format
-
-        * Finally, to finish the session, send the last update and then a GET to /api/cpo/v1/session/finish/{session_id}/
-        """
-        pp(f'*** OCPI Connector got an update from CPO/charger for session {session_id}: {request.data}')
-        session = get_object_or_404(Session, uid=session_id)
-        if session.is_final():
-            return Response(dict(error='This session cannot be updated, since it already has a final status'),
-                            status.HTTP_401_UNAUTHORIZED)
-        serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
-        if serializer.is_valid():
-            if serializer.validated_data['kwh']:
-                serializer.validated_data['status'] = 'ACTIVE'
-
-            # Let's not try to calculate all costs before the end of the Session
-            # end_date_time = session.end_date_time or timezone.now()
-            # serializer.validated_data['total_cost_incl_vat'], \
-            #     serializer.validated_data['total_cost_excl_vat'] = \
-            #     self.calculate_price(session.connector, session.kwh,
-            #                          (end_date_time - session.start_date_time).seconds / 60 / 60)
-
-            serializer.save()
-            # Todo: send update to MSP
-            result = dict(finish_url=request.build_absolute_uri(reverse('session-finish', args=[session.uid])))
-            result.update(serializer.data)
-            return Response(result)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(methods=['GET'], detail=False, url_name='finish',
-            url_path='finish/(?P<session_id>[^/.]+)')
-    def finish_session(self, request, session_id) -> Response:
-        """
-        The finish session endpoint closes the specified session regardless of its status.
-        The status of a finished session is "COMPLETED", or in case kwh is 0.0, the session status will be "INVALID".
-
-        In case this EVSE has one or more unfinished sessions left hanging,
-        the response will have a list called "incomplete_sessions_invalidated",
-        which shows the sessions which were discarded by changing their status to "INVALID". These sessions will not
-        be billed, but they can still be found in the admin tools.
-        """
-        session = get_object_or_404(Session, uid=session_id)
-        if session.is_final():
-            return Response(dict(error='This session cannot be finished, since it already has a final status'),
-                            status.HTTP_401_UNAUTHORIZED)
-
-        if session.status == Session.PENDING and not session.kwh:
-            session.status = Session.INVALID
-        elif session.status != Session.ACTIVE and session.kwh:
-            return Response(dict(
-                error=f'Session {session_id} was already finished. {session}'
-            ))
-        else:
-            session.status = Session.COMPLETED
-        session.end_date_time = timezone.now()
-        session.calculate_price()
-        session.save()
-        result = dict(session=SessionSerializer(session, context={'request': request}).data)
-        if session.kwh:
-            # noinspection PyUnresolvedReferences
-            cdr: Cdr = Cdr.create_based_on_session(session)
-            from ocpi22.api import CdrSerializer
-            result['cdr'] = CdrSerializer(cdr, context={'request': request}).data
-
-            # from ocpi22.commands import sh
-            # logging.basicConfig(handlers=[sh], level=logging.INFO)
-            logging.info(f'Successful charging session finished at {session.location}, EVSE: {session.evse.evse_id}, '
-                         f'kwh: {session.kwh}, total time: {cdr.total_time * 60:.0f} minutes, '
-                         f'cost: {session.total_cost_incl_vat} {session.currency}', extra={'notify_slack': True})
-
-        return Response(result)
-
-    @transaction.atomic
-    @action(methods=['GET'], detail=False, url_name='start',
-            url_path='start/(?P<evse_id>[^/.]+)/(?P<connector_id>[^/.]+)/(?P<token_uid>[^/.]+)')
-    def start_session(self, request, evse_id, connector_id, token_uid) -> Response:
-        evse = get_object_or_404(Evse, uid=evse_id)
-        location = evse.location
-        connector = get_object_or_404(Connector, uid=connector_id, evse=evse)
-        auth_method, authorization_info = authorize_token(token_uid, location)
-        if not auth_method:
-            return Response(dict(error=f'Token {token_uid} was not authorized for use by MSP at this time'),
-                            status=status.HTTP_401_UNAUTHORIZED)
-        if not authorization_info:
-            text = f'There is technical error authorizing {token_uid}, response from MSP is missing token information.'
-            logging.error(text)
-            return Response(dict(error=text))
-        token = authorization_info.get('token')
-        # noinspection PyUnresolvedReferences
-        active_session = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
-        if active_session.count():
-            logging.warning('Starting a new session while one or more previous sessions have not been finished. '
-                            f'Invalidating incomplete sessions: {",".join([str(s) for s in active_session])}')
-            active_session.update(status='INVALID')
-
-        # noinspection PyUnresolvedReferences
-        session = Session.objects.create(
-            country_code='FI',
-            party_id=os.environ.get('CPO_PARTY_ID', 'EKI'),
-            uid=uuid.uuid4().hex,
-            kwh=0.0,
-            start_date_time=timezone.now(),
-            cdr_token_uid=token.get('uid'),
-            cdr_token_type=token.get('type'),
-            cdr_token_contract_id=token.get('contract_id'),
-            auth_method=auth_method,
-            authorization_reference=authorization_info.get('authorization_reference'),
-            location=location,
-            evse=evse,
-            connector=connector,
-            currency=os.environ.get('CPO_CURRENCY', 'EUR')
-        )
-
-        result = dict(
-            update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
-            finish_url=request.build_absolute_uri(reverse('session-finish', args=[session.uid])),
-            session_id=session.uid
-        )
-        if active_session.count():
-            # Todo: put this on error list
-            result['warnings'] = dict(
-                incomplete_sessions_invalidated=SessionSerializer(
-                    active_session, many=True, context={'request': request}).data
-            )
-        # Todo: send update to MSP
-        return Response(result)
+# class SessionViewSet(viewsets.ViewSet):
+#     """
+#     Congratulations, you have started a session!
+#
+#     This step should happen when the driver starts charging using an RFID at the charge point.
+#     The first step is that the CPO sends a "start session" GET to the below URL.
+#
+#     * The start session URL: GET /api/cpo/v1/session/start/{evse_id}/{connector_id}/{token_id}/
+#
+#     If the response contains a "incomplete_sessions_invalidated" node, that means that there was a session in progress
+#     at this specific EVSE. That session was invalidated, although your response shows the EVSE's earlier status.
+#
+#     """
+#     # noinspection PyUnresolvedReferences
+#     queryset = Session.objects.all().order_by('created')
+#     pagination_class = LimitOffsetPagination
+#
+#     @action(methods=['PATCH'], detail=False, url_name='update',
+#             url_path='update/(?P<session_id>[^/.]+)')
+#     def update_session(self, request, session_id) -> Response:
+#         """
+#         After the session has been started, it is recommended to send an update with each kWh consumed,
+#         so that the driver can monitor the progress of
+#         the charging session. This is done by sending a PATCH to this URL, for example { "kwh": 10 }. You can
+#         try it in the input box below.
+#
+#         * To update a session, send a PATCH to /api/cpo/v1/session/update/{session_id}/
+#         with a body containing the updated fields in JSON format
+#
+#         * Finally, to finish the session, send the last update and then a GET to /api/cpo/v1/session/finish/{session_id}/
+#         """
+#         pp(f'*** OCPI Connector got an update from CPO/charger for session {session_id}: {request.data}')
+#         session = get_object_or_404(Session, uid=session_id)
+#         if session.is_final():
+#             return Response(dict(error='This session cannot be updated, since it already has a final status'),
+#                             status.HTTP_401_UNAUTHORIZED)
+#         serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
+#         if serializer.is_valid():
+#             if serializer.validated_data['kwh']:
+#                 serializer.validated_data['status'] = 'ACTIVE'
+#
+#             # Let's not try to calculate all costs before the end of the Session
+#             # end_date_time = session.end_date_time or timezone.now()
+#             # serializer.validated_data['total_cost_incl_vat'], \
+#             #     serializer.validated_data['total_cost_excl_vat'] = \
+#             #     self.calculate_price(session.connector, session.kwh,
+#             #                          (end_date_time - session.start_date_time).seconds / 60 / 60)
+#
+#             serializer.save()
+#             # Todo: send update to MSP
+#             result = dict(finish_url=request.build_absolute_uri(reverse('session-finish', args=[session.uid])))
+#             result.update(serializer.data)
+#             return Response(result)
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     @action(methods=['GET'], detail=False, url_name='finish',
+#             url_path='finish/(?P<session_id>[^/.]+)')
+#     def finish_session(self, request, session_id) -> Response:
+#         """
+#         The finish session endpoint closes the specified session regardless of its status.
+#         The status of a finished session is "COMPLETED", or in case kwh is 0.0, the session status will be "INVALID".
+#
+#         In case this EVSE has one or more unfinished sessions left hanging,
+#         the response will have a list called "incomplete_sessions_invalidated",
+#         which shows the sessions which were discarded by changing their status to "INVALID". These sessions will not
+#         be billed, but they can still be found in the admin tools.
+#         """
+#         session = get_object_or_404(Session, uid=session_id)
+#         if session.is_final():
+#             return Response(dict(error='This session cannot be finished, since it already has a final status'),
+#                             status.HTTP_401_UNAUTHORIZED)
+#
+#         if session.status == Session.PENDING and not session.kwh:
+#             session.status = Session.INVALID
+#         elif session.status != Session.ACTIVE and session.kwh:
+#             return Response(dict(
+#                 error=f'Session {session_id} was already finished. {session}'
+#             ))
+#         else:
+#             session.status = Session.COMPLETED
+#         session.end_date_time = timezone.now()
+#         session.calculate_price()
+#         session.save()
+#         result = dict(session=SessionSerializer(session, context={'request': request}).data)
+#         if session.kwh:
+#             # noinspection PyUnresolvedReferences
+#             cdr: Cdr = Cdr.create_based_on_session(session)
+#             from ocpi22.api import CdrSerializer
+#             result['cdr'] = CdrSerializer(cdr, context={'request': request}).data
+#
+#             # from ocpi22.commands import sh
+#             # logging.basicConfig(handlers=[sh], level=logging.INFO)
+#             logging.info(f'Successful charging session finished at {session.location}, EVSE: {session.evse.evse_id}, '
+#                          f'kwh: {session.kwh}, total time: {cdr.total_time * 60:.0f} minutes, '
+#                          f'cost: {session.total_cost_incl_vat} {session.currency}', extra={'notify_slack': True})
+#
+#         return Response(result)
+#
+#     @transaction.atomic
+#     @action(methods=['GET'], detail=False, url_name='start',
+#             url_path='start/(?P<evse_id>[^/.]+)/(?P<connector_id>[^/.]+)/(?P<token_uid>[^/.]+)')
+#     def start_session(self, request, evse_id, connector_id, token_uid) -> Response:
+#         evse = get_object_or_404(Evse, uid=evse_id)
+#         location = evse.location
+#         connector = get_object_or_404(Connector, uid=connector_id, evse=evse)
+#         auth_method, authorization_info = authorize_token(token_uid, location)
+#         if not auth_method:
+#             return Response(dict(error=f'Token {token_uid} was not authorized for use by MSP at this time'),
+#                             status=status.HTTP_401_UNAUTHORIZED)
+#         if not authorization_info:
+#             text = f'There is technical error authorizing {token_uid}, response from MSP is missing token information.'
+#             logging.error(text)
+#             return Response(dict(error=text))
+#         token = authorization_info.get('token')
+#         # noinspection PyUnresolvedReferences
+#         active_session = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
+#         if active_session.count():
+#             logging.warning('Starting a new session while one or more previous sessions have not been finished. '
+#                             f'Invalidating incomplete sessions: {",".join([str(s) for s in active_session])}')
+#             active_session.update(status='INVALID')
+#
+#         # noinspection PyUnresolvedReferences
+#         session = Session.objects.create(
+#             country_code='FI',
+#             party_id=os.environ.get('CPO_PARTY_ID', 'EKI'),
+#             uid=uuid.uuid4().hex,
+#             kwh=0.0,
+#             start_date_time=timezone.now(),
+#             cdr_token_uid=token.get('uid'),
+#             cdr_token_type=token.get('type'),
+#             cdr_token_contract_id=token.get('contract_id'),
+#             auth_method=auth_method,
+#             authorization_reference=authorization_info.get('authorization_reference'),
+#             location=location,
+#             evse=evse,
+#             connector=connector,
+#             currency=os.environ.get('CPO_CURRENCY', 'EUR')
+#         )
+#
+#         result = dict(
+#             update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
+#             finish_url=request.build_absolute_uri(reverse('session-finish', args=[session.uid])),
+#             session_id=session.uid
+#         )
+#         if active_session.count():
+#             # Todo: put this on error list
+#             result['warnings'] = dict(
+#                 incomplete_sessions_invalidated=SessionSerializer(
+#                     active_session, many=True, context={'request': request}).data
+#             )
+#         # Todo: send update to MSP
+#         return Response(result)
 
 
 class EvseSerialnumberSerializer(fields.CharField):
@@ -472,35 +473,76 @@ class TokenIdSerializer(fields.CharField):
             raise ValidationError(f'Token with ID `{data}` does not exist')
 
 
+class OcppStatusSerializer(fields.ChoiceField):
+    def __init__(self):
+        super().__init__(OCPP_STATUS_CHOICES)
+
+    def to_internal_value(self, data):
+        result = {
+            OcppStatusEnum.AVAILABLE.value: 'AVAILABLE',
+            OcppStatusEnum.PREPARING.value: 'CHARGING',
+            OcppStatusEnum.CHARGING.value: 'CHARGING',
+            OcppStatusEnum.SUSPENDEDEV.value: 'CHARGING',
+            OcppStatusEnum.SUSPENDEDEVSE.value: 'CHARGING',
+            OcppStatusEnum.FINISHING.value: 'CHARGING',
+            OcppStatusEnum.RESERVED.value: 'RESERVED',
+            OcppStatusEnum.UNAVAILABLE.value: 'CHARGING',
+            OcppStatusEnum.FAULTED.value: 'OUTOFORDER',
+        }.get(data)
+        if not result:
+            raise ValidationError(f"'{data}' is not a know OCPP status")
+        return result
+
+
 class StatusChangeSerializer(serializers.Serializer):
-    serial_number = EvseSerialnumberSerializer(source='evse',
-                                               help_text='The serial number of the physical charge point cabinet'
-                                               )
-    status = serializers.ChoiceField(choices=OCPP_STATUS_CHOICES)
+    serial_number = EvseSerialnumberSerializer(
+        source='evse',
+        help_text='The serial number of the physical charge point cabinet'
+    )
+    status = OcppStatusSerializer()
 
 
 class AuthorizationSerializer(serializers.Serializer):
-    serial_number = EvseSerialnumberSerializer(source='evse',
-                                               help_text='The serial number of the physical charge point cabinet'
-                                               )
-    token_id = TokenIdSerializer(source='token',
-                                 help_text='The hidden ID of the RFID token, separate from the visual one'
-                                 )
-
-
-class TransactionSerializer(serializers.Serializer):
-    serial_number = EvseSerialnumberSerializer(source='evse',
-                                               help_text='The serial number of the physical charge point cabinet'
-                                               )
-    token_id = TokenIdSerializer(source='token',
-                                 help_text='The hidden ID of the RFID token, separate from the visual one'
-                                 )
-    kwh = serializers.FloatField(
-        help_text='The kWh measurement at the time of this message'
+    serial_number = EvseSerialnumberSerializer(
+        source='evse',
+        help_text='The serial number of the physical charge point cabinet'
+    )
+    token_id = TokenIdSerializer(
+        source='token',
+        help_text='The hidden ID of the RFID token, separate from the visual one'
     )
 
 
-# Todo: class Authorization: evse, token_id, authorization_id, expiration_timestamp
+class MeterValuesSerializer(serializers.Serializer):
+    session_id = serializers.CharField(
+        max_length=36,
+        help_text='The session ID on the CPO platform or order number from the billing system',
+    )
+    kwh = serializers.FloatField(
+        required=False,
+        help_text='The kWh measurement at the time of this message',
+    )
+
+
+class TransactionSerializer(serializers.Serializer):
+    serial_number = EvseSerialnumberSerializer(
+        source='evse',
+        help_text='The serial number of the physical charge point cabinet'
+    )
+    authorization_reference = serializers.CharField(
+        max_length=36,
+        help_text='Authorization ID or order number from eMSP given during authorization request from CPO'
+    )
+    kwh = serializers.FloatField(
+        required=False,
+        help_text='The kWh measurement at the time of this message',
+    )
+    session_id = serializers.CharField(
+        max_length=36,
+        help_text='The session ID on the CPO platform or order number from the billing system',
+        required=False,
+        default=uuid.uuid4()
+    )
 
 
 # Todo: limit access to certain privilege holders
@@ -518,6 +560,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         return dict(
             authorize=AuthorizationSerializer,
             status_change=StatusChangeSerializer,
+            start_transaction=TransactionSerializer,
         ).get(self.action_map.get('post'), StatusChangeSerializer)
 
     @action(methods=('GET', 'POST'), detail=False)
@@ -574,13 +617,51 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data.get('evse')
                     token: Token = serializer.validated_data.get('token')
-                    if not token.valid:
+                    authorization_method, authorization_reference = authorize_token(token, evse.location)
+                    if not authorization_reference or not token.valid:
                         return Response(
                             dict(status=f'Token `{token}` is (temporarily) not valid'),
                             status=status.HTTP_401_UNAUTHORIZED
                         )
-                    return Response(dict(status=f'Token `{token}` authorized for charging '
-                                                f'at charge point `{evse}`'))
+
+                    return Response(
+                        dict(
+                            status=f'Token authorized for charging',
+                            evse=evse.evse_id,
+                            token=str(token),
+                            authorization_reference=authorization_reference,
+                        )
+                    )
+                else:
+                    return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # method == GET
+            return Response(dict(help='Please see `OPTIONS` for the schema'))
+        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_404_NOT_FOUND)
+
+    @action(methods=('GET', 'POST'), detail=False)
+    def start_transaction(self, request):
+        """
+        Start the charging transaction (=> OCPI session)
+        """
+        try:
+            if request.method == 'POST':
+                serializer = TransactionSerializer(data=request.data)
+                if serializer.is_valid():
+                    evse: Evse = serializer.validated_data['evse']
+                    authorization_reference: str = serializer.validated_data['authorization_reference']
+                    session_id = serializer.validated_data['session_id']
+                    return Response(
+                        dict(
+                            status=f'Session started',
+                            evse=evse.evse_id,
+                            session_id=session_id,
+                            authorization_reference=authorization_reference,
+                        )
+                    )
                 else:
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -639,6 +720,9 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             ),
             authorize=request.build_absolute_uri(
                 reverse('chargepoint-authorize')
+            ),
+            start_transaction=request.build_absolute_uri(
+                reverse('chargepoint-start-transaction')
             ),
         )
         return Response(result)
