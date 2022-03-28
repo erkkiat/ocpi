@@ -121,7 +121,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.party_id}: {self.type} {self.uid}'
+        return f'{self.party()}: {self.type} {self.uid}'
 
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
