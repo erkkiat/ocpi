@@ -514,12 +514,14 @@ class AuthorizationSerializer(serializers.Serializer):
 
 
 class MeterValuesSerializer(serializers.Serializer):
+    """
+    The session start and end time are recorded by the OCPI Connector
+    """
     session_id = serializers.CharField(
         max_length=36,
         help_text='The session ID on the CPO platform or order number from the billing system',
     )
     kwh = serializers.FloatField(
-        required=False,
         help_text='The kWh measurement at the time of this message',
     )
 
@@ -564,6 +566,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             authorize=AuthorizationSerializer,
             status_change=StatusChangeSerializer,
             start_transaction=StartTransactionSerializer,
+            meter_values=MeterValuesSerializer,
             stop_transaction=StopTransactionSerializer,
         ).get(self.action_map.get('post'), StatusChangeSerializer)
 
@@ -581,22 +584,15 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     # Todo: Filter just our evses
                     evse: Evse = serializer.validated_data.get('evse')
 
-                    new_ocpi_status = {
-                        OcppStatusEnum.AVAILABLE.value: 'AVAILABLE',
-                        OcppStatusEnum.PREPARING.value: 'CHARGING',
-                        OcppStatusEnum.CHARGING.value: 'CHARGING',
-                        OcppStatusEnum.SUSPENDEDEV.value: 'CHARGING',
-                        OcppStatusEnum.SUSPENDEDEVSE.value: 'CHARGING',
-                        OcppStatusEnum.FINISHING.value: 'CHARGING',
-                        OcppStatusEnum.RESERVED.value: 'RESERVED',
-                        OcppStatusEnum.UNAVAILABLE.value: 'CHARGING',
-                        OcppStatusEnum.FAULTED.value: 'OUTOFORDER',
-                    }.get(ocpp_status)
-
-                    if new_ocpi_status:
-                        evse.status = new_ocpi_status
-                        evse.save()
-                    return Response(dict(status=f'OCPI status of EVSE {evse} is now `{evse.status}`'))
+                    evse.status = ocpp_status
+                    evse.save()
+                    return Response(
+                        dict(
+                            status_text=f'EVSE status has been changed',
+                            evse=evse.uid,
+                            evse_status=evse.status,
+                        )
+                    )
                 else:
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -614,6 +610,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         Authorize request will return one of the following: HTTP_200_OK, HTTP_404_NOT_FOUND or
         HTTP_401_UNAUTHORIZED.
+
+        You can do this request multiple times and you will get back the same authorization_reference
+        for 15 minutes starting from the first authorization request.
         """
         try:
             if request.method == 'POST':
@@ -630,7 +629,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     return Response(
                         dict(
-                            status=f'Token authorized for charging',
+                            status_text=f'Token authorized for charging',
                             evse=evse.uid,
                             token=str(token),
                             authorization_reference=authorization_reference,
@@ -661,11 +660,68 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     session_id = serializer.validated_data['session_id']
                     return Response(
                         dict(
-                            status=f'Session started',
+                            status_text=f'Session started',
                             evse=evse.uid,
                             connector_id=connector_id,
                             session_id=session_id,
                             authorization_reference=authorization_reference,
+                        )
+                    )
+                else:
+                    return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # method == GET
+            return Response(dict(help='Please see `OPTIONS` for the schema'))
+        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_404_NOT_FOUND)
+
+    @action(methods=('GET', 'POST'), detail=False)
+    def meter_values(self, request):
+        """
+        Update the session progress, such as the accumulated kWh
+        """
+        try:
+            if request.method == 'POST':
+                serializer = MeterValuesSerializer(data=request.data)
+                if serializer.is_valid():
+                    session_id = serializer.validated_data['session_id']
+                    kwh = serializer.validated_data['kwh']
+                    return Response(
+                        dict(
+                            status_text=f'Session updated',
+                            session_id=session_id,
+                            kwh=kwh,
+                        )
+                    )
+                else:
+                    return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # method == GET
+            return Response(dict(help='Please see `OPTIONS` for the schema'))
+        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_404_NOT_FOUND)
+
+    @action(methods=('GET', 'POST'), detail=False)
+    def stop_transaction(self, request):
+        """
+        Stop the transaction, charging has been finished
+        """
+        try:
+            if request.method == 'POST':
+                serializer = StopTransactionSerializer(data=request.data)
+                if serializer.is_valid():
+                    session_id = serializer.validated_data['session_id']
+                    kwh = serializer.validated_data['kwh']
+                    return Response(
+                        dict(
+                            status_text=f'Session finished',
+                            session_id=session_id,
+                            kwh=kwh,
+                            charge_detail_record=dict(sorry='CDR will be included here in the future'),
                         )
                     )
                 else:
@@ -729,6 +785,12 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             ),
             start_transaction=request.build_absolute_uri(
                 reverse('chargepoint-start-transaction')
+            ),
+            meter_values=request.build_absolute_uri(
+                reverse('chargepoint-meter-values')
+            ),
+            stop_transaction=request.build_absolute_uri(
+                reverse('chargepoint-stop-transaction')
             ),
         )
         return Response(result)
