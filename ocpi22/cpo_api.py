@@ -524,18 +524,18 @@ class MeterValuesSerializer(serializers.Serializer):
     )
 
 
-class TransactionSerializer(serializers.Serializer):
+class StartTransactionSerializer(serializers.Serializer):
     serial_number = EvseSerialnumberSerializer(
         source='evse',
         help_text='The serial number of the physical charge point cabinet'
     )
+    connector_id = serializers.CharField(
+        max_length=36,
+        help_text='The connector number used for charging during this transaction'
+    )
     authorization_reference = serializers.CharField(
         max_length=36,
         help_text='Authorization ID or order number from eMSP given during authorization request from CPO'
-    )
-    kwh = serializers.FloatField(
-        required=False,
-        help_text='The kWh measurement at the time of this message',
     )
     session_id = serializers.CharField(
         max_length=36,
@@ -543,6 +543,9 @@ class TransactionSerializer(serializers.Serializer):
         required=False,
         default=uuid.uuid4()
     )
+
+
+StopTransactionSerializer = MeterValuesSerializer
 
 
 # Todo: limit access to certain privilege holders
@@ -560,7 +563,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         return dict(
             authorize=AuthorizationSerializer,
             status_change=StatusChangeSerializer,
-            start_transaction=TransactionSerializer,
+            start_transaction=StartTransactionSerializer,
+            stop_transaction=StopTransactionSerializer,
         ).get(self.action_map.get('post'), StatusChangeSerializer)
 
     @action(methods=('GET', 'POST'), detail=False)
@@ -627,7 +631,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(
                         dict(
                             status=f'Token authorized for charging',
-                            evse=evse.evse_id,
+                            evse=evse.uid,
                             token=str(token),
                             authorization_reference=authorization_reference,
                         )
@@ -649,15 +653,17 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         try:
             if request.method == 'POST':
-                serializer = TransactionSerializer(data=request.data)
+                serializer = StartTransactionSerializer(data=request.data)
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data['evse']
+                    connector_id: str = serializer.validated_data['connector_id']
                     authorization_reference: str = serializer.validated_data['authorization_reference']
                     session_id = serializer.validated_data['session_id']
                     return Response(
                         dict(
                             status=f'Session started',
-                            evse=evse.evse_id,
+                            evse=evse.uid,
+                            connector_id=connector_id,
                             session_id=session_id,
                             authorization_reference=authorization_reference,
                         )
