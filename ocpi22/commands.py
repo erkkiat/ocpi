@@ -213,10 +213,8 @@ class CommandsViewSet(GenericViewSet):
                     location_id=serializer.data['location_id'],
                     evse_id=evse_uid,
                     connector_id=connector_id,
-                    authorization_reference=serializer.validated_data.get('authorization_reference'),
                     ad_hoc_token=token,
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
-                    authorize=False,
                     billed_to=str(billed_to),
                 )
 

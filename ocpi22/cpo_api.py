@@ -1,10 +1,7 @@
-import logging
 import os
 import uuid
-from typing import Optional, Union
+from typing import Optional
 
-from django.db import transaction
-from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
@@ -22,8 +19,8 @@ from ocpi22.choices import OCPP_STATUS_CHOICES, OcppStatusEnum
 from ocpi22.location import send_evse_updates
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
+from ocpi22.sessions import create_session
 from ocpi22.tokens import authorize_token
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator
 from ocpiconnector import slack_logging
@@ -495,17 +492,17 @@ class OcppStatusSerializer(fields.ChoiceField):
 
 
 class StatusChangeSerializer(serializers.Serializer):
-    serial_number = EvseSerialnumberSerializer(
+    evse_id = EvseSerialnumberSerializer(
         source='evse',
-        help_text='The serial number of the physical charge point cabinet'
+        help_text='The identifier of the device which provides electricity to one or more connectors'
     )
     status = OcppStatusSerializer()
 
 
 class AuthorizationSerializer(serializers.Serializer):
-    serial_number = EvseSerialnumberSerializer(
+    evse_id = EvseSerialnumberSerializer(
         source='evse',
-        help_text='The serial number of the physical charge point cabinet'
+        help_text='The identifier of the device which provides electricity to one or more connectors'
     )
     token_id = TokenIdSerializer(
         source='token',
@@ -527,17 +524,17 @@ class MeterValuesSerializer(serializers.Serializer):
 
 
 class StartTransactionSerializer(serializers.Serializer):
-    serial_number = EvseSerialnumberSerializer(
+    evse_id = EvseSerialnumberSerializer(
         source='evse',
-        help_text='The serial number of the physical charge point cabinet'
+        help_text='The identifier of the device which provides electricity to one or more connectors'
     )
     connector_id = serializers.CharField(
         max_length=36,
         help_text='The connector number used for charging during this transaction'
     )
-    authorization_reference = serializers.CharField(
-        max_length=36,
-        help_text='Authorization ID or order number from eMSP given during authorization request from CPO'
+    token_id = TokenIdSerializer(
+        source='token',
+        help_text='The hidden ID of the RFID token, separate from the visual one'
     )
     session_id = serializers.CharField(
         max_length=36,
@@ -545,9 +542,22 @@ class StartTransactionSerializer(serializers.Serializer):
         required=False,
         default=uuid.uuid4()
     )
+    start_kwh = serializers.FloatField(
+        help_text='The kWh measurement at the meter at start of the transaction'
+    )
 
 
-StopTransactionSerializer = MeterValuesSerializer
+class StopTransactionSerializer(serializers.Serializer):
+    """
+    The session ends with a specific meter value
+    """
+    session_id = serializers.CharField(
+        max_length=36,
+        help_text='The session ID on the CPO platform or order number from the billing system',
+    )
+    stop_kwh = serializers.FloatField(
+        help_text='The kWh measurement at the time when the charging session ends',
+    )
 
 
 # Todo: limit access to certain privilege holders
@@ -611,8 +621,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         Authorize request will return one of the following: HTTP_200_OK, HTTP_404_NOT_FOUND or
         HTTP_401_UNAUTHORIZED.
 
-        You can do this request multiple times and you will get back the same authorization_reference
-        for 15 minutes starting from the first authorization request.
+        Feel free to make this request multiple times,
+        and you will get back the same authorization_reference
+        for the next 15 minutes starting from the first authorization request.
         """
         try:
             if request.method == 'POST':
@@ -648,7 +659,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def start_transaction(self, request):
         """
-        Start the charging transaction (=> OCPI session)
+        Start the charging transaction (which equals the OCPI session in the roaming network).
+        The session will be started regardless of charger status, in case some status change messages
+        have been lost on the way.
         """
         try:
             if request.method == 'POST':
@@ -656,15 +669,33 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data['evse']
                     connector_id: str = serializer.validated_data['connector_id']
-                    authorization_reference: str = serializer.validated_data['authorization_reference']
                     session_id = serializer.validated_data['session_id']
+                    token = serializer.validated_data['token']
+                    start_kwh = serializer.validated_data['start_kwh']
+
+                    if Session.objects.filter(uid=session_id).exists():
+                        return Response(
+                            dict(
+                                status_text=f'Session {session_id} already exists',
+                                status=status.HTTP_409_CONFLICT,
+                            )
+                        )
+                    session = create_session(
+                        # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
+                        # Other CPO can have same ID
+                        uid=session_id, evse_id=evse, location_id=evse.location, connector_id=connector_id,
+                        token_id=token, billed_to=token.party(),
+                    )
                     return Response(
                         dict(
                             status_text=f'Session started',
+                            session_id=session_id,
+                            location=str(evse.location),
                             evse=evse.uid,
                             connector_id=connector_id,
-                            session_id=session_id,
-                            authorization_reference=authorization_reference,
+                            billed_to=token.party(),
+                            token_id=str(token),
+                            start_kwh=start_kwh,
                         )
                     )
                 else:
@@ -715,12 +746,12 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 serializer = StopTransactionSerializer(data=request.data)
                 if serializer.is_valid():
                     session_id = serializer.validated_data['session_id']
-                    kwh = serializer.validated_data['kwh']
+                    stop_kwh = serializer.validated_data['kwh']
                     return Response(
                         dict(
                             status_text=f'Session finished',
                             session_id=session_id,
-                            kwh=kwh,
+                            kwh=stop_kwh,
                             charge_detail_record=dict(sorry='CDR will be included here in the future'),
                         )
                     )
