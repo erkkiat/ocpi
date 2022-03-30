@@ -25,7 +25,7 @@ def get_token(token_id, ad_hoc_token):
 
 
 def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None,
-                   billed_to=None, uid=None
+                   billed_to=None, uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING
                    ) -> Session:
     # ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
     if not uid:
@@ -59,7 +59,9 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
         country_code=our_country_code,
         party_id=our_party_id,
         uid=uid,
-        kwh=0.0,
+        start_kwh=start_kwh,
+        stop_kwh=stop_kwh,
+        status=session_status,
         start_date_time=timezone.now(),
         cdr_token_uid=token.uid,
         cdr_token_type=token.type,

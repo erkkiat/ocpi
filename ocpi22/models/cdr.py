@@ -5,6 +5,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum
@@ -179,10 +180,12 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     @classmethod
     def create_based_on_session(cls, session: Session):
+        # Was there already a CDR created for this Session?
+        cdr = cls.objects.filter(session_id=session.uid)
+        # if cdr.exists():
+        #     raise ValidationError(dict(status_text=f'A CDR has already been created for session `{session.uid}`'))
         if session.total_cost_excl_vat is None:
-            logging.error(f'Session {session} has no total cost, not creating a CDR yet')
-            # Todo: Log something for admin to see
-            return None
+            logging.error(f'Session {session} has no total cost')
         if not session.end_date_time:
             session.end_date_time = timezone.now()
 
@@ -217,8 +220,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             cdr_location_connector_format=session.connector.format,
             cdr_location_connector_power_type=session.connector.power_type,
             currency=session.currency,
-            total_cost_excl_vat=session.total_cost_excl_vat,
-            total_cost_incl_vat=session.total_cost_incl_vat,
+            total_cost_excl_vat=session.total_cost_excl_vat or 0.0,
+            total_cost_incl_vat=session.total_cost_incl_vat or 0.0,
             total_energy=session.kwh,
             total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5),
             credentials=session.credentials,

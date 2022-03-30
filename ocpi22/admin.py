@@ -340,8 +340,9 @@ class SessionAdmin(admin.ModelAdmin):
                                         ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id'),
                                         ('location', 'evse', 'connector'),
                                         ))),
-        ('Delivery', dict(fields=(('status', 'kwh'), ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),
-                                  'auth_method',))),
+        ('Delivery',
+         dict(fields=(('status', 'start_kwh', 'stop_kwh'), ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),
+                      'auth_method',))),
         ('Time period', dict(fields=(('start_date_time', 'end_date_time'), 'last_updated'))),
     )
     # Todo: Show only connectors for the selected evse

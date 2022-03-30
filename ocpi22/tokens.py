@@ -16,7 +16,7 @@ def authorize_token(token_uid, location_uid=None) -> (str, str):
     (OCPI requirement)
     """
     ic()
-    return Session.AUTH_REQUEST, uuid.uuid4()
+    return Session.AUTH_REQUEST, uuid.uuid4().hex
 
     try:
         token = Token.objects.get(uid=token_uid)

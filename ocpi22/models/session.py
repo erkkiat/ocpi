@@ -53,8 +53,15 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # for example: EV is full, but parking cost also has to be paid.
     end_date_time = models.DateTimeField(blank=True, null=True)
 
+    # How many kWh are in the charge point meter at the start of the session
+    start_kwh = models.FloatField(default=0.0)
+
     # How many kWh were charged.
-    kwh = models.FloatField()
+    stop_kwh = models.FloatField()
+
+    @property
+    def kwh(self):
+        return self.stop_kwh - self.start_kwh
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
@@ -158,14 +165,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # Django automatic dates
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
-
-    # def clean(self):
-    #     if self.status == self.COMPLETED and (not self.connector or not self.connector.tariff_ids):
-    #         self.status = self.PENDING
-    #         raise ValidationError(dict(
-    #             connector='A connector with Tariffs needs to be chosen before the session can be completed.')
-    #         )
-    #     return super().clean()
 
     def save(self, *args, **kwargs):
         # Needed for running self.clean() when doing a save() or create()

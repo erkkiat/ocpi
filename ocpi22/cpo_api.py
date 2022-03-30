@@ -470,6 +470,14 @@ class TokenIdSerializer(fields.CharField):
             raise ValidationError(f'Token with ID `{data}` does not exist')
 
 
+class SessionIdSerializer(fields.CharField):
+    def to_internal_value(self, data):
+        try:
+            return Session.objects.get(uid=data)
+        except Session.DoesNotExist:
+            raise ValidationError(f'Session with ID `{data}` does not exist')
+
+
 class OcppStatusSerializer(fields.ChoiceField):
     def __init__(self):
         super().__init__(OCPP_STATUS_CHOICES)
@@ -514,8 +522,8 @@ class MeterValuesSerializer(serializers.Serializer):
     """
     The session start and end time are recorded by the OCPI Connector
     """
-    session_id = serializers.CharField(
-        max_length=36,
+    session_id = SessionIdSerializer(
+        source='session',
         help_text='The session ID on the CPO platform or order number from the billing system',
     )
     kwh = serializers.FloatField(
@@ -540,10 +548,11 @@ class StartTransactionSerializer(serializers.Serializer):
         max_length=36,
         help_text='The session ID on the CPO platform or order number from the billing system',
         required=False,
-        default=uuid.uuid4()
+        default=uuid.uuid4().hex
     )
     start_kwh = serializers.FloatField(
-        help_text='The kWh measurement at the meter at start of the transaction'
+        help_text='The kWh measurement at the meter at start of the transaction, can start from zero '
+                  'or start from where the previous charging session ended or some other value'
     )
 
 
@@ -551,12 +560,12 @@ class StopTransactionSerializer(serializers.Serializer):
     """
     The session ends with a specific meter value
     """
-    session_id = serializers.CharField(
-        max_length=36,
+    session_id = SessionIdSerializer(
+        source='session',
         help_text='The session ID on the CPO platform or order number from the billing system',
     )
     stop_kwh = serializers.FloatField(
-        help_text='The kWh measurement at the time when the charging session ends',
+        help_text='The kWh measurement when the charging session ends',
     )
 
 
@@ -677,23 +686,25 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         return Response(
                             dict(
                                 status_text=f'Session {session_id} already exists',
-                                status=status.HTTP_409_CONFLICT,
-                            )
+                            ),
+                            status=status.HTTP_409_CONFLICT,
                         )
+                    # Todo: Session.currency needs to match with Tariff currency
                     session = create_session(
                         # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
                         # Other CPO can have same ID
                         uid=session_id, evse_id=evse, location_id=evse.location, connector_id=connector_id,
-                        token_id=token, billed_to=token.party(),
+                        token_id=token, billed_to=token.party(), start_kwh=start_kwh, stop_kwh=start_kwh,
+                        session_status=Session.ACTIVE
                     )
-                    session_json = SessionSerializer(instance=session)
+                    session_serializer = SessionSerializer(instance=session)
                     return Response(
                         dict(
                             status_text=f'Session started',
                             session_id=session_id,
                             billed_to=token.party(),
                             start_kwh=start_kwh,
-                            session=session_json.data,
+                            session=session_serializer.data,
                         )
                     )
                 else:
@@ -715,13 +726,21 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = MeterValuesSerializer(data=request.data)
                 if serializer.is_valid():
-                    session_id = serializer.validated_data['session_id']
+                    session = serializer.validated_data['session']
                     kwh = serializer.validated_data['kwh']
+                    session.stop_kwh = kwh
+                    session.save(update_fields=['stop_kwh'])
+                    session.calculate_price()
+                    session.send_updates()  # Todo: send only to billed_to
+
                     return Response(
                         dict(
                             status_text=f'Session updated',
-                            session_id=session_id,
-                            kwh=kwh,
+                            session_id=session.uid,
+                            start_kwh=session.start_kwh,
+                            now_kwh=kwh,
+                            total_kwh=session.kwh,
+                            price=session.cost(),
                         )
                     )
                 else:
@@ -743,14 +762,29 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = StopTransactionSerializer(data=request.data)
                 if serializer.is_valid():
-                    session_id = serializer.validated_data['session_id']
-                    stop_kwh = serializer.validated_data['kwh']
+                    session = serializer.validated_data['session']
+                    stop_kwh = serializer.validated_data['stop_kwh']
+                    session.stop_kwh = stop_kwh
+                    session.status = Session.COMPLETED
+                    session.save(update_fields=['stop_kwh', 'status'])
+                    session.calculate_price()
+
+                    # Create the corresponding CDR (it will also be sent to other party)
+                    from ocpi22.models.cdr import Cdr
+                    from ocpi22.api import CdrSerializer
+                    cdr = Cdr.create_based_on_session(session)
+                    cdr.save()
+
+                    cdr_json = CdrSerializer(instance=cdr)
+                    session_serializer = SessionSerializer(instance=session)
+
                     return Response(
                         dict(
                             status_text=f'Session finished',
-                            session_id=session_id,
-                            kwh=stop_kwh,
-                            charge_detail_record=dict(sorry='CDR will be included here in the future'),
+                            session_id=session.uid,
+                            kwh_total=session.kwh,
+                            session=session_serializer.data,
+                            charge_detail_record=cdr_json.data
                         )
                     )
                 else:

@@ -34,7 +34,7 @@ from ocpi22.commands import CommandsViewSet, CommandResponse
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.middleware import OCPIHubMiddleware
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import Credentials, CredentialsRole, find_endpoints_by_roles, Endpoint
+from ocpi22.models.credentials import Credentials, CredentialsRole, find_endpoints_by_roles
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
@@ -48,7 +48,7 @@ from ocpi22.tokens import get_admin_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpi22.test_data import expected_get_responses
-from ocpiconnector.ocpi_identities import Party, get_our_party, OCPIIdentities
+from ocpiconnector.ocpi_identities import Party
 
 faketime = datetime(2000, 1, 1, 12, 0)
 factory = RequestFactory()
@@ -404,30 +404,30 @@ class ApiPutTests(TestCase):
             end_date_time=start_date_time + timedelta(hours=1)
         )
         testcases = (
-            ('tariff_1_simple_2hour', dict(kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 5, 5.5),
-            ('tariff_8_simple_025kwh', dict(kwh=20), 5, 5.5),
-            ('tariff_9_025kwh_start', dict(kwh=20), 5.5, 6.1),
-            ('tariff_12_025kwh_min_price', dict(kwh=20), 5, 5.5),
-            ('tariff_12_025kwh_min_price', dict(kwh=1), .5, .55),
+            ('tariff_1_simple_2hour', dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 5, 5.5),
+            ('tariff_8_simple_025kwh', dict(stop_kwh=20), 5, 5.5),
+            ('tariff_9_025kwh_start', dict(stop_kwh=20), 5.5, 6.1),
+            ('tariff_12_025kwh_min_price', dict(stop_kwh=20), 5, 5.5),
+            ('tariff_12_025kwh_min_price', dict(stop_kwh=1), .5, .55),
 
-            # ('tariff_10_025kwh_parking_start', dict(kwh=20, parking=40*60), 7, 7.9),
-            ('tariff_6_025kwh_start_max_price', dict(kwh=50), 10, 11),
-            ('tariff_6_025kwh_start_max_price', dict(kwh=30), 8, 8.85),
+            # ('tariff_10_025kwh_parking_start', dict(stop_kwh=20, parking=40*60), 7, 7.9),
+            ('tariff_6_025kwh_start_max_price', dict(stop_kwh=50), 10, 11),
+            ('tariff_6_025kwh_start_max_price', dict(stop_kwh=30), 8, 8.85),
 
             # Parking
-            # ('tariff_13_simple_3hour_5parking', dict(kwh=20)),
-            ('tariff_2_alt_text', dict(kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 4.75, 5),
-            ('tariff_3_alt_url', dict(kwh=20.45), 5.63, 6.24),
+            # ('tariff_13_simple_3hour_5parking', dict(stop_kwh=20)),
+            ('tariff_2_alt_text', dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 4.75, 5),
+            ('tariff_3_alt_url', dict(stop_kwh=20.45), 5.63, 6.24),
 
             # Parking, weekdays, times
-            # ('tariff_4_complex', dict(kwh=20.45), 5.63, 6.24),
+            # ('tariff_4_complex', dict(stop_kwh=20.45), 5.63, 6.24),
 
         )
         for filename, case_params, excl_vat, incl_vat in testcases:
             params = session_params.copy()
             params.update(case_params)
             # noinspection PyUnresolvedReferences
-            session: Session = Session.objects.create(uid=uuid.uuid4(),
+            session: Session = Session.objects.create(uid=uuid.uuid4().hex,
                                                       **params)
             data = self._load_example(filename)
             serializer = TariffSerializer(data=data)
@@ -697,7 +697,7 @@ class CdrTests(TestCase):
             uid='TEST1',
             start_date_time=timezone.now() - timedelta(minutes=30),
             # end_date_time=timezone.now(),
-            kwh=12.34,
+            stop_kwh=12.34,
             cdr_token_uid='TOKEN1',
             cdr_token_type='RFID',
             cdr_token_contract_id='CONTRACT1',
@@ -825,7 +825,7 @@ class CommandTests(TestCase):
 
         # Let's pick a connector and fill out charging details
         session.connector = session.evse.connectors.all()[0]
-        session.kwh = 10.0
+        session.stop_kwh = 10.0
         session.total_cost_excl_vat = 4
         session.total_cost_incl_vat = 5
         session.save()
