@@ -686,16 +686,14 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         uid=session_id, evse_id=evse, location_id=evse.location, connector_id=connector_id,
                         token_id=token, billed_to=token.party(),
                     )
+                    session_json = SessionSerializer(instance=session)
                     return Response(
                         dict(
                             status_text=f'Session started',
                             session_id=session_id,
-                            location=str(evse.location),
-                            evse=evse.uid,
-                            connector_id=connector_id,
                             billed_to=token.party(),
-                            token_id=str(token),
                             start_kwh=start_kwh,
+                            session=session_json.data,
                         )
                     )
                 else:
