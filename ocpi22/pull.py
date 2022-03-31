@@ -24,18 +24,18 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
     object_list = [
         dict(
             model='ocpi22.models.tariffs.Tariff', viewset='ocpi22.api.TariffViewSet',
-            url=endpoints.filter(role=EndpointRoleEnum.SENDER.value,
-                                 identifier=Tariff.ocpi_module_name.value).first().url
+            url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
+                                         identifier=Tariff.ocpi_module_name.value).first(), 'url', '')
         ),
         dict(
             model='ocpi22.models.tokens.Token', viewset='ocpi22.api.TokenViewSet',
-            url=endpoints.filter(role=EndpointRoleEnum.SENDER.value,
-                                 identifier=Token.ocpi_module_name.value).first().url
+            url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
+                                         identifier=Token.ocpi_module_name.value).first(), 'url', '')
         ),
         dict(
             model='ocpi22.models.locations.Location', viewset='ocpi22.location.LocationViewSet',
-            url=endpoints.filter(role=EndpointRoleEnum.SENDER.value,
-                                 identifier=Location.ocpi_module_name.value).first().url
+            url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
+                                         identifier=Location.ocpi_module_name.value).first(), 'url', '')
         ),
     ]
     token = credentials.theirs_base64()

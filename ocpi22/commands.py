@@ -16,7 +16,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer, CommandTokenSerializer, LocationIdSerializer
 from ocpi22.auth import OCPIPermission
-from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum
 from ocpi22.cpo_api import CHARGER
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse
@@ -216,6 +216,7 @@ class CommandsViewSet(GenericViewSet):
                     ad_hoc_token=token,
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
                     billed_to=str(billed_to),
+                    authorize_from_msp=False
                 )
 
                 connector_id_from_charger = CHARGER.remote_start_transaction(token.get('uid'), session.evse)
@@ -367,7 +368,8 @@ def send_start_command(request, evse: Evse, token: Token) -> MyCommandResponse:
             authorization_reference=uuid.uuid4().hex,  # Todo: Store authorization for verifying CDR
         )
         response: Response = ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
-                                       to=Party(country_code, party_id), sender=get_our_party('EMSP'),
+                                       to=Party(country_code, party_id),
+                                       sender=get_our_party(OcpiRolesEnum.EMSP.value),
                                        data=data)
         if response.status_code < 300:
             return MyCommandResponse(success=True, message='Starting to charge')

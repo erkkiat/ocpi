@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo_api import CHARGER
 from ocpi22.location import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.business_details import BusinessDetails
@@ -32,7 +33,7 @@ from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, 
 from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles
-from ocpiconnector.ocpi_identities import ocpi_platform
+from ocpiconnector.ocpi_identities import ocpi_platform, get_our_party
 
 default_error_messages = dict(
     object_missing='There is no {name} with UID `{uid}` in our database'
@@ -260,7 +261,7 @@ class TokenViewSet(mixins.ListModelMixin,
         if not token.valid:
             allowed = Token.EXPIRED
             info = 'Your token is no longer valid'
-        elif 'NO_CREDIT' in token_uid:
+        elif 'NO_CREDIT' in token_uid:  # Todo: Callback for billing system to check user has enough balance
             allowed = Token.NO_CREDIT
             info = 'You have insufficient balance on your account'
         serializer = TokenSerializer(instance=token)
@@ -269,7 +270,8 @@ class TokenViewSet(mixins.ListModelMixin,
                 AuthorizationInfo=dict(
                     allowed=allowed,
                     token=serializer.data,
-                    authorization_reference=uuid.uuid4().hex,
+                    authorization_reference=f'{get_our_party(OcpiRolesEnum.EMSP)}-{uuid.uuid4().hex}',
+                    # Todo: Store in billing system
                     info=info
                 )
             )

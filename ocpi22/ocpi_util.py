@@ -350,6 +350,11 @@ class OCPIUrlComponents:
     parameters: str
 
 
+@lru_cache(maxsize=0)
+def get_module_urls() -> list:
+    return (reverse(name) for name in ('location-list', 'commands-list', 'token-list'))
+
+
 @lru_cache(maxsize=100)
 def parse_ocpi_url(url: str) -> OCPIUrlComponents:
     """
@@ -357,6 +362,8 @@ def parse_ocpi_url(url: str) -> OCPIUrlComponents:
     OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION?a=1')
     >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION/')
     OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION')
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/tokens/EKI1/authorize')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/tokens', module=<OcpiModuleEnum.TOKENS: 'tokens'>, parameters='EKI1/authorize')
     >>> parse_ocpi_url('/ocpi/cpo/2.2/locations?limit=5')
     OCPIUrlComponents(path='/ocpi/cpo/2.2/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
     """
@@ -372,11 +379,10 @@ def parse_ocpi_url(url: str) -> OCPIUrlComponents:
             break
 
     # Find the OCPI module path part and separate URL parameters (of course query, but also possible OCPI Command)
-    for name in ('location-list', 'commands-list'):
-        p = reverse(name)
-        if p in url:
-            path = p
-            parameters = url.replace(p, '').strip('/')
+    for module_url in get_module_urls():
+        if module_url in url:
+            path = module_url
+            parameters = url.replace(module_url, '').strip('/')
             break
 
     return OCPIUrlComponents(path, OcpiModuleEnum(module), parameters)

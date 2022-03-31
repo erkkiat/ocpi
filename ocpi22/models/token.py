@@ -74,6 +74,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     valid = models.BooleanField(default=True)
 
     ALWAYS = 'ALWAYS'
+    ALLOWED = 'ALLOWED'
     ALLOWED_OFFLINE = 'ALLOWED_OFFLINE'
     NEVER = 'NEVER'
 

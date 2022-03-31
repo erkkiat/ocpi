@@ -104,17 +104,17 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
     lookup_field = 'evse_id'
 
 
-class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
+class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
-        fields = ['url', 'uid',
-                  'start_date_time', 'end_date_time', 'kwh',
+        fields = ['session_id', 'billed_to',
+                  'start_date_time', 'end_date_time', 'start_kwh',
                   'token', 'auth_method', 'authorization_reference',
                   'location_id', 'evse_uid', 'connector_id', 'currency',
                   'total_cost_incl_vat', 'total_cost_excl_vat',
                   'status', 'last_updated']
 
-    uid = serializers.CharField(read_only=True)
+    session_id = serializers.CharField(source='uid', read_only=True)
     token = serializers.SerializerMethodField(read_only=True)
     location_id = serializers.SerializerMethodField(read_only=True)
     evse_uid = serializers.SerializerMethodField(read_only=True)
@@ -124,7 +124,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     @staticmethod
     def get_token(session):
         return clear_empty(dict(
-            uid=session.cdr_token_uid,
+            token_id=session.cdr_token_uid,
             type=session.cdr_token_type,
             contract_id=session.cdr_token_contract_id
         ))
@@ -335,7 +335,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 #         if session.is_final():
 #             return Response(dict(error='This session cannot be updated, since it already has a final status'),
 #                             status.HTTP_401_UNAUTHORIZED)
-#         serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
+#         serializer = CpoSessionSerializer(session, data=request.data, partial=True, context={'request': request})
 #         if serializer.is_valid():
 #             if serializer.validated_data['kwh']:
 #                 serializer.validated_data['status'] = 'ACTIVE'
@@ -383,7 +383,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 #         session.end_date_time = timezone.now()
 #         session.calculate_price()
 #         session.save()
-#         result = dict(session=SessionSerializer(session, context={'request': request}).data)
+#         result = dict(session=CpoSessionSerializer(session, context={'request': request}).data)
 #         if session.kwh:
 #             # noinspection PyUnresolvedReferences
 #             cdr: Cdr = Cdr.create_based_on_session(session)
@@ -447,7 +447,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 #         if active_session.count():
 #             # Todo: put this on error list
 #             result['warnings'] = dict(
-#                 incomplete_sessions_invalidated=SessionSerializer(
+#                 incomplete_sessions_invalidated=CpoSessionSerializer(
 #                     active_session, many=True, context={'request': request}).data
 #             )
 #         # Todo: send update to MSP
@@ -640,8 +640,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data.get('evse')
                     token: Token = serializer.validated_data.get('token')
-                    authorization_method, authorization_reference = authorize_token(token, evse.location)
-                    if not authorization_reference or not token.valid:
+                    authorization_method, authorization_reference = authorize_token(token.uid, evse.location)
+                    if not authorization_method or not token.valid:
                         return Response(
                             dict(status=f'Token `{token}` is (temporarily) not valid'),
                             status=status.HTTP_401_UNAUTHORIZED
@@ -653,6 +653,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             evse=evse.uid,
                             token=str(token),
                             authorization_reference=authorization_reference,
+                            authorization_method=authorization_method
                         )
                     )
                 else:
@@ -671,6 +672,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         Start the charging transaction (which equals the OCPI session in the roaming network).
         The session will be started regardless of charger status, in case some status change messages
         have been lost on the way.
+
+        If needed, you can call the *authorization* endpoint before *start_transaction*. If you don't,
+        *start_transaction* will make sure authorization is ok. Authorization is not performed for
+        Tokens with whitelist=ALWAYS, and in such case authorization_reference will be an empty string.
         """
         try:
             if request.method == 'POST':
@@ -697,13 +702,15 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         token_id=token, billed_to=token.party(), start_kwh=start_kwh, stop_kwh=start_kwh,
                         session_status=Session.ACTIVE
                     )
-                    session_serializer = SessionSerializer(instance=session)
+                    session_serializer = CpoSessionSerializer(instance=session)
                     return Response(
                         dict(
                             status_text=f'Session started',
-                            session_id=session_id,
-                            billed_to=token.party(),
-                            start_kwh=start_kwh,
+                            # session_id=session_id,
+                            # billed_to=token.party(),
+                            # start_kwh=start_kwh,
+                            # authorization_method=session.auth_method,
+                            # authorization_reference=session.authorization_reference,
                             session=session_serializer.data,
                         )
                     )
@@ -776,7 +783,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     cdr.save()
 
                     cdr_json = CdrSerializer(instance=cdr)
-                    session_serializer = SessionSerializer(instance=session)
+                    session_serializer = CpoSessionSerializer(instance=session)
 
                     return Response(
                         dict(

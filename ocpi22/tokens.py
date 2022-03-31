@@ -1,53 +1,56 @@
 import logging
-import uuid
 
 from cachetools.func import ttl_cache
 from icecream import ic
 
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi_util import ocpi_post
+from ocpi22.routing import find_route
+
+from ocpiconnector.ocpi_identities import get_our_party
 
 
 @ttl_cache(maxsize=128, ttl=15 * 60)
-def authorize_token(token_uid, location_uid=None) -> (str, str):
+def authorize_token(token, location=None) -> (str, str):
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
     (OCPI requirement)
     """
     ic()
-    return Session.AUTH_REQUEST, uuid.uuid4().hex
+    if not isinstance(token, Token):
+        token: Token = Token.get_if_exists(uid=token)
+    if not token:
+        return None, None
+    if token.whitelist == Token.ALWAYS:
+        return Session.WHITELIST, ''
 
-    try:
-        token = Token.objects.get(uid=token_uid)
-        location = Location.objects.get(uid=location_uid)
+    route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)
+    ic(route)
 
-        # noinspection PyUnresolvedReferences
-        endpoints = Endpoint.objects.filter(identifier=OcpiModuleEnum.TOKENS.value, role=EndpointRoleEnum.SENDER.value)
-        for endpoint in endpoints:
-            url = f'{endpoint.url}{token_uid}/authorize'
-            ic(url)
-            location_references = dict(
-                location_id=location.uid,
-                evse_uids=[e.uid for e in location.evses.all()]
-            )
-            result = ocpi_post(
-                url,
-                token_base64=endpoint.get_token_base64(),
-                data=dict(LocationReferences=location_references) if location else dict()
-            )
-            if result.status_code > 400:
-                logging.warning(f'No authorization for token {token_uid} at {location or "<not known>"} '
-                                f'from {endpoint.credentials.party()} (HTTP {result.status_code}). ')
-                # raise exception.PermissionDenied("You don't have enough balance on your account.")
-            if result.status_code == 200:
-                data = result.json()
-                # ic(data)
-                return Session.AUTH_REQUEST, data.get('data').get('AuthorizationInfo')
-        logging.warning(f'No authorization for token {token_uid} at {location or "<not known>"} from any party. '
-                        'Someone may be trying to use a credit card or some other unsuitable payment device.')
-    except Token.DoesNotExist as e:
-        pass
+    location_references = dict(
+        location_id=location.uid,
+        evse_uids=[e.uid for e in location.evses.all()]
+    )
+    result = ocpi_post(
+        f'{route.url}/{token.uid}/authorize',
+        token_base64=route.token_base64,
+        to=token.get_party(),
+        sender=get_our_party(OcpiRolesEnum.CPO),
+        data=dict(LocationReferences=location_references) if location else dict()
+    )
+    data = result.json()
+    authorization = data.get('data', {}).get('AuthorizationInfo', {})
+    allowed = authorization.get('allowed')
+    if result.status_code > 400 or allowed != Token.ALLOWED:
+        logging.warning(f'No authorization for token {token_uid} at {location or "<not known>"} '
+                        f'from {endpoint.credentials.party()} (HTTP {result.status_code}), '
+                        f'response: {allowed}. ')
+        # raise exception.PermissionDenied("You don't have enough balance on your account.")
+    if result.status_code == 200:
+        # ic(data)
+        return Session.AUTH_REQUEST, authorization.get('authorization_reference')
 
     return False, False
 
