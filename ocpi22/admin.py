@@ -118,10 +118,10 @@ class LocationAdmin(NestedModelAdmin):
             # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
             return Location.ocpi_object_owner in ocpi_identities
 
-        def get_readonly_fields(self, request, obj=None) -> list:
-            if obj:
-                return ['uid']
-            return []
+        # def get_readonly_fields(self, request, obj=None) -> list:
+        #     if obj:
+        #         return ['uid']
+        #     return []
 
     model = Location
     search_fields = ['country_code', 'party_id', 'uid', 'name', 'address', 'city',
