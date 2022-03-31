@@ -84,7 +84,7 @@ def get_endpoints_dict(request):
         ]
     if ocpi_platform.is_emsp or ocpi_platform.is_hub:
         result['endpoints'] += [
-            # This is for authorize
+            # This is for authorize Token
             dict(
                 identifier="tokens",
                 role=R,

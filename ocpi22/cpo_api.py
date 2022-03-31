@@ -607,7 +607,19 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def status_change(self, request):
         """
-        Update the charge point availability to the roaming network parties
+        Update the charge point availability to the roaming network parties.
+
+        **IMPORTANT**: To prevent the EV battery from running out, please update the status
+        whenever your monitoring notices a possible problem with the charge point. This way
+        we will be able to show the real availability status to the driver.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the EVSE status has been successfully updated
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_401_UNAUTHORIZED` when the RFID tag exists, but is not valid for charging at the moment
+        * `HTTP_404_NOT_FOUND` when the RFID tag does not exist
+
         """
         try:
             if request.method == 'POST':
@@ -640,14 +652,18 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def authorize(self, request):
         """
-        Authorize charging using a specific RFID token
+        Authorize charging using a specific RFID token. This API call is not mandatory for starting a
+        charging session. `Start_transaction` will request authorization from MSP if needed.
 
-        Authorize request will return one of the following: HTTP_200_OK, HTTP_404_NOT_FOUND or
-        HTTP_401_UNAUTHORIZED.
+        **NOTE**: Authorization responses are cached for 15 minutes, so feel free to
+        call this endpoint multiple times when preparing to start a charging session.
 
-        Feel free to make this request multiple times,
-        and you will get back the same authorization_reference
-        for the next 15 minutes starting from the first authorization request.
+        ## Status codes
+
+        * `HTTP_200_OK` when the RFID tag was authorized for charging
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_401_UNAUTHORIZED` when the RFID tag exists, but is not valid for charging at the moment
+        * `HTTP_404_NOT_FOUND` when the RFID tag does not exist
         """
         try:
             if request.method == 'POST':
@@ -684,13 +700,25 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def start_transaction(self, request):
         """
-        Start the charging transaction (which equals the OCPI session in the roaming network).
-        The session will be started regardless of charger status, in case some status change messages
-        have been lost on the way.
+        This call starts the charging transaction (which equals the OCPI session in the roaming network).
 
-        If needed, you can call the *authorization* endpoint before *start_transaction*. If you don't,
-        *start_transaction* will make sure authorization is ok. Authorization is not performed for
-        Tokens with whitelist=ALWAYS, and in such case authorization_reference will be an empty string.
+        **ENERGY**: If your charge point doesn't reset its energy meter between charging sessions,
+        set start_kwh to the current meter value at the start of the session.
+
+        **AUTHORIZATION REQUEST**: You don't have to call the `authorization` endpoint before `start_transaction`,
+        since we will call it for you. Also, authorization requests are not sent to MSP when the
+        Token has `whitelist=ALWAYS`, and in such cases **authorization_reference will be an empty string**.
+
+        **CHARGER STATUS**: Please update the status to `CHARGING` by using `status_change`.
+        The session will be started regardless of charger status,
+        in case some status change messages have been lost on the way.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the charging session was started successfully
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_404_NOT_FOUND` when the Token or the EVSE doesn't exist
+        * `HTTP_409_CONFLICT` when a Session with the same session_id already exists
         """
         try:
             if request.method == 'POST':
@@ -742,7 +770,19 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def meter_values(self, request):
         """
-        Update the session progress, such as the accumulated kWh
+        Update the session progress. This endpoint should be called at least once per minute with the
+        up to date information about the ongoing charging session.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the session was updated with the provided meter values
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_404_NOT_FOUND` when the Session doesn't exist
+
+        ## Energy
+
+        The used energy is calculated by `kwh - start_kwh` (given in `start_transaction`).
+
         """
         try:
             if request.method == 'POST':
@@ -778,7 +818,18 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def stop_transaction(self, request):
         """
-        Stop the transaction, charging has been finished
+        End the transaction, charging session has been finished.
+
+        **ENERGY**: The used energy is calculated by `stop_kwh - start_kwh`
+        (`start_kwh` was given in `start_transaction`).
+
+        **CHARGER STATUS**: Please update the status by using `status_change`.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the session was finished and Charge Detail Record was created successfully
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_404_NOT_FOUND` when the Session doesn't exist
         """
         try:
             if request.method == 'POST':
@@ -834,22 +885,14 @@ class ChargePointOperatorAPIView(routers.APIRootView):
     """
     This API is not a part of the OCPI protocol. It is intended as fast shortcut to OCPI roaming.
 
-    Here you can try out the CPO API interfaces to support your development and integration work.
-    These streamlined interfaces provide the necessary tools for quickly connecting
-    a CPO backend to eMSPs and hubs which use the OCPI protocol.
+    > Here you can use the CPO API interfaces intearactively
+    > to support your development and integration work.
+    > These streamlined interfaces provide the necessary tools for quickly but comprehensively connecting
+    > a CPO backend to eMSPs and hubs using the OCPI protocol.
 
-    All the objects in the OCPI Connector are available for browsing
+    **ADMIN UI**: All the objects in the OCPI Connector are available for browsing
     and selective modification in the admin tools.
     It also provides tools for maintaining users, groups and their access to the OCPI Connector.
-
-    To start roaming, these integrations are required from the CPO:
-
-    1. Charge point status change (CPO => OCPI Connector)
-    1. Metervalues (CPO => OCPI Connector)
-    1. Remote commands (eMSP => OCPI Connector => CPO)
-
-    If you have more than 10 charge points, you can optionally implement
-    Location, evse and connector export (CPO => OCPI Connector)
 
     For more details, click the examples below and you will find the step-by-step technical documentation.
 

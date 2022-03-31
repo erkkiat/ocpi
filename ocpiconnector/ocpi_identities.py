@@ -126,8 +126,6 @@ def get_identity(role: str = None, identities=ocpi_identities) -> str:
     return identities.get(role)
 
 
-ic(ocpi_identities.get_dict())
-
 @lru_cache(maxsize=None)
 def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     """
