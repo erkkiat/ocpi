@@ -2,7 +2,6 @@ import os
 import uuid
 from typing import Optional
 
-from django.utils import timezone
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -15,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.choices import OCPP_STATUS_CHOICES, OcppStatusEnum
+from ocpi22.choices import OCPP_STATUS_CHOICES, OcppStatusEnum, OcpiRolesEnum
 from ocpi22.location import send_evse_updates
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -26,6 +25,8 @@ from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_va
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
+
+from ocpiconnector.ocpi_identities import get_identity, get_our_party
 
 pp = PrettyPrinter(indent=4).pprint
 
@@ -454,12 +455,26 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 #         return Response(result)
 
 
+def _find_our_evse(evse_uid) -> Evse:
+    party = get_our_party(OcpiRolesEnum.CPO)
+    evses = Evse.objects.filter(uid=evse_uid).select_related('location'). \
+        filter(location__country_code=party.country_code, location__party_id=party.party_id)
+    evse_count = evses.count()
+    if not evse_count:
+        raise ValidationError(f'EVSE with ID {evse_uid} '
+                              f'does not exist in the OCPI Connector database for party {str(party)}')
+    if evse_count > 1:
+        raise ValidationError(f'There are more than one EVSE with ID {evse_uid} '
+                              f'in the OCPI Connector database for party {str(party)}')
+    return evses.first()
+
+
 class EvseSerialnumberSerializer(fields.CharField):
-    def to_internal_value(self, data):
+    def to_internal_value(self, evse_uid):
         try:
-            return Evse.objects.get(uid=data)
+            return _find_our_evse(evse_uid)
         except Evse.DoesNotExist:
-            raise ValidationError(f'Evse with ID `{data}` does not exist')
+            raise ValidationError(f'Evse with ID `{evse_uid}` does not exist')
 
 
 class TokenIdSerializer(fields.CharField):
