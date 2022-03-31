@@ -73,13 +73,15 @@ def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum, role: 
 
 def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
     credentials = get_hub_credentials().first()
-    endpoints = credentials.endpoints.filter(credentials=credentials, identifier=ocpi_module.value,
-                                             role=EndpointRoleEnum.RECEIVER.value)
-    if not endpoints.exists():
-        return None
-    endpoint = endpoints.first()
-    return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
-                 token_base64=credentials.theirs_base64(), direct=False, alive=credentials.connection_state())
+    if credentials:
+        endpoints = credentials.endpoints.filter(credentials=credentials, identifier=ocpi_module.value,
+                                                 role=EndpointRoleEnum.RECEIVER.value)
+        if not endpoints.exists():
+            return None
+        endpoint = endpoints.first()
+        return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
+                     token_base64=credentials.theirs_base64(), direct=False, alive=credentials.connection_state())
+    return None
 
 
 @lru_cache(maxsize=None)
