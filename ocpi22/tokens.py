@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from cachetools.func import ttl_cache
 from django.db.models.signals import post_save
@@ -21,7 +22,7 @@ def token_post_save(sender, instance: Token, *_args, **_kwargs):
 
 
 @ttl_cache(maxsize=128, ttl=15 * 60)
-def authorize_token(token, location=None) -> (str, str):
+def authorize_token(token, location=None) -> Optional[str, str]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
     (OCPI requirement)
@@ -34,8 +35,11 @@ def authorize_token(token, location=None) -> (str, str):
     if token.whitelist == Token.ALWAYS:
         return Session.WHITELIST, ''
 
+    ic(token.get_party())
     route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)
     ic(route)
+    if not route or not token:
+        return False, False
 
     location_references = dict(
         location_id=location.uid,
