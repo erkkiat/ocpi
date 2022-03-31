@@ -22,7 +22,7 @@ def token_post_save(sender, instance: Token, *_args, **_kwargs):
 
 
 @ttl_cache(maxsize=128, ttl=15 * 60)
-def authorize_token(token, location=None) -> Optional[(str, str)]:
+def authorize_token(token, location=None) -> (str, str):
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
     (OCPI requirement)
