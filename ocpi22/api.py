@@ -801,6 +801,15 @@ class RootView(routers.APIRootView):
     """
     Welcome to the OCPI Connector Developer Central.
     Here you have interactive access to the OCPI 2.2 endpoints with examples.
+
+    **OCPI 2.2** is the starting point for the OCPI hierarchy, where the OCPI modules reside.
+
+    **CPO API** is a cost-effective shortcut to OCPI connectivity.
+
+    **OpenAPI** provides output which can be imported in popular API browsing tools.
+
+    In addition, on the top right corner you can find a link to **Admin tools** where
+    you can view and edit the OCPI objects.
     """
 
     @staticmethod
