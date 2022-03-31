@@ -1,6 +1,8 @@
 import logging
 
 from cachetools.func import ttl_cache
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from icecream import ic
 
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
@@ -10,6 +12,12 @@ from ocpi22.ocpi_util import ocpi_post
 from ocpi22.routing import find_route
 
 from ocpiconnector.ocpi_identities import get_our_party
+
+
+@receiver(post_save, sender=Token)
+def token_post_save(sender, instance: Token, *_args, **_kwargs):
+    # In case there is an outdated authorization in the cache
+    authorize_token.cache_clear()
 
 
 @ttl_cache(maxsize=128, ttl=15 * 60)
