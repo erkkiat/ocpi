@@ -1,5 +1,16 @@
 from enum import Enum
 
+
+class OcpiRolesEnum(Enum):
+    CPO = 'CPO'
+    EMSP = 'EMSP'
+    HUB = 'HUB'
+    NAP = 'NAP'
+    NSP = 'NSP'
+    OTHER = 'OTHER'
+    SCSP = 'SCSP'
+
+
 ROLE_CHOICES = (
     ('CPO', 'Charge Point operator'),
     ('EMSP', 'Emobility Service Provider'),

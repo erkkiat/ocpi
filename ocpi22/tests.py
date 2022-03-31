@@ -61,12 +61,13 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
     tests.addTests(doctest.DocTestSuite('ocpi22.commands'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))
-    tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
     tests.addTests(doctest.DocTestSuite('ocpi22.endpoints'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.tariff'))
+    # tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.settings'))
+    tests.addTests(doctest.DocTestSuite('ocpiconnector.ocpi_identities'))
     return tests
 
 

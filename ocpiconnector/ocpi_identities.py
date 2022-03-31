@@ -2,7 +2,9 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 
-from ocpi22.choices import ROLE_OPTIONS
+from icecream import ic
+
+from ocpi22.choices import ROLE_OPTIONS, OcpiRolesEnum
 
 
 @dataclass(eq=True, frozen=True)
@@ -30,20 +32,19 @@ class OCPIIdentities(metaclass=Singleton):
     """
     Store the identities of this OCPI Platform in list and dict form for convenient access
 
-    >>> i = OCPIIdentities(source=dict(CPO='FI*CCC', MSP='FI*MMM'))
-    >>> i['CPO']
-    'FI*CCC'
-    >>> i.get('MSP')
-    'FI*MMM'
-    >>> i.get('AAA')
-    None
-    >>> i.get('AAA', 'BBB')
+    >>> ocpi_identities['CPO']
+    'FI*CPO'
+    >>> ocpi_identities.get('EMSP')
+    'FI*MSP'
+    >>> ocpi_identities.get('AAA')
+    '*'
+    >>> ocpi_identities.get('AAA', 'BBB')
     'BBB'
-    >>> 'FI*CCC' in i
+    >>> 'FI*CPO' in ocpi_identities
     True
-    >>> 'CPO' in i
+    >>> 'CPO' in ocpi_identities
     True
-    >>> 'BBB' in i
+    >>> 'BBB' in ocpi_identities
     False
     """
     _identities_list = []
@@ -109,11 +110,12 @@ ocpi_platform = OCPIPlatform()
 @lru_cache(maxsize=None)
 def get_identity(role: str = None, identities=ocpi_identities) -> str:
     """
-    >>> identities = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
-    >>> get_identity('MSP', identities=identities)
-    {}
-    >>> get_identity(identities=identities)
-    {}
+    >>> get_identity('EMSP')
+    'FI*MSP'
+    >>> get_identity('CPO')
+    'FI*CPO'
+    >>> get_identity()
+    'FI*CPO'
 
     @param role:
     @param identities:
@@ -124,16 +126,17 @@ def get_identity(role: str = None, identities=ocpi_identities) -> str:
     return identities.get(role)
 
 
+ic(ocpi_identities.get_dict())
+
 @lru_cache(maxsize=None)
 def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     """
-    >>> i = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
-    >>> get_our_country_code('CPO', i)
-    'CI'
-    >>> get_our_country_code('MSP', i)
-    'MI'
-    >>> get_our_country_code(None, i)  # Return the first one (for Credentials DELETE)
-    CI
+    >>> get_our_country_code('CPO')
+    'FI'
+    >>> get_our_country_code('EMSP')
+    'FI'
+    >>> get_our_country_code(None)  # Return the first one (for Credentials DELETE)
+    'FI'
     """
     country_code, _party_id = get_identity(role, identities).split('*')
     return country_code
@@ -142,13 +145,12 @@ def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
 @lru_cache(maxsize=None)
 def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
     """
-    >>> i = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
-    >>> get_our_party_id('CPO', i)
-    'CCC'
-    >>> get_our_party_id('MSP', i)
-    'MMM'
-    >>> get_our_party_id(None, i)  # Return the first one (for Credentials DELETE)
-    'CCC'
+    >>> get_our_party_id('CPO')
+    'CPO'
+    >>> get_our_party_id('EMSP')
+    'MSP'
+    >>> get_our_party_id(None)  # Return the first one (for Credentials DELETE)
+    'CPO'
     """
     _country_code, party_id = get_identity(role, identities).split('*')
     return party_id
@@ -158,15 +160,15 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
 
 
 @lru_cache(maxsize=None)
-def get_our_party(role: str = None, identities=ocpi_identities) -> Party:
+def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Party:
     """
-    >>> i = OCPIIdentities(source=dict(CPO='CI*CCC', MSP='MI*MMM'))
-    >>> get_our_party_id('CPO', i)
-    'CCC'
-    >>> get_our_party_id('MSP', i)
-    'MMM'
-    >>> get_our_party_id(None, i)  # Return the first one (for Credentials DELETE)
-    'CCC'
+    >>> get_our_party(OcpiRolesEnum.CPO)
+    Party(country_code='FI', party_id='CPO')
+    >>> get_our_party(OcpiRolesEnum.EMSP)
+    Party(country_code='FI', party_id='MSP')
+    >>> get_our_party(None)  # Return the first one (for Credentials DELETE)
+    Party(country_code='FI', party_id='CPO')
     """
-    country_code, party_id = get_identity(role, identities).split('*')
+    assert not role or isinstance(role, OcpiRolesEnum)
+    country_code, party_id = get_identity(role.value if role else '', identities).split('*')
     return Party(country_code, party_id)
