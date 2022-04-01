@@ -508,9 +508,10 @@ class OcppStatusSerializer(fields.ChoiceField):
             OcppStatusEnum.RESERVED.value: 'RESERVED',
             OcppStatusEnum.UNAVAILABLE.value: 'CHARGING',
             OcppStatusEnum.FAULTED.value: 'OUTOFORDER',
-        }.get(data)
+        }.get(data.upper())
         if not result:
-            raise ValidationError(f"'{data}' is not a know OCPP status")
+            options = [x[0] for x in OCPP_STATUS_CHOICES]
+            raise ValidationError(f"'{data}' is not a known OCPP status. Options are: {options}.")
         return result
 
 
@@ -617,26 +618,27 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         * `HTTP_200_OK` when the EVSE status has been successfully updated
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
-        * `HTTP_401_UNAUTHORIZED` when the RFID tag exists, but is not valid for charging at the moment
-        * `HTTP_404_NOT_FOUND` when the RFID tag does not exist
+        * `HTTP_404_NOT_FOUND` when the EVSE or Token is not found
 
         """
         try:
             if request.method == 'POST':
                 serializer = StatusChangeSerializer(data=request.data)
                 if serializer.is_valid():
-                    ocpp_status = serializer.validated_data.get('status')
+                    ocpp_status = serializer.initial_data.get('status')
+                    ocpi_status = serializer.validated_data.get('status')
 
                     # Todo: Filter just our evses
                     evse: Evse = serializer.validated_data.get('evse')
 
-                    evse.status = ocpp_status
+                    evse.status = ocpi_status
                     evse.save()
                     return Response(
                         dict(
                             status_text=f'EVSE status has been changed',
                             evse=evse.uid,
-                            evse_status=evse.status,
+                            ocpi_status=evse.status,
+                            ocpp_status=ocpp_status
                         )
                     )
                 else:
