@@ -56,6 +56,7 @@ client = Client()
 
 
 def load_tests(_loader, tests, _ignore):
+    tests.addTests(doctest.DocTestSuite('ocpi22.api'))
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.ocpi_util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))

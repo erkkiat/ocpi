@@ -461,36 +461,27 @@ def _find_our_evse(evse_uid) -> Evse:
         filter(location__country_code=party.country_code, location__party_id=party.party_id)
     evse_count = evses.count()
     if not evse_count:
-        raise ValidationError(f'EVSE with ID {evse_uid} '
-                              f'does not exist in the OCPI Connector database for party {str(party)}')
+        raise Evse.DoesNotExist(f'EVSE with ID {evse_uid} '
+                                f'does not exist in the OCPI Connector database for party {str(party)}')
     if evse_count > 1:
-        raise ValidationError(f'There are more than one EVSE with ID {evse_uid} '
-                              f'in the OCPI Connector database for party {str(party)}')
+        raise Evse.DoesNotExist(f'There are more than one EVSE with ID {evse_uid} '
+                                f'in the OCPI Connector database for party {str(party)}')
     return evses.first()
 
 
 class EvseSerialnumberSerializer(fields.CharField):
     def to_internal_value(self, evse_uid):
-        try:
-            return _find_our_evse(evse_uid)
-        except Evse.DoesNotExist:
-            raise ValidationError(f'Evse with ID `{evse_uid}` does not exist')
+        return _find_our_evse(evse_uid)
 
 
 class TokenIdSerializer(fields.CharField):
     def to_internal_value(self, data):
-        try:
-            return Token.objects.get(uid=data)
-        except Token.DoesNotExist:
-            raise ValidationError(f'Token with ID `{data}` does not exist')
+        return Token.objects.get(uid=data)
 
 
 class SessionIdSerializer(fields.CharField):
     def to_internal_value(self, data):
-        try:
-            return Session.objects.get(uid=data)
-        except Session.DoesNotExist:
-            raise ValidationError(f'Session with ID `{data}` does not exist')
+        return Session.objects.get(uid=data)
 
 
 class OcppStatusSerializer(fields.ChoiceField):
@@ -685,6 +676,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             status_text=f'Token authorized for charging',
                             evse=evse.uid,
                             token=str(token),
+                            billed_to=token.party(),
                             authorization_reference=authorization_reference,
                             authorization_method=authorization_method
                         )

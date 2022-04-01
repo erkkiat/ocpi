@@ -254,6 +254,13 @@ class TokenViewSet(mixins.ListModelMixin,
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
+        def generate_auth_reference():
+            """
+            >>> len(generate_auth_reference()) <= 36
+            True
+            """
+            return f'{get_our_party(OcpiRolesEnum.EMSP)}-{uuid.uuid4().hex[:29]}'
+
         ic(request.data, request.get_full_path())
         token = get_object_or_404(Token, uid=token_uid)
         allowed = Token.ALLOWED
@@ -270,7 +277,7 @@ class TokenViewSet(mixins.ListModelMixin,
                 AuthorizationInfo=dict(
                     allowed=allowed,
                     token=serializer.data,
-                    authorization_reference=f'{get_our_party(OcpiRolesEnum.EMSP)}-{uuid.uuid4().hex}',
+                    authorization_reference=generate_auth_reference(),
                     # Todo: Store in billing system
                     info=info
                 )
