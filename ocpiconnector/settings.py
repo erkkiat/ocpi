@@ -185,6 +185,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+if 'MOESIF_API_KEY' in os.environ:
+    MIDDLEWARE.append('moesifdjango.middleware.moesif_middleware')
+
 if os.environ.get('DEBUG_MIDDLEWARE') in TRUE_OPTIONS:
     MIDDLEWARE.append('ocpi22.middleware.DebugMiddleware')
 
@@ -288,3 +291,19 @@ CELERY_TASK_TIME_LIMIT = TIMEOUT_FOR_COMMANDS - 1
 CELERY_WORKER_CANCEL_LONG_RUNNING_TASKS_ON_CONNECTION_LOSS = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = os.environ.get('CELERY_QUEUE', 'default')
+
+
+# Moesif API analytics
+
+def identifyUser(req, res):
+    if req.user and req.user.is_authenticated:
+        return req.user.username
+    else:
+        return None
+
+
+MOESIF_MIDDLEWARE = {
+    'APPLICATION_ID': os.environ.get('MOESIF_API_KEY'),
+    'CAPTURE_OUTGOING_REQUESTS': False,  # Set to True to also capture outgoing calls to 3rd parties.
+    'IDENTIFY_USER': identifyUser  # Optional hook to link API calls to users
+}

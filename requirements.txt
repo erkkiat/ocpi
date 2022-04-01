@@ -19,7 +19,7 @@ python-dateutil==2.8.2
 pyyaml==6.0
 uritemplate==4.1.1
 celery==5.2.3
-redis==4.2.0
+redis==4.2.1
 gunicorn==20.1.0
 slack-logger>=0.3.1,<1.0
 colorama~=0.4.4
@@ -28,3 +28,4 @@ cronitor==4.4.4
 nordpool==0.3.2
 time_machine==2.6.0
 django-multiselectfield==0.1.12
+moesifdjango==2.0.5
