@@ -8,6 +8,7 @@ from typing import Optional, Any
 from django.conf import settings
 from django.core.validators import RegexValidator
 from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.renderers import BrowsableAPIRenderer
 
 from ocpi22.ocpi_util import OCPIResponse
@@ -242,14 +243,18 @@ def apply_step_size(value, step_size, divisor=1) -> float:
     0.5
     >>> apply_step_size(16/60, 60*15, 3600)  # 16 minutes, 15 minute step, seconds/hour
     0.5
-    >>> apply_step_size(3, 2)  # 3 kWh, round up to 2 kWh, 1-to-1 comparison
+    >>> apply_step_size(3, 2000, 1000)  # 3 kWh, round up to 2 kWh, 1-to-1 comparison
     4.0
-    >>> apply_step_size(5.1, 5)  # 5.1 kWh, round up to 5 kWh, 1-to-1 comparison
+    >>> apply_step_size(5.1, 5000, 1000)  # 5.1 kWh, round up to 5 kWh, 1-to-1 comparison
     10.0
-    >>> apply_step_size(5.1, .5)  # 5.1 kWh, round up to 0.5 kWh, 1-to-1 comparison
+    >>> apply_step_size(5.1, 500, 1000)  # 5.1 kWh, round up to 0.5 kWh, 1-to-1 comparison
     5.5
     >>> apply_step_size(2.5, 60, 3600)  # 2h 30min, 1 minute step, seconds/hour
     2.5
+    >>> apply_step_size(2.5, 0, 3600)  # Failsafe should take care of this
+    2.5
+    >>> apply_step_size(0.1155, 1, 1000)  # Failsafe should take care of this
+    0.116
 
     @param value:
     @param step_size:
@@ -257,7 +262,8 @@ def apply_step_size(value, step_size, divisor=1) -> float:
                     convert hours into seconds by using divisor=3600
     @return:
     """
-    assert value > 0 and step_size > 0 and divisor > 0, 'apply_step_size() requires positive parameters'
+    # Step size has to be at least 1
+    step_size = max(step_size, 1)
     value = value * divisor
     modulo = (value % step_size)
     if modulo:

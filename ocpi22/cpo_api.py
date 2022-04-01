@@ -778,6 +778,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         * `HTTP_200_OK` when the session was updated with the provided meter values
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_404_NOT_FOUND` when the Session doesn't exist
+        * `HTTP_417_EXPECTATION_FAILED` when the applicable Tariff is misconfigured
 
         ## Energy
 
@@ -814,6 +815,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
+        except ValidationError as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_417_EXPECTATION_FAILED)
 
     @action(methods=('GET', 'POST'), detail=False)
     def stop_transaction(self, request):
