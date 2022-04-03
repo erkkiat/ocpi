@@ -128,9 +128,9 @@ def command_start(data, session_uid, update_url, url):
         return False
     try:
         # POST the start command to CPO system
+        from ocpi22.cpo_api import get_callbacks_parameter, CallbacksSerializer
         result = requests.post(
-            os.environ.get('ENDPOINT_SESSION_START', default=url),
-            # For testing, append: + '?force_result=EVSE_OCCUPIED',
+            get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL),
             data=dict(
                 location=session.location.uid,
                 evse=session.evse.uid,

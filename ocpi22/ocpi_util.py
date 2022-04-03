@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
@@ -14,11 +15,11 @@ from icecream import ic
 from requests import Response
 from rest_framework import exceptions, status
 from rest_framework.pagination import LimitOffsetPagination
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
-from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party, get_our_party
 
 
 class OcpiModule:
@@ -465,3 +466,11 @@ def get_to_party(headers) -> Party:
     Party(country_code='FI', party_id='EON')
     """
     return get_sender_party(headers, 'HTTP_OCPI_TO_COUNTRY_CODE', 'HTTP_OCPI_TO_PARTY_ID')
+
+
+def generate_auth_reference():
+    """
+    >>> len(generate_auth_reference()) <= 36
+    True
+    """
+    return f'{get_our_party(OcpiRolesEnum.EMSP)}-{uuid.uuid4().hex[:29]}'

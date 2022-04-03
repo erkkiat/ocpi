@@ -26,7 +26,7 @@ def get_token(token_id, ad_hoc_token):
 
 def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None,
                    billed_to=None, uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorize_from_msp=True
+                   authorize_from_msp=True, authorization_reference=''
                    ) -> Session:
     # ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
     if not uid:
@@ -45,7 +45,6 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
             raise exceptions.PermissionDenied(f'Token {token} was not authorized for use by MSP at this time')
     else:
         authorization_method = Session.COMMAND
-        authorization_reference = ''
     # noinspection PyUnresolvedReferences
     active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
     if active_sessions.count():

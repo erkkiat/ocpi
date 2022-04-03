@@ -584,6 +584,9 @@ class CallbacksSerializer(serializers.Serializer):
     """
     The URLs for callback endpoints in the CPO system
     """
+    START_TRANSACTION_URL = 'start_transaction_url'
+    STOP_TRANSACTION_URL = 'stop_transaction_url'
+
     start_transaction_url = serializers.URLField()
     stop_transaction_url = serializers.URLField()
     # unlock_connector_url = serializers.URLField(required=False)
@@ -603,13 +606,11 @@ def _format_redis_key(key: str, namespace: str) -> str:
 
 
 def set_callbacks_parameter(key: str, value: str) -> None:
-    ic()
     redis_store.set(_format_redis_key(key, 'callback'), value)
 
 
 @lru_cache(maxsize=128)
 def get_callbacks_parameter(key: str) -> Union[str, int, list]:
-    ic()
     return redis_store.get(_format_redis_key(key, 'callback'))
 
 

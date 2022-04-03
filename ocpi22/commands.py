@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 from django.conf import settings
 from django.db import transaction
 from django.http import Http404
+from icecream import ic
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -14,7 +15,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.api import TokenSerializer, CommandTokenSerializer, LocationIdSerializer
+from ocpi22.api import TokenSerializer, CommandTokenSerializer, LocationIdSerializer, SessionSaveSerializer
 from ocpi22.auth import OCPIPermission
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum
 from ocpi22.cpo_api import CHARGER
@@ -25,7 +26,7 @@ from ocpi22.models.token import Token
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions import create_session
 from ocpi22.tasks import command_start
-from ocpi22.ocpi_util import ocpi_post, OCPIResponse, Ocpi, get_sender_party
+from ocpi22.ocpi_util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference
 
 import pprint
 
@@ -210,19 +211,24 @@ class CommandsViewSet(GenericViewSet):
                 connector_id = serializer.validated_data.get('connector_id', None)
                 evse_uid = serializer.validated_data.get('evse_uid', '')
                 session: Session = create_session(
-                    location_id=serializer.data['location_id'],
+                    location_id=serializer.validated_data['location_id'],
                     evse_id=evse_uid,
                     connector_id=connector_id,
                     ad_hoc_token=token,
                     # When eMSP sends a SESSION_START, they are responsible for validating their Token
                     billed_to=str(billed_to),
-                    authorize_from_msp=False
+                    authorize_from_msp=False,
+                    authorization_reference=serializer.validated_data.get('authorization_reference'),
                 )
 
-                connector_id_from_charger = CHARGER.remote_start_transaction(token.get('uid'), session.evse)
-                if not connector_id_from_charger:
-                    return Response(dict(error=f'Unable to start session on charger at this time',
-                                         status=status.HTTP_406_NOT_ACCEPTABLE))
+                saved_session_serializer = SessionSaveSerializer(instance=session)
+                ic()
+                ic(saved_session_serializer.data)
+
+                # connector_id_from_charger = CHARGER.remote_start_transaction(token.get('uid'), session.evse)
+                # if not connector_id_from_charger:
+                #     return Response(dict(error=f'Unable to start session on charger at this time',
+                #                          status=status.HTTP_406_NOT_ACCEPTABLE))
 
                 kwargs = dict(
                     data=serializer.data, session_uid=session.uid,
@@ -365,7 +371,7 @@ def send_start_command(request, evse: Evse, token: Token) -> MyCommandResponse:
             token=TokenSerializer(token).data,
             location_id=evse.location.uid,
             evse_uid=evse.uid,
-            authorization_reference=uuid.uuid4().hex,  # Todo: Store authorization for verifying CDR
+            authorization_reference=generate_auth_reference(),  # Todo: Store authorization for verifying CDR
         )
         response: Response = ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
                                        to=Party(country_code, party_id),
