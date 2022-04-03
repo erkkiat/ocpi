@@ -100,7 +100,7 @@ def set_spot_prices() -> bool:
 
 
 # For Heroku Redis and Redis Enterprise Cloud
-REDIS_URL = os.environ.get('REDIS_URL', os.environ.get('REDISCLOUD_URL'))  # This needs to fail if neither is set
+REDIS_URL = settings.REDIS_URL
 assert settings.DEBUG or REDIS_URL, 'REDIS_URL needs to be set at least in the production'
 if 'rediss' in REDIS_URL and 'ssl_cert_reqs' not in REDIS_URL:
     REDIS_URL += '?ssl_cert_reqs=CERT_NONE'
@@ -115,10 +115,7 @@ if REDIS_URL:
     # Send pings automatically to Cronitor for Celery background tasks
     cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
 else:
-    logging.error('REDIS_URL not set, no connection to REDIS')
-
-
-# Todo: Route commands through HUB
+    logging.error(f'{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS')
 
 
 @shared_task(max_retries=0)
@@ -127,7 +124,7 @@ def command_start(data, session_uid, update_url, url):
     from rest_framework.generics import get_object_or_404
     session: Session = Session.get_if_exists(uid=session_uid)
     if not session:
-        logging.error(f"Unable to find session {session_uid} to start charging.")
+        logging.error(f"{settings.HOSTNAME}: Unable to find session {session_uid} to start charging.")
         return False
     try:
         # POST the start command to CPO system
@@ -161,8 +158,8 @@ def command_start(data, session_uid, update_url, url):
             status_text = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
     except (requests.exceptions.ConnectionError, Http404, Exception) as e:
         status_text = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
-        logging.error(f'Cannot reach {update_url}, please check your request parameters.')
-        logging.error(str(e))
+        logging.error(f'{settings.HOSTNAME}: Cannot reach {update_url}, please check your request parameters.')
+        logging.error(f'{settings.HOSTNAME}: {str(e)}')
 
     # Send asynchronous OCPI response to eMSP
     result_data = dict(
@@ -176,7 +173,7 @@ def command_start(data, session_uid, update_url, url):
         response_url = data.get('response_url')
         requests.post(response_url, data=json.dumps(result_data).encode('utf8'))
     except requests.exceptions.ConnectionError as e:
-        logging.error(str(e))
+        logging.error(f'{settings.HOSTNAME}: {str(e)}')
 
 
 @shared_task
@@ -205,7 +202,8 @@ def send_ocpi_request(data, url: str, token_base64: str,
         logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
             logging.error(result.text[-500:])
-            logging.error(f'Unable to send update to {url}: {result.status_code} - {result.reason}')
+            logging.error(
+                f'{settings.HOSTNAME}: Unable to send update to {url}: {result.status_code} - {result.reason}')
         if credentials_id:
             from ocpi22.models.credentials import Credentials
             credentials = Credentials.get_if_exists(pk=credentials_id)
@@ -217,7 +215,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
             headers=dict(result.headers) if result.headers else {},
         )
     except requests.exceptions.ConnectionError:
-        logging.error(f"Unable to send an OCPI request to {str(to)} at {url}.")
+        logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}.")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
             # noinspection PyUnresolvedReferences
@@ -241,7 +239,7 @@ def send_evse_status_update(evse_uid, endpoint_pk):
         )
 
     url = urljoin(endpoint.url, f'{location.country_code}/{location.party_id}/{location.uid}/{evse_uid}/')
-    logging.error(f'Sending Evse update to {endpoint.credentials.party()} at {url}')
+    logging.info(f'Sending Evse update to {endpoint.credentials.party()} at {url}')
 
     # Gireve accepts only status updates, so let's make sure no other data gets through
     # They will pull full locations every 24h
@@ -256,7 +254,8 @@ def send_evse_status_update(evse_uid, endpoint_pk):
         headers=dict(Authorization=f'Token {token_base64}'))
     if result.status_code >= status.HTTP_400_BAD_REQUEST:
         logging.error(result.text[-400:])
-        logging.error(f'Unable to send Evse status update to {url}: {result.status_code} - {result.reason}')
+        logging.error(f'{settings.HOSTNAME}: Unable to send Evse status update to '
+                      f'{url}: {result.status_code} - {result.reason}')
 
 
 @shared_task(max_retries=2, retry_backoff=2)
@@ -282,7 +281,7 @@ def pull_objects(object_list, limit=20, **kwargs) -> None:
                 try:
                     viewset.put(request=None, data=i)
                 except Exception as e:
-                    logging.error(f"Unable to update {model} using data pulled from url {url} "
+                    logging.error(f"{settings.HOSTNAME}: Unable to update {model} using data pulled from url {url} "
                                   f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
 
             if next_url:
@@ -295,7 +294,7 @@ def pull_objects(object_list, limit=20, **kwargs) -> None:
             else:
                 pull_objects(object_list, limit, **kwargs)
     except requests.exceptions.ConnectionError as e:
-        logging.error(f"Unable to pull objects: {e}")
+        logging.error(f"{settings.HOSTNAME}: Unable to pull objects: {e}")
 
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways
@@ -311,7 +310,8 @@ def check_still_alive(credentials_id: int = None) -> None:
             credentials.connection_status = 'CONNECTED'
             logging.info(f"{credentials} is alive")
         except Exception as e:
-            logging.error(f"STILL ALIVE CHECK: Unable to connect to {credentials} ({credentials.url}): {e}")
+            logging.error(f"{settings.HOSTNAME}: STILL ALIVE CHECK: Unable to connect to "
+                          f"{credentials} ({credentials.url}): {e}")
             credentials.connection_status = 'OFFLINE'
         credentials.save(update_fields=['last_connection', 'connection_status'])
         return

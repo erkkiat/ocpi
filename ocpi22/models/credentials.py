@@ -240,7 +240,8 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
             # noinspection PyUnresolvedReferences
             role: CredentialsRole = credentials.roles.first()
             if not role:
-                logging.error(f'Cannot find a Credentials endpoint for {credentials} to send a DELETE')
+                logging.error(
+                    f'{settings.HOSTNAME}: Cannot find a Credentials endpoint for {credentials} to send a DELETE')
                 return
             args = data, e.url, e.get_token_base64(), role.country_code, role.party_id, \
                    our_party.country_code, our_party.party_id, 'delete'
@@ -250,7 +251,7 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
             else:
                 send_ocpi_request(*args)
             return
-    logging.error(f'Cannot find our party ID to send a Credentials DELETE for {credentials}')
+    logging.error(f'{settings.HOSTNAME}: Cannot find our party ID to send a Credentials DELETE for {credentials}')
 
 
 @lru_cache(maxsize=None)

@@ -1,6 +1,7 @@
 import logging
 import uuid
 
+from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -185,7 +186,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         # if cdr.exists():
         #     raise ValidationError(dict(status_text=f'A CDR has already been created for session `{session.uid}`'))
         if session.total_cost_excl_vat is None:
-            logging.error(f'Session {session} has no total cost')
+            logging.error(f'{settings.HOSTNAME}: Session {session} has no total cost')
         if not session.end_date_time:
             session.end_date_time = timezone.now()
 

@@ -117,7 +117,7 @@ class OcpiModule:
                 cls._send_update(data, url, token_base64, to=Party(country_code, party_id),
                                  sender=Party(our_country_code, our_party_id), method=method)
             return True
-        logging.error(f"Unable to send updates for {cls}, don't know where to send.")
+        logging.error(f"{settings.HOSTNAME}: Unable to send updates for {cls}, don't know where to send.")
         return False
 
     @classmethod
@@ -174,7 +174,7 @@ def ocpi_post(url, token_base64,
                              headers=make_headers(token_base64, to, sender))
     if response.status_code >= 300:
         logging.info(f'*** Got response: {response.status_code} - {response.reason}')
-        logging.error(response.text)
+        logging.error(f'{settings.HOSTNAME}: {response.text}')
         raise exceptions.APIException(f'Got response for {url}: {response.status_code} - {response.reason} ')
     return response
 
@@ -198,7 +198,7 @@ class OCPIResponse(Response):
             data = errors  # This is a courtacy, it's not OCPI compliant
             status_code = Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS
             http_status = status.HTTP_400_BAD_REQUEST
-            logging.error(status_message)
+            logging.error(f'{settings.HOSTNAME}: {status_message}')
         result = format_ocpi_response(status_code, status_message, data)
         super().__init__(result, status=http_status, *args, **kwargs)
 

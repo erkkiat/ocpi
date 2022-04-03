@@ -375,7 +375,7 @@ def send_start_command(request, evse: Evse, token: Token) -> MyCommandResponse:
             return MyCommandResponse(success=True, message='Starting to charge')
     else:
         message = f"{evse.location.party()} is unreachable through this hub"
-        logging.error(message)
+        logging.error(f'{settings.HOSTNAME}: {message}')
         return MyCommandResponse(success=False, message=message)
 
 
@@ -396,5 +396,5 @@ def send_stop_command(request, session: Session) -> Response:
         return ocpi_post(urljoin(f'{endpoint.url}/', 'STOP_SESSION'), endpoint.get_token_base64(),
                          data=data)
     else:
-        logging.error(f'Unable to find endpoint for {session.party()}.')
+        logging.error(f'{settings.HOSTNAME}: Unable to find endpoint for {session.party()}.')
         return Response()

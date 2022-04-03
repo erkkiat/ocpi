@@ -50,7 +50,7 @@ def find_credentials(party: Party):
     if roles_count:
         # We found a direct connection
         if roles_count > 1:
-            logging.error(f'Multiple Credentials for {str(party)} in the database')
+            logging.error(f'{settings.HOSTNAME}: Multiple Credentials for {str(party)} in the database')
         role = roles.first()
         return role.credentials
 
@@ -62,11 +62,11 @@ def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum, role: 
     endpoint_count = endpoints.count()
     if endpoint_count:
         if endpoint_count > 1:
-            logging.error(f'Multiple Endpoints for {credentials.party()} in the database')
+            logging.error(f'{settings.HOSTNAME}: Multiple Endpoints for {credentials.party()} in the database')
         endpoint = endpoints.first()
         return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
                      token_base64=credentials.theirs_base64(), direct=True, alive=credentials.connection_state())
-    error_text = f'Endpoint `{ocpi_module.value}` not found for party {credentials}'
+    error_text = f'{settings.HOSTNAME}: Endpoint `{ocpi_module.value}` not found for party {credentials}'
     logging.error(error_text)
     raise ValueError(error_text)
 
@@ -130,5 +130,5 @@ def route_ocpi_request(request: HttpRequest, party: Party):
         return JsonResponse({'error': f'Unable to find route to {str(party)}'}, status=status.HTTP_404_NOT_FOUND)
 
     except json.JSONDecodeError as e:
-        logging.error(f'Unable to route request: {e}')
+        logging.error(f'{settings.HOSTNAME}: Unable to route request: {e}')
     return JsonResponse({'error': f'Unable to route to {str(party)}'}, status=status.HTTP_406_NOT_ACCEPTABLE)
