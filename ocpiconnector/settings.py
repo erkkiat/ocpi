@@ -24,6 +24,7 @@ if not SECRET_KEY and DEBUG:
     SECRET_KEY = '1234567890'
 assert SECRET_KEY, 'Please set a SECRET_KEY in environment'
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
+REDIS_URL = os.environ.get('REDIS_URL', os.environ.get('REDISCLOUD_URL'))
 
 # Send updates to partners who we have Credentials for
 SEND_UPDATES = _env_bool('SEND_UPDATES', True)

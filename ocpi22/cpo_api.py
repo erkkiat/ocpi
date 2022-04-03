@@ -1,7 +1,11 @@
+import logging
 import os
 import uuid
-from typing import Optional
+from functools import lru_cache
+from typing import Optional, Union
 
+import redis
+from django.conf import settings
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -29,7 +33,7 @@ from pprint import PrettyPrinter
 from ocpiconnector.ocpi_identities import get_identity, get_our_party
 
 pp = PrettyPrinter(indent=4).pprint
-
+redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
 slack_logging.init()
 
 
@@ -576,6 +580,39 @@ class StopTransactionSerializer(serializers.Serializer):
     )
 
 
+class CallbacksSerializer(serializers.Serializer):
+    """
+    The URLs for callback endpoints in the CPO system
+    """
+    start_transaction_url = serializers.URLField(required=False)
+    stop_transaction_url = serializers.URLField(required=False)
+    # unlock_connector_url = serializers.URLField(required=False)
+    # reserve_now_url = serializers.URLField(required=False)
+    # cancel_reservation_url = serializers.URLField(required=False)
+    user = serializers.CharField(required=False)
+    password = serializers.CharField(write_only=True, required=False)
+
+    def save(self):
+        for key, value in self.validated_data.items():
+            set_callbacks_parameter(key, value)
+        redis_store.save()
+
+
+def _format_redis_key(key: str, namespace: str) -> str:
+    return f'{namespace}-{key}'
+
+
+def set_callbacks_parameter(key: str, value: str) -> None:
+    ic()
+    redis_store.set(_format_redis_key(key, 'callback'), value)
+
+
+@lru_cache(maxsize=128)
+def get_callbacks_parameter(key: str) -> Union[str, int, list]:
+    ic()
+    return redis_store.get(_format_redis_key(key, 'callback'))
+
+
 # Todo: limit access to certain privilege holders
 class ChargePointViewSet(viewsets.GenericViewSet):
     """
@@ -594,6 +631,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             start_transaction=StartTransactionSerializer,
             meter_values=MeterValuesSerializer,
             stop_transaction=StopTransactionSerializer,
+            callbacks=CallbacksSerializer,
         ).get(self.action_map.get('post'), StatusChangeSerializer)
 
     @action(methods=('GET', 'POST'), detail=False)
@@ -869,6 +907,38 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
 
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False)
+    def callbacks(self, request):
+        try:
+            if request.method == 'GET':
+                serializer = CallbacksSerializer()
+                testdata = dict(
+                    [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
+                )
+                serializer = CallbacksSerializer(instance=testdata)
+                return Response(
+                    serializer.data
+                )
+            if request.method in ('POST', 'PATCH'):
+                partial = bool(request.method == 'PATCH')
+                serializer = CallbacksSerializer(data=request.data, partial=partial)
+                if serializer.is_valid():
+                    serializer.save()
+                    get_callbacks_parameter.cache_clear()
+                    return Response(serializer.data)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except redis.exceptions.ConnectionError as e:
+            logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
+                          f'due to trouble connecting with Redis: {e}')
+            return Response(
+                dict(
+                    status_text='Unable to store settings due to connection problem with Redis. '
+                                'This is our fault, sorry. Support has been alerted.'
+                ),
+                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
+
     def get_view_name(self):
         if self.name:
             return f'{self.name.capitalize()}'
@@ -918,6 +988,9 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             ),
             stop_transaction=request.build_absolute_uri(
                 reverse('chargepoint-stop-transaction')
+            ),
+            callbacks=request.build_absolute_uri(
+                reverse('chargepoint-callbacks')
             ),
         )
         return Response(result)
