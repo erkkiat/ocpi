@@ -584,13 +584,13 @@ class CallbacksSerializer(serializers.Serializer):
     """
     The URLs for callback endpoints in the CPO system
     """
-    start_transaction_url = serializers.URLField(required=False)
-    stop_transaction_url = serializers.URLField(required=False)
+    start_transaction_url = serializers.URLField()
+    stop_transaction_url = serializers.URLField()
     # unlock_connector_url = serializers.URLField(required=False)
     # reserve_now_url = serializers.URLField(required=False)
     # cancel_reservation_url = serializers.URLField(required=False)
-    user = serializers.CharField(required=False, allow_blank=True, allow_null=True)
-    password = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
+    user = serializers.CharField(allow_blank=True, allow_null=True)
+    password = serializers.CharField(write_only=True, allow_blank=True, allow_null=True)
 
     def save(self):
         for key, value in self.validated_data.items():
