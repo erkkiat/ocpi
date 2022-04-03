@@ -304,6 +304,6 @@ def identifyUser(req, res):
 
 MOESIF_MIDDLEWARE = {
     'APPLICATION_ID': os.environ.get('MOESIF_API_KEY'),
-    'CAPTURE_OUTGOING_REQUESTS': False,  # Set to True to also capture outgoing calls to 3rd parties.
+    'CAPTURE_OUTGOING_REQUESTS': True,  # Set to True to also capture outgoing calls to 3rd parties.
     'IDENTIFY_USER': identifyUser  # Optional hook to link API calls to users
 }
