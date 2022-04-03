@@ -589,8 +589,8 @@ class CallbacksSerializer(serializers.Serializer):
     # unlock_connector_url = serializers.URLField(required=False)
     # reserve_now_url = serializers.URLField(required=False)
     # cancel_reservation_url = serializers.URLField(required=False)
-    user = serializers.CharField(required=False)
-    password = serializers.CharField(write_only=True, required=False)
+    user = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
 
     def save(self):
         for key, value in self.validated_data.items():
@@ -907,25 +907,40 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
 
+    def _get_callbacks(self):
+        serializer = CallbacksSerializer()
+        data = dict(
+            [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
+        )
+        serializer = CallbacksSerializer(instance=data)
+        return serializer.data
+
     @action(methods=('GET', 'POST', 'PATCH'), detail=False)
     def callbacks(self, request):
+        """
+        You need to tell the OCPI Connector where to send commands such as `start transaction` and
+        `stop transaction`. Using this endpoint you can set and get your callback URLs and
+        user credentials needed for accessing the endpoints you specify. When you GET the
+        settings, `password` will never be shown.
+
+        **NOTE**: To clear `user` or `password`, set them to an empty string.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the session was finished and Charge Detail Record was created successfully
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+
+        """
         try:
             if request.method == 'GET':
-                serializer = CallbacksSerializer()
-                testdata = dict(
-                    [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
-                )
-                serializer = CallbacksSerializer(instance=testdata)
-                return Response(
-                    serializer.data
-                )
+                return Response(self._get_callbacks())
             if request.method in ('POST', 'PATCH'):
                 partial = bool(request.method == 'PATCH')
                 serializer = CallbacksSerializer(data=request.data, partial=partial)
                 if serializer.is_valid():
                     serializer.save()
                     get_callbacks_parameter.cache_clear()
-                    return Response(serializer.data)
+                    return Response(self._get_callbacks())
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except redis.exceptions.ConnectionError as e:
             logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
