@@ -369,7 +369,7 @@ def send_start_command(request, evse: Evse, token: Token) -> MyCommandResponse:
         )
         response: Response = ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
                                        to=Party(country_code, party_id),
-                                       sender=get_our_party(OcpiRolesEnum.EMSP.value),
+                                       sender=get_our_party(OcpiRolesEnum.EMSP),
                                        data=data)
         if response.status_code < 300:
             return MyCommandResponse(success=True, message='Starting to charge')
