@@ -1,9 +1,11 @@
 import logging
-from typing import Optional
+from datetime import timedelta
 
 from cachetools.func import ttl_cache
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from icecream import ic
 
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
@@ -12,7 +14,7 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi_util import ocpi_post
 from ocpi22.routing import find_route
 
-from ocpiconnector.ocpi_identities import get_our_party
+from ocpiconnector.ocpi_identities import get_our_party, Party
 
 
 @receiver(post_save, sender=Token)
@@ -21,7 +23,23 @@ def token_post_save(sender, instance: Token, *_args, **_kwargs):
     authorize_token.cache_clear()
 
 
-@ttl_cache(maxsize=128, ttl=15 * 60)
+@ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
+def get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
+    ic()
+    last_15_minutes = timezone.now() - timedelta(minutes=15)
+    ic(token_uid, last_15_minutes, timezone.now())
+    # noinspection PyUnresolvedReferences
+    sessions = Session.objects.filter(
+        Q(cdr_token_uid=token_uid) & ~Q(cdr_token_type='RFID') & Q(created__gte=last_15_minutes)
+    ).order_by('-created')
+    if sessions.exists():
+        session = sessions.first()
+        ic(session.get_party(), session.auth_method, session.authorization_reference)
+        return session.auth_method, session.authorization_reference, session.get_party(), session.cdr_token_type
+    return None, None, None, None
+
+
+@ttl_cache(maxsize=1024, ttl=15 * 60)
 def authorize_token(token, location=None) -> (str, str):
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
@@ -30,7 +48,7 @@ def authorize_token(token, location=None) -> (str, str):
     ic()
     if not isinstance(token, Token):
         token: Token = Token.get_if_exists(uid=token)
-    if not token:
+    if not token or not token.valid:
         return None, None
     if token.whitelist == Token.ALWAYS:
         return Session.WHITELIST, ''
@@ -56,8 +74,8 @@ def authorize_token(token, location=None) -> (str, str):
     authorization = data.get('data', {}).get('AuthorizationInfo', {})
     allowed = authorization.get('allowed')
     if result.status_code > 400 or allowed != Token.ALLOWED:
-        logging.warning(f'No authorization for token {token_uid} at {location or "<not known>"} '
-                        f'from {endpoint.credentials.party()} (HTTP {result.status_code}), '
+        logging.warning(f'No authorization for token {token} at {location or "<not known>"} '
+                        f'from {token.party()} (HTTP {result.status_code}), '
                         f'response: {allowed}. ')
         # raise exception.PermissionDenied("You don't have enough balance on your account.")
     if result.status_code == 200:

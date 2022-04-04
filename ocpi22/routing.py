@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 
 import requests
 from django.db.models import QuerySet
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from rest_framework import status
 

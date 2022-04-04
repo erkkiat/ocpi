@@ -5,6 +5,7 @@ from pprint import pprint
 
 from django.http import JsonResponse
 from rest_framework import status
+from django.conf import settings
 
 from ocpi22.auth import OCPIPermission, check_auth_token
 from ocpi22.ocpi_util import format_ocpi_response, get_to_party

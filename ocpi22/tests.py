@@ -31,6 +31,7 @@ from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerialize
     SessionSaveSerializer
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.commands import CommandsViewSet, CommandResponse
+from ocpi22.cpo_api import ChargePointViewSet
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.middleware import OCPIHubMiddleware
 from ocpi22.models.business_details import BusinessDetails
@@ -44,7 +45,7 @@ from ocpi22.ocpi_util import OCPIResponse, Ocpi, OcpiModule, make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
-from ocpi22.tokens import get_admin_token
+from ocpi22.tokens import get_admin_token, get_authorization_from_sessions, authorize_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpi22.test_data import expected_get_responses
@@ -1373,6 +1374,96 @@ class TestRouting(TestCase):
                     )
                     self.assertJSONEqual(response.content, {'message': 'Hello from the other side'},
                                          'Hub routed message response is not as expected')
+
+
+class TestCpoApi(TestCase):
+    fixtures = ['ocpi22/data/test-database-cpo-api.json']
+
+    @time_machine.travel(faketime, tick=False)
+    def test_adhoc_token(self):
+        url = reverse('commands-start-session')
+        api_factory = APIRequestFactory()
+        viewset = CommandsViewSet()
+
+        # Load up the test message and send it
+        dirname = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(dirname, f'data/examples/command_start_session_adhoc.json')) as file:
+            data = json.load(file)
+
+        billed_party = Party('FI', 'EON')
+        headers = {
+            'Ocpi-From-Country-Code': billed_party.country_code,
+            'Ocpi-From-Party-Id': billed_party.party_id
+        }
+        request = api_factory.post(url, **headers)
+        request.data = data
+        # noinspection PyUnresolvedReferences
+        # request.credentials = Credentials.objects.get(pk=2)
+
+        self.assertFalse(Session.objects.all().exists(),
+                         'Please make sure there are no Sessions at the start of this test')
+        response = viewset.start_session(request)
+
+        # Let's guess the new Session
+        session = Session.objects.all().first()
+        self.assertEqual(session.billed_to, str(billed_party), 'Billed party appears not to be stored properly')
+
+        check_ok_result(self, response)
+
+        self.assertEqual(response.data.get('data').get('result'), 'ACCEPTED',
+                         msg='Expecting the result "ACCEPTED"')
+
+        # noinspection PyUnresolvedReferences
+        session = Session.objects.get(status='PENDING')
+        self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match to expected")
+
+        authorize_url = reverse('chargepoint-authorize')
+        cpo_viewset = ChargePointViewSet()
+        cpo_request = api_factory.post(authorize_url)
+        cpo_request.data = dict(
+            evse_id='HELSINKI-3',
+            token_id='NON-EXISTENT-ADHOC-TOKEN'
+        )
+        cpo_response = cpo_viewset.authorize(cpo_request)
+        # ic(cpo_response, cpo_response.data)
+
+        self.assertEqual(cpo_response.status_code, 200,
+                         'Token should be authorized')
+        self.assertDictEqual(cpo_response.data,
+                             {'authorization_method': 'COMMAND',
+                              'authorization_reference': 'FI*001-AUTH-REFERENCE',
+                              'billed_to': 'FI*CPO',
+                              'evse': 'HELSINKI-3',
+                              'status_text': 'Token authorized for charging',
+                              'token': 'FI*CPO: AD_HOC_USER NON-EXISTENT-ADHOC-TOKEN'}
+                             )
+
+        # Check that the AD_HOC_USER token expires after 15 minutes
+        with time_machine.travel(faketime + timedelta(minutes=16), tick=False):
+            cpo_request.data = dict(
+                evse_id='HELSINKI-3',
+                token_id='NON-EXISTENT-ADHOC-TOKEN'
+            )
+            ic(timezone.now())
+
+            get_authorization_from_sessions.cache_clear()
+            authorize_token.cache_clear()
+
+            cpo_response = cpo_viewset.authorize(cpo_request)
+            ic(cpo_response, cpo_response.data)
+            self.assertEqual(cpo_response.status_code, 401,
+                             'Token should NOT be authorized')
+            self.assertDictEqual(cpo_response.data,
+                                 {'status': 'Token `None: None NON-EXISTENT-ADHOC-TOKEN` is (temporarily) not valid'}
+                                 )
+
+        # Check that authorizations are cached
+        self.assertTrue(hasattr(get_authorization_from_sessions, 'cache_clear'),
+                        f'get_authorization_from_sessions should be cached for 1 minute')
+        self.assertTrue(hasattr(authorize_token, 'cache_clear'),
+                        f'authorize_token should be cached for 15 minutes')
+
+        # Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH
 # Todo: Send Sessions and CDRs to interested parties via HUB

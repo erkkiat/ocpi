@@ -23,8 +23,9 @@ from ocpi22.location import send_evse_updates
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.ocpi_util import AdhocToken
 from ocpi22.sessions import create_session
-from ocpi22.tokens import authorize_token
+from ocpi22.tokens import authorize_token, get_authorization_from_sessions
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator
 from ocpiconnector import slack_logging
 
@@ -480,7 +481,8 @@ class EvseSerialnumberSerializer(fields.CharField):
 
 class TokenIdSerializer(fields.CharField):
     def to_internal_value(self, data):
-        return Token.objects.get(uid=data)
+        token = Token.get_if_exists(uid=data) or data
+        return token
 
 
 class SessionIdSerializer(fields.CharField):
@@ -703,7 +705,14 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data.get('evse')
                     token: Token = serializer.validated_data.get('token')
-                    authorization_method, authorization_reference = authorize_token(token.uid, evse.location)
+                    if isinstance(token, str):
+                        # This is an AD_HOC_USER or APP_USER Token, no authorization request allowed by OCPI
+                        authorization_method, authorization_reference, party, token_type = get_authorization_from_sessions(
+                            token)
+                        # eMSP has already authorized this token for 15 minutes
+                        token = AdhocToken(uid=token, valid=True, owner=party, type=token_type)
+                    else:
+                        authorization_method, authorization_reference = authorize_token(token, evse.location)
                     if not authorization_method or not token.valid:
                         return Response(
                             dict(status=f'Token `{token}` is (temporarily) not valid'),

@@ -351,6 +351,20 @@ class OCPIUrlComponents:
     parameters: str
 
 
+@dataclass(eq=True, frozen=True)
+class AdhocToken:
+    valid: bool
+    owner: Party
+    uid: str
+    type: str
+
+    def party(self):
+        return str(self.owner)
+
+    def __str__(self):
+        return f'{self.party()}: {self.type} {self.uid}'
+
+
 @lru_cache(maxsize=0)
 def get_module_urls() -> list:
     return (reverse(name) for name in ('location-list', 'commands-list', 'token-list'))

@@ -30,7 +30,8 @@ from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, SerializerCleanedUp, PREMIUM_RESPONSE, \
     OnlyRawBrowsableAPIRenderer
-from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
+from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
+    generate_auth_reference
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles
 from ocpiconnector.ocpi_identities import ocpi_platform, get_our_party
@@ -261,9 +262,7 @@ class TokenViewSet(mixins.ListModelMixin,
         if not token.valid:
             allowed = Token.EXPIRED
             info = 'Your token is no longer valid'
-        elif 'NO_CREDIT' in token_uid:  # Todo: Callback for billing system to check user has enough balance
-            allowed = Token.NO_CREDIT
-            info = 'You have insufficient balance on your account'
+        # Todo: Callback for billing system to check user has enough balance
         serializer = TokenSerializer(instance=token)
         return OCPIResponse(
             dict(
