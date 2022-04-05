@@ -599,7 +599,7 @@ class CallbacksSerializer(serializers.Serializer):
     def save(self):
         for key, value in self.validated_data.items():
             set_callbacks_parameter(key, value)
-        redis_store.save()
+        # redis_store.save()  # This is not allowed in Heroku Redis
 
 
 def _format_redis_key(key: str, namespace: str) -> str:
