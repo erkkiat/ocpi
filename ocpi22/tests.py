@@ -24,6 +24,7 @@ from django.test import TestCase, RequestFactory, Client
 # Todo: evse_id Regular Expression: [A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
 from icecream import ic
+from requests import Response
 from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
@@ -779,8 +780,10 @@ class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
     @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.cpo_api.redis_store.get',
+           side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.requests.post')
-    def test_start_session(self, requests_post_mock: Mock):
+    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock):
         # for t in [11, 12, 13]:
         #     create_tariff(uid=str(t), country_code='BE', party_id='BEC')
 
@@ -816,8 +819,7 @@ class CommandTests(TestCase):
                          'Please make sure there are no Sessions at the start of this test')
 
         # Let's pretend to be the CPO and all is good
-        requests_post_mock.return_value = dict(result='ACCEPTED')
-
+        requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
         response = viewset.start_session(request)
 
         # Let's guess the new Session
@@ -1383,13 +1385,27 @@ class TestRouting(TestCase):
                                          'Hub routed message response is not as expected')
 
 
+def make_json_response(data, status_code=200) -> Response:
+    response = Response()
+    response.status_code = status_code
+    response.encoding = 'UTF-8'
+    response._content = json.dumps(data).encode('UTF-8')
+    return response
+
+
 class TestCpoApi(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.sessions.generate_session_uid', return_value='FAKE-SESSION-UID')
+    @patch('ocpi22.cpo_api.redis_store.get',
+           side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
+    @patch('ocpi22.sessions.generate_session_uid',
+           side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
     @patch('ocpi22.commands.requests.post')
-    def test_adhoc_token(self, requests_post_mock: Mock, generate_session_uid_mock: Mock):
+    def test_adhoc_token(self,
+                         requests_post_mock: Mock,
+                         generate_session_uid_mock: Mock,
+                         get_parameter_mock: Mock):
         url = reverse('commands-start-session')
         api_factory = APIRequestFactory()
         viewset = CommandsViewSet()
@@ -1406,14 +1422,13 @@ class TestCpoApi(TestCase):
         }
         request = api_factory.post(url, **headers)
         request.data = data
-        # noinspection PyUnresolvedReferences
-        # request.credentials = Credentials.objects.get(pk=2)
-
-        # Let's pretend to be the CPO and all is good
-        requests_post_mock.return_value = dict(result='ACCEPTED')
 
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
+
+        # Let's pretend to be the CPO and all is good
+        requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
+
         response = viewset.start_session(request)
 
         # Let's guess the new Session
@@ -1429,20 +1444,11 @@ class TestCpoApi(TestCase):
                          'CPO start transaction URL differs from expected')
         self.assertDictEqual(
             kwargs.get('data'),
-            {'session': {'auth_method': 'COMMAND',
-                         'authorization_reference': 'FI*001-AUTH-REFERENCE',
-                         'cdr_token': OrderedDict([('uid', 'NON-EXISTENT-ADHOC-TOKEN'),
-                                                   ('type', 'AD_HOC_USER'),
-                                                   ('contract_id', 'INTERNAL')]),
-                         'country_code': 'FI',
-                         'currency': 'EUR',
-                         'evse_uid': 'HELSINKI-3',
-                         'kwh': 0.0,
-                         'location_id': 'HELSINKI-1',
-                         'party_id': 'CPO',
-                         'start_date_time': '2000-01-01T12:00:00',
-                         'status': 'PENDING',
-                         'uid': 'FAKE-SESSION-UID'}}
+            {'auth_method': 'COMMAND',
+             'authorization_reference': 'FI*001-AUTH-REFERENCE',
+             'billed_to': 'FI*EON',
+             'token_id': 'NON-EXISTENT-ADHOC-TOKEN',
+             'token_type': 'AD_HOC_USER'}
         )
 
         # noinspection PyUnresolvedReferences
@@ -1488,6 +1494,14 @@ class TestCpoApi(TestCase):
             self.assertDictEqual(cpo_response.data,
                                  {'status': 'Token `None: None NON-EXISTENT-ADHOC-TOKEN` is (temporarily) not valid'}
                                  )
+
+        response = make_json_response(dict(broken_response='APPLES_AND_ORANGES'))
+        requests_post_mock.return_value = response
+
+        response = viewset.start_session(request)
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE,
+                         'JSON decode errors should return HTTP 503')
 
         # Check that authorizations are cached
         self.assertTrue(hasattr(get_authorization_from_sessions, 'cache_clear'),

@@ -486,5 +486,7 @@ def generate_auth_reference():
     """
     >>> len(generate_auth_reference()) <= 36
     True
+    >>> generate_auth_reference() != generate_auth_reference()
+    True
     """
-    return f'{get_our_party(OcpiRolesEnum.EMSP)}-{uuid.uuid4().hex[:29]}'
+    return f'{get_our_party(OcpiRolesEnum.EMSP)}-{uuid.uuid4().hex}'[:36]

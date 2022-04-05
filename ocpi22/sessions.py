@@ -25,7 +25,7 @@ def get_token(token_id, ad_hoc_token):
 
 
 def generate_session_uid() -> str:
-    return uuid.uuid4().hex
+    return uuid.uuid4().hex[:36]
 
 
 def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None,

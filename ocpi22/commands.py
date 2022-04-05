@@ -1,6 +1,7 @@
 import logging
 import uuid
 from collections import OrderedDict
+from json import JSONDecodeError
 from urllib.parse import urljoin
 
 import requests
@@ -230,14 +231,25 @@ class CommandsViewSet(GenericViewSet):
                 #     return Response(dict(error=f'Unable to start session on charger at this time',
                 #                          status=status.HTTP_406_NOT_ACCEPTABLE))
 
+                # The worst scenario is this
+                ocpi_status = 2000
+                result = CommandResponse.REJECTED
+                http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+                message = []
+
                 try:
                     # Prepare the start command for CPO
                     data = dict(
-                        session=saved_session_serializer.data
+                        token_id=session.cdr_token_uid,
+                        token_type=session.cdr_token_type,
+                        authorization_reference=session.authorization_reference,
+                        auth_method=session.auth_method,
+                        billed_to=session.billed_to,
                     )
 
                     # Use basic auth if required
                     kwargs = dict()
+                    headers = {'content-type': 'application/json'}
                     url = get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL)
                     user = get_callbacks_parameter('user')
                     password = get_callbacks_parameter('password')
@@ -247,24 +259,31 @@ class CommandsViewSet(GenericViewSet):
                     url = url.format(user=user, evse_id=evse_uid)
 
                     # ic(url, data, kwargs)
-
                     # Send start command to CPO
-                    cpo_response = requests.post(url=url, data=data, **kwargs)
-                    result = cpo_response.get('result')
-                    message = [
-                        dict(language='EN', text='Preparing to charge'),
-                        dict(language='FI', text='Latausta valmistellaan')
-                    ]
-                    ocpi_status = 1000
-                    http_status = status.HTTP_200_OK
-                except requests.exceptions.ConnectionError as e:
-                    result = CommandResponse.REJECTED
+                    cpo_response = requests.post(url=url, data=data, headers=headers, **kwargs)
+                    data = cpo_response.json()
+
+                    if data:
+                        result = data.get('result')
+                        if result:
+                            message = [
+                                dict(language='EN', text='Preparing to charge'),
+                                dict(language='BG', text='Подготовка за зареждане'),
+                                dict(language='FI', text='Latausta valmistellaan'),
+                            ]
+                            ocpi_status = 1000
+                            http_status = status.HTTP_200_OK
+                        else:
+                            result = 'REJECTED'
+                except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
                     message = [
                         dict(language='EN', text='Unable to connect to charge point management system'),
-                        dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki')
+                        dict(language='BG', text='Не може да се свърже със системата '
+                                                 'за управление на точките на зареждане'),
+                        dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki'),
                     ]
-                    ocpi_status = 2000
                     http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+                    logging.error(f'Unable to relay Command to CPO: {e}')
 
                 # kwargs = dict(
                 #     data=serializer.data, session_uid=session.uid,
