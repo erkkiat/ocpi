@@ -3,6 +3,7 @@ import json
 import os
 import logging
 import uuid
+from collections import OrderedDict
 from dataclasses import asdict
 
 from datetime import timedelta, datetime
@@ -777,7 +778,9 @@ class CdrTests(TestCase):
 class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
-    def test_start_session(self):
+    @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.commands.requests.post')
+    def test_start_session(self, requests_post_mock: Mock):
         # for t in [11, 12, 13]:
         #     create_tariff(uid=str(t), country_code='BE', party_id='BEC')
 
@@ -811,6 +814,10 @@ class CommandTests(TestCase):
 
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
+
+        # Let's pretend to be the CPO and all is good
+        requests_post_mock.return_value = dict(result='ACCEPTED')
+
         response = viewset.start_session(request)
 
         # Let's guess the new Session
@@ -1380,7 +1387,9 @@ class TestCpoApi(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
 
     @time_machine.travel(faketime, tick=False)
-    def test_adhoc_token(self):
+    @patch('ocpi22.sessions.generate_session_uid', return_value='FAKE-SESSION-UID')
+    @patch('ocpi22.commands.requests.post')
+    def test_adhoc_token(self, requests_post_mock: Mock, generate_session_uid_mock: Mock):
         url = reverse('commands-start-session')
         api_factory = APIRequestFactory()
         viewset = CommandsViewSet()
@@ -1400,6 +1409,9 @@ class TestCpoApi(TestCase):
         # noinspection PyUnresolvedReferences
         # request.credentials = Credentials.objects.get(pk=2)
 
+        # Let's pretend to be the CPO and all is good
+        requests_post_mock.return_value = dict(result='ACCEPTED')
+
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
         response = viewset.start_session(request)
@@ -1408,10 +1420,30 @@ class TestCpoApi(TestCase):
         session = Session.objects.all().first()
         self.assertEqual(session.billed_to, str(billed_party), 'Billed party appears not to be stored properly')
 
-        check_ok_result(self, response)
+        args, kwargs = requests_post_mock.call_args
+        # ic(args, kwargs.get('data'))
 
-        self.assertEqual(response.data.get('data').get('result'), 'ACCEPTED',
-                         msg='Expecting the result "ACCEPTED"')
+        self.assertEqual(response.status_code, 200, 'Remote Command start_session was expected to succeed')
+        self.maxDiff = 9999
+        self.assertEqual(kwargs.get('url'), 'http://localhost/start/HELSINKI-3/',
+                         'CPO start transaction URL differs from expected')
+        self.assertDictEqual(
+            kwargs.get('data'),
+            {'session': {'auth_method': 'COMMAND',
+                         'authorization_reference': 'FI*001-AUTH-REFERENCE',
+                         'cdr_token': OrderedDict([('uid', 'NON-EXISTENT-ADHOC-TOKEN'),
+                                                   ('type', 'AD_HOC_USER'),
+                                                   ('contract_id', 'INTERNAL')]),
+                         'country_code': 'FI',
+                         'currency': 'EUR',
+                         'evse_uid': 'HELSINKI-3',
+                         'kwh': 0.0,
+                         'location_id': 'HELSINKI-1',
+                         'party_id': 'CPO',
+                         'start_date_time': '2000-01-01T12:00:00',
+                         'status': 'PENDING',
+                         'uid': 'FAKE-SESSION-UID'}}
+        )
 
         # noinspection PyUnresolvedReferences
         session = Session.objects.get(status='PENDING')
@@ -1444,13 +1476,13 @@ class TestCpoApi(TestCase):
                 evse_id='HELSINKI-3',
                 token_id='NON-EXISTENT-ADHOC-TOKEN'
             )
-            ic(timezone.now())
+            # ic(timezone.now())
 
             get_authorization_from_sessions.cache_clear()
             authorize_token.cache_clear()
 
             cpo_response = cpo_viewset.authorize(cpo_request)
-            ic(cpo_response, cpo_response.data)
+            # ic(cpo_response, cpo_response.data)
             self.assertEqual(cpo_response.status_code, 401,
                              'Token should NOT be authorized')
             self.assertDictEqual(cpo_response.data,

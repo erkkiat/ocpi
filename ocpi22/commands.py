@@ -3,13 +3,14 @@ import uuid
 from collections import OrderedDict
 from urllib.parse import urljoin
 
+import requests
 from django.conf import settings
 from django.db import transaction
 from django.http import Http404
 from icecream import ic
 from rest_framework import serializers, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, APIException
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
@@ -18,7 +19,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.api import TokenSerializer, CommandTokenSerializer, LocationIdSerializer, SessionSaveSerializer
 from ocpi22.auth import OCPIPermission
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum
-from ocpi22.cpo_api import CHARGER
+from ocpi22.cpo_api import CHARGER, CallbacksSerializer, get_callbacks_parameter
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
@@ -206,7 +207,6 @@ class CommandsViewSet(GenericViewSet):
                 f'Billed_to needs to be set with party ID: {billed_to}'
             serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
-                result = 'ACCEPTED'
                 token = serializer.validated_data.get('token', '')
                 connector_id = serializer.validated_data.get('connector_id', None)
                 evse_uid = serializer.validated_data.get('evse_uid', '')
@@ -222,33 +222,64 @@ class CommandsViewSet(GenericViewSet):
                 )
 
                 saved_session_serializer = SessionSaveSerializer(instance=session)
-                ic()
-                ic(saved_session_serializer.data)
+                # ic()
+                # ic(saved_session_serializer.data)
 
                 # connector_id_from_charger = CHARGER.remote_start_transaction(token.get('uid'), session.evse)
                 # if not connector_id_from_charger:
                 #     return Response(dict(error=f'Unable to start session on charger at this time',
                 #                          status=status.HTTP_406_NOT_ACCEPTABLE))
 
-                kwargs = dict(
-                    data=serializer.data, session_uid=session.uid,
-                    update_url=request.build_absolute_uri(reverse('session-list', args=[session.uid])),
-                    url=request.build_absolute_uri(reverse('simulate_session_start'))  # Todo: use actual callback
-                )
-                if settings.BACKGROUND_SEND in (True, 1, '1', 'true', 'True'):
-                    command_start.delay(**kwargs)  # Todo: use actual callback
-                else:
-                    command_start(**kwargs)
+                try:
+                    # Prepare the start command for CPO
+                    data = dict(
+                        session=saved_session_serializer.data
+                    )
+
+                    # Use basic auth if required
+                    kwargs = dict()
+                    url = get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL)
+                    user = get_callbacks_parameter('user')
+                    password = get_callbacks_parameter('password')
+                    if user and password:
+                        kwargs.update(dict(auth=(user, password)))
+
+                    url = url.format(user=user, evse_id=evse_uid)
+
+                    # ic(url, data, kwargs)
+
+                    # Send start command to CPO
+                    cpo_response = requests.post(url=url, data=data, **kwargs)
+                    result = cpo_response.get('result')
+                    message = [
+                        dict(language='EN', text='Preparing to charge'),
+                        dict(language='FI', text='Latausta valmistellaan')
+                    ]
+                    ocpi_status = 1000
+                    http_status = status.HTTP_200_OK
+                except requests.exceptions.ConnectionError as e:
+                    result = CommandResponse.REJECTED
+                    message = [
+                        dict(language='EN', text='Unable to connect to charge point management system'),
+                        dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki')
+                    ]
+                    ocpi_status = 2000
+                    http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+                # kwargs = dict(
+                #     data=serializer.data, session_uid=session.uid,
+                #     update_url=request.build_absolute_uri(reverse('session-list', args=[session.uid])),
+                #     url=request.build_absolute_uri(reverse('simulate_session_start'))  # Todo: use actual callback
+                # )
+                # if settings.BACKGROUND_SEND in (True, 1, '1', 'true', 'True'):
+                #     command_start.delay(**kwargs)  # Todo: use actual callback
+                # else:
+                #     command_start(**kwargs)
+
                 response_serializer = CommandResponse(
-                    instance=dict(
-                        result=result,
-                        timeout=120,
-                        message=[
-                            dict(language='EN', text='Preparing to charge'),
-                            dict(language='FI', text='Latausta valmistellaan')
-                        ]
-                    ))
-                return OCPIResponse(response_serializer.data)
+                    instance=dict(result=result, timeout=60, message=message)
+                )
+                return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status)
         except (NotFound, Http404, KeyError) as e:
             return OCPIResponse(None, status_message=str(e),
                                 http_status=status.HTTP_400_BAD_REQUEST,
@@ -359,7 +390,7 @@ def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_r
                 return endpoints[0]
 
 
-def send_start_command(request, evse: Evse, token: Token) -> MyCommandResponse:
+def send_start_command(request, evse: Evse, token: Token) -> Response:
     country_code = evse.location.country_code
     party_id = evse.location.party_id
 
@@ -373,16 +404,14 @@ def send_start_command(request, evse: Evse, token: Token) -> MyCommandResponse:
             evse_uid=evse.uid,
             authorization_reference=generate_auth_reference(),  # Todo: Store authorization for verifying CDR
         )
-        response: Response = ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
-                                       to=Party(country_code, party_id),
-                                       sender=get_our_party(OcpiRolesEnum.EMSP),
-                                       data=data)
-        if response.status_code < 300:
-            return MyCommandResponse(success=True, message='Starting to charge')
+        return ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
+                         to=Party(country_code, party_id),
+                         sender=get_our_party(OcpiRolesEnum.EMSP),
+                         data=data)
     else:
         message = f"{evse.location.party()} is unreachable through this hub"
         logging.error(f'{settings.HOSTNAME}: {message}')
-        return MyCommandResponse(success=False, message=message)
+        raise APIException(message)
 
 
 def send_stop_command(request, session: Session) -> Response:

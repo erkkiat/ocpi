@@ -1,12 +1,14 @@
 import secrets
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Any
 
+import redis
 from django.conf import settings
 from django.core.validators import RegexValidator
+from requests import Response
 from rest_framework import serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.renderers import BrowsableAPIRenderer
@@ -485,7 +487,11 @@ class OnlyRawBrowsableAPIRenderer(BrowsableAPIRenderer):
         return ""
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class MyCommandResponse:
     success: bool
     message: str
+    response: Response = field(default=None)
+
+
+redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)

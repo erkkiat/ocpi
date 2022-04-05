@@ -25,16 +25,16 @@ def token_post_save(sender, instance: Token, *_args, **_kwargs):
 
 @ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
 def get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
-    ic()
+    # ic()
     last_15_minutes = timezone.now() - timedelta(minutes=15)
-    ic(token_uid, last_15_minutes, timezone.now())
+    # ic(token_uid, last_15_minutes, timezone.now())
     # noinspection PyUnresolvedReferences
     sessions = Session.objects.filter(
         Q(cdr_token_uid=token_uid) & ~Q(cdr_token_type='RFID') & Q(created__gte=last_15_minutes)
     ).order_by('-created')
     if sessions.exists():
         session = sessions.first()
-        ic(session.get_party(), session.auth_method, session.authorization_reference)
+        # ic(session.get_party(), session.auth_method, session.authorization_reference)
         return session.auth_method, session.authorization_reference, session.get_party(), session.cdr_token_type
     return None, None, None, None
 

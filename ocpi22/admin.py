@@ -1,3 +1,7 @@
+import logging
+
+import requests
+from django.conf import settings
 from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
@@ -5,6 +9,7 @@ from icecream import ic
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from requests import Response
 from rest_framework import exceptions
+from rest_framework.exceptions import APIException
 
 from ocpi22.commands import send_start_command, send_stop_command
 from ocpi22.models.cdr import Cdr
@@ -207,13 +212,14 @@ class EvseAdmin(NestedModelAdmin):
         evse: Evse
         for evse in queryset:
             try:
-                response: MyCommandResponse = send_start_command(request, evse, get_admin_token())
-                if response.success:
-                    self.message_user(request, f'Starting charging at {evse.location}')
-                else:
-                    self.message_user(request, f'Unable to start charging at {evse.location}: {response.message}.',
-                                      level=messages.ERROR)
-            except exceptions.APIException as e:
+                response = send_start_command(request, evse, get_admin_token())
+                data = response.json()
+                level = messages.SUCCESS if data.get('status_code') == 1000 else messages.ERROR
+                ic(data)
+                data = data.get('data', data)
+                self.message_user(request, f"Response: {data.get('message')}", level=level)
+            except (APIException, requests.exceptions.ConnectionError) as e:
+                logging.error(f"{settings.HOSTNAME}: admin:start_charging(), result: {e}")
                 self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
                                   level=messages.ERROR)
 

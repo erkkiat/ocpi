@@ -26,7 +26,7 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi_util import AdhocToken
 from ocpi22.sessions import create_session
 from ocpi22.tokens import authorize_token, get_authorization_from_sessions
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator, redis_store
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
@@ -34,7 +34,6 @@ from pprint import PrettyPrinter
 from ocpiconnector.ocpi_identities import get_identity, get_our_party
 
 pp = PrettyPrinter(indent=4).pprint
-redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
 slack_logging.init()
 
 

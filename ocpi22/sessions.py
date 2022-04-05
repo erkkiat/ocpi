@@ -24,13 +24,17 @@ def get_token(token_id, ad_hoc_token):
     return CdrToken(**ad_hoc_token)
 
 
+def generate_session_uid() -> str:
+    return uuid.uuid4().hex
+
+
 def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None,
                    billed_to=None, uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
                    authorize_from_msp=True, authorization_reference=''
                    ) -> Session:
     # ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
     if not uid:
-        uid = uuid.uuid4().hex
+        uid = generate_session_uid()
     token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
     location = Location.get_if_exists(uid=location_id) if not isinstance(location_id, Location) else location_id
     if not location:
