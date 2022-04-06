@@ -19,7 +19,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.api import TokenSerializer, CommandTokenSerializer, LocationIdSerializer, SessionSaveSerializer
 from ocpi22.auth import OCPIPermission
-from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, MessageTexts
 from ocpi22.cpo_api import CHARGER, CallbacksSerializer, get_callbacks_parameter
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse
@@ -236,6 +236,7 @@ class CommandsViewSet(GenericViewSet):
                 result = CommandResponse.REJECTED
                 http_status = status.HTTP_503_SERVICE_UNAVAILABLE
                 message = []
+                timeout = 60
 
                 try:
                     # Prepare the start command for CPO
@@ -267,43 +268,22 @@ class CommandsViewSet(GenericViewSet):
                     data = cpo_response.json()
 
                     if data:
+                        timeout = data.get('timeout', timeout)
                         result = data.get('result')
                         ic(result)
                         if result:
-                            message = dict(
-                                ACCEPTED=[
-                                    dict(language='EN', text='Preparing to charge'),
-                                    dict(language='BG', text='Подготовка за зареждане'),
-                                    dict(language='FI', text='Latausta valmistellaan'),
-                                ],
-                                EVSE_OCCUPIED=[
-                                    dict(language='EN', text='The charger is currently in use'),
-                                    dict(language='BG', text=''),
-                                    dict(language='FI', text='Latauspiste on parhaillaan käytössä'),
-                                ],
-                            ).get(result.upper(),
-                                  [
-                                      dict(language='EN', text='Unable to start charging at this time'),
-                                      dict(language='BG', text=''),
-                                      dict(language='FI', text='Lataus ei ole mahdollista tällä hetkellä'),
-                                  ],
-                                  )
+                            message = MessageTexts.get(result.upper(), MessageTexts.DEFAULT_CHARGER_ERROR_TEXT)
                             ocpi_status = 1000
                             http_status = status.HTTP_200_OK
                         else:
                             result = 'REJECTED'
                 except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
-                    message = [
-                        dict(language='EN', text='Unable to connect to charge point management system'),
-                        dict(language='BG', text='Не може да се свърже със системата '
-                                                 'за управление на точките на зареждане'),
-                        dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki'),
-                    ]
+                    message = MessageTexts.MS_CONNECTION_ERROR
                     http_status = status.HTTP_503_SERVICE_UNAVAILABLE
                     logging.error(f'Unable to relay Command to CPO: {e}')
 
                 response_serializer = CommandResponse(
-                    instance=dict(result=result, timeout=60, message=message)
+                    instance=dict(result=result, timeout=timeout, message=message)
                 )
                 return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status)
         except (NotFound, Http404, KeyError) as e:

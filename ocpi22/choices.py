@@ -83,3 +83,35 @@ OCPP_STATUS_CHOICES = [
     (e.value, e.value.capitalize())
     for e in OcppStatusEnum
 ]
+
+
+class MessageTexts:
+    PREPARING_TO_CHARGE = [
+        dict(language='EN', text='Preparing to charge'),
+        dict(language='BG', text='Подготовка за зареждане'),
+        dict(language='FI', text='Latausta valmistellaan'),
+    ]
+    EVSE_OCCUPIED = [
+        dict(language='EN', text='The charger is currently in use'),
+        dict(language='BG', text=''),
+        dict(language='FI', text='Latauspiste on parhaillaan käytössä'),
+    ]
+    DEFAULT_CHARGER_ERROR_TEXT = [
+        dict(language='EN', text='Unable to start charging at this time'),
+        dict(language='BG', text=''),
+        dict(language='FI', text='Lataus ei ole mahdollista tällä hetkellä'),
+    ]
+    MS_CONNECTION_ERROR = [
+        dict(language='EN', text='Unable to connect to charge point management system'),
+        dict(language='BG', text='Не може да се свърже със системата '
+                                 'за управление на точките на зареждане'),
+        dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki'),
+    ]
+    _texts = dict(
+        ACCEPTED=PREPARING_TO_CHARGE,
+        EVSE_OCCUPIED=EVSE_OCCUPIED,
+    )
+
+    @classmethod
+    def get(cls, s, default=None):
+        return cls._texts.get(s, default)

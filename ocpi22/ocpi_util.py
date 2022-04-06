@@ -174,9 +174,9 @@ def ocpi_post(url, token_base64,
     response = requests.post(url, *args, **kwargs, data=data,
                              headers=make_headers(token_base64, to, sender))
     if response.status_code >= 300:
-        logging.info(f'*** Got response: {response.status_code} - {response.reason}')
-        logging.error(f'{settings.HOSTNAME}: {response.text}')
-        raise exceptions.APIException(f'Got response for {url}: {response.status_code} - {response.reason} ')
+        logging.info(f'*** Got response: {url} - {response.status_code} - {response.reason}')
+        logging.error(f'{settings.HOSTNAME}: {url} - {response.status_code} - {response.reason}')
+        raise exceptions.APIException(f'Got response: {response.status_code} - {response.reason} ')
     return response
 
 
