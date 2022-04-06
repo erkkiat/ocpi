@@ -814,11 +814,15 @@ class RootView(routers.APIRootView):
 
     @staticmethod
     def get(request: WSGIRequest, **kwargs):
-        return Response({
+        result = dict({
             "OCPI 2.2": request.build_absolute_uri(reverse('ocpi-22')),
-            "CPO API": request.build_absolute_uri(reverse('cpo-api')),
             "OpenAPI": request.build_absolute_uri(reverse('openapi-schema')),
         })
+        if ocpi_platform.is_cpo:
+            result.update({"CPO API": request.build_absolute_uri(reverse('cpo-api'))})
+        if ocpi_platform.is_emsp:
+            result.update({"eMSP API": request.build_absolute_uri(reverse('msp-api'))})
+        return Response(result)
 
     def get_view_name(self):
         return 'OCPI Connector Developer Central'
@@ -862,6 +866,9 @@ class NoPremiumViewSet(ViewSet):
         return 'This is a Premium Feature'
 
     def put(self, _request):
+        return PREMIUM_RESPONSE
+
+    def post(self, _request):
         return PREMIUM_RESPONSE
 
     def get(self, _request):

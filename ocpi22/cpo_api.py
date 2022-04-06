@@ -832,7 +832,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
     and selective modification in the admin tools.
     It also provides tools for maintaining users, groups and their access to the OCPI Connector.
 
-    For more details, click the examples below and you will find the step-by-step technical documentation.
+    For more details, click the links below and you will find the step-by-step technical documentation.
 
     """
 

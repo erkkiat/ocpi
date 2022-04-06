@@ -156,7 +156,7 @@ class CommandResult(serializers.Serializer):
         # is not known by this Charge Point.
     )
 
-    # Result of the command request as sent by the Charge Point to the CPO.
+# Result of the command request as sent by the Charge Point to the CPO.
     result = serializers.ChoiceField(choices=RESULT_OPTIONS)
 
     # Human-readable description of the reason (if one can be provided), multiple languages can be provided.
@@ -262,17 +262,32 @@ class CommandsViewSet(GenericViewSet):
 
                     # ic(url, data, kwargs)
                     # Send start command to CPO
+                    logging.info(f'Sending CPO command to url {url}')
                     cpo_response = requests.post(url=url, data=data, headers=headers, **kwargs)
                     data = cpo_response.json()
 
                     if data:
                         result = data.get('result')
+                        ic(result)
                         if result:
-                            message = [
-                                dict(language='EN', text='Preparing to charge'),
-                                dict(language='BG', text='Подготовка за зареждане'),
-                                dict(language='FI', text='Latausta valmistellaan'),
-                            ]
+                            message = dict(
+                                ACCEPTED=[
+                                    dict(language='EN', text='Preparing to charge'),
+                                    dict(language='BG', text='Подготовка за зареждане'),
+                                    dict(language='FI', text='Latausta valmistellaan'),
+                                ],
+                                EVSE_OCCUPIED=[
+                                    dict(language='EN', text='The charger is currently in use'),
+                                    dict(language='BG', text=''),
+                                    dict(language='FI', text='Latauspiste on parhaillaan käytössä'),
+                                ],
+                            ).get(result.upper(),
+                                  [
+                                      dict(language='EN', text='Unable to start charging at this time'),
+                                      dict(language='BG', text=''),
+                                      dict(language='FI', text='Lataus ei ole mahdollista tällä hetkellä'),
+                                  ],
+                                  )
                             ocpi_status = 1000
                             http_status = status.HTTP_200_OK
                         else:
@@ -402,6 +417,9 @@ def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_r
 
 
 def send_start_command(request, evse: Evse, token: Token) -> Response:
+    """
+    As an eMSP we send an OCPI Command START_SESSION to the CPO
+    """
     country_code = evse.location.country_code
     party_id = evse.location.party_id
 
@@ -420,7 +438,7 @@ def send_start_command(request, evse: Evse, token: Token) -> Response:
                          sender=get_our_party(OcpiRolesEnum.EMSP),
                          data=data)
     else:
-        message = f"{evse.location.party()} is unreachable through this hub"
+        message = f"Cannot find a route to {evse.location.party()}"
         logging.error(f'{settings.HOSTNAME}: {message}')
         raise APIException(message)
 
