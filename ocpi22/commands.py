@@ -287,16 +287,6 @@ class CommandsViewSet(GenericViewSet):
                     http_status = status.HTTP_503_SERVICE_UNAVAILABLE
                     logging.error(f'Unable to relay Command to CPO: {e}')
 
-                # kwargs = dict(
-                #     data=serializer.data, session_uid=session.uid,
-                #     update_url=request.build_absolute_uri(reverse('session-list', args=[session.uid])),
-                #     url=request.build_absolute_uri(reverse('simulate_session_start'))  # Todo: use actual callback
-                # )
-                # if settings.BACKGROUND_SEND in (True, 1, '1', 'true', 'True'):
-                #     command_start.delay(**kwargs)  # Todo: use actual callback
-                # else:
-                #     command_start(**kwargs)
-
                 response_serializer = CommandResponse(
                     instance=dict(result=result, timeout=60, message=message)
                 )
