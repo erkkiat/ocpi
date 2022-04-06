@@ -10,7 +10,7 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from requests import Response
 from rest_framework import serializers, status
-from rest_framework.exceptions import ValidationError
+from rest_framework.metadata import SimpleMetadata
 from rest_framework.renderers import BrowsableAPIRenderer
 
 from ocpi22.ocpi_util import OCPIResponse
@@ -495,3 +495,16 @@ class MyCommandResponse:
 
 
 redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
+class MyMetadata(SimpleMetadata):
+    def determine_metadata(self, request, view):
+        metadata = super().determine_metadata(request, view)
+        if hasattr(view, 'get_extra_metadata'):
+            metadata.update(view.get_extra_metadata(request))
+        serializer = view.get_return_values_serializer()
+        if serializer:
+            metadata.update(
+                dict(return_values=self.get_serializer_info(serializer))
+            )
+        return metadata

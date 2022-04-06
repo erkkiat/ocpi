@@ -22,7 +22,7 @@ from rest_framework.settings import api_settings
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OCPP_STATUS_CHOICES, OcppStatusEnum, OcpiRolesEnum
-from ocpi22.commands import send_start_command
+from ocpi22.commands import send_start_command, CommandResult
 from ocpi22.location import send_evse_updates
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -441,7 +441,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     token = serializer.validated_data['token']
 
                     response: requests.Response = send_start_command(request, evse, token)
-                    data = json.loads(response.text)
+                    data = response.json()
                     return Response(data.get('data'), status=response.status_code)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -466,6 +466,16 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
     #     )
     #     serializer = CallbacksSerializer(instance=data)
     #     return serializer.data
+
+    # def get_extra_metadata(self, request):
+    #     return dict(
+    #         start_charging={'return_values': CommandResult.get_fields()},
+    #     ).get(self.action_map.get('post'), dict())
+
+    def get_return_values_serializer(self):
+        return dict(
+            start_charging=CommandResult(),
+        ).get(self.action_map.get('post'))
 
     def get_view_name(self):
         if self.name:
