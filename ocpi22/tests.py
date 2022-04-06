@@ -1447,6 +1447,7 @@ class TestCpoApi(TestCase):
             {'auth_method': 'COMMAND',
              'authorization_reference': 'FI*001-AUTH-REFERENCE',
              'billed_to': 'FI*EON',
+             'evse_id': 'HELSINKI-3',
              'token_id': 'NON-EXISTENT-ADHOC-TOKEN',
              'token_type': 'AD_HOC_USER'}
         )

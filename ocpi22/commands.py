@@ -245,8 +245,10 @@ class CommandsViewSet(GenericViewSet):
                         authorization_reference=session.authorization_reference,
                         auth_method=session.auth_method,
                         billed_to=session.billed_to,
+                        evse_id=session.evse.uid,
                     )
 
+                    # ic(data)
                     # Use basic auth if required
                     kwargs = dict()
                     headers = {'content-type': 'application/json'}
