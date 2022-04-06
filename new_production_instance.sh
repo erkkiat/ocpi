@@ -33,7 +33,7 @@ heroku create --region eu $HEROKU_APP \
  && heroku config:set CRONITOR_API_KEY=$CRONITOR_API_KEY HOSTNAME=$HOST.ocpiconnector.com \
  SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` \
  BGDA_URL=$BGDA_URL IBEX_CREDENTIALS=$IBEX_CREDENTIALS $2 $3 $4 $ROLE1 $ROLE2 \
- SLACK_WEBHOOK=$SLACK_WEBHOOK \
+ SLACK_WEBHOOK=$SLACK_WEBHOOK DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE \
  && heroku pipelines:add ocpi-connector --stage=production \
  && heroku pipelines:promote --app=cpo-ocpi --to=$HEROKU_APP \
  && heroku run ./manage.py loaddata ocpi22/data/initial.json \
