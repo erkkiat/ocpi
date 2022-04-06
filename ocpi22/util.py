@@ -502,9 +502,10 @@ class MyMetadata(SimpleMetadata):
         metadata = super().determine_metadata(request, view)
         if hasattr(view, 'get_extra_metadata'):
             metadata.update(view.get_extra_metadata(request))
-        serializer = view.get_return_values_serializer()
-        if serializer:
-            metadata.update(
-                dict(return_values=self.get_serializer_info(serializer))
-            )
+        if hasattr(view, 'get_return_values_serializer'):
+            serializer = view.get_return_values_serializer()
+            if serializer:
+                metadata.update(
+                    dict(return_values=self.get_serializer_info(serializer))
+                )
         return metadata

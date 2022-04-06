@@ -459,13 +459,44 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY
             )
 
-    # def _get_callbacks(self):
-    #     serializer = CallbacksSerializer()
-    #     data = dict(
-    #         [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
-    #     )
-    #     serializer = CallbacksSerializer(instance=data)
-    #     return serializer.data
+    @action(methods=('GET', 'POST'), detail=False)
+    def stop_charging(self, request):
+        """
+        This call stops the charging transaction.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the charging session was started successfully
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_404_NOT_FOUND` when the Token or the EVSE doesn't exist
+        * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
+        """
+        try:
+            if request.method == 'POST':
+                serializer = StartChargingSerializer(data=request.data)
+                if serializer.is_valid():
+                    evse: Evse = serializer.validated_data['evse']
+                    connector_id: str = serializer.validated_data['connector_id']
+                    token = serializer.validated_data['token']
+
+                    response: requests.Response = send_start_command(request, evse, token)
+                    data = response.json()
+                    return Response(data.get('data'), status=response.status_code)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # method == GET
+            return Response(dict(help='Please see `OPTIONS` for the schema'))
+        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_404_NOT_FOUND)
+        except json.JSONDecodeError as e:
+            logging.error(f'Cannot process start_transaction response from CPO to eMSP: {e}')
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
 
     # def get_extra_metadata(self, request):
     #     return dict(
@@ -514,6 +545,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
         result = dict(
             start_charging=request.build_absolute_uri(
                 reverse('roaming-start-charging')
+            ),
+            stop_charging=request.build_absolute_uri(
+                reverse('roaming-stop-charging')
             ),
         )
         return Response(result)

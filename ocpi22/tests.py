@@ -878,32 +878,6 @@ class CommandTests(TestCase):
                         status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
 
-# This method will be used by the mock to replace requests.get
-# class MockedRequests:
-#     class MockResponse:
-#         def __init__(self, json_data, status_code):
-#             ic()
-#             self.json_data = json_data
-#             self.status_code = status_code
-#
-#         def json(self):
-#             ic()
-#             return self.json_data
-#
-#         @property
-#         def status_code(self):
-#             # Always successful
-#             return 200
-#
-#     def get(self, *args, **_kwargs):
-#         if args[0] == 'http://someurl.com/test.json':
-#             return self.MockResponse({"key1": "value1"}, 200)
-#         elif args[0] == 'http://someotherurl.com/anothertest.json':
-#             return self.MockResponse({"key2": "value2"}, 200)
-#
-#         return self.MockResponse(None, 404)
-
-
 class MockResponse:
     def __init__(self, json_data, status_code, headers=None, data=None, reason='Mocked function'):
         self.json_data = json_data
