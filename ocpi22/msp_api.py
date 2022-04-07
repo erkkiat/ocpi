@@ -346,25 +346,16 @@ class StartChargingSerializer(serializers.Serializer):
 
     def to_internal_value(self, data):
         evse_id = self.initial_data.get('evse_id')
-        evse = Evse.get_if_exists(uid=evse_id)
+        location_id = self.initial_data.get('location_id')
+        location = Location.get_if_exists(uid=location_id)
+        evse = Evse.get_if_exists(uid=evse_id, location=location)
         if not evse:
-            raise ValidationError({api_settings.NON_FIELD_ERRORS_KEY: [f'EVSE with ID {evse_id} not found']})
+            raise ValidationError(
+                {api_settings.NON_FIELD_ERRORS_KEY: [f'EVSE with ID {evse_id} at location {location_id} not found']}
+            )
         data = super().to_internal_value(data)
         data['evse'] = evse
         return data
-
-
-# class StopTransactionSerializer(serializers.Serializer):
-#     """
-#     The session ends with a specific meter value
-#     """
-#     session_id = SessionIdSerializer(
-#         source='session',
-#         help_text='The session ID on the CPO platform or order number from the billing system',
-#     )
-#     stop_kwh = serializers.FloatField(
-#         help_text='The kWh measurement when the charging session ends',
-#     )
 
 
 # Todo: limit access to certain privilege holders
@@ -380,46 +371,6 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             start_charging=StartChargingSerializer,
         ).get(self.action_map.get('post'), StartChargingSerializer)
 
-    # @action(methods=('GET', 'POST'), detail=False)
-    # def start_charging(self, request):
-    #     """
-    #     Send a remote command to start charging at evse_id.
-    #
-    #     ## Status codes
-    #
-    #     * `HTTP_200_OK` when nothing prevents the start of charging so far (some other status may follow)
-    #     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
-    #     * `HTTP_404_NOT_FOUND` when the EVSE or Token is not found
-    #
-    #     """
-    #     try:
-    #         if request.method == 'POST':
-    #             serializer = StartChargingSerializer(data=request.data)
-    #             if serializer.is_valid():
-    #                 token = serializer.validated_data.get('token')
-    #                 evse: Evse = serializer.validated_data.get('evse')
-    #                 connector_id: Evse = serializer.validated_data.get('connector_id')
-    #
-    #                 result = start_charging(evse, connector_id, token)
-    #
-    #                 return Response(
-    #                     dict(
-    #                         status_text=f'No problems starting charging so far, waiting for CommandResponse',
-    #                         message=result,
-    #                         evse=evse.uid,
-    #                         token=token
-    #                     )
-    #                 )
-    #             else:
-    #                 return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    #
-    #         # method == GET
-    #         return Response(dict(help='Please see `OPTIONS` for the schema'))
-    #     except (Evse.DoesNotExist, Token.DoesNotExist) as e:
-    #         return Response(
-    #             dict(status=str(e)),
-    #             status=status.HTTP_404_NOT_FOUND)
-
     @action(methods=('GET', 'POST'), detail=False)
     def start_charging(self, request):
         """
@@ -429,7 +380,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
 
         * `HTTP_200_OK` when the charging session was started successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
-        * `HTTP_404_NOT_FOUND` when the Token or the EVSE doesn't exist
+        * `HTTP_404_NOT_FOUND` when the Token, Location or EVSE doesn't exist
         * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
         """
         try:

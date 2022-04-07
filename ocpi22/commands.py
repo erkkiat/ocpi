@@ -2,6 +2,7 @@ import logging
 import uuid
 from collections import OrderedDict
 from json import JSONDecodeError
+from typing import Union
 from urllib.parse import urljoin
 
 import requests
@@ -270,7 +271,7 @@ class CommandsViewSet(GenericViewSet):
                     if data:
                         timeout = data.get('timeout', timeout)
                         result = data.get('result')
-                        ic(result)
+                        # ic(result)
                         if result:
                             message = MessageTexts.get(result.upper(), MessageTexts.DEFAULT_CHARGER_ERROR_TEXT)
                             ocpi_status = 1000
@@ -396,7 +397,20 @@ def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_r
                 return endpoints[0]
 
 
-def send_start_command(request, evse: Evse, token: Token) -> Response:
+def construct_adhoc_token(token_uid, contract_id, token_type=Token.APP_USER):
+    our_party = get_our_party(OcpiRolesEnum.EMSP)
+    return Token(
+        country_code=our_party.country_code,
+        party_id=our_party.party_id,
+        uid=token_uid,
+        type=token_type,
+        contract_id=contract_id,
+        issuer=str(our_party),
+        whitelist=Token.ALWAYS,
+    )
+
+
+def send_start_command(request, evse: Evse, token: Union[Token, str]) -> Response:
     """
     As an eMSP we send an OCPI Command START_SESSION to the CPO
     """
@@ -406,9 +420,12 @@ def send_start_command(request, evse: Evse, token: Token) -> Response:
     route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
     if route:
         logging.info(f'*** Sending start command for {evse.location.name} to {route.url}.')
+        if not isinstance(token, Token):
+            token = construct_adhoc_token(token, contract_id='N/A')
+        token_data = TokenSerializer(token).data
         data = dict(
             response_url=request.build_absolute_uri('/'),
-            token=TokenSerializer(token).data,
+            token=token_data,
             location_id=evse.location.uid,
             evse_uid=evse.uid,
             authorization_reference=generate_auth_reference(),  # Todo: Store authorization for verifying CDR

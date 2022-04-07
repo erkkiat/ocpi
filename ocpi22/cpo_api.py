@@ -26,7 +26,7 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi_util import AdhocToken
 from ocpi22.sessions import create_session
 from ocpi22.tokens import authorize_token, get_authorization_from_sessions
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator, redis_store
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator, redis_store, MyMetadata
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
@@ -781,7 +781,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         ## Status codes
 
-        * `HTTP_200_OK` when the session was finished and Charge Detail Record was created successfully
+        * `HTTP_200_OK` when the callbacks were set successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
 
         """
