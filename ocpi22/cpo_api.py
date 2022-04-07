@@ -438,8 +438,6 @@ class CallbacksSerializer(serializers.Serializer):
     # unlock_connector_url = serializers.URLField(required=False)
     # reserve_now_url = serializers.URLField(required=False)
     # cancel_reservation_url = serializers.URLField(required=False)
-    user = serializers.CharField(allow_blank=True, allow_null=True)
-    password = serializers.CharField(write_only=True, allow_blank=True, allow_null=True)
 
     def save(self):
         for key, value in self.validated_data.items():
@@ -774,10 +772,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         You need to tell the OCPI Connector where to send commands such as `start transaction` and
         `stop transaction`. Using this endpoint you can set and get your callback URLs and
-        user credentials needed for accessing the endpoints you specify. When you GET the
-        settings, `password` will never be shown.
+        user credentials needed for accessing the endpoints you specify.
 
-        **NOTE**: To clear `user` or `password`, set them to an empty string.
+        > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
+        > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
         ## Status codes
 

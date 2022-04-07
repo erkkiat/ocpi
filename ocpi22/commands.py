@@ -255,12 +255,13 @@ class CommandsViewSet(GenericViewSet):
                     kwargs = dict()
                     headers = {'content-type': 'application/json'}
                     url = get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL)
-                    user = get_callbacks_parameter('user')
-                    password = get_callbacks_parameter('password')
+                    parsed = ParseUrl(url)
+                    user = parsed.username
+                    password = parsed.password
                     if user and password:
                         kwargs.update(dict(auth=(user, password)))
 
-                    url = url.format(user=user, evse_id=evse_uid)
+                    url = parsed.url.format(user=user, evse_id=evse_uid)
 
                     # ic(url, data, kwargs)
                     # Send start command to CPO

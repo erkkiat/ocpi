@@ -1,4 +1,5 @@
 import secrets
+import urllib.parse
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -430,6 +431,33 @@ PREMIUM_RESPONSE = OCPIResponse(
     status_message=PREMIUM_MESSAGE,
     status_code=2999, http_status=status.HTTP_426_UPGRADE_REQUIRED
 )
+
+
+class ParseUrl:
+    """
+    >>> a = ParseUrl('https://chargerhub:Electro3333!@87.246.28.135:1880/start_transaction/{evse_id}/?a=1&b=2')
+    >>> a.url, a.username, a.password, a.port
+    ('https://87.246.28.135:1880/start_transaction/{evse_id}/?a=1&b=2', 'chargerhub', 'Electro3333!', 1880)
+    >>> a = ParseUrl('https://chargerhub:Electro3333!@87.246.28.135/start_transaction/{evse_id}/?a=1&b=2')
+    >>> a.url, a.username, a.password, a.port
+    ('https://87.246.28.135/start_transaction/{evse_id}/?a=1&b=2', 'chargerhub', 'Electro3333!', None)
+    """
+    url = ''
+    username = ''
+    password = ''
+    port = 80
+
+    def __init__(self, url):
+        parsed = urllib.parse.urlparse(url)
+        self.username = parsed.username
+        self.password = parsed.password
+        self.port = parsed.port
+        new_url = list(parsed)
+        if parsed.port:
+            new_url[1] = f'{parsed.hostname}:{parsed.port}'
+        else:
+            new_url[1] = parsed.hostname
+        self.url = urllib.parse.urlunparse(new_url)
 
 
 class TimePeriod:
