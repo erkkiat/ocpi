@@ -1,5 +1,4 @@
 import logging
-import uuid
 from collections import OrderedDict
 from json import JSONDecodeError
 from typing import Union
@@ -9,7 +8,6 @@ import requests
 from django.conf import settings
 from django.db import transaction
 from django.http import Http404
-from icecream import ic
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, APIException
@@ -33,7 +31,7 @@ from ocpi22.ocpi_util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, ge
 
 import pprint
 
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, MyCommandResponse
+from ocpi22.tokens import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
 from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl
 
@@ -402,19 +400,6 @@ def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_r
             endpoints = credentials.endpoints.filter(identifier=identifier.value, role=endpoint_role.value)
             if endpoints.count():
                 return endpoints[0]
-
-
-def construct_adhoc_token(token_uid, contract_id, token_type=Token.APP_USER):
-    our_party = get_our_party(OcpiRolesEnum.EMSP)
-    return Token(
-        country_code=our_party.country_code,
-        party_id=our_party.party_id,
-        uid=token_uid,
-        type=token_type,
-        contract_id=contract_id,
-        issuer=str(our_party),
-        whitelist=Token.ALWAYS,
-    )
 
 
 def send_start_command(request, evse: Evse, token: Union[Token, str]) -> Response:

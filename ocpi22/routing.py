@@ -88,6 +88,8 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
 @lru_cache(maxsize=None)
 def find_route(party: Party, ocpi_module: OcpiModuleEnum) -> Route:
     credentials = find_credentials(party)
+    # Todo: Consider using urllib.parse.urlparse, maybe faster
+
     if credentials:
         # Direct route found
         return find_route_from_credentials(credentials, ocpi_module)

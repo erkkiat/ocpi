@@ -29,7 +29,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi_util import AdhocToken
 from ocpi22.sessions import create_session
-from ocpi22.tokens import authorize_token, get_authorization_from_sessions
+from ocpi22.tokens import authorize_token, get_authorization_from_sessions, construct_adhoc_token
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator, redis_store
 from ocpiconnector import slack_logging
 
@@ -320,6 +320,7 @@ slack_logging.init()
 
 
 class TokenIdSerializer(fields.CharField):
+    # Return the Token object or pass through the token ID if it's an ADHOC token
     def to_internal_value(self, data):
         token = Token.get_if_exists(uid=data) or data
         return token
@@ -334,10 +335,15 @@ class StartChargingSerializer(serializers.Serializer):
         # source='*',
         help_text='The identifier of the device which provides electricity to one or more connectors'
     )
-    connector_id = serializers.CharField(
-        required=False,
+    # connector_id = serializers.CharField(
+    #     required=False,
+    #     max_length=36,
+    #     help_text='The connector number used for charging during this transaction'
+    # )
+    contract_id = serializers.CharField(
+        default='N/A',
         max_length=36,
-        help_text='The connector number used for charging during this transaction'
+        help_text='The contract ID for the EV driver who is charging'
     )
     token_id = TokenIdSerializer(
         source='token',
@@ -382,15 +388,18 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_404_NOT_FOUND` when the Token, Location or EVSE doesn't exist
         * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
+        * `HTTP_424_FAILED_DEPENDENCY` when there is no connection to the charge point
         """
         try:
             if request.method == 'POST':
                 serializer = StartChargingSerializer(data=request.data)
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data['evse']
-                    connector_id: str = serializer.validated_data['connector_id']
+                    # connector_id: str = serializer.validated_data.get('connector_id')
+                    contract_id: str = serializer.validated_data.get('contract_id')
                     token = serializer.validated_data['token']
-
+                    if not isinstance(token, Token):
+                        token = construct_adhoc_token(token, contract_id)
                     response: requests.Response = send_start_command(request, evse, token)
                     data = response.json()
                     return Response(data.get('data'), status=response.status_code)

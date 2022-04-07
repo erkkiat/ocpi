@@ -785,7 +785,12 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         try:
             if request.method == 'GET':
-                return Response(self._get_callbacks())
+                result = self._get_callbacks()
+                # Example
+                # serializer = CallbacksSerializer()
+                # return_values = MyMetadata().get_serializer_info(serializer)
+                # result.update(return_values)
+                return Response(result)
             if request.method in ('POST', 'PATCH'):
                 partial = bool(request.method == 'PATCH')
                 serializer = CallbacksSerializer(data=request.data, partial=partial)

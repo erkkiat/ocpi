@@ -97,3 +97,16 @@ def get_admin_token() -> Token:
         )
     )
     return token
+
+
+def construct_adhoc_token(token_uid, contract_id, token_type=Token.APP_USER):
+    our_party = get_our_party(OcpiRolesEnum.EMSP)
+    return Token(
+        country_code=our_party.country_code,
+        party_id=our_party.party_id,
+        uid=token_uid,
+        type=token_type,
+        contract_id=contract_id,
+        issuer=str(our_party),
+        whitelist=Token.ALWAYS,
+    )
