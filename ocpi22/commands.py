@@ -267,7 +267,7 @@ class CommandsViewSet(GenericViewSet):
                     # ic(url, data, kwargs)
                     # Send start command to CPO
                     logging.info(f'Sending CPO command to url {url}')
-                    cpo_response = requests.post(url=url, data=data, headers=headers, **kwargs)
+                    cpo_response = requests.post(url=url, data=data, headers=headers, verify=False, **kwargs)
                     data = cpo_response.json()
 
                     if data:
@@ -282,7 +282,7 @@ class CommandsViewSet(GenericViewSet):
                             result = 'REJECTED'
                 except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
                     message = MessageTexts.MS_CONNECTION_ERROR
-                    http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+                    http_status = status.HTTP_424_FAILED_DEPENDENCY
                     logging.error(f'Unable to relay Command to CPO: {e}')
 
                 response_serializer = CommandResponse(
