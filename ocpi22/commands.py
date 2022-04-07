@@ -267,7 +267,12 @@ class CommandsViewSet(GenericViewSet):
                     # ic(url, data, kwargs)
                     # Send start command to CPO
                     logging.info(f'Sending CPO command to url {url}')
-                    cpo_response = requests.post(url=url, data=data, headers=headers, verify=False, **kwargs)
+                    cpo_response = requests.post(
+                        url=url,
+                        json=data,
+                        headers=headers,
+                        verify=False,
+                        **kwargs)
                     data = cpo_response.json()
 
                     if data:
