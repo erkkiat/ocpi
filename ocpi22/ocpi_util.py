@@ -169,9 +169,9 @@ def ocpi_post(url, token_base64,
     logging.info(f'Posting to {url}')
     data = ''
     if 'data' in kwargs:
-        data = json.dumps(kwargs.pop('data'))
+        data = kwargs.pop('data')
         # ic(data)
-    response = requests.post(url, *args, **kwargs, data=data,
+    response = requests.post(url, *args, **kwargs, json=data,
                              headers=make_headers(token_base64, to, sender))
     if response.status_code >= 300:
         logging.info(f'*** Got response: {url} - {response.status_code} - {response.reason}')

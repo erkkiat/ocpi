@@ -1390,10 +1390,7 @@ class TestCpoApi(TestCase):
             data = json.load(file)
 
         billed_party = Party('FI', 'EON')
-        headers = {
-            'Ocpi-From-Country-Code': billed_party.country_code,
-            'Ocpi-From-Party-Id': billed_party.party_id
-        }
+        headers = make_headers('', Party('FI', 'CPO'), billed_party)
         request = api_factory.post(url, **headers)
         request.data = data
 
@@ -1417,7 +1414,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(kwargs.get('url'), 'http://localhost/start/HELSINKI-3/',
                          'CPO start transaction URL differs from expected')
         self.assertDictEqual(
-            kwargs.get('data'),
+            kwargs.get('json'),
             {'auth_method': 'COMMAND',
              'authorization_reference': 'FI*001-AUTH-REFERENCE',
              'billed_to': 'FI*EON',

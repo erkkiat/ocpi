@@ -131,7 +131,7 @@ def command_start(data, session_uid, update_url, url):
         from ocpi22.cpo_api import get_callbacks_parameter, CallbacksSerializer
         result = requests.post(
             get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL),
-            data=dict(
+            json=dict(
                 location=session.location.uid,
                 evse=session.evse.uid,
                 session=session.uid,
@@ -171,7 +171,7 @@ def command_start(data, session_uid, update_url, url):
     )
     try:
         response_url = data.get('response_url')
-        requests.post(response_url, data=json.dumps(result_data).encode('utf8'))
+        requests.post(response_url, json=result_data)
     except requests.exceptions.ConnectionError as e:
         logging.error(f'{settings.HOSTNAME}: {str(e)}')
 
