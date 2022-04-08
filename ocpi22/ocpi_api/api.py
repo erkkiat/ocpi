@@ -1,16 +1,13 @@
 import logging
-import uuid
-from typing import Union, Optional
+from typing import Optional
 
-from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
-from django.db import transaction, IntegrityError
+from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
-from rest_framework import routers, serializers, status, mixins
+from rest_framework import routers, status, mixins
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
@@ -18,27 +15,23 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
-from ocpi22.choices import OcpiRolesEnum
-from ocpi22.cpo_api import CHARGER
-from ocpi22.location import BusinessDetailsSerializer, Coordinate
+from ocpi22.ocpi_api.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
+    CredentialsSerializer, SessionSaveSerializer, ClientInfoSerializer
+from ocpi22.cpo.api import CHARGER
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
-from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
+from ocpi22.models.location import Location
+from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, SerializerCleanedUp, PREMIUM_RESPONSE, \
+from ocpi22.util import matching_operator, PREMIUM_RESPONSE, \
     OnlyRawBrowsableAPIRenderer
 from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles
-from ocpiconnector.ocpi_identities import ocpi_platform, get_our_party
-
-default_error_messages = dict(
-    object_missing='There is no {name} with UID `{uid}` in our database'
-)
+from ocpiconnector.ocpi_identities import ocpi_platform
 
 
 # Todo: In case a PATCH request fails, the client is expected to call the GET method to check the state
@@ -46,156 +39,6 @@ default_error_messages = dict(
 
 # Todo: Only requests/responses from Function Modules: such as: Tokens, Locations, CDRs etc. SHALL be routed,
 #  so need the routing headers.
-
-
-class CdrTokenSerializer(SerializerCleanedUp):
-    uid = serializers.CharField(required=True, source='cdr_token_uid')
-    type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True, source='cdr_token_type')
-    contract_id = serializers.CharField(required=True, source='cdr_token_contract_id')
-
-
-class TotalCostSerializer(SerializerCleanedUp):
-    excl_vat = serializers.FloatField(source='total_cost_excl_vat', required=False)
-    incl_vat = serializers.FloatField(source='total_cost_incl_vat', required=False)
-
-
-class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
-    default_error_messages = default_error_messages
-
-    class Meta:
-        model = Token
-        fields = ['detail_url', 'country_code', 'party_id', 'uid', 'type',
-                  'contract_id', 'visual_number', 'issuer', 'group_id',
-                  'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
-
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-
-
-class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = PriceComponent
-        fields = ('type', 'price', 'vat', 'step_size')
-
-    step_size = serializers.IntegerField(min_value=0)
-
-
-class RestrictionSerializer(SerializerCleanedUp):
-    start_time = serializers.TimeField(required=False)
-    end_time = serializers.TimeField(required=False)
-
-    start_date = serializers.DateField(required=False)
-    end_date = serializers.DateField(required=False)
-
-    min_kwh = serializers.FloatField(required=False)
-    max_kwh = serializers.FloatField(required=False)
-
-    min_current = serializers.FloatField(required=False)
-    max_current = serializers.FloatField(required=False)
-
-    min_power = serializers.FloatField(required=False)
-    max_power = serializers.FloatField(required=False)
-
-    min_duration = serializers.IntegerField(required=False)
-    max_duration = serializers.IntegerField(required=False)
-
-    day_of_week = serializers.MultipleChoiceField(choices=TariffElement.DAY_OF_WEEK_CHOICES, required=False)
-    reservation = serializers.ChoiceField(choices=TariffElement.RESERVATION_CHOICES, required=False)
-
-
-class ElementsSaveSerializer(SerializerCleanedUp):
-    price_components = PriceComponentSerializer(
-        many=True,
-        help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_pricecomponent_class'
-    )
-    restrictions = RestrictionSerializer(source='*', required=False)
-
-
-class TariffAltTextSerializer(SerializerCleanedUp):
-    language = serializers.CharField(default='EN')
-    text = serializers.CharField(source='price')
-
-
-class MinPriceSerializer(SerializerCleanedUp):
-    excl_vat = serializers.FloatField(source='min_price_excl_vat', default=None)
-    incl_vat = serializers.FloatField(source='min_price_incl_vat', default=None)
-
-
-class MaxPriceSerializer(SerializerCleanedUp):
-    excl_vat = serializers.FloatField(source='max_price_excl_vat', default=None)
-    incl_vat = serializers.FloatField(source='max_price_incl_vat', default=None)
-
-
-class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Tariff
-        exclude = ['updated', 'created', 'uid', 'archived']
-
-    id = serializers.CharField(source='uid', required=False,
-                               help_text='Preferably a human readable, unique identifier')
-    elements = ElementsSaveSerializer(
-        source='tariff_elements', many=True, required=True,
-        help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_tariffelement_class'
-    )
-    min_price = MinPriceSerializer(source='*', required=False,
-                                   default=dict(min_price_excl_vat=None, min_price_incl_vat=None))
-    max_price = MaxPriceSerializer(source='*', required=False,
-                                   default=dict(max_price_excl_vat=None, max_price_incl_vat=None))
-
-    tariff_alt_text = TariffAltTextSerializer(source='*', read_only=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-
-    # last_updated = serializers.DateTimeField(read_only=False)
-
-    def _delete_children(self, tariff: Tariff) -> None:
-        """
-        Remove TariffElements and PriceComponents from object - cascade delete should be enabled in Tariff child models
-        """
-
-        # noinspection PyUnresolvedReferences
-        for te in tariff.tariff_elements.all():
-            te.delete()
-
-    def _create_children(self, tariff: Tariff, tariff_elements: dict) -> None:
-        for te in tariff_elements:
-            price_components = te.pop('price_components')
-            tariff_element = TariffElement.objects.create(**te, tariff=tariff)
-            for pc in price_components:
-                PriceComponent.objects.create(**pc, tariff_element=tariff_element)
-
-    def update(self, instance: Tariff, validated_data: dict) -> Tariff:
-        tariff_elements = validated_data.pop('tariff_elements')
-        for key, value in validated_data.items():
-            setattr(instance, key, value)
-        instance.save()
-        self._delete_children(instance)
-        self._create_children(instance, tariff_elements)
-        return instance
-
-    def create(self, validated_data: dict) -> Tariff:
-        tariff_elements = validated_data.pop('tariff_elements')
-        tariff = Tariff.objects.create(**validated_data)
-        self._create_children(tariff, tariff_elements)
-        return tariff
-
-
-class CommandTokenSerializer(SerializerCleanedUp):
-    class Meta:
-        fields = ['country_code', 'party_id', 'uid', 'type',
-                  'contract_id', 'visual_number', 'issuer', 'group_id',
-                  'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
-
-    country_code = serializers.CharField(required=True)
-    party_id = serializers.CharField(required=True)
-    uid = serializers.CharField(required=True)
-    type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True)
-    contract_id = serializers.CharField(required=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-
-    def create(self, validated_data):
-        raise NotImplementedError()
-
-    def update(self, instance, validated_data):
-        raise NotImplementedError()
 
 
 class TokenViewSet(mixins.ListModelMixin,
@@ -305,67 +148,6 @@ class TokenViewSet(mixins.ListModelMixin,
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
 
-class CdrCoordinatesSerializer(SerializerCleanedUp):
-    def update(self, instance, validated_data):
-        raise NotImplementedError()
-
-    def create(self, validated_data):
-        raise NotImplementedError()
-
-    latitude = Coordinate(source='cdr_location_latitude')
-    longitude = Coordinate(source='cdr_location_longitude')
-
-
-class CdrLocationSerializer(SerializerCleanedUp):
-    id = serializers.CharField(source='cdr_location_id')
-    address = serializers.CharField(source='cdr_location_address')
-    name = serializers.CharField(source='cdr_location_name', required=False)
-    city = serializers.CharField(source='cdr_location_city')
-    postal_code = serializers.CharField(source='cdr_location_postal_code')
-    country = serializers.CharField(source='cdr_location_country')
-    coordinates = CdrCoordinatesSerializer(source='*')
-    evse_uid = serializers.CharField(source='cdr_location_evse_uid')
-    evse_id = serializers.CharField(source='cdr_location_evse_id')
-    connector_id = serializers.CharField(source='cdr_location_connector_id')
-    connector_standard = serializers.CharField(source='cdr_location_connector_standard')
-    connector_format = serializers.CharField(source='cdr_location_connector_format')
-    connector_power_type = serializers.CharField(source='cdr_location_connector_power_type')
-
-
-class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Cdr
-        fields = ['detail_url', 'country_code', 'party_id', 'id', 'start_date_time', 'end_date_time',
-                  'session_id', 'cdr_token', 'auth_method', 'authorization_reference',
-                  'cdr_location', 'tariffs', 'total_cost', 'total_energy', 'currency',
-                  'total_time', 'credit', 'credit_reference_id', 'last_updated']
-
-    id = serializers.CharField(source='uid')
-    cdr_token = CdrTokenSerializer(source='*')
-    total_cost = TotalCostSerializer(source='*')
-    tariffs = TariffSerializer(many=True, required=True)
-    cdr_location = CdrLocationSerializer(source='*')
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=True)
-    end_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=True)
-
-    def create(self, validated_data):
-        try:
-            tariffs = validated_data.pop('tariffs')
-            tariff_serializer = TariffSerializer()
-            tariff_list = []
-            for t in tariffs:
-                # Create archived copies of the relevant Tariffs, so that they don't change anymore
-                t['archived'] = True
-                tariff_list.append(tariff_serializer.create(t))
-            cdr = Cdr.objects.create(**validated_data)
-            cdr.tariffs.set(tariff_list)
-            return cdr
-        except IntegrityError as e:
-            raise ValidationError(f'A CDR with uid `{validated_data.get("uid")}` already exists. '
-                                  'Overwriting an existing CDR is forbidden.')
-
-
 class CdrViewSet(mixins.ListModelMixin,
                  GenericViewSet):
     """
@@ -443,24 +225,6 @@ class CdrViewSet(mixins.ListModelMixin,
             Cdr.send_hub_updates(serializer.data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED)
         return OCPIResponse(errors=serializer.errors)
-
-
-class RolesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CredentialsRole
-        fields = ('country_code', 'party_id', 'role', 'business_details')
-
-    business_details = BusinessDetailsSerializer()
-
-
-class CredentialsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Credentials
-        fields = ('token', 'url', 'roles')
-
-    token = serializers.CharField(source='theirs')
-    url = serializers.URLField()
-    roles = RolesSerializer(many=True)
 
 
 class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
@@ -545,85 +309,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 retry=True, retry_policy=dict(max_retries=5, interval_start=2))
 
         return OCPIResponse(serializer.data)
-
-
-class LocationIdSerializer(serializers.CharField):
-    # location_id = serializers.CharField(required=True)
-    default_error_messages = default_error_messages
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def to_representation(self, instance: Union[Session, Location]):
-        if isinstance(instance, Session): return instance.location.uid
-        if isinstance(instance, dict): instance = instance.get('location')
-        if instance:
-            return instance.uid
-
-    def to_internal_value(self, data: str):
-        location = Location.get_if_exists(uid=data)
-        if not location:
-            self.fail('object_missing', name='Location', uid=data)
-        return dict(location=location)
-
-
-class EvseUidSerializer(serializers.Serializer):
-    evse_uid = serializers.CharField(required=True)
-    default_error_messages = default_error_messages
-
-    def to_representation(self, instance: Session):
-        return instance.evse.uid
-
-    def to_internal_value(self, data: str):
-        evse = Evse.get_if_exists(uid=data)
-        if not evse:
-            self.fail('object_missing', name='Evse', uid=data)
-        return dict(evse=evse)
-
-
-class ConnectorIdSerializer(serializers.Serializer):
-    default_error_messages = default_error_messages
-
-    def to_representation(self, instance: Session):
-        return instance.connector.uid if hasattr(instance, 'connector') and instance.connector else None
-
-    def to_internal_value(self, data: str):
-        connector = Connector.get_if_exists(uid=data)
-        if not connector:
-            self.fail('object_missing', name='Connector', uid=data)
-        return dict(connector=connector)
-
-
-class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Session
-        fields = ['detail_url', 'country_code', 'party_id', 'uid',
-                  'start_date_time', 'end_date_time', 'kwh',
-                  'cdr_token', 'auth_method', 'authorization_reference',
-                  'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
-                  'status', 'last_updated']
-
-    cdr_token = CdrTokenSerializer(required=True, source='*')
-    location_id = LocationIdSerializer(source='*')
-    evse_uid = EvseUidSerializer(source='*')
-    connector_id = ConnectorIdSerializer(source='*', required=False)
-    total_cost = TotalCostSerializer(source='*', required=False)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-
-    def create(self, validated_data):
-        # noinspection PyUnresolvedReferences
-        return Session.objects.create(
-            **validated_data
-        )
-
-    def update(self, instance, validated_data):
-        for key, value in validated_data.items():
-            if key not in ('uid', 'location', 'evse'):
-                setattr(instance, key, value)
-            # else:
-            #     print(f'Skipping key {key}')
-        instance.save()
-        return instance
 
 
 class TariffViewSet(mixins.ListModelMixin,
@@ -754,25 +439,6 @@ class SessionViewSet(mixins.ListModelMixin,
 
     def patch(self, request):
         return self.put(request, partial=True)
-
-
-class ConnectionStatusSerializer(serializers.Serializer):
-    def to_representation(self, instance: CredentialsRole):
-        return instance.credentials.connection_status
-
-
-class LastConnectionSerializer(serializers.Serializer):
-    def to_representation(self, instance: CredentialsRole):
-        return instance.credentials.last_connection
-
-
-class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = CredentialsRole
-        fields = ('country_code', 'party_id', 'role', 'status', 'last_updated')
-
-    status = ConnectionStatusSerializer(source='*')
-    last_updated = LastConnectionSerializer(source='*')
 
 
 class ClientInfoViewSet(mixins.ListModelMixin,

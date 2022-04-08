@@ -11,7 +11,7 @@ from requests import Response
 from rest_framework import exceptions
 from rest_framework.exceptions import APIException
 
-from ocpi22.commands import send_start_command, send_stop_command
+from ocpi22.commands.commands import send_start_command, send_stop_command
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.dynamic_price import DynamicPrice
 from ocpi22.models.models import Facility, Capability
@@ -23,7 +23,6 @@ from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultT
 from ocpi22.models.token import Token
 from ocpi22.sessions import get_active_sessions
 from ocpi22.tokens import get_admin_token
-from ocpi22.util import MyCommandResponse
 from ocpiconnector.ocpi_identities import ocpi_identities
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False

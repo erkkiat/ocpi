@@ -15,7 +15,7 @@ from ocpi22.ocpi_util import OcpiModule, Ocpi
 #     Unlike the usual OCPI modules, this module is between eMSP/CPO and Hub instead of between eMSP and CPO.
 #     """
 #
-#     ocpi_serializer_class = 'ocpi22.api.ClientInfoSerializer'
+#     ocpi_serializer_class = 'ocpi22.ocpi_api.api.ClientInfoSerializer'
 #     ocpi_module_name = Ocpi.Modules.CLIENTINFO
 #     ocpi_object_owner = 'HUB'
 #     send_updates_to = ['EMSP', 'NAP', 'NSP', 'HUB', 'CPO', 'SCSP']

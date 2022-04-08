@@ -7,7 +7,7 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.auth import OCPIPermission
-from ocpi22.commands import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer
+from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer
 from ocpi22.models.session import Session
 from ocpi22.ocpi_util import OCPIResponse, Ocpi
 from ocpi22.util import OnlyRawBrowsableAPIRenderer

@@ -27,7 +27,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     """
 
     ocpi_module_name = OcpiModuleEnum.CDRS
-    ocpi_serializer_class = 'ocpi22.api.CdrSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi_api.serializers.CdrSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
     # send_updates_to = ('EMSP', 'HUB')

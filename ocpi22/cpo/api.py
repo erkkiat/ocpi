@@ -1,15 +1,13 @@
 import logging
 import os
-import uuid
-from functools import lru_cache
-from typing import Optional, Union
+from typing import Optional
 
 import redis
 from django.conf import settings
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
-from rest_framework import routers, status, mixins, viewsets, serializers, fields
+from rest_framework import routers, status, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -18,32 +16,24 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.choices import OCPP_STATUS_CHOICES, OcppStatusEnum, OcpiRolesEnum
+from ocpi22.commands.serializers import CpoCommandResult
+from ocpi22.cpo.serializers import EvseSerializer, CpoSessionSerializer, LocationQuickSerializer, \
+    StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
+    StopTransactionSerializer, CallbacksSerializer
+from ocpi22.cpo.util import get_callbacks_parameter
 from ocpi22.location import send_evse_updates
-from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi_util import AdhocToken
 from ocpi22.sessions import create_session
-from ocpi22.tokens import authorize_token, get_authorization_from_sessions
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator, redis_store, MyMetadata
+from ocpi22.tokens import authorize_token, TokenAuthorization, get_session_by_adhoc_token
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
 
-from ocpiconnector.ocpi_identities import get_identity, get_our_party
-
 pp = PrettyPrinter(indent=4).pprint
 slack_logging.init()
-
-
-class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Evse
-        fields = ['url', 'uid', 'status', 'last_updated']
-
-    uid = serializers.CharField(read_only=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
 
 class CpoEvseViewSet(mixins.RetrieveModelMixin,
@@ -107,121 +97,6 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
     queryset = Evse.objects.all().order_by('created')
     serializer_class = EvseSerializer
     lookup_field = 'evse_id'
-
-
-class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Session
-        fields = ['session_id', 'billed_to',
-                  'start_date_time', 'end_date_time', 'start_kwh',
-                  'token', 'auth_method', 'authorization_reference',
-                  'location_id', 'evse_uid', 'connector_id', 'currency',
-                  'total_cost_incl_vat', 'total_cost_excl_vat',
-                  'status', 'last_updated']
-
-    session_id = serializers.CharField(source='uid', read_only=True)
-    token = serializers.SerializerMethodField(read_only=True)
-    location_id = serializers.SerializerMethodField(read_only=True)
-    evse_uid = serializers.SerializerMethodField(read_only=True)
-    connector_id = serializers.SerializerMethodField(read_only=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-
-    @staticmethod
-    def get_token(session):
-        return clear_empty(dict(
-            token_id=session.cdr_token_uid,
-            type=session.cdr_token_type,
-            contract_id=session.cdr_token_contract_id
-        ))
-
-    @staticmethod
-    def get_location_id(session):
-        return session.location.uid
-
-    @staticmethod
-    def get_evse_uid(session):
-        return session.evse.uid
-
-    @staticmethod
-    def get_connector_id(session):
-        return session.connector.uid
-
-
-class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Connector
-        fields = ['uid', 'standard', 'format',
-                  'max_voltage', 'max_amperage', 'max_electric_power',
-                  'tariff_ids', 'last_updated']
-
-    uid = serializers.CharField(validators=[uid_validator])
-    max_electric_power = serializers.SerializerMethodField()
-    tariff_ids = serializers.SerializerMethodField()
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-
-    @staticmethod
-    def get_tariff_ids(connector: Connector) -> list:
-        return [t.uid for t in connector.tariff_ids.all()]
-
-    @staticmethod
-    def get_max_electric_power(connector: Connector) -> str:
-        # Todo: what about 1-phase and 2-phase AC?
-        return connector.max_electric_power or connector.max_voltage * connector.max_amperage
-
-
-class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Evse
-        fields = ['status_url', 'uid', 'status', 'connectors', 'last_updated']
-
-    uid = serializers.CharField(validators=[uid_validator])
-    connectors = ConnectorQuickSerializer(many=True)
-
-
-class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Location
-        fields = [
-            'quick_url', 'id',
-            'name', 'address', 'city', 'postal_code', 'state', 'country',
-            'latitude', 'longitude', 'evses',
-        ]
-
-    id = serializers.CharField(source='uid', validators=[uid_validator])
-    evses = EvseQuickSerializer(many=True)
-
-    lookup_field = 'uid'
-
-    # noinspection PyUnresolvedReferences
-    def create(self, validated_data, *args, **kwargs):
-        ic('create', validated_data)
-        evses = validated_data.pop('evses', [])
-        location = Location.objects.create(**validated_data)
-        for evse_dict in evses:
-            connectors = evse_dict.pop('connectors', [])
-            evse = Evse.objects.create(location=location, **evse_dict)
-            for connector_dict in connectors:
-                Connector.objects.create(evse=evse, **connector_dict)
-        return location
-
-    # noinspection PyUnresolvedReferences
-    def update(self, location, validated_data, *args, **kwargs):
-        ic('update', location, validated_data)
-        evses = validated_data.pop('evses', [])
-        Location.objects.filter(uid=location.uid).update(**validated_data)
-        for evse_dict in evses:
-            connectors = evse_dict.pop('connectors', [])
-            evse, created = Evse.objects.get_or_create(location=location, uid=evse_dict.pop('uid'),
-                                                       defaults=evse_dict)
-            if not created:
-                Evse.objects.filter(uid=evse.uid).update(**evse_dict)
-            for connector_dict in connectors:
-                connector, created = Connector.objects.get_or_create(evse=evse,
-                                                                     uid=connector_dict.pop('uid'),
-                                                                     defaults=connector_dict)
-                if not created:
-                    Connector.objects.filter(uid=connector.uid).update(**connector_dict)
-        return location
 
 
 class LocationQuickViewSet(mixins.ListModelMixin,
@@ -304,160 +179,6 @@ class LocationQuickViewSet(mixins.ListModelMixin,
             return get_object_or_404(Location, uid=uid)
 
 
-def _find_our_evse(evse_uid) -> Evse:
-    party = get_our_party(OcpiRolesEnum.CPO)
-    evses = Evse.objects.filter(uid=evse_uid).select_related('location'). \
-        filter(location__country_code=party.country_code, location__party_id=party.party_id)
-    evse_count = evses.count()
-    if not evse_count:
-        raise Evse.DoesNotExist(f'EVSE with ID {evse_uid} '
-                                f'does not exist in the OCPI Connector database for party {str(party)}')
-    if evse_count > 1:
-        raise Evse.DoesNotExist(f'There are more than one EVSE with ID {evse_uid} '
-                                f'in the OCPI Connector database for party {str(party)}')
-    return evses.first()
-
-
-class EvseSerialnumberSerializer(fields.CharField):
-    def to_internal_value(self, evse_uid):
-        return _find_our_evse(evse_uid)
-
-
-class TokenIdSerializer(fields.CharField):
-    def to_internal_value(self, data):
-        token = Token.get_if_exists(uid=data) or data
-        return token
-
-
-class SessionIdSerializer(fields.CharField):
-    def to_internal_value(self, data):
-        return Session.objects.get(uid=data)
-
-
-class OcppStatusSerializer(fields.ChoiceField):
-    def __init__(self):
-        super().__init__(OCPP_STATUS_CHOICES)
-
-    def to_internal_value(self, data):
-        result = {
-            OcppStatusEnum.AVAILABLE.value: 'AVAILABLE',
-            OcppStatusEnum.PREPARING.value: 'CHARGING',
-            OcppStatusEnum.CHARGING.value: 'CHARGING',
-            OcppStatusEnum.SUSPENDEDEV.value: 'CHARGING',
-            OcppStatusEnum.SUSPENDEDEVSE.value: 'CHARGING',
-            OcppStatusEnum.FINISHING.value: 'CHARGING',
-            OcppStatusEnum.RESERVED.value: 'RESERVED',
-            OcppStatusEnum.UNAVAILABLE.value: 'CHARGING',
-            OcppStatusEnum.FAULTED.value: 'OUTOFORDER',
-        }.get(data.upper())
-        if not result:
-            options = [x[0] for x in OCPP_STATUS_CHOICES]
-            raise ValidationError(f"'{data}' is not a known OCPP status. Options are: {options}.")
-        return result
-
-
-class StatusChangeSerializer(serializers.Serializer):
-    evse_id = EvseSerialnumberSerializer(
-        source='evse',
-        help_text='The identifier of the device which provides electricity to one or more connectors'
-    )
-    status = OcppStatusSerializer()
-
-
-class AuthorizationSerializer(serializers.Serializer):
-    evse_id = EvseSerialnumberSerializer(
-        source='evse',
-        help_text='The identifier of the device which provides electricity to one or more connectors'
-    )
-    token_id = TokenIdSerializer(
-        source='token',
-        help_text='The hidden ID of the RFID token, separate from the visual one'
-    )
-
-
-class MeterValuesSerializer(serializers.Serializer):
-    """
-    The session start and end time are recorded by the OCPI Connector
-    """
-    session_id = SessionIdSerializer(
-        source='session',
-        help_text='The session ID on the CPO platform or order number from the billing system',
-    )
-    kwh = serializers.FloatField(
-        help_text='The kWh measurement at the time of this message',
-    )
-
-
-class StartTransactionSerializer(serializers.Serializer):
-    evse_id = EvseSerialnumberSerializer(
-        source='evse',
-        help_text='The identifier of the device which provides electricity to one or more connectors'
-    )
-    connector_id = serializers.CharField(
-        max_length=36,
-        help_text='The connector number used for charging during this transaction'
-    )
-    token_id = TokenIdSerializer(
-        source='token',
-        help_text='The hidden ID of the RFID token, separate from the visual one'
-    )
-    session_id = serializers.CharField(
-        max_length=36,
-        help_text='The session ID on the CPO platform or order number from the billing system',
-        required=False,
-        default=uuid.uuid4().hex
-    )
-    start_kwh = serializers.FloatField(
-        help_text='The kWh measurement at the meter at start of the transaction, can start from zero '
-                  'or start from where the previous charging session ended or some other value'
-    )
-
-
-class StopTransactionSerializer(serializers.Serializer):
-    """
-    The session ends with a specific meter value
-    """
-    session_id = SessionIdSerializer(
-        source='session',
-        help_text='The session ID on the CPO platform or order number from the billing system',
-    )
-    stop_kwh = serializers.FloatField(
-        help_text='The kWh measurement when the charging session ends',
-    )
-
-
-class CallbacksSerializer(serializers.Serializer):
-    """
-    The URLs for callback endpoints in the CPO system
-    """
-    START_TRANSACTION_URL = 'start_transaction_url'
-    STOP_TRANSACTION_URL = 'stop_transaction_url'
-
-    start_transaction_url = serializers.URLField()
-    stop_transaction_url = serializers.URLField()
-    # unlock_connector_url = serializers.URLField(required=False)
-    # reserve_now_url = serializers.URLField(required=False)
-    # cancel_reservation_url = serializers.URLField(required=False)
-
-    def save(self):
-        for key, value in self.validated_data.items():
-            set_callbacks_parameter(key, value)
-        # redis_store.save()  # This is not allowed in Heroku Redis
-
-
-def _format_redis_key(key: str, namespace: str) -> str:
-    return f'{namespace}-{key}'
-
-
-def set_callbacks_parameter(key: str, value: str) -> None:
-    redis_store.set(_format_redis_key(key, 'callback'), value)
-
-
-@lru_cache(maxsize=128)
-def get_callbacks_parameter(key: str) -> Union[str, int, list]:
-    return redis_store.get(_format_redis_key(key, 'callback'))
-
-
 # Todo: limit access to certain privilege holders
 class ChargePointViewSet(viewsets.GenericViewSet):
     """
@@ -477,6 +198,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             meter_values=MeterValuesSerializer,
             stop_transaction=StopTransactionSerializer,
             callbacks=CallbacksSerializer,
+            remote_command_result=CpoCommandResult,
         ).get(self.action_map.get('post'), StatusChangeSerializer)
 
     @action(methods=('GET', 'POST'), detail=False)
@@ -548,27 +270,33 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     evse: Evse = serializer.validated_data.get('evse')
                     token: Token = serializer.validated_data.get('token')
                     if isinstance(token, str):
-                        # This is an AD_HOC_USER or APP_USER Token, no authorization request allowed by OCPI
-                        authorization_method, authorization_reference, party, token_type = get_authorization_from_sessions(
-                            token)
-                        # eMSP has already authorized this token for 15 minutes
-                        token = AdhocToken(uid=token, valid=True, owner=party, type=token_type)
+                        # This is an AD_HOC_USER or APP_USER Token
+                        authorization: TokenAuthorization = authorize_token(token, evse.location)
+                        if authorization:
+                            # eMSP has already authorized this AD HOC token for 15 minutes
+                            token = AdhocToken(uid=token, valid=True, owner=authorization.party,
+                                               type=authorization.token_type)
                     else:
-                        authorization_method, authorization_reference = authorize_token(token, evse.location)
-                    if not authorization_method or not token.valid:
+                        authorization: TokenAuthorization = authorize_token(token.uid, evse.location)
+
+                    if not authorization:
                         return Response(
-                            dict(status=f'Token `{token}` is (temporarily) not valid'),
+                            dict(
+                                status_text='Token is (temporarily) not valid',
+                                token_id=token,
+                            ),
                             status=status.HTTP_401_UNAUTHORIZED
                         )
 
                     return Response(
                         dict(
                             status_text=f'Token authorized for charging',
-                            evse=evse.uid,
-                            token=str(token),
+                            evse_id=evse.uid,
+                            token_id=token.uid,
+                            token_type=token.type,
                             billed_to=token.party(),
-                            authorization_reference=authorization_reference,
-                            authorization_method=authorization_method
+                            authorization_reference=authorization.authorization_reference,
+                            authorization_method=authorization.auth_method,
                         )
                     )
                 else:
@@ -601,10 +329,13 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         * `HTTP_200_OK` when the charging session was started successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_401_UNAUTHORIZED` when the APP_USER token has expired
         * `HTTP_404_NOT_FOUND` when the Token or the EVSE doesn't exist
         * `HTTP_409_CONFLICT` when a Session with the same session_id already exists
         """
         try:
+            session: Session = None
+
             if request.method == 'POST':
                 serializer = StartTransactionSerializer(data=request.data)
                 if serializer.is_valid():
@@ -621,14 +352,31 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             ),
                             status=status.HTTP_409_CONFLICT,
                         )
-                    # Todo: Session.currency needs to match with Tariff currency
-                    session = create_session(
-                        # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
-                        # Other CPO can have same ID
-                        uid=session_id, evse_id=evse, location_id=evse.location, connector_id=connector_id,
-                        token_id=token, billed_to=token.party(), start_kwh=start_kwh, stop_kwh=start_kwh,
-                        session_status=Session.ACTIVE
-                    )
+
+                    if isinstance(token, Token):
+                        party = token.party()
+                    else:
+                        # AD HOC Token uid, we need to fetch needed info
+                        authorization: TokenAuthorization = authorize_token(token)
+                        if not authorization:
+                            return Response(dict(
+                                status_text='Token is (no longer) valid',
+                                token_id=token,
+                            ), status=status.HTTP_401_UNAUTHORIZED)
+                        party = authorization.party
+                        session = get_session_by_adhoc_token(token, max_age_minutes=14)
+                        session.uid = session_id.upper()
+                        session.save()
+
+                    if not session:
+                        # Todo: Session.currency needs to match with Tariff currency
+                        session = create_session(
+                            # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
+                            # Other CPO can have same ID
+                            uid=session_id, evse_id=evse, location_id=evse.location, connector_id=connector_id,
+                            token_id=token, billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
+                            session_status=Session.ACTIVE
+                        )
                     session_serializer = CpoSessionSerializer(instance=session)
                     return Response(
                         dict(
@@ -733,7 +481,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
-                    from ocpi22.api import CdrSerializer
+                    from ocpi22.ocpi_api.serializers import CdrSerializer
                     cdr = Cdr.create_based_on_session(session)
                     cdr.save()
 
@@ -742,7 +490,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     return Response(
                         dict(
-                            status_text=f'Session finished',
+                            status_text='Session finished',
                             session_id=session.uid,
                             kwh_total=session.kwh,
                             session=session_serializer.data,
@@ -798,6 +546,43 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     serializer.save()
                     get_callbacks_parameter.cache_clear()
                     return Response(self._get_callbacks())
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except redis.exceptions.ConnectionError as e:
+            logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
+                          f'due to trouble connecting with Redis: {e}')
+            return Response(
+                dict(
+                    status_text='Unable to store settings due to connection problem with Redis. '
+                                'This is our fault, sorry. Support has been alerted.'
+                ),
+                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=('GET', 'POST'), detail=False)
+    def remote_command_result(self, request):
+        """
+        Using this endpoint you tell OCPI Connector if the requested start_transaction or
+        stop_transaction has been successful.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the call was succesful
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+
+        """
+        try:
+            if request.method == 'GET':
+                return Response(dict(help='Please see `OPTIONS` for the schema'))
+            if request.method in ('POST'):
+                serializer = CpoCommandResult(data=request.data)
+                token_id = serializer.validated_data.get('token_id')
+                if serializer.is_valid():
+                    session = None
+                    return Response(dict(
+                        status_text='Status relayed to eMSP'),
+                        token_id=token_id,
+                    )
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except redis.exceptions.ConnectionError as e:
             logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
@@ -936,5 +721,5 @@ class Charger:
         return True
 
 
-charger_class = os.environ.get('CHARGER_CLASS', 'ocpi22.cpo_api.Charger')
+charger_class = os.environ.get('CHARGER_CLASS', 'ocpi22.cpo.api.Charger')
 CHARGER = import_string(charger_class)

@@ -23,12 +23,12 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
         return
     object_list = [
         dict(
-            model='ocpi22.models.tariffs.Tariff', viewset='ocpi22.api.TariffViewSet',
+            model='ocpi22.models.tariffs.Tariff', viewset='ocpi22.ocpi_api.api.TariffViewSet',
             url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
                                          identifier=Tariff.ocpi_module_name.value).first(), 'url', '')
         ),
         dict(
-            model='ocpi22.models.tokens.Token', viewset='ocpi22.api.TokenViewSet',
+            model='ocpi22.models.tokens.Token', viewset='ocpi22.ocpi_api.api.TokenViewSet',
             url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
                                          identifier=Token.ocpi_module_name.value).first(), 'url', '')
         ),

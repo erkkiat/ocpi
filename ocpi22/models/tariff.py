@@ -27,7 +27,7 @@ from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
 class Tariff(models.Model, ModelUtilMixin, OcpiModule):
-    ocpi_serializer_class = 'ocpi22.api.TariffSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi_api.api.TariffSerializer'
     ocpi_module_name = OcpiModuleEnum.TARIFFS
     ocpi_object_owner = 'CPO'
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')

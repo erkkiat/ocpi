@@ -29,11 +29,12 @@ from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
-from ocpi22.api import TariffViewSet, TariffSerializer, CdrViewSet, CdrSerializer, TokenViewSet, TokenSerializer, \
-    SessionSaveSerializer
+from ocpi22.ocpi_api.api import TariffViewSet, CdrViewSet, TokenViewSet
+from ocpi22.ocpi_api.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSaveSerializer
 from ocpi22.choices import OcpiModuleEnum
-from ocpi22.commands import CommandsViewSet, CommandResponse
-from ocpi22.cpo_api import ChargePointViewSet
+from ocpi22.commands.commands import CommandsViewSet
+from ocpi22.commands.serializers import CommandResponse
+from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.location import LocationViewSet, LocationSaveSerializer
 from ocpi22.middleware import OCPIHubMiddleware
 from ocpi22.models.business_details import BusinessDetails
@@ -47,7 +48,7 @@ from ocpi22.ocpi_util import OCPIResponse, Ocpi, OcpiModule, make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
-from ocpi22.tokens import get_admin_token, get_authorization_from_sessions, authorize_token
+from ocpi22.tokens import get_admin_token, authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpi22.test_data import expected_get_responses
@@ -59,7 +60,7 @@ client = Client()
 
 
 def load_tests(_loader, tests, _ignore):
-    tests.addTests(doctest.DocTestSuite('ocpi22.api'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.ocpi_api.api'))
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.ocpi_util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
@@ -780,9 +781,9 @@ class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.cpo_api.redis_store.get',
+    @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
-    @patch('ocpi22.commands.requests.post')
+    @patch('ocpi22.commands.commands.requests.post')
     def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock):
         # for t in [11, 12, 13]:
         #     create_tariff(uid=str(t), country_code='BE', party_id='BEC')
@@ -1371,11 +1372,11 @@ class TestCpoApi(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.cpo_api.redis_store.get',
+    @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.sessions.generate_session_uid',
            side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
-    @patch('ocpi22.commands.requests.post')
+    @patch('ocpi22.commands.commands.requests.post')
     def test_adhoc_token(self,
                          requests_post_mock: Mock,
                          generate_session_uid_mock: Mock,
@@ -1443,11 +1444,39 @@ class TestCpoApi(TestCase):
                              {'authorization_method': 'COMMAND',
                               'authorization_reference': 'FI*001-AUTH-REFERENCE',
                               'billed_to': 'FI*CPO',
-                              'evse': 'HELSINKI-3',
+                              'evse_id': 'HELSINKI-3',
                               'status_text': 'Token authorized for charging',
-                              'token': 'FI*CPO: AD_HOC_USER NON-EXISTENT-ADHOC-TOKEN'}
+                              'token_id': 'NON-EXISTENT-ADHOC-TOKEN',
+                              'token_type': 'AD_HOC_USER'}
                              )
 
+        start_url = reverse('chargepoint-start-transaction')
+        start_request = api_factory.post(start_url)
+        start_request.data = dict(
+            evse_id='HELSINKI-3',
+            token_id='NON-EXISTENT-ADHOC-TOKEN',
+            session_id='MY-SESSION',
+            connector_id='1',
+        )
+        cpo_response = cpo_viewset.start_transaction(start_request)
+
+        self.assertDictEqual(
+            cpo_response.data,
+            {'session': {'auth_method': 'COMMAND',
+                         'authorization_reference': 'FI*001-AUTH-REFERENCE',
+                         'billed_to': 'FI*EON',
+                         'currency': 'EUR',
+                         'evse_uid': 'HELSINKI-3',
+                         'location_id': 'HELSINKI-1',
+                         'session_id': 'MY-SESSION',
+                         'start_date_time': '2000-01-01T12:00:00',
+                         'start_kwh': 0.0,
+                         'status': 'PENDING',
+                         'token': OrderedDict([('token_id', 'NON-EXISTENT-ADHOC-TOKEN'),
+                                               ('type', 'AD_HOC_USER'),
+                                               ('contract_id', 'INTERNAL')])},
+             'status_text': 'Session started'}
+        )
         # Check that the AD_HOC_USER token expires after 15 minutes
         with time_machine.travel(faketime + timedelta(minutes=16), tick=False):
             cpo_request.data = dict(
@@ -1456,7 +1485,8 @@ class TestCpoApi(TestCase):
             )
             # ic(timezone.now())
 
-            get_authorization_from_sessions.cache_clear()
+            _get_authorization_from_sessions.cache_clear()
+            _authorize_token.cache_clear()
             authorize_token.cache_clear()
 
             cpo_response = cpo_viewset.authorize(cpo_request)
@@ -1464,7 +1494,8 @@ class TestCpoApi(TestCase):
             self.assertEqual(cpo_response.status_code, 401,
                              'Token should NOT be authorized')
             self.assertDictEqual(cpo_response.data,
-                                 {'status': 'Token `None: None NON-EXISTENT-ADHOC-TOKEN` is (temporarily) not valid'}
+                                 {'status_text': 'Token is (temporarily) not valid',
+                                  'token_id': 'NON-EXISTENT-ADHOC-TOKEN'}
                                  )
 
         response = make_json_response(dict(broken_response='APPLES_AND_ORANGES'))
@@ -1476,8 +1507,10 @@ class TestCpoApi(TestCase):
                          'JSON decode errors should return HTTP 503')
 
         # Check that authorizations are cached
-        self.assertTrue(hasattr(get_authorization_from_sessions, 'cache_clear'),
+        self.assertTrue(hasattr(_get_authorization_from_sessions, 'cache_clear'),
                         f'get_authorization_from_sessions should be cached for 1 minute')
+        self.assertTrue(hasattr(_authorize_token, 'cache_clear'),
+                        f'_authorize_token should be cached for 15 minutes')
         self.assertTrue(hasattr(authorize_token, 'cache_clear'),
                         f'authorize_token should be cached for 15 minutes')
 

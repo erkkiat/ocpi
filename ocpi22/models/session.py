@@ -29,7 +29,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         ]
 
     ocpi_module_name = OcpiModuleEnum.SESSIONS
-    ocpi_serializer_class = 'ocpi22.api.SessionSaveSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi_api.serializers.SessionSaveSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
     # send_updates_to = ('EMSP', 'HUB')

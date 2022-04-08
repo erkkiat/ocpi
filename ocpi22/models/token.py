@@ -12,7 +12,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     A Token structure with data owned by the eMSP
     """
 
-    ocpi_serializer_class = 'ocpi22.api.TokenSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi_api.serializers.TokenSerializer'
     ocpi_module_name = OcpiModuleEnum.TOKENS
     ocpi_object_owner = 'EMSP'
     send_updates_to = ('CPO', 'HUB')

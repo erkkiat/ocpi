@@ -1,4 +1,3 @@
-import json
 import os
 import random
 from datetime import timedelta
@@ -128,7 +127,8 @@ def command_start(data, session_uid, update_url, url):
         return False
     try:
         # POST the start command to CPO system
-        from ocpi22.cpo_api import get_callbacks_parameter, CallbacksSerializer
+        from ocpi22.cpo.util import get_callbacks_parameter
+        from ocpi22.cpo.serializers import CallbacksSerializer
         result = requests.post(
             get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL),
             json=dict(

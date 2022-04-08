@@ -27,7 +27,7 @@ from ocpiconnector.ocpi_identities import get_our_party, Party
 
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
-    ocpi_serializer_class = 'ocpi22.api.CredentialsSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi_api.serializers.CredentialsSerializer'
     ocpi_module_name = OcpiModuleEnum.CREDENTIALS
     ocpi_object_owner = None
     send_updates_to = None
