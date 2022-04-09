@@ -12,7 +12,7 @@ from ocpi22.hub import CommandsHubViewSet
 
 from ocpi22.location import LocationViewSet
 from ocpi22.models.credentials import new_connection
-from ocpi22.msp_api import MSPRouter, MspRoamingViewSet
+from ocpi22.msp.api import MSPRouter, MspRoamingViewSet
 from ocpi22.versions import VersionsViewSet, BaseRouter
 from ocpiconnector import charger_simulator
 from ocpiconnector.ocpi_identities import ocpi_platform
