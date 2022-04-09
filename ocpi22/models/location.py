@@ -23,7 +23,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     A physical location with one or more EVSEs
     """
 
-    ocpi_serializer_class = 'ocpi22.location.LocationSerializer'
+    ocpi_serializer_class = 'ocpi22.locations.serializers.LocationSerializer'
     ocpi_module_name = OcpiModuleEnum.LOCATIONS
     ocpi_object_owner = 'CPO'
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')

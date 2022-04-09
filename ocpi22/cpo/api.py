@@ -21,7 +21,7 @@ from ocpi22.cpo.serializers import EvseSerializer, CpoSessionSerializer, Locatio
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, CallbacksSerializer
 from ocpi22.cpo.util import get_callbacks_parameter
-from ocpi22.location import send_evse_updates
+from ocpi22.locations.location import send_evse_updates
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token

@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 from icecream import ic
 from requests import Response
 
-from ocpi22.location import LocationSerializer
+from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.models.credentials import Endpoint
 
 

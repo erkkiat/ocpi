@@ -33,7 +33,7 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
                                          identifier=Token.ocpi_module_name.value).first(), 'url', '')
         ),
         dict(
-            model='ocpi22.models.locations.Location', viewset='ocpi22.location.LocationViewSet',
+            model='ocpi22.models.locations.Location', viewset='ocpi22.locations.location.LocationViewSet',
             url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
                                          identifier=Location.ocpi_module_name.value).first(), 'url', '')
         ),
