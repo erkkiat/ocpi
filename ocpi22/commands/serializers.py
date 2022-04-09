@@ -49,6 +49,12 @@ class StartSessionSerializer(serializers.Serializer):
         required=False, allow_blank=True,
         help_text='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
     )
+    connector_id = serializers.CharField(
+        max_length=36,
+        required=False, allow_blank=True,
+        help_text='Optional Connector.id of the Connector of the EVSE on which a session is to be started. '
+                  'This field is required when the capability: START_SESSION_CONNECTOR_REQUIRED is set on the EVSE.'
+    )
     authorization_reference = serializers.CharField(
         max_length=36,
         required=False, allow_blank=True,

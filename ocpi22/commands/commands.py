@@ -9,7 +9,7 @@ from django.db import transaction
 from django.http import Http404
 from rest_framework import serializers, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, APIException
+from rest_framework.exceptions import NotFound, APIException, ValidationError
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
@@ -24,7 +24,7 @@ from ocpi22.cpo.api import CHARGER
 from ocpi22.cpo.util import get_callbacks_parameter
 from ocpi22.cpo.serializers import CallbacksSerializer
 from ocpi22.models.credentials import CredentialsRole, Endpoint
-from ocpi22.models.location import Evse
+from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.routing import find_route, Route
@@ -36,7 +36,7 @@ import pprint
 
 from ocpi22.tokens import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error, clear_empty
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 
@@ -81,7 +81,7 @@ class CommandsViewSet(GenericViewSet):
                 token = serializer.validated_data.get('token', '')
                 connector_id = serializer.validated_data.get('connector_id', None)
                 evse_uid = serializer.validated_data.get('evse_uid', '')
-                session: Session = create_session(
+                params = dict(
                     location_id=serializer.validated_data['location_id'],
                     evse_id=evse_uid,
                     connector_id=connector_id,
@@ -91,15 +91,7 @@ class CommandsViewSet(GenericViewSet):
                     authorize_from_msp=False,
                     authorization_reference=serializer.validated_data.get('authorization_reference'),
                 )
-
-                saved_session_serializer = SessionSaveSerializer(instance=session)
-                # ic()
-                # ic(saved_session_serializer.data)
-
-                # connector_id_from_charger = CHARGER.remote_start_transaction(token.get('uid'), session.evse)
-                # if not connector_id_from_charger:
-                #     return Response(dict(error=f'Unable to start session on charger at this time',
-                #                          status=status.HTTP_406_NOT_ACCEPTABLE))
+                session: Session = create_session(**params)
 
                 # The worst scenario is this
                 ocpi_status = 2000
@@ -117,6 +109,7 @@ class CommandsViewSet(GenericViewSet):
                         auth_method=session.auth_method,
                         billed_to=session.billed_to,
                         evse_id=session.evse.uid,
+                        connector_id=connector_id,
                     )
 
                     # ic(data)
@@ -162,8 +155,10 @@ class CommandsViewSet(GenericViewSet):
                     instance=dict(result=result, timeout=timeout, message=message)
                 )
                 return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status)
-        except (NotFound, Http404, KeyError) as e:
-            return OCPIResponse(None, status_message=str(e),
+        except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist,
+                Connector.DoesNotExist, Token.DoesNotExist,) as e:
+            log_error(request, e)
+            return OCPIResponse(None, status_message=f'Unable to start session: {e}',
                                 http_status=status.HTTP_400_BAD_REQUEST,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
@@ -272,7 +267,7 @@ def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_r
                 return endpoints[0]
 
 
-def send_start_command(request, evse: Evse, token: Union[Token, str]) -> Response:
+def send_start_command(request, evse: Evse, token: Union[Token, str], connector_id=None, contract_id='') -> Response:
     """
     As an eMSP we send an OCPI Command START_SESSION to the CPO
     """
@@ -283,22 +278,24 @@ def send_start_command(request, evse: Evse, token: Union[Token, str]) -> Respons
     if route:
         logging.info(f'*** Sending start command for {evse.location.name} to {route.url}.')
         if not isinstance(token, Token):
-            token = construct_adhoc_token(token, contract_id='N/A')
+            token = construct_adhoc_token(token, contract_id=contract_id)
         token_data = TokenSerializer(token).data
         data = dict(
             response_url=request.build_absolute_uri('/'),
             token=token_data,
             location_id=evse.location.uid,
             evse_uid=evse.uid,
+            connector_id=connector_id,
             authorization_reference=generate_auth_reference(),  # Todo: Store authorization for verifying CDR
         )
+        serializer = StartSessionSerializer(instance=data)
         return ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
                          to=Party(country_code, party_id),
                          sender=get_our_party(OcpiRolesEnum.EMSP),
-                         data=data)
+                         data=serializer.data)
     else:
         message = f"Cannot find a route to {evse.location.party()}"
-        logging.error(f'{settings.HOSTNAME}: {message}')
+        log_error(request, message)
         raise APIException(message)
 
 

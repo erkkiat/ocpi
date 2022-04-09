@@ -1,3 +1,4 @@
+import logging
 import secrets
 import urllib.parse
 from collections import OrderedDict
@@ -15,7 +16,15 @@ from rest_framework.metadata import SimpleMetadata
 from rest_framework.renderers import BrowsableAPIRenderer
 
 from ocpi22.ocpi_util import OCPIResponse
+from ocpiconnector import slack_logging
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
+
+slack_logging.init()
+
+
+def log_error(request, s: str) -> None:
+    logging.error(f'{s} ({request.credentials.party() if hasattr(request, "credentials") else "?"} '
+                  f'=> {settings.HOSTNAME})')
 
 
 def clear_empty(dict_with_possibly_empty_values):
@@ -376,13 +385,28 @@ def is_our_identifier(party: Party, identities=None) -> bool:
     return result
 
 
+@lru_cache(maxsize=32)
+def parse_class_name(class_name: str) -> str:
+    """
+    >>> parse_class_name("<class \'ocpi22.models.location.Connector\'>")
+    'Connector'
+    """
+    if not isinstance(class_name, str):
+        return ''
+    return class_name.split('.')[-1].split("'")[0]
+
+
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(cls, *args, **kwargs) -> any:
+    def get_if_exists(cls, *args, raise_exception=False, **kwargs) -> any:
         # noinspection PyUnresolvedReferences
         objects = cls.objects.filter(*args, **kwargs)
         if objects.count():
             return objects.first()
+        if raise_exception:
+            error_message = f"{parse_class_name(str(cls))} with UID " \
+                            f"{kwargs.get('uid', 'N/A')} doesn't exist in the database"
+            raise cls.DoesNotExist(error_message)
         return None
 
     def party(self) -> str:

@@ -35,12 +35,10 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
     if not uid:
         uid = generate_session_uid()
     token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
-    location = Location.get_if_exists(uid=location_id) if not isinstance(location_id, Location) else location_id
-    # if not location:
-    #     raise NotFound(f'Location {location_id} is not in our database')
-    evse = get_object_or_404(Evse, uid=evse_id, location=location) if not isinstance(evse_id, Evse) else evse_id
+    location = Location.get_if_exists(uid=location_id, raise_exception=True)
+    evse = Evse.get_if_exists(uid=evse_id, location=location, raise_exception=True)
     # The Connector may be selected later and the information gotten from the charger
-    connector = get_object_or_404(Connector, uid=connector_id, evse=evse) if connector_id else None
+    connector = Connector.get_if_exists(uid=connector_id, evse=evse, raise_exception=True) if connector_id else None
     if authorize_from_msp:
         from ocpi22.tokens import authorize_token
         authorization: TokenAuthorization = authorize_token(token, location)

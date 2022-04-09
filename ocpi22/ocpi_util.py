@@ -14,6 +14,7 @@ from django.utils.module_loading import import_string
 from icecream import ic
 from requests import Response
 from rest_framework import exceptions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import LimitOffsetPagination
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
 from rest_framework.response import Response
@@ -174,9 +175,9 @@ def ocpi_post(url, token_base64,
     response = requests.post(url, *args, **kwargs, json=data,
                              headers=make_headers(token_base64, to, sender))
     if response.status_code >= 300:
-        logging.info(f'*** Got response: {url} - {response.status_code} - {response.reason}')
-        logging.error(f'{settings.HOSTNAME}: {url} - {response.status_code} - {response.reason}')
-        raise exceptions.APIException(f'Got response: {response.status_code} - {response.reason} ')
+        data = response.json()
+        logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {data}')
+        raise ValidationError(data.get("status_message") or 'Unknown error: {data}')
     return response
 
 

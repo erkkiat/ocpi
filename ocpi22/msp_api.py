@@ -10,10 +10,11 @@ from rest_framework.settings import api_settings
 
 from ocpi22.commands.commands import send_start_command, send_stop_command
 from ocpi22.commands.serializers import CommandResult
-from ocpi22.models.location import Location, Evse
+from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.tokens import construct_adhoc_token
+from ocpi22.messages import default_error_messages
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
@@ -47,11 +48,11 @@ class StartChargingSerializer(serializers.Serializer):
         # source='*',
         help_text='The identifier of the device which provides electricity to one or more connectors'
     )
-    # connector_id = serializers.CharField(
-    #     required=False,
-    #     max_length=36,
-    #     help_text='The connector number used for charging during this transaction'
-    # )
+    connector_id = serializers.CharField(
+        required=False,
+        max_length=36,
+        help_text='The connector number used for charging during this transaction'
+    )
     contract_id = serializers.CharField(
         default='N/A',
         max_length=36,
@@ -62,15 +63,13 @@ class StartChargingSerializer(serializers.Serializer):
         help_text='The hidden ID of the RFID token, separate from the visual one'
     )
 
+    default_error_messages = default_error_messages
+
     def to_internal_value(self, data):
         evse_id = self.initial_data.get('evse_id')
         location_id = self.initial_data.get('location_id')
-        location = Location.get_if_exists(uid=location_id)
-        evse = Evse.get_if_exists(uid=evse_id, location=location)
-        if not evse:
-            raise ValidationError(
-                {api_settings.NON_FIELD_ERRORS_KEY: [f'EVSE with ID {evse_id} at location {location_id} not found']}
-            )
+        location = Location.get_if_exists(uid=location_id, raise_exception=True)
+        evse = Evse.get_if_exists(uid=evse_id, location=location, raise_exception=True)
         data = super().to_internal_value(data)
         data['evse'] = evse
         return data
@@ -131,12 +130,12 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 serializer = StartChargingSerializer(data=request.data)
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data['evse']
-                    # connector_id: str = serializer.validated_data.get('connector_id')
+                    connector_id: str = serializer.validated_data.get('connector_id')
                     contract_id: str = serializer.validated_data.get('contract_id')
                     token = serializer.validated_data['token']
                     if not isinstance(token, Token):
                         token = construct_adhoc_token(token, contract_id)
-                    response: requests.Response = send_start_command(request, evse, token)
+                    response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id)
                     data = response.json()
                     return Response(data.get('data'), status=response.status_code)
                 else:
@@ -144,7 +143,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
 
             # method == GET
             return Response(dict(help='Please see `OPTIONS` for the schema'))
-        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+        except (Evse.DoesNotExist, Token.DoesNotExist, Location.DoesNotExist, Connector.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)

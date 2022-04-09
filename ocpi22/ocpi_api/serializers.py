@@ -5,7 +5,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.ocpi_api.messages import default_error_messages
+from ocpi22.messages import default_error_messages
 from ocpi22.location import Coordinate, BusinessDetailsSerializer
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials
