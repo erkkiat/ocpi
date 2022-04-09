@@ -11,7 +11,7 @@ from rest_framework.generics import get_object_or_404
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.tokens import TokenAuthorization
+from ocpi22.tokens.auth import TokenAuthorization
 
 
 def get_token(token_id, ad_hoc_token):
@@ -40,7 +40,7 @@ def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_tok
     # The Connector may be selected later and the information gotten from the charger
     connector = Connector.get_if_exists(uid=connector_id, evse=evse, raise_exception=True) if connector_id else None
     if authorize_from_msp:
-        from ocpi22.tokens import authorize_token
+        from ocpi22.tokens.auth import authorize_token
         authorization: TokenAuthorization = authorize_token(token, location)
         if not authorization:
             raise exceptions.PermissionDenied(f'Token {token} is not authorized for use by MSP at this time')

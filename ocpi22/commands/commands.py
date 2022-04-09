@@ -34,7 +34,7 @@ from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, ge
 
 import pprint
 
-from ocpi22.tokens import construct_adhoc_token
+from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
 from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error
 

@@ -27,7 +27,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import AdhocToken
 from ocpi22.sessions import create_session
-from ocpi22.tokens import authorize_token, TokenAuthorization, get_session_by_adhoc_token
+from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter

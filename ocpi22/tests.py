@@ -49,7 +49,8 @@ from ocpi22.ocpi.util import OCPIResponse, Ocpi, OcpiModule, make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
-from ocpi22.tokens import get_admin_token, authorize_token, _get_authorization_from_sessions, _authorize_token
+from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
+from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpi22.test_data import expected_get_responses

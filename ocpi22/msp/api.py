@@ -11,7 +11,7 @@ from ocpi22.commands.serializers import CommandResult
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer
-from ocpi22.tokens import construct_adhoc_token
+from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
