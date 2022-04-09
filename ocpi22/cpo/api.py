@@ -366,6 +366,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         party = authorization.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
                         session.uid = session_id.upper()
+                        session.status = Session.ACTIVE
                         session.save()
 
                     if not session:

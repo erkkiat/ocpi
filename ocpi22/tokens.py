@@ -31,7 +31,7 @@ def get_session_by_adhoc_token(token_uid: str, max_age_minutes) -> Optional[Sess
     # ic(token_uid, last_15_minutes, timezone.now())
     # noinspection PyUnresolvedReferences
     sessions = Session.objects.filter(
-        Q(cdr_token_uid=token_uid) & ~Q(cdr_token_type='RFID') & Q(created__gte=last_15_minutes)
+        Q(cdr_token_uid=token_uid) & Q(status=Session.PENDING) & Q(created__gte=last_15_minutes)
     ).order_by('-created')
     if sessions.exists():
         session = sessions.first()

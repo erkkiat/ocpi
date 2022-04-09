@@ -360,7 +360,7 @@ class SessionAdmin(admin.ModelAdmin):
     # )
     list_display_links = ['start_date_time']
     search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid',
-                     'uid']
+                     'uid', 'authorization_reference']
     # list_filter = ['status', 'party_id',]
     readonly_fields = ['uid', 'party_id', 'country_code']
 

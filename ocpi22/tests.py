@@ -1471,7 +1471,7 @@ class TestCpoApi(TestCase):
                          'session_id': 'MY-SESSION',
                          'start_date_time': '2000-01-01T12:00:00',
                          'start_kwh': 0.0,
-                         'status': 'PENDING',
+                         'status': 'ACTIVE',
                          'token': OrderedDict([('token_id', 'NON-EXISTENT-ADHOC-TOKEN'),
                                                ('type', 'AD_HOC_USER'),
                                                ('contract_id', 'INTERNAL')])},

@@ -171,6 +171,11 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         self.full_clean()
         return super().save(*args, **kwargs)
 
+    # def set_status(self, status: str):
+    #     if self.status != Session.ACTIVE:
+    #         self.status = Session.ACTIVE
+    #         self.save(update_fields=['status'])
+
     def calculate_price(self, connector=None, tariffs=None) -> bool:
         """
         @param connector: For testing purposes
