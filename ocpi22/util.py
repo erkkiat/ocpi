@@ -399,6 +399,11 @@ def parse_class_name(class_name: str) -> str:
 class ModelUtilMixin:
     @classmethod
     def get_if_exists(cls, *args, raise_exception=False, **kwargs) -> any:
+        # Is the object already fetched?
+        uid = kwargs.get('uid')
+        if isinstance(uid, cls):
+            return uid
+
         # noinspection PyUnresolvedReferences
         objects = cls.objects.filter(*args, **kwargs)
         if objects.count():
