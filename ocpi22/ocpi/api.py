@@ -29,7 +29,7 @@ from ocpi22.util import matching_operator, PREMIUM_RESPONSE, \
     OnlyRawBrowsableAPIRenderer
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
-from ocpi22.versions import get_endpoints_dict
+from ocpi22.credentials.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles
 from ocpiconnector.ocpi_identities import ocpi_platform
 
