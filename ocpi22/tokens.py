@@ -23,6 +23,8 @@ from ocpiconnector.ocpi_identities import get_our_party, Party
 def token_post_save(sender, instance: Token, *_args, **_kwargs):
     # In case there is an outdated authorization in the cache
     authorize_token.cache_clear()
+    _authorize_token.cache_clear()
+    _get_authorization_from_sessions.cache_clear()
 
 
 def get_session_by_adhoc_token(token_uid: str, max_age_minutes) -> Optional[Session]:
