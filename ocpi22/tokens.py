@@ -13,7 +13,7 @@ from icecream import ic
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.ocpi_util import ocpi_post
+from ocpi22.ocpi.util import ocpi_post
 from ocpi22.routing import find_route
 
 from ocpiconnector.ocpi_identities import get_our_party, Party

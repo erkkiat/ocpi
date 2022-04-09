@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import path
 from rest_framework.schemas import get_schema_view
 
-from ocpi22.ocpi_api.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
+from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
     RootRouter, ClientInfoViewSet, NoPremiumViewSet
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.cpo.api import CPORouter, ChargePointViewSet

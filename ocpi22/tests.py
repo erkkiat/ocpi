@@ -29,8 +29,8 @@ from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
-from ocpi22.ocpi_api.api import TariffViewSet, CdrViewSet, TokenViewSet
-from ocpi22.ocpi_api.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSaveSerializer
+from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet
+from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSaveSerializer
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
@@ -44,7 +44,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
-from ocpi22.ocpi_util import OCPIResponse, Ocpi, OcpiModule, make_headers
+from ocpi22.ocpi.util import OCPIResponse, Ocpi, OcpiModule, make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
@@ -60,9 +60,9 @@ client = Client()
 
 
 def load_tests(_loader, tests, _ignore):
-    tests.addTests(doctest.DocTestSuite('ocpi22.ocpi_api.api'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.ocpi.api'))
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
-    tests.addTests(doctest.DocTestSuite('ocpi22.ocpi_util'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.ocpi.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.location'))
     tests.addTests(doctest.DocTestSuite('ocpi22.commands'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))

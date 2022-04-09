@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
-from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum
@@ -9,7 +8,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, apply_step_size
-from ocpi22.ocpi_util import OcpiModule, Ocpi
+from ocpi22.ocpi.util import OcpiModule
 
 
 class Session(models.Model, ModelUtilMixin, OcpiModule):
@@ -29,7 +28,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         ]
 
     ocpi_module_name = OcpiModuleEnum.SESSIONS
-    ocpi_serializer_class = 'ocpi22.ocpi_api.serializers.SessionSaveSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi.serializers.SessionSaveSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
     # send_updates_to = ('EMSP', 'HUB')

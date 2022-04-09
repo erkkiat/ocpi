@@ -15,7 +15,7 @@ from rest_framework import serializers, status
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.renderers import BrowsableAPIRenderer
 
-from ocpi22.ocpi_util import OCPIResponse
+from ocpi22.ocpi.util import OCPIResponse
 from ocpiconnector import slack_logging
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 

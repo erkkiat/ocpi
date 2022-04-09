@@ -7,8 +7,8 @@ from django.http import JsonResponse
 from rest_framework import status
 from django.conf import settings
 
-from ocpi22.auth import OCPIPermission, check_auth_token
-from ocpi22.ocpi_util import format_ocpi_response, get_to_party
+from ocpi22.ocpi.auth import OCPIPermission, check_auth_token
+from ocpi22.ocpi.util import format_ocpi_response, get_to_party
 from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
 

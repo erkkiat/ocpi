@@ -6,7 +6,6 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum
@@ -14,7 +13,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHOICES
-from ocpi22.ocpi_util import OcpiModule, Ocpi
+from ocpi22.ocpi.util import OcpiModule, Ocpi
 
 
 class Cdr(models.Model, ModelUtilMixin, OcpiModule):
@@ -27,7 +26,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     """
 
     ocpi_module_name = OcpiModuleEnum.CDRS
-    ocpi_serializer_class = 'ocpi22.ocpi_api.serializers.CdrSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi.serializers.CdrSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
     # send_updates_to = ('EMSP', 'HUB')

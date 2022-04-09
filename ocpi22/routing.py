@@ -12,7 +12,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from rest_framework import status
 
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
-from ocpi22.ocpi_util import parse_ocpi_url, make_headers
+from ocpi22.ocpi.util import parse_ocpi_url, make_headers
 
 from ocpiconnector.ocpi_identities import Party
 

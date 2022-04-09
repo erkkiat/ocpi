@@ -18,7 +18,7 @@ from django.utils import timezone
 from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.ocpi_util import OcpiModule
+from ocpi22.ocpi.util import OcpiModule
 from ocpi22.util import ModelUtilMixin, generate_random_token, PREMIUM_MESSAGE
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
@@ -27,7 +27,7 @@ from ocpiconnector.ocpi_identities import get_our_party, Party
 
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
-    ocpi_serializer_class = 'ocpi22.ocpi_api.serializers.CredentialsSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi.serializers.CredentialsSerializer'
     ocpi_module_name = OcpiModuleEnum.CREDENTIALS
     ocpi_object_owner = None
     send_updates_to = None

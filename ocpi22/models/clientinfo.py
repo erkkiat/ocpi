@@ -1,11 +1,3 @@
-from django.db import models
-from django.utils import timezone
-
-from ocpi22.choices import ROLE_CHOICES, CONNECTION_STATUS_CHOICES
-from ocpi22.models.credentials import CredentialsRole, Credentials
-from ocpi22.util import ModelUtilMixin
-from ocpi22.ocpi_util import OcpiModule, Ocpi
-
 # class ClientInfo(models.Model, ModelUtilMixin, OcpiModule):
 #     """
 #     This module provides parties connected to a hub with the connection status of other parties
@@ -15,7 +7,7 @@ from ocpi22.ocpi_util import OcpiModule, Ocpi
 #     Unlike the usual OCPI modules, this module is between eMSP/CPO and Hub instead of between eMSP and CPO.
 #     """
 #
-#     ocpi_serializer_class = 'ocpi22.ocpi_api.api.ClientInfoSerializer'
+#     ocpi_serializer_class = 'ocpi22.ocpi.api.ClientInfoSerializer'
 #     ocpi_module_name = Ocpi.Modules.CLIENTINFO
 #     ocpi_object_owner = 'HUB'
 #     send_updates_to = ['EMSP', 'NAP', 'NSP', 'HUB', 'CPO', 'SCSP']

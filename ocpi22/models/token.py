@@ -3,7 +3,7 @@ from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.util import ModelUtilMixin
-from ocpi22.ocpi_util import OcpiModule, Ocpi
+from ocpi22.ocpi.util import OcpiModule
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
@@ -12,7 +12,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     A Token structure with data owned by the eMSP
     """
 
-    ocpi_serializer_class = 'ocpi22.ocpi_api.serializers.TokenSerializer'
+    ocpi_serializer_class = 'ocpi22.ocpi.serializers.TokenSerializer'
     ocpi_module_name = OcpiModuleEnum.TOKENS
     ocpi_object_owner = 'EMSP'
     send_updates_to = ('CPO', 'HUB')

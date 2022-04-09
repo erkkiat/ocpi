@@ -14,7 +14,7 @@ from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition
-from ocpi22.ocpi_util import OcpiModule, Ocpi
+from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 

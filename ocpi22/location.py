@@ -21,7 +21,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.tasks import send_evse_status_update
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, matching_operator, uid_validator, \
     OnlyRawBrowsableAPIRenderer
-from ocpi22.ocpi_util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
+from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 from ocpiconnector.settings import UPDATES_DISABLED
 
 

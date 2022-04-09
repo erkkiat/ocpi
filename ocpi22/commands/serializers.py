@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 from rest_framework import serializers
 
-from ocpi22.ocpi_api.serializers import LocationIdSerializer
+from ocpi22.ocpi.serializers import LocationIdSerializer
 from ocpi22.models.token import Token
 from ocpi22.util import SerializerCleanedUp
 

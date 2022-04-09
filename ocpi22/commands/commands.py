@@ -9,14 +9,14 @@ from django.db import transaction
 from django.http import Http404
 from rest_framework import serializers, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, APIException, ValidationError
+from rest_framework.exceptions import NotFound, APIException
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.ocpi_api.serializers import TokenSerializer, SessionSaveSerializer
-from ocpi22.auth import OCPIPermission
+from ocpi22.ocpi.serializers import TokenSerializer
+from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, MessageTexts
 from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer, \
     CommandResponse
@@ -30,13 +30,13 @@ from ocpi22.models.token import Token
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions import create_session
 from ocpi22.tasks import command_start
-from ocpi22.ocpi_util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference
+from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference
 
 import pprint
 
 from ocpi22.tokens import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error, clear_empty
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 

@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
-from ocpi22.ocpi_api.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
+from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
     CredentialsSerializer, SessionSaveSerializer, ClientInfoSerializer
 from ocpi22.cpo.api import CHARGER
 from ocpi22.models.business_details import BusinessDetails
@@ -27,7 +27,7 @@ from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.util import matching_operator, PREMIUM_RESPONSE, \
     OnlyRawBrowsableAPIRenderer
-from ocpi22.ocpi_util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
+from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles

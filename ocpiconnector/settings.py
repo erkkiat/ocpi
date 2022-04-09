@@ -278,7 +278,7 @@ LOGGING = {
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        'ocpi22.auth.OCPIPermission'
+        'ocpi22.ocpi.auth.OCPIPermission'
     ],
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend'

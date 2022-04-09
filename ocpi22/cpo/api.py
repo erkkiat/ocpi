@@ -25,7 +25,7 @@ from ocpi22.location import send_evse_updates
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.ocpi_util import AdhocToken
+from ocpi22.ocpi.util import AdhocToken
 from ocpi22.sessions import create_session
 from ocpi22.tokens import authorize_token, TokenAuthorization, get_session_by_adhoc_token
 from ocpiconnector import slack_logging
@@ -482,7 +482,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
-                    from ocpi22.ocpi_api.serializers import CdrSerializer
+                    from ocpi22.ocpi.serializers import CdrSerializer
                     cdr = Cdr.create_based_on_session(session)
                     cdr.save()
 
