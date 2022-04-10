@@ -1304,7 +1304,7 @@ class TestRouting(TestCase):
         credentials = Credentials.objects.get(pk=2)
         sender = Party('FI', 'NAP')
 
-        def fake_get_response(request):
+        def fake_get_response(_request):
             # We want to know when this gets called
             self.get_response_called = True
             return HttpResponse('Everything is good', status=status.HTTP_200_OK)
@@ -1323,7 +1323,7 @@ class TestRouting(TestCase):
             routing = testcase.get('routing', True)
             mock_is_our_identifier.return_value = testcase.get('this_is_us')
             to = testcase.get('party')
-            if to == None:  # Let empty Party through
+            if to is None:  # Let empty Party through
                 to = Party('FI', 'CPO')
             headers = make_headers(testcase.get('token', credentials.ours_base64()), to, sender)
             request = api_factory.post(url, **headers)
@@ -1373,6 +1373,53 @@ def make_json_response(data, status_code=200) -> Response:
 
 class TestCpoApi(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
+    api_factory = APIRequestFactory()
+
+    @time_machine.travel(faketime, tick=False)
+    def test_change_status(self):
+
+        evse = Evse.objects.get(uid='HELSINKI-3')
+        self.assertEqual(evse.status, 'AVAILABLE')
+
+        status_change_url = reverse('chargepoint-status-change')
+        cpo_viewset = ChargePointViewSet()
+        cpo_request = self.api_factory.post(status_change_url)
+        testcases = (
+            dict(
+                request=dict(
+                    evse_id='HELSINKI-3',
+                    status='PREPARING',
+                ),
+                response={'evse': 'HELSINKI-3',
+                          'ocpi_status': 'CHARGING',
+                          'ocpp_status': 'PREPARING',
+                          'status_text': 'EVSE status has been changed'},
+                status_code=200,
+                evse_status='CHARGING'
+            ),
+            dict(
+                request=dict(
+                    evse_id='NON-EXISTENT-EVSE',
+                    status='AVAILABLE',
+                ),
+                response={'status': 'EVSE with ID NON-EXISTENT-EVSE does not exist in the OCPI '
+                                    'Connector database for party FI*CPO'},
+                status_code=404
+            ),
+        )
+
+        for case in testcases:
+            cpo_request.data = case.get('request')
+            cpo_response = cpo_viewset.status_change(cpo_request)
+            # ic(cpo_response, cpo_response.data)
+
+            self.assertEqual(cpo_response.status_code, case.get('status_code'),
+                             'Status change should succeed')
+            self.assertDictEqual(cpo_response.data, case.get('response'),
+                                 f'Case request {case.get("request")}, response {case.get("response")}')
+            if cpo_response.status_code != 404:
+                evse = Evse.objects.get(uid=case.get('request').get('evse_id'))
+                self.assertEqual(evse.status, case.get('evse_status'))
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.cpo.util.redis_store.get',
@@ -1382,10 +1429,9 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.commands.commands.requests.post')
     def test_adhoc_token(self,
                          requests_post_mock: Mock,
-                         generate_session_uid_mock: Mock,
-                         get_parameter_mock: Mock):
+                         _generate_session_uid_mock: Mock,
+                         _get_parameter_mock: Mock):
         url = reverse('commands-start-session')
-        api_factory = APIRequestFactory()
         viewset = CommandsViewSet()
 
         # Load up the test message and send it
@@ -1395,7 +1441,7 @@ class TestCpoApi(TestCase):
 
         billed_party = Party('FI', 'EON')
         headers = make_headers('', Party('FI', 'CPO'), billed_party)
-        request = api_factory.post(url, **headers)
+        request = self.api_factory.post(url, **headers)
         request.data = data
 
         self.assertFalse(Session.objects.all().exists(),
@@ -1429,13 +1475,12 @@ class TestCpoApi(TestCase):
              'token_type': 'AD_HOC_USER'}
         )
 
-        # noinspection PyUnresolvedReferences
         session = Session.objects.get(status='PENDING')
         self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match to expected")
 
         authorize_url = reverse('chargepoint-authorize')
         cpo_viewset = ChargePointViewSet()
-        cpo_request = api_factory.post(authorize_url)
+        cpo_request = self.api_factory.post(authorize_url)
         cpo_request.data = dict(
             evse_id='HELSINKI-3',
             token_id='NON-EXISTENT-ADHOC-TOKEN'
@@ -1456,7 +1501,7 @@ class TestCpoApi(TestCase):
                              )
 
         start_url = reverse('chargepoint-start-transaction')
-        start_request = api_factory.post(start_url)
+        start_request = self.api_factory.post(start_url)
         start_request.data = dict(
             evse_id='HELSINKI-3',
             token_id='NON-EXISTENT-ADHOC-TOKEN',

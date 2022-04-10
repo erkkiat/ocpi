@@ -42,147 +42,147 @@ pp = PrettyPrinter(indent=4).pprint
 slack_logging.init()
 
 
-class CpoEvseViewSet(mixins.RetrieveModelMixin,
-                     mixins.UpdateModelMixin,
-                     mixins.DestroyModelMixin,
-                     mixins.ListModelMixin,
-                     GenericViewSet):
-    """
-    This is an optimised subset of the EVSE information available in the OCPI Connector.
-    """
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['status']
-    pagination_class = LimitOffsetPagination
+# class CpoEvseViewSet(mixins.RetrieveModelMixin,
+#                      mixins.UpdateModelMixin,
+#                      mixins.DestroyModelMixin,
+#                      mixins.ListModelMixin,
+#                      GenericViewSet):
+#     """
+#     This is an optimised subset of the EVSE information available in the OCPI Connector.
+#     """
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_fields = ['status']
+#     pagination_class = LimitOffsetPagination
+#
+#     @staticmethod
+#     def put(request, evse_id=None):
+#         if not evse_id:
+#             evse_id = request.data['uid']
+#         # noinspection PyUnresolvedReferences
+#         evse = Evse.objects.get(uid=evse_id)
+#         serializer = EvseSerializer(evse, data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             send_evse_updates(evse.uid)
+#             return Response(serializer.data)
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     @action(methods=['GET', 'PATCH'], detail=False,
+#             url_path='(?P<evse_id>[^/.]+)', url_name='by-id')
+#     def evse_by_id(self, request, evse_id) -> Response:
+#         """
+#         This URL is used for sending charger status updates to the Connector using the PATCH method.
+#         Status updates should be real time, so that the eMSPs can show the accurate availability to their customers.
+#
+#         You can try the status update by changing the status
+#         in the input box below and clicking the "PATCH" button.
+#
+#         See OPTIONS for a detailed API schema.
+#
+#         """
+#         evse = get_object_or_404(Evse, uid=evse_id)
+#         # Todo: Handle overlapping EVSE UIDs (how to refer to Evse.location.country_code...)
+#
+#         if request.method == 'GET':
+#             serializer = EvseSerializer(evse, context={'request': request})
+#             return Response(serializer.data)
+#
+#         elif request.method == 'PATCH':
+#             serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 send_evse_updates(evse.uid)
+#                 return Response(serializer.data)
+#             else:
+#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#         return Response(status=status.HTTP_400_BAD_REQUEST)
+#
+#     # noinspection PyUnresolvedReferences
+#     queryset = Evse.objects.all().order_by('created')
+#     serializer_class = EvseSerializer
+#     lookup_field = 'evse_id'
 
-    @staticmethod
-    def put(request, evse_id=None):
-        if not evse_id:
-            evse_id = request.data['uid']
-        # noinspection PyUnresolvedReferences
-        evse = Evse.objects.get(uid=evse_id)
-        serializer = EvseSerializer(evse, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            send_evse_updates(evse.uid)
-            return Response(serializer.data)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['GET', 'PATCH'], detail=False,
-            url_path='(?P<evse_id>[^/.]+)', url_name='by-id')
-    def evse_by_id(self, request, evse_id) -> Response:
-        """
-        This URL is used for sending charger status updates to the Connector using the PATCH method.
-        Status updates should be real time, so that the eMSPs can show the accurate availability to their customers.
-
-        You can try the status update by changing the status
-        in the input box below and clicking the "PATCH" button.
-
-        See OPTIONS for a detailed API schema.
-
-        """
-        evse = get_object_or_404(Evse, uid=evse_id)
-        # Todo: Handle overlapping EVSE UIDs (how to refer to Evse.location.country_code...)
-
-        if request.method == 'GET':
-            serializer = EvseSerializer(evse, context={'request': request})
-            return Response(serializer.data)
-
-        elif request.method == 'PATCH':
-            serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                send_evse_updates(evse.uid)
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    # noinspection PyUnresolvedReferences
-    queryset = Evse.objects.all().order_by('created')
-    serializer_class = EvseSerializer
-    lookup_field = 'evse_id'
-
-
-class LocationQuickViewSet(mixins.ListModelMixin,
-                           mixins.UpdateModelMixin,
-                           mixins.RetrieveModelMixin,
-                           GenericViewSet):
-    """
-    This is the endpoint for testing your data format for updating locations.
-    Please note that all IDs should remain constant, since they are referred to by many systems.
-
-    """
-
-    # noinspection PyUnresolvedReferences
-    def put(self, request, uid=None):
-        if uid:
-            our_country_code, our_party_id = Location.get_owner_identity().split('*')
-
-            # Write over an existing Location
-            location: Location = get_object_or_404(Location,
-                                                   uid=uid,
-                                                   country_code=our_country_code,
-                                                   party_id=our_party_id)
-            serializer = self.get_serializer(location, data=request.data)
-        else:
-            # Create a new object
-            # This relies on serializer.create()
-            serializer = self.get_serializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            our_country_code, our_party_id = Location.get_owner_identity().split('*')
-
-            location: Location = get_object_or_404(Location,
-                                                   uid=uid,
-                                                   country_code=our_country_code,
-                                                   party_id=our_party_id)
-            serializer = self.get_serializer(location)
-            ic(serializer.data)
-            return Response(serializer.data)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(methods=['GET', 'PATCH'], detail=False,
-            url_path='(?P<uid>[^/.]+)')
-    def by_id(self, request, uid) -> Response:
-        # noinspection PyUnresolvedReferences
-        our_country_code, our_party_id = Location.get_owner_identity().split('*')
-
-        location = get_object_or_404(Location, uid=uid,
-                                     country_code=our_country_code,
-                                     party_id=our_party_id)
-
-        if request.method == 'GET':
-            serializer = LocationQuickSerializer(location, context={'request': request})
-            return Response(serializer.data)
-
-        elif request.method == 'PATCH':
-            serializer = LocationQuickSerializer(location, data=request.data, partial=True,
-                                                 context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                # noinspection PyUnresolvedReferences
-                serializer = LocationQuickSerializer(Location.objects.get(uid=uid))
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    # noinspection PyUnresolvedReferences
-    queryset = Location.objects.all().order_by('created')
-    serializer_class = LocationQuickSerializer
-    pagination_class = LimitOffsetPagination
-    lookup_field = 'uid'
-
-    @staticmethod
-    def get_object(uid=None) -> Location:
-        # Needed for OPTIONS to work in list view, could just return None
-        if uid:
-            return get_object_or_404(Location, uid=uid)
+# class LocationQuickViewSet(mixins.ListModelMixin,
+#                            mixins.UpdateModelMixin,
+#                            mixins.RetrieveModelMixin,
+#                            GenericViewSet):
+#     """
+#     This is the endpoint for testing your data format for updating locations.
+#     Please note that all IDs should remain constant, since they are referred to by many systems.
+#
+#     """
+#
+#     # noinspection PyUnresolvedReferences
+#     def put(self, request, uid=None):
+#         if uid:
+#             our_country_code, our_party_id = Location.get_owner_identity().split('*')
+#
+#             # Write over an existing Location
+#             location: Location = get_object_or_404(Location,
+#                                                    uid=uid,
+#                                                    country_code=our_country_code,
+#                                                    party_id=our_party_id)
+#             serializer = self.get_serializer(location, data=request.data)
+#         else:
+#             # Create a new object
+#             # This relies on serializer.create()
+#             serializer = self.get_serializer(data=request.data)
+#
+#         if serializer.is_valid():
+#             serializer.save()
+#             our_country_code, our_party_id = Location.get_owner_identity().split('*')
+#
+#             location: Location = get_object_or_404(Location,
+#                                                    uid=uid,
+#                                                    country_code=our_country_code,
+#                                                    party_id=our_party_id)
+#             serializer = self.get_serializer(location)
+#             ic(serializer.data)
+#             return Response(serializer.data)
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     @action(methods=['GET', 'PATCH'], detail=False,
+#             url_path='(?P<uid>[^/.]+)')
+#     def by_id(self, request, uid) -> Response:
+#         # noinspection PyUnresolvedReferences
+#         our_country_code, our_party_id = Location.get_owner_identity().split('*')
+#
+#         location = get_object_or_404(Location, uid=uid,
+#                                      country_code=our_country_code,
+#                                      party_id=our_party_id)
+#
+#         if request.method == 'GET':
+#             serializer = LocationQuickSerializer(location, context={'request': request})
+#             return Response(serializer.data)
+#
+#         elif request.method == 'PATCH':
+#             serializer = LocationQuickSerializer(location, data=request.data, partial=True,
+#                                                  context={'request': request})
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 # noinspection PyUnresolvedReferences
+#                 serializer = LocationQuickSerializer(Location.objects.get(uid=uid))
+#                 return Response(serializer.data)
+#             else:
+#                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#         return Response(status=status.HTTP_400_BAD_REQUEST)
+#
+#     # noinspection PyUnresolvedReferences
+#     queryset = Location.objects.all().order_by('created')
+#     serializer_class = LocationQuickSerializer
+#     pagination_class = LimitOffsetPagination
+#     lookup_field = 'uid'
+#
+#     @staticmethod
+#     def get_object(uid=None) -> Location:
+#         # Needed for OPTIONS to work in list view, could just return None
+#         if uid:
+#             return get_object_or_404(Location, uid=uid)
 
 
 # Todo: limit access to certain privilege holders
