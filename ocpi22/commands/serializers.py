@@ -10,6 +10,11 @@ from ocpi22.util import SerializerCleanedUp
 pp = pprint.PrettyPrinter(indent=4).pprint
 
 
+class MessageSerializer(serializers.Serializer):
+    language = serializers.CharField(max_length=2)
+    text = serializers.CharField(max_length=512)
+
+
 class CommandTokenSerializer(SerializerCleanedUp):
     class Meta:
         fields = ['country_code', 'party_id', 'uid', 'type',
@@ -51,7 +56,7 @@ class StartSessionSerializer(serializers.Serializer):
     )
     connector_id = serializers.CharField(
         max_length=36,
-        required=False, allow_blank=True,
+        required=False, default=None,
         help_text='Optional Connector.id of the Connector of the EVSE on which a session is to be started. '
                   'This field is required when the capability: START_SESSION_CONNECTOR_REQUIRED is set on the EVSE.'
     )
@@ -137,7 +142,7 @@ class CommandResponse(serializers.Serializer):
         ]
 
 
-class CommandResultBase(serializers.Serializer):
+class CommandResultBaseSerializer(serializers.Serializer):
     RESULT_OPTIONS = (
         ('ACCEPTED', 'Accepted'),  # Command request accepted by the Charge Point.
         ('CANCELED_RESERVATION', 'CPO cancelled reservation'),  # The Reservation has been canceled by the CPO.
@@ -158,21 +163,10 @@ class CommandResultBase(serializers.Serializer):
     result = serializers.ChoiceField(choices=RESULT_OPTIONS)
 
 
-class CpoCommandResult(CommandResultBase):
-    token_id = serializers.CharField(
-        max_length=36,
-        help_text='The token used for the charging session'
-    )
+class CpoCommandResultSerializer(CommandResultBaseSerializer):
+    pass
 
 
-class CommandResult(CommandResultBase):
+class CommandResultSerializer(CommandResultBaseSerializer):
     # Human-readable description of the reason (if one can be provided), multiple languages can be provided.
-    message = serializers.SerializerMethodField()
-
-    @staticmethod
-    def get_message(obj):
-        pp(obj)
-        return [
-            OrderedDict(language=o['language'], text=o['text'])
-            for o in obj['message']
-        ]
+    message = MessageSerializer(many=True, required=False)

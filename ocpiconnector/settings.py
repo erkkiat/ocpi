@@ -30,6 +30,8 @@ REDIS_URL = os.environ.get('REDIS_URL', os.environ.get('REDISCLOUD_URL'))
 SEND_UPDATES = _env_bool('SEND_UPDATES', True)
 UPDATES_DISABLED = 'Updates have been disabled using the environment variable SEND_UPDATES.'
 
+REMOTE_COMMAND_EXPIRATION = os.environ.get('REMOTE_COMMAND_EXPIRATION', 2 * 60)
+
 # How often to check that other party is alive
 STILL_ALIVE_FREQUENCY = os.environ.get('STILL_ALIVE_FREQUENCY', 60 * 5)
 

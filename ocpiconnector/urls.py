@@ -28,8 +28,7 @@ ocpi_router.register(r'sessions', SessionViewSet)
 ocpi_router.register(r'cdrs', CdrViewSet if settings.PREMIUM else NoPremiumViewSet, basename='cdr')
 if ocpi_platform.is_hub:
     ocpi_router.register(r'commands', CommandsHubViewSet, basename='commands')
-if ocpi_platform.is_cpo:
-    ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
+ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
 
 cpo_router = CPORouter()
 # cpo_router.register(r'evses', CpoEvseViewSet, basename='cpo-evse')

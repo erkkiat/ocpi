@@ -1424,6 +1424,7 @@ class TestCpoApi(TestCase):
              'billed_to': 'FI*EON',
              'connector_id': None,
              'evse_id': 'HELSINKI-3',
+             'response_url': 'http://testserver/api/cpo/v2/chargepoint/FI*001-AUTH-REFERENCE/',
              'token_id': 'NON-EXISTENT-ADHOC-TOKEN',
              'token_type': 'AD_HOC_USER'}
         )

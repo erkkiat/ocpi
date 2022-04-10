@@ -7,6 +7,7 @@ import requests
 from django.conf import settings
 from django.db import transaction
 from django.http import Http404
+from icecream import ic
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, APIException
@@ -19,9 +20,9 @@ from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, MessageTexts
 from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer, \
-    CommandResponse
+    CommandResponse, CommandResultSerializer
 from ocpi22.cpo.api import CHARGER
-from ocpi22.cpo.util import get_callbacks_parameter
+from ocpi22.cpo.util import get_callbacks_parameter, command_store
 from ocpi22.cpo.serializers import CallbacksSerializer
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse, Location, Connector
@@ -36,7 +37,7 @@ import pprint
 
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error, redis_store
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 
@@ -56,7 +57,8 @@ class CommandsViewSet(GenericViewSet):
             start_session=StartSessionSerializer,
             stop_session=StopSessionSerializer,
             unlock_connector=UnlockConnectorSerializer,
-        ).get(self.action_map.get('post'), StartSessionSerializer)
+            command_result=CommandResultSerializer,
+        ).get(self.action_map.get('post'), serializers.Serializer)
         return serializer
 
     def get_view_name(self):
@@ -79,18 +81,26 @@ class CommandsViewSet(GenericViewSet):
             serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
                 token = serializer.validated_data.get('token', '')
-                connector_id = serializer.validated_data.get('connector_id', None)
-                evse_uid = serializer.validated_data.get('evse_uid', '')
-                params = dict(
-                    location_id=serializer.validated_data['location_id'],
-                    evse_id=evse_uid,
-                    connector_id=connector_id,
-                    ad_hoc_token=token,
-                    # When eMSP sends a SESSION_START, they are responsible for validating their Token
-                    billed_to=str(billed_to),
-                    authorize_from_msp=False,
-                    authorization_reference=serializer.validated_data.get('authorization_reference'),
+                authorization_reference = serializer.validated_data.get('authorization_reference')
+
+                # Remove dates, since they are not JSON serializable for some reason
+                data = serializer.validated_data
+                del data['token']['last_updated']
+                command_store[authorization_reference] = data
+
+                params = serializer.validated_data
+                params.update(
+                    dict(
+                        ad_hoc_token=token,
+                        billed_to=str(billed_to),
+                        authorize_from_msp=False,
+                    )
                 )
+                params.pop('token')
+                params.pop('response_url')
+
+                # ic()
+                # ic(params)
                 session: Session = create_session(**params)
 
                 # The worst scenario is this
@@ -101,15 +111,17 @@ class CommandsViewSet(GenericViewSet):
                 timeout = 60
 
                 try:
-                    # Prepare the start command for CPO
+                    # Prepare the start command for CPO management system
                     data = dict(
+                        response_url=request.build_absolute_uri(reverse('chargepoint-remote-command-result',
+                                                                        args=(session.authorization_reference,))),
                         token_id=session.cdr_token_uid,
                         token_type=session.cdr_token_type,
                         authorization_reference=session.authorization_reference,
                         auth_method=session.auth_method,
                         billed_to=session.billed_to,
                         evse_id=session.evse.uid,
-                        connector_id=connector_id,
+                        connector_id=session.connector.uid if session.connector else None,
                     )
 
                     # ic(data)
@@ -123,7 +135,7 @@ class CommandsViewSet(GenericViewSet):
                     if user and password:
                         kwargs.update(dict(auth=(user, password)))
 
-                    url = parsed.url.format(user=user, evse_id=evse_uid)
+                    url = parsed.url.format(user=user, evse_id=session.evse.uid)
 
                     # ic(url, data, kwargs)
                     # Send start command to CPO
@@ -238,12 +250,37 @@ class CommandsViewSet(GenericViewSet):
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
+    @transaction.atomic
+    @action(methods=['GET', 'POST'], detail=False, url_path='COMMAND_RESULT/(?P<command_id>[^/.]+)')
+    def command_result(self, request, command_id=None):
+        """
+        This is only used by eMSP for receiving the final result for remote command
+        """
+        if not request.data:
+            return OCPIResponse(status_message='Please see OPTIONS to learn what you can POST at this endpoint')
+        try:
+            serializer = CommandResultSerializer(data=request.data)
+            if serializer.is_valid():
+                result = serializer.validated_data.get('result')
+                logging.info(f'Received CommandResult {result} for {command_id}')
+                return OCPIResponse(
+                    status_message='Command result received, thank you!',
+                    data=dict(command_id=command_id))
+        except (NotFound, Http404, KeyError) as e:
+            return OCPIResponse(None, status_message=str(e),
+                                http_status=status.HTTP_400_BAD_REQUEST,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+        return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
+                            http_status=status.HTTP_400_BAD_REQUEST,
+                            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
     @staticmethod
     def list(request, *_args, **_kwargs):
         return Response(dict(
             start_session=request.build_absolute_uri(reverse('commands-start-session')),
             stop_session=request.build_absolute_uri(reverse('commands-stop-session')),
             unlock_connector=request.build_absolute_uri(reverse('commands-unlock-connector')),
+            # command_result=request.build_absolute_uri(reverse('commands-command-result')),
         ))
 
 
@@ -280,15 +317,19 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
         if not isinstance(token, Token):
             token = construct_adhoc_token(token, contract_id=contract_id)
         token_data = TokenSerializer(token).data
+        authorization_reference = generate_auth_reference()
         data = dict(
-            response_url=request.build_absolute_uri('/'),
+            response_url=request.build_absolute_uri(
+                reverse('commands-command-result', args=(authorization_reference,))
+            ),
             token=token_data,
             location_id=evse.location.uid,
             evse_uid=evse.uid,
             connector_id=connector_id,
-            authorization_reference=generate_auth_reference(),  # Todo: Store authorization for verifying CDR
+            authorization_reference=authorization_reference,  # Todo: Store authorization for verifying CDR
         )
         serializer = StartSessionSerializer(instance=data)
+        # ic(serializer.data)
         return ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
                          to=Party(country_code, party_id),
                          sender=get_our_party(OcpiRolesEnum.EMSP),

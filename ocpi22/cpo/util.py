@@ -1,10 +1,14 @@
 from functools import lru_cache
 from typing import Union
 
+from django.conf import settings
+
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Evse
-from ocpi22.util import redis_store
+from ocpi22.util import redis_store, RedisStore
 from ocpiconnector.ocpi_identities import get_our_party
+
+command_store = RedisStore('command-result', expiration=settings.REMOTE_COMMAND_EXPIRATION)
 
 
 def _find_our_evse(evse_uid) -> Evse:

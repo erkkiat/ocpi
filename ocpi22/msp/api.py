@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
 from ocpi22.commands.commands import send_start_command, send_stop_command
-from ocpi22.commands.serializers import CommandResult
+from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer
@@ -25,7 +25,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
     """
     """
     # noinspection PyUnresolvedReferences
-    queryset = Location.objects.all()
+    queryset = Token.objects.all()
     lookup_field = 'uid'
 
     def get_serializer_class(self):
@@ -121,8 +121,8 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
 
     def get_return_values_serializer(self):
         return dict(
-            start_charging=CommandResult(),
-            stop_charging=CommandResult(),
+            start_charging=CommandResultSerializer(),
+            stop_charging=CommandResultSerializer(),
         ).get(self.action_map.get('post'))
 
     def get_view_name(self):

@@ -1,3 +1,4 @@
+import json
 import logging
 import secrets
 import urllib.parse
@@ -552,6 +553,40 @@ class MyCommandResponse:
 
 
 redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
+class RedisStore():
+    def __init__(self, namespace=None, expiration=None):
+        self.namespace = namespace
+        self.expiration = expiration
+
+    def _format_key(self, key):
+        if not self.namespace:
+            return key
+        return f'{self.namespace}-{key}'
+
+    def __setitem__(self, key, value):
+        namespace_key = self._format_key(key)
+        # ic()
+        # ic(key, namespace_key, value, self.expiration)
+        if isinstance(value, dict):
+            value = json.dumps(value)
+        redis_store.set(namespace_key, value, self.expiration)
+
+    def __getitem__(self, item):
+        # ic()
+        # ic(item)
+        namespace_key = self._format_key(item)
+        value = redis_store.get(namespace_key)
+        if not value:
+            raise KeyError(f'No {item} stored for {self.namespace}')
+        if "{" in value:
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                pass
+        # ic(item, namespace_key, value)
+        return value
 
 
 class MyMetadata(SimpleMetadata):

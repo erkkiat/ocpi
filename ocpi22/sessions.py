@@ -27,16 +27,16 @@ def generate_session_uid() -> str:
     return uuid.uuid4().hex[:36]
 
 
-def create_session(location_id, evse_id, connector_id, token_id=None, ad_hoc_token=None,
+def create_session(location_id, evse_uid, connector_id, token_id=None, ad_hoc_token=None,
                    billed_to=None, uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
                    authorize_from_msp=True, authorization_reference=''
                    ) -> Session:
-    # ic(location_id, evse_id, connector_id, token_id, ad_hoc_token)
+    # ic(location_id, evse_uid, connector_id, token_id, ad_hoc_token)
     if not uid:
         uid = generate_session_uid()
     token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
     location = Location.get_if_exists(uid=location_id, raise_exception=True)
-    evse = Evse.get_if_exists(uid=evse_id, location=location, raise_exception=True)
+    evse = Evse.get_if_exists(uid=evse_uid, location=location, raise_exception=True)
     # The Connector may be selected later and the information gotten from the charger
     connector = Connector.get_if_exists(uid=connector_id, evse=evse, raise_exception=True) if connector_id else None
     if authorize_from_msp:

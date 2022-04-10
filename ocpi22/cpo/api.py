@@ -16,21 +16,27 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.commands.serializers import CpoCommandResult
+from ocpi22.choices import OcpiRolesEnum
+from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResultSerializer
 from ocpi22.cpo.serializers import EvseSerializer, CpoSessionSerializer, LocationQuickSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, CallbacksSerializer
-from ocpi22.cpo.util import get_callbacks_parameter
+from ocpi22.cpo.util import get_callbacks_parameter, command_store
 from ocpi22.locations.location import send_evse_updates
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import AdhocToken
+from ocpi22.routing import find_credentials
 from ocpi22.sessions import create_session
+from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token
+from ocpi22.util import log_error
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
+
+from ocpiconnector.ocpi_identities import Party, get_our_party
 
 pp = PrettyPrinter(indent=4).pprint
 slack_logging.init()
@@ -198,7 +204,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             meter_values=MeterValuesSerializer,
             stop_transaction=StopTransactionSerializer,
             callbacks=CallbacksSerializer,
-            remote_command_result=CpoCommandResult,
+            remote_command_result=CpoCommandResultSerializer,
         ).get(self.action_map.get('post'), StatusChangeSerializer)
 
     @action(methods=('GET', 'POST'), detail=False)
@@ -374,7 +380,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session = create_session(
                             # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
                             # Other CPO can have same ID
-                            uid=session_id, evse_id=evse, location_id=evse.location, connector_id=connector_id,
+                            uid=session_id, evse_uid=evse, location_id=evse.location, connector_id=connector_id,
                             token_id=token, billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
                             session_status=Session.ACTIVE
                         )
@@ -560,11 +566,12 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=('GET', 'POST'), detail=False)
-    def remote_command_result(self, request):
+    @action(methods=('GET', 'POST'), detail=False,
+            url_path='(?P<authorization_reference>[^/.]+)')
+    def remote_command_result(self, request, authorization_reference):
         """
-        Using this endpoint you tell OCPI Connector if the requested start_transaction or
-        stop_transaction has been successful.
+        Using this endpoint you tell OCPI Connector if the requested remote command
+        has been successful.
 
         ## Status codes
 
@@ -576,13 +583,40 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             if request.method == 'GET':
                 return Response(dict(help='Please see `OPTIONS` for the schema'))
             if request.method in ('POST'):
-                serializer = CpoCommandResult(data=request.data)
-                token_id = serializer.validated_data.get('token_id')
+                serializer = CpoCommandResultSerializer(data=request.data)
                 if serializer.is_valid():
-                    session = None
-                    return Response(dict(
-                        status_text='Status relayed to eMSP'),
-                        token_id=token_id,
+                    command = command_store[authorization_reference]
+                    ic(command)
+                    token_id = command['token']['uid']
+                    session = get_session_by_adhoc_token(token_id, max_age_minutes=15)
+
+                    params = dict(
+                        result=serializer.validated_data.get('result')
+                    )
+                    ocpi_serializer = CommandResultSerializer(instance=params)
+                    response_url = command['response_url']
+                    to = Party(*session.billed_to.split('*'))
+                    credentials = find_credentials(to)
+                    sender = get_our_party(OcpiRolesEnum.CPO)
+
+                    response = send_ocpi_request(
+                        ocpi_serializer.data,
+                        response_url,
+                        credentials.theirs_base64(),
+                        to_country_code=to.country_code,
+                        to_party_id=to.party_id,
+                        from_country_code=sender.country_code,
+                        from_party_id=sender.party_id,
+                        method='post',
+                        credentials_id=credentials.pk,
+                    )
+                    return Response(
+                        dict(
+                            status_text=f'Response received from eMSP',
+                            token_id=token_id,
+                            authorization_reference=command['authorization_reference'],
+                            data=response.get("json"),
+                        ), status=response.get('status_code')
                     )
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except redis.exceptions.ConnectionError as e:
@@ -590,10 +624,19 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                           f'due to trouble connecting with Redis: {e}')
             return Response(
                 dict(
-                    status_text='Unable to store settings due to connection problem with Redis. '
+                    status_text='Unable to store settings due to connection problem. '
                                 'This is our fault, sorry. Support has been alerted.'
                 ),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except KeyError as e:
+            log_error(request, str(e))
+            return Response(
+                dict(
+                    status_text=f'Unable to find eMSP remote command from cache, either the command ID is incorrect or '
+                                f'the command was issued by eMSP too long ago '
+                                f'(expiration is set to {settings.REMOTE_COMMAND_EXPIRATION})'
+                ),
+                status=status.HTTP_404_NOT_FOUND)
 
         return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
 
