@@ -5,24 +5,19 @@ from typing import Optional
 import redis
 from django.conf import settings
 from django.utils.module_loading import import_string
-from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
-from rest_framework import routers, status, mixins, viewsets
+from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
-from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResultSerializer
-from ocpi22.cpo.serializers import EvseSerializer, CpoSessionSerializer, LocationQuickSerializer, \
+from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, CallbacksSerializer
 from ocpi22.cpo.util import get_callbacks_parameter, command_store
-from ocpi22.locations.location import send_evse_updates
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
@@ -450,7 +445,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
             # method == GET
             return Response(dict(help='Please see `OPTIONS` for the schema'))
-        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+        except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -567,7 +562,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=('GET', 'POST'), detail=False,
-            url_path='(?P<authorization_reference>[^/.]+)')
+            url_path='remote_command_result/(?P<authorization_reference>[^/.]+)')
     def remote_command_result(self, request, authorization_reference):
         """
         Using this endpoint you tell OCPI Connector if the requested remote command

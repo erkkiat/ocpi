@@ -414,5 +414,92 @@
       },
       "pk": 9,
       "model": "ocpi22.connector"
+   },
+   {
+      "pk": 7,
+      "model": "ocpi22.token",
+      "fields": {
+         "party_id": "MSP",
+         "created": "2022-01-17T11:06:05.458",
+         "issuer": "TheNewMotion",
+         "country_code": "FI",
+         "last_updated": "2018-12-10T17:25:10",
+         "updated": "2022-01-17T11:06:05.458",
+         "visual_number": "DF000-2001-8999-1",
+         "whitelist": "ALLOWED",
+         "uid": "EKI1",
+         "group_id": "DF000-2001-8999",
+         "contract_id": "DE8ACC12E46L89",
+         "default_profile_type": "GREEN",
+         "language": "IT",
+         "type": "RFID",
+         "valid": true
+      }
+   },
+   {
+      "pk": 8,
+      "model": "ocpi22.token",
+      "fields": {
+         "party_id": "MSP",
+         "created": "2022-01-17T11:06:05.458",
+         "issuer": "TheNewMotion",
+         "country_code": "FI",
+         "last_updated": "2018-12-10T17:25:10",
+         "updated": "2022-01-17T11:06:05.458",
+         "visual_number": "DF000-2001-8999-1",
+         "whitelist": "ALWAYS",
+         "uid": "WHITELISTED",
+         "group_id": "DF000-2001-8999",
+         "contract_id": "DE8ACC12E46L89",
+         "default_profile_type": "GREEN",
+         "language": "EN",
+         "type": "RFID",
+         "valid": true
+      }
+   },
+   {
+      "fields": {
+         "url": "http://localhost:80/ocpi/versions/",
+         "theirs": "THEIRS",
+         "version": "22",
+         "last_updated": "2022-01-13T18:57:11.301",
+         "updated": "2022-01-17T04:49:23.253",
+         "ours": "OURS",
+         "created": "2022-01-08T07:56:40.267",
+         "token_a": "TOKEN_A"
+      },
+      "model": "ocpi22.credentials",
+      "pk": 2
+   },
+   {
+      "pk": 3,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "role": "EMSP",
+         "credentials": 2,
+         "party_id": "MSP",
+         "country_code": "FI"
+      }
+   },
+   {
+      "pk": 16,
+      "model": "ocpi22.endpoint",
+      "fields": {
+         "role": "RECEIVER",
+         "credentials": 2,
+         "identifier": "tokens",
+         "url": "http://localhost:80/ocpi/cpo/2.2/tokens"
+      }
+   },
+   {
+      "fields": {
+         "role": "SENDER",
+         "credentials": 2,
+         "identifier": "tokens",
+         "url": "http://localhost:80/ocpi/cpo/2.2/tokens"
+      },
+      "pk": 17,
+      "model": "ocpi22.endpoint"
    }
 ]

@@ -93,13 +93,14 @@ class TokenViewSet(mixins.ListModelMixin,
         else:
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
-    # Todo: NO_CREDIT and other errors should go all the way back to the charger to be shown
     @csrf_exempt
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
         ic(request.data, request.get_full_path())
         token = get_object_or_404(Token, uid=token_uid)
+        # Todo: If the token is not known, the response SHALL contain the status code:
+        #  2004: Unknown Token, and no data field.
         allowed = Token.ALLOWED
         info = ''
         if not token.valid:

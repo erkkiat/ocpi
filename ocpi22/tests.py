@@ -1376,7 +1376,7 @@ class TestCpoApi(TestCase):
     api_factory = APIRequestFactory()
 
     @time_machine.travel(faketime, tick=False)
-    def test_change_status(self):
+    def test_status_change(self):
 
         evse = Evse.objects.get(uid='HELSINKI-3')
         self.assertEqual(evse.status, 'AVAILABLE')
@@ -1420,6 +1420,84 @@ class TestCpoApi(TestCase):
             if cpo_response.status_code != 404:
                 evse = Evse.objects.get(uid=case.get('request').get('evse_id'))
                 self.assertEqual(evse.status, case.get('evse_status'))
+
+    accept_authorization = dict(
+        data=dict(
+            AuthorizationInfo=dict(
+                allowed='ALLOWED',
+                token_id='EKI1',
+                authorization_reference='FAKE-AUTHORIZATION-REFERENCE',
+            ),
+        ),
+    )
+
+    @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.cpo.util.redis_store.get',
+           side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
+    @patch('ocpi22.sessions.generate_session_uid',
+           side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
+    @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    def test_rfid_charging_flow(self,
+                                ocpi_post_mock: Mock,
+                                _generate_session_uid_mock: Mock,
+                                _get_parameter_mock: Mock):
+
+        evse = Evse.objects.get(uid='HELSINKI-3')
+        self.assertEqual(evse.status, 'AVAILABLE')
+
+        start_transaction_url = reverse('chargepoint-start-transaction')
+        cpo_viewset = ChargePointViewSet()
+        cpo_request = self.api_factory.post(start_transaction_url)
+        cpo_request.data = {
+            "evse_id": "HELSINKI-3",
+            "connector_id": "1",
+            "token_id": "EKI1",
+            "session_id": "MY-SESSION",
+            "start_kwh": 120
+        }
+        cpo_response = cpo_viewset.start_transaction(cpo_request)
+        # ic(cpo_response.data)
+        args, kwargs = ocpi_post_mock.call_args
+        # ic(args, kwargs)
+        self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
+
+        status_change_url = reverse('chargepoint-meter-values')
+        cpo_viewset = ChargePointViewSet()
+        cpo_request = self.api_factory.post(status_change_url)
+        testcases = (
+            dict(
+                request=dict(
+                    session_id='MY-SESSION',
+                    kwh=123.45,
+                ),
+                expected_response={'now_kwh': 123.45,
+                                   'price': '-',
+                                   'session_id': 'MY-SESSION',
+                                   'start_kwh': 120.0,
+                                   'status_text': 'Session updated',
+                                   'total_kwh': 3.45},
+                evse_status='CHARGING'
+            ),
+            dict(
+                request=dict(
+                    session_id='NON-EXISTENT-SESSION',
+                    kwh=123.45,
+                ),
+                expected_response={'status': 'Session matching query does not exist.'},
+                status_code=404
+            ),
+        )
+
+        for case in testcases:
+            cpo_request.data = case.get('request')
+            cpo_response = cpo_viewset.meter_values(cpo_request)
+            # ic(cpo_response, cpo_response.data)
+
+            expected_status = case.get('status_code', 200)
+            self.assertEqual(cpo_response.status_code, expected_status,
+                             f'Expecting HTTP status {expected_status} for {case.get("request")}')
+            self.assertDictEqual(cpo_response.data, case.get('expected_response'),
+                                 f'Case request {case.get("request")}, response {cpo_response.data}')
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.cpo.util.redis_store.get',
@@ -1470,7 +1548,7 @@ class TestCpoApi(TestCase):
              'billed_to': 'FI*EON',
              'connector_id': None,
              'evse_id': 'HELSINKI-3',
-             'response_url': 'http://testserver/api/cpo/v2/chargepoint/FI*001-AUTH-REFERENCE/',
+             'response_url': 'http://testserver/api/cpo/v2/chargepoint/remote_command_result/FI*001-AUTH-REFERENCE/',
              'token_id': 'NON-EXISTENT-ADHOC-TOKEN',
              'token_type': 'AD_HOC_USER'}
         )

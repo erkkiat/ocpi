@@ -147,7 +147,6 @@ class OcpiModule:
 
     def send_update_to_interested_parties(self, data):
         if hasattr(self, 'credentials'):
-            ic()
             our_country_code, our_party_id = self.get_owner_identity().split('*')
 
             # Todo: Find route to self.billed_to

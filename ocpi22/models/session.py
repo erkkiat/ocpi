@@ -60,7 +60,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def kwh(self):
-        return self.stop_kwh - self.start_kwh
+        return round(self.stop_kwh - self.start_kwh, 3)
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
