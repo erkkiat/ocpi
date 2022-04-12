@@ -278,7 +278,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             token = AdhocToken(uid=token, valid=True, owner=authorization.party,
                                                type=authorization.token_type)
                     else:
-                        authorization: TokenAuthorization = authorize_token(token.uid, evse.location)
+                        authorization: TokenAuthorization = authorize_token(token, evse.location)
 
                     if not authorization:
                         return Response(
@@ -342,7 +342,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data['evse']
                     connector_id: str = serializer.validated_data['connector_id']
-                    session_id = serializer.validated_data['session_id']
+                    session_id = serializer.validated_data.get('session_id')
                     token = serializer.validated_data['token']
                     start_kwh = serializer.validated_data['start_kwh']
 
@@ -504,7 +504,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
             # method == GET
             return Response(dict(help='Please see `OPTIONS` for the schema'))
-        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+        except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -575,21 +575,23 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         """
         try:
+            command = command_store[authorization_reference]
+            # ic(command)
+
             if request.method == 'GET':
                 return Response(dict(help='Please see `OPTIONS` for the schema'))
             if request.method in ('POST'):
                 serializer = CpoCommandResultSerializer(data=request.data)
                 if serializer.is_valid():
-                    command = command_store[authorization_reference]
-                    ic(command)
-                    token_id = command['token']['uid']
+                    token_element = command.get('token') or command.get('ad_hoc_token')
+                    token_id = token_element.get('uid') if token_element else ''
                     session = get_session_by_adhoc_token(token_id, max_age_minutes=15)
 
                     params = dict(
                         result=serializer.validated_data.get('result')
                     )
                     ocpi_serializer = CommandResultSerializer(instance=params)
-                    response_url = command['response_url']
+                    response_url = command.get('response_url')
                     to = Party(*session.billed_to.split('*'))
                     credentials = find_credentials(to)
                     sender = get_our_party(OcpiRolesEnum.CPO)

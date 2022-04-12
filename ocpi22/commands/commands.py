@@ -80,13 +80,12 @@ class CommandsViewSet(GenericViewSet):
                 f'Billed_to needs to be set with party ID: {billed_to}'
             serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
+
                 token = serializer.validated_data.get('token', '')
                 authorization_reference = serializer.validated_data.get('authorization_reference')
 
-                # Remove dates, since they are not JSON serializable for some reason
-                data = serializer.validated_data
-                del data['token']['last_updated']
-                command_store[authorization_reference] = data
+                # Store the command for use during the next {settings.REMOTE_COMMAND_EXPIRATION} seconds
+                command_store[authorization_reference] = serializer.validated_data
 
                 params = serializer.validated_data
                 params.update(

@@ -570,7 +570,7 @@ class RedisStore():
         # ic()
         # ic(key, namespace_key, value, self.expiration)
         if isinstance(value, dict):
-            value = json.dumps(value)
+            value = json.dumps(value, default=str)  # serializes also dates
         redis_store.set(namespace_key, value, self.expiration)
 
     def __getitem__(self, item):

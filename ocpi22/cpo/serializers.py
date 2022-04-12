@@ -224,8 +224,7 @@ class StartTransactionSerializer(serializers.Serializer):
     session_id = serializers.CharField(
         max_length=36,
         help_text='The session ID on the CPO platform or order number from the billing system',
-        required=False,
-        default=uuid.uuid4().hex
+        required=False
     )
     start_kwh = serializers.FloatField(
         required=False,

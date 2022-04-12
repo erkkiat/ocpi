@@ -49,7 +49,7 @@ def create_session(location_id, evse_uid, connector_id, token_id=None, ad_hoc_to
         authorization_method = Session.COMMAND
     # noinspection PyUnresolvedReferences
     active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
-    if active_sessions.count():
+    if active_sessions.exists():
         logging.warning(f'New session starting, invalidating incomplete sessions at {evse.evse_id}: '
                         f'{",".join([str(s) for s in active_sessions])}')
         active_sessions.update(status='INVALID')
@@ -80,7 +80,7 @@ def create_session(location_id, evse_uid, connector_id, token_id=None, ad_hoc_to
         currency=os.environ.get('CPO_CURRENCY', 'EUR'),
         billed_to=billed_to,
     )
-    if active_sessions.count():
+    if active_sessions.exists():
         # Todo: put this on error list
         pass
 

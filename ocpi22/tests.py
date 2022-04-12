@@ -783,6 +783,8 @@ class CdrTests(TestCase):
 class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
+    api_factory = APIRequestFactory()
+
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
@@ -792,11 +794,10 @@ class CommandTests(TestCase):
         #     create_tariff(uid=str(t), country_code='BE', party_id='BEC')
 
         url = reverse('commands-start-session')
-        api_factory = APIRequestFactory()
         viewset = CommandsViewSet()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
-        request = api_factory.get(url)
+        request = self.api_factory.get(url)
         request.data = {}
         response = viewset.start_session(request)
         # data = response.data.get('data')
@@ -814,7 +815,7 @@ class CommandTests(TestCase):
             'Ocpi-From-Country-Code': billed_party.country_code,
             'Ocpi-From-Party-Id': billed_party.party_id
         }
-        request = api_factory.post(url, **headers)
+        request = self.api_factory.post(url, **headers)
         request.data = data
         # noinspection PyUnresolvedReferences
         # request.credentials = Credentials.objects.get(pk=2)

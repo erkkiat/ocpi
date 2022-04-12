@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, Union
 
 from cachetools.func import ttl_cache
 from django.db.models import Q
@@ -62,7 +62,8 @@ class TokenAuthorization:
 
 
 @ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
-def authorize_token(token_uid, location=None) -> Optional[TokenAuthorization]:
+def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAuthorization]:
+    token_uid = token.uid if isinstance(token, Token) else token
     session = get_session_by_adhoc_token(token_uid, max_age_minutes=15)
     if session:
         # Token is AD HOC
@@ -75,7 +76,7 @@ def authorize_token(token_uid, location=None) -> Optional[TokenAuthorization]:
         )
 
     # Not AD HOC, so Token should be found from database
-    return _authorize_token(token_uid)
+    return _authorize_token(token)
 
 
 @ttl_cache(maxsize=1024, ttl=14 * 60)
@@ -92,7 +93,7 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
         return TokenAuthorization(
             token_id=token.uid,
             token_type=Token.RFID,
-            party=token.party(),
+            party=token.get_party(),
             authorization_reference='',
             auth_method=Session.WHITELIST,
         )
@@ -124,9 +125,7 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
     return TokenAuthorization(
         token_id=token.uid,
         token_type=token.type,
-        party=token.party(),
+        party=token.get_party(),
         authorization_reference=authorization.get('authorization_reference'),
         auth_method=Session.AUTH_REQUEST,
     )
-
-
