@@ -1,5 +1,8 @@
+from typing import Union
+
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.token import Token
+from ocpi22.ocpi.util import AdhocToken
 from ocpiconnector.ocpi_identities import get_our_party
 
 
@@ -28,3 +31,9 @@ def construct_adhoc_token(token_uid, contract_id, token_type=Token.APP_USER):
         issuer=str(our_party),
         whitelist=Token.ALWAYS,
     )
+
+
+def get_token_id(token: Union[Token, AdhocToken, str, int]) -> str:
+    if isinstance(token, Token) or isinstance(token, AdhocToken):
+        return token.uid
+    return token

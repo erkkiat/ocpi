@@ -62,17 +62,17 @@ class TokenAuthorization:
 
 @ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
 def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAuthorization]:
-    token_uid = token.uid if isinstance(token, Token) else token
-    session = get_session_by_adhoc_token(token_uid, max_age_minutes=15)
-    if session:
-        # Token is AD HOC
-        return TokenAuthorization(
-            token_id=token_uid,
-            token_type=session.cdr_token_type,
-            party=session.get_party(),
-            authorization_reference=session.authorization_reference,
-            auth_method=session.auth_method,
-        )
+    if not isinstance(token, Token):
+        session = get_session_by_adhoc_token(token, max_age_minutes=15)
+        if session:
+            # Token is AD HOC
+            return TokenAuthorization(
+                token_id=token,
+                token_type=session.cdr_token_type,
+                party=session.get_party(),
+                authorization_reference=session.authorization_reference,
+                auth_method=session.auth_method,
+            )
 
     # Not AD HOC, so Token should be found from database
     return _authorize_token(token)

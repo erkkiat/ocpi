@@ -25,6 +25,7 @@ from ocpi22.routing import find_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token
+from ocpi22.tokens.util import get_token_id
 from ocpi22.util import log_error
 from ocpiconnector import slack_logging
 
@@ -283,7 +284,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         return Response(
                             dict(
                                 status_text='Token is (temporarily) not valid',
-                                token_id=token,
+                                token_id=get_token_id(token),
                             ),
                             status=status.HTTP_401_UNAUTHORIZED
                         )
@@ -361,7 +362,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         if not authorization:
                             return Response(dict(
                                 status_text='Token is (no longer) valid',
-                                token_id=token,
+                                token_id=get_token_id(token),
                             ), status=status.HTTP_401_UNAUTHORIZED)
                         party = authorization.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
@@ -375,7 +376,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
                             # Other CPO can have same ID
                             uid=session_id, evse_uid=evse, location_id=evse.location, connector_id=connector_id,
-                            token_id=token, billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
+                            token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
                             session_status=Session.ACTIVE
                         )
                     session_serializer = CpoSessionSerializer(instance=session)
