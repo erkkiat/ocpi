@@ -28,11 +28,10 @@ def token_post_save(sender, instance: Token, *_args, **_kwargs):
 
 def get_session_by_adhoc_token(token_uid: str, max_age_minutes) -> Optional[Session]:
     # ic()
-    last_15_minutes = timezone.now() - timedelta(minutes=max_age_minutes)
-    # ic(token_uid, last_15_minutes, timezone.now())
-    # noinspection PyUnresolvedReferences
+    time_start = timezone.now() - timedelta(minutes=max_age_minutes)
+    # ic(token_uid, timespan, timezone.now())
     sessions = Session.objects.filter(
-        Q(cdr_token_uid=token_uid) & Q(status=Session.PENDING) & Q(created__gte=last_15_minutes)
+        Q(cdr_token_uid=token_uid) & Q(status__in=[Session.PENDING, Session.ACTIVE]) & Q(created__gte=time_start)
     ).order_by('-created')
     if sessions.exists():
         session = sessions.first()

@@ -12,7 +12,7 @@ from rest_framework.generics import get_object_or_404
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.tokens.auth import TokenAuthorization
+from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
 
 
 def get_token(token_id, ad_hoc_token):
@@ -22,6 +22,11 @@ def get_token(token_id, ad_hoc_token):
         return token
     CdrToken = namedtuple('CdrToken', ad_hoc_token)
     return CdrToken(**ad_hoc_token)
+
+
+def get_session(token: Union[Token, str]) -> Session:
+    token_id = token.uid if isinstance(token, Token) else token
+    session = get_session_by_adhoc_token(token, max_age_minutes=365 * 24 * 60)  # Maximum charge time: 1 year :)
 
 
 def generate_session_uid() -> str:

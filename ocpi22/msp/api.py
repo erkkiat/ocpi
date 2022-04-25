@@ -93,9 +93,10 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = StopChargingSerializer(data=request.data)
                 if serializer.is_valid():
-                    token = serializer.validated_data.get('token')
                     session = serializer.validated_data.get('session')
-
+                    if not session:
+                        token = serializer.validated_data.get('token')
+                        session = get_session(token)
                     response: requests.Response = send_stop_command(request, session)
                     data = response.json()
                     return Response(data.get('data'), status=response.status_code)
