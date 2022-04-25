@@ -7,7 +7,6 @@ import requests
 from django.conf import settings
 from django.db import transaction
 from django.http import Http404
-from icecream import ic
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, APIException
@@ -29,7 +28,7 @@ from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.routing import find_route, Route
-from ocpi22.sessions import create_session
+from ocpi22.sessions.util import create_session
 from ocpi22.tasks import command_start
 from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference
 
@@ -37,7 +36,7 @@ import pprint
 
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error, redis_store
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 

@@ -206,6 +206,10 @@ class MeterValuesSerializer(serializers.Serializer):
     kwh = serializers.FloatField(
         help_text='The kWh measurement at the time of this message',
     )
+    soc = serializers.FloatField(
+        required=False, min_value=0, max_value=100,
+        help_text='The State of Charge for the vehicle, if provided by the charge point',
+    )
 
 
 class StartTransactionSerializer(serializers.Serializer):

@@ -2,6 +2,7 @@ import logging
 import os
 import uuid
 from collections import namedtuple
+from typing import Union
 
 from django.db.models import QuerySet
 from django.utils import timezone

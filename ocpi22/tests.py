@@ -1435,7 +1435,7 @@ class TestCpoApi(TestCase):
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
-    @patch('ocpi22.sessions.generate_session_uid',
+    @patch('ocpi22.sessions.util.generate_session_uid',
            side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_rfid_charging_flow(self,
@@ -1503,7 +1503,7 @@ class TestCpoApi(TestCase):
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
-    @patch('ocpi22.sessions.generate_session_uid',
+    @patch('ocpi22.sessions.util.generate_session_uid',
            side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
     @patch('ocpi22.commands.commands.requests.post')
     def test_adhoc_token(self,

@@ -18,9 +18,7 @@ class TokenIdSerializer(fields.CharField):
 class SessionIdSerializer(fields.CharField):
     # Return the Session object or pass through the session ID if unknown
     def to_internal_value(self, data):
-        session = Session.get_if_exists(uid=data)
-        if not session:
-            return ValidationError(f'Session ID {data} is unknown')
+        session = Session.get_if_exists(uid=data) or data
         return session
 
 

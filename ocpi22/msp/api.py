@@ -11,6 +11,7 @@ from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer
+from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector import slack_logging
 
@@ -64,7 +65,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'))
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist, Location.DoesNotExist, Connector.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -102,7 +103,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'))
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),

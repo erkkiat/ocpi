@@ -21,7 +21,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
-from ocpi22.sessions import get_active_sessions
+from ocpi22.sessions.util import get_active_sessions
 from ocpi22.tokens.util import get_admin_token
 from ocpiconnector.ocpi_identities import ocpi_identities
 

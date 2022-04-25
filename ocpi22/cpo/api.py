@@ -5,7 +5,6 @@ from typing import Optional
 import redis
 from django.conf import settings
 from django.utils.module_loading import import_string
-from icecream import ic
 from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -23,7 +22,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import AdhocToken
 from ocpi22.routing import find_credentials
-from ocpi22.sessions import create_session
+from ocpi22.sessions.util import create_session
 from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.util import log_error
@@ -242,7 +241,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'))
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -304,7 +303,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'))
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -395,7 +394,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'))
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -444,7 +443,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'))
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -503,7 +502,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'))
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -562,11 +561,13 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=('GET', 'POST'), detail=False,
-            url_path='remote_command_result/(?P<authorization_reference>[^/.]+)')
-    def remote_command_result(self, request, authorization_reference):
+            url_path='remote_command_result(?:/(?P<authorization_reference>[^/.]+))?')
+    def remote_command_result(self, request, authorization_reference=None):
         """
-        Using this endpoint you tell OCPI Connector if the requested remote command
-        has been successful.
+        Using this endpoint you tell OCPI Connector if the requested remote command has been successful.
+        You'll need the authorization reference in the URL, so you must use the exact response_url you get when
+        the OCPI Connector calls your start_transaction callback.
+
 
         ## Status codes
 
@@ -575,11 +576,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         """
         try:
-            command = command_store[authorization_reference]
-            # ic(command)
-
             if request.method == 'GET':
-                return Response(dict(help='Please see `OPTIONS` for the schema'))
+                return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+
+            command = command_store[authorization_reference]
+
             if request.method in ('POST'):
                 serializer = CpoCommandResultSerializer(data=request.data)
                 if serializer.is_valid():
@@ -672,23 +673,32 @@ class ChargePointOperatorAPIView(routers.APIRootView):
         """
 
         result = dict(
-            status_change=request.build_absolute_uri(
-                reverse('chargepoint-status-change')
+            status_management=dict(
+                status_change=request.build_absolute_uri(
+                    reverse('chargepoint-status-change')
+                )
             ),
-            authorize=request.build_absolute_uri(
-                reverse('chargepoint-authorize')
+            charging_session=dict(
+                authorize=request.build_absolute_uri(
+                    reverse('chargepoint-authorize')
+                ),
+                start_transaction=request.build_absolute_uri(
+                    reverse('chargepoint-start-transaction')
+                ),
+                meter_values=request.build_absolute_uri(
+                    reverse('chargepoint-meter-values')
+                ),
+                stop_transaction=request.build_absolute_uri(
+                    reverse('chargepoint-stop-transaction')
+                ),
             ),
-            start_transaction=request.build_absolute_uri(
-                reverse('chargepoint-start-transaction')
-            ),
-            meter_values=request.build_absolute_uri(
-                reverse('chargepoint-meter-values')
-            ),
-            stop_transaction=request.build_absolute_uri(
-                reverse('chargepoint-stop-transaction')
-            ),
-            callbacks=request.build_absolute_uri(
-                reverse('chargepoint-callbacks')
+            remote_commands=dict(
+                callbacks=request.build_absolute_uri(
+                    reverse('chargepoint-callbacks')
+                ),
+                remote_command_result=request.build_absolute_uri(
+                    reverse('chargepoint-remote-command-result')
+                ),
             ),
         )
         return Response(result)
