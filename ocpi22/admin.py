@@ -513,7 +513,7 @@ class CredentialsAdmin(admin.ModelAdmin):
 @admin.register(CredentialsRole)
 class CredentialsRoleAdmin(admin.ModelAdmin):
     model = CredentialsRole
-    list_display = ['party', 'role', 'business_details', 'references']
+    list_display = ['party', 'role', 'business_details']
 
 
 @admin.register(DefaultTariffs)
