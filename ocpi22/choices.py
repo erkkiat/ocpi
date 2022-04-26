@@ -85,6 +85,59 @@ OCPP_STATUS_CHOICES = [
 ]
 
 
+class CdrDimensionEnum(Enum):
+    # Average charging current during this ChargingPeriod: defined in A (Ampere).
+    # When negative, the current is flowing from the EV to the grid.
+    CURRENT = 'CURRENT'
+
+    # Total amount of energy (dis-)charged during this ChargingPeriod: defined in kWh.
+    # When negative, more energy was feed into the grid then charged into the EV. Default step_size is 1.
+    ENERGY = 'ENERGY'
+
+    # Total amount of energy feed back into the grid: defined in kWh.
+    ENERGY_EXPORT = 'ENERGY_EXPORT'
+
+    # Total amount of energy charged, defined in kWh.
+    ENERGY_IMPORT = 'ENERGY_IMPORT'
+
+    # Sum of the maximum current over all phases, reached during this ChargingPeriod: defined in A (Ampere).
+    MAX_CURRENT = 'MAX_CURRENT'
+
+    # Sum of the minimum current over all phases, reached during this ChargingPeriod,
+    # when negative, current has flowed from the EV to the grid. Defined in A (Ampere).
+    MIN_CURRENT = 'MIN_CURRENT'
+
+    # Maximum power reached during this ChargingPeriod: defined in kW (Kilowatt).
+    MAX_POWER = 'MAX_POWER'
+
+    # Minimum power reached during this ChargingPeriod: defined in kW (Kilowatt),
+    # when negative, the power has flowed from the EV to the grid.
+    MIN_POWER = 'MIN_POWER'
+
+    # Time during this ChargingPeriod not charging: defined in hours, default step_size multiplier is 1 second.
+    PARKING_TIME = 'PARKING_TIME'
+
+    # Average power during this ChargingPeriod: defined in kW (Kilowatt).
+    # When negative,the power is flowing from the EV to the grid.
+    POWER = 'POWER'
+
+    # Time during this ChargingPeriod Charge Point has been reserved and not yet been in use for this customer:
+    # defined in hours, default step_size multiplier is 1 second.
+    RESERVATION_TIME = 'RESERVATION_TIME'
+
+    # Current state of charge of the EV, in percentage, values allowed: 0 to 100. See note below.
+    STATE_OF_CHARGE = 'STATE_OF_CHARGE'
+
+    # Time charging during this ChargingPeriod: defined in hours, default step_size multiplier is 1 second.
+    TIME = 'TIME'
+
+
+CDR_DIMENSION_CHOICES = [
+    (e.value, e.value.capitalize().replace('_', ' '))
+    for e in CdrDimensionEnum
+]
+
+
 class MessageTexts:
     PREPARING_TO_CHARGE = [
         dict(language='EN', text='Preparing to charge'),

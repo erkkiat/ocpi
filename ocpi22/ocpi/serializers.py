@@ -10,7 +10,7 @@ from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.session import Session
+from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
 from ocpi22.util import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
@@ -272,20 +272,43 @@ class ConnectorIdSerializer(serializers.Serializer):
         return dict(connector=connector)
 
 
+class TariffIdSerializer(serializers.Serializer):
+    def to_representation(self, instance):
+        return instance.uid
+
+    def to_internal_value(self, data):
+        return Tariff.objects.get(uid=data)
+
+
+class CdrDimensionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CdrDimension
+        fields = ('type', 'volume')
+
+
+class ChargingPeriodSerializer(serializers.Serializer):
+    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    tariff = TariffIdSerializer()
+    dimensions = CdrDimensionSerializer(many=True)
+
+
 class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
         fields = ['detail_url', 'country_code', 'party_id', 'uid',
-                  'start_date_time', 'end_date_time', 'kwh',
+                  'start_date_time', 'end_date_time', 'kwh', 'charging_periods',
                   'cdr_token', 'auth_method', 'authorization_reference',
                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
                   'status', 'last_updated']
 
+    charging_periods = ChargingPeriodSerializer(many=True, source='chargingperiods')
     cdr_token = CdrTokenSerializer(required=True, source='*')
     location_id = LocationIdSerializer(source='*')
     evse_uid = EvseUidSerializer(source='*')
     connector_id = ConnectorIdSerializer(source='*', required=False)
     total_cost = TotalCostSerializer(source='*', required=False)
+    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
+    end_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
     last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
 
     def create(self, validated_data):

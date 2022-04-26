@@ -3,7 +3,7 @@ from django.db import models
 from django.utils import timezone
 from rest_framework.reverse import reverse
 
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
@@ -235,10 +235,41 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if self.status == 'INVALID':
             return '-'
         end = self.end_date_time if self.end_date_time else timezone.now()
-        return hours_minutes((end - self.start_date_time).seconds/3600)
+        return hours_minutes((end - self.start_date_time).seconds / 3600)
 
     def cost(self) -> str:
         return format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)
 
     def is_final(self) -> bool:
         return self.status in (self.INVALID, self.COMPLETED)
+
+
+class ChargingPeriod(models.Model):
+    """
+    A Charging Period consists of a start timestamp and a list of possible values that influence this period,
+    for example: amount of energy charged this period, maximum current during this period etc.
+    """
+
+    # Start timestamp of the charging period. A period ends when the next period starts.
+    # The last period ends when the session ends.
+    start_date_time = models.DateTimeField()
+
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name='chargingperiods')
+
+    tariff = models.ForeignKey(Tariff, null=True, blank=True, on_delete=models.PROTECT, related_name='chargingperiods')
+
+    def __str__(self):
+        return f'{self.start_date_time}'
+
+
+class CdrDimension(models.Model):
+    # Type of CDR dimension.
+    type = models.CharField(max_length=16, choices=CDR_DIMENSION_CHOICES)
+
+    # Volume of the dimension consumed, measured according to the dimension type.
+    volume = models.DecimalField(max_digits=12, decimal_places=4)
+
+    chargingperiod = models.ForeignKey(ChargingPeriod, on_delete=models.CASCADE, related_name='dimensions')
+
+    def __str__(self):
+        return f'{self.type}: {self.volume}'

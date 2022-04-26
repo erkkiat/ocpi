@@ -18,7 +18,7 @@ from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.session import Session
+from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
 from ocpi22.sessions.util import get_active_sessions
@@ -330,7 +330,15 @@ class CdrAdmin(admin.ModelAdmin):
         return ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
-class SessionAdmin(admin.ModelAdmin):
+class SessionAdmin(NestedModelAdmin):
+    class ChargingPeriodInline(NestedStackedInline):
+        model = ChargingPeriod
+
+        class CdrDimensionInline(NestedTabularInline):
+            model = CdrDimension
+
+        inlines = [CdrDimensionInline]
+
     model = Session
     ordering = ['-created']
     list_display = [
@@ -340,6 +348,7 @@ class SessionAdmin(admin.ModelAdmin):
         'evse', 'connector',
         'total_time', 'kwh', 'cost'
     ]
+    inlines = [ChargingPeriodInline]
     fieldsets = (
         ('Identification', dict(fields=(('country_code', 'party_id'), ('uid', 'meter_id'),
                                         ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id'),
@@ -369,15 +378,15 @@ class SessionAdmin(admin.ModelAdmin):
     #         kwargs["queryset"] = Connector.objects.filter(evse=??)
     #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-    def get_readonly_fields(self, request, obj=None) -> list:
-        if obj:
-            return [
-                'country_code', 'party_id', 'meter_id',
-                'authorization_reference', 'uid', 'auth_method',
-                'cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id',
-                'location', 'evse', 'start_date_time', 'total_cost_incl_vat', 'total_cost_excl_vat',
-            ]
-        return []
+    # def get_readonly_fields(self, request, obj=None) -> list:
+    #     if obj:
+    #         return [
+    #             'country_code', 'party_id', 'meter_id',
+    #             'authorization_reference', 'uid', 'auth_method',
+    #             'cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id',
+    #             'location', 'evse', 'start_date_time', 'total_cost_incl_vat', 'total_cost_excl_vat',
+    #         ]
+    #     return []
 
     # def has_delete_permission(self, request, obj=None) -> bool:
     #     # Disable delete except for invalid sessions
@@ -388,9 +397,9 @@ class SessionAdmin(admin.ModelAdmin):
     #         return False
     #     return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
 
-    def has_add_permission(self, request) -> bool:
-        # Disable add
-        return False
+    # def has_add_permission(self, request) -> bool:
+    #     # Disable add
+    #     return False
 
     def response_post_save_change(self, request, obj: Session):
         if obj.kwh:
