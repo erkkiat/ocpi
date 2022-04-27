@@ -16,7 +16,7 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
-    CredentialsSerializer, SessionSaveSerializer, ClientInfoSerializer
+    CredentialsSerializer, SessionSerializer, ClientInfoSerializer
 from ocpi22.cpo.api import CHARGER
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -377,7 +377,7 @@ class SessionViewSet(mixins.ListModelMixin,
     lookup_field = 'uid'
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.all().order_by('created')
-    serializer_class = SessionSaveSerializer
+    serializer_class = SessionSerializer
     renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
 
     def get_view_name(self):
@@ -401,7 +401,7 @@ class SessionViewSet(mixins.ListModelMixin,
         session = get_object_or_404(Session, country_code=country_code, party_id=party_id, uid=uid)
 
         if request.method == 'GET':
-            serializer = SessionSaveSerializer(session, context={'request': request})
+            serializer = SessionSerializer(session, context={'request': request})
             return OCPIResponse(serializer.data)
 
         # elif request.method == 'PATCH':
@@ -430,7 +430,7 @@ class SessionViewSet(mixins.ListModelMixin,
             if session.is_final():
                 return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        serializer = SessionSaveSerializer(data=request.data, instance=session, partial=partial)
+        serializer = SessionSerializer(data=request.data, instance=session, partial=partial)
         if serializer.is_valid():
             serializer.save()
             Session.send_hub_updates(serializer.data)

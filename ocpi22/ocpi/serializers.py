@@ -312,7 +312,7 @@ def update_charging_periods(session, chargingperiods):
             CdrDimension.objects.create(**dimension, chargingperiod=cp)
 
 
-class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
+class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
         fields = ['detail_url', 'country_code', 'party_id', 'uid',

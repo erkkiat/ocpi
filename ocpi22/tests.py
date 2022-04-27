@@ -30,7 +30,7 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
-from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSaveSerializer
+from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
@@ -721,7 +721,7 @@ class CdrTests(TestCase):
         )
 
         # Check that the serializer gives the correct connector ID and Tariff
-        serializer = SessionSaveSerializer(session)
+        serializer = SessionSerializer(session)
         data = serializer.data
         self.assertEqual(data['connector_id'], connector.uid,
                          f"Expecting connector uid {connector.uid}, got {data['connector_id']}")
@@ -1420,7 +1420,7 @@ class TestSession(TestCase):
                              f'Expecting {charging_period_count} ChargingPeriods')
 
             if expected_dict:
-                session_data = SessionSaveSerializer(instance=session).data
+                session_data = SessionSerializer(instance=session).data
                 # ic(session_data)
 
                 self.assertDictEqual(session_data, expected_dict,
