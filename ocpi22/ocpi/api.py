@@ -416,12 +416,12 @@ class SessionViewSet(mixins.ListModelMixin,
 
     @staticmethod
     @transaction.atomic
-    def put(request, partial=False) -> OCPIResponse:
+    def put(request, country_code=None, party_id=None, uid=None, partial=False) -> OCPIResponse:
         data = request.data.get('data', request.data)
         # ic(data)
-        uid = data.get('uid')
-        country_code = data.get('country_code')
-        party_id = data.get('party_id')
+        uid = uid or data.get('uid')
+        country_code = country_code or data.get('country_code')
+        party_id = party_id or data.get('party_id')
 
         session: Session = Session.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
         if session:
@@ -438,8 +438,8 @@ class SessionViewSet(mixins.ListModelMixin,
                                 http_status=status.HTTP_200_OK if session else status.HTTP_201_CREATED)
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request):
-        return self.put(request, partial=True)
+    def patch(self, request, country_code=None, party_id=None, uid=None):
+        return self.put(request, country_code, party_id, uid, partial=True)
 
 
 class ClientInfoViewSet(mixins.ListModelMixin,

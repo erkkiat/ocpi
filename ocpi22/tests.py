@@ -29,7 +29,7 @@ from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
-from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet
+from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSaveSerializer
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.commands.commands import CommandsViewSet
@@ -48,7 +48,9 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.util import OCPIResponse, Ocpi, OcpiModule, make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
-from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers
+from ocpi22.sessions.util import create_session
+from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, expected_session_charging_periods, \
+    accept_authorization
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -59,6 +61,7 @@ from ocpiconnector.ocpi_identities import Party
 faketime = datetime(2000, 1, 1, 12, 0)
 factory = RequestFactory()
 client = Client()
+dirname = os.path.dirname(os.path.abspath(__file__))
 
 
 def load_tests(_loader, tests, _ignore):
@@ -200,7 +203,6 @@ class ApiPutTests(TestCase):
 
     def test_put_location(self):
         url = reverse('location-list')
-        dirname = os.path.dirname(os.path.abspath(__file__))
         token_base64 = self.credentials.ours_base64()
 
         invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
@@ -302,10 +304,8 @@ class ApiPutTests(TestCase):
                     # noinspection PyUnresolvedReferences
                     self.fail(f'Possible options are: {", ".join([l.uid for l in Location.objects.all()])}')
 
-    dirname = os.path.dirname(os.path.abspath(__file__))
-
     def _load_example(self, filename_segment: str) -> dict:
-        with open(os.path.join(self.dirname, f'data/examples/{filename_segment}.json')) as file:
+        with open(os.path.join(dirname, f'data/examples/{filename_segment}.json')) as file:
             return json.load(file)
 
     def test_put_tariff(self):
@@ -452,7 +452,6 @@ class ApiPutTests(TestCase):
 
     def test_put_cdr(self):
         url = reverse('cdr-list')
-        dirname = os.path.dirname(os.path.abspath(__file__))
         token_base64 = self.credentials.ours_base64()
         viewset = CdrViewSet
 
@@ -545,7 +544,6 @@ class ApiPutTests(TestCase):
 
     def test_put_token(self):
         url = reverse('token-list')
-        dirname = os.path.dirname(os.path.abspath(__file__))
         token_base64 = self.credentials.ours_base64()
         viewset = TokenViewSet
 
@@ -682,7 +680,6 @@ class CdrTests(TestCase):
     fixtures = ['ocpi22/data/initial.json', 'ocpi22/data/defaulttariffs.json']
 
     def load_location(self, filename):
-        dirname = os.path.dirname(os.path.abspath(__file__))
         with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
             data = json.load(file)
         serializer = LocationSaveSerializer(data=data)
@@ -806,7 +803,6 @@ class CommandTests(TestCase):
         check_ok_result(self, response)
 
         # Load up the test message and send it
-        dirname = os.path.dirname(os.path.abspath(__file__))
         with open(os.path.join(dirname, f'data/examples/command_start_session.json')) as file:
             data = json.load(file)
 
@@ -862,7 +858,6 @@ class CommandTests(TestCase):
         check_ok_result(self, response)
 
         # Load up the test message and send it
-        dirname = os.path.dirname(os.path.abspath(__file__))
         with open(os.path.join(dirname, f'data/examples/command_unlock_connector.json')) as file:
             data = json.load(file)
 
@@ -1372,6 +1367,73 @@ def make_json_response(data, status_code=200) -> Response:
     return response
 
 
+class TestSession(TestCase):
+    fixtures = ['ocpi22/data/test-database-sessions.json']
+    api_factory = APIRequestFactory()
+
+    @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.cpo.util.redis_store.get',
+           side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
+    @patch('ocpi22.sessions.util.generate_session_uid',
+           side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
+    @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    def test_update_session(self,
+                            _ocpi_post_mock: Mock,
+                            _generate_session_uid_mock: Mock,
+                            _get_parameter_mock: Mock):
+        evse = Evse.objects.all()[0]
+        location = evse.location
+        uid = '12345'
+        self.maxDiff = None
+
+        session = create_session(location.uid, evse.uid, 1, "T1", billed_to='FI*MSP', uid=uid)
+        self.assertTrue(bool(session))
+        # ic(session)
+
+        filename = 'session_patch_example_charging_period'
+        with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
+            data = json.load(file)
+
+        args = (session.country_code, session.party_id, session.uid)
+        session_url = reverse('session-by-id', args=args)
+        # ic(session_url)
+
+        request = self.api_factory.patch(session_url)
+        request.data = data
+        request.user = AnonymousUser
+        request.credentials = Credentials.objects.get(pk=2)
+        response = SessionViewSet().patch(request, *args)
+
+        self.assertEqual(response.status_code, 200, 'Session update should succeed')
+
+        session = Session.objects.get(uid=uid)
+        self.assertEqual(session.total_cost_excl_vat, .8,
+                         'Session price was not changed to 0.8')
+
+        self.assertEqual(session.chargingperiods.count(), 1,
+                         'There should be a new ChargingPeriod')
+
+        # Update the same charging period, there should be no new ones created
+        filename = 'session_patch_example_charging_period_update_1'
+        with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
+            data = json.load(file)
+        request.data = data
+        response = SessionViewSet().patch(request, *args)
+
+        self.assertEqual(response.status_code, 200, 'Session update should succeed')
+
+        session = Session.objects.get(uid=uid)
+        self.assertEqual(session.total_cost_excl_vat, 1,
+                         'Session price was not changed to 1.0')
+
+        self.assertEqual(session.chargingperiods.count(), 1,
+                         'The existing ChargingPeriod should be updated')
+        session_data = SessionSaveSerializer(instance=session).data
+        # ic(session_data)
+        self.assertDictEqual(session_data, expected_session_charging_periods,
+                             'The charging session content differs from expected')
+
+
 class TestCpoApi(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
     api_factory = APIRequestFactory()
@@ -1422,16 +1484,6 @@ class TestCpoApi(TestCase):
                 evse = Evse.objects.get(uid=case.get('request').get('evse_id'))
                 self.assertEqual(evse.status, case.get('evse_status'))
 
-    accept_authorization = dict(
-        data=dict(
-            AuthorizationInfo=dict(
-                allowed='ALLOWED',
-                token_id='EKI1',
-                authorization_reference='FAKE-AUTHORIZATION-REFERENCE',
-            ),
-        ),
-    )
-
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
@@ -1458,7 +1510,7 @@ class TestCpoApi(TestCase):
         }
         cpo_response = cpo_viewset.start_transaction(cpo_request)
         # ic(cpo_response.data)
-        args, kwargs = ocpi_post_mock.call_args
+        # args, kwargs = ocpi_post_mock.call_args
         # ic(args, kwargs)
         self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
 
@@ -1514,7 +1566,6 @@ class TestCpoApi(TestCase):
         viewset = CommandsViewSet()
 
         # Load up the test message and send it
-        dirname = os.path.dirname(os.path.abspath(__file__))
         with open(os.path.join(dirname, f'data/examples/command_start_session_adhoc.json')) as file:
             data = json.load(file)
 

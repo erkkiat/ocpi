@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 ocpi_endpoints_response = {
     "version": "2.2",
     "endpoints": [
@@ -538,3 +540,37 @@ expected_get_headers = {
          'X-Limit': '100',
          'X-Total-Count': '7'},
 }
+
+expected_session_charging_periods = {'auth_method': 'AUTH_REQUEST',
+                                     'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+                                     'cdr_token': OrderedDict([('uid', 'T1'),
+                                                               ('type', 'RFID'),
+                                                               ('contract_id', 'CONTRACT3')]),
+                                     'charging_periods': [OrderedDict([('start_date_time', '2019-06-23T08:16:02Z'),
+                                                                       ('tariff', None),
+                                                                       ('dimensions',
+                                                                        [OrderedDict([('type', 'ENERGY'),
+                                                                                      ('volume', '3000.0000')]),
+                                                                         OrderedDict([('type', 'STATE_OF_CHARGE'),
+                                                                                      ('volume', '80.0000')])])])],
+                                     'connector_id': '1',
+                                     'country_code': 'FI',
+                                     'currency': 'EUR',
+                                     'evse_uid': '1',
+                                     'kwh': 0.0,
+                                     'last_updated': '2019-06-23T08:22:22Z',
+                                     'location_id': 'WARSAW-1',
+                                     'party_id': 'CPO',
+                                     'start_date_time': '2000-01-01T12:00:00Z',
+                                     'status': 'PENDING',
+                                     'total_cost': OrderedDict([('excl_vat', 1.0), ('incl_vat', 1.2)]),
+                                     'uid': '12345'}
+accept_authorization = dict(
+    data=dict(
+        AuthorizationInfo=dict(
+            allowed='ALLOWED',
+            token_id='EKI1',
+            authorization_reference='FAKE-AUTHORIZATION-REFERENCE',
+        ),
+    ),
+)

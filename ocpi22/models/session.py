@@ -244,7 +244,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return self.status in (self.INVALID, self.COMPLETED)
 
 
-class ChargingPeriod(models.Model):
+class ChargingPeriod(models.Model, ModelUtilMixin):
     """
     A Charging Period consists of a start timestamp and a list of possible values that influence this period,
     for example: amount of energy charged this period, maximum current during this period etc.

@@ -1,0 +1,23 @@
+{
+  "kwh": 18.00,
+  "charging_periods": [
+    {
+      "start_date_time": "2019-06-23T08:16:02Z",
+      "dimensions": [
+        {
+          "type": "ENERGY",
+          "volume": 3000
+        },
+        {
+          "type": "STATE_OF_CHARGE",
+          "volume": 80
+        }
+      ]
+    }
+  ],
+  "total_cost": {
+    "excl_vat": 1.00,
+    "incl_vat": 1.2
+  },
+  "last_updated": "2019-06-23T08:22:22Z"
+}

@@ -292,6 +292,26 @@ class ChargingPeriodSerializer(serializers.Serializer):
     dimensions = CdrDimensionSerializer(many=True)
 
 
+def update_charging_periods(session, chargingperiods):
+    for chargingperiod in chargingperiods:
+        dimensions = chargingperiod.pop('dimensions', None)
+        if not dimensions:
+            raise ValidationError(f'Chargingperiod {chargingperiod.get("start_date_time", None)} '
+                                  f'is missing CdrDimensions')
+
+        # Do we need to update an existing one?
+        start_date_time = chargingperiod.get('start_date_time')
+        cp = ChargingPeriod.get_if_exists(start_date_time=start_date_time)
+        if cp:
+            # Let's rewrite the incoming dimensions
+            cp.dimensions.all().delete()
+        else:
+            cp = ChargingPeriod.objects.create(**chargingperiod, session=session)
+
+        for dimension in dimensions:
+            CdrDimension.objects.create(**dimension, chargingperiod=cp)
+
+
 class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
@@ -318,12 +338,17 @@ class SessionSaveSerializer(HyperlinkedModelSerializerCleanedUp):
         )
 
     def update(self, instance, validated_data):
+        readonly_fields = ('uid', 'location', 'evse')
+        for key in readonly_fields:
+            validated_data.pop(key, None)
+        chargingperiods = validated_data.pop('chargingperiods', None)
+        if chargingperiods:
+            update_charging_periods(instance, chargingperiods)
+
         for key, value in validated_data.items():
-            if key not in ('uid', 'location', 'evse'):
-                setattr(instance, key, value)
-            # else:
-            #     print(f'Skipping key {key}')
+            setattr(instance, key, value)
         instance.save()
+
         return instance
 
 
