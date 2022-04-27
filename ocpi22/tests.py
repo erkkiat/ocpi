@@ -49,8 +49,8 @@ from ocpi22.ocpi.util import OCPIResponse, Ocpi, OcpiModule, make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
-from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, expected_session_charging_periods, \
-    accept_authorization
+from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
+    accept_authorization, ExpectedSessionUpdateResults
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -75,7 +75,6 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.tariff'))
-    # tests.addTests(doctest.DocTestSuite('ocpiconnector.nordpool'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.settings'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.ocpi_identities'))
@@ -1390,48 +1389,42 @@ class TestSession(TestCase):
         self.assertTrue(bool(session))
         # ic(session)
 
-        filename = 'session_patch_example_charging_period'
-        with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
-            data = json.load(file)
+        test_cases = (
+            ('session_patch_example_charging_period', 200, 0.8, 1, None),
+            ('session_patch_example_charging_period_update_1', 200, 1.0, 1, ExpectedSessionUpdateResults.update1),
+            ('session_patch_example_charging_period_update_2', 200, 1.1, 2, ExpectedSessionUpdateResults.update2),
+        )
 
         args = (session.country_code, session.party_id, session.uid)
         session_url = reverse('session-by-id', args=args)
         # ic(session_url)
 
         request = self.api_factory.patch(session_url)
-        request.data = data
         request.user = AnonymousUser
         request.credentials = Credentials.objects.get(pk=2)
-        response = SessionViewSet().patch(request, *args)
 
-        self.assertEqual(response.status_code, 200, 'Session update should succeed')
+        for filename, status_code, cost, charging_period_count, expected_dict in test_cases:
+            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
+                data = json.load(file)
+            request.data = data
+            response = SessionViewSet().patch(request, *args)
 
-        session = Session.objects.get(uid=uid)
-        self.assertEqual(session.total_cost_excl_vat, .8,
-                         'Session price was not changed to 0.8')
+            self.assertEqual(response.status_code, status_code,
+                             f'Expecting status code {status_code}')
 
-        self.assertEqual(session.chargingperiods.count(), 1,
-                         'There should be a new ChargingPeriod')
+            session = Session.objects.get(uid=uid)
+            self.assertEqual(session.total_cost_excl_vat, cost,
+                             f'Session price was not changed to {cost}')
 
-        # Update the same charging period, there should be no new ones created
-        filename = 'session_patch_example_charging_period_update_1'
-        with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
-            data = json.load(file)
-        request.data = data
-        response = SessionViewSet().patch(request, *args)
+            self.assertEqual(session.chargingperiods.count(), charging_period_count,
+                             f'Expecting {charging_period_count} ChargingPeriods')
 
-        self.assertEqual(response.status_code, 200, 'Session update should succeed')
+            if expected_dict:
+                session_data = SessionSaveSerializer(instance=session).data
+                # ic(session_data)
 
-        session = Session.objects.get(uid=uid)
-        self.assertEqual(session.total_cost_excl_vat, 1,
-                         'Session price was not changed to 1.0')
-
-        self.assertEqual(session.chargingperiods.count(), 1,
-                         'The existing ChargingPeriod should be updated')
-        session_data = SessionSaveSerializer(instance=session).data
-        # ic(session_data)
-        self.assertDictEqual(session_data, expected_session_charging_periods,
-                             'The charging session content differs from expected')
+                self.assertDictEqual(session_data, expected_dict,
+                                     'The charging session content differs from expected')
 
 
 class TestCpoApi(TestCase):
