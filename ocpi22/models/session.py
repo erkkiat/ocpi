@@ -56,7 +56,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     start_kwh = models.FloatField(default=0.0)
 
     # How many kWh were charged.
-    stop_kwh = models.FloatField()
+    stop_kwh = models.FloatField(default=0.0)
 
     @property
     def kwh(self):

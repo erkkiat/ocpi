@@ -1,5 +1,4 @@
 import json
-import logging
 import secrets
 import urllib.parse
 from collections import OrderedDict
@@ -21,11 +20,6 @@ from ocpiconnector import slack_logging
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 
 slack_logging.init()
-
-
-def log_error(request, s: str) -> None:
-    logging.error(f'{s} ({request.credentials.party() if hasattr(request, "credentials") else "?"} '
-                  f'=> {settings.HOSTNAME})')
 
 
 def clear_empty(dict_with_possibly_empty_values):

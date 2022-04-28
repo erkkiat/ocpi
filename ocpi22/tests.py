@@ -45,7 +45,8 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.token import Token
-from ocpi22.ocpi.util import OCPIResponse, Ocpi, OcpiModule, make_headers
+from ocpi22.ocpi.util import OCPIResponse, Ocpi, OcpiModule
+from ocpi22.ocpi.headers import make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
@@ -1241,11 +1242,12 @@ class TestRouting(TestCase):
 
     def test_find_route(self):
         try:
+            self.assertTrue(hasattr(find_route, 'cache_info'), "find_route() should be cached")
+            find_route.cache_clear()
             route: Route = find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)
 
             # Does caching work?
             find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)  # These should be acceptable in lower case
-            self.assertTrue(hasattr(find_route, 'cache_info'), "find_route() should be cached")
             self.assertEqual(find_route.cache_info().hits, 1, "find_route() should be cached")
 
             self.assertDictEqual(

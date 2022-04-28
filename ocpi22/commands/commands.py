@@ -36,7 +36,8 @@ import pprint
 
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, log_error
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl
+from ocpi22.logging import log_error
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 

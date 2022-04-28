@@ -20,13 +20,13 @@ from ocpi22.cpo.util import get_callbacks_parameter, command_store
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.ocpi.util import AdhocToken
+from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.routing import find_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.tokens.util import get_token_id
-from ocpi22.util import log_error
+from ocpi22.logging import log_error
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter

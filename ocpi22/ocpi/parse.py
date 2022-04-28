@@ -1,0 +1,38 @@
+from functools import lru_cache
+
+from ocpi22.choices import OcpiModuleEnum
+from ocpi22.ocpi.modules import ocpi_modules, get_module_urls
+from ocpi22.ocpi.dataclasses import OCPIUrlComponents
+
+
+@lru_cache(maxsize=100)
+def parse_ocpi_url(url: str) -> OCPIUrlComponents:
+    """
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION?a=1')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION?a=1')
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION/')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION')
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/tokens/EKI1/authorize')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/tokens', module=<OcpiModuleEnum.TOKENS: 'tokens'>, parameters='EKI1/authorize')
+    >>> parse_ocpi_url('/ocpi/cpo/2.2/locations?limit=5')
+    OCPIUrlComponents(path='/ocpi/cpo/2.2/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
+    """
+    url = url.rstrip('/')
+    path = ''
+    module = ''
+    parameters = ''
+
+    # Figure out the OCPI module
+    for m in ocpi_modules:
+        if m in url:
+            module = m
+            break
+
+    # Find the OCPI module path part and separate URL parameters (of course query, but also possible OCPI Command)
+    for module_url in get_module_urls():
+        if module_url in url:
+            path = module_url
+            parameters = url.replace(module_url, '').strip('/')
+            break
+
+    return OCPIUrlComponents(path, OcpiModuleEnum(module), parameters)

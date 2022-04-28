@@ -90,7 +90,7 @@ def create_session(location_id, evse_uid, connector_id, token_id=None, ad_hoc_to
         # Todo: put this on error list
         pass
 
-    # Todo: send update to billed_to eMSP
+    session.send_updates()
     return session
 
 

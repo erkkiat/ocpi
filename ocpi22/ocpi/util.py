@@ -1,8 +1,6 @@
-import json
 import logging
 import uuid
 from collections import OrderedDict
-from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
 
@@ -13,13 +11,15 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 from icecream import ic
 from requests import Response
-from rest_framework import exceptions, status
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import LimitOffsetPagination
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
 
+from ocpi22.ocpi.headers import make_headers
+from ocpi22.routing import find_route
+from ocpi22.logging import log_error
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party, get_our_party
 
 
@@ -147,9 +147,15 @@ class OcpiModule:
 
     def send_update_to_interested_parties(self, data):
         if hasattr(self, 'credentials'):
-            our_country_code, our_party_id = self.get_owner_identity().split('*')
 
-            # Todo: Find route to self.billed_to
+            if not hasattr(self, 'billed_to'):
+                log_error(f'Object {self} has no billed_to')
+                return
+
+            to = Party(*(self.billed_to.split('*')))
+            sender = Party(*(self.get_owner_identity().split('*')))
+            route = find_route(to, self.ocpi_module_name)
+            self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method='put')
 
             # role = self.credentials.roles.all().first()
             # country_code = role.country_code
@@ -339,96 +345,6 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
         date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
         queryset = queryset.filter(last_updated__lt=date_to)
     return queryset
-
-
-ocpi_modules = [x.value for x in OcpiModuleEnum]
-
-
-@dataclass(eq=True, frozen=True)
-class OCPIUrlComponents:
-    path: str
-    module: OcpiModuleEnum
-    parameters: str
-
-
-@dataclass(eq=True, frozen=True)
-class AdhocToken:
-    valid: bool
-    owner: Party
-    uid: str
-    type: str
-
-    def party(self):
-        return str(self.owner)
-
-    def __str__(self):
-        return f'{self.party()}: {self.type} {self.uid}'
-
-
-@lru_cache(maxsize=0)
-def get_module_urls() -> list:
-    return (reverse(name) for name in ('location-list', 'commands-list', 'token-list'))
-
-
-@lru_cache(maxsize=100)
-def parse_ocpi_url(url: str) -> OCPIUrlComponents:
-    """
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION?a=1')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION?a=1')
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION/')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION')
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/tokens/EKI1/authorize')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/tokens', module=<OcpiModuleEnum.TOKENS: 'tokens'>, parameters='EKI1/authorize')
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/locations?limit=5')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
-    """
-    url = url.rstrip('/')
-    path = ''
-    module = ''
-    parameters = ''
-
-    # Figure out the OCPI module
-    for m in ocpi_modules:
-        if m in url:
-            module = m
-            break
-
-    # Find the OCPI module path part and separate URL parameters (of course query, but also possible OCPI Command)
-    for module_url in get_module_urls():
-        if module_url in url:
-            path = module_url
-            parameters = url.replace(module_url, '').strip('/')
-            break
-
-    return OCPIUrlComponents(path, OcpiModuleEnum(module), parameters)
-
-
-def make_headers(token_base64: str, to: Party = None, sender: Party = None, extra: dict = None) -> dict:
-    """
-    >>> make_headers('123456', Party('TO', 'TOO'), Party('FR', 'FRM'))
-    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO'}
-    >>> make_headers('123456', extra=dict(HTTP_OCPI_TO_COUNTRY_CODE='FI', HTTP_OCPI_TO_PARTY_ID='EON'))
-    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'ocpi-to-country-code': 'FI', 'ocpi-to-party-id': 'EON'}
-
-    @param token_base64: OCPI Credentials Token in base64
-    @param to: Recipient party
-    @param sender: Sender party
-    @param extra: Any additional headers
-    @return: HTTP headers ready for sending
-    """
-    result = {
-        "Authorization": f'Token {token_base64}',
-        'content-type': 'application/json',
-    }
-    if extra:
-        for key, value in extra.items():
-            result[key.replace('HTTP_', '').replace('_', '-').lower()] = value
-    if to and sender:
-        result.update({
-            "OCPI-from-country-code": sender.country_code, "OCPI-from-party-id": sender.party_id,
-            "OCPI-to-country-code": to.country_code, "OCPI-to-party-id": to.party_id,
-        })
-    return result
 
 
 def dict_keys_to_lower_and_filter(d: dict, filter_word: str) -> dict:

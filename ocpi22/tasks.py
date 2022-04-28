@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 from rest_framework import status
 
-from ocpi22.ocpi.util import make_headers
+from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
 from ocpiconnector import slack_logging
 from ocpiconnector.settings import STILL_ALIVE_FREQUENCY

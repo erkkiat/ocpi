@@ -321,7 +321,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
                   'status', 'last_updated']
 
-    charging_periods = ChargingPeriodSerializer(many=True, source='chargingperiods')
+    charging_periods = ChargingPeriodSerializer(many=True, source='chargingperiods', required=False)
     cdr_token = CdrTokenSerializer(required=True, source='*')
     location_id = LocationIdSerializer(source='*')
     evse_uid = EvseUidSerializer(source='*')
