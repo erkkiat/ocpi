@@ -155,7 +155,10 @@ class OcpiModule:
             to = Party(*(self.billed_to.split('*')))
             sender = Party(*(self.get_owner_identity().split('*')))
             route = find_route(to, self.ocpi_module_name)
-            self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method='put')
+            if route:
+                self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method='put')
+            else:
+                logging.error(f'{settings.HOSTNAME}: Unable to find route to {str(to)}')
 
             # role = self.credentials.roles.all().first()
             # country_code = role.country_code

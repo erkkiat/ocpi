@@ -330,6 +330,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
     end_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
     last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    kwh = serializers.FloatField(required=False)
 
     def create(self, validated_data):
         # noinspection PyUnresolvedReferences

@@ -62,6 +62,11 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def kwh(self):
         return round(self.stop_kwh - self.start_kwh, 3)
 
+    @kwh.setter
+    def kwh(self, value: float):
+        self.start_kwh = 0.0
+        self.stop_kwh = value
+
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
     # This is the field used by the CPO’s system (RFID reader on the Charge Point) to identify this token.
