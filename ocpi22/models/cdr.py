@@ -234,14 +234,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         else:
             cdr_tariffs = Tariff.make_copies(Tariff.get_default_tariffs(session.connector.standard))
         cdr.tariffs.set(cdr_tariffs)
-        return cdr
 
-    def create(self, *args, **kwargs):
-        for a in args:
-            if isinstance(a, Session):
-                return self.create_based_on_session(a)
-        # noinspection PyUnresolvedReferences
-        return self.objects.create(*args, **kwargs)
+        cdr.send_updates()
+
+        return cdr
 
     @classmethod
     def session_changed(cls, instance: Session) -> None:
