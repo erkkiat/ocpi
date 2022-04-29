@@ -64,8 +64,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @kwh.setter
     def kwh(self, value: float):
-        self.start_kwh = 0.0
-        self.stop_kwh = value
+        self.stop_kwh = self.start_kwh + value
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
@@ -248,12 +247,39 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def is_final(self) -> bool:
         return self.status in (self.INVALID, self.COMPLETED)
 
+    def set_charging_period(self, data):
+        chargingperiod = self.get_active_charging_period()
+        chargingperiod.dimensions.all().delete()
+
+        for key, value in data.items():
+            if key not in ['session']:
+                dimension_type = dict(
+                    kwh='POWER',
+                    soc='STATE_OF_CHARGE'
+                )[key]
+                if key == 'kwh':
+                    value -= self.start_kwh
+                CdrDimension.objects.create(type=dimension_type, volume=value, chargingperiod=chargingperiod)
+
+    def get_active_charging_period(self):
+        if self.chargingperiods.exists():
+            period = self.chargingperiods.all().last()
+        else:
+            period = ChargingPeriod.objects.create(
+                start_date_time=self.start_date_time, session=self, tariff=self.connector.get_tariffs().first(),
+                # Todo: Handle multiple Tariffs per Connector or limit to one Tariff
+            )
+        return period
+
 
 class ChargingPeriod(models.Model, ModelUtilMixin):
     """
     A Charging Period consists of a start timestamp and a list of possible values that influence this period,
     for example: amount of energy charged this period, maximum current during this period etc.
     """
+
+    class Meta:
+        ordering = ('start_date_time',)
 
     # Start timestamp of the charging period. A period ends when the next period starts.
     # The last period ends when the session ends.
@@ -264,7 +290,10 @@ class ChargingPeriod(models.Model, ModelUtilMixin):
     tariff = models.ForeignKey(Tariff, null=True, blank=True, on_delete=models.PROTECT, related_name='chargingperiods')
 
     def __str__(self):
-        return f'{self.start_date_time}'
+        values = ", ".join([
+            f"{type}: {volume}" for type, volume in self.dimensions.all().values_list('type', 'volume')
+        ])
+        return f'{self.start_date_time} - {values}'
 
 
 class CdrDimension(models.Model):

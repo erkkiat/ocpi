@@ -106,6 +106,7 @@ class ApiPutTests(TestCase):
     factory = APIRequestFactory()
     country_code = 'FI'
     party_id = 'XXX'
+    maxDiff = None
 
     # noinspection PyUnresolvedReferences
     def create_location(self, uid=None, address='Testroad 1', name='Name', location_status='AVAILABLE') -> Location:
@@ -531,7 +532,6 @@ class ApiPutTests(TestCase):
             self.assertDictEqual(first_price_component, first_json_price_component,
                                  f'PriceComponent is not stored accurately')
 
-            self.maxDiff = 10000
             saved_data = json.loads(json.dumps(saved_data))
             # Remove non-OCPI and unsupported fields
             ignored_fields = ('credit', 'total_time_cost', 'charging_periods', 'tariff_alt_text')
@@ -783,7 +783,7 @@ class CommandTests(TestCase):
     api_factory = APIRequestFactory()
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.cpo.util.redis_store.get',
+    @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.commands.requests.post')
     def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock):
@@ -1342,7 +1342,6 @@ class TestRouting(TestCase):
                     # Let's check that routing has been done
                     args, kwargs = mock_request.call_args
                     # ic(args, kwargs)
-                    self.maxDiff = 99999
                     self.assertDictEqual(
                         kwargs,
                         {'data': '{"message": "This is a message routing test"}',
@@ -1371,6 +1370,7 @@ def make_json_response(data, status_code=200) -> Response:
 class TestSession(TestCase):
     fixtures = ['ocpi22/data/test-database-sessions.json']
     api_factory = APIRequestFactory()
+    maxDiff = None
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.cpo.util.redis_store.get',
@@ -1385,7 +1385,6 @@ class TestSession(TestCase):
         evse = Evse.objects.all()[0]
         location = evse.location
         uid = '12345'
-        self.maxDiff = None
 
         session = create_session(location.uid, evse.uid, 1, "T1", billed_to='FI*MSP', uid=uid)
         self.assertTrue(bool(session))
@@ -1432,6 +1431,7 @@ class TestSession(TestCase):
 class TestCpoApi(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
     api_factory = APIRequestFactory()
+    maxDiff = None
 
     @time_machine.travel(faketime, tick=False)
     def test_status_change(self):
@@ -1509,21 +1509,82 @@ class TestCpoApi(TestCase):
         # ic(args, kwargs)
         self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
 
-        status_change_url = reverse('chargepoint-meter-values')
+        meter_values_url = reverse('chargepoint-meter-values')
         cpo_viewset = ChargePointViewSet()
-        cpo_request = self.api_factory.post(status_change_url)
+        cpo_request = self.api_factory.post(meter_values_url)
         testcases = (
             dict(
                 request=dict(
                     session_id='MY-SESSION',
                     kwh=123.45,
+                    soc=42,
                 ),
                 expected_response={'now_kwh': 123.45,
                                    'price': '-',
                                    'session_id': 'MY-SESSION',
+                                   'soc': 42.0,
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
                                    'total_kwh': 3.45},
+                session_data={'auth_method': 'AUTH_REQUEST',
+                              'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+                              'cdr_token': OrderedDict([('uid', 'EKI1'),
+                                                        ('type', 'RFID'),
+                                                        ('contract_id', 'DE8ACC12E46L89')]),
+                              'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
+                                                                ('tariff', None),
+                                                                ('dimensions',
+                                                                 [OrderedDict([('type', 'POWER'),
+                                                                               ('volume', '3.4500')]),
+                                                                  OrderedDict([('type', 'STATE_OF_CHARGE'),
+                                                                               ('volume', '42.0000')])])])],
+                              'connector_id': '1',
+                              'country_code': 'FI',
+                              'currency': 'EUR',
+                              'evse_uid': 'HELSINKI-3',
+                              'kwh': 3.45,
+                              'location_id': 'HELSINKI-1',
+                              'party_id': 'CPO',
+                              'start_date_time': '2000-01-01T12:00:00Z',
+                              'status': 'ACTIVE',
+                              'uid': 'MY-SESSION'},
+                evse_status='CHARGING'
+            ),
+            dict(
+                request=dict(
+                    session_id='MY-SESSION',
+                    kwh=153.45,
+                    soc=80,
+                ),
+                expected_response={'now_kwh': 153.45,
+                                   'price': '-',
+                                   'session_id': 'MY-SESSION',
+                                   'soc': 80.0,
+                                   'start_kwh': 120.0,
+                                   'status_text': 'Session updated',
+                                   'total_kwh': 33.45},
+                session_data={'auth_method': 'AUTH_REQUEST',
+                              'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+                              'cdr_token': OrderedDict([('uid', 'EKI1'),
+                                                        ('type', 'RFID'),
+                                                        ('contract_id', 'DE8ACC12E46L89')]),
+                              'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
+                                                                ('tariff', None),
+                                                                ('dimensions',
+                                                                 [OrderedDict([('type', 'POWER'),
+                                                                               ('volume', '33.4500')]),
+                                                                  OrderedDict([('type', 'STATE_OF_CHARGE'),
+                                                                               ('volume', '80.0000')])])])],
+                              'connector_id': '1',
+                              'country_code': 'FI',
+                              'currency': 'EUR',
+                              'evse_uid': 'HELSINKI-3',
+                              'kwh': 33.45,
+                              'location_id': 'HELSINKI-1',
+                              'party_id': 'CPO',
+                              'start_date_time': '2000-01-01T12:00:00Z',
+                              'status': 'ACTIVE',
+                              'uid': 'MY-SESSION'},
                 evse_status='CHARGING'
             ),
             dict(
@@ -1546,16 +1607,24 @@ class TestCpoApi(TestCase):
                              f'Expecting HTTP status {expected_status} for {case.get("request")}')
             self.assertDictEqual(cpo_response.data, case.get('expected_response'),
                                  f'Case request {case.get("request")}, response {cpo_response.data}')
+            expected_session_data = case.get('session_data')
+            if expected_session_data:
+                session = Session.objects.get(uid=cpo_request.data.get('session_id'))
+                session_data = SessionSerializer(instance=session).data
+                self.assertDictEqual(session_data, expected_session_data,
+                                     'Session data differs')
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.cpo.util.redis_store.get',
+    @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
+    @patch('ocpi22.util.redis_store.set', return_value=True)
     @patch('ocpi22.sessions.util.generate_session_uid',
            side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
     @patch('ocpi22.commands.commands.requests.post')
     def test_adhoc_token(self,
                          requests_post_mock: Mock,
                          _generate_session_uid_mock: Mock,
+                         _set_parameter_mock: Mock,
                          _get_parameter_mock: Mock):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
@@ -1585,7 +1654,6 @@ class TestCpoApi(TestCase):
         # ic(args, kwargs.get('data'))
 
         self.assertEqual(response.status_code, 200, 'Remote Command start_session was expected to succeed')
-        self.maxDiff = 9999
         self.assertEqual(kwargs.get('url'), 'http://localhost/start/HELSINKI-3/',
                          'CPO start transaction URL differs from expected')
         self.assertDictEqual(

@@ -277,7 +277,7 @@ class TariffIdSerializer(serializers.Serializer):
         return instance.uid
 
     def to_internal_value(self, data):
-        return Tariff.objects.get(uid=data)
+        return Tariff.objects.filter(uid=data).first()
 
 
 class CdrDimensionSerializer(serializers.ModelSerializer):

@@ -77,7 +77,7 @@ class OcpiModule:
                 # Send update only once
                 setattr(self, 'update_sent', True)
 
-    def send_updates(self) -> None:
+    def send_updates(self, data=None) -> None:
         """
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
@@ -87,18 +87,22 @@ class OcpiModule:
             if self.ocpi_object_owner not in ocpi_identities.roles and not ocpi_platform.is_hub:
                 logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
                 return
-            serializer_class = self.ocpi_serializer_class
 
-            if isinstance(serializer_class, str):
-                serializer_class = import_string(serializer_class)
+            if not data:
+                serializer_class = self.ocpi_serializer_class
 
-            serializer = serializer_class(self)
+                if isinstance(serializer_class, str):
+                    serializer_class = import_string(serializer_class)
+
+                serializer = serializer_class(self)
+                data = serializer.data
+
             if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
                 logging.info('Sending updates to INTERESTED PARTIES')
-                self.send_update_to_interested_parties(serializer.data)
+                self.send_update_to_interested_parties(data)
             else:
                 logging.info('Sending updates to ALL connected parties')
-                self._send_updates(serializer.data)
+                self._send_updates(data)
         else:
             logging.warning(settings.UPDATES_DISABLED)
 

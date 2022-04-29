@@ -9,6 +9,7 @@ from icecream import ic
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum
+from ocpi22.logging import log_error
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.tariff import Tariff
@@ -312,7 +313,10 @@ class Connector(models.Model, ModelUtilMixin):
 
     def get_tariffs(self):
         # Fetch the Tariffs specified for this Connector or find a DefaultTariff in case no specific Tariffs
-        return self.tariff_ids.all() or Tariff.get_default_tariffs(self.standard)
+        tariffs = self.tariff_ids.all() or Tariff.get_default_tariffs(self.standard)
+        if tariffs.count() > 1:
+            log_error(f'Multiple Tariffs for Connector {str(self.evse)} {str(self)}')
+        return tariffs
 
 
 @receiver(pre_save, sender=Evse)
