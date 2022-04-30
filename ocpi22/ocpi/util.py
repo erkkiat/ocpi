@@ -77,7 +77,7 @@ class OcpiModule:
                 # Send update only once
                 setattr(self, 'update_sent', True)
 
-    def send_updates(self, data=None) -> None:
+    def send_updates(self, data=None, method='put', path_components=None) -> None:
         """
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
@@ -99,10 +99,10 @@ class OcpiModule:
 
             if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
                 logging.info('Sending updates to INTERESTED PARTIES')
-                self.send_update_to_interested_parties(data)
+                self.send_update_to_interested_parties(data, method, path_components)
             else:
                 logging.info('Sending updates to ALL connected parties')
-                self._send_updates(data)
+                self._send_updates(data, method)
         else:
             logging.warning(settings.UPDATES_DISABLED)
 
@@ -149,7 +149,7 @@ class OcpiModule:
             # ic(data)
             cls._send_updates(data)
 
-    def send_update_to_interested_parties(self, data):
+    def send_update_to_interested_parties(self, data, method='put', path_components=None):
         if hasattr(self, 'credentials'):
 
             if not hasattr(self, 'billed_to'):
@@ -158,9 +158,10 @@ class OcpiModule:
 
             to = Party(*(self.billed_to.split('*')))
             sender = Party(*(self.get_owner_identity().split('*')))
-            route = find_route(to, self.ocpi_module_name)
+            route = find_route(to, self.ocpi_module_name,
+                               add_path="/".join(path_components) if path_components else None)
             if route:
-                self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method='put')
+                self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
             else:
                 logging.error(f'{settings.HOSTNAME}: Unable to find route to {str(to)}')
 

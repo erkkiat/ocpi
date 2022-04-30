@@ -1480,6 +1480,7 @@ class TestCpoApi(TestCase):
                 self.assertEqual(evse.status, case.get('evse_status'))
 
     @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.models.session.OcpiModule.send_updates')
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.sessions.util.generate_session_uid',
@@ -1488,7 +1489,8 @@ class TestCpoApi(TestCase):
     def test_rfid_charging_flow(self,
                                 ocpi_post_mock: Mock,
                                 _generate_session_uid_mock: Mock,
-                                _get_parameter_mock: Mock):
+                                _get_parameter_mock: Mock,
+                                send_updates_mock: Mock):
 
         evse = Evse.objects.get(uid='HELSINKI-3')
         self.assertEqual(evse.status, 'AVAILABLE')
@@ -1505,8 +1507,6 @@ class TestCpoApi(TestCase):
         }
         cpo_response = cpo_viewset.start_transaction(cpo_request)
         # ic(cpo_response.data)
-        # args, kwargs = ocpi_post_mock.call_args
-        # ic(args, kwargs)
         self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
 
         meter_values_url = reverse('chargepoint-meter-values')
@@ -1520,7 +1520,7 @@ class TestCpoApi(TestCase):
                     soc=42,
                 ),
                 expected_response={'now_kwh': 123.45,
-                                   'price': '-',
+                                   'price': '2,14€',
                                    'session_id': 'MY-SESSION',
                                    'soc': 42.0,
                                    'start_kwh': 120.0,
@@ -1532,7 +1532,7 @@ class TestCpoApi(TestCase):
                                                         ('type', 'RFID'),
                                                         ('contract_id', 'DE8ACC12E46L89')]),
                               'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
-                                                                ('tariff', None),
+                                                                ('tariff', 'EKI1'),
                                                                 ('dimensions',
                                                                  [OrderedDict([('type', 'POWER'),
                                                                                ('volume', '3.4500')]),
@@ -1548,6 +1548,13 @@ class TestCpoApi(TestCase):
                               'start_date_time': '2000-01-01T12:00:00Z',
                               'status': 'ACTIVE',
                               'uid': 'MY-SESSION'},
+                expected_update_data={'charging_periods': [OrderedDict(
+                    [('start_date_time', '2000-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
+                        OrderedDict([('type', 'POWER'), ('volume', '3.4500')]),
+                        OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '42.0000')])])])],
+                    'kwh': 3.45,
+                    'last_updated': '2000-01-01T12:00:00Z',
+                    'total_cost': {'excl_vat': 1.73, 'incl_vat': 2.14}},
                 evse_status='CHARGING'
             ),
             dict(
@@ -1557,7 +1564,7 @@ class TestCpoApi(TestCase):
                     soc=80,
                 ),
                 expected_response={'now_kwh': 153.45,
-                                   'price': '-',
+                                   'price': '20,74€',
                                    'session_id': 'MY-SESSION',
                                    'soc': 80.0,
                                    'start_kwh': 120.0,
@@ -1569,7 +1576,7 @@ class TestCpoApi(TestCase):
                                                         ('type', 'RFID'),
                                                         ('contract_id', 'DE8ACC12E46L89')]),
                               'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
-                                                                ('tariff', None),
+                                                                ('tariff', 'EKI1'),
                                                                 ('dimensions',
                                                                  [OrderedDict([('type', 'POWER'),
                                                                                ('volume', '33.4500')]),
@@ -1601,6 +1608,20 @@ class TestCpoApi(TestCase):
             cpo_request.data = case.get('request')
             cpo_response = cpo_viewset.meter_values(cpo_request)
             # ic(cpo_response, cpo_response.data)
+
+            args, kwargs = send_updates_mock.call_args
+
+            self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
+            expected_update_data = case.get('expected_update_data')
+            if expected_update_data:
+                update_data = args[0]
+                expected_serializer = SessionSerializer(data=update_data, partial=True)
+                self.assertTrue(expected_serializer.is_valid(),
+                                f'The Session update data does not comply with schema: {expected_serializer.errors}')
+                self.assertTrue(update_data.get('charging_periods'),
+                                'Charging periods missing from Session update')
+                self.assertDictEqual(update_data, expected_update_data,
+                                     f'Sending Session update differs from expected')
 
             expected_status = case.get('status_code', 200)
             self.assertEqual(cpo_response.status_code, expected_status,

@@ -165,6 +165,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 
+    @property
+    def last_updated_str(self):
+        return self.last_updated.strftime("%Y-%m-%dT%H:%M:%SZ")
+
     # Django automatic dates
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -260,6 +264,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 if key == 'kwh':
                     value -= self.start_kwh
                 CdrDimension.objects.create(type=dimension_type, volume=value, chargingperiod=chargingperiod)
+        return [chargingperiod]
 
     def get_active_charging_period(self):
         if self.chargingperiods.exists():
@@ -271,6 +276,22 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             )
         return period
 
+    def send_updates(self, data=None, method='put') -> None:
+        if isinstance(data, list):
+            # We have a list of stuff, is it by any chance ChargingPeriods?
+            if isinstance(data[0], ChargingPeriod):
+                from ocpi22.ocpi.serializers import ChargingPeriodSerializer
+                chargingperiod_data = ChargingPeriodSerializer(instance=data, many=True).data
+                from ocpi22.ocpi.serializers import TotalCostSerializer
+                total_cost_data = TotalCostSerializer(self).data
+                data = dict(
+                    kwh=self.kwh,
+                    last_updated=self.last_updated_str,
+                    total_cost=total_cost_data,
+                    charging_periods=chargingperiod_data,
+                )
+                method = 'patch'
+        super().send_updates(data, method=method, path_components=[self.country_code, self.party_id, self.uid])
 
 class ChargingPeriod(models.Model, ModelUtilMixin):
     """

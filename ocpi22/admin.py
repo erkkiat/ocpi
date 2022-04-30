@@ -214,7 +214,6 @@ class EvseAdmin(NestedModelAdmin):
                 response = send_start_command(request, evse, get_admin_token())
                 data = response.json()
                 level = messages.SUCCESS if data.get('status_code') == 1000 else messages.ERROR
-                ic(data)
                 data = data.get('data', data)
                 self.message_user(request, f"Response: {data.get('message')}", level=level)
             except (APIException, requests.exceptions.ConnectionError) as e:

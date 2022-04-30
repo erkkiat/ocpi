@@ -198,6 +198,8 @@ def send_ocpi_request(data, url: str, token_base64: str,
             result = requests.get(**kwargs)
         elif method == 'post':
             result = requests.post(**kwargs)
+        elif method == 'patch':
+            result = requests.patch(**kwargs)
         else:
             raise NotImplementedError(f'Method {method} is not supported for send_ocpi_request')
 

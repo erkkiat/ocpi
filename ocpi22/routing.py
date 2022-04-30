@@ -87,16 +87,20 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
 
 
 @lru_cache(maxsize=None)
-def find_route(party: Party, ocpi_module: OcpiModuleEnum) -> Route:
+def find_route(party: Party, ocpi_module: OcpiModuleEnum, add_path=None) -> Route:
     credentials = find_credentials(party)
     # Todo: Consider using urllib.parse.urlparse, maybe faster
 
     if credentials:
         # Direct route found
-        return find_route_from_credentials(credentials, ocpi_module)
+        result = find_route_from_credentials(credentials, ocpi_module)
     else:
         # Need a hub to route
-        return find_first_hub_route(ocpi_module)  # Nothing too fancy at this point
+        result = find_first_hub_route(ocpi_module)  # Nothing too fancy at this point
+    if result and add_path:
+        # Todo: This is suboptimal for caching, do this a level before
+        result.url = f"{result.url}/{add_path}"
+    return result
 
 
 def route_ocpi_request(request: HttpRequest, party: Party):

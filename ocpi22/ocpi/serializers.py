@@ -230,11 +230,13 @@ class LocationIdSerializer(serializers.CharField):
     default_error_messages = default_error_messages
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
     def to_representation(self, instance: Union[Session, Location]):
-        if isinstance(instance, Session): return instance.location.uid
-        if isinstance(instance, dict): instance = instance.get('location')
+        if isinstance(instance, Session):
+            return instance.location.uid
+        if isinstance(instance, dict):
+            instance = instance.get('location')
         if instance:
             return instance.uid
 
@@ -339,6 +341,11 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         )
 
     def update(self, instance, validated_data):
+        # Todo: Any charging_periods from the existing object SHALL be replaced by the charging_periods
+        #  from the newly received Session object. If the new Session object does not contain charging_periods
+        #  (field is omitted or contains any empty list), the charging_periods of the existing object
+        #  SHALL be removed (replaced by the new empty list).
+
         readonly_fields = ('uid', 'location', 'evse')
         for key in readonly_fields:
             validated_data.pop(key, None)

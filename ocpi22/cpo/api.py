@@ -427,10 +427,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     kwh = serializer.validated_data['kwh']
                     soc = serializer.validated_data.get('soc')
                     session.stop_kwh = kwh
-                    session.save(update_fields=['stop_kwh'])
+                    session.update_last_updated()
                     session.calculate_price()
-                    session.set_charging_period(serializer.validated_data)
-                    session.send_updates()  # Todo: patch just a diff
+                    session.save(update_fields=['stop_kwh'])
+                    chargingperiods = session.set_charging_period(serializer.validated_data)
+                    session.send_updates(chargingperiods)
 
                     return Response(
                         dict(
