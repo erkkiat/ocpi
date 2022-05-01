@@ -226,42 +226,6 @@ def send_ocpi_request(data, url: str, token_base64: str,
             Credentials.objects.filter(pk=credentials_id).update(connection_status='OFFLINE')
 
 
-@shared_task
-def send_evse_status_update(evse_uid, endpoint_pk):
-    from ocpi22.models.credentials import Endpoint
-    from ocpi22.models.location import Evse
-    # noinspection PyUnresolvedReferences
-    evse = Evse.objects.get(uid=evse_uid)
-    location = evse.location
-    # noinspection PyUnresolvedReferences
-    endpoint = Endpoint.objects.get(pk=endpoint_pk)
-    if not endpoint.credentials.theirs:
-        # Todo: No OCPI retries
-        raise exceptions.Retry(
-            f'Token for party {endpoint.credentials.party()} is unknown, please set Credentials.theirs',
-            when=10
-        )
-
-    url = urljoin(endpoint.url, f'{location.country_code}/{location.party_id}/{location.uid}/{evse_uid}/')
-    logging.info(f'Sending Evse update to {endpoint.credentials.party()} at {url}')
-
-    # Gireve accepts only status updates, so let's make sure no other data gets through
-    # They will pull full locations every 24h
-    data = dict(
-        status=evse.status,
-        last_updated=evse.last_updated
-    )
-    token_base64 = endpoint.get_token_base64()
-    result = requests.patch(
-        url,
-        data,
-        headers=dict(Authorization=f'Token {token_base64}'))
-    if result.status_code >= status.HTTP_400_BAD_REQUEST:
-        logging.error(result.text[-400:])
-        logging.error(f'{settings.HOSTNAME}: Unable to send Evse status update to '
-                      f'{url}: {result.status_code} - {result.reason}')
-
-
 @shared_task(max_retries=2, retry_backoff=2)
 def exchange_credentials(token, url):
     from ocpiconnector.management.commands import exchange_credentials

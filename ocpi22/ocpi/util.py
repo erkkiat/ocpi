@@ -107,7 +107,7 @@ class OcpiModule:
             logging.warning(settings.UPDATES_DISABLED)
 
     @classmethod
-    def _send_updates(cls, data, method='put') -> bool:
+    def _send_updates(cls, data, method='put', path_components=None) -> bool:
         from ocpi22.models.credentials import find_endpoints_by_roles
         our_country_code, our_party_id = cls.get_owner_identity().split('*')
         uid = data.get('uid', data.get('id', 'N/A'))
@@ -120,6 +120,8 @@ class OcpiModule:
         if isinstance(cls.send_updates_to, tuple):
             for url, token_base64, country_code, party_id in find_endpoints_by_roles(
                     cls.send_updates_to, cls.ocpi_module_name):
+                if path_components:
+                    url = f'{url}/{"/".join(path_components)}'
                 cls._send_update(data, url, token_base64, to=Party(country_code, party_id),
                                  sender=Party(our_country_code, our_party_id), method=method)
             return True

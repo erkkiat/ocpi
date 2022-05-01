@@ -1,13 +1,15 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from rest_framework import serializers
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
-from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, apply_step_size
+from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, \
+    apply_step_size, SerializerCleanedUp
 from ocpi22.ocpi.util import OcpiModule
 
 
@@ -280,9 +282,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if isinstance(data, list):
             # We have a list of stuff, is it by any chance ChargingPeriods?
             if isinstance(data[0], ChargingPeriod):
-                from ocpi22.ocpi.serializers import ChargingPeriodSerializer
                 chargingperiod_data = ChargingPeriodSerializer(instance=data, many=True).data
-                from ocpi22.ocpi.serializers import TotalCostSerializer
                 total_cost_data = TotalCostSerializer(self).data
                 data = dict(
                     kwh=self.kwh,
@@ -292,6 +292,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 )
                 method = 'patch'
         super().send_updates(data, method=method, path_components=[self.country_code, self.party_id, self.uid])
+
 
 class ChargingPeriod(models.Model, ModelUtilMixin):
     """
@@ -328,3 +329,33 @@ class CdrDimension(models.Model):
 
     def __str__(self):
         return f'{self.type}: {self.volume}'
+
+
+#
+# These serializers are here to avoid import loops and repetitive imports
+# - They are heavily used
+#
+
+class CdrDimensionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CdrDimension
+        fields = ('type', 'volume')
+
+
+class TariffIdSerializer(serializers.Serializer):
+    def to_representation(self, instance):
+        return instance.uid
+
+    def to_internal_value(self, data):
+        return Tariff.objects.filter(uid=data).first()
+
+
+class ChargingPeriodSerializer(serializers.Serializer):
+    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    tariff = TariffIdSerializer()
+    dimensions = CdrDimensionSerializer(many=True)
+
+
+class TotalCostSerializer(SerializerCleanedUp):
+    excl_vat = serializers.FloatField(source='total_cost_excl_vat', required=False)
+    incl_vat = serializers.FloatField(source='total_cost_incl_vat', required=False)

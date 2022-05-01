@@ -268,6 +268,16 @@ class Evse(models.Model, ModelUtilMixin):
         except NoReverseMatch:
             return ''
 
+    def send_status_updates(self) -> None:
+        data = dict(
+            status=self.status,
+            last_updated=self.last_updated
+        )
+        location = self.location
+        method = 'patch'
+        Location._send_updates(data, method=method,
+                               path_components=[location.country_code, location.party_id, location.uid, self.uid])
+
 
 class Connector(models.Model, ModelUtilMixin):
     # Identifier of the Connector within the EVSE. Two Connectors may have the same id

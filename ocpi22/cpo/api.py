@@ -4,6 +4,7 @@ from typing import Optional
 
 import redis
 from django.conf import settings
+from django.utils import timezone
 from django.utils.module_loading import import_string
 from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
@@ -207,7 +208,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         Update the charge point availability to the roaming network parties.
 
-        **IMPORTANT**: To prevent the EV battery from running out, please update the status
+        **IMPORTANT**: To prevent the EV battery from running out , please update the status
         whenever your monitoring notices a possible problem with the charge point. This way
         we will be able to show the real availability status to the driver.
 
@@ -229,7 +230,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     evse: Evse = serializer.validated_data.get('evse')
 
                     evse.status = ocpi_status
+                    evse.last_updated = timezone.now()
+                    evse.location.update_last_updated()
                     evse.save()
+                    evse.send_status_updates()
+
                     return Response(
                         dict(
                             status_text=f'EVSE status has been changed',

@@ -5,11 +5,20 @@ from rest_framework.reverse import reverse
 
 from ocpiconnector.ocpi_identities import ocpi_platform
 
+_versions_url = None
+
 
 def get_versions_dict(request):
+    # Called often by hubinfo, make sure no excess steps
+    # Cannot use caching due to changing requests
+
+    global _versions_url
+    if not _versions_url:
+        _versions_url = request.build_absolute_uri(reverse('ocpi-22'))
+
     return [
         dict(
-            version='2.2', url=request.build_absolute_uri(reverse('ocpi-22'))
+            version='2.2', url=_versions_url
         )
     ]
 

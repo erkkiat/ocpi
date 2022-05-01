@@ -10,7 +10,7 @@ from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
+from ocpi22.models.session import Session, ChargingPeriod, CdrDimension, ChargingPeriodSerializer, TotalCostSerializer
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
 from ocpi22.util import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
@@ -20,11 +20,6 @@ class CdrTokenSerializer(SerializerCleanedUp):
     uid = serializers.CharField(required=True, source='cdr_token_uid')
     type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True, source='cdr_token_type')
     contract_id = serializers.CharField(required=True, source='cdr_token_contract_id')
-
-
-class TotalCostSerializer(SerializerCleanedUp):
-    excl_vat = serializers.FloatField(source='total_cost_excl_vat', required=False)
-    incl_vat = serializers.FloatField(source='total_cost_incl_vat', required=False)
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -272,26 +267,6 @@ class ConnectorIdSerializer(serializers.Serializer):
         if not connector:
             self.fail('object_missing', name='Connector', uid=data)
         return dict(connector=connector)
-
-
-class TariffIdSerializer(serializers.Serializer):
-    def to_representation(self, instance):
-        return instance.uid
-
-    def to_internal_value(self, data):
-        return Tariff.objects.filter(uid=data).first()
-
-
-class CdrDimensionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CdrDimension
-        fields = ('type', 'volume')
-
-
-class ChargingPeriodSerializer(serializers.Serializer):
-    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-    tariff = TariffIdSerializer()
-    dimensions = CdrDimensionSerializer(many=True)
 
 
 def update_charging_periods(session, chargingperiods):

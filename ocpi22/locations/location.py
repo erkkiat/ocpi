@@ -1,6 +1,5 @@
 import logging
 
-from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,16 +11,12 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
 from ocpi22.locations.serializers import EvseSaveSerializer, EvseSerializer, LocationSerializer, LocationSaveSerializer
-from ocpi22.models.credentials import Endpoint
 from ocpi22.models.location import Location, Evse
-from ocpi22.tasks import send_evse_status_update
 from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer
 from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
-from ocpiconnector.settings import UPDATES_DISABLED
 
 
 # Todo: Fetch all Locations for reliable data update, but fetch Tariffs first, since Location refers to them
-# Todo: PATCH & PUT Evse
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
 
@@ -225,23 +220,3 @@ class LocationViewSet(mixins.ListModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Location.objects.all().order_by('created')
     serializer_class = LocationSerializer
-
-
-def send_evse_updates(evse_uid):
-    """
-    Find all endpoints interested in Location updates and send update in a background task
-    """
-
-    if settings.SEND_UPDATES:
-        # noinspection PyUnresolvedReferences
-        endpoints = Endpoint.objects.filter(
-            identifier=OcpiModuleEnum.LOCATIONS.value, role=EndpointRoleEnum.RECEIVER.value)
-        e: Endpoint
-        for e in endpoints:
-            logging.info(f'Send EVSE update to {e.url}')
-            if settings.BACKGROUND_SEND:
-                send_evse_status_update.delay(evse_uid, e.pk)
-            else:
-                send_evse_status_update(evse_uid, e.pk)
-    else:
-        logging.warning(UPDATES_DISABLED)
