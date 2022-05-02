@@ -431,6 +431,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     session = serializer.validated_data['session']
                     kwh = serializer.validated_data['kwh']
                     soc = serializer.validated_data.get('soc')
+                    power = serializer.validated_data.get('power')
                     session.stop_kwh = kwh
                     session.update_last_updated()
                     session.calculate_price()
@@ -445,6 +446,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             start_kwh=session.start_kwh,
                             now_kwh=kwh,
                             total_kwh=session.kwh,
+                            power=power,
                             price=session.cost(),
                             soc=soc,
                         )

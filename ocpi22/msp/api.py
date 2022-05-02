@@ -20,6 +20,7 @@ from pprint import PrettyPrinter
 pp = PrettyPrinter(indent=4).pprint
 slack_logging.init()
 
+# Todo: Handle gracefully situation where CPO backend is offline (now 503)
 
 # Todo: limit access to certain privilege holders
 class MspRoamingViewSet(viewsets.GenericViewSet):

@@ -210,6 +210,11 @@ class MeterValuesSerializer(serializers.Serializer):
         required=False, min_value=0, max_value=100,
         help_text='The State of Charge for the vehicle, if provided by the charge point',
     )
+    power = serializers.FloatField(
+        required=False,
+        help_text='Total amount of energy (dis-)charged during this ChargingPeriod: defined in kWh. When negative, '
+                  'more energy was feed into the grid then charged into the EV. Default step_size is 1.',
+    )
 
 
 class StartTransactionSerializer(serializers.Serializer):

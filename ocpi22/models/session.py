@@ -260,8 +260,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         for key, value in data.items():
             if key not in ['session']:
                 dimension_type = dict(
-                    kwh='POWER',
-                    soc='STATE_OF_CHARGE'
+                    kwh='ENERGY',
+                    soc='STATE_OF_CHARGE',
+                    power='POWER',
                 )[key]
                 if key == 'kwh':
                     value -= self.start_kwh
