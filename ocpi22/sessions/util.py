@@ -13,6 +13,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
+from ocpi22.tokens.util import get_token_id
 
 
 def get_token(token_id, ad_hoc_token):
@@ -25,8 +26,8 @@ def get_token(token_id, ad_hoc_token):
 
 
 def get_session(token: Union[Token, str]) -> Session:
-    token_id = token.uid if isinstance(token, Token) else token
-    session = get_session_by_adhoc_token(token, max_age_minutes=365 * 24 * 60)  # Maximum charge time: 1 year :)
+    token_id = get_token_id(token)
+    return get_session_by_adhoc_token(token_id, max_age_minutes=365 * 24 * 60)  # Maximum charge time: 1 year :)
 
 
 def generate_session_uid() -> str:
@@ -35,7 +36,7 @@ def generate_session_uid() -> str:
 
 def create_session(location_id, evse_uid, connector_id, token_id=None, ad_hoc_token=None,
                    billed_to=None, uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorize_from_msp=True, authorization_reference=''
+                   authorize_from_msp=True, authorization_reference='', send_updates=True
                    ) -> Session:
     # ic(location_id, evse_uid, connector_id, token_id, ad_hoc_token)
     if not uid:
@@ -90,7 +91,8 @@ def create_session(location_id, evse_uid, connector_id, token_id=None, ad_hoc_to
         # Todo: put this on error list
         pass
 
-    session.send_updates()
+    if send_updates:
+        session.send_updates()
     return session
 
 

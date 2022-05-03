@@ -64,6 +64,10 @@ class OcpiModule:
         # ic("Generic atomic_post_save")
         # ic(args, kwargs)
 
+        if hasattr(self, 'status') and self.status == 'PENDING':
+            # Session is not yet public, no updates to other OCPI parties
+            return
+
         assert hasattr(self, 'ocpi_serializer_class') and hasattr(self, 'ocpi_module_name') \
                and hasattr(self, 'send_updates_to'), \
             f'OCPI object class {type(self)} must have an ocpi_serializer_class (str), ' \
@@ -192,7 +196,7 @@ def ocpi_post(url, token_base64,
     if response.status_code >= 300:
         data = response.json()
         logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {data}')
-        raise ValidationError(data.get("status_message") or 'Unknown error: {data}')
+        raise ValidationError(data.get("status_message") or f'Unknown error: {data}')
     return response
 
 

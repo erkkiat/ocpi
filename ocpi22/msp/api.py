@@ -85,7 +85,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
 
         ## Status codes
 
-        * `HTTP_200_OK` when the charging session was started successfully
+        * `HTTP_200_OK` when the charging session was stopped successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_404_NOT_FOUND` when the Token or the EVSE doesn't exist
         * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
@@ -98,6 +98,10 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     if not session:
                         token = serializer.validated_data.get('token')
                         session = get_session(token)
+                        if not session:
+                            return Response(dict(status=f'No active session found for token `{token}`. '
+                                                        f'There may not have been a Session update from CPO.'),
+                                            status=status.HTTP_404_NOT_FOUND)
                     response: requests.Response = send_stop_command(request, session)
                     data = response.json()
                     return Response(data.get('data'), status=response.status_code)

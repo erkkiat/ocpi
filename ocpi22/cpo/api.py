@@ -374,6 +374,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.uid = session_id.upper()
                         session.status = Session.ACTIVE
                         session.save()
+                        session.send_updates()
 
                     if not session:
                         # Todo: Session.currency needs to match with Tariff currency
@@ -642,7 +643,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             log_error(request, str(e))
             return Response(
                 dict(
-                    status_text=f'Unable to find eMSP remote command from cache, either the command ID is incorrect or '
+                    status_text=f'Unable to find eMSP remote command from cache, '
+                                f'either the command ID (in URL) is incorrect or '
                                 f'the command was issued by eMSP too long ago '
                                 f'(expiration is set to {settings.REMOTE_COMMAND_EXPIRATION})'
                 ),

@@ -4,7 +4,6 @@ from typing import Union
 from urllib.parse import urljoin
 
 import requests
-from django.conf import settings
 from django.db import transaction
 from django.http import Http404
 from rest_framework import serializers, status
@@ -98,9 +97,7 @@ class CommandsViewSet(GenericViewSet):
                 params.pop('token')
                 params.pop('response_url')
 
-                # ic()
-                # ic(params)
-                session: Session = create_session(**params)
+                session: Session = create_session(send_updates=False, **params)
 
                 # The worst scenario is this
                 ocpi_status = 2000
@@ -152,7 +149,8 @@ class CommandsViewSet(GenericViewSet):
                         result = data.get('result')
                         # ic(result)
                         if result:
-                            message = MessageTexts.get(result.upper(), MessageTexts.DEFAULT_CHARGER_ERROR_TEXT)
+                            message = MessageTexts.get(f'START_{result.upper()}',
+                                                       MessageTexts.DEFAULT_CHARGER_ERROR_TEXT)
                             ocpi_status = 1000
                             http_status = status.HTTP_200_OK
                         else:
@@ -184,33 +182,79 @@ class CommandsViewSet(GenericViewSet):
         try:
             serializer = StopSessionSerializer(data=request.data)
             if serializer.is_valid():
-                result = 'ACCEPTED'
                 session: Session = Session.get_if_exists(uid=serializer.validated_data.get('session_id'))
-
-                if not CHARGER.remote_stop_transaction(session):
-                    return Response(dict(error=f'Unable to stop session on charger at this time',
-                                         status=status.HTTP_406_NOT_ACCEPTABLE))
-
                 session.status = Session.COMPLETED
                 session.save()
-                # Cdr.session_changed(session)
 
-                command_start.delay(
-                    serializer.data, session.uid,
-                    update_url=request.build_absolute_uri(reverse('session-update', args=[session.uid])),
-                    url=request.build_absolute_uri(reverse('simulate_session_start')))  # Todo: use actual callback
+                # The worst scenario is this
+                ocpi_status = 2000
+                result = CommandResponse.REJECTED
+                http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+                message = []
+                timeout = 60
+
+                try:
+                    # Prepare the stop command for CPO management system
+                    data = dict(
+                        response_url=request.build_absolute_uri(reverse('chargepoint-remote-command-result',
+                                                                        args=(session.authorization_reference,))),
+                        token_id=session.cdr_token_uid,
+                        token_type=session.cdr_token_type,
+                        authorization_reference=session.authorization_reference,
+                        auth_method=session.auth_method,
+                        billed_to=session.billed_to,
+                        evse_id=session.evse.uid,
+                        connector_id=session.connector.uid if session.connector else None,
+                    )
+
+                    # ic(data)
+                    # Use basic auth if required
+                    kwargs = dict()
+                    headers = {'content-type': 'application/json'}
+                    url = get_callbacks_parameter(CallbacksSerializer.STOP_TRANSACTION_URL)
+                    parsed = ParseUrl(url)
+                    user = parsed.username
+                    password = parsed.password
+                    if user and password:
+                        kwargs.update(dict(auth=(user, password)))
+
+                    url = parsed.url.format(user=user, evse_id=session.evse.uid)
+
+                    # ic(url, data, kwargs)
+                    # Send start command to CPO
+                    logging.info(f'Sending CPO command to url {url}')
+                    cpo_response = requests.post(
+                        url=url,
+                        json=data,
+                        headers=headers,
+                        verify=False,
+                        **kwargs)
+                    data = cpo_response.json()
+
+                    if data:
+                        timeout = data.get('timeout', timeout)
+                        result = data.get('result')
+                        # ic(result)
+                        if result:
+                            message = MessageTexts.get(f'STOP_{result.upper()}',
+                                                       MessageTexts.DEFAULT_CHARGER_ERROR_TEXT)
+                            ocpi_status = 1000
+                            http_status = status.HTTP_200_OK
+                        else:
+                            result = 'REJECTED'
+                except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
+                    message = MessageTexts.MS_CONNECTION_ERROR
+                    http_status = status.HTTP_424_FAILED_DEPENDENCY
+                    logging.error(f'Unable to relay Command to CPO: {e}')
+
                 response_serializer = CommandResponse(
-                    instance=dict(
-                        result=result,
-                        timeout=120,
-                        message=[
-                            dict(language='EN', text='Stopping charging'),
-                            dict(language='FI', text='Lataus päättyy')
-                        ]
-                    ))
-                return OCPIResponse(response_serializer.data)
-        except (NotFound, Http404, KeyError) as e:
-            return OCPIResponse(None, status_message=str(e),
+                    instance=dict(result=result, timeout=timeout, message=message)
+                )
+                return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status)
+        except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist,
+                Connector.DoesNotExist, Token.DoesNotExist,) as e:
+            log_error(request, e)
+            return OCPIResponse(None, status_message=f'Unable to start session: {e}',
                                 http_status=status.HTTP_400_BAD_REQUEST,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
@@ -250,8 +294,8 @@ class CommandsViewSet(GenericViewSet):
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @transaction.atomic
-    @action(methods=['GET', 'POST'], detail=False, url_path='COMMAND_RESULT/(?P<command_id>[^/.]+)')
-    def command_result(self, request, command_id=None):
+    @action(methods=['GET', 'POST'], detail=False, url_path='COMMAND_RESULT/(?P<command>[^/.]+)/(?P<command_id>[^/.]+)')
+    def command_result(self, request, command=None, command_id=None):
         """
         This is only used by eMSP for receiving the final result for remote command
         """
@@ -261,7 +305,7 @@ class CommandsViewSet(GenericViewSet):
             serializer = CommandResultSerializer(data=request.data)
             if serializer.is_valid():
                 result = serializer.validated_data.get('result')
-                logging.info(f'Received CommandResult {result} for {command_id}')
+                logging.info(f'Received CommandResult {result} for command {command} ID {command_id}')
                 return OCPIResponse(
                     status_message='Command result received, thank you!',
                     data=dict(command_id=command_id))
@@ -319,7 +363,7 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
         authorization_reference = generate_auth_reference()
         data = dict(
             response_url=request.build_absolute_uri(
-                reverse('commands-command-result', args=(authorization_reference,))
+                reverse('commands-command-result', args=("start", authorization_reference,))
             ),
             token=token_data,
             location_id=evse.location.uid,
@@ -334,7 +378,7 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
                          sender=get_our_party(OcpiRolesEnum.EMSP),
                          data=serializer.data)
     else:
-        message = f"Cannot find a route to {evse.location.party()}"
+        message = f"Cannot find a route for START_SESSION to {evse.location.party()}"
         log_error(request, message)
         raise APIException(message)
 
@@ -342,19 +386,24 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
 def send_stop_command(request, session: Session) -> Response:
     country_code = session.location.country_code
     party_id = session.location.party_id
-    # noinspection PyUnresolvedReferences
 
-    endpoint = find_endpoint(country_code, party_id, OcpiModuleEnum.COMMANDS, EndpointRoleEnum.RECEIVER)
-    if endpoint:
-        logging.info(f'*** Sending stop command for {session}.')
+    route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
+    if route:
+        logging.info(f'*** Sending stop command for {session} to {route.url}.')
+        authorization_reference = session.authorization_reference
         data = dict(
-            response_url=request.build_absolute_uri('/'),
-            session_id=session.uid,
+            response_url=request.build_absolute_uri(
+                reverse('commands-command-result', args=("stop", authorization_reference,))
+            ),
+            session_id=session.uid
         )
-        # ic(data)
-        # ic(endpoint.url)
-        return ocpi_post(urljoin(f'{endpoint.url}/', 'STOP_SESSION'), endpoint.get_token_base64(),
-                         data=data)
+        serializer = StopSessionSerializer(instance=data)
+        # ic(serializer.data)
+        return ocpi_post(urljoin(f'{route.url}/', 'STOP_SESSION'), route.token_base64,
+                         to=Party(country_code, party_id),
+                         sender=get_our_party(OcpiRolesEnum.EMSP),
+                         data=serializer.data)
     else:
-        logging.error(f'{settings.HOSTNAME}: Unable to find endpoint for {session.party()}.')
-        return Response()
+        message = f"Cannot find a route for STOP_SESSION to {country_code}*{party_id}"
+        log_error(request, message)
+        raise APIException(message)

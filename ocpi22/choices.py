@@ -144,6 +144,10 @@ class MessageTexts:
         dict(language='BG', text='Подготовка за зареждане'),
         dict(language='FI', text='Latausta valmistellaan'),
     ]
+    STOPPING_TO_CHARGE = [
+        dict(language='EN', text='Stopping charging session'),
+        dict(language='FI', text='Latausta lopetellaan'),
+    ]
     EVSE_OCCUPIED = [
         dict(language='EN', text='The charger is currently in use'),
         dict(language='BG', text=''),
@@ -161,8 +165,9 @@ class MessageTexts:
         dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki'),
     ]
     _texts = dict(
-        ACCEPTED=PREPARING_TO_CHARGE,
+        START_ACCEPTED=PREPARING_TO_CHARGE,
         EVSE_OCCUPIED=EVSE_OCCUPIED,
+        STOP_ACCEPTED=STOPPING_TO_CHARGE,
     )
 
     @classmethod
