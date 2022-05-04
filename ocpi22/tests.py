@@ -60,9 +60,9 @@ from ocpi22.test_data import expected_get_responses
 from ocpiconnector.ocpi_identities import Party
 
 faketime = datetime(2000, 1, 1, 12, 0)
-factory = RequestFactory()
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
+api_factory = APIRequestFactory()
 
 
 def load_tests(_loader, tests, _ignore):
@@ -108,7 +108,6 @@ def make_sure_no_min_price(tariff: Tariff) -> bool:
 class ApiPutTests(TestCase):
     fixtures = ['ocpi22/data/initial.json']
     location_index = 1
-    factory = APIRequestFactory()
     country_code = 'FI'
     party_id = 'XXX'
     maxDiff = None
@@ -158,7 +157,7 @@ class ApiPutTests(TestCase):
         url = reverse('location-by-evse-id',
                       args=[loc.country_code, loc.party_id, loc.uid, evse.uid])
 
-        request = self.factory.get(url)
+        request = api_factory.get(url)
         viewset = LocationViewSet()
         response = viewset.by_evse_id(request, loc.country_code, loc.party_id, loc.uid, evse.uid)
         data = response.data.get('data')
@@ -171,7 +170,7 @@ class ApiPutTests(TestCase):
         url = reverse('location-by-id',
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
 
-        request = self.factory.get(url)
+        request = api_factory.get(url)
         loc = self.location
         viewset = LocationViewSet()
         response = viewset.location_by_id(request, loc.country_code, loc.party_id, loc.uid)
@@ -199,8 +198,8 @@ class ApiPutTests(TestCase):
             self.assertIsInstance(connectors, list, msg='EVSE connectors should be a list')
 
     def put(self, url, data, token, viewset) -> OCPIResponse:
-        request = self.factory.put(url, data, content_type="application/json",
-                                   Authorization=f'Token {token}')
+        request = api_factory.put(url, data, content_type="application/json",
+                                  Authorization=f'Token {token}')
         request.data = data
         request.user = AnonymousUser
         request.credentials = self.credentials
@@ -610,7 +609,7 @@ class ApiPutTests(TestCase):
         url = reverse('location-by-id',
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
 
-        request = self.factory.get(url)
+        request = api_factory.get(url)
         loc = self.location
         viewset = LocationViewSet()
         response = viewset.location_by_id(request, loc.country_code, loc.party_id, loc.uid)
@@ -777,8 +776,6 @@ class CdrTests(TestCase):
 class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
-    api_factory = APIRequestFactory()
-
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/'}.get(x))
@@ -791,7 +788,7 @@ class CommandTests(TestCase):
         viewset = CommandsViewSet()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
-        request = self.api_factory.get(url)
+        request = api_factory.get(url)
         request.data = {}
         response = viewset.start_session(request)
         # data = response.data.get('data')
@@ -807,7 +804,7 @@ class CommandTests(TestCase):
             'Ocpi-From-Country-Code': billed_party.country_code,
             'Ocpi-From-Party-Id': billed_party.party_id
         }
-        request = self.api_factory.post(url, **headers)
+        request = api_factory.post(url, **headers)
         request.data = data
         # noinspection PyUnresolvedReferences
         # request.credentials = Credentials.objects.get(pk=2)
@@ -843,7 +840,6 @@ class CommandTests(TestCase):
 
     def test_unlock_connector(self):
         url = reverse('commands-unlock-connector')
-        api_factory = APIRequestFactory()
         viewset = CommandsViewSet()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
@@ -1288,7 +1284,6 @@ class TestRouting(TestCase):
         setattr(self, 'get_response_called', False)
 
         url = reverse('commands-start-session')
-        api_factory = APIRequestFactory()
 
         data = {'message': 'This is a message routing test'}
         # noinspection PyUnresolvedReferences
@@ -1363,7 +1358,6 @@ def make_json_response(data, status_code=200) -> Response:
 
 class TestSession(TestCase):
     fixtures = ['ocpi22/data/test-database-sessions.json']
-    api_factory = APIRequestFactory()
     maxDiff = None
 
     @time_machine.travel(faketime, tick=False)
@@ -1394,7 +1388,7 @@ class TestSession(TestCase):
         session_url = reverse('session-by-id', args=args)
         # ic(session_url)
 
-        request = self.api_factory.patch(session_url)
+        request = api_factory.patch(session_url)
         request.user = AnonymousUser
         request.credentials = Credentials.objects.get(pk=2)
 
@@ -1423,7 +1417,6 @@ class TestSession(TestCase):
 
 class TestCpoApi(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
-    api_factory = APIRequestFactory()
     maxDiff = None
 
     @time_machine.travel(faketime, tick=False)
@@ -1434,7 +1427,7 @@ class TestCpoApi(TestCase):
 
         status_change_url = reverse('chargepoint-status-change')
         cpo_viewset = ChargePointViewSet()
-        cpo_request = self.api_factory.post(status_change_url)
+        cpo_request = api_factory.post(status_change_url)
         testcases = (
             dict(
                 request=dict(
@@ -1490,7 +1483,7 @@ class TestCpoApi(TestCase):
 
         start_transaction_url = reverse('chargepoint-start-transaction')
         cpo_viewset = ChargePointViewSet()
-        cpo_request = self.api_factory.post(start_transaction_url)
+        cpo_request = api_factory.post(start_transaction_url)
         cpo_request.data = {
             "evse_id": "HELSINKI-3",
             "connector_id": "1",
@@ -1649,7 +1642,7 @@ class TestCpoApi(TestCase):
 
         billed_party = Party('FI', 'EON')
         headers = make_headers('', Party('FI', 'CPO'), billed_party)
-        request = self.api_factory.post(url, **headers)
+        request = api_factory.post(url, **headers)
         request.data = data
 
         self.assertFalse(Session.objects.all().exists(),
@@ -1689,14 +1682,11 @@ class TestCpoApi(TestCase):
         # Check that authorization based on Command from eMSP stands valid
         #
 
-        authorize_url = reverse('chargepoint-authorize')
-        cpo_viewset = ChargePointViewSet()
-        cpo_request = self.api_factory.post(authorize_url)
-        cpo_request.data = dict(
+        data = dict(
             evse_id='HELSINKI-3',
             token_id='SOME-ADHOC-TOKEN'
         )
-        cpo_response = cpo_viewset.authorize(cpo_request)
+        cpo_response = self.authorize(data)
         # ic(cpo_response, cpo_response.data)
 
         self.assertEqual(cpo_response.status_code, 200,
@@ -1715,15 +1705,13 @@ class TestCpoApi(TestCase):
         # Start session based on authorization from eMSP Command
         #
 
-        start_url = reverse('chargepoint-start-transaction')
-        start_request = self.api_factory.post(start_url)
-        start_request.data = dict(
+        data = dict(
             evse_id='HELSINKI-3',
             token_id='SOME-ADHOC-TOKEN',
             session_id='MY-SESSION',
             connector_id='1',
         )
-        cpo_response = cpo_viewset.start_transaction(start_request)
+        cpo_response = self.start_transaction(data)
 
         self.assertDictEqual(
             cpo_response.data,
@@ -1749,18 +1737,16 @@ class TestCpoApi(TestCase):
         #
 
         with time_machine.travel(faketime + timedelta(minutes=16), tick=False):
-            cpo_request.data = dict(
+            data = dict(
                 evse_id='HELSINKI-3',
                 token_id='SOME-ADHOC-TOKEN'
             )
-            # ic(timezone.now())
 
             _get_authorization_from_sessions.cache_clear()
             _authorize_token.cache_clear()
             authorize_token.cache_clear()
 
-            cpo_response = cpo_viewset.authorize(cpo_request)
-            # ic(cpo_response, cpo_response.data)
+            cpo_response = self.authorize(data)
             self.assertEqual(cpo_response.status_code, 401,
                              'Token should NOT be authorized')
             self.assertDictEqual(cpo_response.data,
@@ -1826,8 +1812,20 @@ class TestCpoApi(TestCase):
                              )
 
     def meter_values(self, data):
-        cpo_request = self.api_factory.post(reverse('chargepoint-meter-values'))
+        cpo_request = api_factory.post(reverse('chargepoint-meter-values'))
         cpo_request.data = data
         return ChargePointViewSet().meter_values(cpo_request)
+
+    def start_transaction(self, data):
+        start_url = reverse('chargepoint-start-transaction')
+        start_request = api_factory.post(start_url)
+        start_request.data = data
+        return ChargePointViewSet().start_transaction(start_request)
+
+    def authorize(self, data):
+        authorize_url = reverse('chargepoint-authorize')
+        cpo_request = api_factory.post(authorize_url)
+        cpo_request.data = data
+        return ChargePointViewSet().authorize(cpo_request)
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH
