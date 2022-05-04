@@ -68,6 +68,17 @@ class CommandsViewSet(GenericViewSet):
             return f'{self.name.capitalize()}'
         return f'Commands'
 
+    @staticmethod
+    def _format_url(url, **kwargs) -> str:
+        """
+        >>> c = CommandsViewSet()
+        >>> c._format_url("https://fakehost/start/{evse_id}/", evse_id=1)
+        'https://fakehost/start/1/'
+        """
+        if isinstance(url, bytes):
+            url = url.decode("utf-8")
+        return url.format(**kwargs)
+
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
@@ -131,7 +142,7 @@ class CommandsViewSet(GenericViewSet):
                     if user and password:
                         kwargs.update(dict(auth=(user, password)))
 
-                    url = parsed.url.format(user=user, evse_id=session.evse.uid)
+                    url = self._format_url(parsed.url, user=user, evse_id=session.evse.uid)
 
                     # ic(url, data, kwargs)
                     # Send start command to CPO
@@ -218,7 +229,7 @@ class CommandsViewSet(GenericViewSet):
                     if user and password:
                         kwargs.update(dict(auth=(user, password)))
 
-                    url = parsed.url.format(user=user, evse_id=session.evse.uid)
+                    url = self._format_url(parsed.url, user=user, evse_id=session.evse.uid)
 
                     # ic(url, data, kwargs)
                     # Send start command to CPO
