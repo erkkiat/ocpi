@@ -10,7 +10,7 @@
     "last_updated": "2022-01-12T19:44:39.298178",
     "party_id": "001",
     "type": "AD_HOC_USER",
-    "uid": "NON-EXISTENT-ADHOC-TOKEN",
+    "uid": "SOME-ADHOC-TOKEN",
     "valid": true
   }
 }

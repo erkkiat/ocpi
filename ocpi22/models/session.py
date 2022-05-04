@@ -2,6 +2,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES
@@ -273,8 +274,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if self.chargingperiods.exists():
             period = self.chargingperiods.all().last()
         else:
+            if not self.connector:
+                raise ValidationError(f'Session {self.uid} has no connector specified')
+            tariffs = self.connector.get_tariffs()
+            if not tariffs.exists():
+                raise ValidationError(f'Session {self.uid} for EVSE {self.evse_id} '
+                                      f'connector {self.connector} has no tariffs specified')
             period = ChargingPeriod.objects.create(
-                start_date_time=self.start_date_time, session=self, tariff=self.connector.get_tariffs().first(),
+                start_date_time=self.start_date_time, session=self, tariff=tariffs.first(),
                 # Todo: Handle multiple Tariffs per Connector or limit to one Tariff
             )
         return period

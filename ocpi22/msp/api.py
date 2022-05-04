@@ -49,6 +49,9 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
         * `HTTP_424_FAILED_DEPENDENCY` when there is no network connection to the charge point
         """
+
+        # Todo: Fail if no Tariffs for any Connector in this EVSE
+
         try:
             if request.method == 'POST':
                 serializer = StartChargingSerializer(data=request.data)

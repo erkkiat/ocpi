@@ -18,7 +18,7 @@ from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, CallbacksSerializer
 from ocpi22.cpo.util import get_callbacks_parameter, command_store
-from ocpi22.models.location import Location, Evse
+from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
@@ -219,6 +219,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         * `HTTP_404_NOT_FOUND` when the EVSE or Token is not found
 
         """
+
+        # Todo: Fail if no Tariffs for any Connector in this EVSE
+
         try:
             if request.method == 'POST':
                 serializer = StatusChangeSerializer(data=request.data)
@@ -372,6 +375,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         party = authorization.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
                         session.uid = session_id.upper()
+                        session.connector = Connector.get_if_exists(uid=connector_id)
                         session.status = Session.ACTIVE
                         session.save()
                         session.send_updates()

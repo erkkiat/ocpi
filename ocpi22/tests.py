@@ -781,7 +781,7 @@ class CommandTests(TestCase):
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
+           side_effect=lambda x: {'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.commands.requests.post')
     def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock):
         # for t in [11, 12, 13]:
@@ -1502,9 +1502,6 @@ class TestCpoApi(TestCase):
         # ic(cpo_response.data)
         self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
 
-        meter_values_url = reverse('chargepoint-meter-values')
-        cpo_viewset = ChargePointViewSet()
-        cpo_request = self.api_factory.post(meter_values_url)
         testcases = (
             dict(
                 request=dict(
@@ -1600,8 +1597,7 @@ class TestCpoApi(TestCase):
         )
 
         for case in testcases:
-            cpo_request.data = case.get('request')
-            cpo_response = cpo_viewset.meter_values(cpo_request)
+            cpo_response = self.meter_values(case.get('request'))
             # ic(cpo_response, cpo_response.data)
 
             args, kwargs = send_updates_mock.call_args
@@ -1632,7 +1628,10 @@ class TestCpoApi(TestCase):
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
+               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
+           }.get(x))
     @patch('ocpi22.util.redis_store.set', return_value=True)
     @patch('ocpi22.sessions.util.generate_session_uid',
            side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
@@ -1666,10 +1665,10 @@ class TestCpoApi(TestCase):
         self.assertEqual(session.billed_to, str(billed_party), 'Billed party appears not to be stored properly')
 
         args, kwargs = requests_post_mock.call_args
-        # ic(args, kwargs.get('data'))
+        # ic(args, kwargs)
 
         self.assertEqual(response.status_code, 200, 'Remote Command start_session was expected to succeed')
-        self.assertEqual(kwargs.get('url'), 'http://localhost/start/HELSINKI-3/',
+        self.assertEqual(kwargs.get('url'), 'http://fakehost/start/HELSINKI-3/',
                          'CPO start transaction URL differs from expected')
         self.assertDictEqual(
             kwargs.get('json'),
@@ -1679,19 +1678,23 @@ class TestCpoApi(TestCase):
              'connector_id': None,
              'evse_id': 'HELSINKI-3',
              'response_url': 'http://testserver/api/cpo/v2/chargepoint/remote_command_result/FI*001-AUTH-REFERENCE/',
-             'token_id': 'NON-EXISTENT-ADHOC-TOKEN',
+             'token_id': 'SOME-ADHOC-TOKEN',
              'token_type': 'AD_HOC_USER'}
         )
 
         session = Session.objects.get(status='PENDING')
-        self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match to expected")
+        self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match expectation")
+
+        #
+        # Check that authorization based on Command from eMSP stands valid
+        #
 
         authorize_url = reverse('chargepoint-authorize')
         cpo_viewset = ChargePointViewSet()
         cpo_request = self.api_factory.post(authorize_url)
         cpo_request.data = dict(
             evse_id='HELSINKI-3',
-            token_id='NON-EXISTENT-ADHOC-TOKEN'
+            token_id='SOME-ADHOC-TOKEN'
         )
         cpo_response = cpo_viewset.authorize(cpo_request)
         # ic(cpo_response, cpo_response.data)
@@ -1704,15 +1707,19 @@ class TestCpoApi(TestCase):
                               'billed_to': 'FI*CPO',
                               'evse_id': 'HELSINKI-3',
                               'status_text': 'Token authorized for charging',
-                              'token_id': 'NON-EXISTENT-ADHOC-TOKEN',
+                              'token_id': 'SOME-ADHOC-TOKEN',
                               'token_type': 'AD_HOC_USER'}
                              )
+
+        #
+        # Start session based on authorization from eMSP Command
+        #
 
         start_url = reverse('chargepoint-start-transaction')
         start_request = self.api_factory.post(start_url)
         start_request.data = dict(
             evse_id='HELSINKI-3',
-            token_id='NON-EXISTENT-ADHOC-TOKEN',
+            token_id='SOME-ADHOC-TOKEN',
             session_id='MY-SESSION',
             connector_id='1',
         )
@@ -1726,20 +1733,25 @@ class TestCpoApi(TestCase):
                          'currency': 'EUR',
                          'evse_uid': 'HELSINKI-3',
                          'location_id': 'HELSINKI-1',
+                         'connector_id': '1',
                          'session_id': 'MY-SESSION',
                          'start_date_time': '2000-01-01T12:00:00',
                          'start_kwh': 0.0,
                          'status': 'ACTIVE',
-                         'token': OrderedDict([('token_id', 'NON-EXISTENT-ADHOC-TOKEN'),
+                         'token': OrderedDict([('token_id', 'SOME-ADHOC-TOKEN'),
                                                ('type', 'AD_HOC_USER'),
                                                ('contract_id', 'INTERNAL')])},
              'status_text': 'Session started'}
         )
+
+        #
         # Check that the AD_HOC_USER token expires after 15 minutes
+        #
+
         with time_machine.travel(faketime + timedelta(minutes=16), tick=False):
             cpo_request.data = dict(
                 evse_id='HELSINKI-3',
-                token_id='NON-EXISTENT-ADHOC-TOKEN'
+                token_id='SOME-ADHOC-TOKEN'
             )
             # ic(timezone.now())
 
@@ -1753,8 +1765,12 @@ class TestCpoApi(TestCase):
                              'Token should NOT be authorized')
             self.assertDictEqual(cpo_response.data,
                                  {'status_text': 'Token is (temporarily) not valid',
-                                  'token_id': 'NON-EXISTENT-ADHOC-TOKEN'}
+                                  'token_id': 'SOME-ADHOC-TOKEN'}
                                  )
+
+        #
+        # CPO gives a broken response, we should return HTTP 503 to eMSP
+        #
 
         response = make_json_response(dict(broken_response='APPLES_AND_ORANGES'))
         requests_post_mock.return_value = response
@@ -1772,6 +1788,46 @@ class TestCpoApi(TestCase):
         self.assertTrue(hasattr(authorize_token, 'cache_clear'),
                         f'authorize_token should be cached for 15 minutes')
 
-        # Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
+        # Todo: Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
+
+        #
+        # Try updating meter values without a tariff specified
+        #
+
+        data = dict(
+            session_id='MY-SESSION',
+            kwh=123.45,
+            soc=42,
+            power=150
+        )
+        cpo_response = self.meter_values(data)
+        self.assertEqual(cpo_response.status_code, status.HTTP_417_EXPECTATION_FAILED)
+
+        #
+        # Update meter values with a tariff
+        #
+
+        session = Session.objects.get(uid='MY-SESSION')
+        session.connector.tariff_ids.set([9])
+        session.save()
+
+        response = self.meter_values(data)
+        # ic(response, response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertDictEqual(response.data,
+                             {'now_kwh': 123.45,
+                              'power': 150.0,
+                              'price': '76,54€',
+                              'session_id': 'MY-SESSION',
+                              'soc': 42.0,
+                              'start_kwh': 0.0,
+                              'status_text': 'Session updated',
+                              'total_kwh': 123.45}
+                             )
+
+    def meter_values(self, data):
+        cpo_request = self.api_factory.post(reverse('chargepoint-meter-values'))
+        cpo_request.data = data
+        return ChargePointViewSet().meter_values(cpo_request)
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH
