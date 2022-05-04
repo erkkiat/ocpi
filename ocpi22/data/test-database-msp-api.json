@@ -1,0 +1,1362 @@
+[
+   {
+      "fields": {
+         "name": "ChargerHub.eu",
+         "logo": "",
+         "website": "http://www.chargerhub.eu/"
+      },
+      "pk": 1,
+      "model": "ocpi22.businessdetails"
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 1,
+      "fields": {
+         "description": "Hotels and other lodging",
+         "name": "HOTEL"
+      }
+   },
+   {
+      "pk": 2,
+      "model": "ocpi22.facility",
+      "fields": {
+         "description": "A restaurant",
+         "name": "RESTAURANT"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 3,
+      "fields": {
+         "description": "",
+         "name": "CAFE"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 4,
+      "fields": {
+         "description": "",
+         "name": "SPORT"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 5,
+      "fields": {
+         "description": "",
+         "name": "MALL"
+      }
+   },
+   {
+      "fields": {
+         "name": "SUPERMARKET",
+         "description": ""
+      },
+      "pk": 6,
+      "model": "ocpi22.facility"
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "RECREATION_AREA"
+      },
+      "model": "ocpi22.facility",
+      "pk": 7
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 8,
+      "fields": {
+         "description": "",
+         "name": "NATURE"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 9,
+      "fields": {
+         "description": "",
+         "name": "MUSEUM"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 10,
+      "fields": {
+         "name": "BIKE_SHARING",
+         "description": ""
+      }
+   },
+   {
+      "fields": {
+         "name": "BUS_STOP",
+         "description": ""
+      },
+      "pk": 11,
+      "model": "ocpi22.facility"
+   },
+   {
+      "fields": {
+         "name": "TAXI_STAND",
+         "description": ""
+      },
+      "model": "ocpi22.facility",
+      "pk": 12
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 13,
+      "fields": {
+         "description": "",
+         "name": "TRAM_STOP"
+      }
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 14,
+      "fields": {
+         "description": "",
+         "name": "METRO_STATION"
+      }
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "TRAIN_STATION"
+      },
+      "model": "ocpi22.facility",
+      "pk": 15
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "AIRPORT"
+      },
+      "model": "ocpi22.facility",
+      "pk": 16
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "PARKING_LOT"
+      },
+      "pk": 17,
+      "model": "ocpi22.facility"
+   },
+   {
+      "fields": {
+         "description": "",
+         "name": "CARPOOL_PARKING"
+      },
+      "model": "ocpi22.facility",
+      "pk": 18
+   },
+   {
+      "model": "ocpi22.facility",
+      "pk": 19,
+      "fields": {
+         "description": "",
+         "name": "FUEL_STATION"
+      }
+   },
+   {
+      "fields": {
+         "name": "WIFI",
+         "description": ""
+      },
+      "pk": 20,
+      "model": "ocpi22.facility"
+   },
+   {
+      "model": "ocpi22.capability",
+      "pk": 1,
+      "fields": {
+         "description": "Charging at this EVSE can be authorized with an RFID token.",
+         "name": "RFID_READER"
+      }
+   },
+   {
+      "fields": {
+         "description": "EVSE has a payment terminal that makes it possible to pay for charging using a debit card.",
+         "name": "DEBIT_CARD_PAYABLE"
+      },
+      "pk": 2,
+      "model": "ocpi22.capability"
+   },
+   {
+      "pk": 3,
+      "model": "ocpi22.capability",
+      "fields": {
+         "name": "CHARGING_PROFILE_CAPABLE",
+         "description": "The EVSE supports charging profiles."
+      }
+   },
+   {
+      "fields": {
+         "name": "CHARGING_PREFERENCES_CAPABLE",
+         "description": "The EVSE supports charging preferences."
+      },
+      "pk": 4,
+      "model": "ocpi22.capability"
+   },
+   {
+      "fields": {
+         "description": "EVSE has a payment terminal that supports chip cards.",
+         "name": "CHIP_CARD_SUPPORT"
+      },
+      "pk": 5,
+      "model": "ocpi22.capability"
+   },
+   {
+      "model": "ocpi22.capability",
+      "pk": 6,
+      "fields": {
+         "description": "EVSE has a payment terminal that supports contactless cards.",
+         "name": "CONTACTLESS_CARD_SUPPORT"
+      }
+   },
+   {
+      "fields": {
+         "description": "EVSE has a payment terminal that makes it possible to pay for charging using a credit card.",
+         "name": "CREDIT_CARD_PAYABLE"
+      },
+      "model": "ocpi22.capability",
+      "pk": 7
+   },
+   {
+      "model": "ocpi22.capability",
+      "pk": 9,
+      "fields": {
+         "description": "EVSE has a payment terminal with a pin-code entry device.",
+         "name": "PED_TERMINAL"
+      }
+   },
+   {
+      "model": "ocpi22.capability",
+      "pk": 10,
+      "fields": {
+         "name": "REMOTE_START_STOP_CAPABLE",
+         "description": "The EVSE can remotely be started/stopped."
+      }
+   },
+   {
+      "fields": {
+         "name": "RESERVABLE",
+         "description": "The EVSE can be reserved."
+      },
+      "model": "ocpi22.capability",
+      "pk": 11
+   },
+   {
+      "pk": 12,
+      "model": "ocpi22.capability",
+      "fields": {
+         "name": "START_SESSION_CONNECTOR_REQUIRED",
+         "description": "When a StartSession is sent to this EVSE, the MSP is required to add the optional connector_id field in the StartSession object."
+      }
+   },
+   {
+      "fields": {
+         "description": "This EVSE supports token groups, two or more tokens work as one, so that a session can be started with one token and stopped with another (handy when a card and key-fob are given to the EV-driver).",
+         "name": "TOKEN_GROUP_CAPABLE"
+      },
+      "pk": 13,
+      "model": "ocpi22.capability"
+   },
+   {
+      "fields": {
+         "description": "Connectors have mechanical lock that can be requested by the eMSP to be unlocked.",
+         "name": "UNLOCK_CAPABLE"
+      },
+      "model": "ocpi22.capability",
+      "pk": 14
+   },
+   {
+      "fields": {
+         "time_zone": "Europe/Helsinki",
+         "publish_allowed_to": [],
+         "postal_code": "",
+         "publish": true,
+         "country": "FIN",
+         "city": "Helsinki",
+         "party_id": "CPO",
+         "created": "2022-01-09T06:25:25.023",
+         "address": "Helsinki 12",
+         "parking_type": "PARKING_LOT",
+         "long_partition": 3000,
+         "lat_partition": 6000,
+         "state": "",
+         "uid": "HELSINKI-1",
+         "name": "Helsinki Supercharger",
+         "last_updated": "2022-01-09T10:50:58.562",
+         "updated": "2022-01-15T19:14:14.602",
+         "operator": 1,
+         "owner": 1,
+         "suboperator": 1,
+         "latitude": 60,
+         "longitude": 30,
+         "country_code": "FI",
+         "facilities": [
+            1
+         ]
+      },
+      "model": "ocpi22.location",
+      "pk": 6
+   },
+   {
+      "model": "ocpi22.evse",
+      "pk": 7,
+      "fields": {
+         "created": "2022-01-09T06:27:14.931",
+         "capabilities": [
+            1
+         ],
+         "evse_id": "FI*TSL*EHELSINKI1",
+         "updated": "2022-01-18T19:46:46.556",
+         "last_updated": "2022-01-09T10:50:58.562",
+         "location": 6,
+         "status": "AVAILABLE",
+         "uid": "HELSINKI-1"
+      }
+   },
+   {
+      "pk": 8,
+      "model": "ocpi22.evse",
+      "fields": {
+         "status": "AVAILABLE",
+         "location": 6,
+         "uid": "HELSINKI-2",
+         "created": "2022-01-09T06:38:44.357",
+         "capabilities": [
+            3
+         ],
+         "evse_id": "FI*TSL*EHELSINKI2",
+         "updated": "2022-01-18T19:46:34.867",
+         "last_updated": "2022-01-09T06:38:44.362"
+      }
+   },
+   {
+      "fields": {
+         "uid": "HELSINKI-3",
+         "status": "AVAILABLE",
+         "location": 6,
+         "evse_id": "FI*TSL*EHELSINKI3",
+         "capabilities": [
+            9
+         ],
+         "created": "2022-01-09T06:40:43.558",
+         "updated": "2022-01-16T11:42:34.776",
+         "last_updated": "2022-01-09T10:48:07.901"
+      },
+      "pk": 9,
+      "model": "ocpi22.evse"
+   },
+   {
+      "pk": 7,
+      "model": "ocpi22.connector",
+      "fields": {
+         "terms_and_conditions": "",
+         "standard": "TESLA_S",
+         "uid": "3050",
+         "max_voltage": 400,
+         "evse": 7,
+         "last_updated": "2022-01-09T10:50:58.562",
+         "updated": "2022-01-18T19:46:46.564",
+         "max_electric_power": null,
+         "power_type": "DC",
+         "created": "2022-01-09T06:27:14.942",
+         "max_amperage": 375,
+         "tariff_ids": [
+            16
+         ],
+         "format": "CABLE"
+      }
+   },
+   {
+      "pk": 8,
+      "model": "ocpi22.connector",
+      "fields": {
+         "tariff_ids": [
+            2
+         ],
+         "format": "CABLE",
+         "max_amperage": 375,
+         "created": "2022-01-09T06:38:44.362",
+         "power_type": "DC",
+         "last_updated": "2022-01-09T06:38:44.362",
+         "updated": "2022-01-18T19:46:34.877",
+         "max_electric_power": null,
+         "evse": 8,
+         "max_voltage": 400,
+         "uid": "1",
+         "standard": "TESLA_S",
+         "terms_and_conditions": ""
+      }
+   },
+   {
+      "fields": {
+         "uid": "1",
+         "max_voltage": 400,
+         "evse": 9,
+         "terms_and_conditions": "",
+         "standard": "TESLA_S",
+         "created": "2022-01-09T06:40:43.567",
+         "tariff_ids": [
+            9
+         ],
+         "format": "CABLE",
+         "max_amperage": 375,
+         "last_updated": "2022-01-09T10:48:07.901",
+         "updated": "2022-01-16T11:42:34.822",
+         "max_electric_power": null,
+         "power_type": "DC"
+      },
+      "pk": 9,
+      "model": "ocpi22.connector"
+   },
+   {
+      "pk": 7,
+      "model": "ocpi22.token",
+      "fields": {
+         "party_id": "MSP",
+         "created": "2022-01-17T11:06:05.458",
+         "issuer": "TheNewMotion",
+         "country_code": "FI",
+         "last_updated": "2018-12-10T17:25:10",
+         "updated": "2022-01-17T11:06:05.458",
+         "visual_number": "DF000-2001-8999-1",
+         "whitelist": "ALLOWED",
+         "uid": "EKI1",
+         "group_id": "DF000-2001-8999",
+         "contract_id": "DE8ACC12E46L89",
+         "default_profile_type": "GREEN",
+         "language": "IT",
+         "type": "RFID",
+         "valid": true
+      }
+   },
+   {
+      "pk": 8,
+      "model": "ocpi22.token",
+      "fields": {
+         "party_id": "MSP",
+         "created": "2022-01-17T11:06:05.458",
+         "issuer": "TheNewMotion",
+         "country_code": "FI",
+         "last_updated": "2018-12-10T17:25:10",
+         "updated": "2022-01-17T11:06:05.458",
+         "visual_number": "DF000-2001-8999-1",
+         "whitelist": "ALWAYS",
+         "uid": "WHITELISTED",
+         "group_id": "DF000-2001-8999",
+         "contract_id": "DE8ACC12E46L89",
+         "default_profile_type": "GREEN",
+         "language": "EN",
+         "type": "RFID",
+         "valid": true
+      }
+   },
+   {
+      "fields": {
+         "url": "http://fakehost/ocpi/versions/",
+         "theirs": "THEIRS",
+         "version": "22",
+         "last_updated": "2022-01-13T18:57:11.301",
+         "updated": "2022-01-17T04:49:23.253",
+         "ours": "OURS",
+         "created": "2022-01-08T07:56:40.267",
+         "token_a": "TOKEN_A"
+      },
+      "model": "ocpi22.credentials",
+      "pk": 2
+   },
+   {
+      "pk": 3,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "role": "CPO",
+         "credentials": 2,
+         "party_id": "CPO",
+         "country_code": "FI"
+      }
+   },
+   {
+      "pk": 916,
+      "model": "ocpi22.endpoint",
+      "fields": {
+         "role": "RECEIVER",
+         "credentials": 2,
+         "identifier": "commands",
+         "url": "http://fakehost/command"
+      }
+   },
+   {
+      "pk": 16,
+      "model": "ocpi22.endpoint",
+      "fields": {
+         "role": "RECEIVER",
+         "credentials": 2,
+         "identifier": "tokens",
+         "url": "http://localhost:80/ocpi/cpo/2.2/tokens"
+      }
+   },
+   {
+      "fields": {
+         "role": "SENDER",
+         "credentials": 2,
+         "identifier": "tokens",
+         "url": "http://localhost:80/ocpi/cpo/2.2/tokens"
+      },
+      "pk": 17,
+      "model": "ocpi22.endpoint"
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 5,
+      "fields": {
+         "archived": false,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "DC50",
+         "currency": "PLN",
+         "type": "REGULAR",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": null,
+         "updated": "2022-03-23T06:39:54.213",
+         "created": "2022-02-20T14:42:04.475"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 6,
+      "fields": {
+         "archived": false,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "DC150",
+         "currency": "PLN",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": null,
+         "updated": "2022-02-20T18:32:19.118",
+         "created": "2022-02-20T14:47:23.623"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 7,
+      "fields": {
+         "archived": false,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "AC",
+         "currency": "PLN",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": 1.0,
+         "min_price_incl_vat": 1.1,
+         "max_price_excl_vat": 9.0,
+         "max_price_incl_vat": 9.5,
+         "last_updated": null,
+         "updated": "2022-02-21T20:52:34.056",
+         "created": "2022-02-20T14:50:15.962"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 8,
+      "fields": {
+         "archived": false,
+         "country_code": "DE",
+         "party_id": "ALL",
+         "uid": "52",
+         "currency": "EUR",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": "2018-12-29T15:55:58",
+         "updated": "2022-02-24T15:35:38.953",
+         "created": "2022-02-20T15:21:25.903"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 9,
+      "fields": {
+         "archived": false,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "EKI1",
+         "currency": "EUR",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": null,
+         "updated": "2022-04-01T10:22:38.391",
+         "created": "2022-03-10T17:19:59.722"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 10,
+      "fields": {
+         "archived": true,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "EKI1",
+         "currency": "EUR",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": null,
+         "updated": "2022-03-22T19:53:08.124",
+         "created": "2022-03-22T19:53:08.110"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 11,
+      "fields": {
+         "archived": true,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "EKI1",
+         "currency": "EUR",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": null,
+         "updated": "2022-03-23T07:03:57.576",
+         "created": "2022-03-23T07:03:57.559"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 12,
+      "fields": {
+         "archived": true,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "AC",
+         "currency": "PLN",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": 1.0,
+         "min_price_incl_vat": 1.1,
+         "max_price_excl_vat": 9.0,
+         "max_price_incl_vat": 9.5,
+         "last_updated": null,
+         "updated": "2022-03-30T17:40:23.923",
+         "created": "2022-03-30T17:40:23.910"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 13,
+      "fields": {
+         "archived": true,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "EKI1",
+         "currency": "EUR",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": null,
+         "updated": "2022-04-12T18:14:15.678",
+         "created": "2022-04-12T18:14:15.665"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 14,
+      "fields": {
+         "archived": true,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "EKI1",
+         "currency": "EUR",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": null,
+         "updated": "2022-04-12T18:14:15.715",
+         "created": "2022-04-12T18:14:15.704"
+      }
+   },
+   {
+      "model": "ocpi22.tariff",
+      "pk": 16,
+      "fields": {
+         "archived": true,
+         "country_code": "FI",
+         "party_id": "000",
+         "uid": "EKI1",
+         "currency": "EUR",
+         "type": "",
+         "tariff_alt_url": "",
+         "min_price_excl_vat": null,
+         "min_price_incl_vat": null,
+         "max_price_excl_vat": null,
+         "max_price_incl_vat": null,
+         "last_updated": null,
+         "updated": "2022-04-28T17:53:49.026",
+         "created": "2022-04-28T17:53:49.013"
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 7,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 5
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 8,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 6
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 9,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 7
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 10,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": 2700,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 7
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 16,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": 2700,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 5
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 17,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": 2700,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 6
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 23,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": 0,
+         "max_duration": 3600,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 8
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 24,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": 3600,
+         "max_duration": 10800,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 8
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 25,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": 10800,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 8
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 26,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": 1.0,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 8
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 27,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": 1.0,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 8
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 28,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 9
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 29,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 10
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 30,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 11
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 31,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 12
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 32,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": 2700,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 12
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 33,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 13
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 34,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 14
+      }
+   },
+   {
+      "model": "ocpi22.tariffelement",
+      "pk": 36,
+      "fields": {
+         "start_time": null,
+         "end_time": null,
+         "start_date": null,
+         "end_date": null,
+         "min_kwh": null,
+         "max_kwh": null,
+         "min_current": null,
+         "max_current": null,
+         "min_power": null,
+         "max_power": null,
+         "min_duration": null,
+         "max_duration": null,
+         "day_of_week": "",
+         "reservation": null,
+         "tariff": 16
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 7,
+      "fields": {
+         "type": "ENERGY",
+         "price": 1.7,
+         "vat": 23.0,
+         "step_size": 1000,
+         "dynamic_price_source": null,
+         "tariff_element": 7
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 8,
+      "fields": {
+         "type": "ENERGY",
+         "price": 2.04,
+         "vat": 23.0,
+         "step_size": 1000,
+         "dynamic_price_source": null,
+         "tariff_element": 8
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 9,
+      "fields": {
+         "type": "ENERGY",
+         "price": 1.22,
+         "vat": 23.0,
+         "step_size": 1000,
+         "dynamic_price_source": null,
+         "tariff_element": 9
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 10,
+      "fields": {
+         "type": "TIME",
+         "price": 0.34,
+         "vat": 23.0,
+         "step_size": 60,
+         "dynamic_price_source": null,
+         "tariff_element": 10
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 16,
+      "fields": {
+         "type": "TIME",
+         "price": 0.34,
+         "vat": 23.0,
+         "step_size": 60,
+         "dynamic_price_source": null,
+         "tariff_element": 16
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 17,
+      "fields": {
+         "type": "TIME",
+         "price": 0.34,
+         "vat": 23.0,
+         "step_size": 60,
+         "dynamic_price_source": null,
+         "tariff_element": 17
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 23,
+      "fields": {
+         "type": "PARKING_TIME",
+         "price": 0.0,
+         "vat": null,
+         "step_size": 60,
+         "dynamic_price_source": null,
+         "tariff_element": 23
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 24,
+      "fields": {
+         "type": "PARKING_TIME",
+         "price": 2.0,
+         "vat": null,
+         "step_size": 60,
+         "dynamic_price_source": null,
+         "tariff_element": 24
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 25,
+      "fields": {
+         "type": "PARKING_TIME",
+         "price": 3.0,
+         "vat": null,
+         "step_size": 60,
+         "dynamic_price_source": null,
+         "tariff_element": 25
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 26,
+      "fields": {
+         "type": "ENERGY",
+         "price": 0.0,
+         "vat": null,
+         "step_size": 1,
+         "dynamic_price_source": null,
+         "tariff_element": 26
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 27,
+      "fields": {
+         "type": "ENERGY",
+         "price": 0.2,
+         "vat": null,
+         "step_size": 1,
+         "dynamic_price_source": null,
+         "tariff_element": 27
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 28,
+      "fields": {
+         "type": "ENERGY",
+         "price": 0.5,
+         "vat": 24.0,
+         "step_size": 0,
+         "dynamic_price_source": null,
+         "tariff_element": 28
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 29,
+      "fields": {
+         "type": "ENERGY",
+         "price": 0.29,
+         "vat": 24.0,
+         "step_size": 1000,
+         "dynamic_price_source": null,
+         "tariff_element": 29
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 30,
+      "fields": {
+         "type": "ENERGY",
+         "price": 0.5,
+         "vat": 24.0,
+         "step_size": 1000,
+         "dynamic_price_source": null,
+         "tariff_element": 30
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 31,
+      "fields": {
+         "type": "ENERGY",
+         "price": 1.22,
+         "vat": 23.0,
+         "step_size": 1000,
+         "dynamic_price_source": null,
+         "tariff_element": 31
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 32,
+      "fields": {
+         "type": "TIME",
+         "price": 0.34,
+         "vat": 23.0,
+         "step_size": 60,
+         "dynamic_price_source": null,
+         "tariff_element": 32
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 33,
+      "fields": {
+         "type": "ENERGY",
+         "price": 0.5,
+         "vat": 24.0,
+         "step_size": 0,
+         "dynamic_price_source": null,
+         "tariff_element": 33
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 34,
+      "fields": {
+         "type": "ENERGY",
+         "price": 0.5,
+         "vat": 24.0,
+         "step_size": 0,
+         "dynamic_price_source": null,
+         "tariff_element": 34
+      }
+   },
+   {
+      "model": "ocpi22.pricecomponent",
+      "pk": 36,
+      "fields": {
+         "type": "ENERGY",
+         "price": 0.5,
+         "vat": 24.0,
+         "step_size": 0,
+         "dynamic_price_source": null,
+         "tariff_element": 36
+      }
+   }
+]

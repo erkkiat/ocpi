@@ -4,7 +4,7 @@ import os
 import logging
 import uuid
 from collections import OrderedDict
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 
 from datetime import timedelta, datetime
 from unittest.mock import Mock, patch
@@ -16,7 +16,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 
 from django.contrib.auth.models import AnonymousUser
-from django.test import TestCase, RequestFactory, Client
+from django.test import TestCase, Client
 
 # Todo: evse_id Regular Expression: [A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30} // [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-
 #  Za-z0-9\*]{0,30}
@@ -29,6 +29,7 @@ from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
+from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
 from ocpi22.choices import OcpiModuleEnum
@@ -1796,7 +1797,6 @@ class TestCpoApi(TestCase):
         session = Session.objects.get(uid='MY-SESSION')
         session.connector.tariff_ids.set([9])
         session.save()
-
         response = self.meter_values(data)
         # ic(response, response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -1827,5 +1827,80 @@ class TestCpoApi(TestCase):
         cpo_request = api_factory.post(authorize_url)
         cpo_request.data = data
         return ChargePointViewSet().authorize(cpo_request)
+
+
+@dataclass(eq=True, frozen=True)
+class FakeResponse:
+    status_code: int
+    data: dict
+
+    def json(self):
+        return self.data
+
+
+class TestMspApi(TestCase):
+    fixtures = ['ocpi22/data/test-database-msp-api.json']
+    maxDiff = None
+
+    accepted_result = {
+        "data": {
+            "result": "ACCEPTED",
+            "timeout": 90,
+            "message": [
+                {
+                    "language": "EN",
+                    "text": "Preparing to charge"
+                }
+            ]
+        }
+    }
+
+    @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.commands.commands.generate_auth_reference',
+           return_value='AUTH-REFERENCE'
+           )
+    @patch('ocpi22.commands.commands.requests.post',
+           return_value=FakeResponse(200, accepted_result)
+           )
+    def test_app_charging(self, requests_post_mock: Mock, _generate_auth_reference_mock: Mock):
+        data = {
+            "location_id": "HELSINKI-1",
+            "evse_id": "HELSINKI-3",
+            "connector_id": "1",
+            "contract_id": "CONTRACT-123",
+            "token_id": "AD-HOC-TOKEN"
+        }
+        response = self.start_charging(data)
+        # ic(response, response.data)
+        self.assertEqual(response.data, self.accepted_result.get('data'),
+                         'Response from CPO for START_SESSION differs from expected')
+        args, kwargs = requests_post_mock.call_args
+        # ic(args, kwargs)
+        self.assertEqual(args, ('http://fakehost/command/START_SESSION',),
+                         'URL for CPO Command START_SESSION differs from expected')
+        self.assertEqual(kwargs,
+                         {'headers': {'Authorization': 'Token VEhFSVJT',
+                                      'OCPI-from-country-code': 'FI',
+                                      'OCPI-from-party-id': 'MSP',
+                                      'OCPI-to-country-code': 'FI',
+                                      'OCPI-to-party-id': 'CPO',
+                                      'content-type': 'application/json'},
+                          'json': {'authorization_reference': 'AUTH-REFERENCE',
+                                   'connector_id': '1',
+                                   'evse_uid': 'HELSINKI-3',
+                                   'location_id': 'HELSINKI-1',
+                                   'response_url': 'http://testserver/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/AUTH-REFERENCE',
+                                   'token': OrderedDict([('country_code', 'FI'),
+                                                         ('party_id', 'MSP'),
+                                                         ('uid', 'AD-HOC-TOKEN'),
+                                                         ('type', 'APP_USER'),
+                                                         ('contract_id', 'CONTRACT-123')])}},
+                         'START_SESSION Command sent to CPO differs from expected'
+                         )
+
+    def start_charging(self, data):
+        request = api_factory.post(reverse('roaming-start-charging'))
+        request.data = data
+        return MspRoamingViewSet().start_charging(request)
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH
