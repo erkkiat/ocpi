@@ -82,6 +82,11 @@ def load_tests(_loader, tests, _ignore):
     return tests
 
 
+def load_example(filename: str) -> dict:
+    with open(os.path.join(dirname, filename)) as file:
+        return json.load(file)
+
+
 def create_tariff(*_args, **kwargs) -> Tariff:
     params = dict(
         currency='EUR'
@@ -260,8 +265,7 @@ class ApiPutTests(TestCase):
 
         for filename, country_code, party_id, http_status, ocpi_status, tariffs, evses, connectors in testcases:
 
-            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
-                data = json.load(file)
+            data = load_example(f'data/examples/{filename}.json')
 
             # Create the needed Tariffs
             for t in tariffs:
@@ -305,10 +309,6 @@ class ApiPutTests(TestCase):
                     # noinspection PyUnresolvedReferences
                     self.fail(f'Possible options are: {", ".join([l.uid for l in Location.objects.all()])}')
 
-    def _load_example(self, filename_segment: str) -> dict:
-        with open(os.path.join(dirname, f'data/examples/{filename_segment}.json')) as file:
-            return json.load(file)
-
     def test_put_tariff(self):
         url = reverse('tariff-list')
         token_base64 = self.credentials.ours_base64()
@@ -350,7 +350,7 @@ class ApiPutTests(TestCase):
         for filename, http_status, ocpi_status, price_component_count, *extra \
                 in testcases:
 
-            data = self._load_example(filename)
+            data = load_example(f'data/examples/{filename}.json')
 
             # ic(filename, data.get('id'))
             country_code = data.get('country_code')
@@ -439,7 +439,7 @@ class ApiPutTests(TestCase):
             # noinspection PyUnresolvedReferences
             session: Session = Session.objects.create(uid=uuid.uuid4().hex,
                                                       **params)
-            data = self._load_example(filename)
+            data = load_example(f'data/examples/{filename}.json')
             serializer = TariffSerializer(data=data)
             self.assertTrue(serializer.is_valid(),
                             f"Tariff doesn't serialize for file {filename}: {serializer.errors}")
@@ -474,8 +474,7 @@ class ApiPutTests(TestCase):
         for filename, http_status, ocpi_status, price_component_count \
                 in testcases:
 
-            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
-                data = json.load(file)
+            data = load_example(f'data/examples/{filename}.json')
 
             country_code = data.get('country_code')
             party_id = data.get('party_id')
@@ -556,8 +555,7 @@ class ApiPutTests(TestCase):
         for filename, http_status, ocpi_status \
                 in testcases:
 
-            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
-                data = json.load(file)
+            data = load_example(f'data/examples/{filename}.json')
 
             country_code = data.get('country_code')
             party_id = data.get('party_id')
@@ -680,8 +678,7 @@ class CdrTests(TestCase):
     fixtures = ['ocpi22/data/initial.json', 'ocpi22/data/defaulttariffs.json']
 
     def load_location(self, filename):
-        with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
-            data = json.load(file)
+        data = load_example(f'data/examples/{filename}.json')
         serializer = LocationSaveSerializer(data=data)
         if not serializer.is_valid():
             self.fail(serializer.errors)
@@ -803,8 +800,7 @@ class CommandTests(TestCase):
         check_ok_result(self, response)
 
         # Load up the test message and send it
-        with open(os.path.join(dirname, f'data/examples/command_start_session.json')) as file:
-            data = json.load(file)
+        data = load_example(f'data/examples/command_start_session.json')
 
         billed_party = Party('FI', 'EON')
         headers = {
@@ -858,8 +854,7 @@ class CommandTests(TestCase):
         check_ok_result(self, response)
 
         # Load up the test message and send it
-        with open(os.path.join(dirname, f'data/examples/command_unlock_connector.json')) as file:
-            data = json.load(file)
+        data = load_example(f'data/examples/command_unlock_connector.json')
 
         request = api_factory.post(url)
         request.data = data
@@ -867,8 +862,7 @@ class CommandTests(TestCase):
 
         check_ok_result(self, response, command_result=CommandResponse.ACCEPTED)
 
-        with open(os.path.join(dirname, f'data/examples/command_unlock_connector_unknown_location.json')) as file:
-            data = json.load(file)
+        data = load_example(f'data/examples/command_unlock_connector_unknown_location.json')
 
         request = api_factory.post(url)
         request.data = data
@@ -1405,8 +1399,7 @@ class TestSession(TestCase):
         request.credentials = Credentials.objects.get(pk=2)
 
         for filename, status_code, cost, charging_period_count, expected_dict in test_cases:
-            with open(os.path.join(dirname, f'data/examples/{filename}.json')) as file:
-                data = json.load(file)
+            data = load_example(f'data/examples/{filename}.json')
             request.data = data
             response = SessionViewSet().patch(request, *args)
 
@@ -1653,8 +1646,7 @@ class TestCpoApi(TestCase):
         viewset = CommandsViewSet()
 
         # Load up the test message and send it
-        with open(os.path.join(dirname, f'data/examples/command_start_session_adhoc.json')) as file:
-            data = json.load(file)
+        data = load_example(f'data/examples/command_start_session_adhoc.json')
 
         billed_party = Party('FI', 'EON')
         headers = make_headers('', Party('FI', 'CPO'), billed_party)
@@ -1783,4 +1775,3 @@ class TestCpoApi(TestCase):
         # Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH
-# Todo: Send Sessions and CDRs to interested parties via HUB
