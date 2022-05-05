@@ -440,7 +440,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     session.stop_kwh = kwh
                     session.update_last_updated()
                     session.calculate_price()
-                    session.save(update_fields=['stop_kwh'])
+                    session.save(update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat'])
                     chargingperiods = session.set_charging_period(serializer.validated_data)
                     session.send_updates(chargingperiods)
 

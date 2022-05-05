@@ -15,10 +15,28 @@ class TokenIdSerializer(fields.CharField):
         return token
 
 
+class StrictTokenIdSerializer(fields.CharField):
+    # Return the Token object or pass through the token ID if it's an ADHOC token
+    def to_internal_value(self, data):
+        token = Token.get_if_exists(uid=data)
+        if not token:
+            raise ValidationError(f'Token with UID {data} not found')
+        return token
+
+
 class SessionIdSerializer(fields.CharField):
     # Return the Session object or pass through the session ID if unknown
     def to_internal_value(self, data):
         session = Session.get_if_exists(uid=data) or data
+        return session
+
+
+class StrictSessionIdSerializer(fields.CharField):
+    # Return the Session object or pass through the session ID if unknown
+    def to_internal_value(self, data):
+        session = Session.get_if_exists(uid=data)
+        if not session:
+            raise ValidationError(f'Session with UID {data} not found')
         return session
 
 
@@ -59,12 +77,12 @@ class StartChargingSerializer(serializers.Serializer):
 
 
 class StopChargingSerializer(serializers.Serializer):
-    token_id = TokenIdSerializer(
+    token_id = StrictTokenIdSerializer(
         required=False,
         source='token',
         help_text='The hidden ID of the RFID token, separate from the visual one'
     )
-    session_id = SessionIdSerializer(
+    session_id = StrictSessionIdSerializer(
         required=False,
         source='session',
         help_text='The session_id provided by ...'

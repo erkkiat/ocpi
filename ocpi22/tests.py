@@ -4,7 +4,7 @@ import os
 import logging
 import uuid
 from collections import OrderedDict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from datetime import timedelta, datetime
 from unittest.mock import Mock, patch
@@ -81,6 +81,20 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpiconnector.settings'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.ocpi_identities'))
     return tests
+
+
+@dataclass(eq=True, frozen=True)
+class FakeResponse:
+    status_code: int
+    data: dict
+    reason: str = field(default='Mocked response')
+
+    def json(self):
+        return self.data
+
+    @property
+    def text(self):
+        return self.data
 
 
 def load_example(filename: str) -> dict:
@@ -1474,7 +1488,7 @@ class TestCpoApi(TestCase):
            side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_rfid_charging_flow(self,
-                                ocpi_post_mock: Mock,
+                                _ocpi_post_mock: Mock,
                                 _generate_session_uid_mock: Mock,
                                 _get_parameter_mock: Mock,
                                 send_updates_mock: Mock):
@@ -1532,6 +1546,7 @@ class TestCpoApi(TestCase):
                               'party_id': 'CPO',
                               'start_date_time': '2000-01-01T12:00:00Z',
                               'status': 'ACTIVE',
+                              'total_cost': OrderedDict([('excl_vat', 1.73), ('incl_vat', 2.14)]),
                               'uid': 'MY-SESSION'},
                 expected_update_data={'charging_periods': [OrderedDict(
                     [('start_date_time', '2000-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
@@ -1577,6 +1592,7 @@ class TestCpoApi(TestCase):
                               'party_id': 'CPO',
                               'start_date_time': '2000-01-01T12:00:00Z',
                               'status': 'ACTIVE',
+                              'total_cost': OrderedDict([('excl_vat', 16.73), ('incl_vat', 20.74)]),
                               'uid': 'MY-SESSION'},
                 evse_status='CHARGING'
             ),
@@ -1591,7 +1607,7 @@ class TestCpoApi(TestCase):
         )
 
         for case in testcases:
-            cpo_response = self.meter_values(case.get('request'))
+            cpo_response = meter_values(case.get('request'))
             # ic(cpo_response, cpo_response.data)
 
             args, kwargs = send_updates_mock.call_args
@@ -1616,6 +1632,8 @@ class TestCpoApi(TestCase):
             expected_session_data = case.get('session_data')
             if expected_session_data:
                 session = Session.objects.get(uid=cpo_request.data.get('session_id'))
+                self.assertTrue(session.total_cost_excl_vat and session.total_cost_incl_vat,
+                                'meter_values does not result in an updated price for the session')
                 session_data = SessionSerializer(instance=session).data
                 self.assertDictEqual(session_data, expected_session_data,
                                      'Session data differs')
@@ -1687,7 +1705,7 @@ class TestCpoApi(TestCase):
             evse_id='HELSINKI-3',
             token_id='SOME-ADHOC-TOKEN'
         )
-        cpo_response = self.authorize(data)
+        cpo_response = authorize(data)
         # ic(cpo_response, cpo_response.data)
 
         self.assertEqual(cpo_response.status_code, 200,
@@ -1712,7 +1730,7 @@ class TestCpoApi(TestCase):
             session_id='MY-SESSION',
             connector_id='1',
         )
-        cpo_response = self.start_transaction(data)
+        cpo_response = start_transaction(data)
 
         self.assertDictEqual(
             cpo_response.data,
@@ -1747,7 +1765,7 @@ class TestCpoApi(TestCase):
             _authorize_token.cache_clear()
             authorize_token.cache_clear()
 
-            cpo_response = self.authorize(data)
+            cpo_response = authorize(data)
             self.assertEqual(cpo_response.status_code, 401,
                              'Token should NOT be authorized')
             self.assertDictEqual(cpo_response.data,
@@ -1787,7 +1805,7 @@ class TestCpoApi(TestCase):
             soc=42,
             power=150
         )
-        cpo_response = self.meter_values(data)
+        cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_417_EXPECTATION_FAILED)
 
         #
@@ -1797,7 +1815,7 @@ class TestCpoApi(TestCase):
         session = Session.objects.get(uid='MY-SESSION')
         session.connector.tariff_ids.set([9])
         session.save()
-        response = self.meter_values(data)
+        response = meter_values(data)
         # ic(response, response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertDictEqual(response.data,
@@ -1811,31 +1829,25 @@ class TestCpoApi(TestCase):
                               'total_kwh': 123.45}
                              )
 
-    def meter_values(self, data):
-        cpo_request = api_factory.post(reverse('chargepoint-meter-values'))
-        cpo_request.data = data
-        return ChargePointViewSet().meter_values(cpo_request)
 
-    def start_transaction(self, data):
-        start_url = reverse('chargepoint-start-transaction')
-        start_request = api_factory.post(start_url)
-        start_request.data = data
-        return ChargePointViewSet().start_transaction(start_request)
-
-    def authorize(self, data):
-        authorize_url = reverse('chargepoint-authorize')
-        cpo_request = api_factory.post(authorize_url)
-        cpo_request.data = data
-        return ChargePointViewSet().authorize(cpo_request)
+def meter_values(data):
+    cpo_request = api_factory.post(reverse('chargepoint-meter-values'))
+    cpo_request.data = data
+    return ChargePointViewSet().meter_values(cpo_request)
 
 
-@dataclass(eq=True, frozen=True)
-class FakeResponse:
-    status_code: int
-    data: dict
+def start_transaction(data):
+    start_url = reverse('chargepoint-start-transaction')
+    start_request = api_factory.post(start_url)
+    start_request.data = data
+    return ChargePointViewSet().start_transaction(start_request)
 
-    def json(self):
-        return self.data
+
+def authorize(data):
+    authorize_url = reverse('chargepoint-authorize')
+    cpo_request = api_factory.post(authorize_url)
+    cpo_request.data = data
+    return ChargePointViewSet().authorize(cpo_request)
 
 
 class TestMspApi(TestCase):
@@ -1845,7 +1857,7 @@ class TestMspApi(TestCase):
     accepted_result = {
         "data": {
             "result": "ACCEPTED",
-            "timeout": 90,
+            "timeout": 123,
             "message": [
                 {
                     "language": "EN",
@@ -1870,7 +1882,7 @@ class TestMspApi(TestCase):
             "contract_id": "CONTRACT-123",
             "token_id": "AD-HOC-TOKEN"
         }
-        response = self.start_charging(data)
+        response = start_charging(data)
         # ic(response, response.data)
         self.assertEqual(response.data, self.accepted_result.get('data'),
                          'Response from CPO for START_SESSION differs from expected')
@@ -1898,9 +1910,33 @@ class TestMspApi(TestCase):
                          'START_SESSION Command sent to CPO differs from expected'
                          )
 
-    def start_charging(self, data):
-        request = api_factory.post(reverse('roaming-start-charging'))
-        request.data = data
-        return MspRoamingViewSet().start_charging(request)
+        #
+        # Try bad values for stop_charging()
+        #
+
+        response = stop_charging(dict(token_id=1, session_id=2))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                         'Response with bad parameters is expected to return HTTP 400')
+        #
+        # Stop an existing session
+        #
+
+        response = stop_charging(dict(session_id=12345))
+        self.assertEqual(response.status_code, status.HTTP_200_OK,
+                         'Call is expected to succeed')
+        self.assertEqual(response.data, self.accepted_result.get('data'),
+                         'Response from CPO for STOP_SESSION differs from expected')
+
+
+def start_charging(data):
+    request = api_factory.post(reverse('roaming-start-charging'))
+    request.data = data
+    return MspRoamingViewSet().start_charging(request)
+
+
+def stop_charging(data):
+    request = api_factory.post(reverse('roaming-stop-charging'))
+    request.data = data
+    return MspRoamingViewSet().stop_charging(request)
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH
