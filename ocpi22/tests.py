@@ -1939,4 +1939,40 @@ def stop_charging(data):
     request.data = data
     return MspRoamingViewSet().stop_charging(request)
 
-# Todo: Hub to relay Evse PATCH to everybody as PATCH
+
+class TestMspMap(TestCase):
+    fixtures = ['ocpi22/data/test-database-msp-api.json']
+    maxDiff = None
+
+    expected_map_result = {'geometries': [{'geometry': {"coordinates": [60.0, 30.0], "type": "Point"},
+                                           'properties': {'evses': [{'connectors': [{'power': None,
+                                                                                     'price': '0,50€/kWh',
+                                                                                     'standard': 'TESLA_S'}],
+                                                                     'evse_id': 'FI*TSL*EHELSINKI1',
+                                                                     'status': 'AVAILABLE',
+                                                                     'uid': 'HELSINKI-1'},
+                                                                    {'connectors': [{'power': None,
+                                                                                     'price': '',
+                                                                                     'standard': 'TESLA_S'}],
+                                                                     'evse_id': 'FI*TSL*EHELSINKI2',
+                                                                     'status': 'AVAILABLE',
+                                                                     'uid': 'HELSINKI-2'},
+                                                                    {'connectors': [{'power': None,
+                                                                                     'price': '0,50€/kWh',
+                                                                                     'standard': 'TESLA_S'}],
+                                                                     'evse_id': 'FI*TSL*EHELSINKI3',
+                                                                     'status': 'AVAILABLE',
+                                                                     'uid': 'HELSINKI-3'}],
+                                                          'location': {'address': 'Helsinki 12',
+                                                                       'city': 'Helsinki',
+                                                                       'country': 'FIN',
+                                                                       'name': 'Helsinki Supercharger'}},
+                                           'type': 'Feature'}],
+                           'type': 'GeometryCollection'}
+
+    def test_map(self):
+        response = self.client.get(reverse('map-locations'))
+        self.assertDictEqual(response.data, self.expected_map_result,
+                             'The charge point GeoJSON differs from expected')
+
+# Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)

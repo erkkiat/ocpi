@@ -26,7 +26,6 @@ slack_logging.init()
 class MspRoamingViewSet(viewsets.GenericViewSet):
     """
     """
-    # noinspection PyUnresolvedReferences
     queryset = Token.objects.all()
     lookup_field = 'uid'
 
@@ -175,6 +174,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
             ),
             stop_charging=request.build_absolute_uri(
                 reverse('roaming-stop-charging')
+            ),
+            charge_points=request.build_absolute_uri(
+                reverse('map-locations')
             ),
         )
         return Response(result)

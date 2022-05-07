@@ -42,8 +42,8 @@ class StrictSessionIdSerializer(fields.CharField):
 
 class StartChargingSerializer(serializers.Serializer):
     location_id = serializers.CharField(
-        # source="*",
-        max_length=36
+        max_length=36,
+        help_text='The UID of the location for charging'
     )
     evse_id = serializers.CharField(
         # source='*',

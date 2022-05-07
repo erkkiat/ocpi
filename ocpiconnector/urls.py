@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import path
 from rest_framework.schemas import get_schema_view
 
+from ocpi22.msp.map import MapViewSet
 from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
     RootRouter, ClientInfoViewSet, NoPremiumViewSet
 from ocpi22.commands.commands import CommandsViewSet
@@ -40,6 +41,7 @@ cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
 
 msp_router = MSPRouter()
 msp_router.register(r'roaming', MspRoamingViewSet, basename='roaming')
+msp_router.register(r'map', MapViewSet, basename='map')
 
 root_router = RootRouter()
 

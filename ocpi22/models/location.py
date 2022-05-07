@@ -245,7 +245,9 @@ class Evse(models.Model, ModelUtilMixin):
 
     def connector_list(self):
         # noinspection PyUnresolvedReferences
-        return format_html('<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff()}' for c in self.connectors.all()]))
+        return format_html(
+            '<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff_html()}' for c in self.connectors.all()])
+        )
 
     def get_absolute_url(self):
         try:
@@ -319,6 +321,9 @@ class Connector(models.Model, ModelUtilMixin):
         return f'{int((self.max_electric_power or self.max_voltage * self.max_amperage) / 1000)} kW'
 
     def tariff(self):
+        return ','.join([t.price() for t in self.tariff_ids.all()])
+
+    def tariff_html(self):
         return format_html('<br>'.join([t.link() for t in self.tariff_ids.all()]))
 
     def get_tariffs(self):

@@ -304,7 +304,7 @@ class PriceComponent(models.Model, ModelUtilMixin):
         result = ''
         e: TariffElement = self.tariff_element
         if e.min_duration:
-            result += f' when over {hours_minutes(e.min_duration / 3600)}'
+            result += f' after {hours_minutes(e.min_duration / 3600)}'
         if e.max_duration:
             result += f' until {hours_minutes(e.max_duration / 3600)}'
         return result
