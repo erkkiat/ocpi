@@ -1,4 +1,5 @@
 import uuid
+from collections import Counter
 
 from django.db import models
 from django.db.models.signals import pre_save, post_save
@@ -174,6 +175,14 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
                 ]
             )
         )
+
+    def available(self):
+        standards_available = []
+        for evse in self.evses.filter(status='AVAILABLE'):
+            for connector in evse.connectors.all():
+                standards_available.append(connector.standard)
+        ic(standards_available)
+        return Counter(standards_available)
 
 
 class Evse(models.Model, ModelUtilMixin):

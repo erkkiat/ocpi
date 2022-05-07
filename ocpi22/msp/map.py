@@ -26,6 +26,7 @@ class MapViewSet(viewsets.GenericViewSet):
                         address=location.address,
                         city=location.city,
                         country=location.country,
+                        connectors_available=location.available(),
                     ),
                     evses=[
                         dict(
@@ -33,6 +34,7 @@ class MapViewSet(viewsets.GenericViewSet):
                             evse_id=evse.evse_id,
                             status=evse.status,
                             connectors=[dict(
+                                uid=connector.uid,
                                 standard=connector.standard,
                                 power=connector.max_electric_power,
                                 price=connector.tariff(),
