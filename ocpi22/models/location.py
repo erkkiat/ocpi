@@ -181,7 +181,6 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         for evse in self.evses.filter(status='AVAILABLE'):
             for connector in evse.connectors.all():
                 standards_available.append(connector.standard)
-        ic(standards_available)
         return Counter(standards_available)
 
 

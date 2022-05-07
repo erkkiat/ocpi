@@ -3,7 +3,7 @@ import json
 import os
 import logging
 import uuid
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 from dataclasses import asdict, dataclass, field
 
 from datetime import timedelta, datetime
@@ -1947,29 +1947,33 @@ class TestMspMap(TestCase):
     expected_map_result = {'geometries': [{'geometry': {"coordinates": [60.0, 30.0], "type": "Point"},
                                            'properties': {'evses': [{'connectors': [{'power': None,
                                                                                      'price': '0,50€/kWh',
-                                                                                     'standard': 'TESLA_S'}],
+                                                                                     'standard': 'TESLA_S',
+                                                                                     'uid': '3050'}],
                                                                      'evse_id': 'FI*TSL*EHELSINKI1',
                                                                      'status': 'AVAILABLE',
                                                                      'uid': 'HELSINKI-1'},
                                                                     {'connectors': [{'power': None,
                                                                                      'price': '',
-                                                                                     'standard': 'TESLA_S'}],
+                                                                                     'standard': 'TESLA_S',
+                                                                                     'uid': '1'}],
                                                                      'evse_id': 'FI*TSL*EHELSINKI2',
                                                                      'status': 'AVAILABLE',
                                                                      'uid': 'HELSINKI-2'},
                                                                     {'connectors': [{'power': None,
                                                                                      'price': '0,50€/kWh',
-                                                                                     'standard': 'TESLA_S'}],
+                                                                                     'standard': 'TESLA_S',
+                                                                                     'uid': '1'}],
                                                                      'evse_id': 'FI*TSL*EHELSINKI3',
                                                                      'status': 'AVAILABLE',
                                                                      'uid': 'HELSINKI-3'}],
                                                           'location': {'address': 'Helsinki 12',
                                                                        'city': 'Helsinki',
+                                                                       'connectors_available': Counter({'TESLA_S': 3}),
                                                                        'country': 'FIN',
-                                                                       'name': 'Helsinki Supercharger'}},
+                                                                       'name': 'Helsinki Supercharger',
+                                                                       'uid': 'HELSINKI-1'}},
                                            'type': 'Feature'}],
                            'type': 'GeometryCollection'}
-
     def test_map(self):
         response = self.client.get(reverse('map-locations'))
         self.assertDictEqual(response.data, self.expected_map_result,
