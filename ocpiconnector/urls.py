@@ -14,6 +14,7 @@ from ocpi22.locations.location import LocationViewSet
 from ocpi22.models.credentials import new_connection
 from ocpi22.msp.api import MSPRouter, MspRoamingViewSet
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
+from ocpi22.views import home
 from ocpiconnector import charger_simulator
 from ocpiconnector.ocpi_identities import ocpi_platform
 
@@ -46,6 +47,7 @@ common_router = BaseRouter()
 common_router.register(r'', VersionsViewSet, basename='base')
 
 urlpatterns = [
+    path('', home),
     path('', include(root_router.urls), name='root-view'),
     path('ocpi/cpo/2.2/', include(ocpi_router.urls), name='ocpi-22-root'),
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),

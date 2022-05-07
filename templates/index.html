@@ -1,0 +1,93 @@
+{% extends "rest_framework/base.html" %}
+{% load static %}
+
+
+{% block content %}
+<div class="container">
+    <div class="jumbotron border-grey">
+        <h1>OCPI Developer Central</h1>
+        <p class="lead">
+            Welcome to your speedway to OCPI roaming networks.
+        </p>
+        <hr class="my-4">
+        <p>
+            Here you can test your OCPI 2.2 implementation for interoperability, study the OCPI
+            data structures and quickly connect your charge points and app to OCPI protocol using the OCPI Connector.
+        </p>
+    </div>
+
+    <h2 class="pt-5">The OCPI protocol</h2>
+
+    <div class="row mt-3">
+        <div class="col-sm-12 col-md-4">
+            <img class="logo"
+                 src="https://evroaming.org/app/uploads/2019/10/Member-ocpi-community-beeld-site-2-525x309.png">
+        </div>
+        <div class="col-8">
+            <p class="mt-3">
+                <a href="{% url 'ocpi-22' %}">OCPI 2.2</a> is the starting point for the OCPI modules hierarchy.
+                Here you have interactive access to the OCPI 2.2 endpoints with examples.
+            </p>
+            <p class="py-2">
+                <a class="btn btn-primary btn-lg" href="{% url 'ocpi-22' %}" role="button">
+                    Browse the OCPI implementation
+                </a>
+            </p>
+        </div>
+    </div>
+
+    <hr>
+
+    <h2>The CPO API for quick connectivity</h2>
+
+    <div class="row mt-3">
+        <div class="col-sm-12 col-md-3">
+            <img class="logo" src="{% static 'images/buttons/charge-point.svg' %}">
+        </div>
+        <div class="col-9">
+            CPO API is your cost-effective shortcut to OCPI connectivity.
+            Relay the data in your OCPP messages to the OCPI Connector and prepare to receive remote
+            commands from MSP. It's like a bridge from OCPP to OCPI. You'll be roaming in no time.
+            <p class="py-2">
+                {% if ocpi_platform.is_cpo %}
+                <a class="btn btn-primary btn-lg" href="{% url 'cpo-api' %}" role="button">
+                    Access the API
+                </a>
+                {% else %}
+                <a class="btn btn-primary btn-lg" href="#" role="button">
+                    Read more
+                </a>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <hr>
+
+    <h2>The eMobility Service Provider API for quick connectivity</h2>
+
+    <div class="row mt-3">
+        <div class="col-sm-12 col-md-3">
+            <img class="logo" src="{% static 'images/buttons/token.svg' %}">
+        </div>
+        <div class="col-9">
+            The MSP API is your cost-effective shortcut to OCPI connectivity.
+            Access the charge point data, billing and user information, and
+            start & stop charging sessions.
+            {% if ocpi_platform.is_msp %}
+            <p class="py-3">
+                <a class="btn btn-primary btn-lg" href="{% url 'msp-api' %}" role="button">
+                    Access the API
+                </a>
+            </p>
+            {% else %}
+            <p class="py-3">
+                <a class="btn btn-primary btn-lg" href="#" role="button">
+                    Read more
+                </a>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

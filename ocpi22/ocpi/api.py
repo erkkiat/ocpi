@@ -483,7 +483,7 @@ class RootView(routers.APIRootView):
     def get(request: WSGIRequest, **kwargs):
         result = dict({
             "OCPI 2.2": request.build_absolute_uri(reverse('ocpi-22')),
-            "OpenAPI": request.build_absolute_uri(reverse('openapi-schema')),
+            # "OpenAPI": request.build_absolute_uri(reverse('openapi-schema')),
         })
         if ocpi_platform.is_cpo:
             result.update({"CPO API": request.build_absolute_uri(reverse('cpo-api'))})
@@ -502,10 +502,8 @@ class RootRouter(routers.DefaultRouter):
 
 class OcpiApi22View(routers.APIRootView):
     """
-    This portal provides ways to test OCPI 2.2 interaction, view the information in the database and
-    to read the API documentation.
-
-    You can contact [support@chargerhub.eu](support@chargerhub.eu) for training and consultation.
+    This is the OCPI "endpoints" endpoint. The other party will cache this information to be able to contact
+    the available endpoints to update and mirror data structures.
     """
 
     @staticmethod

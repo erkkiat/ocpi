@@ -5,8 +5,8 @@
 		"../scss/ocpiconnector.scss"
 	],
 	"sourcesContent": [
-		".navbar-brand {\n    padding: 7px 15px;\n    img {\n        display: inline;\n        filter: invert(100%);\n        height: 36px;\n    }\n}"
+		".navbar-brand {\n    padding: 7px 15px;\n    img {\n        display: inline;\n        filter: invert(100%);\n        height: 36px;\n    }\n}\n\n.logo {\n    margin: 20px;\n    width: 80%;\n    max-width: 240px;\n}\n\n.img-md {\n    width: 360px;\n}\n\n.img-sm {\n    width: 180px;\n}\n\n.border-grey {\n    border: 1px solid #aaaaaa;\n}\n\n.py-5 {\n    padding-top: 5em;\n    padding-bottom: 5em;\n}\n\n.px-5 {\n    padding-left: 5em;\n    padding-right: 5em;\n}\n\n.py-3 {\n    padding-top: 3em;\n    padding-bottom: 3em;\n}\n\n.py-2 {\n    padding-top: 2em;\n    padding-bottom: 2em;\n}\n\n.px-3 {\n    padding-left: 3em;\n    padding-right: 3em;\n}\n\n.mt-3 {\n    margin-top: 3em;\n}\n\n.mb-3 {\n    margin-bottom: 3em;\n}\n"
 	],
 	"names": [],
-	"mappings": ";AAAA,AAAA,aAAa,CAAC;EACV,OAAO,EAAE,QAAQ;CAMpB;;;AAPD,AAEI,aAFS,CAET,GAAG,CAAC;EACA,OAAO,EAAE,MAAM;EACf,MAAM,EAAE,YAAY;EACpB,MAAM,EAAE,IAAI;CACf"
+	"mappings": ";AAAA,AAAA,aAAa,CAAC;EACV,OAAO,EAAE,QAAQ;CAMpB;;;AAPD,AAEI,aAFS,CAET,GAAG,CAAC;EACA,OAAO,EAAE,MAAM;EACf,MAAM,EAAE,YAAY;EACpB,MAAM,EAAE,IAAI;CACf;;;AAGL,AAAA,KAAK,CAAC;EACF,MAAM,EAAE,IAAI;EACZ,KAAK,EAAE,GAAG;EACV,SAAS,EAAE,KAAK;CACnB;;;AAED,AAAA,OAAO,CAAC;EACJ,KAAK,EAAE,KAAK;CACf;;;AAED,AAAA,OAAO,CAAC;EACJ,KAAK,EAAE,KAAK;CACf;;;AAED,AAAA,YAAY,CAAC;EACT,MAAM,EAAE,iBAAiB;CAC5B;;;AAED,AAAA,KAAK,CAAC;EACF,WAAW,EAAE,GAAG;EAChB,cAAc,EAAE,GAAG;CACtB;;;AAED,AAAA,KAAK,CAAC;EACF,YAAY,EAAE,GAAG;EACjB,aAAa,EAAE,GAAG;CACrB;;;AAED,AAAA,KAAK,CAAC;EACF,WAAW,EAAE,GAAG;EAChB,cAAc,EAAE,GAAG;CACtB;;;AAED,AAAA,KAAK,CAAC;EACF,WAAW,EAAE,GAAG;EAChB,cAAc,EAAE,GAAG;CACtB;;;AAED,AAAA,KAAK,CAAC;EACF,YAAY,EAAE,GAAG;EACjB,aAAa,EAAE,GAAG;CACrB;;;AAED,AAAA,KAAK,CAAC;EACF,UAAU,EAAE,GAAG;CAClB;;;AAED,AAAA,KAAK,CAAC;EACF,aAAa,EAAE,GAAG;CACrB"
 }

@@ -130,7 +130,7 @@ def get_endpoints_dict(request):
 
 class OCPIBaseView(routers.APIRootView):
     """
-    Welcome to the OCPI Connector Developer Central. You can start exploring the server by clicking the Versions link
+    This is the OCPI root. You can start exploring the hierarchy by clicking the link
     below.
     """
 
@@ -144,9 +144,9 @@ class OCPIBaseView(routers.APIRootView):
             versions=request.build_absolute_uri(
                 reverse('base-versions')
             ),
-            openapi=request.build_absolute_uri(
-                reverse('openapi-schema')
-            ),
+            # openapi=request.build_absolute_uri(
+            #     reverse('openapi-schema')
+            # ),
         )
         return Response(result)
 
@@ -163,4 +163,8 @@ class VersionsViewSet(viewsets.ViewSet):
 
     @action(methods=['GET'], url_path='versions', detail=False)
     def versions(self, request, *_args, **_kwargs):
+        """
+        This is the OCPI "versions" endpoint. A requesting party will use this information
+        for choosing the OCPI version used between us and them.
+        """
         return Response(get_versions_dict(request))
