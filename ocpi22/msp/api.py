@@ -175,6 +175,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
             stop_charging=request.build_absolute_uri(
                 reverse('roaming-stop-charging')
             ),
+            users=request.build_absolute_uri(
+                reverse('user-add')
+            ),
             charge_points=request.build_absolute_uri(
                 reverse('map-locations')
             ),
