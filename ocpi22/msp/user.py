@@ -23,7 +23,7 @@ class CheckPasswordSerializer(serializers.Serializer):
     )
 
 
-class UserSerializer(serializers.ModelSerializer):
+class PatchUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('first_name', 'last_name', 'password')
@@ -43,14 +43,24 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class CreateUserSerializer(UserSerializer):
+class UserSerializer(PatchUserSerializer):
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'password')
+        fields = ('username', 'first_name', 'last_name', 'password', 'detail_url')
 
     username = serializers.EmailField(
         help_text="The user's email address"
     )
+    detail_url = serializers.SerializerMethodField()
+
+    def get_detail_url(self, obj) -> str:
+        """
+        Construct a URL which points to the object instance view
+        :param obj: The object we need the instance view for
+        :return: The URL string to the instance view
+        """
+        request = self.context.get("request")
+        return request.build_absolute_uri(reverse('user-user-data', args=[obj.username]))
 
     def create(self, validated_data):
         raw_password = validated_data.pop('password', None)
@@ -62,14 +72,14 @@ class CreateUserSerializer(UserSerializer):
 
 class UserViewSet(viewsets.GenericViewSet):
     lookup_field = 'username'
-    queryset = User.objects.none()
+    queryset = User.objects.all()
 
     def get_serializer_class(self):
         return dict(
-            add=CreateUserSerializer,
-            user_data=UserSerializer,
+            add=UserSerializer,
+            user_data=PatchUserSerializer,
             check_password=CheckPasswordSerializer,
-        ).get(self.action_map.get('post'), UserSerializer)
+        ).get(self.action_map.get('get'), UserSerializer)
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
@@ -79,11 +89,8 @@ class UserViewSet(viewsets.GenericViewSet):
         return f'Users'
 
     def list(self, request):
-        user = User.objects.all().last()
-        return Response(dict(
-            status_message='Please supply username in URL, for example '
-                           f'{request.build_absolute_uri(reverse("user-user-data", args=[user.username]))}')
-        )
+        serializer = UserSerializer(User.objects.all(), many=True, context={'request': request})
+        return Response(serializer.data)
 
     @action(methods=['POST', 'GET'], detail=False, url_path='create', name='Create')
     def add(self, request):
@@ -91,7 +98,7 @@ class UserViewSet(viewsets.GenericViewSet):
             return Response(dict(status_message='Please see OPTIONS to learn what you can POST at this endpoint'))
 
         # POST
-        serializer = CreateUserSerializer(data=request.data)
+        serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             return Response(dict(data=serializer.data,
@@ -107,9 +114,9 @@ class UserViewSet(viewsets.GenericViewSet):
 
         user = get_object_or_404(User, username=username)
         if request.method == 'GET':
-            serializer = UserSerializer(instance=user)
+            serializer = PatchUserSerializer(instance=user)
         if request.method == 'PATCH':
-            serializer = UserSerializer(data=request.data, instance=user, partial=True)
+            serializer = PatchUserSerializer(data=request.data, instance=user, partial=True)
             if serializer.is_valid():
                 serializer.save()
         return Response(serializer.data, content_type=format)
