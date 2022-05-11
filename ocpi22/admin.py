@@ -3,6 +3,7 @@ import logging
 import requests
 from django.conf import settings
 from django.contrib import admin, messages
+from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils.html import format_html
 from icecream import ic
@@ -33,9 +34,18 @@ class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type',
                      'customer__username', 'customer__first_name', 'customer__last_name']
-    list_display = ['object_owner', 'valid', 'customer', 'uid', 'type', 'visual_number', 'balances', 'last_updated']
+    list_display = ['object_owner', 'valid', 'customer_name', 'uid', 'type', 'visual_number', 'balances',
+                    'last_updated']
     list_display_links = ['uid']
     readonly_fields = ['country_code', 'party_id']
+
+    def customer_name(self, obj) -> str:
+        if not obj.customer:
+            return 'N/A'
+        return format_html(
+            f'<a href="{reverse("admin:auth_user_change", args=[obj.customer.pk])}">'
+            f'{obj.customer.first_name} {obj.customer.last_name}</a>'
+        )
 
     fieldsets = [
         ('Customer', dict(
@@ -547,16 +557,34 @@ class DynamicPriceAdmin(admin.ModelAdmin):
     search_fields = ['dynamic_price_source']
 
 
-@admin.register(Account)
-class AccountAdmin(NestedModelAdmin):
-    class TransactionInline(NestedTabularInline):
-        model = Transaction
+admin.site.unregister(User)
 
-    inlines = [TransactionInline]
-    model = Account
-    ordering = ['customer']
-    search_fields = ['customer__username', 'customer__first_name', 'customer__last_name', 'app_token_id']
 
+@admin.register(User)
+class UserAdmin(NestedModelAdmin):
+    class AccountAdmin(NestedStackedInline):
+        class TransactionInline(NestedTabularInline):
+            model = Transaction
+
+        inlines = [TransactionInline]
+        model = Account
+        ordering = ['customer']
+        search_fields = ('customer__username', 'customer__first_name', 'customer__last_name', 'app_token_id')
+
+    model = User
+    inlines = [AccountAdmin]
+    list_display = ('username', 'first_name', 'last_name', 'balances')
+    search_fields = ('username', 'first_name', 'last_name')
+    fields = ('first_name', 'last_name', 'email', 'is_active')
+
+    def balances(self, obj):
+        if not obj or not obj.accounts.exists():
+            return '-'
+        return format_html(
+            "<br>".join(
+                [f'{account.balance}{account.currency}' for account in obj.accounts.all()]
+            )
+        )
 
 admin.site.register(Token, TokenAdmin)
 admin.site.register(Location, LocationAdmin)

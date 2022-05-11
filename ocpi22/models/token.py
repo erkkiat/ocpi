@@ -147,8 +147,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
             return '-'
         return format_html(", ".join(
             [
-                f'<a href="{reverse("admin:ocpi22_account_change", args=[account.pk])}">'
-                f'{account.balance}{account.currency}</a><br>'
+                f'{account.balance}{account.currency}<br>'
                 for account in self.customer.accounts.all()
             ]
         ))
