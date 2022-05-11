@@ -21,6 +21,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
+from ocpi22.msp.account import Account, Transaction
 from ocpi22.sessions.util import get_active_sessions
 from ocpi22.tokens.util import get_admin_token
 from ocpiconnector.ocpi_identities import ocpi_identities
@@ -30,12 +31,18 @@ ALLOW_ADMIN_DELETE_AND_CHANGE = False
 
 class TokenAdmin(admin.ModelAdmin):
     model = Token
-    search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type']
-    list_display = ['object_owner', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
+    search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type',
+                     'customer__username', 'customer__first_name', 'customer__last_name']
+    list_display = ['object_owner', 'valid', 'customer', 'uid', 'type', 'visual_number', 'balances', 'last_updated']
     list_display_links = ['uid']
     readonly_fields = ['country_code', 'party_id']
 
     fieldsets = [
+        ('Customer', dict(
+            fields=(
+                ('customer',)
+            )
+        )),
         ('Identification', dict(
             fields=(
                 ('country_code', 'party_id'),
@@ -538,6 +545,17 @@ class DynamicPriceAdmin(admin.ModelAdmin):
     list_display = ['dynamic_price_source', 'price', 'start_datetime', 'end_datetime']
     list_filter = ['dynamic_price_source']
     search_fields = ['dynamic_price_source']
+
+
+@admin.register(Account)
+class AccountAdmin(NestedModelAdmin):
+    class TransactionInline(NestedTabularInline):
+        model = Transaction
+
+    inlines = [TransactionInline]
+    model = Account
+    ordering = ['customer']
+    search_fields = ['customer__username', 'customer__first_name', 'customer__last_name', 'app_token_id']
 
 
 admin.site.register(Token, TokenAdmin)

@@ -46,7 +46,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, db_index=True)
 
     # Defines if a Location may be published on an website or app etc.
     # When this is set to false, only tokens identified in the field:
@@ -195,7 +195,7 @@ class Evse(models.Model, ModelUtilMixin):
     # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
     # use the field evse_id for that.
     # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
-    uid = models.CharField(max_length=36, validators=[uid_validator])
+    uid = models.CharField(max_length=36, validators=[uid_validator], db_index=True)
 
     # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
@@ -296,7 +296,7 @@ class Connector(models.Model, ModelUtilMixin):
     class Meta:
         unique_together = [['evse', 'uid']]
 
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, db_index=True)
 
     evse = models.ForeignKey(Evse, on_delete=models.CASCADE, related_name='connectors')
 

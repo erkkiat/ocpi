@@ -45,7 +45,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    uid = models.CharField(max_length=39)
+    uid = models.CharField(max_length=39, db_index=True)
 
     # Start timestamp of the charging session, or in-case of a reservation
     # (before the start of a session) the start of the reservation.

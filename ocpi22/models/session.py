@@ -43,7 +43,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     party_id = models.CharField(max_length=3)
 
     # The unique id that identifies the charging session in the CPO platform.
-    uid = models.CharField(max_length=36)
+    uid = models.CharField(max_length=36, db_index=True)
 
     # The timestamp when the session became ACTIVE in the Charge Point.
     # When the session is still PENDING, this field SHALL be set to the time the Session was

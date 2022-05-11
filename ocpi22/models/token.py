@@ -1,4 +1,6 @@
+from django.contrib.auth.models import User
 from django.db import models
+from django.utils.html import format_html
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum
@@ -38,7 +40,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
     # If this is a APP_USER or AD_HOC_USER Token, it will be a uniquely, by the eMSP, generated ID.
     # This field is named uid instead of id to prevent confusion with: contract_id.
-    uid = models.CharField(max_length=36, unique=True)
+    uid = models.CharField(max_length=36, unique=True, db_index=True)
 
     AD_HOC_USER = 'AD_HOC_USER'
     APP_USER = 'APP_USER'
@@ -121,6 +123,9 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
+    # The customer who owns this token and pays for its use
+    customer = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE, related_name='tokens')
+
     def __str__(self):
         return f'{self.party()}: {self.type} {self.uid}'
 
@@ -130,3 +135,20 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
 
     def get_absolute_url(self):
         return reverse('token-by-id', args=[self.country_code, self.party_id, self.uid])
+
+    def total_balance_float(self) -> float:
+        if self.customer:
+            return sum([account.balance for account in self.customer.accounts.all()])
+        return 0.0
+
+    def balances(self) -> str:
+        # For TokenAdmin list view
+        if not self.customer:
+            return '-'
+        return format_html(", ".join(
+            [
+                f'<a href="{reverse("admin:ocpi22_account_change", args=[account.pk])}">'
+                f'{account.balance}{account.currency}</a><br>'
+                for account in self.customer.accounts.all()
+            ]
+        ))
