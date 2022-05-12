@@ -441,25 +441,40 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     kwh = serializer.validated_data['kwh']
                     soc = serializer.validated_data.get('soc')
                     power = serializer.validated_data.get('power')
-                    session.stop_kwh = kwh
-                    session.update_last_updated()
-                    session.calculate_price()
-                    session.save(update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat'])
-                    chargingperiods = session.set_charging_period(serializer.validated_data)
-                    session.send_updates(chargingperiods)
+                    if session.status == Session.ACTIVE:
+                        session.stop_kwh = kwh
+                        session.update_last_updated()
+                        session.calculate_price()
+                        session.save(update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat'])
+                        chargingperiods = session.set_charging_period(serializer.validated_data)
+                        session.send_updates(chargingperiods)
 
-                    return Response(
-                        dict(
-                            status_text=f'Session updated',
-                            session_id=session.uid,
-                            start_kwh=session.start_kwh,
-                            now_kwh=kwh,
-                            total_kwh=session.kwh,
-                            power=power,
-                            price=session.cost(),
-                            soc=soc,
+                        return Response(
+                            dict(
+                                status_text=f'Session updated',
+                                session_id=session.uid,
+                                start_kwh=session.start_kwh,
+                                now_kwh=kwh,
+                                total_kwh=session.kwh,
+                                power=power,
+                                price=session.cost(),
+                                soc=soc,
+                            )
                         )
-                    )
+                    else:
+                        return Response(
+                            dict(
+                                status_text=f'Updating a finished session is not possible',
+                                session_id=session.uid,
+                                start_kwh=session.start_kwh,
+                                now_kwh=kwh,
+                                total_kwh=session.kwh,
+                                power=power,
+                                price=session.cost(),
+                                soc=soc,
+                            )
+                        )
+
                 else:
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
