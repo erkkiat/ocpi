@@ -6,6 +6,7 @@ from ocpi22.models.cdr import Cdr
 
 
 class Account(models.Model):
+    # Todo: What language does the customer use? Show feedback in that language
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accounts')
     app_token_id = models.CharField(max_length=36, db_index=True)
     currency = models.CharField(max_length=3, default=settings.DEFAULT_CURRENCY)

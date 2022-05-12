@@ -69,6 +69,7 @@ api_factory = APIRequestFactory()
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.ocpi.api'))
     tests.addTests(doctest.DocTestSuite('ocpi22.util'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.choices'))
     tests.addTests(doctest.DocTestSuite('ocpi22.ocpi.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.locations.location'))
     tests.addTests(doctest.DocTestSuite('ocpi22.locations.serializers'))
@@ -1711,11 +1712,14 @@ class TestCpoApi(TestCase):
         self.assertEqual(cpo_response.status_code, 200,
                          'Token should be authorized')
         self.assertDictEqual(cpo_response.data,
-                             {'authorization_method': 'COMMAND',
+                             {'allowed': 'ALLOWED',
+                              'authorization_method': 'COMMAND',
                               'authorization_reference': 'FI*001-AUTH-REFERENCE',
                               'billed_to': 'FI*CPO',
                               'evse_id': 'HELSINKI-3',
-                              'status_text': 'Token authorized for charging',
+                              'display_text': [{'language': 'EN', 'text': 'The token is accepted'},
+                                               {'language': 'FI', 'text': 'Lataustunniste on hyväksytty'}],
+                              'status_text': 'The token is accepted',
                               'token_id': 'SOME-ADHOC-TOKEN',
                               'token_type': 'AD_HOC_USER'}
                              )

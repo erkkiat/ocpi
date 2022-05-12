@@ -12,7 +12,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
-from ocpi22.choices import OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum, get_language
 from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResultSerializer
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
@@ -299,14 +299,18 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     return Response(
                         dict(
-                            status_text=f'Token authorized for charging',
+                            allowed=authorization.allowed,
+                            status_text=get_language('xx', authorization.info) or
+                                        get_language('en', authorization.info) or '',
+                            display_text=authorization.info or '',
                             evse_id=evse.uid,
                             token_id=token.uid,
                             token_type=token.type,
                             billed_to=token.party(),
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
-                        )
+                        ), status=status.HTTP_200_OK if authorization.allowed == Token.ALLOWED
+                        else status.HTTP_401_UNAUTHORIZED
                     )
                 else:
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)

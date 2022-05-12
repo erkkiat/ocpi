@@ -9,7 +9,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import ocpi_post
@@ -50,6 +50,8 @@ def _get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
 
 @dataclass(eq=True, frozen=True)
 class TokenAuthorization:
+    allowed: str
+    info: list
     token_id: str
     token_type: str
     party: Party
@@ -67,6 +69,8 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
         if session:
             # Token is AD HOC
             return TokenAuthorization(
+                allowed='ALLOWED',
+                info=MessageTexts.TOKEN_ACCEPTED,
                 token_id=token,
                 token_type=session.cdr_token_type,
                 party=session.get_party(),
@@ -90,6 +94,8 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
         return None
     if token.whitelist == Token.ALWAYS:
         return TokenAuthorization(
+            allowed='ALLOWED',
+            info=MessageTexts.TOKEN_ACCEPTED,
             token_id=token.uid,
             token_type=Token.RFID,
             party=token.get_party(),
@@ -122,6 +128,8 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
                         f'response: {allowed}. ')
         # raise exception.PermissionDenied("You don't have enough balance on your account.")
     return TokenAuthorization(
+        allowed=allowed,
+        info=authorization.get('info', ''),
         token_id=token.uid,
         token_type=token.type,
         party=token.get_party(),

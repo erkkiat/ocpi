@@ -15,6 +15,8 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
+from ocpi22.choices import MessageTexts
+from ocpi22.logging import log_error
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
     CredentialsSerializer, SessionSerializer, ClientInfoSerializer
 from ocpi22.cpo.api import CHARGER
@@ -98,26 +100,45 @@ class TokenViewSet(mixins.ListModelMixin,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
         ic(request.data, request.get_full_path())
-        token = get_object_or_404(Token, uid=token_uid)
-        # Todo: If the token is not known, the response SHALL contain the status code:
-        #  2004: Unknown Token, and no data field.
+        token = Token.get_if_exists(uid=token_uid)
+        if not token:
+            return OCPIResponse(status_code=Ocpi.ClientError.UNKNOWN_TOKEN,
+                                status=status.HTTP_404_NOT_FOUND,
+                                status_message='Unknown Token')
         allowed = Token.ALLOWED
-        info = ''
+        ocpi_status = 1000
+        http_status = 200
+        info = None
+        status_message = 'OK'
+
         if not token.valid:
             allowed = Token.EXPIRED
-            info = 'Your token is no longer valid'
+            info = MessageTexts.TOKEN_NOT_VALID
+            ocpi_status = 2000
+            http_status = status.HTTP_401_UNAUTHORIZED
+            status_message = 'Token is not valid at the moment'
+
         # Todo: Callback for billing system to check user has enough balance
+
+        if token.total_balance_float() < 1.0:
+            log_error(request, f'Token {token} has no balance')
+            allowed = Token.NO_CREDIT
+            info = MessageTexts.NO_BALANCE
+            ocpi_status = Ocpi.ClientError.GENERIC_CLIENT_ERROR
+            http_status = status.HTTP_401_UNAUTHORIZED
+            status_message = 'Not enough balance on account'
+
         serializer = TokenSerializer(instance=token)
         return OCPIResponse(
             dict(
                 AuthorizationInfo=dict(
                     allowed=allowed,
                     token=serializer.data,
-                    authorization_reference=generate_auth_reference(),
+                    authorization_reference=generate_auth_reference() if allowed == Token.ALLOWED else '',
                     # Todo: Store in billing system
                     info=info
                 )
-            )
+            ), status_code=ocpi_status, status=http_status, status_message=status_message
         )
 
     def get(self, request, country_code=None, party_id=None, uid=None):

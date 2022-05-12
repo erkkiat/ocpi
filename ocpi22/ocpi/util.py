@@ -196,7 +196,7 @@ def ocpi_post(url, token_base64,
     if response.status_code >= 300:
         data = response.json()
         logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {data}')
-        raise ValidationError(data.get("status_message") or f'Unknown error: {data}')
+        # raise ValidationError(data.get("status_message") or f'Unknown error: {data}')
     return response
 
 
@@ -221,7 +221,7 @@ class OCPIResponse(Response):
             http_status = status.HTTP_400_BAD_REQUEST
             logging.error(f'{settings.HOSTNAME}: {status_message}')
         result = format_ocpi_response(status_code, status_message, data)
-        super().__init__(result, status=http_status, *args, **kwargs)
+        super().__init__(result, status=kwargs.pop('status', http_status), *args, **kwargs)
 
 
 class OCPIBadRequestResponse(OCPIResponse):

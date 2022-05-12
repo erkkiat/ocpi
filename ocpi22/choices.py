@@ -155,7 +155,6 @@ class MessageTexts:
     ]
     DEFAULT_CHARGER_ERROR_TEXT = [
         dict(language='EN', text='Unable to start charging at this time'),
-        dict(language='BG', text=''),
         dict(language='FI', text='Lataus ei ole mahdollista tällä hetkellä'),
     ]
     MS_CONNECTION_ERROR = [
@@ -163,6 +162,18 @@ class MessageTexts:
         dict(language='BG', text='Не може да се свърже със системата '
                                  'за управление на точките на зареждане'),
         dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki'),
+    ]
+    NO_BALANCE = [
+        dict(language='EN', text="The token doesn't have enough balance on the account"),
+        dict(language='FI', text='Lataustilillä ei ole riittävästi katetta'),
+    ]
+    TOKEN_ACCEPTED = [
+        dict(language='EN', text='The token is accepted'),
+        dict(language='FI', text='Lataustunniste on hyväksytty'),
+    ]
+    TOKEN_NOT_VALID = [
+        dict(language='EN', text='Your token is no longer valid'),
+        dict(language='FI', text='Lataustunniste ei ole enää voimassa'),
     ]
     _texts = dict(
         START_ACCEPTED=PREPARING_TO_CHARGE,
@@ -173,3 +184,22 @@ class MessageTexts:
     @classmethod
     def get(cls, s, default=None):
         return cls._texts.get(s, default)
+
+
+def get_language(language: str, source: list) -> str:
+    """
+    >>> s = MessageTexts.TOKEN_ACCEPTED
+    >>> get_language('en', s)
+    'The token is accepted'
+    >>> get_language('xy', s)
+    ''
+    >>> get_language('xy', None)
+    ''
+    """
+    if not source or not language:
+        return ''
+    result = [l.get('text') for l in source if l.get('language') == language.upper()]
+    if len(result):
+        return result[0]
+    else:
+        return ''
