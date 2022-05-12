@@ -25,7 +25,7 @@ from ocpi22.models.token import Token
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.sessions.util import get_active_sessions
 from ocpi22.tokens.util import get_admin_token
-from ocpiconnector.ocpi_identities import ocpi_identities
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False
 
@@ -34,8 +34,11 @@ class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type',
                      'customer__username', 'customer__first_name', 'customer__last_name']
-    list_display = ['object_owner', 'valid', 'customer_name', 'uid', 'type', 'visual_number', 'balances',
-                    'last_updated']
+    if ocpi_platform.is_emsp:
+        list_display = ['object_owner', 'valid', 'customer_name', 'uid', 'type', 'visual_number', 'balances',
+                        'last_updated']
+    else:
+        list_display = ['object_owner', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
     list_display_links = ['uid']
     readonly_fields = ['country_code', 'party_id']
 
