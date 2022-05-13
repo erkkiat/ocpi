@@ -254,7 +254,7 @@ class EvseAdmin(NestedModelAdmin):
             for session in active_sessions.all():
                 ic(session)
                 try:
-                    response: Response = send_stop_command(request, session)
+                    response: Response = send_stop_command(session)
                     if response:
                         self.message_user(request, f'Stopping charging at {evse.location}, '
                                                    f'response: {response.status_code} - '

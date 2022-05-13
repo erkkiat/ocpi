@@ -1,6 +1,6 @@
 import logging
 from json import JSONDecodeError
-from typing import Union
+from typing import Union, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
+import ocpi22.util
 from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, MessageTexts
@@ -28,14 +29,13 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
-from ocpi22.tasks import command_start
 from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference
 
 import pprint
 
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, build_absolute_uri
 from ocpi22.logging import log_error
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -120,8 +120,8 @@ class CommandsViewSet(GenericViewSet):
                 try:
                     # Prepare the start command for CPO management system
                     data = dict(
-                        response_url=request.build_absolute_uri(reverse('chargepoint-remote-command-result',
-                                                                        args=(session.authorization_reference,))),
+                        response_url=ocpi22.util.build_absolute_uri(reverse('chargepoint-remote-command-result',
+                                                                            args=(session.authorization_reference,))),
                         token_id=session.cdr_token_uid,
                         token_type=session.cdr_token_type,
                         authorization_reference=session.authorization_reference,
@@ -394,7 +394,10 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
         raise APIException(message)
 
 
-def send_stop_command(request, session: Session) -> Response:
+def send_stop_command(session: Session) -> Optional[Response]:
+    if session.status != session.ACTIVE:
+        return None
+
     country_code = session.location.country_code
     party_id = session.location.party_id
 
@@ -403,7 +406,7 @@ def send_stop_command(request, session: Session) -> Response:
         logging.info(f'*** Sending stop command for {session} to {route.url}.')
         authorization_reference = session.authorization_reference
         data = dict(
-            response_url=request.build_absolute_uri(
+            response_url=build_absolute_uri(
                 reverse('commands-command-result', args=("stop", authorization_reference,))
             ),
             session_id=session.uid
@@ -416,5 +419,5 @@ def send_stop_command(request, session: Session) -> Response:
                          data=serializer.data)
     else:
         message = f"Cannot find a route for STOP_SESSION to {country_code}*{party_id}"
-        log_error(request, message)
+        logging.error(message)
         raise APIException(message)

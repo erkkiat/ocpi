@@ -14,6 +14,7 @@ from requests import Response
 from rest_framework import serializers, status
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.renderers import BrowsableAPIRenderer
+from urllib3.util import Url
 
 from ocpi22.ocpi.util import OCPIResponse
 from ocpiconnector import slack_logging
@@ -112,7 +113,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         request = self.context.get("request")
         if not hasattr(obj, 'get_absolute_url') or not request:
             return ''
-        return f'{request.build_absolute_uri(obj.get_absolute_url())}'
+        return f'{build_absolute_uri(obj.get_absolute_url())}'
 
     def get_url(self, obj) -> str:
         """
@@ -595,3 +596,12 @@ class MyMetadata(SimpleMetadata):
                     dict(return_values=self.get_serializer_info(serializer))
                 )
         return metadata
+
+
+@lru_cache(maxsize=128)
+def build_absolute_uri(path) -> str:
+    """
+    >>> str(build_absolute_uri('my/path'))
+    'http://testserver/my/path'
+    """
+    return str(Url(host=settings.HOSTNAME, path=path, scheme=settings.SCHEME))

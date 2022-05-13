@@ -104,7 +104,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                             return Response(dict(status=f'No active session found for token `{token}`. '
                                                         f'There may not have been a Session update from CPO.'),
                                             status=status.HTTP_404_NOT_FOUND)
-                    response: requests.Response = send_stop_command(request, session)
+                    response: requests.Response = send_stop_command(session)
                     data = response.json()
                     return Response(data.get('data'), status=response.status_code)
                 else:

@@ -1104,7 +1104,7 @@ class TestCredentials(TestCase):
                                     'party_id': 'MSP',
                                     'role': 'EMSP'}],
                          'token': fake_token,
-                         'url': 'http://localhost:8000/ocpi/versions/'}
+                         'url': 'http://testserver/ocpi/versions/'}
 
         json_data = kwargs['json']
         # ic(json_data)
@@ -1142,23 +1142,25 @@ class TestObjectPull(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
     def mocked_object_get(url, *_args, **kwargs):
-        # ic(url, _args, kwargs)
-        # noinspection PyUnresolvedReferences
-        credentials = Credentials.objects.get(pk=2)
-        headers = kwargs['headers']
-        # Let's swap the other token and receive this request as if it comes from outside
-        headers['HTTP_AUTHORIZATION'] = f'Token {credentials.ours_base64()}'
-        result = client.get(url, **headers)
-        json_text = result.content.decode('utf-8')
-        assert 'DOCTYPE' not in json_text, f"URL {url} is returning HTML, when excepting JSON"
-        content = json.loads(json_text)
-        response_headers = dict(result.headers)
-        # ic(url, response_headers)
-        # ic(content)
-        # ic(content, expected_get_responses[url])
-        assert content == expected_get_responses[url], f"Expecting a different result for {url}."
-        assert response_headers == expected_get_headers[url], f"Expecting different headers for {url}."
-        return result
+        try:
+            # ic(url, _args, kwargs)
+            # noinspection PyUnresolvedReferences
+            credentials = Credentials.objects.get(pk=2)
+            headers = kwargs['headers']
+            # Let's swap the other token and receive this request as if it comes from outside
+            headers['HTTP_AUTHORIZATION'] = f'Token {credentials.ours_base64()}'
+            result = client.get(url, **headers)
+            json_text = result.content.decode('utf-8')
+            assert 'DOCTYPE' not in json_text, f"URL {url} is returning HTML, when excepting JSON"
+            content = json.loads(json_text)
+            response_headers = dict(result.headers)
+            assert content == expected_get_responses[url], f"Expecting a different result for {url}."
+            assert response_headers == expected_get_headers[url], f"Expecting different headers for {url}."
+            return result
+        except AssertionError as e:
+            ic(url, response_headers)
+            ic(content, expected_get_responses[url])
+            raise
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpiconnector.management.commands.exchange_credentials.requests.get', side_effect=mocked_object_get)
@@ -1800,7 +1802,7 @@ class TestCpoApi(TestCase):
         # Todo: Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
         #
-        # Try updating meter values without a tariff specified
+        # Try updating meter values for a non-active Session
         #
 
         data = dict(
@@ -1810,7 +1812,22 @@ class TestCpoApi(TestCase):
             power=150
         )
         cpo_response = meter_values(data)
-        self.assertEqual(cpo_response.status_code, status.HTTP_417_EXPECTATION_FAILED)
+        self.assertEqual(cpo_response.status_code, status.HTTP_403_FORBIDDEN)
+
+        #
+        # Try updating meter values without a tariff specified
+        #
+
+        Session.objects.filter(uid='MY-SESSION').update(status=Session.ACTIVE)
+
+        data = dict(
+            session_id='MY-SESSION',
+            kwh=123.45,
+            soc=42,
+            power=150
+        )
+        cpo_response = meter_values(data)
+        self.assertEqual(cpo_response.status_code, status.HTTP_409_CONFLICT)
 
         #
         # Update meter values with a tariff
@@ -1819,8 +1836,8 @@ class TestCpoApi(TestCase):
         session = Session.objects.get(uid='MY-SESSION')
         session.connector.tariff_ids.set([9])
         session.save()
+
         response = meter_values(data)
-        # ic(response, response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertDictEqual(response.data,
                              {'now_kwh': 123.45,

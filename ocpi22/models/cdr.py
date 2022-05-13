@@ -12,8 +12,10 @@ from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.msp.account import check_balance
 from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHOICES
 from ocpi22.ocpi.util import OcpiModule, Ocpi
+from ocpiconnector.ocpi_identities import ocpi_platform
 
 
 class Cdr(models.Model, ModelUtilMixin, OcpiModule):
@@ -255,3 +257,5 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 @receiver(post_save, sender=Session)
 def session_post_save(sender, instance: Session, *_args, **_kwargs):
     Cdr.session_changed(instance)
+    if ocpi_platform.is_emsp:
+        check_balance(instance)

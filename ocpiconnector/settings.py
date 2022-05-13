@@ -44,6 +44,7 @@ MANAGERS = ADMINS
 TIMEOUT_FOR_COMMANDS = 2 * 60
 
 HOSTNAME = os.environ['HOSTNAME']
+SCHEME = os.environ.get('SCHEME', 'https')
 
 OCPI_SPECIFICATION_URL = 'https://github.com/ocpi/ocpi/blob/release-2.2-bugfixes/'
 
