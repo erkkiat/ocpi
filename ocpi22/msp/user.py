@@ -6,6 +6,11 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+from ocpi22.msp.account import Transaction
+from ocpi22.ocpi.serializers import CdrSerializer
+
+options_response = Response(dict(status_message=f'Please see OPTIONS to learn what you can POST at this endpoint'))
+
 
 class Username(serializers.CharField):
     def to_internal_value(self, data):
@@ -70,6 +75,14 @@ class UserSerializer(PatchUserSerializer):
         return user
 
 
+class TransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transaction
+        exclude = ['account']
+
+    cdr = CdrSerializer()
+
+
 class UserViewSet(viewsets.GenericViewSet):
     lookup_field = 'username'
     queryset = User.objects.all()
@@ -95,7 +108,7 @@ class UserViewSet(viewsets.GenericViewSet):
     @action(methods=['POST', 'GET'], detail=False, url_path='create', name='Create')
     def add(self, request):
         if request.method == 'GET':
-            return Response(dict(status_message='Please see OPTIONS to learn what you can POST at this endpoint'))
+            return options_response
 
         # POST
         serializer = UserSerializer(data=request.data)
@@ -110,7 +123,7 @@ class UserViewSet(viewsets.GenericViewSet):
     @action(methods=['GET', 'PATCH'], detail=False, url_path='(?P<username>[a-z0-9.@_]+)')
     def user_data(self, request, username=None, format=None):
         if not username:
-            return Response(dict(status_message=f'Please see OPTIONS to learn what you can POST at this endpoint'))
+            return options_response
 
         user = get_object_or_404(User, username=username)
         if request.method == 'GET':
@@ -124,7 +137,7 @@ class UserViewSet(viewsets.GenericViewSet):
     @action(methods=['POST', 'GET'], detail=False)
     def check_password(self, request):
         if request.method == 'GET':
-            return Response(dict(status_message=f'Please see OPTIONS to learn what you can POST at this endpoint'))
+            return options_response
         serializer = CheckPasswordSerializer(data=request.data)
         if serializer.is_valid():
             user: User = serializer.validated_data['username']
@@ -134,3 +147,15 @@ class UserViewSet(viewsets.GenericViewSet):
             else:
                 return Response(dict(status_message='This password is INVALID for the user'),
                                 status=status.HTTP_401_UNAUTHORIZED)
+
+    @action(methods=['GET'], detail=False, url_path='transactions/(?P<username>[a-z0-9.@_]+)?')
+    def transaction_list(self, _request, username=None):
+        if not username:
+            return options_response
+        user = get_object_or_404(User, username=username)
+        account = user.accounts.all().first()
+        if account:
+            transactions = account.transactions.all()
+            serializer = TransactionSerializer(instance=transactions, many=True)
+            return Response(serializer.data)
+        return Response([])

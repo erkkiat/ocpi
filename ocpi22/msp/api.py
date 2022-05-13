@@ -178,6 +178,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
             users=request.build_absolute_uri(
                 reverse('user-add')
             ),
+            transactions=request.build_absolute_uri(
+                reverse('user-transaction-list')
+            ),
             charge_points=request.build_absolute_uri(
                 reverse('map-locations')
             ),
