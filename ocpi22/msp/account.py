@@ -71,7 +71,7 @@ def check_balance(session: Session):
 def update_balance(cdr) -> None:
     account = get_user_account(cdr.session)
     if account:
-        Transaction.objects.create(account=account, cdr=cdr, delta=cdr.total_cost_incl_vat,
+        Transaction.objects.create(account=account, cdr=cdr, delta=-cdr.total_cost_incl_vat,
                                    balance_after=account.balance - Decimal(cdr.total_cost_incl_vat),
                                    datetime=timezone.now())
     else:
