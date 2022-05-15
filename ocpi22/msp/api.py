@@ -169,20 +169,34 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
         """
 
         result = dict(
-            start_charging=request.build_absolute_uri(
-                reverse('roaming-start-charging')
+            remote_commands_to_cpo=dict(
+                start_charging=request.build_absolute_uri(
+                    reverse('roaming-start-charging')
+                ),
+                stop_charging=request.build_absolute_uri(
+                    reverse('roaming-stop-charging')
+                ),
             ),
-            stop_charging=request.build_absolute_uri(
-                reverse('roaming-stop-charging')
+            users=dict(
+                user_list=request.build_absolute_uri(
+                    reverse('user-list')
+                ),
+                transactions_brief=request.build_absolute_uri(
+                    reverse('user-transaction-list-brief')
+                ),
+                transactions_full=request.build_absolute_uri(
+                    reverse('user-transaction-list-full')
+                ),
             ),
-            users=request.build_absolute_uri(
-                reverse('user-add')
+            billing=dict(
+                cdr_list=request.build_absolute_uri(
+                    reverse('cdr-list')
+                )
             ),
-            transactions=request.build_absolute_uri(
-                reverse('user-transaction-list')
-            ),
-            charge_points=request.build_absolute_uri(
-                reverse('map-locations')
+            navigation=dict(
+                charge_points=request.build_absolute_uri(
+                    reverse('map-locations')
+                ),
             ),
         )
         return Response(result)

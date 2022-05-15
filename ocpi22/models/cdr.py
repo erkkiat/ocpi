@@ -38,6 +38,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             models.UniqueConstraint(fields=['uid', 'party_id'], name='cdr_party_uid'),
             # Todo: models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
+        ordering = ('created',)
 
     # ISO-3166 alpha-2 country code of the CPO that owns this CDR
     country_code = models.CharField(max_length=2)

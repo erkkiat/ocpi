@@ -270,7 +270,7 @@ class Ocpi:
         CLIENTINFO = 'hubclientinfo'
 
     STANDARD_CHOICES = (
-        ('IEC_62196_T2', 'Type 2 "Mennekes"'),
+        ('IEC_62196_T2', 'Type 2'),
         ('IEC_62196_T2_COMBO', 'CCS type 2'),
         ('CHADEMO', 'CHAdeMO'),
         ('IEC_62196_T1', 'IEC 62196 Type 1 "SAE J1772"'),

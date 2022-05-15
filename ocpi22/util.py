@@ -13,6 +13,7 @@ from django.core.validators import RegexValidator
 from requests import Response
 from rest_framework import serializers, status
 from rest_framework.metadata import SimpleMetadata
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
@@ -60,7 +61,7 @@ def hours_minutes(hours_float: float) -> str:
     >>> hours_minutes(2)
     '2h'
     >>> hours_minutes(.5)
-    '30min'
+    '30 minutes'
     >>> hours_minutes(2/3600)
     '2 seconds'
     """
@@ -76,7 +77,7 @@ def hours_minutes(hours_float: float) -> str:
         seconds = int(hours_float * 3600)
         return f'{seconds} seconds'
     else:
-        return f'{minutes}min'
+        return f'{minutes} minutes'
 
 
 def generate_random_token() -> str:
@@ -113,7 +114,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         request = self.context.get("request")
         if not hasattr(obj, 'get_absolute_url') or not request:
             return ''
-        return f'{build_absolute_uri(obj.get_absolute_url())}'
+        return f'{request.build_absolute_uri(obj.get_absolute_url())}'
 
     def get_url(self, obj) -> str:
         """
@@ -605,3 +606,9 @@ def build_absolute_uri(path) -> str:
     'http://testserver/my/path'
     """
     return str(Url(host=settings.HOSTNAME, path=path, scheme=settings.SCHEME))
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 500

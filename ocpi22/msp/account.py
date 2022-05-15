@@ -34,6 +34,8 @@ class Transaction(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transactions')
     cdr = models.ForeignKey("Cdr", blank=True, null=True, on_delete=models.DO_NOTHING)
 
+    # Todo: add field for VAT?
+
     delta = models.DecimalField(max_digits=6, decimal_places=2)
     balance_after = models.DecimalField(max_digits=6, decimal_places=2)
     discount = models.IntegerField(default=0)
@@ -62,10 +64,10 @@ def check_balance(session: Session):
         remaining = account.balance - Decimal(cost)
         print(f'Balance: {account.balance}, cost: {cost}, remaining: {remaining}')
         if remaining < 0.5:
-            print('Balance used, stopping charging')
+            logging.error(f'Account #{account.pk} balance used, stopping session #{session.uid}')
             from ocpi22.commands.commands import send_stop_command
             if not send_stop_command(session):
-                logging.error(f'Unable to stop session {session} with account balance is reaching zero')
+                logging.error(f'Unable to stop session #{session.uid} with account balance reaching zero')
 
 
 def update_balance(cdr) -> None:
