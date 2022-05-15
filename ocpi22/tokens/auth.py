@@ -79,7 +79,7 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
             )
 
     # Not AD HOC, so Token should be found from database
-    return _authorize_token(token)
+    return _authorize_token(token, location)
 
 
 @ttl_cache(maxsize=1024, ttl=14 * 60)
@@ -114,10 +114,10 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
         token_base64=route.token_base64,
         to=token.get_party(),
         sender=get_our_party(OcpiRolesEnum.CPO),
-        data=dict(LocationReferences=dict(
+        data=dict(
             location_id=location.uid,
             evse_uids=[e.uid for e in location.evses.all()]
-        )) if location else dict()
+        ) if location else dict()
     )
     data = result.json()
     authorization = data.get('data', {}).get('AuthorizationInfo', {})

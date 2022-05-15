@@ -2,7 +2,7 @@ cachetools==5.0.0
 django>=3.2.4,<4
 httplib2==0.20.4
 oauthlib==3.2.0
-pip>=21.1.3
+pip==22.1
 mysqlclient>=2.0,<3.0
 requests-oauthlib==1.3.1
 requests==2.27.1
@@ -10,7 +10,7 @@ tzlocal==4.2
 urllib3==1.26.9
 webencodings==0.5.1
 certifi>=2020.6.20
-whitenoise==6.0.0
+whitenoise==6.1.0
 djangorestframework~=3.13.1
 markdown==3.3.7
 django-filter~=21.1
@@ -19,14 +19,15 @@ python-dateutil==2.8.2
 pyyaml==6.0
 uritemplate==4.1.1
 celery==5.2.6
-redis==4.2.2
+redis==4.3.1
 gunicorn==20.1.0
 slack-logger>=0.3.1,<1.0
 colorama~=0.4.4
 django-nested-admin==3.4.0
 cronitor==4.4.4
 nordpool==0.3.2
-time_machine==2.6.0
+time_machine==2.7.0
 django-multiselectfield==0.1.12
 moesifdjango==2.0.5
 geojson==2.5.0
+twilio==7.9.0

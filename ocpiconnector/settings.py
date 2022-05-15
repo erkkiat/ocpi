@@ -25,6 +25,7 @@ if not SECRET_KEY and DEBUG:
 assert SECRET_KEY, 'Please set a SECRET_KEY in environment'
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
 REDIS_URL = os.environ.get('REDIS_URL', os.environ.get('REDISCLOUD_URL'))
+TWILIO_API_KEY = os.environ.get('TWILIO_API_KEY')
 
 # Send updates to partners who we have Credentials for
 SEND_UPDATES = _env_bool('SEND_UPDATES', True)

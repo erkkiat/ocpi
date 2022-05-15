@@ -183,6 +183,13 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
                 standards_available.append(connector.standard)
         return Counter(standards_available)
 
+    def get_prices_str(self):
+        results = []
+        for evse in self.evses.all():
+            for connector in evse.connectors.all():
+                results.append(f'{connector.get_standard_display()}: {connector.tariff()}')
+        return ", ".join(results)
+
 
 class Evse(models.Model, ModelUtilMixin):
     class Meta:

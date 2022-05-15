@@ -17,8 +17,9 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 
 from ocpi22.choices import MessageTexts
 from ocpi22.logging import log_error
+from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
-    CredentialsSerializer, SessionSerializer, ClientInfoSerializer
+    CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer
 from ocpi22.cpo.api import CHARGER
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -110,6 +111,20 @@ class TokenViewSet(mixins.ListModelMixin,
         http_status = 200
         info = None
         status_message = 'OK'
+
+        serializer = AuthorizeSerializer(data=request.data)
+        if serializer.is_valid():
+            ic(serializer.validated_data)
+            location: Location = serializer.validated_data.get('location')
+            location_name = f'{location.name} at {location.address}, {location.city}'
+            prices = location.get_prices_str()
+        else:
+            return OCPIResponse(serializer.errors)
+
+        ic(location_name, prices)
+
+        message_user('+358405480238', location_name,
+                     prices, "http://secureautocharge.com/132244/")
 
         if not token.valid:
             allowed = Token.EXPIRED

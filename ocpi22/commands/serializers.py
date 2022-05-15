@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 from rest_framework import serializers
 
-from ocpi22.ocpi.serializers import LocationIdSerializer
+from ocpi22.ocpi.serializers import LocationIdDictSerializer
 from ocpi22.models.token import Token
 from ocpi22.util import SerializerCleanedUp
 
@@ -84,7 +84,7 @@ class UnlockConnectorSerializer(serializers.Serializer):
         help_text='URL that the CommandResult POST should be sent to. '
                   'This URL might contain an unique ID to be able to distinguish between UnlockConnector requests.'
     )
-    location_id = LocationIdSerializer(
+    location_id = LocationIdDictSerializer(
         max_length=36,
         help_text='Location.id of the Location (belonging to the CPO this request is send to) '
                   'of which it is requested to unlock the connector.'

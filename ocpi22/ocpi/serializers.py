@@ -220,7 +220,7 @@ class CredentialsSerializer(serializers.ModelSerializer):
     roles = RolesSerializer(many=True)
 
 
-class LocationIdSerializer(serializers.CharField):
+class LocationIdDictSerializer(serializers.CharField):
     # location_id = serializers.CharField(required=True)
     default_error_messages = default_error_messages
 
@@ -242,7 +242,7 @@ class LocationIdSerializer(serializers.CharField):
         return dict(location=location)
 
 
-class EvseUidSerializer(serializers.Serializer):
+class EvseUidDictSerializer(serializers.Serializer):
     evse_uid = serializers.CharField(required=True)
     default_error_messages = default_error_messages
 
@@ -300,8 +300,8 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     charging_periods = ChargingPeriodSerializer(many=True, source='chargingperiods', required=False)
     cdr_token = CdrTokenSerializer(required=True, source='*')
-    location_id = LocationIdSerializer(source='*')
-    evse_uid = EvseUidSerializer(source='*')
+    location_id = LocationIdDictSerializer(source='*')
+    evse_uid = EvseUidDictSerializer(source='*')
     connector_id = ConnectorIdSerializer(source='*', required=False)
     total_cost = TotalCostSerializer(source='*', required=False)
     start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
@@ -352,3 +352,18 @@ class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
 
     status = ConnectionStatusSerializer(source='*')
     last_updated = LastConnectionSerializer(source='*')
+
+
+class LocationIdSerializer(serializers.Serializer):
+    def to_internal_value(self, data):
+        return Location.get_if_exists(uid=data)
+
+
+class EvseUidSerializer(serializers.Serializer):
+    def to_internal_value(self, data):
+        return Evse.get_if_exists(uid=data)
+
+
+class AuthorizeSerializer(serializers.Serializer):
+    location_id = LocationIdSerializer(source='location')
+    evse_uids = EvseUidSerializer(source='evses', many=True, required=False)
