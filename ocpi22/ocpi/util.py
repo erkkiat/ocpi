@@ -3,7 +3,6 @@ import uuid
 from collections import OrderedDict
 from datetime import datetime
 from functools import lru_cache
-from json import JSONDecodeError
 
 import requests
 from django.conf import settings
@@ -198,7 +197,7 @@ def ocpi_post(url, token_base64,
             data = response.json()
             logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {data}')
             # raise ValidationError(data.get("status_message") or f'Unknown error: {data}')
-        except Exception as e:
+        except (Exception, requests.exceptions.JSONDecodeError) as e:
             logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {e}')
     return response
 
