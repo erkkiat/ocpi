@@ -3,13 +3,13 @@ import uuid
 from collections import OrderedDict
 from datetime import datetime
 from functools import lru_cache
+from json import JSONDecodeError
 
 import requests
 from django.conf import settings
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.module_loading import import_string
-from icecream import ic
 from requests import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -194,9 +194,12 @@ def ocpi_post(url, token_base64,
     response = requests.post(url, *args, **kwargs, json=data,
                              headers=make_headers(token_base64, to, sender))
     if response.status_code >= 300:
-        data = response.json()
-        logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {data}')
-        # raise ValidationError(data.get("status_message") or f'Unknown error: {data}')
+        try:
+            data = response.json()
+            logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {data}')
+            # raise ValidationError(data.get("status_message") or f'Unknown error: {data}')
+        except Exception as e:
+            logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {e}')
     return response
 
 

@@ -121,7 +121,9 @@ class TokenViewSet(mixins.ListModelMixin,
         else:
             return OCPIResponse(serializer.errors)
 
-        user_language = token.language.lower() or 'en'
+        user_language = 'en'
+        if token and hasattr(token, "language"):
+            user_language = token.language.lower()
         ic(user_language)
 
         if not token.valid:
