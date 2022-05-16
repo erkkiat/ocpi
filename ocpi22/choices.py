@@ -186,6 +186,23 @@ class MessageTexts:
         return cls._texts.get(s, default)
 
 
+class UserMessages:
+    approve_charging = dict(
+        en='Please approve charging at "{location}". '
+           'Prices: {price}. Respond "Ok" or click below to start charging, '
+           '"cancel" to decline or "report" if you suspect fraud. '
+           'To approve and see real-time charging status, go to {url}.',
+        bg='Моля, одобрете таксуването на "{location}". '
+           'Цени: {price}. Отговорете "Ok" или щракнете по-долу, за да започнете зареждането, '
+           '"отменете", за да откажете или "докладете", ако подозирате измама. '
+           'За да одобрите и видите състоянието на таксуване в реално време, отидете на {url}.',
+        fi='Ole hyvä ja vahvista lataus latauspisteessä "{location}". '
+           'Hinta: {price}. Vastaa "Ok" tai klikkaa linkkiä, '
+           '"ei" kieltääksesi tai "raportoi", jos epäilet väärinkäytöstä. '
+           'Näet reaaliaikaisen tilanteen osoitteessa {url}.',
+    )
+
+
 def get_language(language: str, source: list) -> str:
     """
     >>> s = MessageTexts.TOKEN_ACCEPTED

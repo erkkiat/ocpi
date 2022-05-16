@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
-from ocpi22.choices import MessageTexts
+from ocpi22.choices import MessageTexts, UserMessages
 from ocpi22.logging import log_error
 from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
@@ -121,17 +121,16 @@ class TokenViewSet(mixins.ListModelMixin,
         else:
             return OCPIResponse(serializer.errors)
 
-        ic(location_name, prices)
-
-        message_user('+358405480238', location_name,
-                     prices, "http://secureautocharge.com/132244/")
+        user_language = token.language.lower() or 'en'
+        ic(user_language)
 
         if not token.valid:
             allowed = Token.EXPIRED
             info = MessageTexts.TOKEN_NOT_VALID
             ocpi_status = 2000
             http_status = status.HTTP_401_UNAUTHORIZED
-            status_message = 'Token is not valid at the moment'
+            status_message = 'Your charging token is not valid at the moment'
+            message_user(status_message, '+358405480238')
 
         # Todo: Callback for billing system to check user has enough balance
 
@@ -141,7 +140,14 @@ class TokenViewSet(mixins.ListModelMixin,
             info = MessageTexts.NO_BALANCE
             ocpi_status = Ocpi.ClientError.GENERIC_CLIENT_ERROR
             http_status = status.HTTP_401_UNAUTHORIZED
-            status_message = 'Not enough balance on account'
+            status_message = "You don't have enough balance on charging account, please deposit some more."
+            message_user(status_message, '+358405480238')
+
+        if allowed == Token.ALLOWED:
+            message = UserMessages.approve_charging.get(user_language)
+            ic(message)
+            message_user(message, '+358405480238', location=location_name,
+                         price=prices, url="http://secureautocharge.com/132244/")
 
         serializer = TokenSerializer(instance=token)
         return OCPIResponse(
