@@ -188,7 +188,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         for evse in self.evses.all():
             for connector in evse.connectors.all():
                 results.append(f'{connector.get_standard_display()}: {connector.tariff()}')
-        return ", ".join(results)
+        return ", ".join(set(results))
 
 
 class Evse(models.Model, ModelUtilMixin):

@@ -101,7 +101,7 @@ class TokenViewSet(mixins.ListModelMixin,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
         ic(request.data, request.get_full_path())
-        token = Token.get_if_exists(uid=token_uid)
+        token: Token = Token.get_if_exists(uid=token_uid)
         if not token:
             return OCPIResponse(status_code=Ocpi.ClientError.UNKNOWN_TOKEN,
                                 status=status.HTTP_404_NOT_FOUND,
@@ -122,9 +122,8 @@ class TokenViewSet(mixins.ListModelMixin,
             return OCPIResponse(serializer.errors)
 
         user_language = 'en'
-        if token and hasattr(token, "language") and token.language:
+        if token.language:
             user_language = token.language.lower()
-        ic(user_language)
 
         if not token.valid:
             allowed = Token.EXPIRED
