@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+from django.utils.html import format_html
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum
@@ -62,7 +63,11 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # when the CPO has not implemented the Sessions module or this CDR is the result of a reservation
     # that never became a charging session, thus no OCPI Session.
     session_id = models.CharField(max_length=36, blank=True, default='')
-    # Todo: Make this a Foreignkey
+
+    def session_url(self):
+        return format_html(
+            f'<a href="{reverse("session-by-id", args=[self.session_id])}">{self.session_id}</a>'
+        )
 
     # Token used to start this charging session, includes all the relevant information to identify the unique token.
     cdr_token_uid = models.CharField(max_length=36)
@@ -185,8 +190,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def create_based_on_session(cls, session: Session):
         # Was there already a CDR created for this Session?
         cdr = cls.objects.filter(session_id=session.uid)
-        # if cdr.exists():
-        #     raise ValidationError(dict(status_text=f'A CDR has already been created for session `{session.uid}`'))
+        if cdr.exists():
+            return cdr.first()
         if session.total_cost_excl_vat is None:
             logging.error(f'{settings.HOSTNAME}: Session {session} has no total cost')
         if not session.end_date_time:
@@ -245,11 +250,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     @classmethod
     def session_changed(cls, instance: Session) -> None:
         if instance.status == Session.COMPLETED and instance.is_ours():
-            existing_cdr = Cdr.get_if_exists(session_id=instance.uid)
-            # ic(existing_cdr)
-            if not existing_cdr:
-                _new_cdr = Cdr.create_based_on_session(instance)
-                # ic(_new_cdr)
+            if not Cdr.objects.filter(session_id=instance.uid).exists():
+                Cdr.create_based_on_session(instance)
 
     def cost(self) -> str:
         return format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)

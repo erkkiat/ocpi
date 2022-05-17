@@ -22,6 +22,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
+from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.routing import find_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tasks import send_ocpi_request
@@ -514,12 +515,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     stop_kwh = serializer.validated_data['stop_kwh']
                     session.stop_kwh = stop_kwh
                     session.status = Session.COMPLETED
-                    session.save(update_fields=['stop_kwh', 'status'])
                     session.calculate_price()
+                    session.save(update_fields=['stop_kwh', 'status', 'total_cost_incl_vat', 'total_cost_excl_vat'])
 
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
-                    from ocpi22.ocpi.serializers import CdrSerializer
                     cdr = Cdr.create_based_on_session(session)
                     cdr.save()
 

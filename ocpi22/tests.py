@@ -754,6 +754,9 @@ class CdrTests(TestCase):
         self.assertEqual(cdr1.tariffs.count(), 1,
                          'Cdr is missing a Tariff')
 
+        # Remove the CDR so that we can generate another one
+        cdr1.delete()
+
         # Remove Tariff from Connector, so that the DefaultTariff would be in use
         connector.tariff_ids.set([])
 
@@ -764,16 +767,6 @@ class CdrTests(TestCase):
                          "Price with VAT doesn't seem right.")
 
         cdr: Cdr = Cdr.create_based_on_session(session)
-
-        # ic(CdrSerializer(cdr).data)
-        #
-        # ic('All tariffs')
-        # for t in Tariff.objects.all():
-        #     ic(t.pk, t.references(), TariffSerializer(t).data)
-        #
-        # ic('CDR tariffs')
-        # for t in cdr.tariffs.all():
-        #     ic(t.pk, t.archived, t.references(), TariffSerializer(t).data)
 
         # Check that Tariffs are archived copies and that they exist
 
@@ -797,9 +790,6 @@ class CommandTests(TestCase):
            side_effect=lambda x: {'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.commands.requests.post')
     def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock):
-        # for t in [11, 12, 13]:
-        #     create_tariff(uid=str(t), country_code='BE', party_id='BEC')
-
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -807,8 +797,6 @@ class CommandTests(TestCase):
         request = api_factory.get(url)
         request.data = {}
         response = viewset.start_session(request)
-        # data = response.data.get('data')
-        # ic(response, response.data)
 
         check_ok_result(self, response)
 
@@ -822,8 +810,6 @@ class CommandTests(TestCase):
         }
         request = api_factory.post(url, **headers)
         request.data = data
-        # noinspection PyUnresolvedReferences
-        # request.credentials = Credentials.objects.get(pk=2)
 
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
@@ -1847,8 +1833,23 @@ class TestCpoApi(TestCase):
                               'soc': 42.0,
                               'start_kwh': 0.0,
                               'status_text': 'Session updated',
-                              'total_kwh': 123.45}
-                             )
+                              'total_kwh': 123.45})
+
+        final_kwh = 130
+        cdr_count_before = Cdr.objects.all().count()
+        response = stop_transaction(dict(session_id='MY-SESSION', stop_kwh=final_kwh))
+        cdr_count_after = Cdr.objects.all().count()
+
+        self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
+
+        session = Session.objects.get(uid='MY-SESSION')
+        self.assertEqual(session.status, Session.COMPLETED, 'Session should be COMPLETED after CPO stop_transaction')
+        self.assertEqual(session.kwh, final_kwh)
+        self.assertEqual(cdr_count_after - cdr_count_before, 1,
+                         'There should be only one new CDR after stopping a session')
+        cdr = Cdr.objects.get(session_id=session.uid)
+        self.assertEqual(cdr.billed_to, session.billed_to)
+        self.assertEqual(cdr.authorization_reference, session.authorization_reference)
 
 
 def meter_values(data):
@@ -1862,6 +1863,13 @@ def start_transaction(data):
     start_request = api_factory.post(start_url)
     start_request.data = data
     return ChargePointViewSet().start_transaction(start_request)
+
+
+def stop_transaction(data):
+    url = reverse('chargepoint-stop-transaction')
+    stop_request = api_factory.post(url)
+    stop_request.data = data
+    return ChargePointViewSet().stop_transaction(stop_request)
 
 
 def authorize(data):
