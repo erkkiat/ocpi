@@ -15,7 +15,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.utils import timezone
 
-from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.models import AnonymousUser, User
 from django.test import TestCase, Client
 
 # Todo: evse_id Regular Expression: [A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30} // [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-
@@ -30,6 +30,7 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
 from ocpi22.msp.api import MspRoamingViewSet
+from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
 from ocpi22.choices import OcpiModuleEnum
@@ -2003,9 +2004,38 @@ class TestMspMap(TestCase):
                                                                        'uid': 'HELSINKI-1'}},
                                            'type': 'Feature'}],
                            'type': 'GeometryCollection'}
+
     def test_map(self):
         response = self.client.get(reverse('map-locations'))
         self.assertDictEqual(response.data, self.expected_map_result,
                              'The charge point GeoJSON differs from expected')
+
+
+class TestMspUserApi(TestCase):
+    fixtures = ['ocpi22/data/test-database-msp-api.json']
+    maxDiff = None
+
+    def _create_user(self, **data):
+        return send_create_user(data)
+
+    def test_create_user(self):
+        userdata = dict(username='erkki.tapola@pohdinto.com', first_name='Erkki',
+                        last_name='Tapola', password='qwerty')
+        response = self._create_user(**userdata)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Creating a user should result in HTTP 201')
+        user = User.objects.get(username=userdata.get('username'))
+        self.assertEqual(user.first_name, userdata.get('first_name'))
+        self.assertEqual(user.accounts.count(), 1, 'There should be one account created per user')
+
+        # Try to create a duplicate user
+        response = self._create_user(**userdata)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
+                         'Creating a duplicate user should result in HTTP 409')
+
+
+def send_create_user(data):
+    request = api_factory.post(reverse('user-add'))
+    request.data = data
+    return UserViewSet().add(request)
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)

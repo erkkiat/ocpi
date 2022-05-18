@@ -1,4 +1,7 @@
+import uuid
+
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from rest_framework import serializers, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -7,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
 from ocpi22.models.cdr import Cdr
-from ocpi22.msp.account import Transaction
+from ocpi22.msp.account import Transaction, Account
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.util import hours_minutes, HyperlinkedModelSerializerCleanedUp, StandardResultsSetPagination
 
@@ -58,21 +61,11 @@ class PatchUserSerializer(serializers.ModelSerializer):
 class UserSerializer(PatchUserSerializer):
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'password', 'detail_url')
+        fields = ('username', 'first_name', 'last_name', 'password')
 
     username = serializers.EmailField(
         help_text="The user's email address"
     )
-    detail_url = serializers.SerializerMethodField()
-
-    def get_detail_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        return request.build_absolute_uri(reverse('user-user-data', args=[obj.username]))
 
     def create(self, validated_data):
         raw_password = validated_data.pop('password', None)
@@ -120,6 +113,10 @@ class BriefTransactionSerializer(serializers.ModelSerializer):
     cdr = BriefCdrSerializer()
 
 
+def generate_app_token_id(_user: User) -> str:
+    return uuid.uuid4().hex[:36]
+
+
 class UserViewSet(viewsets.GenericViewSet):
     lookup_field = 'username'
     queryset = User.objects.all()
@@ -141,8 +138,7 @@ class UserViewSet(viewsets.GenericViewSet):
         return f'Users'
 
     def list(self, request):
-        serializer = UserSerializer(self.paginator.paginate_queryset(User.objects.all(), request),
-                                    many=True, context={'request': request})
+        serializer = UserSerializer(self.paginator.paginate_queryset(User.objects.all(), request), many=True)
         return self.paginator.get_paginated_response(serializer.data)
 
     @action(methods=['POST', 'GET'], detail=False, url_path='create', name='Create')
@@ -151,14 +147,20 @@ class UserViewSet(viewsets.GenericViewSet):
             return options_response
 
         # POST
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            return Response(dict(data=serializer.data,
-                                 detail_url=request.build_absolute_uri(reverse("user-user-data", args=[user.username])))
-                            )
-        else:
-            return Response(errors=serializer.errors)
+        try:
+            serializer = UserSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                data = serializer.data
+                account = Account.objects.create(customer=user, app_token_id=generate_app_token_id(user))
+                data.update(account_currency=account.currency, balance=account.balance,
+                            detail_url=request.build_absolute_uri(reverse("user-user-data", args=[user.username])))
+                return Response(data=data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors)
+        except IntegrityError:
+            return Response(f'The user {serializer.validated_data.get("username")} already exists',
+                            status.HTTP_409_CONFLICT)
 
     @action(methods=['GET', 'PATCH'], detail=False, url_path='(?P<username>[a-z0-9.@_]+)')
     def user_data(self, request, username=None, format=None):
