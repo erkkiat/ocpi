@@ -27,6 +27,7 @@ from django.test import TestCase, Client
 from icecream import ic
 from requests import Response
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
@@ -2007,6 +2008,13 @@ class TestMspMap(TestCase):
                              'The charge point GeoJSON differs from expected')
 
 
+def msp_authorize(loser_token_id):
+    request = api_factory.post(reverse('token-authorize', args=[loser_token_id]))
+    request.data = dict()
+    request.user = get_fake_admin()
+    return TokenViewSet().authorize(request, loser_token_id)
+
+
 class TestMspUserApi(TestCase):
     fixtures = ['ocpi22/data/test-database-msp-api.json']
     maxDiff = None
@@ -2038,11 +2046,28 @@ class TestMspUserApi(TestCase):
                          'Creating a duplicate user should result in HTTP 409')
 
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
-    def test_transactions(self, _mocked_ocpi_post: Mock):
+    def test_cdrs_and_transactions(self, _mocked_ocpi_post: Mock):
         params = dict(username='rich@money.com')
         initial_balance = 70
         self._create_user(**params)
-        user = User.objects.get(**params)
+        user = User.objects.get(username=params.get('username'))
+
+        # Check that account is created automatically and with zero balance
+        self.assertEquals(user.accounts.count(), 1, "A new user doesn't get an account automatically")
+        account = user.accounts.first()
+        self.assertEquals(account.balance, Decimal("0.0"), 'User has some money out of nowhere')
+
+        # Try to authorize charging with no money in account
+        token_id = 'EKI1'
+        Token.objects.filter(uid=token_id).update(customer=user)
+        response = msp_authorize(token_id)
+        # Todo: Test authorize also with Location and Evses
+        self.assertEquals(response.status_code, status.HTTP_401_UNAUTHORIZED,
+                          'Charging should not be authorized if account is empty')
+        self.assertEquals(response.data.get('data').get('AuthorizationInfo').get('allowed'), 'NO_CREDIT',
+                          'Declined authorization should have allowed status "NO_CREDIT"')
+
+        # Deposit some money to new user's account
         account = user.accounts.first()
         account.deposit(initial_balance)
         self.assertEqual(account.balance, initial_balance, 'Account balance differs from expected after a deposit')
@@ -2061,6 +2086,7 @@ class TestMspUserApi(TestCase):
             token_id=token_uid, billed_to='FI*MSP', start_kwh=0.0, stop_kwh=100.0,
             session_status=Session.ACTIVE
         )
+
         self.assertTrue(bool(session))
         session.calculate_price()
         session.save()
@@ -2079,6 +2105,11 @@ class TestMspUserApi(TestCase):
         self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
         self.assertEqual(account.balance, initial_balance - cdr.total_cost_incl_vat,
                          'Account balance differs from expected after a charging session')
+
+        # Try to put a duplicate CDR
+
+        with self.assertRaises(ValidationError):
+            response = put_cdr(CdrMessages.test_transactions_rfid)
 
         #
         # Charge using the mobile app and an APP_TOKEN

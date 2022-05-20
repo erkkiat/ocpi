@@ -101,7 +101,6 @@ class TokenViewSet(mixins.ListModelMixin,
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
-        ic(request.data, request.get_full_path())
         token: Token = Token.get_if_exists(uid=token_uid)
         if not token:
             return OCPIResponse(status_code=Ocpi.ClientError.UNKNOWN_TOKEN,
@@ -113,14 +112,18 @@ class TokenViewSet(mixins.ListModelMixin,
         info = None
         status_message = 'OK'
 
-        serializer = AuthorizeSerializer(data=request.data)
-        if serializer.is_valid():
-            ic(serializer.validated_data)
-            location: Location = serializer.validated_data.get('location')
-            location_name = f'{location.name} at {location.address}, {location.city}'
-            prices = location.get_prices_str()
+        if request.data:
+            serializer = AuthorizeSerializer(data=request.data)
+            if serializer.is_valid():
+                ic(serializer.validated_data)
+                location: Location = serializer.validated_data.get('location')
+                location_name = f'{location.name} at {location.address}, {location.city}'
+                prices = location.get_prices_str()
+            else:
+                return OCPIResponse(serializer.errors)
         else:
-            return OCPIResponse(serializer.errors)
+            location_name = '-'
+            prices = 'not available'
 
         user_language = 'en'
         if token.language:
