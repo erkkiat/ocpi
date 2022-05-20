@@ -45,7 +45,7 @@ msp_router = MSPRouter()
 msp_router.register(r'roaming', MspRoamingViewSet, basename='roaming')
 msp_router.register(r'map', MapViewSet, basename='map')
 msp_router.register(r'user', UserViewSet, basename='user')
-msp_router.register(r'cdr', msp.user.CdrViewSet, basename='cdr')
+msp_router.register(r'cdr', msp.user.CdrViewSet, basename='msp-cdr')
 
 root_router = RootRouter()
 

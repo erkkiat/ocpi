@@ -17,6 +17,7 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 
 from ocpi22.choices import MessageTexts, UserMessages
 from ocpi22.logging import log_error
+from ocpi22.msp.account import update_balance
 from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
     CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer
@@ -267,6 +268,8 @@ class CdrViewSet(mixins.ListModelMixin,
             cdr = serializer.save()
             # cdr.tariffs.set(tariff_list)
             Cdr.send_hub_updates(serializer.data)
+            if ocpi_platform.is_emsp:
+                update_balance(cdr)
             return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED)
         return OCPIResponse(errors=serializer.errors)
 

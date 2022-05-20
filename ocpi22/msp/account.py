@@ -8,6 +8,7 @@ from django.db import models
 from django.utils import timezone
 
 from ocpi22.models.session import Session
+from ocpi22.models.token import Token
 
 
 class Account(models.Model):
@@ -17,14 +18,25 @@ class Account(models.Model):
     currency = models.CharField(max_length=3, default=settings.DEFAULT_CURRENCY)
 
     @property
-    def balance(self) -> float:
+    def balance(self) -> Decimal:
         last_transaction: Transaction = self.transactions.last()
         if last_transaction:
             return last_transaction.balance_after
-        return 0.0
+        return Decimal(0.0)
 
     def __str__(self):
         return f'{self.customer.username} account {self.pk} balance {self.balance}'
+
+    def deposit(self, amount: Decimal, **kwargs) -> Decimal:
+        transaction = Transaction.objects.create(
+            account=self, delta=amount, balance_after=self.balance + amount, datetime=timezone.now(), **kwargs
+        )
+        return transaction.balance_after
+
+    def withdraw(self, amount: Decimal, cdr: "Cdr", pos_reference: str, **kwargs) -> balance:
+        balance = self.deposit(-abs(amount), pos_reference=pos_reference, cdr=cdr, **kwargs)
+        if balance <= 0:
+            logging.error(f'{self} has negative balance')
 
 
 class Transaction(models.Model):
@@ -51,6 +63,10 @@ class Transaction(models.Model):
 def get_user_account(session: Session) -> Optional[Account]:
     if not session:
         return None
+    token = Token.get_if_exists(uid=session.cdr_token_uid)
+    if token:
+        if token.customer:
+            return token.customer.accounts.first()
     return Account.objects.filter(app_token_id=session.cdr_token_uid).first()
 
 
@@ -73,8 +89,8 @@ def check_balance(session: Session):
 def update_balance(cdr) -> None:
     account = get_user_account(cdr.session)
     if account:
-        Transaction.objects.create(account=account, cdr=cdr, delta=-cdr.total_cost_incl_vat,
-                                   balance_after=account.balance - Decimal(cdr.total_cost_incl_vat),
-                                   datetime=timezone.now())
+        # Todo: do the payment callback
+        account.withdraw(Decimal(-cdr.total_cost_incl_vat), cdr=cdr, pos_reference='N/A')
     else:
-        logging.error(f'Unable to create user transaction for CDR {cdr}')
+        logging.error(f'{settings.HOSTNAME}: Unable to create user transaction for CDR #{cdr.uid} - {cdr}: '
+                      f'customer has no account to be found')

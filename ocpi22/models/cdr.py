@@ -267,8 +267,7 @@ def session_post_save(sender, instance: Session, *_args, **_kwargs):
     if ocpi_platform.is_emsp:
         check_balance(instance)
 
-
-@receiver(post_save, sender=Cdr)
-def session_post_save(sender, instance: Session, *_args, **_kwargs):
-    if ocpi_platform.is_emsp:
-        update_balance(instance)
+# @receiver(post_save, sender=Cdr)
+# def cdr_post_save(sender, instance: Cdr, *_args, **_kwargs):
+#     if ocpi_platform.is_emsp:
+#         update_balance(instance)

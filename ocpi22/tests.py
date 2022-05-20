@@ -7,6 +7,7 @@ from collections import OrderedDict, Counter
 from dataclasses import asdict, dataclass, field
 
 from datetime import timedelta, datetime
+from decimal import Decimal
 from unittest.mock import Mock, patch
 
 import pytz
@@ -53,7 +54,7 @@ from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
-    accept_authorization, ExpectedSessionUpdateResults
+    accept_authorization, ExpectedSessionUpdateResults, CdrMessages
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -1788,16 +1789,17 @@ class TestCpoApi(TestCase):
 
         # Todo: Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
-        #
-        # Try updating meter values for a non-active Session
-        #
-
         data = dict(
             session_id='MY-SESSION',
             kwh=123.45,
             soc=42,
             power=150
         )
+
+        #
+        # Try updating meter values for a non-active Session
+        #
+
         cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -1807,12 +1809,6 @@ class TestCpoApi(TestCase):
 
         Session.objects.filter(uid='MY-SESSION').update(status=Session.ACTIVE)
 
-        data = dict(
-            session_id='MY-SESSION',
-            kwh=123.45,
-            soc=42,
-            power=150
-        )
         cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_409_CONFLICT)
 
@@ -2021,7 +2017,16 @@ class TestMspUserApi(TestCase):
     def test_create_user(self):
         userdata = dict(username='erkki.tapola@pohdinto.com', first_name='Erkki',
                         last_name='Tapola', password='qwerty')
+
+        # Create a user successfully
         response = self._create_user(**userdata)
+        self.assertDictEqual(response.data, {'account_currency': 'EUR',
+                                             'balance': 0.0,
+                                             'detail_url': 'http://testserver/api/msp/v1/user/erkki.tapola@pohdinto.com/',
+                                             'first_name': 'Erkki',
+                                             'last_name': 'Tapola',
+                                             'username': 'erkki.tapola@pohdinto.com'},
+                             'Response for creating a user differs from expected')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Creating a user should result in HTTP 201')
         user = User.objects.get(username=userdata.get('username'))
         self.assertEqual(user.first_name, userdata.get('first_name'))
@@ -2032,10 +2037,86 @@ class TestMspUserApi(TestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
                          'Creating a duplicate user should result in HTTP 409')
 
+    @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    def test_transactions(self, _mocked_ocpi_post: Mock):
+        params = dict(username='rich@money.com')
+        initial_balance = 70
+        self._create_user(**params)
+        user = User.objects.get(**params)
+        account = user.accounts.first()
+        account.deposit(initial_balance)
+        self.assertEqual(account.balance, initial_balance, 'Account balance differs from expected after a deposit')
+
+        #
+        # Try an RFID
+        #
+
+        # Create a Session
+        evse = Evse.objects.all()[0]
+        uid = 'test-transactions'
+        token_uid = 'EKI1'
+
+        session = create_session(
+            uid=uid, evse_uid=evse, location_id=evse.location, connector_id=evse.connectors.all().first().uid,
+            token_id=token_uid, billed_to='FI*MSP', start_kwh=0.0, stop_kwh=100.0,
+            session_status=Session.ACTIVE
+        )
+        self.assertTrue(bool(session))
+        session.calculate_price()
+        session.save()
+
+        Token.objects.filter(uid=token_uid).update(customer=user)
+        cdr = Cdr.create_based_on_session(session)
+        serializer = CdrSerializer(instance=cdr)
+        data = serializer.data
+        self.assertEqual([cdr.total_cost_incl_vat, cdr.total_cost_excl_vat], [62.0, 50.0],
+                         'CDR cost seems to be off')
+
+        # Cleanup for next test
+        cdr.delete()
+
+        response = put_cdr(CdrMessages.test_transactions_rfid)
+        self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
+        self.assertEqual(account.balance, initial_balance - cdr.total_cost_incl_vat,
+                         'Account balance differs from expected after a charging session')
+
+        #
+        # Charge using the mobile app and an APP_TOKEN
+        #
+
+        app_token_id = 'APP-TOKEN'
+        account.app_token_id = app_token_id
+        account.save()
+        previous_balance = account.balance
+
+        response = put_cdr(CdrMessages.test_transactions_app_id)
+        cost = Decimal("6.20")
+        self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
+        self.assertEqual(account.balance, previous_balance - cost,
+                         'Account balance differs from expected after a charging session')
+
 
 def send_create_user(data):
     request = api_factory.post(reverse('user-add'))
     request.data = data
     return UserViewSet().add(request)
+
+
+@dataclass
+class FakeUser:
+    username: str
+    is_staff: bool
+    is_superuser: bool
+
+
+def get_fake_admin():
+    return FakeUser('admin', True, True)
+
+
+def put_cdr(data):
+    request = api_factory.post(reverse('cdr-list'))
+    request.data = data
+    request.user = get_fake_admin()
+    return CdrViewSet.put(request)
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)
