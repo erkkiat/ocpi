@@ -4,7 +4,6 @@ from django.conf.locale.en import formats as locale_formats
 
 TRUE_OPTIONS = (1, '1', True, 'True', 'true')
 
-
 def _env_bool(key, default=False) -> bool:
     return bool(os.environ.get(key, default) in TRUE_OPTIONS)
 
@@ -240,6 +239,7 @@ INSTALLED_APPS = (
     'rest_framework',
     'django_filters',
     'nested_admin',
+    'oauth2_provider',
 )
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
@@ -280,10 +280,23 @@ LOGGING = {
     }
 }
 
+# OAuth2
+LOGIN_URL = '/admin/login/'
+
+OAUTH2_PROVIDER = {
+    # this is the list of available scopes
+    'SCOPES': {'read': 'Read scope', 'write': 'Write scope', 'groups': 'Access to your groups'}
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'ocpi22.ocpi.auth.OCPIPermission'
     ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+    ),
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend'
     ],

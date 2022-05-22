@@ -55,6 +55,7 @@ common_router.register(r'', VersionsViewSet, basename='base')
 urlpatterns = [
     path('', home),
     path('', include(root_router.urls), name='root-view'),
+    path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     path('ocpi/cpo/2.2/', include(ocpi_router.urls), name='ocpi-22-root'),
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),
     path('api/msp/v1/', include(msp_router.urls), name='msp-interface'),
