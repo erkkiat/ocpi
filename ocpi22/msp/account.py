@@ -5,16 +5,18 @@ from typing import Optional
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
 from django.utils import timezone
 
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.ocpi.util import generate_token_id
 
 
 class Account(models.Model):
-    # Todo: What language does the customer use? Show feedback in that language
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accounts')
-    app_token_id = models.CharField(max_length=36, db_index=True)
+    app_token_id = models.CharField(max_length=36, db_index=True, blank=True)
     currency = models.CharField(max_length=3, default=settings.DEFAULT_CURRENCY)
 
     @property
@@ -59,6 +61,16 @@ class Transaction(models.Model):
     def __str__(self):
         return f'Transaction {self.delta}{self.account.currency}, balance after: {self.balance_after}{self.account.currency}'
 
+    @property
+    def description(self) -> str:
+        if self.delta > 0:
+            return 'Payment / deposit'
+        cdr = self.cdr
+        if not cdr:
+            return 'No details available'
+        return f'Charged {cdr.total_energy} kWh at ' \
+               f'"{cdr.cdr_location_name}", {cdr.cdr_location_address}, {cdr.cdr_location_city}'
+
 
 def get_user_account(session: Session) -> Optional[Account]:
     if not session:
@@ -94,3 +106,9 @@ def update_balance(cdr) -> None:
     else:
         logging.error(f'{settings.HOSTNAME}: Unable to create user transaction for CDR #{cdr.uid} - {cdr}: '
                       f'customer has no account to be found')
+
+
+@receiver(pre_save, sender=Account)
+def account_pre_save(sender, instance: Account, **_kwargs):
+    if not instance.app_token_id:
+        instance.app_token_id = generate_token_id()

@@ -414,11 +414,19 @@ def get_to_party(headers) -> Party:
     return get_sender_party(headers, 'HTTP_OCPI_TO_COUNTRY_CODE', 'HTTP_OCPI_TO_PARTY_ID')
 
 
-def generate_auth_reference():
+def generate_reference(separator: str) -> str:
     """
-    >>> len(generate_auth_reference()) <= 36
+    >>> len(generate_reference('-')) <= 36
     True
     >>> generate_auth_reference() != generate_auth_reference()
     True
     """
-    return f'{get_our_party(OcpiRolesEnum.EMSP)}-{uuid.uuid4().hex}'[:36]
+    return f'{get_our_party(OcpiRolesEnum.EMSP)}*{separator}{uuid.uuid4().hex}'[:36].upper()
+
+
+def generate_auth_reference():
+    return generate_reference('A*')
+
+
+def generate_token_id():
+    return generate_reference('T*APP*')

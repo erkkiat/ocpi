@@ -1,8 +1,11 @@
 import json
 import logging
+from decimal import Decimal
+
 import requests
 from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
@@ -28,6 +31,8 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
     """
     queryset = Token.objects.all()
     lookup_field = 'uid'
+    permission_classes = [IsAuthenticated]
+    publicly_visible = True  # Don't use the OCPI authentication, just require basic auth or OAuth2
 
     def get_serializer_class(self):
         return dict(
@@ -44,6 +49,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
 
         * `HTTP_200_OK` when the charging session was started successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_402_PAYMENT_REQUIRED` when the user account doesn't have enough balance for charging
         * `HTTP_404_NOT_FOUND` when the Token, Location or EVSE doesn't exist
         * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
         * `HTTP_424_FAILED_DEPENDENCY` when there is no network connection to the charge point
@@ -55,12 +61,16 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = StartChargingSerializer(data=request.data)
                 if serializer.is_valid():
+                    account = request.user.accounts.first()
+                    if account.balance <= Decimal("2.0"):
+                        return Response(dict(
+                            status_message='There is not enough balance in the account to start charging'),
+                            status=status.HTTP_402_PAYMENT_REQUIRED
+                        )
                     evse: Evse = serializer.validated_data['evse']
                     connector_id: str = serializer.validated_data.get('connector_id')
                     contract_id: str = serializer.validated_data.get('contract_id')
-                    token = serializer.validated_data['token']
-                    if not isinstance(token, Token):
-                        token = construct_adhoc_token(token, contract_id)
+                    token = construct_adhoc_token(account.app_token_id, contract_id)
                     response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id)
                     data = response.json()
                     return Response(data.get('data'), status=response.status_code)
@@ -98,7 +108,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     session = serializer.validated_data.get('session')
                     if not session:
-                        token = serializer.validated_data.get('token')
+                        token = request.user.accounts.first().app_token_id
                         session = get_session(token)
                         if not session:
                             return Response(dict(status=f'No active session found for token `{token}`. '
@@ -178,9 +188,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 ),
             ),
             users=dict(
-                user_list=request.build_absolute_uri(
-                    reverse('user-list')
-                ),
+                # user_list=request.build_absolute_uri(
+                #     reverse('user-list')
+                # ),
                 transactions_brief=request.build_absolute_uri(
                     reverse('user-transaction-list-brief')
                 ),
@@ -190,7 +200,7 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
             ),
             billing=dict(
                 cdr_list=request.build_absolute_uri(
-                    reverse('cdr-list')
+                    reverse('msp-cdr-list')
                 )
             ),
             navigation=dict(

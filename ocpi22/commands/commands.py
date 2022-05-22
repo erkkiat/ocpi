@@ -383,7 +383,6 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
             authorization_reference=authorization_reference,  # Todo: Store authorization for verifying CDR
         )
         serializer = StartSessionSerializer(instance=data)
-        # ic(serializer.data)
         return ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
                          to=Party(country_code, party_id),
                          sender=get_our_party(OcpiRolesEnum.EMSP),

@@ -572,11 +572,11 @@ class UserAdmin(NestedModelAdmin):
         inlines = [TransactionInline]
         model = Account
         ordering = ['customer']
-        search_fields = ('customer__username', 'customer__first_name', 'customer__last_name', 'app_token_id')
+        search_fields = ('customer__username', 'customer__first_name', 'customer__last_name')
 
     model = User
     inlines = [AccountAdmin]
-    list_display = ('username', 'first_name', 'last_name', 'balances')
+    list_display = ('username', 'first_name', 'last_name', 'balances', 'app_token_ids')
     search_fields = ('username', 'first_name', 'last_name')
     fields = ('first_name', 'last_name', 'email', 'is_active')
 
@@ -588,6 +588,14 @@ class UserAdmin(NestedModelAdmin):
                 [f'{account.balance}{account.currency}' for account in obj.accounts.all()]
             )
         )
+
+    def app_token_ids(self, obj):
+        return format_html(
+            "<br>".join(
+                [account.app_token_id for account in obj.accounts.all()]
+            )
+        )
+
 
 admin.site.register(Token, TokenAdmin)
 admin.site.register(Location, LocationAdmin)

@@ -31,6 +31,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
+from ocpi22.msp.account import Account
 from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
@@ -1903,21 +1904,27 @@ class TestMspApi(TestCase):
     }
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.commands.commands.generate_auth_reference',
-           return_value='AUTH-REFERENCE'
-           )
+    @patch('ocpi22.commands.commands.generate_auth_reference', return_value='AUTH-REFERENCE')
+    @patch('ocpi22.msp.account.generate_token_id', return_value='AD-HOC-TOKEN')
     @patch('ocpi22.commands.commands.requests.post',
            return_value=FakeResponse(200, accepted_result)
            )
-    def test_app_charging(self, requests_post_mock: Mock, _generate_auth_reference_mock: Mock):
+    def test_app_charging(self,
+                          requests_post_mock: Mock,
+                          _generate_token_id_mock: Mock,
+                          _generate_auth_reference_mock: Mock):
         data = {
             "location_id": "HELSINKI-1",
             "evse_id": "HELSINKI-3",
             "connector_id": "1",
-            "contract_id": "CONTRACT-123",
-            "token_id": "AD-HOC-TOKEN"
+            "contract_id": "CONTRACT-123"
         }
-        response = start_charging(data)
+
+        user = User.objects.create_user('eki')
+        account = Account.objects.create(customer=user)
+        account.deposit(50)
+
+        response = start_charging(data, user)
         # ic(response, response.data)
         self.assertEqual(response.data, self.accepted_result.get('data'),
                          'Response from CPO for START_SESSION differs from expected')
@@ -1963,9 +1970,10 @@ class TestMspApi(TestCase):
                          'Response from CPO for STOP_SESSION differs from expected')
 
 
-def start_charging(data):
+def start_charging(data, user):
     request = api_factory.post(reverse('roaming-start-charging'))
     request.data = data
+    request.user = user
     return MspRoamingViewSet().start_charging(request)
 
 

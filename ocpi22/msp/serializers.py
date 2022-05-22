@@ -59,10 +59,6 @@ class StartChargingSerializer(serializers.Serializer):
         max_length=36,
         help_text='The contract ID for the EV driver who is charging'
     )
-    token_id = TokenIdSerializer(
-        source='token',
-        help_text='The hidden ID of the RFID token, separate from the visual one'
-    )
 
     default_error_messages = default_error_messages
 
@@ -77,23 +73,8 @@ class StartChargingSerializer(serializers.Serializer):
 
 
 class StopChargingSerializer(serializers.Serializer):
-    token_id = StrictTokenIdSerializer(
-        required=False,
-        source='token',
-        help_text='The hidden ID of the RFID token, separate from the visual one'
-    )
     session_id = StrictSessionIdSerializer(
         required=False,
         source='session',
-        help_text='The session_id provided by ...'
+        help_text='The session_id provided by CPO'
     )
-
-    def validate(self, attrs):
-        token = self.initial_data.get('token_id')
-        session = self.initial_data.get('session_id')
-        if not token and not session:
-            raise ValidationError(
-                {api_settings.NON_FIELD_ERRORS_KEY: [f'Either token_id or session_id needs to be specified']}
-            )
-        attrs = super().validate(attrs)
-        return attrs

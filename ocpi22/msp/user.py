@@ -75,12 +75,13 @@ class UserSerializer(PatchUserSerializer):
         return user
 
 
-class TransactionSerializer(serializers.ModelSerializer):
+class TransactionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Transaction
-        exclude = ['account']
+        fields = ('delta', 'balance_after', 'discount', 'description', 'cdr', 'datetime')
 
     cdr = CdrSerializer()
+    datetime = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
 
 
 class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -105,16 +106,13 @@ class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
         return hours_minutes(instance.total_time)
 
 
-class BriefTransactionSerializer(serializers.ModelSerializer):
+class BriefTransactionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Transaction
-        exclude = ['account', 'pos_reference']
+        fields = ('delta', 'balance_after', 'discount', 'description', 'cdr', 'datetime')
 
     cdr = BriefCdrSerializer()
-
-
-def generate_app_token_id(_user: User) -> str:
-    return uuid.uuid4().hex[:36]
+    datetime = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
 
 
 class UserViewSet(viewsets.GenericViewSet):
@@ -137,9 +135,9 @@ class UserViewSet(viewsets.GenericViewSet):
             return f'{self.name.capitalize()}'
         return f'Users'
 
-    def list(self, request):
-        serializer = UserSerializer(self.paginator.paginate_queryset(User.objects.all(), request), many=True)
-        return self.paginator.get_paginated_response(serializer.data)
+    # def list(self, request):
+    #     serializer = UserSerializer(self.paginator.paginate_queryset(User.objects.all(), request), many=True)
+    #     return self.paginator.get_paginated_response(serializer.data)
 
     @action(methods=['POST', 'GET'], detail=False, url_path='create', name='Create')
     def add(self, request):
@@ -152,7 +150,7 @@ class UserViewSet(viewsets.GenericViewSet):
             if serializer.is_valid():
                 user = serializer.save()
                 data = serializer.data
-                account = Account.objects.create(customer=user, app_token_id=generate_app_token_id(user))
+                account = Account.objects.create(customer=user)
                 data.update(account_currency=account.currency, balance=account.balance,
                             detail_url=request.build_absolute_uri(reverse("user-user-data", args=[user.username])))
                 return Response(data=data, status=status.HTTP_201_CREATED)
@@ -177,19 +175,19 @@ class UserViewSet(viewsets.GenericViewSet):
                 serializer.save()
         return Response(serializer.data, content_type=format)
 
-    @action(methods=['POST', 'GET'], detail=False)
-    def check_password(self, request):
-        if request.method == 'GET':
-            return options_response
-        serializer = CheckPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            user: User = serializer.validated_data['username']
-            password = serializer.validated_data['password']
-            if (user.check_password(password)):
-                return Response(dict(status_message='This password is valid for the user'))
-            else:
-                return Response(dict(status_message='This password is INVALID for the user'),
-                                status=status.HTTP_401_UNAUTHORIZED)
+    # @action(methods=['POST', 'GET'], detail=False)
+    # def check_password(self, request):
+    #     if request.method == 'GET':
+    #         return options_response
+    #     serializer = CheckPasswordSerializer(data=request.data)
+    #     if serializer.is_valid():
+    #         user: User = serializer.validated_data['username']
+    #         password = serializer.validated_data['password']
+    #         if (user.check_password(password)):
+    #             return Response(dict(status_message='This password is valid for the user'))
+    #         else:
+    #             return Response(dict(status_message='This password is INVALID for the user'),
+    #                             status=status.HTTP_401_UNAUTHORIZED)
 
     def _build_transaction_list_urls(self, request) -> dict:
         transactions = Transaction.objects.all()
@@ -208,13 +206,11 @@ class UserViewSet(viewsets.GenericViewSet):
             example_full_transaction_list=example2
         )
 
-    def _transaction_list(self, request, serializer, username=None):
+    def _transaction_list(self, request, serializer, user=None):
         """
         Helper method for different types of Transaction lists
         """
-        if not username:
-            return Response(self._build_transaction_list_urls(request))
-        user = get_object_or_404(User, username=username)
+        user = user or request.user
         account = user.accounts.all().first()
         transactions = self.paginator.paginate_queryset(
             account.transactions.all() if account else Transaction.objects.none(), request
@@ -222,19 +218,19 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer = serializer(instance=transactions, many=True)
         return self.paginator.get_paginated_response(serializer.data)
 
-    @action(methods=['GET'], detail=False, url_path='transactions/brief(?:/(?P<username>[a-z0-9.@_+]+))?')
-    def transaction_list_brief(self, request, username=None):
+    @action(methods=['GET'], detail=False, url_path='transactions/brief')
+    def transaction_list_brief(self, request):
         """
         This condensed information is ready to be displayed to the app user
         """
-        return self._transaction_list(request, BriefTransactionSerializer, username)
+        return self._transaction_list(request, BriefTransactionSerializer)
 
-    @action(methods=['GET'], detail=False, url_path='transactions/full(?:/(?P<username>[a-z0-9.@_+]+))?')
-    def transaction_list_full(self, request, username=None):
+    @action(methods=['GET'], detail=False, url_path='transactions/full')
+    def transaction_list_full(self, request):
         """
-        This is the full data of the transactions for the specified user
+        This is the full data of the transactions for the authenticated user
         """
-        return self._transaction_list(request, TransactionSerializer, username)
+        return self._transaction_list(request, TransactionSerializer)
 
 
 class CdrViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin, viewsets.mixins.RetrieveModelMixin):
@@ -242,6 +238,9 @@ class CdrViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin, viewse
     This is the list of Charge Detail Records, which is used by the CPO for billing an MSP for charging sessions.
     You can use it for verifying the bill from the CPO.
     """
+
+    # Todo: Limit access based on privileges set by admin
+
     model = Cdr
     queryset = Cdr.objects.all()
     lookup_field = 'uid'
