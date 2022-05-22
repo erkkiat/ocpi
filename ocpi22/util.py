@@ -548,12 +548,7 @@ class MyCommandResponse:
     response: Response = field(default=None)
 
 
-try:
-    redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
-    redis_store.get('nonexistent-test-key')
-except redis.exceptions.ConnectionError as e:
-    print(f'Please start Redis: {e}')
-    exit(1)
+redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 class RedisStore():
