@@ -2,9 +2,10 @@
 import os
 import sys
 
-from dotenv import load_dotenv
+if not os.environ.get('HOSTNAME'):
+    from dotenv import load_dotenv
 
-load_dotenv()
+    load_dotenv()
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings")
