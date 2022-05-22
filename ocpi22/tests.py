@@ -1903,7 +1903,7 @@ class TestMspApi(TestCase):
         }
     }
 
-    @time_machine.travel(faketime, tick=False)
+    @time_machine.travel(faketime, tick=True)
     @patch('ocpi22.commands.commands.generate_auth_reference', return_value='AUTH-REFERENCE')
     @patch('ocpi22.msp.account.generate_token_id', return_value='AD-HOC-TOKEN')
     @patch('ocpi22.commands.commands.requests.post',
@@ -1922,14 +1922,26 @@ class TestMspApi(TestCase):
 
         user = User.objects.create_user('eki')
         account = Account.objects.create(customer=user)
-        account.deposit(50)
+        new_balance = Decimal("0.80")
+        account.deposit(new_balance)
 
+        # Try charging without enough money
         response = start_charging(data, user)
         # ic(response, response.data)
+        self.assertEqual(response.status_code, status.HTTP_402_PAYMENT_REQUIRED,
+                         'Charging should fail due to insufficient account balance')
+
+        # Ok, more money
+        self.assertEqual(account.balance, new_balance, "First account deposit not working as expected")
+        self.assertEqual(account.transactions.count(), 1, 'There should be one Transaction on Account')
+        account.deposit(Decimal("50") - account.balance)
+        self.assertEqual(account.transactions.count(), 2, 'There should be two Transactions on Account')
+        self.assertEqual(account.balance, Decimal("50"), "Second account deposit not working as expected")
+
+        response = start_charging(data, user)
         self.assertEqual(response.data, self.accepted_result.get('data'),
                          'Response from CPO for START_SESSION differs from expected')
         args, kwargs = requests_post_mock.call_args
-        # ic(args, kwargs)
         self.assertEqual(args, ('http://fakehost/command/START_SESSION',),
                          'URL for CPO Command START_SESSION differs from expected')
         self.assertEqual(kwargs,
