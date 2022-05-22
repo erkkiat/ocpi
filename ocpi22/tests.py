@@ -1849,6 +1849,14 @@ class TestCpoApi(TestCase):
         self.assertEqual(cdr.billed_to, session.billed_to)
         self.assertEqual(cdr.authorization_reference, session.authorization_reference)
 
+        # Try to end the same Session again, should fail
+        response = stop_transaction(dict(session_id='MY-SESSION', stop_kwh=final_kwh))
+        cdr_count_after = Cdr.objects.all().count()
+        self.assertEqual(cdr_count_after - cdr_count_before, 1,
+                         'There should be only one new CDR after trying to stop a session twice')
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
+                         f'A duplicate CPO stop_transaction is expected to fail: {response.data}')
+
 
 def meter_values(data):
     cpo_request = api_factory.post(reverse('chargepoint-meter-values'))

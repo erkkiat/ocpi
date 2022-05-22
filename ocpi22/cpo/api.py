@@ -506,12 +506,16 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         * `HTTP_200_OK` when the session was finished and Charge Detail Record was created successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_404_NOT_FOUND` when the Session doesn't exist
+        * `HTTP_409_CONFLICT` when the Session has already been finished earlier
         """
         try:
             if request.method == 'POST':
                 serializer = StopTransactionSerializer(data=request.data)
                 if serializer.is_valid():
                     session = serializer.validated_data['session']
+                    if session.is_final():
+                        return Response(dict(status_text='Session was completed earlier, cannot stop if twice'),
+                                        status=status.HTTP_409_CONFLICT)
                     stop_kwh = serializer.validated_data['stop_kwh']
                     session.stop_kwh = stop_kwh
                     session.status = Session.COMPLETED
