@@ -234,6 +234,7 @@ INSTALLED_APPS = (
     # 'django.contrib.admindocs',
     'ocpi22',
     'ocpiconnector',
+    'cars',
     'django.contrib.admin',
     'whitenoise',
     'rest_framework',
