@@ -20,8 +20,8 @@ def remove_spacers(s: str) -> str:
 
 
 @ttl_cache(maxsize=1, ttl=86400)  # 24 hours cache
-def get_models() -> list:
-    results = []
+def get_models() -> dict:
+    results = dict()
     response = requests.get('https://raw.githubusercontent.com/chargeprice/open-ev-data/master/data/ev-data.json')
     cars = response.json()
     for car in cars['data']:
@@ -59,12 +59,12 @@ def get_models() -> list:
                 result.connectors.append(connector_choices[c])
 
         name = str(result).lower()
-        result.full_name = remove_spacers(name)  # Cache also the name for search() efficiency
+        result.search_name = remove_spacers(name)  # Cache also the name for search() efficiency
         result.id = replace_spacers(name, '-')
-        results.append(result)
+        results[result.id] = result
     return results
 
 
 def search(substr: str) -> list:
     substr = remove_spacers(substr.lower())
-    return [(i.id, str(i)) for i in get_models() if substr in i.full_name]
+    return [(key, str(value)) for key, value in get_models().items() if substr in value.search_name]
