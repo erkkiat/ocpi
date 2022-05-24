@@ -521,6 +521,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     session.status = Session.COMPLETED
                     session.calculate_price()
                     session.save(update_fields=['stop_kwh', 'status', 'total_cost_incl_vat', 'total_cost_excl_vat'])
+                    session.send_updates()
 
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
