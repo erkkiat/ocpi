@@ -1,9 +1,42 @@
+from dataclasses import dataclass, field
+
 import requests
 from cachetools.func import ttl_cache
-from icecream import ic
+from django.utils.functional import cached_property
 
 
+@dataclass(eq=True, frozen=True)
 class ElectricCar:
+    battery: str
+    energy: str
+    consumption: str
+    range: int
+    dc_charger: str
+    dc_charger_power: int
+    ac_charger: str
+    ac_charger_power: int
+    brand: str
+    model: str
+    variant: str
+    original_json: str
+    connectors: list = field(default_factory=[])
+
+    @cached_property
+    def full_name(self):
+        return self.__str__()
+
+    @cached_property
+    def name(self):
+        return self.full_name.lower()
+
+    @cached_property
+    def search_name(self):
+        return remove_spacers(self.name)  # Cache also the name for search() efficiency
+
+    @cached_property
+    def id(self):
+        return replace_spacers(self.name, '-')
+
     def __str__(self):
         return f'{self.brand} {self.model} {self.variant}'.strip()
 
@@ -25,24 +58,30 @@ def get_models() -> dict:
     response = requests.get('https://raw.githubusercontent.com/chargeprice/open-ev-data/master/data/ev-data.json')
     cars = response.json()
     for car in cars['data']:
-        result = ElectricCar()
-        result.battery = car.get('usable_battery_size', '')
-        result.energy = car.get('energy_consumption')
-        result.consumption = result.energy.get('average_consumption') if result.energy else '0'
+        energy = car.get('energy_consumption', {})
+        consumption = energy.get('average_consumption', 0)
+        battery = car.get('usable_battery_size', 0)
+        dc_charger = car.get('dc_charger', {})
+        ac_charger = car.get('ac_charger', {})
+        car.pop('id', None)
+        car.pop('brand_id', None)
 
-        result.range = int(result.battery / result.consumption * 100)
+        result = ElectricCar(
+            battery=battery,
+            energy=energy,
+            consumption=consumption,
+            range=int(battery / (consumption + 0.001) * 100),
+            dc_charger=dc_charger,
+            dc_charger_power=int(dc_charger.get('max_power', 0)) if dc_charger else 0,
+            ac_charger=ac_charger,
+            ac_charger_power=int(ac_charger.get('max_power', 0)) if ac_charger else 0,
+            brand=car.get('brand', ''),
+            model=car.get('model', ''),
+            variant=car.get('variant', ''),
+            connectors=[],
+            original_json=car,
+        )
 
-        result.dc_charger = car.get('dc_charger')
-        result.dc_charger_power = int(result.dc_charger.get('max_power', '0')) if result.dc_charger else 0
-
-        result.ac_charger = car.get('ac_charger')
-        result.ac_charger_power = result.ac_charger.get('max_power', '0') if result.ac_charger else '0'
-
-        result.brand = car.get('brand', '')
-        result.model = car.get('model', '')
-        result.variant = car.get('variant', '')
-
-        result.connectors = []
         connector_choices = {
             'ccs': 'CC',
             'chademo': 'CD',
@@ -58,10 +97,6 @@ def get_models() -> dict:
             for c in result.ac_charger.get('ports'):
                 result.connectors.append(connector_choices[c])
 
-        result.full_name = str(result)
-        name = result.full_name.lower()
-        result.search_name = remove_spacers(name)  # Cache also the name for search() efficiency
-        result.id = replace_spacers(name, '-')
         results[result.id] = result
     return results
 
