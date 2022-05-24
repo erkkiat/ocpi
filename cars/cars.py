@@ -58,7 +58,8 @@ def get_models() -> dict:
             for c in result.ac_charger.get('ports'):
                 result.connectors.append(connector_choices[c])
 
-        name = str(result).lower()
+        result.full_name = str(result)
+        name = result.full_name.lower()
         result.search_name = remove_spacers(name)  # Cache also the name for search() efficiency
         result.id = replace_spacers(name, '-')
         results[result.id] = result
@@ -67,4 +68,4 @@ def get_models() -> dict:
 
 def search(substr: str) -> list:
     substr = remove_spacers(substr.lower())
-    return [(key, str(value)) for key, value in get_models().items() if substr in value.search_name]
+    return [value for key, value in get_models().items() if substr in value.search_name]

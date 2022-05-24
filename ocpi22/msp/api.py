@@ -207,6 +207,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 charge_points=request.build_absolute_uri(
                     reverse('map-locations')
                 ),
+                car_models=request.build_absolute_uri(
+                    f"{reverse('msp-cars-autocomplete')}?q=model3"
+                ),
             ),
         )
         return Response(result)
