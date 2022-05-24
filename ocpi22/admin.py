@@ -312,6 +312,7 @@ class CapabilityAdmin(admin.ModelAdmin):
 
 class CdrAdmin(admin.ModelAdmin):
     model = Cdr
+    ordering = ('-created',)
     list_display = [
         'object_owner', 'billed_to',
         'start_date_time',  # Todo: Show time in local timezone
