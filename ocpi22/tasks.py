@@ -9,13 +9,15 @@ import requests
 import pprint
 import logging
 
-from celery import exceptions, shared_task
+import sentry_sdk
+from celery import shared_task
 from celery.schedules import crontab
 from django.conf import settings
 from django.http import Http404
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from rest_framework import status
+from sentry_sdk import capture_exception
 
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
@@ -189,6 +191,9 @@ def send_ocpi_request(data, url: str, token_base64: str,
             token_base64, to=to, sender=sender
         )
 
+        # Log the message to Sentry
+        sentry_sdk.set_context(data)
+
         kwargs = dict(url=url, json=data, headers=headers)
         if method == 'put':
             result = requests.put(**kwargs)
@@ -213,17 +218,22 @@ def send_ocpi_request(data, url: str, token_base64: str,
             credentials = Credentials.get_if_exists(pk=credentials_id)
             if credentials:
                 credentials.update_last_connection()
+
+        # Log the response to Sentry
+        sentry_sdk.set_context(result.json())
+
         return dict(
             status_code=result.status_code,
             json=result.json() if result.status_code < 300 else '',
             headers=dict(result.headers) if result.headers else {},
         )
-    except requests.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError as e:
         logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}.")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
             # noinspection PyUnresolvedReferences
             Credentials.objects.filter(pk=credentials_id).update(connection_status='OFFLINE')
+        capture_exception(e)
 
 
 @shared_task(max_retries=2, retry_backoff=2)

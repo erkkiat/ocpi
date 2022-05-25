@@ -1,12 +1,24 @@
 # Django settings for ocpiconnector project.
 import os
+
+import sentry_sdk
 from django.conf.locale.en import formats as locale_formats
+from sentry_sdk.integrations.django import DjangoIntegration
 
 TRUE_OPTIONS = (1, '1', True, 'True', 'true')
+
 
 def _env_bool(key, default=False) -> bool:
     return bool(os.environ.get(key, default) in TRUE_OPTIONS)
 
+
+DEBUG = _env_bool('DEBUG', False)
+
+if not DEBUG:
+    sentry_sdk.init(
+        dsn=os.environ.get('SENTRY_DSN'),
+        integrations=[DjangoIntegration()]
+    )
 
 DATETIME_FORMAT = "%d.%m.%Y %H:%M"
 locale_formats.DATETIME_FORMAT = "D j.n.Y H:i"
@@ -15,7 +27,6 @@ DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 PREMIUM = _env_bool('PREMIUM', False)
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
-DEBUG = _env_bool('DEBUG', False)
 TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get('SECRET_KEY')
