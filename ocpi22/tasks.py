@@ -192,7 +192,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
         )
 
         # Log the message to Sentry
-        sentry_sdk.set_context(data)
+        sentry_sdk.set_context('data', data)
 
         kwargs = dict(url=url, json=data, headers=headers)
         if method == 'put':
@@ -220,7 +220,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
                 credentials.update_last_connection()
 
         # Log the response to Sentry
-        sentry_sdk.set_context(result.json())
+        sentry_sdk.set_context('result', result.json())
 
         return dict(
             status_code=result.status_code,
