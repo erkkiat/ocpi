@@ -25,9 +25,11 @@ def get_token(token_id, ad_hoc_token):
     return CdrToken(**ad_hoc_token)
 
 
-def get_session(token: Union[Token, str]) -> Session:
+def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACTIVE)) -> Session:
     token_id = get_token_id(token)
-    return get_session_by_adhoc_token(token_id, max_age_minutes=365 * 24 * 60)  # Maximum charge time: 1 year :)
+    return get_session_by_adhoc_token(token_id,
+                                      max_age_minutes=365 * 24 * 60,  # Maximum charge time: 1 year :)
+                                      statuses=statuses)
 
 
 def generate_session_uid() -> str:

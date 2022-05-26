@@ -17,7 +17,8 @@ DEBUG = _env_bool('DEBUG', False)
 if not DEBUG:
     sentry_sdk.init(
         dsn=os.environ.get('SENTRY_DSN'),
-        integrations=[DjangoIntegration()]
+        integrations=[DjangoIntegration()],
+        traces_sample_rate=0.2,
     )
 
 DATETIME_FORMAT = "%d.%m.%Y %H:%M"

@@ -26,12 +26,13 @@ def token_post_save(sender, instance: Token, *_args, **_kwargs):
     _get_authorization_from_sessions.cache_clear()
 
 
-def get_session_by_adhoc_token(token_uid: str, max_age_minutes) -> Optional[Session]:
+def get_session_by_adhoc_token(token_uid: str, max_age_minutes,
+                               statuses=(Session.PENDING, Session.ACTIVE)) -> Optional[Session]:
     # ic()
     time_start = timezone.now() - timedelta(minutes=max_age_minutes)
     # ic(token_uid, timespan, timezone.now())
     sessions = Session.objects.filter(
-        Q(cdr_token_uid=token_uid) & Q(status__in=[Session.PENDING, Session.ACTIVE]) & Q(created__gte=time_start)
+        Q(cdr_token_uid=token_uid) & Q(status__in=statuses) & Q(created__gte=time_start)
     ).order_by('-created')
     if sessions.exists():
         session = sessions.first()

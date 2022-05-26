@@ -12,8 +12,10 @@ from rest_framework.reverse import reverse
 from ocpi22.commands.commands import send_start_command, send_stop_command
 from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer
+from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer
+from ocpi22.ocpi.serializers import SessionSerializer
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector import slack_logging
@@ -22,6 +24,7 @@ from pprint import PrettyPrinter
 
 pp = PrettyPrinter(indent=4).pprint
 slack_logging.init()
+
 
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
 
@@ -37,6 +40,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
     def get_serializer_class(self):
         return dict(
             start_charging=StartChargingSerializer,
+            session_status=SessionStatusSerializer,
             stop_charging=StopChargingSerializer,
         ).get(self.action_map.get('post'), StartChargingSerializer)
 
@@ -91,6 +95,39 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             )
 
     @action(methods=('GET', 'POST'), detail=False)
+    def session_status(self, request):
+        """
+        Get the status of the ongoing session for this user. Currently only one session at a time is supported.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the charging session is ongoing and status is available
+        * `HTTP_404_NOT_FOUND` when the Session doesn't exist or status is not yet available
+        """
+        try:
+            if request.method == 'POST':
+                serializer = SessionStatusSerializer(data=request.data)
+                if serializer.is_valid():
+                    session = serializer.validated_data.get('session')
+                    if not session:
+                        token = request.user.accounts.first().app_token_id
+                        session = get_session(token, (Session.PENDING, Session.ACTIVE, Session.COMPLETED))
+                        if not session:
+                            return Response(dict(status=f'No session found for token `{token}`. '
+                                                        f'There may not have been a Session update from CPO.'),
+                                            status=status.HTTP_404_NOT_FOUND)
+                    return Response(SessionSerializer(instance=session).data)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # method == GET
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_404_NOT_FOUND)
+
+    @action(methods=('GET', 'POST'), detail=False)
     def stop_charging(self, request):
         """
         This call stops the charging transaction.
@@ -132,11 +169,6 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY
             )
-
-    # def get_extra_metadata(self, request):
-    #     return dict(
-    #         start_charging={'return_values': CommandResult.get_fields()},
-    #     ).get(self.action_map.get('post'), dict())
 
     def get_return_values_serializer(self):
         return dict(
@@ -183,14 +215,14 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 start_charging=request.build_absolute_uri(
                     reverse('roaming-start-charging')
                 ),
+                session_status=request.build_absolute_uri(
+                    reverse('roaming-session-status')
+                ),
                 stop_charging=request.build_absolute_uri(
                     reverse('roaming-stop-charging')
                 ),
             ),
             users=dict(
-                # user_list=request.build_absolute_uri(
-                #     reverse('user-list')
-                # ),
                 transactions_brief=request.build_absolute_uri(
                     reverse('user-transaction-list-brief')
                 ),

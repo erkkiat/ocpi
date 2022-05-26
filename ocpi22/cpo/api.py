@@ -359,6 +359,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     token = serializer.validated_data['token']
                     start_kwh = serializer.validated_data['start_kwh']
 
+                    # Todo: Add a field Session.internal_reference and don't touch the Session.uid after creation
+                    #       Send PENDING and INVALID Sessions to MSP (may help to debug)
+
                     if Session.objects.filter(uid=session_id).exists():
                         return Response(
                             dict(
