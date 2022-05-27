@@ -201,7 +201,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-if 'MOESIF_API_KEY' in os.environ:
+if 'MOESIF_APPLICATION_ID' in os.environ:
     MIDDLEWARE.append('moesifdjango.middleware.moesif_middleware')
 
 if os.environ.get('DEBUG_MIDDLEWARE') in TRUE_OPTIONS:
@@ -335,7 +335,7 @@ def identifyUser(req, res):
 
 
 MOESIF_MIDDLEWARE = {
-    'APPLICATION_ID': os.environ.get('MOESIF_API_KEY'),
+    'APPLICATION_ID': os.environ.get('MOESIF_APPLICATION_ID'),
     'CAPTURE_OUTGOING_REQUESTS': True,  # Set to True to also capture outgoing calls to 3rd parties.
     'IDENTIFY_USER': identifyUser  # Optional hook to link API calls to users
 }
