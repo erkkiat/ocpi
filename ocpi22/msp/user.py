@@ -41,12 +41,14 @@ class ProfileSerializer(serializers.ModelSerializer):
         help_text="The password to be set for this user"
     )
 
-    telephone = serializers.CharField(source="profile.phone", max_length=PHONE_FIELD_LENGTH, required=False)
-    vehicle = serializers.CharField(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH, required=False)
+    telephone = serializers.CharField(source="profile.phone", max_length=PHONE_FIELD_LENGTH,
+                                      required=False, allow_blank=True)
+    vehicle = serializers.CharField(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH,
+                                    required=False, allow_blank=True)
 
     def update(self, user, validated_data):
         raw_password = validated_data.pop('password', None)
-        profile_data = validated_data.pop('profile')
+        profile_data = validated_data.pop('profile', None)
 
         for key, value in validated_data.items():
             setattr(user, key, value)
@@ -54,10 +56,11 @@ class ProfileSerializer(serializers.ModelSerializer):
             user.set_password(raw_password)
         user.save()
 
-        profile = user.profile
-        for key, value in profile_data.items():
-            setattr(profile, key, value)
-        profile.save()
+        if profile_data:
+            profile = user.profile
+            for key, value in profile_data.items():
+                setattr(profile, key, value)
+            profile.save()
 
         return user
 
