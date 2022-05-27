@@ -60,6 +60,8 @@ SCHEME = os.environ.get('SCHEME', 'https')
 
 OCPI_SPECIFICATION_URL = 'https://github.com/ocpi/ocpi/blob/release-2.2-bugfixes/'
 
+PUBLIC_VIEWS = ['user-register']
+
 
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split('://')

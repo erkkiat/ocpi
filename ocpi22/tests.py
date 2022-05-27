@@ -2051,18 +2051,22 @@ class TestMspUserApi(TestCase):
         return send_create_user(data)
 
     def test_create_user(self):
-        userdata = dict(email='erkki.tapola@pohdinto.com', first_name='Erkki',
-                        last_name='Tapola', password='qwerty')
+        userdata = dict(email='erkki.tapola@pohdinto.com', firstname='Erkki',
+                        lastname='Tapola', telephone='+1234567890123456789',
+                        vehicle='tesla-model-s-long-range-(raven)', password='qwerty')
+
+        # Make sure the user doesn't already exist
+        self.assertFalse(User.objects.filter(email=userdata.get('email')).count())
 
         # Create a user successfully
         response = self._create_user(**userdata)
-        self.assertDictEqual(response.data, {'first_name': 'Erkki',
-                                             'last_name': 'Tapola',
-                                             'email': 'erkki.tapola@pohdinto.com'},
+        expected_response_data = userdata
+        expected_response_data.pop('password')
+        self.assertDictEqual(response.data, expected_response_data,
                              'Response for creating a user differs from expected')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Creating a user should result in HTTP 201')
         user = User.objects.get(username=userdata.get('email'))  # Username should equal email address
-        self.assertEqual(user.first_name, userdata.get('first_name'))
+        self.assertEqual(user.first_name, userdata.get('firstname'))
         self.assertEqual(user.accounts.count(), 1, 'There should be one account created per user')
 
         # Try to create a duplicate user
@@ -2153,9 +2157,9 @@ class TestMspUserApi(TestCase):
 
 
 def send_create_user(data):
-    request = api_factory.post(reverse('user-add'))
+    request = api_factory.post(reverse('user-register'))
     request.data = data
-    return UserViewSet().add(request)
+    return UserViewSet().register(request)
 
 
 @dataclass

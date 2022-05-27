@@ -1,11 +1,14 @@
 import base64
 import binascii
 
+from cachetools import cached
+from django.utils.functional import cached_property
 from rest_framework import exceptions
 from rest_framework.permissions import DjangoModelPermissions
 from rest_framework.reverse import reverse
 
 from ocpi22.models.credentials import Credentials
+from ocpiconnector.settings import PUBLIC_VIEWS
 
 
 class OcpiAuthTypes:
@@ -15,12 +18,15 @@ class OcpiAuthTypes:
 
 
 def check_auth_token(request, token: str) -> bool:
+    @cached
+    def allowed_for_token_a():
+        return (
+            reverse('base-versions'),  # The "Versions" endpoint
+            reverse('credentials-list'),  # Getting the Credentials
+            reverse('ocpi-22')  # The "Endpoints" endpoint
+        )
+
     # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
-    allowed_for_token_a = (
-        reverse('base-versions'),  # The "Versions" endpoint
-        reverse('credentials-list'),  # Getting the Credentials
-        reverse('ocpi-22')  # The "Endpoints" endpoint
-    )
     try:
         token_ascii = base64.b64decode(token).decode('ascii')
         request.ocpi_auth = OcpiAuthTypes.NONE
@@ -29,7 +35,7 @@ def check_auth_token(request, token: str) -> bool:
         # noinspection PyUnresolvedReferences
         credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
         if credentials_matches.count():
-            if request.path not in allowed_for_token_a:
+            if request.path not in allowed_for_token_a():
                 raise exceptions.NotAuthenticated(  # HTTP 401
                     f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
                 )
@@ -76,15 +82,22 @@ class OCPIPermission(DjangoModelPermissions):
             return authorization.replace('Token ', '')
         return ''
 
+    @cached_property
+    def public_views(self):
+        return [reverse(i) for i in PUBLIC_VIEWS]
+
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
         # Remove the "Token" keyword if present to get just the token value
         token = self.get_token(request)
         # Check for token authentication, secondarily basic auth
-        if check_auth_token(request, token):
+        if token and check_auth_token(request, token):
             return True
         if view and (hasattr(view, 'publicly_visible') or
                      super().has_permission(request, view)):
+            return True
+
+        if request.path in self.public_views:
             return True
 
         raise exceptions.NotAuthenticated

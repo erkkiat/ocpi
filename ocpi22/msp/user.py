@@ -1,5 +1,7 @@
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError
+from django.utils.decorators import method_decorator
 from rest_framework import serializers, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -34,7 +36,10 @@ class CheckPasswordSerializer(serializers.Serializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'telephone', 'vehicle', 'password')
+        fields = ('firstname', 'lastname', 'telephone', 'vehicle', 'password')
+
+    firstname = serializers.CharField(source='first_name', required=False, allow_blank=True)
+    lastname = serializers.CharField(source='last_name', required=False, allow_blank=True)
 
     password = serializers.CharField(
         required=False, write_only=True,
@@ -65,21 +70,44 @@ class ProfileSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserSerializer(ProfileSerializer):
+class RegistrationSerializer(ProfileSerializer):
     class Meta:
         model = User
-        fields = ('email', 'first_name', 'last_name', 'password')
+        fields = ('email', 'firstname', 'lastname', 'telephone', 'vehicle', 'password')
 
     email = serializers.EmailField(
         help_text="The user's email address"
     )
 
+    firstname = serializers.CharField(source='first_name', required=False, allow_blank=True)
+    lastname = serializers.CharField(source='last_name', required=False, allow_blank=True)
+
+    password = serializers.CharField(
+        required=False, write_only=True,
+        help_text="The password to be set for this user"
+    )
+
+    telephone = serializers.CharField(source="profile.phone", max_length=PHONE_FIELD_LENGTH,
+                                      required=False, allow_blank=True)
+    vehicle = serializers.CharField(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH,
+                                    required=False, allow_blank=True)
+
     def create(self, validated_data):
         raw_password = validated_data.pop('password', None)
+        profile_data = validated_data.pop('profile', None)
         email = validated_data['email']
+
         user: User = User(username=email, **validated_data)
         user.set_password(raw_password)
         user.save()
+
+        # Profile is created automatically for each User, so we need to just update it
+        if profile_data:
+            profile = user.profile
+            for key, value in profile_data.items():
+                setattr(profile, key, value)
+            profile.save()
+
         return user
 
 
@@ -124,13 +152,14 @@ class BriefTransactionSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 class UserViewSet(viewsets.GenericViewSet):
-    queryset = User.objects.all()
+    publicly_visible = True
+    queryset = User.objects.none()
     pagination_class = StandardResultsSetPagination
     paginator = pagination_class()
 
     def get_serializer_class(self):
         return dict(
-            add=UserSerializer,
+            register=RegistrationSerializer,
             account=ProfileSerializer,
             check_password=CheckPasswordSerializer,
         ).get(self.action_map['get'])
@@ -142,29 +171,30 @@ class UserViewSet(viewsets.GenericViewSet):
             return f'{self.name.capitalize()}'
         return f'Users'
 
-    # def list(self, request):
-    #     serializer = UserSerializer(self.paginator.paginate_queryset(User.objects.all(), request), many=True)
-    #     return self.paginator.get_paginated_response(serializer.data)
-
-    @action(methods=['POST', 'GET'], detail=False, url_path='create', name='Create')
-    def add(self, request):
+    @action(methods=['POST', 'GET'], detail=False)
+    def register(self, request):
+        """
+        This endpoint is open to all, since the user can only log in after registering
+        """
         if request.method == 'GET':
             return options_response
 
         # POST
         try:
-            serializer = UserSerializer(data=request.data)
+            serializer = RegistrationSerializer(data=request.data)
             if serializer.is_valid():
                 user = serializer.save()
-                data = serializer.data
                 Account.objects.create(customer=user)
+                data = serializer.data.copy()
+                data.pop('password', None)
                 return Response(data=data, status=status.HTTP_201_CREATED)
             else:
                 return Response(serializer.errors)
-        except IntegrityError:
-            return Response(f'The user {serializer.validated_data.get("username")} already exists',
+        except IntegrityError as e:
+            return Response(f'The user {serializer.validated_data.get("email")} already exists: {e}',
                             status.HTTP_409_CONFLICT)
 
+    @method_decorator(login_required)
     @action(methods=['GET', 'PATCH'], detail=False)
     def account(self, request):
         user = request.user
@@ -221,6 +251,7 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer = serializer(instance=transactions, many=True)
         return self.paginator.get_paginated_response(serializer.data)
 
+    @method_decorator(login_required)
     @action(methods=['GET'], detail=False, url_path='transactions/brief')
     def transaction_list_brief(self, request):
         """
@@ -228,6 +259,7 @@ class UserViewSet(viewsets.GenericViewSet):
         """
         return self._transaction_list(request, BriefTransactionSerializer)
 
+    @method_decorator(login_required)
     @action(methods=['GET'], detail=False, url_path='transactions/full')
     def transaction_list_full(self, request):
         """

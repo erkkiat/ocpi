@@ -223,6 +223,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 ),
             ),
             user=dict(
+                register=request.build_absolute_uri(
+                    reverse('user-register')
+                ),
                 account=request.build_absolute_uri(
                     reverse('user-account')
                 ),
