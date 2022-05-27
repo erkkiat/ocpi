@@ -171,6 +171,8 @@ class UserViewSet(viewsets.GenericViewSet):
             serializer = ProfileSerializer(data=request.data, instance=user, partial=True)
             if serializer.is_valid():
                 serializer.save()
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.data, content_type=format)
 
     # @action(methods=['POST', 'GET'], detail=False)
