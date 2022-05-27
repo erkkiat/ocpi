@@ -45,6 +45,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # The unique id that identifies the charging session in the CPO platform.
     uid = models.CharField(max_length=36, db_index=True)
 
+    # The internal order number or other identifier from the CPO billing system, not part of OCPI
+    internal_reference = models.CharField(max_length=36, blank=True, null=True)
+
     # The timestamp when the session became ACTIVE in the Charge Point.
     # When the session is still PENDING, this field SHALL be set to the time the Session was
     # created at the Charge Point.

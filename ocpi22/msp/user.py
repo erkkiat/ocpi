@@ -1,16 +1,14 @@
-import uuid
-
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from rest_framework import serializers, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
 from ocpi22.models.cdr import Cdr
 from ocpi22.msp.account import Transaction, Account
+from ocpi22.msp.models import PHONE_FIELD_LENGTH, VEHICLE_FIELD_LENGTH
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.util import hours_minutes, HyperlinkedModelSerializerCleanedUp, StandardResultsSetPagination
 
@@ -33,43 +31,50 @@ class CheckPasswordSerializer(serializers.Serializer):
     )
 
 
-class PatchUserSerializer(serializers.ModelSerializer):
+class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'password', 'transactions')
+        fields = ('first_name', 'last_name', 'telephone', 'vehicle', 'password')
 
     password = serializers.CharField(
         required=False, write_only=True,
         help_text="The password to be set for this user"
     )
 
-    transactions = serializers.SerializerMethodField()
-
-    def get_transactions(self, _instance: User) -> str:
-        return self.context.get('transactions_url')
+    telephone = serializers.CharField(source="profile.phone", max_length=PHONE_FIELD_LENGTH, required=False)
+    vehicle = serializers.CharField(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH, required=False)
 
     def update(self, user, validated_data):
-        validated_data.pop('username', None)
         raw_password = validated_data.pop('password', None)
-        super().update(user, validated_data)
+        profile_data = validated_data.pop('profile')
+
+        for key, value in validated_data.items():
+            setattr(user, key, value)
         if raw_password:
             user.set_password(raw_password)
-            user.save()
+        user.save()
+
+        profile = user.profile
+        for key, value in profile_data.items():
+            setattr(profile, key, value)
+        profile.save()
+
         return user
 
 
-class UserSerializer(PatchUserSerializer):
+class UserSerializer(ProfileSerializer):
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'password')
+        fields = ('email', 'first_name', 'last_name', 'password')
 
-    username = serializers.EmailField(
+    email = serializers.EmailField(
         help_text="The user's email address"
     )
 
     def create(self, validated_data):
         raw_password = validated_data.pop('password', None)
-        user: User = User(email=validated_data.get('username'), **validated_data)
+        email = validated_data['email']
+        user: User = User(username=email, **validated_data)
         user.set_password(raw_password)
         user.save()
         return user
@@ -116,7 +121,6 @@ class BriefTransactionSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 class UserViewSet(viewsets.GenericViewSet):
-    lookup_field = 'username'
     queryset = User.objects.all()
     pagination_class = StandardResultsSetPagination
     paginator = pagination_class()
@@ -124,9 +128,9 @@ class UserViewSet(viewsets.GenericViewSet):
     def get_serializer_class(self):
         return dict(
             add=UserSerializer,
-            user_data=PatchUserSerializer,
+            account=ProfileSerializer,
             check_password=CheckPasswordSerializer,
-        ).get(self.action_map.get('get'), UserSerializer)
+        ).get(self.action_map['get'])
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
@@ -150,9 +154,7 @@ class UserViewSet(viewsets.GenericViewSet):
             if serializer.is_valid():
                 user = serializer.save()
                 data = serializer.data
-                account = Account.objects.create(customer=user)
-                data.update(account_currency=account.currency, balance=account.balance,
-                            detail_url=request.build_absolute_uri(reverse("user-user-data", args=[user.username])))
+                Account.objects.create(customer=user)
                 return Response(data=data, status=status.HTTP_201_CREATED)
             else:
                 return Response(serializer.errors)
@@ -160,17 +162,13 @@ class UserViewSet(viewsets.GenericViewSet):
             return Response(f'The user {serializer.validated_data.get("username")} already exists',
                             status.HTTP_409_CONFLICT)
 
-    @action(methods=['GET', 'PATCH'], detail=False, url_path='(?P<username>[a-z0-9.@_]+)')
-    def user_data(self, request, username=None, format=None):
-        if not username:
-            return options_response
-
-        user = get_object_or_404(User, username=username)
-        transactions_brief_url = request.build_absolute_uri(reverse('user-transaction-list-brief', args=[username]))
+    @action(methods=['GET', 'PATCH'], detail=False)
+    def account(self, request):
+        user = request.user
         if request.method == 'GET':
-            serializer = PatchUserSerializer(instance=user, context=dict(transactions_url=transactions_brief_url))
+            serializer = ProfileSerializer(instance=user)
         if request.method == 'PATCH':
-            serializer = PatchUserSerializer(data=request.data, instance=user, partial=True)
+            serializer = ProfileSerializer(data=request.data, instance=user, partial=True)
             if serializer.is_valid():
                 serializer.save()
         return Response(serializer.data, content_type=format)

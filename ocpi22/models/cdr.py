@@ -64,6 +64,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # that never became a charging session, thus no OCPI Session.
     session_id = models.CharField(max_length=36, blank=True, default='')
 
+    # The internal order number or other identifier from the CPO billing system, not part of OCPI
+    internal_reference = models.CharField(max_length=36, blank=True, null=True)
+
     def session_url(self):
         return format_html(
             f'<a href="{reverse("session-by-id", args=[self.session_id])}">{self.session_id}</a>'
@@ -205,6 +208,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             start_date_time=session.start_date_time,
             end_date_time=session.end_date_time,
             session_id=session.uid,
+            internal_reference=session.internal_reference,
             cdr_token_uid=session.cdr_token_uid,
             cdr_token_type=session.cdr_token_type,
             cdr_token_contract_id=session.cdr_token_contract_id,

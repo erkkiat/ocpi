@@ -222,7 +222,10 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                     reverse('roaming-stop-charging')
                 ),
             ),
-            users=dict(
+            user=dict(
+                account=request.build_absolute_uri(
+                    reverse('user-account')
+                ),
                 transactions_brief=request.build_absolute_uri(
                     reverse('user-transaction-list-brief')
                 ),

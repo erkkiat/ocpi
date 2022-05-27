@@ -2051,20 +2051,17 @@ class TestMspUserApi(TestCase):
         return send_create_user(data)
 
     def test_create_user(self):
-        userdata = dict(username='erkki.tapola@pohdinto.com', first_name='Erkki',
+        userdata = dict(email='erkki.tapola@pohdinto.com', first_name='Erkki',
                         last_name='Tapola', password='qwerty')
 
         # Create a user successfully
         response = self._create_user(**userdata)
-        self.assertDictEqual(response.data, {'account_currency': 'EUR',
-                                             'balance': 0.0,
-                                             'detail_url': 'http://testserver/api/msp/v1/user/erkki.tapola@pohdinto.com/',
-                                             'first_name': 'Erkki',
+        self.assertDictEqual(response.data, {'first_name': 'Erkki',
                                              'last_name': 'Tapola',
-                                             'username': 'erkki.tapola@pohdinto.com'},
+                                             'email': 'erkki.tapola@pohdinto.com'},
                              'Response for creating a user differs from expected')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Creating a user should result in HTTP 201')
-        user = User.objects.get(username=userdata.get('username'))
+        user = User.objects.get(username=userdata.get('email'))  # Username should equal email address
         self.assertEqual(user.first_name, userdata.get('first_name'))
         self.assertEqual(user.accounts.count(), 1, 'There should be one account created per user')
 
@@ -2075,10 +2072,10 @@ class TestMspUserApi(TestCase):
 
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_cdrs_and_transactions(self, _mocked_ocpi_post: Mock):
-        params = dict(username='rich@money.com')
+        params = dict(email='rich@money.com')
         initial_balance = 70
         self._create_user(**params)
-        user = User.objects.get(username=params.get('username'))
+        user = User.objects.get(username=params.get('email'), email=params.get('email'))
 
         # Check that account is created automatically and with zero balance
         self.assertEquals(user.accounts.count(), 1, "A new user doesn't get an account automatically")
