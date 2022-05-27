@@ -206,7 +206,7 @@ class UserViewSet(viewsets.GenericViewSet):
                 serializer.save()
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.data, content_type=format)
+        return Response(serializer.data)
 
     # @action(methods=['POST', 'GET'], detail=False)
     # def check_password(self, request):
