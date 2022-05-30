@@ -257,7 +257,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def is_final(self) -> bool:
         return self.status in (self.INVALID, self.COMPLETED)
 
-    def set_charging_period(self, data):
+    def set_charging_period(self, data) -> list:
         chargingperiod = self.get_active_charging_period()
         chargingperiod.dimensions.all().delete()
 

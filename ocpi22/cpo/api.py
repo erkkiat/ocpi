@@ -23,6 +23,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.serializers import CdrSerializer
+from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.routing import find_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tasks import send_ocpi_request
@@ -345,27 +346,24 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_401_UNAUTHORIZED` when the APP_USER token has expired
         * `HTTP_404_NOT_FOUND` when the Token or the EVSE doesn't exist
-        * `HTTP_409_CONFLICT` when a Session with the same session_id already exists
+        * `HTTP_409_CONFLICT` when a Session with the same internal_reference already exists
         """
         try:
-            session: Session = None
+            session: Session = Session.objects.none()
 
             if request.method == 'POST':
                 serializer = StartTransactionSerializer(data=request.data)
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data['evse']
                     connector_id: str = serializer.validated_data['connector_id']
-                    session_id = serializer.validated_data.get('session_id')
+                    internal_reference = serializer.validated_data.get('internal_reference')
                     token = serializer.validated_data['token']
                     start_kwh = serializer.validated_data['start_kwh']
 
-                    # Todo: Add a field Session.internal_reference and don't touch the Session.uid after creation
-                    #       Send PENDING and INVALID Sessions to MSP (may help to debug)
-
-                    if Session.objects.filter(uid=session_id).exists():
+                    if Session.objects.filter(internal_reference=internal_reference).exists():
                         return Response(
                             dict(
-                                status_text=f'Session {session_id} already exists',
+                                status_text=f'Session `{internal_reference}` already exists',
                             ),
                             status=status.HTTP_409_CONFLICT,
                         )
@@ -382,8 +380,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             ), status=status.HTTP_401_UNAUTHORIZED)
                         party = authorization.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
-                        session.uid = session_id.upper()
                         session.connector = Connector.get_if_exists(uid=connector_id)
+                        session.internal_reference = internal_reference
                         session.status = Session.ACTIVE
                         session.save()
                         session.send_updates()
@@ -392,8 +390,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         # Todo: Session.currency needs to match with Tariff currency
                         session = create_session(
                             # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
-                            # Other CPO can have same ID
-                            uid=session_id, evse_uid=evse, location_id=evse.location, connector_id=connector_id,
+                            #   Other CPO can have same ID
+                            uid=generate_session_uid(), internal_reference=internal_reference,
+                            evse_uid=evse, location_id=evse.location, connector_id=connector_id,
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
                             session_status=Session.ACTIVE
                         )
@@ -401,11 +400,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(
                         dict(
                             status_text=f'Session started',
-                            # session_id=session_id,
-                            # billed_to=token.party(),
-                            # start_kwh=start_kwh,
-                            # authorization_method=session.auth_method,
-                            # authorization_reference=session.authorization_reference,
                             session=session_serializer.data,
                         )
                     )
@@ -442,10 +436,25 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = MeterValuesSerializer(data=request.data)
                 if serializer.is_valid():
-                    session = serializer.validated_data['session']
                     kwh = serializer.validated_data['kwh']
                     soc = serializer.validated_data.get('soc')
                     power = serializer.validated_data.get('power')
+                    if 'session' not in serializer.validated_data \
+                            and 'internal_reference' not in serializer.validated_data:
+                        raise ValidationError(
+                            'Please specify either session_id or internal_reference for the charging transaction'
+                        )
+                    session = serializer.validated_data.get('session')
+                    if not session:
+                        internal_reference = serializer.validated_data.get('internal_reference')
+                        session = Session.get_if_exists(
+                            internal_reference=internal_reference
+                        )
+                        if not session:
+                            raise ValidationError(f'Session with internal reference `{internal_reference}` not found')
+                        serializer.validated_data.pop('internal_reference', None)
+
+                    # We found a valid Session
                     if session.status == Session.ACTIVE:
                         session.stop_kwh = kwh
                         session.update_last_updated()
@@ -458,6 +467,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             dict(
                                 status_text=f'Session updated',
                                 session_id=session.uid,
+                                internal_reference=session.internal_reference,
                                 start_kwh=session.start_kwh,
                                 now_kwh=kwh,
                                 total_kwh=session.kwh,
@@ -471,6 +481,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             dict(
                                 status_text=f'Updating a finished session is not possible',
                                 session_id=session.uid,
+                                internal_reference=session.internal_reference,
                                 start_kwh=session.start_kwh,
                                 now_kwh=kwh,
                                 total_kwh=session.kwh,
@@ -515,7 +526,13 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = StopTransactionSerializer(data=request.data)
                 if serializer.is_valid():
-                    session = serializer.validated_data['session']
+                    session = serializer.validated_data.get('session')
+                    if not session:
+                        internal_reference = serializer.validated_data.get('internal_reference')
+                        session = Session.get_if_exists(internal_reference=internal_reference)
+                        if not session:
+                            raise ValidationError(f'Session with internal_reference `{internal_reference}` not found.')
+
                     if session.is_final():
                         return Response(dict(status_text='Session was completed earlier, cannot stop if twice'),
                                         status=status.HTTP_409_CONFLICT)
@@ -538,6 +555,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         dict(
                             status_text='Session finished',
                             session_id=session.uid,
+                            internal_reference=session.internal_reference,
                             kwh_total=session.kwh,
                             session=session_serializer.data,
                             charge_detail_record=cdr_json.data

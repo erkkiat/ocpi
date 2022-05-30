@@ -60,13 +60,6 @@ class OcpiModule:
                 setattr(self, 'last_updated', timezone.now())
 
     def atomic_post_save(self, *_args, **_kwargs) -> None:
-        # ic("Generic atomic_post_save")
-        # ic(args, kwargs)
-
-        if hasattr(self, 'status') and self.status == 'PENDING':
-            # Session is not yet public, no updates to other OCPI parties
-            return
-
         assert hasattr(self, 'ocpi_serializer_class') and hasattr(self, 'ocpi_module_name') \
                and hasattr(self, 'send_updates_to'), \
             f'OCPI object class {type(self)} must have an ocpi_serializer_class (str), ' \
@@ -158,7 +151,7 @@ class OcpiModule:
         if hasattr(self, 'credentials'):
 
             if not hasattr(self, 'billed_to'):
-                log_error(f'Object {self} has no billed_to')
+                log_error(f'Object #{self.uid} - {self} has no billed_to')
                 return
 
             to = Party(*(self.billed_to.split('*')))
@@ -169,16 +162,6 @@ class OcpiModule:
                 self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
             else:
                 logging.error(f'{settings.HOSTNAME}: Unable to find route to {str(to)}')
-
-            # role = self.credentials.roles.all().first()
-            # country_code = role.country_code
-            # party_id = role.party_id
-            # ic(role, country_code, party_id)
-            # endpoint = self.credentials.endpoints.filter(identifier=self.ocpi_module_name.value,
-            #                                              role=EndpointRoleEnum.RECEIVER.value).first()
-            # ic(endpoint)
-            # self._send_update(data, endpoint.url, self.credentials.theirs_base64(),
-            #                   country_code, party_id, our_country_code, our_party_id, 'put')
 
 
 def ocpi_post(url, token_base64,
@@ -430,3 +413,7 @@ def generate_auth_reference():
 
 def generate_token_id():
     return generate_reference('T*APP*')
+
+
+def generate_session_uid():
+    return generate_reference('S*')

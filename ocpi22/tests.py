@@ -790,10 +790,12 @@ class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
     @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.sessions.util.generate_session_uid',
+           side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.commands.requests.post')
-    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock):
+    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, _generate_session_uid_mock: Mock):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -1376,13 +1378,13 @@ class TestSession(TestCase):
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_update_session(self,
                             _ocpi_post_mock: Mock,
-                            _generate_session_uid_mock: Mock,
+                            _generate_reference_mock: Mock,
                             _get_parameter_mock: Mock):
         evse = Evse.objects.all()[0]
         location = evse.location
         uid = '12345'
 
-        session = create_session(location.uid, evse.uid, 1, "T1", billed_to='FI*MSP', uid=uid)
+        session = create_session(location.uid, evse.uid, 1, token_id="T1", billed_to='FI*MSP', uid=uid)
         self.assertTrue(bool(session))
         # ic(session)
 
@@ -1477,12 +1479,12 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.models.session.OcpiModule.send_updates')
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
-    @patch('ocpi22.sessions.util.generate_session_uid',
+    @patch('ocpi22.cpo.api.generate_session_uid',
            side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_rfid_charging_flow(self,
                                 _ocpi_post_mock: Mock,
-                                _generate_session_uid_mock: Mock,
+                                _generate_reference_mock: Mock,
                                 _get_parameter_mock: Mock,
                                 send_updates_mock: Mock):
 
@@ -1496,7 +1498,7 @@ class TestCpoApi(TestCase):
             "evse_id": "HELSINKI-3",
             "connector_id": "1",
             "token_id": "EKI1",
-            "session_id": "MY-SESSION",
+            "internal_reference": "MY-INTERNAL-REFERENCE",
             "start_kwh": 120
         }
         cpo_response = cpo_viewset.start_transaction(cpo_request)
@@ -1506,14 +1508,15 @@ class TestCpoApi(TestCase):
         testcases = (
             dict(
                 request=dict(
-                    session_id='MY-SESSION',
+                    internal_reference='MY-INTERNAL-REFERENCE',
                     kwh=123.45,
                     soc=42,
                 ),
                 expected_response={'now_kwh': 123.45,
                                    'power': None,
                                    'price': '2,14€',
-                                   'session_id': 'MY-SESSION',
+                                   'session_id': 'FAKE-SESSION-UID-1',
+                                   'internal_reference': 'MY-INTERNAL-REFERENCE',
                                    'soc': 42.0,
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
@@ -1540,7 +1543,7 @@ class TestCpoApi(TestCase):
                               'start_date_time': '2000-01-01T12:00:00Z',
                               'status': 'ACTIVE',
                               'total_cost': OrderedDict([('excl_vat', 1.73), ('incl_vat', 2.14)]),
-                              'uid': 'MY-SESSION'},
+                              'uid': 'FAKE-SESSION-UID-1'},
                 expected_update_data={'charging_periods': [OrderedDict(
                     [('start_date_time', '2000-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
                         OrderedDict([('type', 'ENERGY'), ('volume', '3.4500')]),
@@ -1552,14 +1555,15 @@ class TestCpoApi(TestCase):
             ),
             dict(
                 request=dict(
-                    session_id='MY-SESSION',
+                    internal_reference='MY-INTERNAL-REFERENCE',
                     kwh=153.45,
                     soc=80,
                 ),
                 expected_response={'now_kwh': 153.45,
                                    'power': None,
                                    'price': '20,74€',
-                                   'session_id': 'MY-SESSION',
+                                   'session_id': 'FAKE-SESSION-UID-1',
+                                   'internal_reference': 'MY-INTERNAL-REFERENCE',
                                    'soc': 80.0,
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
@@ -1586,7 +1590,7 @@ class TestCpoApi(TestCase):
                               'start_date_time': '2000-01-01T12:00:00Z',
                               'status': 'ACTIVE',
                               'total_cost': OrderedDict([('excl_vat', 16.73), ('incl_vat', 20.74)]),
-                              'uid': 'MY-SESSION'},
+                              'uid': 'FAKE-SESSION-UID-1'},
                 evse_status='CHARGING'
             ),
             dict(
@@ -1624,7 +1628,7 @@ class TestCpoApi(TestCase):
                                  f'Case request {case.get("request")}, response {cpo_response.data}')
             expected_session_data = case.get('session_data')
             if expected_session_data:
-                session = Session.objects.get(uid=cpo_request.data.get('session_id'))
+                session = Session.objects.get(internal_reference=cpo_request.data.get('internal_reference'))
                 self.assertTrue(session.total_cost_excl_vat and session.total_cost_incl_vat,
                                 'meter_values does not result in an updated price for the session')
                 session_data = SessionSerializer(instance=session).data
@@ -1643,7 +1647,7 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.commands.commands.requests.post')
     def test_adhoc_token(self,
                          requests_post_mock: Mock,
-                         _generate_session_uid_mock: Mock,
+                         _generate_reference_mock: Mock,
                          _set_parameter_mock: Mock,
                          _get_parameter_mock: Mock):
         url = reverse('commands-start-session')
@@ -1723,7 +1727,7 @@ class TestCpoApi(TestCase):
         data = dict(
             evse_id='HELSINKI-3',
             token_id='SOME-ADHOC-TOKEN',
-            session_id='MY-SESSION',
+            internal_reference='MY-INTERNAL-REFERENCE',
             connector_id='1',
         )
         cpo_response = start_transaction(data)
@@ -1737,7 +1741,8 @@ class TestCpoApi(TestCase):
                          'evse_uid': 'HELSINKI-3',
                          'location_id': 'HELSINKI-1',
                          'connector_id': '1',
-                         'session_id': 'MY-SESSION',
+                         'session_id': 'FAKE-SESSION-UID-1',
+                         'internal_reference': 'MY-INTERNAL-REFERENCE',
                          'start_date_time': '2000-01-01T12:00:00',
                          'start_kwh': 0.0,
                          'status': 'ACTIVE',
@@ -1792,7 +1797,7 @@ class TestCpoApi(TestCase):
         # Todo: Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
         data = dict(
-            session_id='MY-SESSION',
+            internal_reference='MY-INTERNAL-REFERENCE',
             kwh=123.45,
             soc=42,
             power=150
@@ -1809,7 +1814,7 @@ class TestCpoApi(TestCase):
         # Try updating meter values without a tariff specified
         #
 
-        Session.objects.filter(uid='MY-SESSION').update(status=Session.ACTIVE)
+        Session.objects.filter(uid='FAKE-SESSION-UID-1').update(status=Session.ACTIVE)
 
         cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_409_CONFLICT)
@@ -1818,7 +1823,7 @@ class TestCpoApi(TestCase):
         # Update meter values with a tariff
         #
 
-        session = Session.objects.get(uid='MY-SESSION')
+        session = Session.objects.get(uid='FAKE-SESSION-UID-1')
         session.connector.tariff_ids.set([9])
         session.save()
 
@@ -1828,7 +1833,8 @@ class TestCpoApi(TestCase):
                              {'now_kwh': 123.45,
                               'power': 150.0,
                               'price': '76,54€',
-                              'session_id': 'MY-SESSION',
+                              'session_id': 'FAKE-SESSION-UID-1',
+                              'internal_reference': 'MY-INTERNAL-REFERENCE',
                               'soc': 42.0,
                               'start_kwh': 0.0,
                               'status_text': 'Session updated',
@@ -1836,12 +1842,12 @@ class TestCpoApi(TestCase):
 
         final_kwh = 130
         cdr_count_before = Cdr.objects.all().count()
-        response = stop_transaction(dict(session_id='MY-SESSION', stop_kwh=final_kwh))
+        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE', stop_kwh=final_kwh))
         cdr_count_after = Cdr.objects.all().count()
 
         self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
 
-        session = Session.objects.get(uid='MY-SESSION')
+        session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE')
         self.assertEqual(session.status, Session.COMPLETED, 'Session should be COMPLETED after CPO stop_transaction')
         self.assertEqual(session.kwh, final_kwh)
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
@@ -1851,7 +1857,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(cdr.authorization_reference, session.authorization_reference)
 
         # Try to end the same Session again, should fail
-        response = stop_transaction(dict(session_id='MY-SESSION', stop_kwh=final_kwh))
+        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE', stop_kwh=final_kwh))
         cdr_count_after = Cdr.objects.all().count()
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be only one new CDR after trying to stop a session twice')

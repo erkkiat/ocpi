@@ -12,6 +12,7 @@ from rest_framework.generics import get_object_or_404
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.tokens.util import get_token_id
 
@@ -32,11 +33,7 @@ def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACT
                                       statuses=statuses)
 
 
-def generate_session_uid() -> str:
-    return uuid.uuid4().hex[:36]
-
-
-def create_session(location_id, evse_uid, connector_id, token_id=None, ad_hoc_token=None,
+def create_session(location_id, evse_uid, connector_id, internal_reference=None, token_id=None, ad_hoc_token=None,
                    billed_to=None, uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
                    authorize_from_msp=True, authorization_reference='', send_updates=True
                    ) -> Session:
@@ -74,6 +71,7 @@ def create_session(location_id, evse_uid, connector_id, token_id=None, ad_hoc_to
         country_code=our_country_code,
         party_id=our_party_id,
         uid=uid,
+        internal_reference=internal_reference,
         start_kwh=start_kwh,
         stop_kwh=stop_kwh,
         status=session_status,

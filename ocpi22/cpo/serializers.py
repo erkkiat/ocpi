@@ -24,7 +24,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
 class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
-        fields = ['session_id', 'billed_to',
+        fields = ['session_id', 'internal_reference', 'billed_to',
                   'start_date_time', 'end_date_time', 'start_kwh',
                   'token', 'auth_method', 'authorization_reference',
                   'location_id', 'evse_uid', 'connector_id', 'currency',
@@ -32,6 +32,7 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
                   'status', 'last_updated']
 
     session_id = serializers.CharField(source='uid', read_only=True)
+    internal_reference = serializers.CharField(read_only=True)
     token = serializers.SerializerMethodField(read_only=True)
     location_id = serializers.SerializerMethodField(read_only=True)
     evse_uid = serializers.SerializerMethodField(read_only=True)
@@ -151,7 +152,9 @@ class TokenIdSerializer(fields.CharField):
 
 class SessionIdSerializer(fields.CharField):
     def to_internal_value(self, data):
-        return Session.objects.get(uid=data)
+        if data:
+            return Session.objects.get(uid=data)
+        return None
 
 
 class OcppStatusSerializer(fields.ChoiceField):
@@ -200,8 +203,12 @@ class MeterValuesSerializer(serializers.Serializer):
     The session start and end time are recorded by the OCPI Connector
     """
     session_id = SessionIdSerializer(
-        source='session',
+        source='session', required=False,
         help_text='The session ID on the CPO platform or order number from the billing system',
+    )
+    internal_reference = serializers.CharField(
+        required=False,
+        help_text='The internal reference on the CPO platform (for example order number from the billing system)',
     )
     kwh = serializers.FloatField(
         help_text='The kWh measurement at the time of this message',
@@ -230,9 +237,9 @@ class StartTransactionSerializer(serializers.Serializer):
         source='token',
         help_text='The hidden ID of the RFID token, separate from the visual one'
     )
-    session_id = serializers.CharField(
+    internal_reference = serializers.CharField(
         max_length=36,
-        help_text='The session ID on the CPO platform or order number from the billing system',
+        help_text='The session ID on the CPO platform or order number from the CPO billing system',
         required=False
     )
     start_kwh = serializers.FloatField(
@@ -248,12 +255,21 @@ class StopTransactionSerializer(serializers.Serializer):
     The session ends with a specific meter value
     """
     session_id = SessionIdSerializer(
-        source='session',
+        source='session', required=False,
         help_text='The session ID on the CPO platform or order number from the billing system',
+    )
+    internal_reference = serializers.CharField(
+        required=False,
+        help_text='The internal reference on the CPO platform (for example order number from the billing system)',
     )
     stop_kwh = serializers.FloatField(
         help_text='The kWh measurement when the charging session ends',
     )
+
+    def validate(self, attrs):
+        if 'session_id' not in attrs and 'internal_reference' not in attrs:
+            raise ValidationError('Please specify either the session_id or the internal_reference')
+        return attrs
 
 
 class CallbacksSerializer(serializers.Serializer):
