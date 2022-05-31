@@ -125,7 +125,7 @@ class TransactionSerializer(HyperlinkedModelSerializerCleanedUp):
 class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Cdr
-        fields = ('location', 'token_id', 'authorization_reference', 'duration', 'detail_url')
+        fields = ('location', 'token_id', 'authorization_reference', 'duration', 'total_time', 'detail_url')
 
     location = serializers.SerializerMethodField()
     token_id = serializers.CharField(source='cdr_token_uid')
