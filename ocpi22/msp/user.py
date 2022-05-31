@@ -38,7 +38,7 @@ class CheckPasswordSerializer(serializers.Serializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('firstname', 'lastname', 'telephone', 'vehicle', 'password')
+        fields = ('email', 'firstname', 'lastname', 'telephone', 'vehicle', 'password')
 
     firstname = serializers.CharField(source='first_name', required=False, allow_blank=True)
     lastname = serializers.CharField(source='last_name', required=False, allow_blank=True)
@@ -258,7 +258,7 @@ class UserViewSet(viewsets.GenericViewSet):
         user = user or request.user
         account = user.accounts.all().first()
         transactions = self.paginator.paginate_queryset(
-            account.transactions.all() if account else Transaction.objects.none(), request
+            account.transactions.all().order_by('-datetime') if account else Transaction.objects.none(), request
         )
         serializer = serializer(instance=transactions, many=True)
         return self.paginator.get_paginated_response(serializer.data)
