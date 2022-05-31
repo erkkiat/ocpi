@@ -262,9 +262,6 @@ class StopTransactionSerializer(serializers.Serializer):
         required=False,
         help_text='The internal reference on the CPO platform (for example order number from the billing system)',
     )
-    stop_kwh = serializers.FloatField(
-        help_text='The kWh measurement when the charging session ends',
-    )
 
     def validate(self, attrs):
         if 'session_id' not in attrs and 'internal_reference' not in attrs:

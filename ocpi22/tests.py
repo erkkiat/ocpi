@@ -1841,16 +1841,15 @@ class TestCpoApi(TestCase):
                               'status_text': 'Session updated',
                               'total_kwh': 123.45})
 
-        final_kwh = 130
         cdr_count_before = Cdr.objects.all().count()
-        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE', stop_kwh=final_kwh))
+        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE'))
         cdr_count_after = Cdr.objects.all().count()
 
         self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
 
         session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE')
         self.assertEqual(session.status, Session.COMPLETED, 'Session should be COMPLETED after CPO stop_transaction')
-        self.assertEqual(session.kwh, final_kwh)
+        self.assertEqual(session.kwh, 123.45)
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be only one new CDR after stopping a session')
         cdr = Cdr.objects.get(session_id=session.uid)
@@ -1858,7 +1857,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(cdr.authorization_reference, session.authorization_reference)
 
         # Try to end the same Session again, should fail
-        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE', stop_kwh=final_kwh))
+        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE'))
         cdr_count_after = Cdr.objects.all().count()
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be only one new CDR after trying to stop a session twice')
