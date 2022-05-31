@@ -397,23 +397,26 @@ def get_to_party(headers) -> Party:
     return get_sender_party(headers, 'HTTP_OCPI_TO_COUNTRY_CODE', 'HTTP_OCPI_TO_PARTY_ID')
 
 
-def generate_reference(separator: str) -> str:
+def generate_reference(separator: str, role: OcpiRolesEnum) -> str:
     """
-    >>> len(generate_reference('-')) <= 36
+    >>> len(generate_reference('-', OcpiRolesEnum.CPO)) <= 36
     True
-    >>> generate_auth_reference() != generate_auth_reference()
+    >>> generate_reference('-', OcpiRolesEnum.CPO) != generate_reference('-', OcpiRolesEnum.CPO)
     True
     """
-    return f'{get_our_party(OcpiRolesEnum.EMSP)}*{separator}{uuid.uuid4().hex}'[:36].upper()
+    return f'{get_our_party(role)}*{separator}{uuid.uuid4().hex}'[:36].upper()
 
 
 def generate_auth_reference():
-    return generate_reference('A*')
+    return generate_reference('A*', OcpiRolesEnum.EMSP)
 
 
 def generate_token_id():
-    return generate_reference('T*APP*')
+    return generate_reference('T*APP*', OcpiRolesEnum.EMSP)
 
 
 def generate_session_uid():
-    return generate_reference('S*')
+    """
+    Should be with the CPO identifier, since Sessions are owned by CPO
+    """
+    return generate_reference('S*', OcpiRolesEnum.CPO)

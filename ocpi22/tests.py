@@ -1606,10 +1606,8 @@ class TestCpoApi(TestCase):
         for case in testcases:
             cpo_response = meter_values(case.get('request'))
             # ic(cpo_response, cpo_response.data)
-
             args, kwargs = send_updates_mock.call_args
 
-            self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
             expected_update_data = case.get('expected_update_data')
             if expected_update_data:
                 update_data = args[0]
@@ -1634,6 +1632,9 @@ class TestCpoApi(TestCase):
                 session_data = SessionSerializer(instance=session).data
                 self.assertDictEqual(session_data, expected_session_data,
                                      'Session data differs')
+
+            # Check the outgoing update call
+            self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
