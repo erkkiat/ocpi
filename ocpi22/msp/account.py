@@ -69,7 +69,7 @@ class Transaction(models.Model):
         if not cdr:
             return 'No details available'
         return f'Charged {cdr.total_energy} kWh at ' \
-               f'"{cdr.cdr_location_name}", {cdr.cdr_location_address}, {cdr.cdr_location_city}'
+               f'"{cdr.cdr_location_name}", {cdr.cdr_location_city}'
 
 
 def get_user_account(session: Session) -> Optional[Account]:

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError
@@ -114,7 +116,7 @@ class RegistrationSerializer(ProfileSerializer):
 class TransactionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Transaction
-        fields = ('delta', 'balance_after', 'discount', 'description', 'cdr', 'datetime')
+        fields = ('delta', 'balance_after', 'discount', 'cdr', 'datetime')
 
     cdr = CdrSerializer()
     datetime = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
@@ -145,10 +147,20 @@ class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
 class BriefTransactionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Transaction
-        fields = ('delta', 'balance_after', 'discount', 'description', 'cdr', 'datetime')
+        fields = ('delta', 'balance_after', 'currency', 'discount', 'total_energy', 'cdr',
+                  'datetime', 'display_date', 'display_time')
 
     cdr = BriefCdrSerializer()
     datetime = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
+    display_date = serializers.DateTimeField(source='datetime', format="%-d.%-m.%Y")
+    display_time = serializers.DateTimeField(source='datetime', format="%H:%M")
+    total_energy = serializers.SerializerMethodField()
+    currency = serializers.CharField(source='account.currency')
+
+    def get_total_energy(self, obj) -> Decimal:
+        if obj.cdr:
+            return Decimal(obj.cdr.total_energy)
+        return Decimal(0.0)
 
 
 class UserViewSet(viewsets.GenericViewSet):
