@@ -204,7 +204,7 @@ class MeterValuesSerializer(serializers.Serializer):
     """
     session_id = SessionIdSerializer(
         source='session', required=False,
-        help_text='The session ID on the CPO platform or order number from the billing system',
+        help_text='The OCPI session ID (from the response of the start_transaction endpoint)',
     )
     internal_reference = serializers.CharField(
         required=False,
@@ -256,7 +256,7 @@ class StopTransactionSerializer(serializers.Serializer):
     """
     session_id = SessionIdSerializer(
         source='session', required=False,
-        help_text='The session ID on the CPO platform or order number from the billing system',
+        help_text='The OCPI session ID (from the response of the start_transaction endpoint)',
     )
     internal_reference = serializers.CharField(
         required=False,

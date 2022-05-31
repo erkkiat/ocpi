@@ -289,7 +289,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             )
         return period
 
-    def send_updates(self, data=None, method='put') -> None:
+    def send_updates(self, data=None, method='put', path_components=None) -> None:
         if isinstance(data, list):
             # We have a list of stuff, is it by any chance ChargingPeriods?
             if isinstance(data[0], ChargingPeriod):
@@ -302,7 +302,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                     charging_periods=chargingperiod_data,
                 )
                 method = 'patch'
-        super().send_updates(data, method=method, path_components=[self.country_code, self.party_id, self.uid])
+        super().send_updates(
+            data, method=method,
+            path_components=path_components or [self.country_code, self.party_id, self.uid]
+        )
 
 
 class ChargingPeriod(models.Model, ModelUtilMixin):

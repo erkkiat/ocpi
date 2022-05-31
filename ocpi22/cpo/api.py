@@ -385,6 +385,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.status = Session.ACTIVE
                         session.save()
                         session.send_updates()
+                        logging.info(f'New session {session.uid} active at {evse.evse_id}')
 
                     if not session:
                         # Todo: Session.currency needs to match with Tariff currency

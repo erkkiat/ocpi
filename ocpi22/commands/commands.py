@@ -108,7 +108,7 @@ class CommandsViewSet(GenericViewSet):
                 params.pop('token')
                 params.pop('response_url')
 
-                session: Session = create_session(send_updates=False, **params)
+                session: Session = create_session(**params)
 
                 # The worst scenario is this
                 ocpi_status = 2000

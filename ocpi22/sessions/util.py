@@ -4,6 +4,7 @@ import uuid
 from collections import namedtuple
 from typing import Union
 
+from django.conf import settings
 from django.db.models import QuerySet
 from django.utils import timezone
 from rest_framework import exceptions
@@ -35,7 +36,7 @@ def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACT
 
 def create_session(location_id, evse_uid, connector_id, internal_reference=None, token_id=None, ad_hoc_token=None,
                    billed_to=None, uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorize_from_msp=True, authorization_reference='', send_updates=True
+                   authorize_from_msp=True, authorization_reference=''
                    ) -> Session:
     # ic(location_id, evse_uid, connector_id, token_id, ad_hoc_token)
     if not uid:
@@ -53,14 +54,17 @@ def create_session(location_id, evse_uid, connector_id, internal_reference=None,
         authorization_method, authorization_reference = authorization.auth_method, authorization.authorization_reference
     else:
         authorization_method = Session.COMMAND
-    # noinspection PyUnresolvedReferences
-    active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
-    if active_sessions.exists():
-        logging.warning(f'New session starting, invalidating incomplete sessions at {evse.evse_id}: '
-                        f'{",".join([str(s) for s in active_sessions])}')
-        active_sessions.update(status='INVALID')
-        for session in active_sessions:
-            session.send_updates()
+    try:
+        active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
+        if active_sessions.exists():
+            logging.error(f'New session overlaps existing, invalidating incomplete sessions at {evse.evse_id}: '
+                          f'{",".join([s.uid for s in active_sessions])}')
+            for session in active_sessions:
+                session.status = Session.INVALID
+                session.save()  # This should also send the updates to interested OCPI parties
+                # session.send_updates()
+    except Exception as e:
+        logging.error(f'{settings.HOSTNAME}: Inactivating overlapping sessions failed for EVSE {evse.uid}: {e}')
 
     our_country_code, our_party_id = Session.get_owner_identity().split('*')
 
@@ -87,12 +91,8 @@ def create_session(location_id, evse_uid, connector_id, internal_reference=None,
         currency=os.environ.get('CPO_CURRENCY', 'EUR'),
         billed_to=billed_to,
     )
-    if active_sessions.exists():
-        # Todo: put this on error list
-        pass
 
-    if send_updates:
-        session.send_updates()
+    logging.info(f'New session {session.uid} pending at {evse.evse_id}')
     return session
 
 
