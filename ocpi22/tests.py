@@ -2052,22 +2052,23 @@ def msp_authorize(loser_token_id):
 class TestMspUserApi(TestCase):
     fixtures = ['ocpi22/data/test-database-msp-api.json']
     maxDiff = None
+    userdata = dict(email='erkki.tapola@pohdinto.com', firstname='Erkki',
+                    lastname='Tapola', telephone='+1234567890123456789',
+                    vehicle='tesla-model-s-long-range-(raven)', password='qwerty', confirm='qwerty')
 
     def _create_user(self, **data):
         return send_create_user(data)
 
     def test_create_user(self):
-        userdata = dict(email='erkki.tapola@pohdinto.com', firstname='Erkki',
-                        lastname='Tapola', telephone='+1234567890123456789',
-                        vehicle='tesla-model-s-long-range-(raven)', password='qwerty')
-
+        userdata = self.userdata
         # Make sure the user doesn't already exist
         self.assertFalse(User.objects.filter(email=userdata.get('email')).count())
 
         # Create a user successfully
         response = self._create_user(**userdata)
-        expected_response_data = userdata
+        expected_response_data = userdata.copy()
         expected_response_data.pop('password')
+        expected_response_data.pop('confirm')
         self.assertDictEqual(response.data, expected_response_data,
                              'Response for creating a user differs from expected')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, 'Creating a user should result in HTTP 201')
@@ -2080,11 +2081,19 @@ class TestMspUserApi(TestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
                          'Creating a duplicate user should result in HTTP 409')
 
+    def test_not_matching_password(self):
+        userdata = self.userdata.copy()
+        userdata['confirm'] = 'not-matching'
+        with self.assertRaises(ValidationError):
+            response = self._create_user(**userdata)
+
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_cdrs_and_transactions(self, _mocked_ocpi_post: Mock):
-        params = dict(email='rich@money.com')
+        params = dict(email='rich@money.com', password='hello', confirm='hello')
         initial_balance = 70
-        self._create_user(**params)
+        response = self._create_user(**params)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
         user = User.objects.get(username=params.get('email'), email=params.get('email'))
 
         # Check that account is created automatically and with zero balance

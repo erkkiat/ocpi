@@ -26,37 +26,48 @@ class Username(serializers.CharField):
         return user
 
 
-class CheckPasswordSerializer(serializers.Serializer):
-    username = Username(
-        help_text="The user's email address"
-    )
-    password = serializers.CharField(
-        write_only=True,
-        help_text="The password the user typed"
-    )
+# class CheckPasswordSerializer(serializers.Serializer):
+#     username = Username(
+#         help_text="The user's email address"
+#     )
+#     password = serializers.CharField(
+#         write_only=True,
+#         help_text="The password the user typed"
+#     )
 
 
 class ChangePasswordSerializer(serializers.Serializer):
     password = serializers.CharField(
-        write_only=True,
+        write_only=True, max_length=128,
         help_text="The password to be set for this user"
+    )
+
+    confirm = serializers.CharField(
+        write_only=True, max_length=128,
+        help_text="The same password again, straight from the user interface"
     )
 
     def update(self, user, validated_data):
         raw_password = validated_data.get('password')
+        confirm_password = validated_data.get('confirm')
+        if raw_password != confirm_password:
+            raise ValidationError(dict(status_message="Password and confirm differ from each other"))
         if raw_password:
             user.set_password(raw_password)
             user.save()
         else:
-            raise ValidationError('Please POST or PATCH {"password": "[newpassword]"}')
+            raise ValidationError(dict(
+                status_message='Please POST or PATCH {"password": "newpassword", "confirm": "newpassword"}')
+            )
         return user
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('email', 'firstname', 'lastname', 'telephone', 'vehicle', 'password')
+        fields = ('email', 'firstname', 'lastname', 'telephone', 'vehicle')
 
+    email = serializers.EmailField(read_only=True)
     firstname = serializers.CharField(source='first_name', required=False, allow_blank=True)
     lastname = serializers.CharField(source='last_name', required=False, allow_blank=True)
 
@@ -84,7 +95,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class RegistrationSerializer(ProfileSerializer):
     class Meta:
         model = User
-        fields = ('email', 'firstname', 'lastname', 'telephone', 'vehicle', 'password')
+        fields = ('email', 'firstname', 'lastname', 'telephone', 'vehicle', 'password', 'confirm')
 
     email = serializers.EmailField(
         help_text="The user's email address"
@@ -94,8 +105,13 @@ class RegistrationSerializer(ProfileSerializer):
     lastname = serializers.CharField(source='last_name', required=False, allow_blank=True)
 
     password = serializers.CharField(
-        required=False, write_only=True,
+        write_only=True, max_length=128,
         help_text="The password to be set for this user"
+    )
+
+    confirm = serializers.CharField(
+        write_only=True, max_length=128,
+        help_text="The same password again, straight from the user interface"
     )
 
     telephone = serializers.CharField(source="profile.phone", max_length=PHONE_FIELD_LENGTH,
@@ -104,9 +120,13 @@ class RegistrationSerializer(ProfileSerializer):
                                     required=False, allow_blank=True)
 
     def create(self, validated_data):
-        raw_password = validated_data.pop('password', None)
+        raw_password = validated_data.pop('password', '')
+        confirm_password = validated_data.pop('confirm', '')
         profile_data = validated_data.pop('profile', None)
         email = validated_data['email']
+
+        if raw_password != confirm_password:
+            raise ValidationError(dict(status_message="Password and confirm differ from each other"))
 
         user: User = User(username=email, **validated_data)
         user.set_password(raw_password)
@@ -183,7 +203,8 @@ class UserViewSet(viewsets.GenericViewSet):
             register=RegistrationSerializer,
             account=ProfileSerializer,
             password=ChangePasswordSerializer,
-            check_password=CheckPasswordSerializer,
+            transaction_list_brief=BriefTransactionSerializer,
+            transaction_list_full=TransactionSerializer
         ).get(self.action_map['get'])
 
     def get_view_name(self):
@@ -209,6 +230,7 @@ class UserViewSet(viewsets.GenericViewSet):
                 Account.objects.create(customer=user)
                 data = serializer.data.copy()
                 data.pop('password', None)
+                data.pop('confirm', None)
                 return Response(data=data, status=status.HTTP_201_CREATED)
             else:
                 return Response(serializer.errors)
@@ -217,15 +239,18 @@ class UserViewSet(viewsets.GenericViewSet):
                             status.HTTP_409_CONFLICT)
 
     @method_decorator(login_required)
-    @action(methods=['GET', 'PATCH'], detail=False)
+    @action(methods=['GET', 'PATCH', 'POST'], detail=False)
     def account(self, request):
         user = request.user
         if request.method == 'GET':
             serializer = ProfileSerializer(instance=user)
-        if request.method == 'PATCH':
-            serializer = ProfileSerializer(data=request.data, instance=user, partial=True)
+            return Response(serializer.data)
+        if request.method in ('POST', 'PATCH'):
+            partial = bool(request.method == 'PATCH')
+            serializer = ProfileSerializer(data=request.data, instance=user, partial=partial)
             if serializer.is_valid():
                 serializer.save()
+                return Response(serializer.data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return options_response
