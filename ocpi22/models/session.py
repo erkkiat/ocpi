@@ -79,6 +79,11 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # If this is a type=APP_USER Token, it will be a unique, by the eMSP, generated ID.
     cdr_token_uid = models.CharField(max_length=36)
 
+    @property
+    def token_id(self):
+        # For SessionAdmin
+        return self.cdr_token_uid
+
     # Type of the token
     cdr_token_type = models.CharField(max_length=11, choices=Token.TYPE_CHOICES)
 

@@ -75,6 +75,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Token used to start this charging session, includes all the relevant information to identify the unique token.
     cdr_token_uid = models.CharField(max_length=36)
 
+    @property
+    def token_id(self):
+        return self.cdr_token_uid
+
     # Type of the token
     cdr_token_type = models.CharField(max_length=11, choices=Token.TYPE_CHOICES)
 
@@ -125,6 +129,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects.".
     cdr_location_evse_id = models.CharField(max_length=48)
+
+    @property
+    def evse_id(self):
+        return self.cdr_location_evse_id
 
     # Identifier of the connector within the EVSE.
     cdr_location_connector_id = models.CharField(max_length=36)

@@ -312,14 +312,23 @@ class CapabilityAdmin(admin.ModelAdmin):
 
 class CdrAdmin(admin.ModelAdmin):
     model = Cdr
-    ordering = ('-created',)
-    list_display = [
-        'object_owner', 'billed_to',
-        'start_date_time',  # Todo: Show time in local timezone
-        'cdr_token_uid',
-        'cdr_location_evse_id',
-        'total_session_time', 'total_energy', 'total_cost',
-    ]
+    ordering = ('-start_date_time',)
+    if ocpi_platform.is_cpo:
+        list_display = [
+            'token_id',
+            'start_date_time',  # Todo: Show time in local timezone
+            'billed_to', 'evse_id', 'auth_method',
+            'total_session_time', 'total_energy', 'total_cost',
+            'uid',
+        ]
+    else:
+        list_display = [
+            'token_id',
+            'start_date_time',  # Todo: Show time in local timezone
+            'evse_id', 'auth_method',
+            'total_session_time', 'total_energy', 'total_cost',
+            'uid',
+        ]
     fieldsets = (
         ('Identification', dict(fields=(('country_code', 'party_id', 'uid'),
                                         ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id')))),
@@ -360,14 +369,27 @@ class SessionAdmin(NestedModelAdmin):
         inlines = [CdrDimensionInline]
 
     model = Session
-    ordering = ['-created']
-    list_display = [
-        'object_owner', 'billed_to',
-        'start_date_time',  # Todo: Show time in local timezone
-        'status',
-        'evse', 'connector',
-        'total_time', 'kwh', 'cost'
-    ]
+    ordering = ['-start_date_time']
+    if ocpi_platform.is_cpo:
+        list_display = [
+            'status',
+            'token_id',
+            'start_date_time',  # Todo: Show time in local timezone
+            'evse', 'connector',
+            'billed_to',
+            'total_time', 'kwh', 'cost',
+            'internal_reference',
+            'uid',
+        ]
+    else:
+        list_display = [
+            'status',
+            'token_id',
+            'start_date_time',  # Todo: Show time in local timezone
+            'evse', 'connector',
+            'total_time', 'kwh', 'cost',
+            'uid',
+        ]
     inlines = [ChargingPeriodInline]
     fieldsets = (
         ('Identification', dict(fields=(('country_code', 'party_id'), ('uid', 'meter_id'),
