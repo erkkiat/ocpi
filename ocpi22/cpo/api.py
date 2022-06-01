@@ -425,7 +425,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         * `HTTP_200_OK` when the session was updated with the provided meter values
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_403_FORBIDDEN` when the session is not active
-        * `HTTP_404_NOT_FOUND` when the Session doesn't exist
+        * `HTTP_404_NOT_FOUND` when the session doesn't exist
         * `HTTP_409_CONFLICT` when the applicable Tariff is misconfigured
 
         ## Energy

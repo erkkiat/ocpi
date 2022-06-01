@@ -63,7 +63,7 @@ class StartSessionSerializer(serializers.Serializer):
     authorization_reference = serializers.CharField(
         max_length=36,
         required=False, allow_blank=True,
-        help_text='Reference to the authorization given by the eMSP, '
+        help_text='Optional reference to the authorization given by the eMSP, '
                   'when given, this reference will be provided in the relevant Session and/or CDR.'
     )
 
@@ -92,7 +92,7 @@ class UnlockConnectorSerializer(serializers.Serializer):
     evse_uid = serializers.CharField(
         max_length=36,
         required=False, allow_blank=True,
-        help_text='EVSE.uid of the EVSE of this Location of which it is requested to unlock the connector.'
+        help_text='Optional EVSE.uid of the EVSE of this Location of which it is requested to unlock the connector.'
     )
     connector_id = serializers.CharField(
         max_length=36,

@@ -204,23 +204,25 @@ class MeterValuesSerializer(serializers.Serializer):
     """
     session_id = SessionIdSerializer(
         source='session', required=False,
-        help_text='The OCPI session ID (from the response of the start_transaction endpoint)',
+        help_text='The optional OCPI session ID (from the response of the start_transaction endpoint)',
     )
     internal_reference = serializers.CharField(
         required=False,
-        help_text='The internal reference on the CPO platform (for example order number from the billing system)',
+        help_text='The optional internal reference on the CPO platform '
+                  '(for example order number from the billing system)',
     )
     kwh = serializers.FloatField(
         help_text='The kWh measurement at the time of this message',
     )
     soc = serializers.FloatField(
         required=False, min_value=0, max_value=100,
-        help_text='The State of Charge for the vehicle, if provided by the charge point',
+        help_text='The optional State of Charge for the vehicle, if provided by the charge point',
     )
     power = serializers.FloatField(
         required=False,
-        help_text='Total amount of energy (dis-)charged during this ChargingPeriod: defined in kWh. When negative, '
-                  'more energy was feed into the grid then charged into the EV. Default step_size is 1.',
+        help_text='Optional total amount of energy (dis-)charged during this ChargingPeriod: defined in kWh. '
+                  'When negative, more energy was feed into the grid then charged into the EV. '
+                  'Default step_size is 1.',
     )
 
 
@@ -245,7 +247,7 @@ class StartTransactionSerializer(serializers.Serializer):
     start_kwh = serializers.FloatField(
         required=False,
         default=0.0,
-        help_text='The kWh measurement at the meter at start of the transaction, can start from zero '
+        help_text='The optional kWh measurement at the meter at start of the transaction, can start from zero '
                   'or start from where the previous charging session ended or some other value'
     )
 
@@ -256,11 +258,12 @@ class StopTransactionSerializer(serializers.Serializer):
     """
     session_id = SessionIdSerializer(
         source='session', required=False,
-        help_text='The OCPI session ID (from the response of the start_transaction endpoint)',
+        help_text='The optional OCPI session ID (from the response of the start_transaction endpoint)',
     )
     internal_reference = serializers.CharField(
         required=False,
-        help_text='The internal reference on the CPO platform (for example order number from the billing system)',
+        help_text='The optional internal reference on the CPO platform '
+                  '(for example order number from the billing system)',
     )
 
     def validate(self, attrs):
