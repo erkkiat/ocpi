@@ -105,23 +105,20 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         * `HTTP_404_NOT_FOUND` when the Session doesn't exist or status is not yet available
         """
         try:
-            if request.method == 'POST':
-                serializer = SessionStatusSerializer(data=request.data)
-                if serializer.is_valid():
-                    session = serializer.validated_data.get('session')
+            serializer = SessionStatusSerializer(data=request.data)
+            if serializer.is_valid():
+                session = serializer.validated_data.get('session')
+                if not session:
+                    token = request.user.accounts.first().app_token_id
+                    session = get_session(token, (Session.PENDING, Session.ACTIVE, Session.COMPLETED))
                     if not session:
-                        token = request.user.accounts.first().app_token_id
-                        session = get_session(token, (Session.PENDING, Session.ACTIVE, Session.COMPLETED))
-                        if not session:
-                            return Response(dict(status=f'No session found for token `{token}`. '
-                                                        f'There may not have been a Session update from CPO.'),
-                                            status=status.HTTP_404_NOT_FOUND)
-                    return Response(SessionSerializer(instance=session).data)
-                else:
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                        return Response(dict(status=f'No session found for token `{token}`. '
+                                                    f'There may not have been a Session update from CPO.'),
+                                        status=status.HTTP_404_NOT_FOUND)
+                return Response(SessionSerializer(instance=session).data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
