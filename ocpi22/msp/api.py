@@ -229,6 +229,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 account=request.build_absolute_uri(
                     reverse('user-account')
                 ),
+                password=request.build_absolute_uri(
+                    reverse('user-password')
+                ),
                 transactions_brief=request.build_absolute_uri(
                     reverse('user-transaction-list-brief')
                 ),

@@ -7,6 +7,7 @@ from django.utils.decorators import method_decorator
 from rest_framework import serializers, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
@@ -35,6 +36,22 @@ class CheckPasswordSerializer(serializers.Serializer):
     )
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(
+        write_only=True,
+        help_text="The password to be set for this user"
+    )
+
+    def update(self, user, validated_data):
+        raw_password = validated_data.get('password')
+        if raw_password:
+            user.set_password(raw_password)
+            user.save()
+        else:
+            raise ValidationError('Please POST or PATCH {"password": "[newpassword]"}')
+        return user
+
+
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -43,24 +60,16 @@ class ProfileSerializer(serializers.ModelSerializer):
     firstname = serializers.CharField(source='first_name', required=False, allow_blank=True)
     lastname = serializers.CharField(source='last_name', required=False, allow_blank=True)
 
-    password = serializers.CharField(
-        required=False, write_only=True,
-        help_text="The password to be set for this user"
-    )
-
     telephone = serializers.CharField(source="profile.phone", max_length=PHONE_FIELD_LENGTH,
                                       required=False, allow_blank=True)
     vehicle = serializers.CharField(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH,
                                     required=False, allow_blank=True)
 
     def update(self, user, validated_data):
-        raw_password = validated_data.pop('password', None)
         profile_data = validated_data.pop('profile', None)
 
         for key, value in validated_data.items():
             setattr(user, key, value)
-        if raw_password:
-            user.set_password(raw_password)
         user.save()
 
         if profile_data:
@@ -173,6 +182,7 @@ class UserViewSet(viewsets.GenericViewSet):
         return dict(
             register=RegistrationSerializer,
             account=ProfileSerializer,
+            password=ChangePasswordSerializer,
             check_password=CheckPasswordSerializer,
         ).get(self.action_map['get'])
 
@@ -218,7 +228,24 @@ class UserViewSet(viewsets.GenericViewSet):
                 serializer.save()
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.data)
+        return options_response
+
+    @action(methods=['GET', 'POST', 'PATCH'], detail=False)
+    def password(self, request):
+        user: User = request.user
+        if not user.is_authenticated:
+            return Response(dict(status_message='Please authenticate the user to use this endpoint'),
+                            status=status.HTTP_401_UNAUTHORIZED)
+        if request.method == 'GET':
+            return options_response
+        if request.method in ('POST', 'PATCH'):
+            partial = bool(request.method == 'PATCH')
+            serializer = ChangePasswordSerializer(data=request.data, instance=user, partial=partial)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return options_response
 
     # @action(methods=['POST', 'GET'], detail=False)
     # def check_password(self, request):
