@@ -80,7 +80,11 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
             )
 
     # Not AD HOC, so Token should be found from database
-    return _authorize_token(token, location)
+    authorization = _authorize_token(token, location)
+    if not authorization or authorization.allowed != Token.ALLOWED:
+        _authorize_token.cache_clear()
+        logging.info('Authorization declined, authorization cache cleared')
+    return authorization
 
 
 @ttl_cache(maxsize=1024, ttl=14 * 60)

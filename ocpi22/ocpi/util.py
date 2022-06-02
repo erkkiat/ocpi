@@ -420,3 +420,10 @@ def generate_session_uid():
     Should be with the CPO identifier, since Sessions are owned by CPO
     """
     return generate_reference('S*', OcpiRolesEnum.CPO)
+
+
+def generate_cdr_uid():
+    """
+    Should be with the CPO identifier, since CDRs are owned by CPO
+    """
+    return generate_reference('C*', OcpiRolesEnum.CPO)

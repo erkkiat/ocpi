@@ -49,8 +49,10 @@ def create_session(location_id, evse_uid, connector_id, internal_reference=None,
     if authorize_from_msp:
         from ocpi22.tokens.auth import authorize_token
         authorization: TokenAuthorization = authorize_token(token, location)
-        if not authorization:
-            raise exceptions.PermissionDenied(f'Token {token} is not authorized for use by MSP at this time')
+        if not authorization or authorization.allowed != Token.ALLOWED:
+            msg = f'Token {token} is not authorized for use by MSP at this time: {authorization.info}'
+            logging.error(msg)
+            raise exceptions.PermissionDenied(msg)
         authorization_method, authorization_reference = authorization.auth_method, authorization.authorization_reference
     else:
         authorization_method = Session.COMMAND

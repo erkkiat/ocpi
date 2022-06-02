@@ -13,9 +13,9 @@ from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.msp.account import check_balance, update_balance
+from ocpi22.msp.account import check_balance
 from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHOICES
-from ocpi22.ocpi.util import OcpiModule, Ocpi
+from ocpi22.ocpi.util import OcpiModule, Ocpi, generate_cdr_uid
 from ocpiconnector.ocpi_identities import ocpi_platform
 
 
@@ -208,9 +208,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         if not session.end_date_time:
             session.end_date_time = timezone.now()
 
-        # noinspection PyUnresolvedReferences
         cdr = cls.objects.create(
-            uid=uuid.uuid4().hex,
+            uid=generate_cdr_uid(),
             country_code=session.country_code,
             party_id=session.party_id,
             start_date_time=session.start_date_time,
