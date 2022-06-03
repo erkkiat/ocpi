@@ -265,6 +265,10 @@ class StopTransactionSerializer(serializers.Serializer):
         help_text='The optional internal reference on the CPO platform '
                   '(for example order number from the billing system)',
     )
+    stop_kwh = serializers.DecimalField(
+        max_digits=8, decimal_places=4, required=False,
+        help_text='Optionally, the final kWh reading from the charger',
+    )
 
     def validate(self, attrs):
         if 'session_id' not in attrs and 'internal_reference' not in attrs:

@@ -1,3 +1,6 @@
+from decimal import Decimal
+from typing import Union
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -58,6 +61,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # for example: EV is full, but parking cost also has to be paid.
     end_date_time = models.DateTimeField(blank=True, null=True)
 
+    @property
+    def total_time_float(self):
+        return ((self.end_date_time or timezone.now()) - self.start_date_time).seconds / 3600
+
     # How many kWh are in the charge point meter at the start of the session
     start_kwh = models.FloatField(default=0.0)
 
@@ -66,11 +73,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def kwh(self):
-        return round(self.stop_kwh - self.start_kwh, 3)
+        return round(Decimal(self.stop_kwh) - Decimal(self.start_kwh), 3)
 
     @kwh.setter
-    def kwh(self, value: float):
-        self.stop_kwh = self.start_kwh + value
+    def kwh(self, value: Union[float, Decimal]):
+        self.stop_kwh = Decimal(self.start_kwh) + Decimal(value)
+        # cp = self.get_active_charging_period()
+        # if cp:
+        #     pass  # Todo: find and update kwh
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
@@ -206,7 +216,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         kwh: float = float(self.kwh)
 
         # Calculate the session duration using either a stored end time or the current time
-        hours = ((self.end_date_time or timezone.now()) - self.start_date_time).seconds / 3600
+        hours = self.total_time_float
         result_incl_vat: float = 0.0
         result_excl_vat: float = 0.0
         tariff: Tariff
@@ -253,8 +263,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def total_time(self):
         if self.status == 'INVALID':
             return '-'
-        end = self.end_date_time if self.end_date_time else timezone.now()
-        return hours_minutes((end - self.start_date_time).seconds / 3600)
+        return hours_minutes(self.total_time_float)
 
     def cost(self) -> str:
         return format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)

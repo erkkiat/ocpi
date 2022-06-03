@@ -528,6 +528,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 serializer = StopTransactionSerializer(data=request.data)
                 if serializer.is_valid():
                     session = serializer.validated_data.get('session')
+                    stop_kwh = serializer.validated_data.get('stop_kwh')
                     if not session:
                         internal_reference = serializer.validated_data.get('internal_reference')
                         session = Session.get_if_exists(internal_reference=internal_reference)
@@ -537,9 +538,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     if session.is_final():
                         return Response(dict(status_text='Session was completed earlier, cannot stop if twice'),
                                         status=status.HTTP_409_CONFLICT)
+                    session.kwh = stop_kwh
                     session.status = Session.COMPLETED
                     session.calculate_price()
-                    session.save(update_fields=['status', 'total_cost_incl_vat', 'total_cost_excl_vat'])
+                    session.save(update_fields=['stop_kwh', 'status', 'total_cost_incl_vat', 'total_cost_excl_vat'])
                     session.send_updates()
 
                     # Create the corresponding CDR (it will also be sent to other party)

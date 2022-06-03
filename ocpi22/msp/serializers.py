@@ -76,7 +76,7 @@ class StopChargingSerializer(serializers.Serializer):
     session_id = StrictSessionIdSerializer(
         required=False,
         source='session',
-        help_text='The session_id provided by CPO'
+        help_text='The optional session_id provided by CPO'
     )
 
 
@@ -84,5 +84,5 @@ class SessionStatusSerializer(serializers.Serializer):
     session_id = StrictSessionIdSerializer(
         required=False,
         source='session',
-        help_text='The session_id provided by CPO'
+        help_text='The optional session_id provided by CPO'
     )
