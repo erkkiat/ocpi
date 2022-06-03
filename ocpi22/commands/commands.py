@@ -194,8 +194,6 @@ class CommandsViewSet(GenericViewSet):
             serializer = StopSessionSerializer(data=request.data)
             if serializer.is_valid():
                 session: Session = Session.get_if_exists(uid=serializer.validated_data.get('session_id'))
-                session.status = Session.COMPLETED
-                session.save()
 
                 # The worst scenario is this
                 ocpi_status = 2000
@@ -245,14 +243,14 @@ class CommandsViewSet(GenericViewSet):
                     if data:
                         timeout = data.get('timeout', timeout)
                         result = data.get('result')
-                        # ic(result)
-                        if result:
+                        logging.info(f'Result from charger for stop charging: {result}')
+                        if result == 'ACCEPTED':
                             message = MessageTexts.get(f'STOP_{result.upper()}',
                                                        MessageTexts.DEFAULT_CHARGER_ERROR_TEXT)
                             ocpi_status = 1000
                             http_status = status.HTTP_200_OK
                         else:
-                            result = 'REJECTED'
+                            result = result or 'REJECTED'  # Fill it if missing in response
                 except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
                     message = MessageTexts.MS_CONNECTION_ERROR
                     http_status = status.HTTP_424_FAILED_DEPENDENCY
