@@ -360,10 +360,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     token = serializer.validated_data['token']
                     start_kwh = serializer.validated_data['start_kwh']
 
-                    if Session.objects.filter(internal_reference=internal_reference).exists():
+                    if internal_reference and Session.objects.filter(internal_reference=internal_reference).exists():
                         return Response(
                             dict(
-                                status_text=f'Session `{internal_reference}` already exists',
+                                status_text=f'Session with internal reference `{internal_reference}` already exists',
                             ),
                             status=status.HTTP_409_CONFLICT,
                         )
@@ -381,7 +381,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         party = authorization.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
                         session.connector = Connector.get_if_exists(uid=connector_id)
-                        session.internal_reference = internal_reference
+                        session.internal_reference = internal_reference or None
                         session.status = Session.ACTIVE
                         session.save()
                         session.send_updates()

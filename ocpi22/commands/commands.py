@@ -8,7 +8,7 @@ from django.db import transaction
 from django.http import Http404
 from rest_framework import serializers, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, APIException
+from rest_framework.exceptions import NotFound, APIException, ValidationError
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
@@ -393,7 +393,7 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
 
 def send_stop_command(session: Session) -> Optional[Response]:
     if session.status != session.ACTIVE:
-        return None
+        raise ValidationError(f'Session {session.uid} is not active and cannot be stopped')
 
     country_code = session.location.country_code
     party_id = session.location.party_id
