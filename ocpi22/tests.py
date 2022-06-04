@@ -56,7 +56,7 @@ from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
-    accept_authorization, ExpectedSessionUpdateResults, CdrMessages
+    accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -1532,6 +1532,7 @@ class TestCpoApi(TestCase):
                                                             ('contract_id', 'DE8ACC12E46L89')])},
                           'status_text': 'Session started'}
                          )
+
         # Duplicate internal_reference
         response = cpo_viewset.start_transaction(cpo_request)
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
@@ -1667,6 +1668,19 @@ class TestCpoApi(TestCase):
 
             # Check the outgoing update call
             self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
+
+        #
+        # CPO stops the session
+        #
+
+        data = dict(
+            internal_reference='MY-INTERNAL-REFERENCE',
+            stop_kwh=155
+        )
+        with time_machine.travel(faketime + timedelta(minutes=23), tick=False):
+            response = stop_transaction(data)
+        self.assertEqual(response.data, StopTransactionResponses.stop1,
+                         'stop_transaction response differs from expected')
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
