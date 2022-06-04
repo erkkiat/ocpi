@@ -14,8 +14,8 @@ from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer
-from ocpi22.ocpi.serializers import SessionSerializer
+from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
+    MspSessionSerializer
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector import slack_logging
@@ -29,6 +29,8 @@ slack_logging.init()
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
 
 # Todo: limit access to certain privilege holders
+
+
 class MspRoamingViewSet(viewsets.GenericViewSet):
     """
     """
@@ -115,7 +117,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                         return Response(dict(status=f'No session found for token `{token}`. '
                                                     f'There may not have been a Session update from CPO.'),
                                         status=status.HTTP_404_NOT_FOUND)
-                return Response(SessionSerializer(instance=session).data)
+                return Response(MspSessionSerializer(instance=session).data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

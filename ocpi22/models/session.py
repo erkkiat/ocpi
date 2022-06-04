@@ -49,7 +49,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     uid = models.CharField(max_length=36, db_index=True)
 
     # The internal order number or other identifier from the CPO billing system, not part of OCPI
-    internal_reference = models.CharField(max_length=36, blank=True, null=True)
+    internal_reference = models.CharField(max_length=36, blank=True, null=True, db_index=True)
 
     # The timestamp when the session became ACTIVE in the Charge Point.
     # When the session is still PENDING, this field SHALL be set to the time the Session was
@@ -81,6 +81,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # cp = self.get_active_charging_period()
         # if cp:
         #     pass  # Todo: find and update kwh
+        return self.kwh
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.

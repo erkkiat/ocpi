@@ -65,7 +65,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     session_id = models.CharField(max_length=36, blank=True, default='')
 
     # The internal order number or other identifier from the CPO billing system, not part of OCPI
-    internal_reference = models.CharField(max_length=36, blank=True, null=True)
+    internal_reference = models.CharField(max_length=36, blank=True, null=True, unique=True)
 
     def session_url(self):
         return format_html(

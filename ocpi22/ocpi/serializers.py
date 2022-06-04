@@ -293,8 +293,8 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
         fields = ['detail_url', 'country_code', 'party_id', 'uid',
-                  'start_date_time', 'end_date_time', 'display_start_date', 'display_start_time',
-                  'kwh', 'charging_periods', 'total_time', 'display_total_time',
+                  'start_date_time', 'end_date_time',
+                  'kwh', 'charging_periods',
                   'cdr_token', 'auth_method', 'authorization_reference',
                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
                   'status', 'last_updated']
@@ -306,13 +306,8 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     connector_id = ConnectorIdSerializer(source='*', required=False)
     total_cost = TotalCostSerializer(source='*', required=False)
 
-    total_time = serializers.DecimalField(source='total_time_float', read_only=True, max_digits=8, decimal_places=2)
-    display_total_time = serializers.CharField(source='total_time', read_only=True)
-
     start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
     end_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-    display_start_date = serializers.DateTimeField(source='start_date_time', format="%-d.%-m.%Y", read_only=True)
-    display_start_time = serializers.DateTimeField(source='start_date_time', format="%H:%M", read_only=True)
 
     last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
     kwh = serializers.FloatField(required=False)

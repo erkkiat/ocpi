@@ -544,7 +544,7 @@ expected_get_headers = {
 
 class ExpectedSessionUpdateResults:
     update1 = {'auth_method': 'AUTH_REQUEST',
-               'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+               'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                'cdr_token': OrderedDict([('uid', 'T1'),
                                          ('type', 'RFID'),
                                          ('contract_id', 'CONTRACT3')]),
@@ -569,7 +569,7 @@ class ExpectedSessionUpdateResults:
                'uid': '12345'}
 
     update2 = {'auth_method': 'AUTH_REQUEST',
-               'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+               'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                'cdr_token': OrderedDict([('uid', 'T1'),
                                          ('type', 'RFID'),
                                          ('contract_id', 'CONTRACT3')]),
@@ -603,7 +603,7 @@ class ExpectedSessionUpdateResults:
 
 class CdrMessages:
     test_transactions_rfid = {'auth_method': 'AUTH_REQUEST',
-                              'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+                              'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                               'cdr_location': OrderedDict([('id', 'HELSINKI-1'),
                                                            ('address', 'Helsinki 12'),
                                                            ('name', 'Helsinki Supercharger'),
@@ -649,7 +649,7 @@ class CdrMessages:
                               'total_energy': 100.0,
                               'total_time': 0.0}
     test_transactions_app_id = {'auth_method': 'AUTH_REQUEST',
-                                'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+                                'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                                 'cdr_location': OrderedDict([('id', 'HELSINKI-1'),
                                                              ('address', 'Helsinki 12'),
                                                              ('name', 'Helsinki Supercharger'),
@@ -701,7 +701,7 @@ accept_authorization = dict(
         AuthorizationInfo=dict(
             allowed='ALLOWED',
             token_id='EKI1',
-            authorization_reference='FAKE-AUTHORIZATION-REFERENCE',
+            authorization_reference='MOCK-AUTHORIZATION-REFERENCE',
         ),
     ),
 )

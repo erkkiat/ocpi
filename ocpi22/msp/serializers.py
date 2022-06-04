@@ -6,6 +6,7 @@ from ocpi22.messages import default_error_messages
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.ocpi.serializers import SessionSerializer
 
 
 class TokenIdSerializer(fields.CharField):
@@ -86,3 +87,20 @@ class SessionStatusSerializer(serializers.Serializer):
         source='session',
         help_text='The optional session_id provided by CPO'
     )
+
+
+class MspSessionSerializer(SessionSerializer):
+    class Meta:
+        model = Session
+        fields = ['detail_url', 'country_code', 'party_id', 'uid',
+                  'start_date_time', 'end_date_time', 'display_start_date', 'display_start_time',
+                  'kwh', 'charging_periods', 'total_time', 'display_total_time',
+                  'cdr_token', 'auth_method', 'authorization_reference',
+                  'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
+                  'status', 'last_updated']
+
+    total_time = serializers.DecimalField(source='total_time_float', read_only=True, max_digits=8, decimal_places=2)
+    display_total_time = serializers.CharField(source='total_time', read_only=True)
+
+    display_start_date = serializers.DateTimeField(source='start_date_time', format="%-d.%-m.%Y", read_only=True)
+    display_start_time = serializers.DateTimeField(source='start_date_time', format="%H:%M", read_only=True)

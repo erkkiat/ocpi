@@ -786,16 +786,27 @@ class CdrTests(TestCase):
         self.assertEqual(cdr.billed_to, session.billed_to, 'Billed_to seems not to be copied correctly')
 
 
+class mock_uuid4():
+    number: int
+
+    def __init__(self, number=1):
+        self.number = number
+
+    @property
+    def hex(self):
+        return f'MOCK-{self.number}'
+
+
 class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.sessions.util.generate_session_uid',
-           side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
+    @patch('ocpi22.ocpi.util.uuid.uuid4',
+           return_value=mock_uuid4())
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.commands.requests.post')
-    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, _generate_session_uid_mock: Mock):
+    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -1373,12 +1384,12 @@ class TestSession(TestCase):
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
-    @patch('ocpi22.sessions.util.generate_session_uid',
-           side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
+    @patch('ocpi22.ocpi.util.uuid.uuid4',
+           return_value=mock_uuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_update_session(self,
                             _ocpi_post_mock: Mock,
-                            _generate_reference_mock: Mock,
+                            _uuid4_mock: Mock,
                             _get_parameter_mock: Mock):
         evse = Evse.objects.all()[0]
         location = evse.location
@@ -1479,12 +1490,12 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.models.session.OcpiModule.send_updates')
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
-    @patch('ocpi22.cpo.api.generate_session_uid',
-           side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
+    @patch('ocpi22.ocpi.util.uuid.uuid4',
+           return_value=mock_uuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_rfid_charging_flow(self,
                                 _ocpi_post_mock: Mock,
-                                _generate_reference_mock: Mock,
+                                _uuid4_mock: Mock,
                                 _get_parameter_mock: Mock,
                                 send_updates_mock: Mock):
 
@@ -1515,14 +1526,14 @@ class TestCpoApi(TestCase):
                 expected_response={'now_kwh': 123.45,
                                    'power': None,
                                    'price': '2,14€',
-                                   'session_id': 'FAKE-SESSION-UID-1',
+                                   'session_id': 'FI*CPO*S*MOCK-1',
                                    'internal_reference': 'MY-INTERNAL-REFERENCE',
                                    'soc': 42.0,
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
-                                   'total_kwh': 3.45},
+                                   'total_kwh': Decimal('3.450')},
                 session_data={'auth_method': 'AUTH_REQUEST',
-                              'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+                              'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                               'cdr_token': OrderedDict([('uid', 'EKI1'),
                                                         ('type', 'RFID'),
                                                         ('contract_id', 'DE8ACC12E46L89')]),
@@ -1543,12 +1554,12 @@ class TestCpoApi(TestCase):
                               'start_date_time': '2000-01-01T12:00:00Z',
                               'status': 'ACTIVE',
                               'total_cost': OrderedDict([('excl_vat', 1.73), ('incl_vat', 2.14)]),
-                              'uid': 'FAKE-SESSION-UID-1'},
+                              'uid': 'FI*CPO*S*MOCK-1'},
                 expected_update_data={'charging_periods': [OrderedDict(
                     [('start_date_time', '2000-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
                         OrderedDict([('type', 'ENERGY'), ('volume', '3.4500')]),
                         OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '42.0000')])])])],
-                    'kwh': 3.45,
+                    'kwh': Decimal('3.450'),
                     'last_updated': '2000-01-01T12:00:00Z',
                     'total_cost': {'excl_vat': 1.73, 'incl_vat': 2.14}},
                 evse_status='CHARGING'
@@ -1562,14 +1573,14 @@ class TestCpoApi(TestCase):
                 expected_response={'now_kwh': 153.45,
                                    'power': None,
                                    'price': '20,74€',
-                                   'session_id': 'FAKE-SESSION-UID-1',
+                                   'session_id': 'FI*CPO*S*MOCK-1',
                                    'internal_reference': 'MY-INTERNAL-REFERENCE',
                                    'soc': 80.0,
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
-                                   'total_kwh': 33.45},
+                                   'total_kwh': Decimal('33.450')},
                 session_data={'auth_method': 'AUTH_REQUEST',
-                              'authorization_reference': 'FAKE-AUTHORIZATION-REFERENCE',
+                              'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                               'cdr_token': OrderedDict([('uid', 'EKI1'),
                                                         ('type', 'RFID'),
                                                         ('contract_id', 'DE8ACC12E46L89')]),
@@ -1590,7 +1601,7 @@ class TestCpoApi(TestCase):
                               'start_date_time': '2000-01-01T12:00:00Z',
                               'status': 'ACTIVE',
                               'total_cost': OrderedDict([('excl_vat', 16.73), ('incl_vat', 20.74)]),
-                              'uid': 'FAKE-SESSION-UID-1'},
+                              'uid': 'FI*CPO*S*MOCK-1'},
                 evse_status='CHARGING'
             ),
             dict(
@@ -1643,12 +1654,12 @@ class TestCpoApi(TestCase):
                'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
            }.get(x))
     @patch('ocpi22.util.redis_store.set', return_value=True)
-    @patch('ocpi22.sessions.util.generate_session_uid',
-           side_effect=['FAKE-SESSION-UID-1', 'FAKE-SESSION-UID-2'])
+    @patch('ocpi22.ocpi.util.uuid.uuid4',
+           return_value=mock_uuid4())
     @patch('ocpi22.commands.commands.requests.post')
     def test_adhoc_token(self,
                          requests_post_mock: Mock,
-                         _generate_reference_mock: Mock,
+                         uuid4_mock: Mock,
                          _set_parameter_mock: Mock,
                          _get_parameter_mock: Mock):
         url = reverse('commands-start-session')
@@ -1728,7 +1739,7 @@ class TestCpoApi(TestCase):
         data = dict(
             evse_id='HELSINKI-3',
             token_id='SOME-ADHOC-TOKEN',
-            internal_reference='MY-INTERNAL-REFERENCE',
+            internal_reference='MY-INTERNAL-REFERENCE-2',
             connector_id='1',
         )
         cpo_response = start_transaction(data)
@@ -1742,8 +1753,8 @@ class TestCpoApi(TestCase):
                          'evse_uid': 'HELSINKI-3',
                          'location_id': 'HELSINKI-1',
                          'connector_id': '1',
-                         'session_id': 'FAKE-SESSION-UID-1',
-                         'internal_reference': 'MY-INTERNAL-REFERENCE',
+                         'session_id': 'FI*CPO*S*MOCK-1',
+                         'internal_reference': 'MY-INTERNAL-REFERENCE-2',
                          'start_date_time': '2000-01-01T12:00:00',
                          'start_kwh': 0.0,
                          'status': 'ACTIVE',
@@ -1782,6 +1793,7 @@ class TestCpoApi(TestCase):
         response = make_json_response(dict(broken_response='APPLES_AND_ORANGES'))
         requests_post_mock.return_value = response
 
+        uuid4_mock.return_value = mock_uuid4(2)
         response = viewset.start_session(request)
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1798,7 +1810,7 @@ class TestCpoApi(TestCase):
         # Todo: Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
         data = dict(
-            internal_reference='MY-INTERNAL-REFERENCE',
+            internal_reference='MY-INTERNAL-REFERENCE-2',
             kwh=123.45,
             soc=42,
             power=150
@@ -1815,7 +1827,7 @@ class TestCpoApi(TestCase):
         # Try updating meter values without a tariff specified
         #
 
-        Session.objects.filter(uid='FAKE-SESSION-UID-1').update(status=Session.ACTIVE)
+        Session.objects.filter(uid='FI*CPO*S*MOCK-1').update(status=Session.ACTIVE)
 
         cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_409_CONFLICT)
@@ -1824,7 +1836,7 @@ class TestCpoApi(TestCase):
         # Update meter values with a tariff
         #
 
-        session = Session.objects.get(uid='FAKE-SESSION-UID-1')
+        session = Session.objects.get(uid='FI*CPO*S*MOCK-1')
         session.connector.tariff_ids.set([9])
         session.save()
 
@@ -1834,22 +1846,22 @@ class TestCpoApi(TestCase):
                              {'now_kwh': 123.45,
                               'power': 150.0,
                               'price': '76,54€',
-                              'session_id': 'FAKE-SESSION-UID-1',
-                              'internal_reference': 'MY-INTERNAL-REFERENCE',
+                              'session_id': 'FI*CPO*S*MOCK-1',
+                              'internal_reference': 'MY-INTERNAL-REFERENCE-2',
                               'soc': 42.0,
                               'start_kwh': 0.0,
                               'status_text': 'Session updated',
-                              'total_kwh': 123.45})
+                              'total_kwh': Decimal('123.450')})
 
         cdr_count_before = Cdr.objects.all().count()
-        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE'))
+        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2'))
         cdr_count_after = Cdr.objects.all().count()
 
         self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
 
-        session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE')
+        session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
         self.assertEqual(session.status, Session.COMPLETED, 'Session should be COMPLETED after CPO stop_transaction')
-        self.assertEqual(session.kwh, 123.45)
+        self.assertEqual(session.kwh, Decimal('123.450'))
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be only one new CDR after stopping a session')
         cdr = Cdr.objects.get(session_id=session.uid)
@@ -1857,7 +1869,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(cdr.authorization_reference, session.authorization_reference)
 
         # Try to end the same Session again, should fail
-        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE'))
+        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2'))
         cdr_count_after = Cdr.objects.all().count()
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be only one new CDR after trying to stop a session twice')
@@ -1910,15 +1922,14 @@ class TestMspApi(TestCase):
     }
 
     @time_machine.travel(faketime, tick=True)
-    @patch('ocpi22.commands.commands.generate_auth_reference', return_value='AUTH-REFERENCE')
-    @patch('ocpi22.msp.account.generate_token_id', return_value='AD-HOC-TOKEN')
+    @patch('ocpi22.ocpi.util.uuid.uuid4',
+           return_value=mock_uuid4())
     @patch('ocpi22.commands.commands.requests.post',
            return_value=FakeResponse(200, accepted_result)
            )
     def test_app_charging(self,
                           requests_post_mock: Mock,
-                          _generate_token_id_mock: Mock,
-                          _generate_auth_reference_mock: Mock):
+                          _uuid4_mock: Mock):
         data = {
             "location_id": "HELSINKI-1",
             "evse_id": "HELSINKI-3",
@@ -1957,14 +1968,14 @@ class TestMspApi(TestCase):
                                       'OCPI-to-country-code': 'FI',
                                       'OCPI-to-party-id': 'CPO',
                                       'content-type': 'application/json'},
-                          'json': {'authorization_reference': 'AUTH-REFERENCE',
+                          'json': {'authorization_reference': 'FI*MSP*A*MOCK-1',
                                    'connector_id': '1',
                                    'evse_uid': 'HELSINKI-3',
                                    'location_id': 'HELSINKI-1',
-                                   'response_url': 'http://testserver/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/AUTH-REFERENCE',
+                                   'response_url': 'http://testserver/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/FI*MSP*A*MOCK-1',
                                    'token': OrderedDict([('country_code', 'FI'),
                                                          ('party_id', 'MSP'),
-                                                         ('uid', 'AD-HOC-TOKEN'),
+                                                         ('uid', 'FI*MSP*T*APP*MOCK-1'),
                                                          ('type', 'APP_USER'),
                                                          ('contract_id', 'CONTRACT-123')])}},
                          'START_SESSION Command sent to CPO differs from expected'
