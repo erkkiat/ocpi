@@ -56,7 +56,7 @@ from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
-    accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses
+    accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -1887,12 +1887,24 @@ class TestCpoApi(TestCase):
                               'start_kwh': 0.0,
                               'status_text': 'Session updated',
                               'total_kwh': Decimal('123.450')})
+        session = Session.objects.get(uid='FI*CPO*S*MOCK-1')
+        session_data = SessionSerializer(session).data
+        self.assertEqual(session_data, SessionData.meter_values_1, 'Session differs from expected')
+
+        #
+        # CPO stops the session
+        #
 
         cdr_count_before = Cdr.objects.all().count()
         response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2'))
         cdr_count_after = Cdr.objects.all().count()
 
+        self.assertEqual(response.data, StopTransactionResponses.stop3,
+                         'stop_transaction response differs from expected')
+
         self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
+
+        # Check that the Session looks correct
 
         session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
         self.assertEqual(session.status, Session.COMPLETED, 'Session should be COMPLETED after CPO stop_transaction')
