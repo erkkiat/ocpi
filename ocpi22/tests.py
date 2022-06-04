@@ -1513,8 +1513,29 @@ class TestCpoApi(TestCase):
             "start_kwh": 120
         }
         cpo_response = cpo_viewset.start_transaction(cpo_request)
-        # ic(cpo_response.data)
         self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
+        self.assertEqual(cpo_response.data,
+                         {'session': {'auth_method': 'AUTH_REQUEST',
+                                      'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
+                                      'billed_to': 'FI*MSP',
+                                      'connector_id': '1',
+                                      'currency': 'EUR',
+                                      'evse_uid': 'HELSINKI-3',
+                                      'internal_reference': 'MY-INTERNAL-REFERENCE',
+                                      'location_id': 'HELSINKI-1',
+                                      'session_id': 'FI*CPO*S*MOCK-1',
+                                      'start_date_time': '2000-01-01T12:00:00',
+                                      'start_kwh': 120.0,
+                                      'status': 'ACTIVE',
+                                      'token': OrderedDict([('token_id', 'EKI1'),
+                                                            ('type', 'RFID'),
+                                                            ('contract_id', 'DE8ACC12E46L89')])},
+                          'status_text': 'Session started'}
+                         )
+        # Duplicate internal_reference
+        response = cpo_viewset.start_transaction(cpo_request)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
+                         'Duplicate internal_reference shoud cause an error')
 
         testcases = (
             dict(
