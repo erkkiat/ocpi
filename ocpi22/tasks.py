@@ -198,18 +198,13 @@ def send_ocpi_request(data, url: str, token_base64: str,
         sentry_sdk.set_context('data', data)
 
         kwargs = dict(url=url, json=data, headers=headers)
-        if method == 'put':
-            result = requests.put(**kwargs)
-        elif method == 'delete':
-            result = requests.delete(**kwargs)
-        elif method == 'get':
-            result = requests.get(**kwargs)
-        elif method == 'post':
-            result = requests.post(**kwargs)
-        elif method == 'patch':
-            result = requests.patch(**kwargs)
-        else:
+
+        # Call the specified method in requests, for example, if method == 'put', call requests.put
+        function = getattr(requests, method)
+        if not function:
             raise NotImplementedError(f'Method {method} is not supported for send_ocpi_request')
+
+        result = function(**kwargs)
 
         logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
