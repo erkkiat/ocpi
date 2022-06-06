@@ -3,6 +3,7 @@ import os
 
 import sentry_sdk
 from django.conf.locale.en import formats as locale_formats
+from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
 TRUE_OPTIONS = (1, '1', True, 'True', 'true')
@@ -17,7 +18,7 @@ DEBUG = _env_bool('DEBUG', False)
 if not DEBUG:
     sentry_sdk.init(
         dsn=os.environ.get('SENTRY_DSN'),
-        integrations=[DjangoIntegration()],
+        integrations=[DjangoIntegration(), CeleryIntegration()],
         traces_sample_rate=0.2,
     )
 
