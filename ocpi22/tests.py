@@ -56,7 +56,7 @@ from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
-    accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData
+    accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, RfidTestData
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -1487,7 +1487,7 @@ class TestCpoApi(TestCase):
                 self.assertEqual(evse.status, case.get('evse_status'))
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.models.session.OcpiModule.send_updates')
+    @patch('ocpi22.models.session.OcpiModule.send_update_to_interested_parties')
     @patch('ocpi22.cpo.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
@@ -1513,6 +1513,15 @@ class TestCpoApi(TestCase):
             "start_kwh": 120
         }
         cpo_response = cpo_viewset.start_transaction(cpo_request)
+
+        # Make sure the created Session was sent to the relevant party
+        send_updates_mock.assert_called()
+        args, kwargs = send_updates_mock.call_args
+
+        data_sent = args[0]
+        self.assertDictEqual(data_sent, RfidTestData.expected_data_1,
+                             "The Session update doesn't look as expected")
+
         self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
         self.assertEqual(cpo_response.data,
                          {'session': {'auth_method': 'AUTH_REQUEST',
@@ -1638,7 +1647,9 @@ class TestCpoApi(TestCase):
 
         for case in testcases:
             cpo_response = meter_values(case.get('request'))
-            # ic(cpo_response, cpo_response.data)
+
+            # Make sure the updated session was sent after meter_values was called
+            send_updates_mock.assert_called()
             args, kwargs = send_updates_mock.call_args
 
             expected_update_data = case.get('expected_update_data')

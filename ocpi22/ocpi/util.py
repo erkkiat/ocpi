@@ -95,10 +95,10 @@ class OcpiModule:
 
             if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
                 logging.info('Sending updates to INTERESTED PARTIES')
-                self.send_update_to_interested_parties(data, method, path_components)
+                self.send_update_to_interested_parties(data, method=method, path_components=path_components)
             else:
                 logging.info('Sending updates to ALL connected parties')
-                self._send_updates(data, method)
+                self._send_updates(data, method=method)
         else:
             logging.warning(settings.UPDATES_DISABLED)
 

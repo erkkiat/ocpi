@@ -16,6 +16,7 @@ from django.conf import settings
 from django.http import Http404
 from django.utils import timezone
 from django.utils.module_loading import import_string
+from requests import JSONDecodeError
 from rest_framework import status
 from sentry_sdk import capture_exception
 
@@ -113,8 +114,10 @@ if REDIS_URL:
     # Load task modules from all registered Django apps.
     app.autodiscover_tasks()
 
-    # Send pings automatically to Cronitor for Celery background tasks
-    cronitor.celery.initialize(app, api_key=os.environ.get('CRONITOR_API_KEY'))
+    CRONITOR_API_KEY = os.environ.get('CRONITOR_API_KEY')
+    if CRONITOR_API_KEY:
+        # Send pings automatically to Cronitor for Celery background tasks
+        cronitor.celery.initialize(app, api_key=CRONITOR_API_KEY)
 else:
     logging.error(f'{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS')
 
@@ -227,7 +230,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
             json=result.json() if result.status_code < 300 else '',
             headers=dict(result.headers) if result.headers else {},
         )
-    except requests.exceptions.ConnectionError as e:
+    except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
         logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}.")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
