@@ -384,7 +384,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.internal_reference = internal_reference or None
                         session.status = Session.ACTIVE
                         session.save()
-                        session.send_updates()
                         logging.info(f'New session {session.uid} active at {evse.evse_id}')
 
                     if not session:
@@ -397,6 +396,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
                             session_status=Session.ACTIVE
                         )
+
+                    session.send_updates()
+
                     session_serializer = CpoSessionSerializer(instance=session)
                     return Response(
                         dict(
