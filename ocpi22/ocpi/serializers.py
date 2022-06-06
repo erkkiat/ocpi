@@ -313,10 +313,16 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     kwh = serializers.FloatField(required=False)
 
     def create(self, validated_data):
-        # noinspection PyUnresolvedReferences
-        return Session.objects.create(
+        chargingperiods = validated_data.pop('chargingperiods', [])
+        session = Session.objects.create(
             **validated_data
         )
+        for chargingperiod in chargingperiods:
+            dimensions = chargingperiod.pop('dimensions', None)
+            cp = ChargingPeriod.objects.create(**chargingperiod, session=session)
+            for dimension in dimensions:
+                CdrDimension.objects.create(**dimension, chargingperiod=cp)
+        return session
 
     def update(self, instance, validated_data):
         # Todo: Any charging_periods from the existing object SHALL be replaced by the charging_periods

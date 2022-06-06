@@ -1924,6 +1924,22 @@ class TestCpoApi(TestCase):
                          f'A duplicate CPO stop_transaction is expected to fail: {response.data}')
 
 
+def put_session_data(data):
+    request = api_factory.post(reverse('session-list'))
+    request.data = data
+    request.user = get_fake_admin()
+    return SessionViewSet.put(request)
+
+
+class TestPutSession(TestCase):
+    fixtures = ['ocpi22/data/test-database-cpo-api.json']
+
+    def test_put_session_with_charging_periods(self):
+        response = put_session_data(SessionData.meter_values_1)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED,
+                         'Creating a session with ChargingPeriods should succeed')
+
+
 def meter_values(data):
     cpo_request = api_factory.post(reverse('chargepoint-meter-values'))
     cpo_request.data = data
