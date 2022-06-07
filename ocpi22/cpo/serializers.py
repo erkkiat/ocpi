@@ -225,6 +225,11 @@ class MeterValuesSerializer(serializers.Serializer):
                   'Default step_size is 1.',
     )
 
+    def validate(self, attrs):
+        if 'session' not in attrs and 'internal_reference' not in attrs:
+            raise ValidationError('Please specify either the session_id or the internal_reference')
+        return attrs
+
 
 class StartTransactionSerializer(serializers.Serializer):
     evse_id = EvseSerialnumberSerializer(
@@ -271,7 +276,7 @@ class StopTransactionSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
-        if 'session_id' not in attrs and 'internal_reference' not in attrs:
+        if 'session' not in attrs and 'internal_reference' not in attrs:
             raise ValidationError('Please specify either the session_id or the internal_reference')
         return attrs
 

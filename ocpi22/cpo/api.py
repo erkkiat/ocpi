@@ -442,11 +442,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     kwh = serializer.validated_data['kwh']
                     soc = serializer.validated_data.get('soc')
                     power = serializer.validated_data.get('power')
-                    if 'session' not in serializer.validated_data \
-                            and 'internal_reference' not in serializer.validated_data:
-                        raise ValidationError(
-                            'Please specify either session_id or internal_reference for the charging transaction'
-                        )
                     session = serializer.validated_data.get('session')
                     if not session:
                         internal_reference = serializer.validated_data.get('internal_reference')

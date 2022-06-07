@@ -995,6 +995,31 @@ class SessionData:
                       'total_cost': OrderedDict([('excl_vat', 61.73), ('incl_vat', 76.54)]),
                       'uid': 'FI*CPO*S*MOCK-1'}
 
+    stop4 = {'auth_method': 'AUTH_REQUEST',
+             'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
+             'cdr_token': OrderedDict([('uid', 'EKI1'),
+                                       ('type', 'RFID'),
+                                       ('contract_id', 'DE8ACC12E46L89')]),
+             'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
+                                               ('tariff', 'EKI1'),
+                                               ('dimensions',
+                                                [OrderedDict([('type', 'ENERGY'),
+                                                              ('volume', '33.4500')]),
+                                                 OrderedDict([('type', 'STATE_OF_CHARGE'),
+                                                              ('volume', '80.0000')])])])],
+             'connector_id': '1',
+             'country_code': 'FI',
+             'currency': 'EUR',
+             'end_date_time': '2000-01-01T12:23:00Z',
+             'evse_uid': 'HELSINKI-3',
+             'kwh': 155.0,
+             'location_id': 'HELSINKI-1',
+             'party_id': 'CPO',
+             'start_date_time': '2000-01-01T12:00:00Z',
+             'status': 'COMPLETED',
+             'total_cost': OrderedDict([('excl_vat', 77.5), ('incl_vat', 96.1)]),
+             'uid': 'FI*CPO*S*MOCK-1'}
+
 
 class RfidTestData:
     expected_data_1 = {'auth_method': 'AUTH_REQUEST',

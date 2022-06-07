@@ -1641,48 +1641,52 @@ class TestCpoApi(TestCase):
                     kwh=123.45,
                 ),
                 expected_response={'status': 'Session matching query does not exist.'},
-                status_code=404
+                status_code=404,
             ),
         )
 
         for case in testcases:
+            send_updates_mock.reset_mock()
             cpo_response = meter_values(case.get('request'))
-
-            # Make sure the updated session was sent after meter_values was called
-            send_updates_mock.assert_called()
-            args, kwargs = send_updates_mock.call_args
-
-            expected_update_data = case.get('expected_update_data')
-            if expected_update_data:
-                update_data = args[0]
-                expected_serializer = SessionSerializer(data=update_data, partial=True)
-                self.assertTrue(expected_serializer.is_valid(),
-                                f'The Session update data does not comply with schema: {expected_serializer.errors}')
-                self.assertTrue(update_data.get('charging_periods'),
-                                'Charging periods missing from Session update')
-                self.assertDictEqual(update_data, expected_update_data,
-                                     f'Sending Session update differs from expected')
 
             expected_status = case.get('status_code', 200)
             self.assertEqual(cpo_response.status_code, expected_status,
                              f'Expecting HTTP status {expected_status} for {case.get("request")}')
             self.assertDictEqual(cpo_response.data, case.get('expected_response'),
                                  f'Case request {case.get("request")}, response {cpo_response.data}')
-            expected_session_data = case.get('session_data')
-            if expected_session_data:
-                session = Session.objects.get(internal_reference=cpo_request.data.get('internal_reference'))
-                self.assertTrue(session.total_cost_excl_vat and session.total_cost_incl_vat,
-                                'meter_values does not result in an updated price for the session')
-                session_data = SessionSerializer(instance=session).data
-                self.assertDictEqual(session_data, expected_session_data,
-                                     'Session data differs')
 
-            # Check the outgoing update call
-            self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
+            # Make sure the updated session was sent after meter_values was called
+            if expected_status == 200:
+                send_updates_mock.assert_called()
+                args, kwargs = send_updates_mock.call_args
+                # Check the outgoing update call
+                self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
+
+                expected_update_data = case.get('expected_update_data')
+                if expected_update_data:
+                    update_data = args[0]
+                    expected_serializer = SessionSerializer(data=update_data, partial=True)
+                    self.assertTrue(expected_serializer.is_valid(),
+                                    f'The Session update data does not comply with schema: {expected_serializer.errors}')
+                    self.assertTrue(update_data.get('charging_periods'),
+                                    'Charging periods missing from Session update')
+                    self.assertDictEqual(update_data, expected_update_data,
+                                         f'Sending Session update differs from expected')
+
+                expected_session_data = case.get('session_data')
+                if expected_session_data:
+                    session = Session.objects.get(internal_reference=cpo_request.data.get('internal_reference'))
+                    self.assertTrue(session.total_cost_excl_vat and session.total_cost_incl_vat,
+                                    'meter_values does not result in an updated price for the session')
+                    session_data = SessionSerializer(instance=session).data
+                    self.assertDictEqual(session_data, expected_session_data,
+                                         'Session data differs')
 
         #
         # CPO stops the session
         #
+
+        send_updates_mock.reset_mock()
 
         data = dict(
             internal_reference='MY-INTERNAL-REFERENCE',
@@ -1692,6 +1696,11 @@ class TestCpoApi(TestCase):
             response = stop_transaction(data)
         self.assertEqual(response.data, StopTransactionResponses.stop1,
                          'stop_transaction response differs from expected')
+        send_updates_mock.assert_called()
+        args, kwargs = send_updates_mock.call_args
+        sent_data = args[0]
+        self.assertDictEqual(sent_data, SessionData.stop4,
+                             'stop_transaction is sending different session data than expected to MSP')
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
