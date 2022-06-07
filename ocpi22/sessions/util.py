@@ -63,8 +63,8 @@ def create_session(location_id, evse_uid, connector_id, internal_reference=None,
                             f'{",".join([s.uid for s in active_sessions])}')
             for session in active_sessions:
                 session.status = Session.COMPLETED
-                session.save()  # This should also send the updates to interested OCPI parties
-                # session.send_updates()
+                session.save()  # This doesn't seem to send an update for some reason
+                session.send_updates()
     except Exception as e:
         logging.error(f'{settings.HOSTNAME}: Inactivating overlapping sessions failed for EVSE {evse.uid}: {e}')
 

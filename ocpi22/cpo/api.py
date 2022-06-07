@@ -27,7 +27,7 @@ from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.routing import find_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tasks import send_ocpi_request
-from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token
+from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token, _authorize_token
 from ocpi22.tokens.util import get_token_id
 from ocpi22.logging import log_error
 from ocpiconnector import slack_logging
@@ -398,6 +398,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         )
 
                     session.send_updates()
+
+                    # The most recent authorization is now used
+                    _authorize_token.cache_clear()
 
                     session_serializer = CpoSessionSerializer(instance=session)
                     return Response(
