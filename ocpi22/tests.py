@@ -1829,9 +1829,13 @@ class TestCpoApi(TestCase):
                 token_id='SOME-ADHOC-TOKEN'
             )
 
+            # Clear authorization caches to get a clean start
             _get_authorization_from_sessions.cache_clear()
             _authorize_token.cache_clear()
             authorize_token.cache_clear()
+
+            # Use a new Session UID
+            uuid4_mock.return_value = mock_uuid4(3)
 
             cpo_response = authorize(data)
             self.assertEqual(cpo_response.status_code, 401,
@@ -1882,7 +1886,7 @@ class TestCpoApi(TestCase):
         # Try updating meter values without a tariff specified
         #
 
-        Session.objects.filter(uid='FI*CPO*S*MOCK-1').update(status=Session.ACTIVE)
+        Session.objects.filter(internal_reference='MY-INTERNAL-REFERENCE-2').update(status=Session.ACTIVE)
 
         cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_409_CONFLICT)
@@ -1891,7 +1895,7 @@ class TestCpoApi(TestCase):
         # Update meter values with a tariff
         #
 
-        session = Session.objects.get(uid='FI*CPO*S*MOCK-1')
+        session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
         session.connector.tariff_ids.set([9])
         session.save()
 
@@ -1907,7 +1911,8 @@ class TestCpoApi(TestCase):
                               'start_kwh': 0.0,
                               'status_text': 'Session updated',
                               'total_kwh': Decimal('123.450')})
-        session = Session.objects.get(uid='FI*CPO*S*MOCK-1')
+
+        session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
         session_data = SessionSerializer(session).data
         self.assertEqual(session_data, SessionData.meter_values_1, 'Session differs from expected')
 
@@ -1915,22 +1920,25 @@ class TestCpoApi(TestCase):
         # CPO stops the session
         #
 
+        # Clean out the previous session which would be completed and CDR created
+        Cdr.objects.filter(session_id='FI*CPO*S*MOCK-1').delete()
+
         cdr_count_before = Cdr.objects.all().count()
-        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2'))
+        response = stop_transaction(dict(session_id='FI*CPO*S*MOCK-1'))
+        self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
         cdr_count_after = Cdr.objects.all().count()
+
+        self.assertEqual(cdr_count_after - cdr_count_before, 1,
+                         'There should be one new CDR after stopping a session')
 
         self.assertEqual(response.data, StopTransactionResponses.stop3,
                          'stop_transaction response differs from expected')
-
-        self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
 
         # Check that the Session looks correct
 
         session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
         self.assertEqual(session.status, Session.COMPLETED, 'Session should be COMPLETED after CPO stop_transaction')
         self.assertEqual(session.kwh, Decimal('123.450'))
-        self.assertEqual(cdr_count_after - cdr_count_before, 1,
-                         'There should be only one new CDR after stopping a session')
         cdr = Cdr.objects.get(session_id=session.uid)
         self.assertEqual(cdr.billed_to, session.billed_to)
         self.assertEqual(cdr.authorization_reference, session.authorization_reference)

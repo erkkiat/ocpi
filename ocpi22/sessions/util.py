@@ -59,10 +59,10 @@ def create_session(location_id, evse_uid, connector_id, internal_reference=None,
     try:
         active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
         if active_sessions.exists():
-            logging.error(f'New session overlaps existing, invalidating incomplete sessions at {evse.evse_id}: '
-                          f'{",".join([s.uid for s in active_sessions])}')
+            logging.warning(f'New session overlaps existing, completing previous active sessions at {evse.evse_id}: '
+                            f'{",".join([s.uid for s in active_sessions])}')
             for session in active_sessions:
-                session.status = Session.INVALID
+                session.status = Session.COMPLETED
                 session.save()  # This should also send the updates to interested OCPI parties
                 # session.send_updates()
     except Exception as e:
