@@ -540,6 +540,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                                         status=status.HTTP_409_CONFLICT)
                     if stop_kwh:
                         session.stop_kwh = stop_kwh
+                        session.update_latest_charging_period(session.kwh)
                     session.status = Session.COMPLETED
                     session.calculate_price()
                     session.save(update_fields=['stop_kwh', 'status', 'total_cost_incl_vat', 'total_cost_excl_vat'])

@@ -1006,7 +1006,7 @@ class SessionData:
                                                ('tariff', 'EKI1'),
                                                ('dimensions',
                                                 [OrderedDict([('type', 'ENERGY'),
-                                                              ('volume', '33.4500')]),
+                                                              ('volume', '35.0000')]),
                                                  OrderedDict([('type', 'STATE_OF_CHARGE'),
                                                               ('volume', '80.0000')])])])],
              'connector_id': '1',

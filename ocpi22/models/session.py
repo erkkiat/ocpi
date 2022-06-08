@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from typing import Union
 
@@ -8,7 +9,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 
-from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES
+from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
@@ -78,10 +79,16 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     @kwh.setter
     def kwh(self, value: Union[float, Decimal]):
         self.stop_kwh = Decimal(self.start_kwh) + Decimal(value)
-        # cp = self.get_active_charging_period()
-        # if cp:
-        #     pass  # Todo: find and update kwh
         return self.kwh
+
+    def update_latest_charging_period(self, kwh) -> None:
+        error_msg = f'No active charging period found to update kWh in {self.uid}'
+        cp = self.get_active_charging_period()
+        if cp:
+            if not cp.dimensions.filter(type=CdrDimensionEnum.ENERGY.value).update(volume=kwh):
+                logging.error(error_msg)
+        else:
+            logging.error(error_msg)
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
