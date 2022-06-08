@@ -396,6 +396,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
                             session_status=Session.ACTIVE
                         )
+                        logging.info(f'Created session {session.uid} based on start_transaction from CPO')
 
                     session.send_updates()
 
@@ -545,6 +546,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     session.calculate_price()
                     session.save(update_fields=['stop_kwh', 'status', 'total_cost_incl_vat', 'total_cost_excl_vat'])
                     session.send_updates()
+                    logging.info(f'Stopped session {session.uid} with {session.kwh} kWh and '
+                                 f'cost {session.total_cost_incl_vat} {session.currency}')
 
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr

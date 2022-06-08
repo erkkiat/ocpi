@@ -109,6 +109,7 @@ class CommandsViewSet(GenericViewSet):
                 params.pop('response_url')
 
                 session: Session = create_session(**params)
+                logging.info(f'Created session {session.uid} based on remote command from MSP')
 
                 # The worst scenario is this
                 ocpi_status = 2000
