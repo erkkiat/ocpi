@@ -539,7 +539,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         return Response(dict(status_text='Session was completed earlier, cannot stop if twice'),
                                         status=status.HTTP_409_CONFLICT)
                     if stop_kwh:
-                        session.kwh = stop_kwh
+                        session.stop_kwh = stop_kwh
                     session.status = Session.COMPLETED
                     session.calculate_price()
                     session.save(update_fields=['stop_kwh', 'status', 'total_cost_incl_vat', 'total_cost_excl_vat'])

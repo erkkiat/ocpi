@@ -25,7 +25,7 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
         fields = ['session_id', 'internal_reference', 'billed_to',
-                  'start_date_time', 'end_date_time', 'start_kwh',
+                  'start_date_time', 'end_date_time', 'start_kwh', 'stop_kwh',
                   'token', 'auth_method', 'authorization_reference',
                   'location_id', 'evse_uid', 'connector_id', 'currency',
                   'total_cost_incl_vat', 'total_cost_excl_vat',
