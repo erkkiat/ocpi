@@ -1161,7 +1161,7 @@ class TestObjectPull(TestCase):
             assert response_headers == expected_get_headers[url], f"Expecting different headers for {url}."
             return result
         except AssertionError as e:
-            ic(url, response_headers)
+            ic(url, response_headers, expected_get_headers[url])
             ic(content, expected_get_responses[url])
             raise
 

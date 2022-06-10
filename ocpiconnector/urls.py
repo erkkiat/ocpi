@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.conf.urls import include
+from django.conf.urls.i18n import i18n_patterns
 from django.contrib import admin
 from django.urls import path
 from rest_framework.schemas import get_schema_view
@@ -54,7 +55,7 @@ root_router = RootRouter()
 common_router = BaseRouter()
 common_router.register(r'', VersionsViewSet, basename='base')
 
-urlpatterns = [
+urlpatterns = i18n_patterns(
     path('', home),
     path('', include(root_router.urls), name='root-view'),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
@@ -73,4 +74,4 @@ urlpatterns = [
         version="1.0.0"
     ), name='openapi-schema'),
     # path('admin/doc/', include('django.contrib.admindocs.urls')),
-]
+)

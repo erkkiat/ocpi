@@ -22,7 +22,7 @@ if not DEBUG:
         traces_sample_rate=0.2,
     )
 
-DATETIME_FORMAT = "%d.%m.%Y %H:%M"
+DATETIME_FORMAT = os.environ.get('DATETIME_FORMAT', "%d.%m.%Y %H:%M")
 locale_formats.DATETIME_FORMAT = "D j.n.Y H:i"
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
@@ -142,7 +142,7 @@ SITE_ID = 1
 
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
-USE_I18N = False
+USE_I18N = _env_bool('TRANSLATIONS', False)
 
 # If you set this to False, Django will not format dates, numbers and
 # calendars according to the current locale.
@@ -200,6 +200,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',  # Make sure this stays above OCPIHubMiddleware
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
