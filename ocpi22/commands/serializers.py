@@ -143,6 +143,16 @@ class CommandResponse(serializers.Serializer):
 
 
 class CommandResultBaseSerializer(serializers.Serializer):
+    ACCEPTED = 'ACCEPTED'
+    CANCELED_RESERVATION = 'CANCELED_RESERVATION'
+    EVSE_OCCUPIED = 'EVSE_OCCUPIED'
+    EVSE_INOPERATIVE = 'EVSE_INOPERATIVE'
+    FAILED = 'FAILED'
+    NOT_SUPPORTED = 'NOT_SUPPORTED'
+    REJECTED = 'REJECTED'
+    TIMEOUT = 'TIMEOUT'
+    UNKNOWN_RESERVATION = 'UNKNOWN_RESERVATION'
+
     RESULT_OPTIONS = (
         ('ACCEPTED', 'Accepted'),  # Command request accepted by the Charge Point.
         ('CANCELED_RESERVATION', 'CPO cancelled reservation'),  # The Reservation has been canceled by the CPO.

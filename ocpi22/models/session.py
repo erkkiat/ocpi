@@ -191,6 +191,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     credentials = models.ForeignKey('Credentials', on_delete=models.PROTECT, null=True, blank=True)
     billed_to = models.CharField(max_length=6, null=True, blank=True)
 
+    # Store the (error) message from CPO
+    message = models.JSONField(null=True, blank=True)
+
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 

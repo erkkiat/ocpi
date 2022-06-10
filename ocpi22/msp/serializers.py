@@ -97,7 +97,7 @@ class MspSessionSerializer(SessionSerializer):
                   'kwh', 'charging_periods', 'total_time', 'display_total_time',
                   'cdr_token', 'auth_method', 'authorization_reference',
                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
-                  'status', 'last_updated']
+                  'status', 'message', 'last_updated']
 
     total_time = serializers.DecimalField(source='total_time_float', read_only=True, max_digits=8, decimal_places=2)
     display_total_time = serializers.CharField(source='total_time', read_only=True)

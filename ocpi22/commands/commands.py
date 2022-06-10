@@ -312,20 +312,30 @@ class CommandsViewSet(GenericViewSet):
         if not request.data:
             return OCPIResponse(status_message='Please see OPTIONS to learn what you can POST at this endpoint')
         try:
+            session = Session.objects.filter(authorization_reference=command_id)
+            if not session.exists():
+                return OCPIResponse('Session not found', status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                                    http_status=status.HTTP_400_BAD_REQUEST)
+            if session.count() > 1:
+                logging.error(f'Multiple Sessions found with the same authorization reference {command_id}')
+
             serializer = CommandResultSerializer(data=request.data)
             if serializer.is_valid():
                 result = serializer.validated_data.get('result')
-                logging.info(f'Received CommandResult {result} for command {command} ID {command_id}')
+                message = serializer.validated_data.get('message')
+                session.update(message=message)
+                logging.info(f'Received CommandResult {result} and '
+                             f'message {message or "N/A"} for command {command} ID {command_id}')
                 return OCPIResponse(
                     status_message='Command result received, thank you!',
                     data=dict(command_id=command_id))
+            return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
+                                http_status=status.HTTP_400_BAD_REQUEST,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         except (NotFound, Http404, KeyError) as e:
             return OCPIResponse(None, status_message=str(e),
                                 http_status=status.HTTP_400_BAD_REQUEST,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
-                            http_status=status.HTTP_400_BAD_REQUEST,
-                            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @staticmethod
     def list(request, *_args, **_kwargs):

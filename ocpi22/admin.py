@@ -398,6 +398,7 @@ class SessionAdmin(NestedModelAdmin):
                                         ))),
         ('Delivery',
          dict(fields=(('status', 'start_kwh', 'stop_kwh'), ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),
+                      ('message',),
                       ('auth_method', 'authorization_reference')))),
         ('Time period', dict(fields=(('start_date_time', 'end_date_time'), 'last_updated'))),
     )

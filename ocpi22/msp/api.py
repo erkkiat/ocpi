@@ -113,7 +113,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 session = serializer.validated_data.get('session')
                 if not session:
                     token = request.user.accounts.first().app_token_id
-                    session = get_session(token, (Session.PENDING, Session.ACTIVE, Session.COMPLETED))
+                    session = get_session(token, (Session.PENDING, Session.ACTIVE, Session.COMPLETED, Session.INVALID))
                     if not session:
                         return Response(dict(status=f'No session found for token `{token}`. '
                                                     f'There may not have been a Session update from CPO.'),

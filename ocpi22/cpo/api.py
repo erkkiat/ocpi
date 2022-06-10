@@ -12,7 +12,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
-from ocpi22.choices import OcpiRolesEnum, get_language
+from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts
 from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResultSerializer
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
@@ -656,16 +656,31 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     token_element = command.get('token') or command.get('ad_hoc_token')
                     token_id = token_element.get('uid') if token_element else ''
                     session = get_session_by_adhoc_token(token_id, max_age_minutes=15)
-
+                    if not session:
+                        return Response(
+                            dict(
+                                status_text='Session not found',
+                                token_id=token_id,
+                                authorization_reference=command['authorization_reference'],
+                            ), status=status.HTTP_400_BAD_REQUEST
+                        )
+                    result = serializer.validated_data.get('result')
+                    if result == CpoCommandResultSerializer.ACCEPTED:
+                        message = MessageTexts.PREPARING_TO_CHARGE
+                    else:
+                        message = MessageTexts.DEFAULT_CHARGER_ERROR_TEXT
                     params = dict(
-                        result=serializer.validated_data.get('result')
+                        result=result,
+                        message=message
                     )
                     ocpi_serializer = CommandResultSerializer(instance=params)
                     response_url = command.get('response_url')
-                    to = Party(*session.billed_to.split('*'))
+                    party = session.billed_to.split('*')
+                    to = Party(*party)
                     credentials = find_credentials(to)
                     sender = get_our_party(OcpiRolesEnum.CPO)
 
+                    # Send CommandResponse to MSP
                     response = send_ocpi_request(
                         ocpi_serializer.data,
                         response_url,
@@ -677,6 +692,14 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         method='post',
                         credentials_id=credentials.pk,
                     )
+
+                    # Invalidate the session in case an error has occured
+                    if result != CpoCommandResultSerializer.ACCEPTED:
+                        session.status = Session.INVALID
+                        session.save()
+                        # Update the session to MSP, but only after the CommandResult above
+                        session.send_updates()
+
                     return Response(
                         dict(
                             status_text=f'Response received from eMSP',
