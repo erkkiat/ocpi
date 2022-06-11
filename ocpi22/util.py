@@ -5,6 +5,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import lru_cache
+from gettext import gettext as _
 from typing import Optional, Any
 
 import redis
@@ -70,14 +71,14 @@ def hours_minutes(hours_float: float) -> str:
     minutes = int((hours_float - hours) * 60)
     if hours:
         if minutes:
-            return f'{hours}h {minutes}min'
+            return _(f'{hours}h {minutes}min')
         else:
-            return f'{hours}h'
+            return _(f'{hours}h')
     elif not hours and not minutes:
         seconds = int(hours_float * 3600)
-        return f'{seconds} seconds'
+        return _(f'{seconds} seconds')
     else:
-        return f'{minutes} minutes'
+        return _(f'{minutes} minutes')
 
 
 def generate_random_token() -> str:

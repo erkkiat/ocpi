@@ -3,6 +3,8 @@ import logging
 from decimal import Decimal
 
 import requests
+from django.utils.translation import get_language
+from icecream import ic
 from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -17,6 +19,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
     MspSessionSerializer
+from ocpi22.msp.util import get_message_by_language
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector import slack_logging
@@ -118,7 +121,9 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                         return Response(dict(status=f'No session found for token `{token}`. '
                                                     f'There may not have been a Session update from CPO.'),
                                         status=status.HTTP_404_NOT_FOUND)
-                return Response(MspSessionSerializer(instance=session).data)
+                data = MspSessionSerializer(instance=session).data
+                data.update(message_display=get_message_by_language(data.get('message'), get_language()))
+                return Response(data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
