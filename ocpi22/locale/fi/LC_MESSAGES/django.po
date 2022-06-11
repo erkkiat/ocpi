@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-11 06:29+0000\n"
+"POT-Creation-Date: 2022-06-11 07:27+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Erkki Tapola <erkki.tapola@chargerhub.eu>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,9 +18,23 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: msp/user.py:271
+#: msp/user.py:57 msp/user.py:132
+msgid "Password and confirm differ from each other"
+msgstr "Syöttämäsi salasanat poikkeavat toisistaan"
+
+#: msp/user.py:245
+#, python-brace-format
+msgid "The user {email} already exists"
+msgstr "Sähköpostiosoite {email} on jo käytössä"
+
+#: msp/user.py:277
 msgid "Password has been changed successfully"
 msgstr "Salasana on vaihdettu"
+
+#: msp/user.py:333
+#, python-brace-format
+msgid "Car model {car_id} not found from database"
+msgstr "Automallia {car_id} ei löydy tietokannasta"
 
 #: util.py:74
 #, python-brace-format

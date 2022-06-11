@@ -55,7 +55,8 @@ root_router = RootRouter()
 common_router = BaseRouter()
 common_router.register(r'', VersionsViewSet, basename='base')
 
-urlpatterns = i18n_patterns(
+urlpatterns = (
+    # urlpatterns = i18n_patterns(
     path('', home),
     path('', include(root_router.urls), name='root-view'),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),

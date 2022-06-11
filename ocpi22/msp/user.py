@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.utils.decorators import method_decorator
+from django.utils.translation import gettext as _
 from rest_framework import serializers, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -52,7 +53,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         raw_password = validated_data.get('password')
         confirm_password = validated_data.get('confirm')
         if raw_password != confirm_password:
-            raise ValidationError(dict(status_message="Password and confirm differ from each other"))
+            raise ValidationError(dict(status_message=_("Password and confirm differ from each other")))
         if raw_password:
             user.set_password(raw_password)
             user.save()
@@ -92,6 +93,12 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         return user
 
+    def validate(self, attrs):
+        car_model = attrs.get('profile').get('vehicle')
+        if not car_model in get_models():
+            raise ValidationError(_("Car model {car_id} not found from database").format(car_id=car_model))
+        return attrs
+
 
 class RegistrationSerializer(ProfileSerializer):
     class Meta:
@@ -120,6 +127,12 @@ class RegistrationSerializer(ProfileSerializer):
     vehicle = serializers.CharField(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH,
                                     required=False, allow_blank=True)
 
+    def validate(self, attrs):
+        car_model = attrs.get('profile').get('vehicle')
+        if not car_model in get_models():
+            raise ValidationError(_("Car model {car_id} not found from database").format(car_id=car_model))
+        return attrs
+
     def create(self, validated_data):
         raw_password = validated_data.pop('password', '')
         confirm_password = validated_data.pop('confirm', '')
@@ -127,7 +140,7 @@ class RegistrationSerializer(ProfileSerializer):
         email = validated_data['email']
 
         if raw_password != confirm_password:
-            raise ValidationError(dict(status_message="Password and confirm differ from each other"))
+            raise ValidationError(dict(status_message=_("Password and confirm differ from each other")))
 
         user: User = User(username=email, **validated_data)
         user.set_password(raw_password)
@@ -236,8 +249,9 @@ class UserViewSet(viewsets.GenericViewSet):
             else:
                 return Response(serializer.errors)
         except IntegrityError as e:
-            return Response(f'The user {serializer.validated_data.get("email")} already exists: {e}',
-                            status.HTTP_409_CONFLICT)
+            return Response(_('The user {email} already exists').format(
+                email=serializer.validated_data.get("email")),
+                status.HTTP_409_CONFLICT)
 
     @method_decorator(login_required)
     @action(methods=['GET', 'PATCH', 'POST'], detail=False)
@@ -267,7 +281,7 @@ class UserViewSet(viewsets.GenericViewSet):
             serializer = ChangePasswordSerializer(data=request.data, instance=user, partial=partial)
             if serializer.is_valid():
                 serializer.save()
-                return Response(dict(status_message='Password has been changed successfully'))
+                return Response(dict(status_message=_('Password has been changed successfully')))
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return options_response
@@ -323,7 +337,7 @@ class UserViewSet(viewsets.GenericViewSet):
         car_id = request.user.profile.vehicle
         car = get_models().get(car_id)
         if not car:
-            return Response(dict(status_message=f'Car model {car_id} not found from database'),
+            return Response(dict(status_message=_(f'Car model {car_id} not found from database')),
                             status=status.HTTP_404_NOT_FOUND)
         return Response(car.original_json)
 
