@@ -238,6 +238,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 transactions_full=request.build_absolute_uri(
                     reverse('user-transaction-list-full')
                 ),
+                car_details=request.build_absolute_uri(
+                    reverse('user-car-details')
+                ),
             ),
             billing=dict(
                 cdr_list=request.build_absolute_uri(

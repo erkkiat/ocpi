@@ -11,6 +11,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+from cars.cars import get_models
 from ocpi22.models.cdr import Cdr
 from ocpi22.msp.account import Transaction, Account
 from ocpi22.msp.models import PHONE_FIELD_LENGTH, VEHICLE_FIELD_LENGTH
@@ -315,6 +316,16 @@ class UserViewSet(viewsets.GenericViewSet):
         This is the full data of the transactions for the authenticated user
         """
         return self._transaction_list(request, TransactionSerializer)
+
+    @method_decorator(login_required)
+    @action(methods=['GET'], detail=False)
+    def car_details(self, request):
+        car_id = request.user.profile.vehicle
+        car = get_models().get(car_id)
+        if not car:
+            return Response(dict(status_message=f'Car model {car_id} not found from database'),
+                            status=status.HTTP_404_NOT_FOUND)
+        return Response(car.original_json)
 
 
 class CdrViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin, viewsets.mixins.RetrieveModelMixin):
