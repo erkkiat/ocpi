@@ -255,12 +255,10 @@ class UserViewSet(viewsets.GenericViewSet):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return options_response
 
+    @method_decorator(login_required)
     @action(methods=['GET', 'POST', 'PATCH'], detail=False)
     def password(self, request):
         user: User = request.user
-        if not user.is_authenticated:
-            return Response(dict(status_message='Please authenticate the user to use this endpoint'),
-                            status=status.HTTP_401_UNAUTHORIZED)
         if request.method == 'GET':
             return options_response
         if request.method in ('POST', 'PATCH'):
@@ -268,23 +266,10 @@ class UserViewSet(viewsets.GenericViewSet):
             serializer = ChangePasswordSerializer(data=request.data, instance=user, partial=partial)
             if serializer.is_valid():
                 serializer.save()
+                return Response(dict(status_message='Password has been changed successfully'))
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return options_response
-
-    # @action(methods=['POST', 'GET'], detail=False)
-    # def check_password(self, request):
-    #     if request.method == 'GET':
-    #         return options_response
-    #     serializer = CheckPasswordSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         user: User = serializer.validated_data['username']
-    #         password = serializer.validated_data['password']
-    #         if (user.check_password(password)):
-    #             return Response(dict(status_message='This password is valid for the user'))
-    #         else:
-    #             return Response(dict(status_message='This password is INVALID for the user'),
-    #                             status=status.HTTP_401_UNAUTHORIZED)
 
     def _build_transaction_list_urls(self, request) -> dict:
         transactions = Transaction.objects.all()
