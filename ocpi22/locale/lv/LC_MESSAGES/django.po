@@ -1,0 +1,63 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-11 07:27+0000\n"
+"PO-Revision-Date: 2022-06-11 11:34:35.774854\n"
+"Last-Translator: potranslator 1.1.5\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: lv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Translated-By: potranslator 1.1.5\n"
+
+#: msp/user.py:57 msp/user.py:132
+msgid "Password and confirm differ from each other"
+msgstr "Parole un apstiprinājums atšķiras viens no otra"
+
+#: msp/user.py:234
+#, python-brace-format
+msgid "Vehicle model {car_model} is not in our database"
+msgstr "Transportlīdzekļa modeļa {car_model} nav mūsu datubāzē"
+
+#: msp/user.py:245
+#, python-brace-format
+msgid "The user {email} already exists"
+msgstr "Lietotājs {email} jau pastāv"
+
+#: msp/user.py:277
+msgid "Password has been changed successfully"
+msgstr "Parole ir veiksmīgi nomainīta"
+
+#: msp/user.py:333
+#, python-brace-format
+msgid "Car model {car_id} not found from database"
+msgstr "Automašīnas modelis {car_id} datubāzē nav atrasts"
+
+#: util.py:74
+#, python-brace-format
+msgid "{hours}h {minutes}min"
+msgstr "{hours}h {minutes}min"
+
+#: util.py:76
+#, python-brace-format
+msgid "{hours}h"
+msgstr "{hours} h"
+
+#: util.py:79
+#, python-brace-format
+msgid "{seconds} seconds"
+msgstr "{seconds} sekundes"
+
+#: util.py:81
+#, python-brace-format
+msgid "{minutes} minutes"
+msgstr "{minutes} minūtes"

@@ -216,7 +216,7 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
         """
 
         result = dict(
-            remote_commands_to_cpo=dict(
+            charging=dict(
                 start_charging=request.build_absolute_uri(
                     reverse('roaming-start-charging')
                 ),

@@ -5,6 +5,7 @@ from cars.cars import get_models, search
 
 class TestCars(TestCase):
     def testCars(self):
+        get_models.cache_clear()
         get_models()
         get_models()
         self.assertEqual(get_models.cache_info().hits, 1, 'cars.get_models() seems not to be cached')

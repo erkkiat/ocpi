@@ -31,6 +31,8 @@ class CarsViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
         """
         This autocomplete is used for the input field where the EV driver types their car brand/model.
         Store the resulting ID to be saved in the user profile.
+
+        The format is suitable for jquery. Please request for any additional formats.
         """
         query = request.GET.get('q')
         if not query:

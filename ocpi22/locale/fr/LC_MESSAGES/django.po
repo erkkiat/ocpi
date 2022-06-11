@@ -1,0 +1,64 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-11 07:27+0000\n"
+"PO-Revision-Date: 2022-06-11 11:34:14.454326\n"
+"Last-Translator: potranslator 1.1.5\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Translated-By: potranslator 1.1.5\n"
+
+#: msp/user.py:57 msp/user.py:132
+msgid "Password and confirm differ from each other"
+msgstr "Le mot de passe et la confirmation diffèrent l'un de l'autre"
+
+#: msp/user.py:234
+#, python-brace-format
+msgid "Vehicle model {car_model} is not in our database"
+msgstr ""
+"Le modèle de véhicule {car_model} n'est pas dans notre base de données"
+
+#: msp/user.py:245
+#, python-brace-format
+msgid "The user {email} already exists"
+msgstr "L'utilisateur {email} existe déjà"
+
+#: msp/user.py:277
+msgid "Password has been changed successfully"
+msgstr "Le mot de passe a été changé avec succès"
+
+#: msp/user.py:333
+#, python-brace-format
+msgid "Car model {car_id} not found from database"
+msgstr "Modèle de voiture {car_id} introuvable dans la base de données"
+
+#: util.py:74
+#, python-brace-format
+msgid "{hours}h {minutes}min"
+msgstr "{heures}h {minutes}min"
+
+#: util.py:76
+#, python-brace-format
+msgid "{hours}h"
+msgstr "{heures}h"
+
+#: util.py:79
+#, python-brace-format
+msgid "{seconds} seconds"
+msgstr "{secondes} secondes"
+
+#: util.py:81
+#, python-brace-format
+msgid "{minutes} minutes"
+msgstr "{minutes} minutes"

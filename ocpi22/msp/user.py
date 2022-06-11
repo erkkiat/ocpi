@@ -94,8 +94,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         return user
 
     def validate(self, attrs):
-        car_model = attrs.get('profile').get('vehicle')
-        if not car_model in get_models():
+        car_model = attrs.get('profile', {}).get('vehicle')
+        if car_model and not car_model in get_models():
             raise ValidationError(_("Car model {car_id} not found from database").format(car_id=car_model))
         return attrs
 
@@ -128,8 +128,8 @@ class RegistrationSerializer(ProfileSerializer):
                                     required=False, allow_blank=True)
 
     def validate(self, attrs):
-        car_model = attrs.get('profile').get('vehicle')
-        if not car_model in get_models():
+        car_model = attrs.get('profile', {}).get('vehicle')
+        if car_model and not car_model in get_models():
             raise ValidationError(_("Car model {car_id} not found from database").format(car_id=car_model))
         return attrs
 
