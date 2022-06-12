@@ -162,13 +162,13 @@ class CommandsViewSet(GenericViewSet):
                         # ic(result)
                         if result:
                             message = MessageTexts.get(f'START_{result.upper()}',
-                                                       MessageTexts.DEFAULT_CHARGER_ERROR_TEXT)
+                                                       MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT'))
                             ocpi_status = 1000
                             http_status = status.HTTP_200_OK
                         else:
                             result = 'REJECTED'
                 except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
-                    message = MessageTexts.MS_CONNECTION_ERROR
+                    message = MessageTexts.get('MS_CONNECTION_ERROR')
                     http_status = status.HTTP_424_FAILED_DEPENDENCY
                     logging.error(f'Unable to relay Command to CPO: {e}')
 
@@ -247,13 +247,13 @@ class CommandsViewSet(GenericViewSet):
                         logging.info(f'Result from charger for stop charging: {result}')
                         if result == 'ACCEPTED':
                             message = MessageTexts.get(f'STOP_{result.upper()}',
-                                                       MessageTexts.DEFAULT_CHARGER_ERROR_TEXT)
+                                                       MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT'))
                             ocpi_status = 1000
                             http_status = status.HTTP_200_OK
                         else:
                             result = result or 'REJECTED'  # Fill it if missing in response
                 except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
-                    message = MessageTexts.MS_CONNECTION_ERROR
+                    message = MessageTexts.get('MS_CONNECTION_ERROR')
                     http_status = status.HTTP_424_FAILED_DEPENDENCY
                     logging.error(f'Unable to relay Command to CPO: {e}')
 

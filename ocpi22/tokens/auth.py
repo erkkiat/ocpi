@@ -71,7 +71,7 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
             # Token is AD HOC
             return TokenAuthorization(
                 allowed='ALLOWED',
-                info=MessageTexts.TOKEN_ACCEPTED,
+                info=MessageTexts.get('TOKEN_ACCEPTED'),
                 token_id=token,
                 token_type=session.cdr_token_type,
                 party=session.get_party(),
@@ -100,7 +100,7 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
     if token.whitelist == Token.ALWAYS:
         return TokenAuthorization(
             allowed='ALLOWED',
-            info=MessageTexts.TOKEN_ACCEPTED,
+            info=MessageTexts.get('TOKEN_ACCEPTED'),
             token_id=token.uid,
             token_type=Token.RFID,
             party=token.get_party(),

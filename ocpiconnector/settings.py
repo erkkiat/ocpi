@@ -3,6 +3,7 @@ import os
 
 import sentry_sdk
 from django.conf.locale.en import formats as locale_formats
+from django.utils.translation import gettext_lazy as _
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -138,11 +139,24 @@ TIME_ZONE = 'UTC'  # DO NOT CHANGE THIS, or the OCPI date query parameters will 
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = 'en'
 
+LANGUAGES = [
+    ('de', _('German')),
+    ('fr', _('French')),
+    ('en', _('English')),
+    ('es', _('Spanish')),
+    ('fi', _('Finnish')),
+    ('bg', _('Bulgarian')),
+    ('ro', _('Romanian')),
+    ('pl', _('Polish')),
+    ('lt', _('Lithuanian')),
+    ('lv', _('Latvian')),
+]
+
 SITE_ID = 1
 
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
-USE_I18N = _env_bool('TRANSLATIONS', False)
+USE_I18N = True
 
 # If you set this to False, Django will not format dates, numbers and
 # calendars according to the current locale.

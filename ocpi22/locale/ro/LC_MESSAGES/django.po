@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-11 07:27+0000\n"
-"PO-Revision-Date: 2022-06-11 11:33:01.048291\n"
+"POT-Creation-Date: 2022-06-11 19:32+0000\n"
+"PO-Revision-Date: 2022-06-12 20:40:02.486610\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: ro\n"
@@ -19,45 +19,79 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: msp/user.py:57 msp/user.py:132
+#: choices.py:171
+msgid "Preparing to charge"
+msgstr "Se pregătește pentru încărcare"
+
+#: choices.py:172
+msgid "Stopping charging session"
+msgstr "Oprirea sesiunii de încărcare"
+
+#: choices.py:174
+msgid "The charger is currently in use"
+msgstr "Încărcătorul este în uz momentan"
+
+#: choices.py:176
+msgid "Unable to start charging at this time"
+msgstr "Nu se poate începe încărcarea în acest moment"
+
+#: choices.py:178
+msgid "Unable to connect to charge point management system"
+msgstr ""
+"Nu se poate conecta la sistemul de gestionare a punctelor de încărcare"
+
+#: choices.py:180
+msgid "The token doesn't have enough balance on the account"
+msgstr "Tokenul nu are suficient sold în cont"
+
+#: choices.py:182
+msgid "The token is accepted"
+msgstr "Jetonul este acceptat"
+
+#: choices.py:184
+msgid "Your token is no longer valid"
+msgstr "Jetonul dvs. nu mai este valabil"
+
+#: choices.py:197
+msgid "The reservation has been cancelled"
+msgstr "Rezervarea a fost anulată"
+
+#: choices.py:198 choices.py:202
+#| msgid "The charger is currently in use"
+msgid "The charger is inoperative"
+msgstr "Încărcătorul nu funcționează"
+
+#: choices.py:199
+#| msgid "Unable to start charging at this time"
+msgid "Failed to start the charging"
+msgstr "Nu s-a pornit încărcarea"
+
+#: choices.py:200
+msgid "The operation is not supported by the charger"
+msgstr "Funcționarea nu este acceptată de încărcător"
+
+#: choices.py:201
+msgid "The command was rejected by the charger"
+msgstr "Comanda a fost respinsă de încărcător"
+
+#: choices.py:203
+msgid "There has been a problem with the reservation"
+msgstr "A apărut o problemă cu rezervarea"
+
+#: msp/user.py:56 msp/user.py:143
 msgid "Password and confirm differ from each other"
 msgstr "Parola și confirmarea diferă unele de altele"
 
-#: msp/user.py:234
-#, python-brace-format
-msgid "Vehicle model {car_model} is not in our database"
-msgstr "Modelul de vehicul {car_model} nu se află în baza noastră de date"
-
-#: msp/user.py:245
-#, python-brace-format
-msgid "The user {email} already exists"
-msgstr "Utilizatorul {email} există deja"
-
-#: msp/user.py:277
-msgid "Password has been changed successfully"
-msgstr "Parola a fost schimbată cu succes"
-
-#: msp/user.py:333
+#: msp/user.py:99 msp/user.py:133 msp/user.py:340
 #, python-brace-format
 msgid "Car model {car_id} not found from database"
 msgstr "Modelul de mașină {car_id} nu a fost găsit din baza de date"
 
-#: util.py:74
+#: msp/user.py:252
 #, python-brace-format
-msgid "{hours}h {minutes}min"
-msgstr "{ore}h {minute}min"
+msgid "The user {email} already exists"
+msgstr "Utilizatorul {email} există deja"
 
-#: util.py:76
-#, python-brace-format
-msgid "{hours}h"
-msgstr "{ore} h"
-
-#: util.py:79
-#, python-brace-format
-msgid "{seconds} seconds"
-msgstr "{secunde} secunde"
-
-#: util.py:81
-#, python-brace-format
-msgid "{minutes} minutes"
-msgstr "{minute} minute"
+#: msp/user.py:284
+msgid "Password has been changed successfully"
+msgstr "Parola a fost schimbată cu succes"

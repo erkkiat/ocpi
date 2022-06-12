@@ -3,13 +3,13 @@ from ocpi22.choices import MessageTexts
 
 def get_message_by_language(messages: list, language: str) -> str:
     """
-    >>> get_message_by_language(MessageTexts.STOPPING_TO_CHARGE, 'EN')
+    >>> get_message_by_language(MessageTexts.get('STOPPING_TO_CHARGE'), 'en')
     'Stopping charging session'
-    >>> get_message_by_language(MessageTexts.STOPPING_TO_CHARGE, 'FI')
-    'Latausta lopetellaan'
-    >>> get_message_by_language(MessageTexts.STOPPING_TO_CHARGE, 'ES')
+    >>> get_message_by_language(MessageTexts.get('STOPPING_TO_CHARGE'), 'FI')
+    'Latausistuntoa lopetellaan'
+    >>> get_message_by_language(MessageTexts.get('STOPPING_TO_CHARGE'), 'CH')
     'Stopping charging session'
-    >>> get_message_by_language(MessageTexts.STOPPING_TO_CHARGE, '')
+    >>> get_message_by_language(MessageTexts.get('STOPPING_TO_CHARGE'), '')
     'Stopping charging session'
     """
     if not messages:

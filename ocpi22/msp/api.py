@@ -82,8 +82,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     contract_id: str = serializer.validated_data.get('contract_id')
                     token = construct_adhoc_token(account.app_token_id, contract_id)
                     response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id)
-                    data = response.json()
-                    return Response(data.get('data'), status=response.status_code)
+                    return self._language_response(response)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -122,7 +121,9 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                                                     f'There may not have been a Session update from CPO.'),
                                         status=status.HTTP_404_NOT_FOUND)
                 data = MspSessionSerializer(instance=session).data
-                data.update(message_display=get_message_by_language(data.get('message'), get_language()))
+                messages = data.get('message')
+                if messages:
+                    data.update(message_display=get_message_by_language(messages, get_language()))
                 return Response(data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -131,6 +132,13 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
+
+    @staticmethod
+    def _language_response(response):
+        data = response.json()
+        data = data.get('data', data)
+        data.update(message_display=get_message_by_language(data.get('message'), get_language()))
+        return Response(data, status=response.status_code)
 
     @action(methods=('GET', 'POST'), detail=False)
     def stop_charging(self, request):
@@ -157,8 +165,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                                                         f'There may not have been a Session update from CPO.'),
                                             status=status.HTTP_404_NOT_FOUND)
                     response: requests.Response = send_stop_command(session)
-                    data = response.json()
-                    return Response(data.get('data'), status=response.status_code)
+                    return self._language_response(response)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-11 07:27+0000\n"
-"PO-Revision-Date: 2022-06-11 11:34:14.454326\n"
+"POT-Creation-Date: 2022-06-11 19:32+0000\n"
+"PO-Revision-Date: 2022-06-12 20:40:17.603008\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: fr\n"
@@ -19,46 +19,79 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: msp/user.py:57 msp/user.py:132
+#: choices.py:171
+msgid "Preparing to charge"
+msgstr "Préparation à la charge"
+
+#: choices.py:172
+msgid "Stopping charging session"
+msgstr "Arrêt de la session de charge"
+
+#: choices.py:174
+msgid "The charger is currently in use"
+msgstr "Le chargeur est actuellement utilisé"
+
+#: choices.py:176
+msgid "Unable to start charging at this time"
+msgstr "Impossible de démarrer la charge pour le moment"
+
+#: choices.py:178
+msgid "Unable to connect to charge point management system"
+msgstr ""
+"Impossible de se connecter au système de gestion des bornes de recharge"
+
+#: choices.py:180
+msgid "The token doesn't have enough balance on the account"
+msgstr "Le jeton n'a pas assez de solde sur le compte"
+
+#: choices.py:182
+msgid "The token is accepted"
+msgstr "Le jeton est accepté"
+
+#: choices.py:184
+msgid "Your token is no longer valid"
+msgstr "Votre jeton n'est plus valide"
+
+#: choices.py:197
+msgid "The reservation has been cancelled"
+msgstr "La réservation a été annulée"
+
+#: choices.py:198 choices.py:202
+#| msgid "The charger is currently in use"
+msgid "The charger is inoperative"
+msgstr "Le chargeur ne fonctionne pas"
+
+#: choices.py:199
+#| msgid "Unable to start charging at this time"
+msgid "Failed to start the charging"
+msgstr "Échec du démarrage de la charge"
+
+#: choices.py:200
+msgid "The operation is not supported by the charger"
+msgstr "L'opération n'est pas prise en charge par le chargeur"
+
+#: choices.py:201
+msgid "The command was rejected by the charger"
+msgstr "La commande a été rejetée par le chargeur"
+
+#: choices.py:203
+msgid "There has been a problem with the reservation"
+msgstr "Il y a eu un problème avec la réservation"
+
+#: msp/user.py:56 msp/user.py:143
 msgid "Password and confirm differ from each other"
 msgstr "Le mot de passe et la confirmation diffèrent l'un de l'autre"
 
-#: msp/user.py:234
-#, python-brace-format
-msgid "Vehicle model {car_model} is not in our database"
-msgstr ""
-"Le modèle de véhicule {car_model} n'est pas dans notre base de données"
-
-#: msp/user.py:245
-#, python-brace-format
-msgid "The user {email} already exists"
-msgstr "L'utilisateur {email} existe déjà"
-
-#: msp/user.py:277
-msgid "Password has been changed successfully"
-msgstr "Le mot de passe a été changé avec succès"
-
-#: msp/user.py:333
+#: msp/user.py:99 msp/user.py:133 msp/user.py:340
 #, python-brace-format
 msgid "Car model {car_id} not found from database"
 msgstr "Modèle de voiture {car_id} introuvable dans la base de données"
 
-#: util.py:74
+#: msp/user.py:252
 #, python-brace-format
-msgid "{hours}h {minutes}min"
-msgstr "{heures}h {minutes}min"
+msgid "The user {email} already exists"
+msgstr "L'utilisateur {email} existe déjà"
 
-#: util.py:76
-#, python-brace-format
-msgid "{hours}h"
-msgstr "{heures}h"
-
-#: util.py:79
-#, python-brace-format
-msgid "{seconds} seconds"
-msgstr "{secondes} secondes"
-
-#: util.py:81
-#, python-brace-format
-msgid "{minutes} minutes"
-msgstr "{minutes} minutes"
+#: msp/user.py:284
+msgid "Password has been changed successfully"
+msgstr "Le mot de passe a été changé avec succès"

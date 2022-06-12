@@ -1,5 +1,10 @@
 from enum import Enum
 
+import cachetools
+from django.conf import settings
+from django.utils import translation
+from django.utils.translation import gettext_noop as _
+
 
 class OcpiRolesEnum(Enum):
     CPO = 'CPO'
@@ -138,52 +143,66 @@ CDR_DIMENSION_CHOICES = [
 ]
 
 
-class MessageTexts:
-    PREPARING_TO_CHARGE = [
-        dict(language='EN', text='Preparing to charge'),
-        dict(language='BG', text='Подготовка за зареждане'),
-        dict(language='FI', text='Latausta valmistellaan'),
-    ]
-    STOPPING_TO_CHARGE = [
-        dict(language='EN', text='Stopping charging session'),
-        dict(language='FI', text='Latausta lopetellaan'),
-    ]
-    EVSE_OCCUPIED = [
-        dict(language='EN', text='The charger is currently in use'),
-        dict(language='BG', text=''),
-        dict(language='FI', text='Latauspiste on parhaillaan käytössä'),
-    ]
-    DEFAULT_CHARGER_ERROR_TEXT = [
-        dict(language='EN', text='Unable to start charging at this time'),
-        dict(language='FI', text='Lataus ei ole mahdollista tällä hetkellä'),
-    ]
-    MS_CONNECTION_ERROR = [
-        dict(language='EN', text='Unable to connect to charge point management system'),
-        dict(language='BG', text='Не може да се свърже със системата '
-                                 'за управление на точките на зареждане'),
-        dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki'),
-    ]
-    NO_BALANCE = [
-        dict(language='EN', text="The token doesn't have enough balance on the account"),
-        dict(language='FI', text='Lataustilillä ei ole riittävästi katetta'),
-    ]
-    TOKEN_ACCEPTED = [
-        dict(language='EN', text='The token is accepted'),
-        dict(language='FI', text='Lataustunniste on hyväksytty'),
-    ]
-    TOKEN_NOT_VALID = [
-        dict(language='EN', text='Your token is no longer valid'),
-        dict(language='FI', text='Lataustunniste ei ole enää voimassa'),
-    ]
-    _texts = dict(
-        START_ACCEPTED=PREPARING_TO_CHARGE,
-        EVSE_OCCUPIED=EVSE_OCCUPIED,
-        STOP_ACCEPTED=STOPPING_TO_CHARGE,
-    )
+@cachetools.cached(cache={})
+def _make_texts(english_text):
+    result = []
+    for language, _name in settings.LANGUAGES:
+        with translation.override(language):
+            if language == 'en':
+                tr = english_text
+            else:
+                tr = translation.gettext(english_text)
+                if tr == english_text:
+                    # No translation available
+                    continue
+            result.append(
+                dict(
+                    language=language.upper(),
+                    text=tr
+                )
+            )
+    return result
 
+
+class MessageTexts:
     @classmethod
     def get(cls, s, default=None):
-        return cls._texts.get(s, default)
+        PREPARING_TO_CHARGE = _make_texts(_('Preparing to charge'))
+        STOPPING_TO_CHARGE = _make_texts(_('Stopping charging session'))
+        # dict(language='FI', text='Latausta viimeistellään'),
+        EVSE_OCCUPIED = _make_texts(_('The charger is currently in use'))
+        # dict(language='FI', text='Latauspiste on parhaillaan käytössä'),
+        DEFAULT_CHARGER_ERROR_TEXT = _make_texts(_('Unable to start charging at this time'))
+        # dict(language='FI', text='Lataus ei ole mahdollista tällä hetkellä'),
+        MS_CONNECTION_ERROR = _make_texts(_('Unable to connect to charge point management system'))
+        # dict(language='FI', text='Yhteys latauspisteen hallintajärjestelmään on poikki'),
+        NO_BALANCE = _make_texts(_("The token doesn't have enough balance on the account"))
+        # dict(language='FI', text='Lataustilillä ei ole riittävästi katetta'),
+        TOKEN_ACCEPTED = _make_texts(_('The token is accepted'))
+        # dict(language='FI', text='Lataustunniste on hyväksytty'),
+        TOKEN_NOT_VALID = _make_texts(_('Your token is no longer valid'))
+        # dict(language='FI', text='Lataustunniste ei ole enää voimassa'),
+
+        _texts = dict(
+            START_ACCEPTED=PREPARING_TO_CHARGE,
+            STOPPING_TO_CHARGE=STOPPING_TO_CHARGE,
+            EVSE_OCCUPIED=EVSE_OCCUPIED,
+            STOP_ACCEPTED=STOPPING_TO_CHARGE,
+            DEFAULT_CHARGER_ERROR_TEXT=DEFAULT_CHARGER_ERROR_TEXT,
+            MS_CONNECTION_ERROR=MS_CONNECTION_ERROR,
+            NO_BALANCE=NO_BALANCE,
+            TOKEN_ACCEPTED=TOKEN_ACCEPTED,
+            TOKEN_NOT_VALID=TOKEN_NOT_VALID,
+            ACCEPTED=PREPARING_TO_CHARGE,
+            CANCELED_RESERVATION=_make_texts(_('The reservation has been cancelled')),
+            EVSE_INOPERATIVE=_make_texts(_('The charger is inoperative')),
+            FAILED=_make_texts(_('Failed to start the charging')),
+            NOT_SUPPORTED=_make_texts(_('The operation is not supported by the charger')),
+            REJECTED=_make_texts(_('The command was rejected by the charger')),
+            TIMEOUT=_make_texts(_("The charger is inoperative")),
+            UNKNOWN_RESERVATION=_make_texts(_('There has been a problem with the reservation')),
+        )
+        return _texts.get(s, default)
 
 
 class UserMessages:
@@ -205,17 +224,17 @@ class UserMessages:
 
 def get_language(language: str, source: list) -> str:
     """
-    >>> s = MessageTexts.TOKEN_ACCEPTED
-    >>> get_language('en', s)
+    >>> get_language('en', [dict(language='en', text='The token is accepted')])
     'The token is accepted'
-    >>> get_language('xy', s)
+    >>> get_language('xy', [dict(language='en', text='The token is accepted')])
     ''
     >>> get_language('xy', None)
     ''
     """
+    language = language.upper()
     if not source or not language:
         return ''
-    result = [l.get('text') for l in source if l.get('language') == language.upper()]
+    result = [l.get('text') for l in source if l.get('language').upper() == language]
     if len(result):
         return result[0]
     else:

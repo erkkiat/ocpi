@@ -131,7 +131,7 @@ class TokenViewSet(mixins.ListModelMixin,
 
         if not token.valid:
             allowed = Token.EXPIRED
-            info = MessageTexts.TOKEN_NOT_VALID
+            info = MessageTexts.get('TOKEN_NOT_VALID')
             ocpi_status = 2000
             http_status = status.HTTP_401_UNAUTHORIZED
             status_message = 'Your charging token is not valid at the moment'
@@ -142,7 +142,7 @@ class TokenViewSet(mixins.ListModelMixin,
         if token.total_balance_float() < 1.0:
             log_error(request, f'Token {token} has no balance')
             allowed = Token.NO_CREDIT
-            info = MessageTexts.NO_BALANCE
+            info = MessageTexts.get('NO_BALANCE')
             ocpi_status = Ocpi.ClientError.GENERIC_CLIENT_ERROR
             http_status = status.HTTP_401_UNAUTHORIZED
             status_message = "You don't have enough balance on charging account, please deposit some more."

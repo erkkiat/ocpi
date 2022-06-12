@@ -666,9 +666,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         )
                     result = serializer.validated_data.get('result')
                     if result == CpoCommandResultSerializer.ACCEPTED:
-                        message = MessageTexts.PREPARING_TO_CHARGE
+                        message = MessageTexts.get('PREPARING_TO_CHARGE')
                     else:
-                        message = MessageTexts.DEFAULT_CHARGER_ERROR_TEXT
+                        message = MessageTexts.get(result, MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT'))
                     params = dict(
                         result=result,
                         message=message
