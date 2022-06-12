@@ -18,4 +18,4 @@ def get_message_by_language(messages: list, language: str) -> str:
     for message in messages:
         if message.get('language') == language:
             return message.get('text')
-    return get_message_by_language(messages, 'EN') or messages[0].get('text')
+    return get_message_by_language(messages, 'EN') if language != 'EN' else messages[0].get('text')
