@@ -88,6 +88,14 @@ def load_tests(_loader, tests, _ignore):
     return tests
 
 
+def make_json_response(data, status_code=200) -> Response:
+    response = Response()
+    response.status_code = status_code
+    response.encoding = 'UTF-8'
+    response._content = json.dumps(data).encode('UTF-8')
+    return response
+
+
 @dataclass(eq=True, frozen=True)
 class FakeResponse:
     status_code: int
@@ -801,13 +809,14 @@ class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
 
     @time_machine.travel(faketime, tick=False)
+    # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {
                'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.commands.requests.post')
-    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
+    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, _uuid4_mock: Mock):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -868,7 +877,7 @@ class CommandTests(TestCase):
 
         # noinspection PyUnresolvedReferences
         session = Session.objects.get(status='PENDING')
-        self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match to expected")
+        self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match expectation")
 
         # Let's pick a connector and fill out charging details
         session.connector = session.evse.connectors.all()[0]
@@ -877,7 +886,31 @@ class CommandTests(TestCase):
         session.total_cost_incl_vat = 5
         session.save()
 
-        # ic([(s.uid, s.status) for s in Session.objects.all()])
+        #
+        # Stop session, successful case
+        #
+
+        data = dict(session_id=session.uid, response_url='http://localhost/response/')
+        response = stop_session(data)
+        ic(response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, 'Stop session was expected to succeed')
+        self.assertDictEqual(
+            response.data,
+            {'data': {'result': 'ACCEPTED', 'timeout': 60,
+                      'message': [{'language': 'DE', 'text': 'Beenden der Ladesitzung'},
+                                  {'language': 'FR', 'text': 'Arrêt de la session de charge'},
+                                  {'language': 'EN', 'text': 'Stopping charging session'},
+                                  {'language': 'ES', 'text': 'Deteniendo la sesión de carga'},
+                                  {'language': 'FI', 'text': 'Latausistuntoa lopetellaan'},
+                                  {'language': 'BG', 'text': 'Спиране на сесията на зареждане'},
+                                  {'language': 'RO', 'text': 'Oprirea sesiunii de încărcare'},
+                                  {'language': 'PL', 'text': 'Zatrzymywanie sesji ładowania'},
+                                  {'language': 'LT', 'text': 'Sustabdoma įkrovimo sesija'},
+                                  {'language': 'LV', 'text': 'Uzlādes sesijas pārtraukšana'}]},
+             'status_code': 1000,
+             'status_message': '',
+             'timestamp': datetime(2000, 1, 1, 12, 0)}
+        )
 
     def test_unlock_connector(self):
         url = reverse('commands-unlock-connector')
@@ -1389,14 +1422,6 @@ class TestRouting(TestCase):
                     )
                     self.assertJSONEqual(response.content, {'message': 'Hello from the other side'},
                                          'Hub routed message response is not as expected')
-
-
-def make_json_response(data, status_code=200) -> Response:
-    response = Response()
-    response.status_code = status_code
-    response.encoding = 'UTF-8'
-    response._content = json.dumps(data).encode('UTF-8')
-    return response
 
 
 class TestSession(TestCase):
@@ -2133,6 +2158,19 @@ def stop_charging(data):
     request = api_factory.post(reverse('roaming-stop-charging'))
     request.data = data
     return MspRoamingViewSet().stop_charging(request)
+
+
+def start_session(data, user):
+    request = api_factory.post(reverse('commands-start-session'))
+    request.data = data
+    request.user = user
+    return CommandsViewSet.start_session(request)
+
+
+def stop_session(data):
+    request = api_factory.post(reverse('commands-stop-session'))
+    request.data = data
+    return CommandsViewSet().stop_session(request)
 
 
 class TestMspMap(TestCase):
