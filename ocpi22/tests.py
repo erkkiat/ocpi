@@ -804,7 +804,8 @@ class CommandTests(TestCase):
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
     @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/'}.get(x))
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.commands.requests.post')
     def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-start-session')
@@ -833,7 +834,28 @@ class CommandTests(TestCase):
 
         # Let's pretend to be the CPO and all is good
         requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
+
         response = viewset.start_session(request)
+
+        # Check the request sent to the CPO
+        requests_post_mock.assert_called_once()
+        args, kwargs = requests_post_mock.call_args
+        self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        self.assertDictEqual(
+            kwargs,
+            {'auth': ('john', 'his-password'),
+             'headers': {'content-type': 'application/json'},
+             'json': {'auth_method': 'COMMAND',
+                      'authorization_reference': 'e86baa82cee14ac5bfd00b85371aa798',
+                      'billed_to': 'FI*EON',
+                      'connector_id': None,
+                      'evse_id': 'HELSINKI-3',
+                      'response_url': 'http://testserver/api/cpo/v2/chargepoint/remote_command_result.e86baa82cee14ac5bfd00b85371aa798',
+                      'token_id': 'FI*001*T*ADMIN*TOKEN',
+                      'token_type': 'OTHER'},
+             'url': 'http://fakehost/start/HELSINKI-3/',
+             'verify': False}
+        )
 
         # Let's guess the new Session
         session = Session.objects.all().first()
