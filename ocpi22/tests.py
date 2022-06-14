@@ -807,6 +807,7 @@ class mock_uuid4():
 
 class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
+    maxDiff = 10000
 
     @time_machine.travel(faketime, tick=False)
     # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
@@ -816,7 +817,7 @@ class CommandTests(TestCase):
            side_effect=lambda x: {
                'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.commands.commands.requests.post')
-    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, _uuid4_mock: Mock):
+    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -841,8 +842,40 @@ class CommandTests(TestCase):
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
 
+        # Let's pretend to be the CPO and get an error from charger
+        requests_post_mock.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
+        requests_post_mock.reset_mock()
+        uuid4_mock.return_value = mock_uuid4(42)
+
+        response = viewset.start_session(request)
+
+        # Check the request sent to the CPO
+        requests_post_mock.assert_called_once()
+        args, kwargs = requests_post_mock.call_args
+        self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        self.assertDictEqual(
+            response.data,
+            {'data': {'message': [{'language': 'DE', 'text': 'Das Ladegerät funktioniert nicht'},
+                                  {'language': 'FR', 'text': 'Le chargeur ne fonctionne pas'},
+                                  {'language': 'EN', 'text': 'The charger is inoperative'},
+                                  {'language': 'ES', 'text': 'El cargador no funciona'},
+                                  {'language': 'FI', 'text': 'Laturi on epäkunnossa'},
+                                  {'language': 'BG', 'text': 'Зарядното устройство не работи'},
+                                  {'language': 'RO', 'text': 'Încărcătorul nu funcționează'},
+                                  {'language': 'PL', 'text': 'Ładowarka nie działa'},
+                                  {'language': 'LT', 'text': 'Įkroviklis neveikia'},
+                                  {'language': 'LV', 'text': 'Lādētājs nedarbojas'}],
+                      'result': 'EVSE_INOPERATIVE',
+                      'timeout': 60},
+             'status_code': 1000,
+             'status_message': '',
+             'timestamp': datetime(2000, 1, 1, 12, 0)}
+        )
+
         # Let's pretend to be the CPO and all is good
         requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
+        requests_post_mock.reset_mock()
+        uuid4_mock.return_value = mock_uuid4(99)
 
         response = viewset.start_session(request)
 
@@ -892,7 +925,6 @@ class CommandTests(TestCase):
 
         data = dict(session_id=session.uid, response_url='http://localhost/response/')
         response = stop_session(data)
-        ic(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK, 'Stop session was expected to succeed')
         self.assertDictEqual(
             response.data,

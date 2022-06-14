@@ -161,8 +161,11 @@ class CommandsViewSet(GenericViewSet):
                         result = data.get('result')
                         # ic(result)
                         if result:
-                            message = MessageTexts.get(f'START_{result.upper()}',
-                                                       MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT'))
+                            message = MessageTexts.get(
+                                f'START_{result.upper()}',  # Try to get response message for START_<result>
+                                MessageTexts.get(
+                                    result.upper(),  # Then just <result>
+                                    MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
                             ocpi_status = 1000
                             http_status = status.HTTP_200_OK
                         else:
@@ -246,8 +249,11 @@ class CommandsViewSet(GenericViewSet):
                         result = data.get('result')
                         logging.info(f'Result from charger for stop charging: {result}')
                         if result == 'ACCEPTED':
-                            message = MessageTexts.get(f'STOP_{result.upper()}',
-                                                       MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT'))
+                            message = MessageTexts.get(
+                                f'STOP_{result.upper()}',  # Try to get STOP_<result>
+                                MessageTexts.get(
+                                    result.upper(),  # Then just <result>
+                                    MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or finally just get the default
                             ocpi_status = 1000
                             http_status = status.HTTP_200_OK
                         else:
