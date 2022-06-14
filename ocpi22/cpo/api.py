@@ -21,6 +21,7 @@ from ocpi22.cpo.util import get_callbacks_parameter, command_store
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.msp.user import options_response
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.ocpi.util import generate_session_uid
@@ -252,7 +253,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+            return options_response
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -318,7 +319,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+            return options_response
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -414,7 +415,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+            return options_response
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -497,7 +498,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+            return options_response
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -571,7 +572,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+            return options_response
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -646,7 +647,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         try:
             if request.method == 'GET':
-                return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+                return options_response
 
             command = command_store[authorization_reference]
 

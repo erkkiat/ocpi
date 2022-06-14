@@ -19,7 +19,8 @@ from ocpi22.msp.models import PHONE_FIELD_LENGTH, VEHICLE_FIELD_LENGTH
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.util import hours_minutes, HyperlinkedModelSerializerCleanedUp, StandardResultsSetPagination
 
-options_response = Response(dict(status_message=f'Please see OPTIONS to learn what you can POST at this endpoint'))
+options_response = Response(dict(status_message=f'Please see OPTIONS to learn what you can POST at this endpoint'),
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 class Username(serializers.CharField):

@@ -21,7 +21,6 @@ from ocpi22.routing import find_route
 from ocpi22.logging import log_error
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party, get_our_party
 
-
 class OcpiModule:
     # The serializer class to use when sending updates to other OCPI parties
     ocpi_serializer_class = None
@@ -300,6 +299,11 @@ class Ocpi:
         ('AC_3_PHASE', 'AC 3-phase'),
         ('DC', 'DC')
     )
+
+
+ocpi_options_response = OCPIResponse(
+    dict(status_message=f'Please see OPTIONS to learn what you can POST at this endpoint'),
+    status=status.HTTP_400_BAD_REQUEST)
 
 
 class OCPIPaginationAndHeaders(LimitOffsetPagination):
