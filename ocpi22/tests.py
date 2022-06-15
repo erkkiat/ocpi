@@ -826,7 +826,7 @@ class CommandTests(TestCase):
         request.data = {}
         response = viewset.start_session(request)
 
-        check_ok_result(self, response)
+        check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST)
 
         # Load up the test message and send it
         data = load_example(f'data/examples/command_start_session.json')
@@ -953,7 +953,7 @@ class CommandTests(TestCase):
         request.data = {}
         response = viewset.unlock_connector(request)
 
-        check_ok_result(self, response)
+        check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST)
 
         # Load up the test message and send it
         data = load_example(f'data/examples/command_unlock_connector.json')
@@ -1826,16 +1826,40 @@ class TestCpoApi(TestCase):
         self.assertEqual(response.status_code, 200, 'Remote Command start_session was expected to succeed')
         self.assertEqual(kwargs.get('url'), 'http://fakehost/start/HELSINKI-3/',
                          'CPO start transaction URL differs from expected')
+        authorization_reference = 'FI*001-AUTH-REFERENCE'
+        url = f'http://testserver/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
         self.assertDictEqual(
             kwargs.get('json'),
             {'auth_method': 'COMMAND',
-             'authorization_reference': 'FI*001-AUTH-REFERENCE',
+             'authorization_reference': authorization_reference,
              'billed_to': 'FI*EON',
              'connector_id': None,
              'evse_id': 'HELSINKI-3',
-             'response_url': 'http://testserver/api/cpo/v2/chargepoint/remote_command_result/FI*001-AUTH-REFERENCE/',
+             'response_url': url,
              'token_id': 'SOME-ADHOC-TOKEN',
              'token_type': 'AD_HOC_USER'}
+        )
+
+        # Capture the data going to Redis
+        # args, kwargs = set_parameter_mock.call_args
+        # _key, value, _ttl = args
+        # ic(_key, value)
+        #
+        # Command result
+        #
+
+        # Inject the data supposedly coming from Redis
+        # get_parameter_mock.return_value = value
+
+        data = dict(result='ACCEPTED')
+        response = send_command_result(data, url, 'start', authorization_reference)
+
+        self.assertDictEqual(
+            response.data,
+            {'data': {'command_id': 'FI*001-AUTH-REFERENCE'},
+             'status_code': 1000,
+             'status_message': 'Command result received, thank you!',
+             'timestamp': datetime(2000, 1, 1, 12, 0)}
         )
 
         session = Session.objects.get(status='PENDING')
@@ -2203,6 +2227,12 @@ def stop_session(data):
     request = api_factory.post(reverse('commands-stop-session'))
     request.data = data
     return CommandsViewSet().stop_session(request)
+
+
+def send_command_result(data, url, command, command_id):
+    request = api_factory.post(url)
+    request.data = data
+    return CommandsViewSet().command_result(request, command, command_id)
 
 
 class TestMspMap(TestCase):
