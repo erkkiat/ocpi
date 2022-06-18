@@ -140,16 +140,44 @@ TIME_ZONE = 'UTC'  # DO NOT CHANGE THIS, or the OCPI date query parameters will 
 LANGUAGE_CODE = 'en'
 
 LANGUAGES = [
+    ('en', _('English')),
     ('de', _('German')),
     ('fr', _('French')),
-    ('en', _('English')),
     ('es', _('Spanish')),
-    ('fi', _('Finnish')),
+    ('pt', _('Portuguese')),
+    ('lb', _('Luxembourgish')),
+    ('nl', _('Dutch, Flemish')),
+    ('cy', _('Welsh')),
+    ('ga', _('Irish')),
+
+    ('be', _('Belarusian')),
     ('bg', _('Bulgarian')),
     ('ro', _('Romanian')),
+    ('bs', _('Bosnian')),
+    ('mk', _('Macedonian')),
+    ('sq', _('Albanian')),
+    ('sr', _('Serbian')),
+    ('tr', _('Turkish')),
+    ('uk', _('Ukrainian')),
+    ('el', _('Greek')),
+
     ('pl', _('Polish')),
+    ('hu', _('Hungarian')),
+    ('cs', _('Czech')),
+    ('sk', _('Slovak')),
+    ('sl', _('Slovenian')),
+
+    ('fi', _('Finnish')),
+    ('no', _('Norwegian')),
+    ('da', _('Danish')),
+    ('sv', _('Swedish')),
+    ('is', _('Icelandic')),
+
+    ('et', _('Estonian')),
     ('lt', _('Lithuanian')),
     ('lv', _('Latvian')),
+
+    ('af', _('Afrikans')),
 ]
 
 SITE_ID = 1

@@ -1,0 +1,159 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-18 12:43+0000\n"
+"PO-Revision-Date: 2022-06-18 15:43:28.422819\n"
+"Last-Translator: potranslator 1.1.5\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: is\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n % 10 != 1 || n % 100 == 11);\n"
+"Translated-By: potranslator 1.1.5\n"
+
+#: choices.py:77
+msgid "Available"
+msgstr "Laus"
+
+#: choices.py:78
+msgid "Preparing"
+msgstr "Undirbúa"
+
+#: choices.py:79
+msgid "Charging"
+msgstr "Hleðsla"
+
+#: choices.py:80
+msgid "Suspended by vehicle"
+msgstr "Lokað af ökutæki"
+
+#: choices.py:81
+msgid "Suspended by charger"
+msgstr "Frestað með hleðslutæki"
+
+#: choices.py:82
+msgid "Finishing"
+msgstr "Frágangur"
+
+#: choices.py:83
+msgid "Reserved"
+msgstr "Frátekið"
+
+#: choices.py:84
+msgid "Unavailable"
+msgstr "Ekki tiltækt"
+
+#: choices.py:85
+msgid "Out of order"
+msgstr "Bilað"
+
+#: choices.py:165
+msgid "Preparing to charge"
+msgstr "Að undirbúa hleðslu"
+
+#: choices.py:166
+msgid "Stopping charging session"
+msgstr "Stöðvar hleðslulotu"
+
+#: choices.py:168
+msgid "The charger is currently in use"
+msgstr "Hleðslutækið er í notkun"
+
+#: choices.py:170
+msgid "Unable to start charging at this time"
+msgstr "Ekki er hægt að hefja hleðslu eins og er"
+
+#: choices.py:172
+msgid "Unable to connect to charge point management system"
+msgstr "Ekki er hægt að tengjast hleðslustöðvarstjórnunarkerfi"
+
+#: choices.py:174
+msgid "The token doesn't have enough balance on the account"
+msgstr "Táknið hefur ekki næga innistæðu á reikningnum"
+
+#: choices.py:176
+msgid "The token is accepted"
+msgstr "Táknið er samþykkt"
+
+#: choices.py:178
+msgid "Your token is no longer valid"
+msgstr "Táknið þitt er ekki lengur gilt"
+
+#: choices.py:192
+msgid "The reservation has been cancelled"
+msgstr "Hætt hefur verið við pöntun"
+
+#: choices.py:193 choices.py:197
+msgid "The charger is inoperative"
+msgstr "Hleðslutækið er óvirkt"
+
+#: choices.py:194
+msgid "Failed to start the charging"
+msgstr "Ekki tókst að hefja hleðsluna"
+
+#: choices.py:195
+msgid "The operation is not supported by the charger"
+msgstr "Aðgerðin er ekki studd af hleðslutækinu"
+
+#: choices.py:196
+msgid "The command was rejected by the charger"
+msgstr "Skipuninni var hafnað af hleðslutækinu"
+
+#: choices.py:198
+msgid "There has been a problem with the reservation"
+msgstr "Það hefur verið vandamál með bókunina"
+
+#: models/session.py:171
+msgid "Active"
+msgstr "Virkur"
+
+#: models/session.py:175
+msgid "Completed"
+msgstr "Lokið"
+
+#: models/session.py:178
+msgid "Invalid"
+msgstr "Ógilt"
+
+#: models/session.py:182
+msgid "Pending"
+msgstr "Í bið"
+
+#: models/session.py:186
+msgid "Reservation"
+msgstr "Fyrirvari"
+
+#: msp/user.py:63
+msgid "The current password doesn't match"
+msgstr "Núverandi lykilorð passar ekki"
+
+#: msp/user.py:65 msp/user.py:143
+msgid "Password and confirm differ from each other"
+msgstr "Lykilorð og staðfesting eru frábrugðin hvert öðru"
+
+#: msp/user.py:75
+#, python-format
+msgid "Car model %(car_id)s is not in our database"
+msgstr "Bílagerð %(car_id)s er ekki í gagnagrunninum okkar"
+
+#: msp/user.py:252
+#, python-brace-format
+msgid "The user {email} already exists"
+msgstr "Notandinn {email} er þegar til"
+
+#: msp/user.py:291
+msgid "Password has been changed successfully"
+msgstr "Lykilorði hefur verið breytt"
+
+#: msp/user.py:346
+#, python-brace-format
+msgid "Car model {car_id} is not in our database"
+msgstr "Bílagerð {car_id} er ekki í gagnagrunninum okkar"
