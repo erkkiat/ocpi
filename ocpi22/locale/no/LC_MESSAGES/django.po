@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 11:13+0000\n"
+"POT-Creation-Date: 2022-06-18 11:49+0000\n"
 "PO-Revision-Date: 2022-06-18 14:14:47.595811\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -24,8 +24,6 @@ msgid "Available"
 msgstr "Tilgjengelig"
 
 #: choices.py:78
-#, fuzzy
-#| msgid "Preparing to charge"
 msgid "Preparing"
 msgstr "Forbereder lading"
 
@@ -142,10 +140,8 @@ msgid "Password and confirm differ from each other"
 msgstr "Passord og bekreftelse skiller seg fra hverandre"
 
 #: msp/user.py:75
-#, fuzzy, python-format
-#| msgid "Car model {car_id} not found from database"
 msgid "Car model %(car_id)s is not in our database"
-msgstr "Bilmodell {car_id} ikke funnet fra databasen"
+msgstr "Bilmodell %(car_id)s ikke funnet fra databasen"
 
 #: msp/user.py:252
 #, python-brace-format
@@ -157,27 +153,5 @@ msgid "Password has been changed successfully"
 msgstr "Passordet er endret"
 
 #: msp/user.py:346
-#, fuzzy, python-brace-format
-#| msgid "Car model {car_id} not found from database"
 msgid "Car model {car_id} is not in our database"
 msgstr "Bilmodell {car_id} ikke funnet fra databasen"
-
-#: util.py:74
-#, python-brace-format
-msgid "{hours}h {minutes}min"
-msgstr "{hours}t {minutes}min"
-
-#: util.py:76
-#, python-brace-format
-msgid "{hours}h"
-msgstr "{timer}t"
-
-#: util.py:79
-#, python-brace-format
-msgid "{seconds} seconds"
-msgstr "{seconds} sekunder"
-
-#: util.py:81
-#, python-brace-format
-msgid "{minutes} minutes"
-msgstr "{minutes} minutter"

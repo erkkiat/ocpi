@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 11:13+0000\n"
+"POT-Creation-Date: 2022-06-18 11:49+0000\n"
 "PO-Revision-Date: 2022-06-18 14:14:56.644889\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -24,8 +24,6 @@ msgid "Available"
 msgstr "A disposizione"
 
 #: choices.py:78
-#, fuzzy
-#| msgid "Preparing to charge"
 msgid "Preparing"
 msgstr "Prepararsi a caricare"
 
@@ -142,7 +140,7 @@ msgid "Password and confirm differ from each other"
 msgstr "Password e conferma differiscono tra loro"
 
 #: msp/user.py:75
-#, fuzzy, python-format
+#, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Modello di auto %(car_id)s non trovato dal database"
 
@@ -156,6 +154,6 @@ msgid "Password has been changed successfully"
 msgstr "La password è stata modificata correttamente"
 
 #: msp/user.py:346
-#| msgid "Car model {car_id} not found from database"
+#, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Modello di auto {car_id} non trovato dal database"

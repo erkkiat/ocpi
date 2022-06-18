@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 11:13+0000\n"
+"POT-Creation-Date: 2022-06-18 11:49+0000\n"
 "PO-Revision-Date: 2022-06-18 14:15:09.260047\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -24,8 +24,6 @@ msgid "Available"
 msgstr "Dostupno"
 
 #: choices.py:78
-#, fuzzy
-#| msgid "Preparing to charge"
 msgid "Preparing"
 msgstr "Priprema za punjenje"
 
@@ -142,10 +140,8 @@ msgid "Password and confirm differ from each other"
 msgstr "Lozinka i potvrda razlikuju se"
 
 #: msp/user.py:75
-#, fuzzy, python-format
-#| msgid "Car model {car_id} not found from database"
 msgid "Car model %(car_id)s is not in our database"
-msgstr "Model automobila {car_id} nije pronađen u bazi podataka"
+msgstr "Model automobila %(car_id)s nije pronađen u bazi podataka"
 
 #: msp/user.py:252
 #, python-brace-format
@@ -157,27 +153,5 @@ msgid "Password has been changed successfully"
 msgstr "Lozinka je uspješno promijenjena"
 
 #: msp/user.py:346
-#, fuzzy, python-brace-format
-#| msgid "Car model {car_id} not found from database"
 msgid "Car model {car_id} is not in our database"
 msgstr "Model automobila {car_id} nije pronađen u bazi podataka"
-
-#: util.py:74
-#, python-brace-format
-msgid "{hours}h {minutes}min"
-msgstr "{hours}h {minutes}min"
-
-#: util.py:76
-#, python-brace-format
-msgid "{hours}h"
-msgstr "{sati}h"
-
-#: util.py:79
-#, python-brace-format
-msgid "{seconds} seconds"
-msgstr "{seconds} sekundi"
-
-#: util.py:81
-#, python-brace-format
-msgid "{minutes} minutes"
-msgstr "{minutes} minuta"

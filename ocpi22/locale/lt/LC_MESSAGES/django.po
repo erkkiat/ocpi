@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 11:13+0000\n"
+"POT-Creation-Date: 2022-06-18 11:49+0000\n"
 "PO-Revision-Date: 2022-06-18 14:15:31.796911\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -24,8 +24,6 @@ msgid "Available"
 msgstr "Yra"
 
 #: choices.py:78
-#, fuzzy
-#| msgid "Preparing to charge"
 msgid "Preparing"
 msgstr "Pasiruošimas įkrauti"
 
@@ -142,10 +140,8 @@ msgid "Password and confirm differ from each other"
 msgstr "Slaptažodis ir patvirtinimas skiriasi vienas nuo kito"
 
 #: msp/user.py:75
-#, fuzzy, python-format
-#| msgid "Car model {car_id} not found from database"
 msgid "Car model %(car_id)s is not in our database"
-msgstr "Automobilio modelis {car_id} duomenų bazėje nerastas"
+msgstr "Automobilio modelis %(car_id)s duomenų bazėje nerastas"
 
 #: msp/user.py:252
 #, python-brace-format
@@ -157,27 +153,5 @@ msgid "Password has been changed successfully"
 msgstr "Slaptažodis sėkmingai pakeistas"
 
 #: msp/user.py:346
-#, fuzzy, python-brace-format
-#| msgid "Car model {car_id} not found from database"
 msgid "Car model {car_id} is not in our database"
 msgstr "Automobilio modelis {car_id} duomenų bazėje nerastas"
-
-#: util.py:74
-#, python-brace-format
-msgid "{hours}h {minutes}min"
-msgstr "{hours}h {minutes}min"
-
-#: util.py:76
-#, python-brace-format
-msgid "{hours}h"
-msgstr "{valandos} val"
-
-#: util.py:79
-#, python-brace-format
-msgid "{seconds} seconds"
-msgstr "{seconds} sek"
-
-#: util.py:81
-#, python-brace-format
-msgid "{minutes} minutes"
-msgstr "{minutes} minutes"
