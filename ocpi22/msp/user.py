@@ -260,35 +260,41 @@ class UserViewSet(viewsets.GenericViewSet):
     @method_decorator(login_required)
     @action(methods=['GET', 'PATCH', 'POST'], detail=False)
     def account(self, request):
-        user = request.user
-        if request.method == 'GET':
-            serializer = ProfileSerializer(instance=user)
-            return Response(serializer.data)
-        if request.method in ('POST', 'PATCH'):
-            partial = bool(request.method == 'PATCH')
-            serializer = ProfileSerializer(data=request.data, instance=user, partial=partial)
-            if serializer.is_valid():
-                serializer.save()
+        try:
+            user = request.user
+            if request.method == 'GET':
+                serializer = ProfileSerializer(instance=user)
                 return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return options_response
+            if request.method in ('POST', 'PATCH'):
+                partial = bool(request.method == 'PATCH')
+                serializer = ProfileSerializer(data=request.data, instance=user, partial=partial)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return options_response
+        except ValidationError as e:
+            return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
     @method_decorator(login_required)
     @action(methods=['GET', 'POST', 'PATCH'], detail=False)
     def password(self, request):
-        user: User = request.user
-        if request.method == 'GET':
+        try:
+            user: User = request.user
+            if request.method == 'GET':
+                return options_response
+            if request.method in ('POST', 'PATCH'):
+                partial = bool(request.method == 'PATCH')
+                serializer = ChangePasswordSerializer(data=request.data, instance=user, partial=partial)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({'status_message': _('Password has been changed successfully')})
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             return options_response
-        if request.method in ('POST', 'PATCH'):
-            partial = bool(request.method == 'PATCH')
-            serializer = ChangePasswordSerializer(data=request.data, instance=user, partial=partial)
-            if serializer.is_valid():
-                serializer.save()
-                return Response({'status_message': _('Password has been changed successfully')})
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return options_response
+        except ValidationError as e:
+            return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
 
     def _build_transaction_list_urls(self, request) -> dict:
         transactions = Transaction.objects.all()

@@ -84,8 +84,8 @@ class TestUserApi(TestCase):
         user = User.objects.get(email=email)
 
         test_cases = (
-            ('not-correct', 'hello2', 'hello2', ValidationError),
-            ('hello', 'hello1', 'hello2', ValidationError),
+            ('not-correct', 'hello2', 'hello2', status.HTTP_400_BAD_REQUEST),
+            ('hello', 'hello1', 'hello2', status.HTTP_400_BAD_REQUEST),
             ('hello', 'hello2', 'hello2', status.HTTP_200_OK),
         )
 
@@ -102,11 +102,7 @@ class TestUserApi(TestCase):
 
             # ic(args, kwargs, expected_status)
 
-            if expected_status == ValidationError:
-                with self.assertRaises(expected_status):
-                    send_request(*args, **kwargs)
-            else:
-                response = send_request(*args, **kwargs)
-                self.assertEqual(response.status_code, expected_status,
-                                 f'Expected password change to return {expected_status} '
-                                 f'for test case {current}, {password}, {confirm}')
+            response = send_request(*args, **kwargs)
+            self.assertEqual(response.status_code, expected_status,
+                             f'Expected password change to return {expected_status} '
+                             f'for test case {current}, {password}, {confirm}')
