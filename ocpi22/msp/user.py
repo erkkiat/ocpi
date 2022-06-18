@@ -255,7 +255,7 @@ class UserViewSet(viewsets.GenericViewSet):
                 email=serializer.validated_data.get("email")),
                 status.HTTP_409_CONFLICT)
         except ValidationError as e:
-            return Response({'status_message': str(e)}, status.HTTP_400_BAD_REQUEST)
+            return Response({'status_message': e}, status.HTTP_400_BAD_REQUEST)
 
     @method_decorator(login_required)
     @action(methods=['GET', 'PATCH', 'POST'], detail=False)
@@ -275,7 +275,7 @@ class UserViewSet(viewsets.GenericViewSet):
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             return options_response
         except ValidationError as e:
-            return Response({'status_message': str(e)}, status.HTTP_400_BAD_REQUEST)
+            return Response({'status_message': e}, status.HTTP_400_BAD_REQUEST)
 
     @method_decorator(login_required)
     @action(methods=['GET', 'POST', 'PATCH'], detail=False)
@@ -294,7 +294,7 @@ class UserViewSet(viewsets.GenericViewSet):
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             return options_response
         except ValidationError as e:
-            return Response({'status_message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status_message': e}, status=status.HTTP_400_BAD_REQUEST)
 
     def _build_transaction_list_urls(self, request) -> dict:
         transactions = Transaction.objects.all()
