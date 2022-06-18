@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 11:49+0000\n"
+"POT-Creation-Date: 2022-06-18 12:23+0000\n"
 "PO-Revision-Date: 2022-06-18 14:15:20.769194\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -154,5 +154,6 @@ msgid "Password has been changed successfully"
 msgstr "Salasana on vaihdettu"
 
 #: msp/user.py:346
+#, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Automallia {car_id} ei löydy tietokannasta"

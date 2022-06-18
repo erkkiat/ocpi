@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 11:49+0000\n"
+"POT-Creation-Date: 2022-06-18 12:23+0000\n"
 "PO-Revision-Date: 2022-06-18 14:15:05.244717\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -140,6 +140,7 @@ msgid "Password and confirm differ from each other"
 msgstr "Лозинката и потврдата се разликуваат едни од други"
 
 #: msp/user.py:75
+#, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Моделот на автомобилот %(car_id)s не е пронајден од базата на податоци"
 
@@ -153,5 +154,6 @@ msgid "Password has been changed successfully"
 msgstr "Лозинката е успешно променета"
 
 #: msp/user.py:346
+#, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Моделот на автомобилот {car_id} не е пронајден од базата на податоци"

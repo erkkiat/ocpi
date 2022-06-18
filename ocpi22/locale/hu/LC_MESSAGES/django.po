@@ -1,0 +1,159 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-18 12:23+0000\n"
+"PO-Revision-Date: 2022-06-18 15:15:48.707670\n"
+"Last-Translator: potranslator 1.1.5\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: hu\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Translated-By: potranslator 1.1.5\n"
+
+#: choices.py:77
+msgid "Available"
+msgstr "Elérhető"
+
+#: choices.py:78
+msgid "Preparing"
+msgstr "Felkészülés"
+
+#: choices.py:79
+msgid "Charging"
+msgstr "Töltés"
+
+#: choices.py:80
+msgid "Suspended by vehicle"
+msgstr "Jármű felfüggesztve"
+
+#: choices.py:81
+msgid "Suspended by charger"
+msgstr "Töltővel felfüggesztve"
+
+#: choices.py:82
+msgid "Finishing"
+msgstr "Végső"
+
+#: choices.py:83
+msgid "Reserved"
+msgstr "Fenntartott"
+
+#: choices.py:84
+msgid "Unavailable"
+msgstr "Nem érhető el"
+
+#: choices.py:85
+msgid "Out of order"
+msgstr "Nem működik"
+
+#: choices.py:165
+msgid "Preparing to charge"
+msgstr "Töltésre készül"
+
+#: choices.py:166
+msgid "Stopping charging session"
+msgstr "A töltési munkamenet leállítása"
+
+#: choices.py:168
+msgid "The charger is currently in use"
+msgstr "A töltő jelenleg használatban van"
+
+#: choices.py:170
+msgid "Unable to start charging at this time"
+msgstr "Jelenleg nem lehet elindítani a töltést"
+
+#: choices.py:172
+msgid "Unable to connect to charge point management system"
+msgstr "Nem lehet csatlakozni a töltésipont-kezelő rendszerhez"
+
+#: choices.py:174
+msgid "The token doesn't have enough balance on the account"
+msgstr "A tokennek nincs elegendő egyenlege a számlán"
+
+#: choices.py:176
+msgid "The token is accepted"
+msgstr "A tokent elfogadják"
+
+#: choices.py:178
+msgid "Your token is no longer valid"
+msgstr "A tokenje már nem érvényes"
+
+#: choices.py:192
+msgid "The reservation has been cancelled"
+msgstr "A foglalást törölték"
+
+#: choices.py:193 choices.py:197
+msgid "The charger is inoperative"
+msgstr "A töltő nem működik"
+
+#: choices.py:194
+msgid "Failed to start the charging"
+msgstr "Nem sikerült elindítani a töltést"
+
+#: choices.py:195
+msgid "The operation is not supported by the charger"
+msgstr "A műveletet a töltő nem támogatja"
+
+#: choices.py:196
+msgid "The command was rejected by the charger"
+msgstr "A parancsot a töltő elutasította"
+
+#: choices.py:198
+msgid "There has been a problem with the reservation"
+msgstr "Probléma lépett fel a foglalással"
+
+#: models/session.py:171
+msgid "Active"
+msgstr "Aktív"
+
+#: models/session.py:175
+msgid "Completed"
+msgstr "Befejezve"
+
+#: models/session.py:178
+msgid "Invalid"
+msgstr "Érvénytelen"
+
+#: models/session.py:182
+msgid "Pending"
+msgstr "Függőben levő"
+
+#: models/session.py:186
+msgid "Reservation"
+msgstr "Foglalás"
+
+#: msp/user.py:63
+msgid "The current password doesn't match"
+msgstr "A jelenlegi jelszó nem egyezik"
+
+#: msp/user.py:65 msp/user.py:143
+msgid "Password and confirm differ from each other"
+msgstr "A jelszó és a megerősítés eltér egymástól"
+
+#: msp/user.py:75
+#, python-format
+msgid "Car model %(car_id)s is not in our database"
+msgstr "A %(car_id)s autómodell nem szerepel adatbázisunkban"
+
+#: msp/user.py:252
+#, python-brace-format
+msgid "The user {email} already exists"
+msgstr "A(z) {email} felhasználó már létezik"
+
+#: msp/user.py:291
+msgid "Password has been changed successfully"
+msgstr "A jelszó sikeresen megváltozott"
+
+#: msp/user.py:346
+#, python-brace-format
+msgid "Car model {car_id} is not in our database"
+msgstr "A(z) {car_id} autómodell nem szerepel adatbázisunkban"

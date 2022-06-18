@@ -1,0 +1,160 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-18 12:23+0000\n"
+"PO-Revision-Date: 2022-06-18 15:15:11.817665\n"
+"Last-Translator: potranslator 1.1.5\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: ga\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=5; plural=(n==1 ? 0 : n==2 ? 1 : n<7 ? 2 : n<11 ? 3 : "
+"4);\n"
+"Translated-By: potranslator 1.1.5\n"
+
+#: choices.py:77
+msgid "Available"
+msgstr "Ar fáil"
+
+#: choices.py:78
+msgid "Preparing"
+msgstr "ag ullmhú"
+
+#: choices.py:79
+msgid "Charging"
+msgstr "Muirearú"
+
+#: choices.py:80
+msgid "Suspended by vehicle"
+msgstr "Ar fionraí i bhfeithicil"
+
+#: choices.py:81
+msgid "Suspended by charger"
+msgstr "Ar fionraí ag charger"
+
+#: choices.py:82
+msgid "Finishing"
+msgstr "Ag críochnú"
+
+#: choices.py:83
+msgid "Reserved"
+msgstr "Curtha in áirithe"
+
+#: choices.py:84
+msgid "Unavailable"
+msgstr "Níl fáil air"
+
+#: choices.py:85
+msgid "Out of order"
+msgstr "As ord"
+
+#: choices.py:165
+msgid "Preparing to charge"
+msgstr "Ag ullmhú chun muirear"
+
+#: choices.py:166
+msgid "Stopping charging session"
+msgstr "Seisiún luchtaithe a stopadh"
+
+#: choices.py:168
+msgid "The charger is currently in use"
+msgstr "Tá an charger in úsáid faoi láthair"
+
+#: choices.py:170
+msgid "Unable to start charging at this time"
+msgstr "Ní féidir tús a chur le muirearú faoi láthair"
+
+#: choices.py:172
+msgid "Unable to connect to charge point management system"
+msgstr "Ní féidir ceangal le córas bainistíochta na bpointí luchtaithe"
+
+#: choices.py:174
+msgid "The token doesn't have enough balance on the account"
+msgstr "Níl go leor iarmhéid ar an gcuntas ar an chomhartha"
+
+#: choices.py:176
+msgid "The token is accepted"
+msgstr "Glactar leis an comhartha"
+
+#: choices.py:178
+msgid "Your token is no longer valid"
+msgstr "Níl do chomhartha bailí a thuilleadh"
+
+#: choices.py:192
+msgid "The reservation has been cancelled"
+msgstr "Cuireadh an áirithint ar ceal"
+
+#: choices.py:193 choices.py:197
+msgid "The charger is inoperative"
+msgstr "Tá an charger neamhoibríoch"
+
+#: choices.py:194
+msgid "Failed to start the charging"
+msgstr "Theip ar an muirearú a thosú"
+
+#: choices.py:195
+msgid "The operation is not supported by the charger"
+msgstr "Ní thacaíonn an charger leis an oibríocht"
+
+#: choices.py:196
+msgid "The command was rejected by the charger"
+msgstr "Dhiúltaigh an charger don ordú"
+
+#: choices.py:198
+msgid "There has been a problem with the reservation"
+msgstr "Bhí fadhb leis an áirithint"
+
+#: models/session.py:171
+msgid "Active"
+msgstr "Gníomhach"
+
+#: models/session.py:175
+msgid "Completed"
+msgstr "Críochnaithe"
+
+#: models/session.py:178
+msgid "Invalid"
+msgstr "Neamhbhailí"
+
+#: models/session.py:182
+msgid "Pending"
+msgstr "Ar feitheamh"
+
+#: models/session.py:186
+msgid "Reservation"
+msgstr "Áirithint"
+
+#: msp/user.py:63
+msgid "The current password doesn't match"
+msgstr "Ní hionann an pasfhocal reatha"
+
+#: msp/user.py:65 msp/user.py:143
+msgid "Password and confirm differ from each other"
+msgstr "Pasfhocal agus a dhearbhú difriúil óna chéile"
+
+#: msp/user.py:75
+#, python-format
+msgid "Car model %(car_id)s is not in our database"
+msgstr "Níl múnla carranna %(car_id)s inár mbunachar sonraí"
+
+#: msp/user.py:252
+#, python-brace-format
+msgid "The user {email} already exists"
+msgstr "Tá an t-úsáideoir {email} ann cheana"
+
+#: msp/user.py:291
+msgid "Password has been changed successfully"
+msgstr "Athraíodh an pasfhocal go rathúil"
+
+#: msp/user.py:346
+#, python-brace-format
+msgid "Car model {car_id} is not in our database"
+msgstr "Níl múnla cairr {car_id} inár mbunachar sonraí"

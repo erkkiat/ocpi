@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 11:49+0000\n"
+"POT-Creation-Date: 2022-06-18 12:23+0000\n"
 "PO-Revision-Date: 2022-06-18 14:14:52.773388\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -140,6 +140,7 @@ msgid "Password and confirm differ from each other"
 msgstr "Parole un apstiprinājums atšķiras viens no otra"
 
 #: msp/user.py:75
+#, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Automašīnas modelis %(car_id)s datubāzē nav atrasts"
 
@@ -153,5 +154,6 @@ msgid "Password has been changed successfully"
 msgstr "Parole ir veiksmīgi nomainīta"
 
 #: msp/user.py:346
+#, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Automašīnas modelis {car_id} datubāzē nav atrasts"
