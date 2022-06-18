@@ -9,7 +9,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer
 from ocpi22.models.session import Session
-from ocpi22.ocpi.util import OCPIResponse, Ocpi, ocpi_options_response
+from ocpi22.ocpi.util import OCPIResponse, Ocpi, options_message
 from ocpi22.util import OnlyRawBrowsableAPIRenderer
 
 
@@ -42,7 +42,7 @@ class CommandsHubViewSet(GenericViewSet):
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
         if not request.data:
-            return ocpi_options_response
+            return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
@@ -59,7 +59,7 @@ class CommandsHubViewSet(GenericViewSet):
     @action(methods=['GET', 'POST'], detail=False, url_path='STOP_SESSION')
     def stop_session(self, request):
         if not request.data:
-            return ocpi_options_response
+            return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             serializer = StopSessionSerializer(data=request.data)
             if serializer.is_valid():
@@ -76,7 +76,7 @@ class CommandsHubViewSet(GenericViewSet):
     @action(methods=['GET', 'POST'], detail=False, url_path='UNLOCK_CONNECTOR')
     def unlock_connector(self, request):
         if not request.data:
-            return ocpi_options_response
+            return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             serializer = UnlockConnectorSerializer(data=request.data)
             if serializer.is_valid():

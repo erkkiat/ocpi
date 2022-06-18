@@ -301,9 +301,7 @@ class Ocpi:
     )
 
 
-ocpi_options_response = OCPIResponse(
-    dict(status_message=f'Please see OPTIONS to learn what you can POST at this endpoint'),
-    status=status.HTTP_400_BAD_REQUEST)
+options_message = f'Please see OPTIONS to learn what you can POST at this endpoint'
 
 
 class OCPIPaginationAndHeaders(LimitOffsetPagination):

@@ -19,10 +19,8 @@ from ocpi22.models.cdr import Cdr
 from ocpi22.msp.account import Transaction, Account
 from ocpi22.msp.models import PHONE_FIELD_LENGTH, VEHICLE_FIELD_LENGTH
 from ocpi22.ocpi.serializers import CdrSerializer
+from ocpi22.ocpi.util import options_message
 from ocpi22.util import hours_minutes, HyperlinkedModelSerializerCleanedUp, StandardResultsSetPagination
-
-options_response = Response({'status_message': f'Please see OPTIONS to learn what you can POST at this endpoint'},
-                            status=status.HTTP_400_BAD_REQUEST)
 
 
 class Username(serializers.CharField):
@@ -236,7 +234,7 @@ class UserViewSet(viewsets.GenericViewSet):
         This endpoint is open to all, since the user can only log in after registering
         """
         if request.method == 'GET':
-            return options_response
+            return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
         # POST
         try:
@@ -273,17 +271,18 @@ class UserViewSet(viewsets.GenericViewSet):
                     return Response(serializer.data)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            return options_response
+            return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         except ValidationError as e:
             return Response({'status_message': e}, status.HTTP_400_BAD_REQUEST)
 
-    @method_decorator(login_required)
-    @action(methods=['GET', 'POST', 'PATCH'], detail=False)
+    # @method_decorator(login_required)
+    @action(methods=['GET', 'POST', 'PATCH'], detail=False, url_name='password')
     def password(self, request):
         try:
             user: User = request.user
             if request.method == 'GET':
-                return options_response
+                return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
+
             if request.method in ('POST', 'PATCH'):
                 partial = bool(request.method == 'PATCH')
                 serializer = ChangePasswordSerializer(data=request.data, instance=user, partial=partial)
@@ -292,7 +291,7 @@ class UserViewSet(viewsets.GenericViewSet):
                     return Response({'status_message': _('Password has been changed successfully')})
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            return options_response
+            return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         except ValidationError as e:
             return Response({'status_message': e}, status=status.HTTP_400_BAD_REQUEST)
 

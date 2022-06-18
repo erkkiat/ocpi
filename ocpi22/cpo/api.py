@@ -21,10 +21,9 @@ from ocpi22.cpo.util import get_callbacks_parameter, command_store
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.msp.user import options_response
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.serializers import CdrSerializer
-from ocpi22.ocpi.util import generate_session_uid
+from ocpi22.ocpi.util import generate_session_uid, options_message
 from ocpi22.routing import find_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tasks import send_ocpi_request
@@ -253,7 +252,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return options_response
+            return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -319,7 +318,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return options_response
+            return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
+
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -415,7 +415,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return options_response
+            return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
+
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -498,7 +499,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return options_response
+            return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
+
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -572,7 +574,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
-            return options_response
+            return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
+
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(
                 dict(status=str(e)),
@@ -647,7 +650,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         try:
             if request.method == 'GET':
-                return options_response
+                return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
             command = command_store[authorization_reference]
 

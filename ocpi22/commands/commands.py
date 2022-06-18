@@ -29,8 +29,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
-from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference, \
-    ocpi_options_response
+from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference, options_message
 
 import pprint
 
@@ -84,7 +83,7 @@ class CommandsViewSet(GenericViewSet):
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
         if not request.data:
-            return ocpi_options_response
+            return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             billed_to = get_sender_party(request.META)
             assert isinstance(billed_to, Party) and len(str(billed_to)) == 6, \
@@ -194,7 +193,7 @@ class CommandsViewSet(GenericViewSet):
     @action(methods=['GET', 'POST'], detail=False, url_path='STOP_SESSION')
     def stop_session(self, request):
         if not request.data:
-            return ocpi_options_response
+            return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             serializer = StopSessionSerializer(data=request.data)
             if serializer.is_valid():
@@ -282,7 +281,7 @@ class CommandsViewSet(GenericViewSet):
     @action(methods=['GET', 'POST'], detail=False, url_path='UNLOCK_CONNECTOR')
     def unlock_connector(self, request):
         if not request.data:
-            return ocpi_options_response
+            return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             serializer = UnlockConnectorSerializer(data=request.data)
             if serializer.is_valid():
@@ -317,7 +316,7 @@ class CommandsViewSet(GenericViewSet):
         This is only used by eMSP for receiving the final result for remote command
         """
         if not request.data:
-            return ocpi_options_response
+            return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             session = Session.objects.filter(authorization_reference=command_id)
             if not session.exists():
