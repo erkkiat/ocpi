@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-11 19:32+0000\n"
-"PO-Revision-Date: 2022-06-12 20:39:57.273475\n"
+"POT-Creation-Date: 2022-06-18 11:13+0000\n"
+"PO-Revision-Date: 2022-06-18 14:14:52.773388\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: lv\n"
@@ -19,71 +19,132 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:171
+#: choices.py:77
+msgid "Available"
+msgstr "Pieejams"
+
+#: choices.py:78
+#, fuzzy
+#| msgid "Preparing to charge"
+msgid "Preparing"
+msgstr "Gatavošanās uzlādei"
+
+#: choices.py:79
+msgid "Charging"
+msgstr "Uzlāde"
+
+#: choices.py:80
+msgid "Suspended by vehicle"
+msgstr "Apturēts ar transportlīdzekli"
+
+#: choices.py:81
+msgid "Suspended by charger"
+msgstr "Apturēts ar lādētāju"
+
+#: choices.py:82
+msgid "Finishing"
+msgstr "Apdare"
+
+#: choices.py:83
+msgid "Reserved"
+msgstr "Rezervēts"
+
+#: choices.py:84
+msgid "Unavailable"
+msgstr "Nav pieejams"
+
+#: choices.py:85
+msgid "Out of order"
+msgstr "Nestrādā"
+
+#: choices.py:165
 msgid "Preparing to charge"
 msgstr "Gatavošanās uzlādei"
 
-#: choices.py:172
+#: choices.py:166
 msgid "Stopping charging session"
 msgstr "Uzlādes sesijas pārtraukšana"
 
-#: choices.py:174
+#: choices.py:168
 msgid "The charger is currently in use"
 msgstr "Lādētājs pašlaik tiek lietots"
 
-#: choices.py:176
+#: choices.py:170
 msgid "Unable to start charging at this time"
 msgstr "Šobrīd nevar sākt uzlādi"
 
-#: choices.py:178
+#: choices.py:172
 msgid "Unable to connect to charge point management system"
 msgstr "Nevar izveidot savienojumu ar uzlādes punktu pārvaldības sistēmu"
 
-#: choices.py:180
+#: choices.py:174
 msgid "The token doesn't have enough balance on the account"
 msgstr "Marķiera kontā nav pietiekami daudz atlikuma"
 
-#: choices.py:182
+#: choices.py:176
 msgid "The token is accepted"
 msgstr "Žetons ir pieņemts"
 
-#: choices.py:184
+#: choices.py:178
 msgid "Your token is no longer valid"
 msgstr "Jūsu marķieris vairs nav derīgs"
 
-#: choices.py:197
+#: choices.py:192
 msgid "The reservation has been cancelled"
 msgstr "Rezervācija ir atcelta"
 
-#: choices.py:198 choices.py:202
-#| msgid "The charger is currently in use"
+#: choices.py:193 choices.py:197
 msgid "The charger is inoperative"
 msgstr "Lādētājs nedarbojas"
 
-#: choices.py:199
-#| msgid "Unable to start charging at this time"
+#: choices.py:194
 msgid "Failed to start the charging"
 msgstr "Neizdevās sākt uzlādi"
 
-#: choices.py:200
+#: choices.py:195
 msgid "The operation is not supported by the charger"
 msgstr "Lādētājs šo darbību neatbalsta"
 
-#: choices.py:201
+#: choices.py:196
 msgid "The command was rejected by the charger"
 msgstr "Lādētājs komandu noraidīja"
 
-#: choices.py:203
+#: choices.py:198
 msgid "There has been a problem with the reservation"
 msgstr "Ir radusies problēma ar rezervāciju"
 
-#: msp/user.py:56 msp/user.py:143
+#: models/session.py:171
+msgid "Active"
+msgstr "Aktīvs"
+
+#: models/session.py:175
+msgid "Completed"
+msgstr "Pabeigts"
+
+#: models/session.py:178
+msgid "Invalid"
+msgstr "Nederīgs"
+
+#: models/session.py:182
+msgid "Pending"
+msgstr "Gaida"
+
+#: models/session.py:186
+msgid "Reservation"
+msgstr "Rezervācija"
+
+#: msp/user.py:63
+msgid "The current password doesn't match"
+msgstr "Pašreizējā parole neatbilst"
+
+#: msp/user.py:65 msp/user.py:143
 msgid "Password and confirm differ from each other"
 msgstr "Parole un apstiprinājums atšķiras viens no otra"
 
-#: msp/user.py:99 msp/user.py:133 msp/user.py:340
-#, python-brace-format
-msgid "Car model {car_id} not found from database"
+#: msp/user.py:75
+#, fuzzy, python-format
+#| msgid "Car model {car_id} not found from database"
+msgid "Car model %(car_id)s is not in our database"
 msgstr "Automašīnas modelis {car_id} datubāzē nav atrasts"
 
 #: msp/user.py:252
@@ -91,6 +152,32 @@ msgstr "Automašīnas modelis {car_id} datubāzē nav atrasts"
 msgid "The user {email} already exists"
 msgstr "Lietotājs {email} jau pastāv"
 
-#: msp/user.py:284
+#: msp/user.py:291
 msgid "Password has been changed successfully"
 msgstr "Parole ir veiksmīgi nomainīta"
+
+#: msp/user.py:346
+#, fuzzy, python-brace-format
+#| msgid "Car model {car_id} not found from database"
+msgid "Car model {car_id} is not in our database"
+msgstr "Automašīnas modelis {car_id} datubāzē nav atrasts"
+
+#: util.py:74
+#, python-brace-format
+msgid "{hours}h {minutes}min"
+msgstr "{hours}h {minutes}min"
+
+#: util.py:76
+#, python-brace-format
+msgid "{hours}h"
+msgstr "{hours} h"
+
+#: util.py:79
+#, python-brace-format
+msgid "{seconds} seconds"
+msgstr "{seconds} sekundes"
+
+#: util.py:81
+#, python-brace-format
+msgid "{minutes} minutes"
+msgstr "{minutes} minūtes"

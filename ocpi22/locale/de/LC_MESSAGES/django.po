@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-11 19:32+0000\n"
-"PO-Revision-Date: 2022-06-12 20:40:14.274646\n"
+"POT-Creation-Date: 2022-06-18 11:13+0000\n"
+"PO-Revision-Date: 2022-06-18 14:15:16.962198\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: de\n"
@@ -19,79 +19,142 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:171
+#: choices.py:77
+msgid "Available"
+msgstr "Verfügbar"
+
+#: choices.py:78
+#, fuzzy
+#| msgid "Preparing to charge"
+msgid "Preparing"
+msgstr "Ladevorgang vorbereiten"
+
+#: choices.py:79
+msgid "Charging"
+msgstr "Laden"
+
+#: choices.py:80
+msgid "Suspended by vehicle"
+msgstr "Vom Fahrzeug ausgesetzt"
+
+#: choices.py:81
+msgid "Suspended by charger"
+msgstr "Vom Ladegerät ausgesetzt"
+
+#: choices.py:82
+msgid "Finishing"
+msgstr "Fertigstellung"
+
+#: choices.py:83
+msgid "Reserved"
+msgstr "Reserviert"
+
+#: choices.py:84
+msgid "Unavailable"
+msgstr "Nicht verfügbar"
+
+#: choices.py:85
+msgid "Out of order"
+msgstr "Außer Betrieb"
+
+#: choices.py:165
 msgid "Preparing to charge"
 msgstr "Ladevorgang vorbereiten"
 
-#: choices.py:172
+#: choices.py:166
 msgid "Stopping charging session"
 msgstr "Beenden der Ladesitzung"
 
-#: choices.py:174
+#: choices.py:168
 msgid "The charger is currently in use"
 msgstr "Das Ladegerät wird derzeit verwendet"
 
-#: choices.py:176
+#: choices.py:170
 msgid "Unable to start charging at this time"
 msgstr "Der Ladevorgang kann derzeit nicht gestartet werden"
 
-#: choices.py:178
+#: choices.py:172
 msgid "Unable to connect to charge point management system"
 msgstr ""
 "Es kann keine Verbindung zum Ladepunkt-Verwaltungssystem hergestellt werden"
 
-#: choices.py:180
+#: choices.py:174
 msgid "The token doesn't have enough balance on the account"
 msgstr "Der Token hat nicht genug Guthaben auf dem Konto"
 
-#: choices.py:182
+#: choices.py:176
 msgid "The token is accepted"
 msgstr "Der Token wird akzeptiert"
 
-#: choices.py:184
+#: choices.py:178
 msgid "Your token is no longer valid"
 msgstr "Ihr Token ist nicht mehr gültig"
 
-#: choices.py:197
+#: choices.py:192
 msgid "The reservation has been cancelled"
 msgstr "Die Reservierung wurde storniert"
 
-#: choices.py:198 choices.py:202
-#| msgid "The charger is currently in use"
+#: choices.py:193 choices.py:197
 msgid "The charger is inoperative"
 msgstr "Das Ladegerät funktioniert nicht"
 
-#: choices.py:199
-#| msgid "Unable to start charging at this time"
+#: choices.py:194
 msgid "Failed to start the charging"
 msgstr "Der Ladevorgang konnte nicht gestartet werden"
 
-#: choices.py:200
+#: choices.py:195
 msgid "The operation is not supported by the charger"
 msgstr "Der Betrieb wird vom Ladegerät nicht unterstützt"
 
-#: choices.py:201
+#: choices.py:196
 msgid "The command was rejected by the charger"
 msgstr "Der Befehl wurde vom Ladegerät abgelehnt"
 
-#: choices.py:203
+#: choices.py:198
 msgid "There has been a problem with the reservation"
 msgstr "Bei der Reservierung ist ein Problem aufgetreten"
 
-#: msp/user.py:56 msp/user.py:143
+#: models/session.py:171
+msgid "Active"
+msgstr "Aktiv"
+
+#: models/session.py:175
+msgid "Completed"
+msgstr "Abgeschlossen"
+
+#: models/session.py:178
+msgid "Invalid"
+msgstr "Ungültig"
+
+#: models/session.py:182
+msgid "Pending"
+msgstr "Ausstehend"
+
+#: models/session.py:186
+msgid "Reservation"
+msgstr "Reservierung"
+
+#: msp/user.py:63
+msgid "The current password doesn't match"
+msgstr "Das aktuelle Passwort stimmt nicht überein"
+
+#: msp/user.py:65 msp/user.py:143
 msgid "Password and confirm differ from each other"
 msgstr "Passwort und Bestätigung unterscheiden sich voneinander"
 
-#: msp/user.py:99 msp/user.py:133 msp/user.py:340
-#, python-brace-format
-msgid "Car model {car_id} not found from database"
-msgstr "Fahrzeugmodell {car_id} nicht in Datenbank gefunden"
+#: msp/user.py:75
+msgid "Car model %(car_id)s is not in our database"
+msgstr "Fahrzeugmodell %(car_id)s nicht in Datenbank gefunden"
 
 #: msp/user.py:252
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Der Benutzer {email} existiert bereits"
 
-#: msp/user.py:284
+#: msp/user.py:291
 msgid "Password has been changed successfully"
 msgstr "Passwort wurde erfolgreich geändert"
+
+#: msp/user.py:346
+msgid "Car model {car_id} is not in our database"
+msgstr "Fahrzeugmodell {car_id} nicht in Datenbank gefunden"

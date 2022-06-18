@@ -4,7 +4,7 @@ from icecream import ic
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OCPP_STATUS_CHOICES, OcppStatusEnum
+from ocpi22.choices import OcppStatusChoices
 from ocpi22.cpo.util import _find_our_evse, set_callbacks_parameter
 from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
@@ -159,23 +159,22 @@ class SessionIdSerializer(fields.CharField):
 
 class OcppStatusSerializer(fields.ChoiceField):
     def __init__(self):
-        super().__init__(OCPP_STATUS_CHOICES)
+        super().__init__(OcppStatusChoices.choices)
 
     def to_internal_value(self, data):
         result = {
-            OcppStatusEnum.AVAILABLE.value: 'AVAILABLE',
-            OcppStatusEnum.PREPARING.value: 'CHARGING',
-            OcppStatusEnum.CHARGING.value: 'CHARGING',
-            OcppStatusEnum.SUSPENDEDEV.value: 'CHARGING',
-            OcppStatusEnum.SUSPENDEDEVSE.value: 'CHARGING',
-            OcppStatusEnum.FINISHING.value: 'CHARGING',
-            OcppStatusEnum.RESERVED.value: 'RESERVED',
-            OcppStatusEnum.UNAVAILABLE.value: 'CHARGING',
-            OcppStatusEnum.FAULTED.value: 'OUTOFORDER',
+            OcppStatusChoices.AVAILABLE: 'AVAILABLE',
+            OcppStatusChoices.PREPARING: 'CHARGING',
+            OcppStatusChoices.CHARGING: 'CHARGING',
+            OcppStatusChoices.SUSPENDEDEV: 'CHARGING',
+            OcppStatusChoices.SUSPENDEDEVSE: 'CHARGING',
+            OcppStatusChoices.FINISHING: 'CHARGING',
+            OcppStatusChoices.RESERVED: 'RESERVED',
+            OcppStatusChoices.UNAVAILABLE: 'CHARGING',
+            OcppStatusChoices.FAULTED: 'OUTOFORDER',
         }.get(data.upper())
         if not result:
-            options = [x[0] for x in OCPP_STATUS_CHOICES]
-            raise ValidationError(f"'{data}' is not a known OCPP status. Options are: {options}.")
+            raise ValidationError(f"'{data}' is not a known OCPP status. Options are: {OcppStatusChoices.values}.")
         return result
 
 

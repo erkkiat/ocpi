@@ -2,6 +2,7 @@ from enum import Enum
 
 import cachetools
 from django.conf import settings
+from django.db import models
 from django.utils import translation
 from django.utils.translation import gettext_noop as _
 
@@ -72,22 +73,16 @@ ENDPOINT_ROLE_CHOICES = (
 )
 
 
-class OcppStatusEnum(Enum):
-    AVAILABLE = 'AVAILABLE'
-    PREPARING = 'PREPARING'
-    CHARGING = 'CHARGING'
-    SUSPENDEDEV = 'SUSPENDEDEV'
-    SUSPENDEDEVSE = 'SUSPENDEDEVSE'
-    FINISHING = 'FINISHING'
-    RESERVED = 'RESERVED'
-    UNAVAILABLE = 'UNAVAILABLE'
-    FAULTED = 'FAULTED'
-
-
-OCPP_STATUS_CHOICES = [
-    (e.value, e.value.capitalize())
-    for e in OcppStatusEnum
-]
+class OcppStatusChoices(models.TextChoices):
+    AVAILABLE = 'AVAILABLE', _('Available')
+    PREPARING = 'PREPARING', _('Preparing')
+    CHARGING = 'CHARGING', _('Charging')
+    SUSPENDEDEV = 'SUSPENDEDEV', _('Suspended by vehicle')
+    SUSPENDEDEVSE = 'SUSPENDEDEVSE', _('Suspended by charger')
+    FINISHING = 'FINISHING', _('Finishing')
+    RESERVED = 'RESERVED', _('Reserved')
+    UNAVAILABLE = 'UNAVAILABLE', _('Unavailable')
+    FAULTED = 'FAULTED', _('Out of order')
 
 
 class CdrDimensionEnum(Enum):

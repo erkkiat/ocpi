@@ -5,6 +5,7 @@ from typing import Union
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
@@ -167,22 +168,22 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # The session has been accepted and is active. All pre-conditions were met: Communication between EV and EVSE
         # (for example: cable plugged in correctly), EV or driver is authorized. EV is being charged,
         # or can be charged. Energy is, or is not, being transfered.
-        ('ACTIVE', 'Active'),
+        ('ACTIVE', _('Active')),
 
         # The session has been finished successfully.
         # Todo: No more modifications will be made to the Session object using this state.
-        ('COMPLETED', 'Completed'),
+        ('COMPLETED', _('Completed')),
 
         # The Session object using this state is declared invalid and will not be billed.
-        ('INVALID', 'Invalid'),
+        ('INVALID', _('Invalid')),
 
         # The session is pending, it has not yet started. Not all pre-conditions are met.
         # This is the initial state. The session might never become an active session.
-        ('PENDING', 'Pending'),
+        ('PENDING', _('Pending')),
 
         # The session is started due to a reservation, charging has not yet started.
         # The session might never become an active session.
-        ('RESERVATION', 'Reservation'),
+        ('RESERVATION', _('Reservation')),
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING')
 

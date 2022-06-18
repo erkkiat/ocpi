@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-11 19:32+0000\n"
-"PO-Revision-Date: 2022-06-12 20:40:11.197850\n"
+"POT-Creation-Date: 2022-06-18 11:13+0000\n"
+"PO-Revision-Date: 2022-06-18 14:15:13.239757\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: bg\n"
@@ -19,72 +19,133 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:171
+#: choices.py:77
+msgid "Available"
+msgstr "На разположение"
+
+#: choices.py:78
+#, fuzzy
+#| msgid "Preparing to charge"
+msgid "Preparing"
+msgstr "Подготовка за зареждане"
+
+#: choices.py:79
+msgid "Charging"
+msgstr "Зареждане"
+
+#: choices.py:80
+msgid "Suspended by vehicle"
+msgstr "Окачен от превозно средство"
+
+#: choices.py:81
+msgid "Suspended by charger"
+msgstr "Окачено от зарядно устройство"
+
+#: choices.py:82
+msgid "Finishing"
+msgstr "Завършване"
+
+#: choices.py:83
+msgid "Reserved"
+msgstr "Запазено"
+
+#: choices.py:84
+msgid "Unavailable"
+msgstr "Недостъпно"
+
+#: choices.py:85
+msgid "Out of order"
+msgstr "Изключено"
+
+#: choices.py:165
 msgid "Preparing to charge"
 msgstr "Подготовка за зареждане"
 
-#: choices.py:172
+#: choices.py:166
 msgid "Stopping charging session"
 msgstr "Спиране на сесията на зареждане"
 
-#: choices.py:174
+#: choices.py:168
 msgid "The charger is currently in use"
 msgstr "В момента зарядното устройство се използва"
 
-#: choices.py:176
+#: choices.py:170
 msgid "Unable to start charging at this time"
 msgstr "В момента не може да започне зареждането"
 
-#: choices.py:178
+#: choices.py:172
 msgid "Unable to connect to charge point management system"
 msgstr ""
 "Не може да се свърже със системата за управление на точките на зареждане"
 
-#: choices.py:180
+#: choices.py:174
 msgid "The token doesn't have enough balance on the account"
 msgstr "Токенът няма достатъчно баланс по сметката"
 
-#: choices.py:182
+#: choices.py:176
 msgid "The token is accepted"
 msgstr "Токенът е приет"
 
-#: choices.py:184
+#: choices.py:178
 msgid "Your token is no longer valid"
 msgstr "Вашият токен вече не е валиден"
 
-#: choices.py:197
+#: choices.py:192
 msgid "The reservation has been cancelled"
 msgstr "Резервацията е анулирана"
 
-#: choices.py:198 choices.py:202
-#| msgid "The charger is currently in use"
+#: choices.py:193 choices.py:197
 msgid "The charger is inoperative"
 msgstr "Зарядното устройство не работи"
 
-#: choices.py:199
-#| msgid "Unable to start charging at this time"
+#: choices.py:194
 msgid "Failed to start the charging"
 msgstr "Неуспешно стартиране на зареждането"
 
-#: choices.py:200
+#: choices.py:195
 msgid "The operation is not supported by the charger"
 msgstr "Операцията не се поддържа от зарядното устройство"
 
-#: choices.py:201
+#: choices.py:196
 msgid "The command was rejected by the charger"
 msgstr "Командата беше отхвърлена от зарядното устройство"
 
-#: choices.py:203
+#: choices.py:198
 msgid "There has been a problem with the reservation"
 msgstr "Възникна проблем с резервацията"
 
-#: msp/user.py:56 msp/user.py:143
+#: models/session.py:171
+msgid "Active"
+msgstr "Активен"
+
+#: models/session.py:175
+msgid "Completed"
+msgstr "Завършено"
+
+#: models/session.py:178
+msgid "Invalid"
+msgstr "Невалидно"
+
+#: models/session.py:182
+msgid "Pending"
+msgstr "Предстои"
+
+#: models/session.py:186
+msgid "Reservation"
+msgstr "Резервация"
+
+#: msp/user.py:63
+msgid "The current password doesn't match"
+msgstr "Текущата парола не съвпада"
+
+#: msp/user.py:65 msp/user.py:143
 msgid "Password and confirm differ from each other"
 msgstr "Парола и потвърждение се различават един от друг"
 
-#: msp/user.py:99 msp/user.py:133 msp/user.py:340
-#, python-brace-format
-msgid "Car model {car_id} not found from database"
+#: msp/user.py:75
+#, fuzzy, python-format
+#| msgid "Car model {car_id} not found from database"
+msgid "Car model %(car_id)s is not in our database"
 msgstr "Моделът на автомобил {car_id} не е намерен от базата данни"
 
 #: msp/user.py:252
@@ -92,6 +153,32 @@ msgstr "Моделът на автомобил {car_id} не е намерен �
 msgid "The user {email} already exists"
 msgstr "Потребителят {email} вече съществува"
 
-#: msp/user.py:284
+#: msp/user.py:291
 msgid "Password has been changed successfully"
 msgstr "Паролата е променена успешно"
+
+#: msp/user.py:346
+#, fuzzy, python-brace-format
+#| msgid "Car model {car_id} not found from database"
+msgid "Car model {car_id} is not in our database"
+msgstr "Моделът на автомобил {car_id} не е намерен от базата данни"
+
+#: util.py:74
+#, python-brace-format
+msgid "{hours}h {minutes}min"
+msgstr "{hours}h {minutes}мин"
+
+#: util.py:76
+#, python-brace-format
+msgid "{hours}h"
+msgstr "{часа} ч"
+
+#: util.py:79
+#, python-brace-format
+msgid "{seconds} seconds"
+msgstr "{seconds} секунди"
+
+#: util.py:81
+#, python-brace-format
+msgid "{minutes} minutes"
+msgstr "{minutes} минути"
