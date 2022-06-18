@@ -1,25 +1,27 @@
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
 from rest_framework import serializers, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
-from cars.cars import get_models
+from cars import cars
+from cars.cars import model_exists
 from ocpi22.models.cdr import Cdr
 from ocpi22.msp.account import Transaction, Account
 from ocpi22.msp.models import PHONE_FIELD_LENGTH, VEHICLE_FIELD_LENGTH
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.util import hours_minutes, HyperlinkedModelSerializerCleanedUp, StandardResultsSetPagination
 
-options_response = Response(dict(status_message=f'Please see OPTIONS to learn what you can POST at this endpoint'),
+options_response = Response({'status_message': f'Please see OPTIONS to learn what you can POST at this endpoint'},
                             status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -40,6 +42,11 @@ class Username(serializers.CharField):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(
+        write_only=True, max_length=128,
+        help_text="The current password for this user"
+    )
+
     password = serializers.CharField(
         write_only=True, max_length=128,
         help_text="The password to be set for this user"
@@ -51,18 +58,24 @@ class ChangePasswordSerializer(serializers.Serializer):
     )
 
     def update(self, user, validated_data):
+        current_password = validated_data.get('current_password')
         raw_password = validated_data.get('password')
         confirm_password = validated_data.get('confirm')
+        if not check_password(current_password, user.password):
+            raise ValidationError(_("The current password doesn't match"), code='no_match')
         if raw_password != confirm_password:
-            raise ValidationError(dict(status_message=_("Password and confirm differ from each other")))
+            raise ValidationError(_("Password and confirm differ from each other"), code='passwords_differ')
         if raw_password:
             user.set_password(raw_password)
             user.save()
-        else:
-            raise ValidationError(dict(
-                status_message='Please POST or PATCH {"password": "newpassword", "confirm": "newpassword"}')
-            )
         return user
+
+
+class VehicleSerializer(serializers.CharField):
+    def to_internal_value(self, data):
+        if not model_exists(data):
+            raise ValidationError(_("Car model %(car_id)s is not in our database"), params={'car_id': data})
+        return data
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -76,8 +89,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     telephone = serializers.CharField(source="profile.phone", max_length=PHONE_FIELD_LENGTH,
                                       required=False, allow_blank=True)
-    vehicle = serializers.CharField(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH,
-                                    required=False, allow_blank=True)
+    vehicle = VehicleSerializer(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH,
+                                required=False, allow_blank=True)
 
     def update(self, user, validated_data):
         profile_data = validated_data.pop('profile', None)
@@ -93,12 +106,6 @@ class ProfileSerializer(serializers.ModelSerializer):
             profile.save()
 
         return user
-
-    def validate(self, attrs):
-        car_model = attrs.get('profile', {}).get('vehicle')
-        if car_model and not car_model in get_models():
-            raise ValidationError(_("Car model {car_id} not found from database").format(car_id=car_model))
-        return attrs
 
 
 class RegistrationSerializer(ProfileSerializer):
@@ -125,14 +132,8 @@ class RegistrationSerializer(ProfileSerializer):
 
     telephone = serializers.CharField(source="profile.phone", max_length=PHONE_FIELD_LENGTH,
                                       required=False, allow_blank=True)
-    vehicle = serializers.CharField(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH,
-                                    required=False, allow_blank=True)
-
-    def validate(self, attrs):
-        car_model = attrs.get('profile', {}).get('vehicle')
-        if car_model and not car_model in get_models():
-            raise ValidationError(_("Car model {car_id} not found from database").format(car_id=car_model))
-        return attrs
+    vehicle = VehicleSerializer(source="profile.vehicle", max_length=VEHICLE_FIELD_LENGTH,
+                                required=False, allow_blank=True)
 
     def create(self, validated_data):
         raw_password = validated_data.pop('password', '')
@@ -141,7 +142,7 @@ class RegistrationSerializer(ProfileSerializer):
         email = validated_data['email']
 
         if raw_password != confirm_password:
-            raise ValidationError(dict(status_message=_("Password and confirm differ from each other")))
+            raise ValidationError({'status_message': _("Password and confirm differ from each other")})
 
         user: User = User(username=email, **validated_data)
         user.set_password(raw_password)
@@ -176,13 +177,13 @@ class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
     duration = serializers.SerializerMethodField()
 
     def get_location(self, instance: Cdr) -> dict:
-        return dict(
-            name=instance.cdr_location_name,
-            address=f'{instance.cdr_location_address}, {instance.cdr_location_city}, {instance.cdr_location_country}',
-            evse_id=instance.cdr_location_evse_id,
-            connector_id=instance.cdr_location_connector_id,
-            standard=instance.get_cdr_location_connector_standard_display(),
-        )
+        return {
+            'name': instance.cdr_location_name,
+            'address': f'{instance.cdr_location_address}, {instance.cdr_location_city}, {instance.cdr_location_country}',
+            'evse_id': instance.cdr_location_evse_id,
+            'connector_id': instance.cdr_location_connector_id,
+            'standard': instance.get_cdr_location_connector_standard_display()
+        }
 
     def get_duration(self, instance: Cdr) -> str:
         return hours_minutes(instance.total_time)
@@ -214,13 +215,13 @@ class UserViewSet(viewsets.GenericViewSet):
     paginator = pagination_class()
 
     def get_serializer_class(self):
-        return dict(
-            register=RegistrationSerializer,
-            account=ProfileSerializer,
-            password=ChangePasswordSerializer,
-            transaction_list_brief=BriefTransactionSerializer,
-            transaction_list_full=TransactionSerializer
-        ).get(self.action_map['get'])
+        return {
+            'register': RegistrationSerializer,
+            'account': ProfileSerializer,
+            'password': ChangePasswordSerializer,
+            'transaction_list_brief': BriefTransactionSerializer,
+            'transaction_list_full': TransactionSerializer
+        }.get(self.action_map['get'])
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
@@ -248,11 +249,13 @@ class UserViewSet(viewsets.GenericViewSet):
                 data.pop('confirm', None)
                 return Response(data=data, status=status.HTTP_201_CREATED)
             else:
-                return Response(serializer.errors)
+                return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
         except IntegrityError as e:
             return Response(_('The user {email} already exists').format(
                 email=serializer.validated_data.get("email")),
                 status.HTTP_409_CONFLICT)
+        except ValidationError as e:
+            return Response(str(e), status.HTTP_400_BAD_REQUEST)
 
     @method_decorator(login_required)
     @action(methods=['GET', 'PATCH', 'POST'], detail=False)
@@ -282,7 +285,7 @@ class UserViewSet(viewsets.GenericViewSet):
             serializer = ChangePasswordSerializer(data=request.data, instance=user, partial=partial)
             if serializer.is_valid():
                 serializer.save()
-                return Response(dict(status_message=_('Password has been changed successfully')))
+                return Response({'status_message': _('Password has been changed successfully')})
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return options_response
@@ -294,15 +297,12 @@ class UserViewSet(viewsets.GenericViewSet):
         else:
             user = User.objects.all().last()
         example1 = request.build_absolute_uri(
-            "{}?{}".format(reverse('user-transaction-list-brief', kwargs=dict(username=user.username)), 'page_size=10')
+            "{}?{}".format(reverse('user-transaction-list-brief', kwargs={'username': user.username}), 'page_size=10')
         )
         example2 = request.build_absolute_uri(
-            "{}?{}".format(reverse('user-transaction-list-full', kwargs=dict(username=user.username)), 'page_size=5')
+            "{}?{}".format(reverse('user-transaction-list-full', kwargs={'username': user.username}), 'page_size=5')
         )
-        return dict(
-            example_brief_transaction_list=example1,
-            example_full_transaction_list=example2
-        )
+        return {'example_brief_transaction_list': example1, 'example_full_transaction_list': example2}
 
     def _transaction_list(self, request, serializer, user=None):
         """
@@ -336,9 +336,9 @@ class UserViewSet(viewsets.GenericViewSet):
     @action(methods=['GET'], detail=False)
     def car_details(self, request):
         car_id = request.user.profile.vehicle
-        car = get_models().get(car_id)
+        car = cars.get_models().get(car_id)
         if not car:
-            return Response(dict(status_message=_(f'Car model {car_id} not found from database')),
+            return Response({'status_message': _(f'Car model {car_id} is not in our database')},
                             status=status.HTTP_404_NOT_FOUND)
         return Response(car.original_json)
 

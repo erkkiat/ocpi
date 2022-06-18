@@ -1,8 +1,11 @@
+import os
 from dataclasses import dataclass, field
 
 import requests
 from cachetools.func import ttl_cache
 from django.utils.functional import cached_property
+
+from cars.test_data import cars_json
 
 
 @dataclass(eq=True, frozen=True)
@@ -52,11 +55,17 @@ def remove_spacers(s: str) -> str:
     return replace_spacers(s, '')
 
 
+def get_json(url):
+    return requests.get(url).json()
+
+
 @ttl_cache(maxsize=1, ttl=86400)  # 24 hours cache
 def get_models() -> dict:
     results = dict()
-    response = requests.get('https://raw.githubusercontent.com/chargeprice/open-ev-data/master/data/ev-data.json')
-    cars = response.json()
+    if os.environ.get('TEST'):
+        cars = cars_json
+    else:
+        cars = get_json('https://raw.githubusercontent.com/chargeprice/open-ev-data/master/data/ev-data.json')
     for car in cars['data']:
         energy = car.get('energy_consumption', {})
         consumption = energy.get('average_consumption', 0)
@@ -104,3 +113,9 @@ def get_models() -> dict:
 def search(substr: str) -> list:
     substr = remove_spacers(substr.lower())
     return [value for key, value in get_models().items() if substr in value.search_name]
+
+
+@ttl_cache(maxsize=100, ttl=3600)  # 1 hour cache
+def model_exists(id: str) -> bool:
+    models = get_models()
+    return id in models

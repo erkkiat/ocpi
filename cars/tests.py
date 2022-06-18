@@ -1,13 +1,15 @@
 from unittest import TestCase
+from unittest.mock import patch, Mock
 
 from cars.cars import get_models, search
+from cars import test_data
 
 
 class TestCars(TestCase):
-    def testCars(self):
+    @patch('cars.cars.get_json', return_value=test_data.cars_json)
+    def testCars(self, _get_json_mock: Mock):
         get_models.cache_clear()
         get_models()
         get_models()
         self.assertEqual(get_models.cache_info().hits, 1, 'cars.get_models() seems not to be cached')
-        self.assertEqual(len(search('model   s')), 22, 'Unexpected number of results with "model s" in them')
-        self.assertEqual(len(search('range')), 10, 'Unexpected number of results with "range" in them')
+        self.assertEqual(len(search('artega   karo')), 1, 'Unexpected number of results with "Artega Karo" in them')

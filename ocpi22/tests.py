@@ -31,6 +31,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
+from cars import test_data
 from ocpi22.msp.account import Account
 from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.user import UserViewSet
@@ -2288,12 +2289,16 @@ class TestMspUserApi(TestCase):
     maxDiff = None
     userdata = dict(email='erkki.tapola@pohdinto.com', firstname='Erkki',
                     lastname='Tapola', telephone='+1234567890123456789',
-                    vehicle='tesla-model-s-long-range-(raven)', password='qwerty', confirm='qwerty')
+                    vehicle='artega-karo-range-plus', password='qwerty', confirm='qwerty')
+
+    def setUp(self) -> None:
+        os.environ['TEST'] = "1"
 
     def _create_user(self, **data):
         return send_create_user(data)
 
-    def test_create_user(self):
+    @patch('cars.cars.get_json', return_value=test_data.cars_json)
+    def test_create_user(self, _get_json_mock: Mock):
         userdata = self.userdata
         # Make sure the user doesn't already exist
         self.assertFalse(User.objects.filter(email=userdata.get('email')).count())
@@ -2314,12 +2319,6 @@ class TestMspUserApi(TestCase):
         response = self._create_user(**userdata)
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
                          'Creating a duplicate user should result in HTTP 409')
-
-    def test_not_matching_password(self):
-        userdata = self.userdata.copy()
-        userdata['confirm'] = 'not-matching'
-        with self.assertRaises(ValidationError):
-            response = self._create_user(**userdata)
 
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_cdrs_and_transactions(self, _mocked_ocpi_post: Mock):
