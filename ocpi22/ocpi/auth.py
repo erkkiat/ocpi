@@ -78,7 +78,7 @@ class OCPIPermission(DjangoModelPermissions):
         authorization = request.META.get('HTTP_AUTHORIZATION',
                                          request.META.get('Authorization',
                                                           request.GET.get('auth-test', '')))
-        if "Token " in authorization:
+        if authorization.startswith("Token "):
             return authorization[6:]
         return ''
 
