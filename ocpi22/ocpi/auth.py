@@ -79,7 +79,7 @@ class OCPIPermission(DjangoModelPermissions):
                                          request.META.get('Authorization',
                                                           request.GET.get('auth-test', '')))
         if "Token " in authorization:
-            return authorization.replace('Token ', '')
+            return authorization[6:]
         return ''
 
     @cached_property
@@ -93,6 +93,7 @@ class OCPIPermission(DjangoModelPermissions):
         # Check for token authentication, secondarily basic auth
         if token and check_auth_token(request, token):
             return True
+
         if view and (hasattr(view, 'publicly_visible') or
                      super().has_permission(request, view)):
             return True
