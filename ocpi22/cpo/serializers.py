@@ -90,7 +90,7 @@ class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Evse
         fields = ['status_url', 'uid', 'status', 'connectors', 'last_updated']
 
-    uid = serializers.CharField(validators=[uid_validator])
+    uid = serializers.CharField(validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
     connectors = ConnectorQuickSerializer(many=True)
 
 
@@ -270,7 +270,7 @@ class StartTransactionSerializer(serializers.Serializer):
         help_text='The identifier of the device which provides electricity to one or more connectors'
     )
     connector_id = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='The connector number used for charging during this transaction'
     )
     token_id = TokenIdSerializer(

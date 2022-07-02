@@ -62,7 +62,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Unique ID of the Session for which this CDR is sent. Is only allowed to be omitted
     # when the CPO has not implemented the Sessions module or this CDR is the result of a reservation
     # that never became a charging session, thus no OCPI Session.
-    session_id = models.CharField(max_length=36, blank=True, default='')
+    session_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, default='')
 
     # The internal order number or other identifier from the CPO billing system, not part of OCPI
     internal_reference = models.CharField(max_length=36, blank=True, null=True, unique=True)
@@ -73,7 +73,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         )
 
     # Token used to start this charging session, includes all the relevant information to identify the unique token.
-    cdr_token_uid = models.CharField(max_length=36)
+    cdr_token_uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     @property
     def token_id(self):
@@ -85,7 +85,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
-    cdr_token_contract_id = models.CharField(max_length=36)
+    cdr_token_contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     # Method used for authentication.
     auth_method = models.CharField(max_length=12, choices=Session.AUTH_METHOD_CHOICES)

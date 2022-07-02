@@ -48,7 +48,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     party_id = models.CharField(max_length=3)
 
     # The unique id that identifies the charging session in the CPO platform.
-    uid = models.CharField(max_length=36, db_index=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
 
     # The internal order number or other identifier from the CPO billing system, not part of OCPI
     internal_reference = models.CharField(max_length=36, blank=True, null=True, db_index=True)
@@ -96,7 +96,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # This is the field used by the CPO’s system (RFID reader on the Charge Point) to identify this token.
     # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
     # If this is a type=APP_USER Token, it will be a unique, by the eMSP, generated ID.
-    cdr_token_uid = models.CharField(max_length=36)
+    cdr_token_uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     @property
     def token_id(self):
@@ -109,7 +109,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
-    cdr_token_contract_id = models.CharField(max_length=36)
+    cdr_token_contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     AUTH_REQUEST = 'AUTH_REQUEST'
     COMMAND = 'COMMAND'
@@ -134,7 +134,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # Todo: real-time authorization or StartSession, this field SHALL contain the same value.
     # When different authorization_reference values have been given by the eMSP that are relevant to this Session,
     # the last given value SHALL be used here.
-    authorization_reference = models.CharField(max_length=36, blank=True, default='')
+    authorization_reference = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, default='')
 
     # Location.id of the Location object of this CPO, on which the charging session is/was happening.
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='sessions')

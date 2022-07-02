@@ -16,7 +16,7 @@ from ocpi22.ocpi.util import generate_token_id
 
 class Account(models.Model):
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accounts')
-    app_token_id = models.CharField(max_length=36, db_index=True, blank=True)
+    app_token_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, blank=True)
     currency = models.CharField(max_length=3, default=settings.DEFAULT_CURRENCY)
 
     @property

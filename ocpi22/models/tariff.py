@@ -55,7 +55,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner))
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
-    uid = models.CharField(max_length=36, db_index=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
 
     # ISO-4217 code of the currency of this tariff
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=settings.DEFAULT_CURRENCY)

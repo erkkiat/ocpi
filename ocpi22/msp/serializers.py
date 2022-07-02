@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import fields, serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.settings import api_settings
@@ -43,7 +44,7 @@ class StrictSessionIdSerializer(fields.CharField):
 
 class StartChargingSerializer(serializers.Serializer):
     location_id = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='The UID of the location for charging'
     )
     evse_id = serializers.CharField(
@@ -52,12 +53,12 @@ class StartChargingSerializer(serializers.Serializer):
     )
     connector_id = serializers.CharField(
         required=False,
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='The connector number used for charging during this transaction'
     )
     contract_id = serializers.CharField(
         default='N/A',
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='The contract ID for the EV driver who is charging'
     )
 

@@ -1,6 +1,7 @@
 import pprint
 from collections import OrderedDict
 
+from django.conf import settings
 from rest_framework import serializers
 
 from ocpi22.ocpi.serializers import LocationIdDictSerializer
@@ -45,23 +46,23 @@ class StartSessionSerializer(serializers.Serializer):
                   'The Token provided in this request is pre-authorized by the eMSP.'
     )
     location_id = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='Location.id of the Location (belonging to the CPO this request was sent to) '
                   'on which a session is to be started.'
     )
     evse_uid = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         required=False, allow_blank=True,
         help_text='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
     )
     connector_id = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         required=False, default=None,
         help_text='Optional Connector.id of the Connector of the EVSE on which a session is to be started. '
                   'This field is required when the capability: START_SESSION_CONNECTOR_REQUIRED is set on the EVSE.'
     )
     authorization_reference = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         required=False, allow_blank=True,
         help_text='Optional reference to the authorization given by the eMSP, '
                   'when given, this reference will be provided in the relevant Session and/or CDR.'
@@ -74,7 +75,7 @@ class StopSessionSerializer(serializers.Serializer):
                   'This URL might contain a unique ID to be able to distinguish between StopSession requests.'
     )
     session_id = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='Session.id of the Session that is requested to be stopped.'
     )
 
@@ -85,17 +86,17 @@ class UnlockConnectorSerializer(serializers.Serializer):
                   'This URL might contain an unique ID to be able to distinguish between UnlockConnector requests.'
     )
     location_id = LocationIdDictSerializer(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='Location.id of the Location (belonging to the CPO this request is send to) '
                   'of which it is requested to unlock the connector.'
     )
     evse_uid = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         required=False, allow_blank=True,
         help_text='Optional EVSE.uid of the EVSE of this Location of which it is requested to unlock the connector.'
     )
     connector_id = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='Connector.id of the Connector of this Location of which it is requested to unlock.'
     )
 

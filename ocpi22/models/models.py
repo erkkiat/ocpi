@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models, transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -26,7 +27,7 @@ class AuthorizationInfo(models.Model, ModelUtilMixin):
 
     # Reference to the authorization given by the eMSP, when given, this reference will be provided
     # in the relevant Session and/or CDR.
-    authorization_reference = models.CharField(max_length=36, blank=True, default='')
+    authorization_reference = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, default='')
 
     last_updated = models.DateTimeField(auto_now=True)
 

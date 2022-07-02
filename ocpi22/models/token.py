@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils.html import format_html
@@ -40,7 +41,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
     # If this is a APP_USER or AD_HOC_USER Token, it will be a uniquely, by the eMSP, generated ID.
     # This field is named uid instead of id to prevent confusion with: contract_id.
-    uid = models.CharField(max_length=36, unique=True, db_index=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, unique=True, db_index=True)
 
     AD_HOC_USER = 'AD_HOC_USER'
     APP_USER = 'APP_USER'
@@ -58,7 +59,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     # Uniquely identifies the EV Driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from
     # "eMI3 standard version V1.0" (http://emi3group.com/documents-links/) "Part 2: business objects."
-    contract_id = models.CharField(max_length=36)
+    contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     # Visual readable number/identification as printed on the Token (RFID card), might be equal to the contract_id.
     visual_number = models.CharField(max_length=64, null=True, blank=True)
@@ -71,7 +72,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     # so that a session can be started with one token and stopped with another, handy when a card and key-fob
     # are given to the EV-driver. Beware that OCPP 1.5/1.6 only support group_ids
     # (it is called parentId in OCPP 1.5/1.6) with a maximum length of 20.
-    group_id = models.CharField(max_length=36, null=True, blank=True)
+    group_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, null=True, blank=True)
 
     valid = models.BooleanField(default=True)
 
