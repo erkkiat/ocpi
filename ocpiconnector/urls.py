@@ -12,7 +12,7 @@ from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
     RootRouter, ClientInfoViewSet, NoPremiumViewSet
 from ocpi22.commands.commands import CommandsViewSet
-from ocpi22.cpo.api import CPORouter, ChargePointViewSet
+from ocpi22.cpo.api import CPORouter, ChargePointViewSet, LocationQuickViewSet
 from ocpi22.hub import CommandsHubViewSet
 
 from ocpi22.locations.location import LocationViewSet
@@ -40,7 +40,7 @@ cpo_router = CPORouter()
 # cpo_router.register(r'evses', CpoEvseViewSet, basename='cpo-evse')
 # cpo_router.register(r'cdrs', CpoCdrViewSet)
 # cpo_router.register(r'session', CpoSessionViewSet, basename='session')
-# cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
+cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
 cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
 
 msp_router = MSPRouter()

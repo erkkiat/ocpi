@@ -1,6 +1,7 @@
 import uuid
 from collections import Counter
 
+from django.conf import settings
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
@@ -65,14 +66,14 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     name = models.CharField(max_length=255, blank=True)
 
     # Street/block name and house number if available.
-    address = models.CharField(max_length=45)
+    address = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
 
     # City or town
-    city = models.CharField(max_length=45)
+    city = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
 
     # Postal code of the location, may only be omitted when the location has no postal code:
     # in some countries charging locations at highways don’t have postal codes.
-    postal_code = models.CharField(max_length=45, blank=True)
+    postal_code = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, blank=True)
 
     # State or province of the location, only to be used when relevant
     state = models.CharField(max_length=20, blank=True)
@@ -133,7 +134,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     # Todo: get time zone based on coordinates
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
     # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
-    time_zone = models.CharField(max_length=64)
+    time_zone = models.CharField(max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH)
 
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times

@@ -62,6 +62,9 @@ SCHEME = os.environ.get('SCHEME', 'https')
 
 OCPI_SPECIFICATION_URL = 'https://github.com/ocpi/ocpi/blob/release-2.2-bugfixes/'
 
+OCPI_22_MAX_ADDRESS_LENGTH = 45  # This is in the OCPI 2.2 specification, so don't change it 
+OCPI_22_MAX_TIME_ZONE_LENGTH = 64  # This is in the OCPI 2.2 specification, so don't change it
+
 PUBLIC_VIEWS = ['user-register']
 
 

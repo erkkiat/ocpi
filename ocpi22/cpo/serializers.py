@@ -1,8 +1,10 @@
-import uuid
-
+import pycountry
+from django.conf import settings
+from geopy import Nominatim
 from icecream import ic
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
+from timezonefinder import TimezoneFinder
 
 from ocpi22.choices import OcppStatusChoices
 from ocpi22.cpo.util import _find_our_evse, set_callbacks_parameter
@@ -92,24 +94,52 @@ class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorQuickSerializer(many=True)
 
 
+def country_code_from_2_to_3_chars(country_code: str) -> str:
+    country = pycountry.countries.get(alpha_2=country_code)
+    return country.alpha_3
+
+
+def fill_out_location_address(data: dict, lat: float | str, lng: float | str, language='en') -> dict:
+    if 'address' in data and 'city' in data and 'country' in data:
+        return data
+    locator = Nominatim(user_agent="ChargerHub.EU")
+    coordinates = f"{lat},{lng}"
+    location = locator.reverse(coordinates, language=language)
+    address = location.raw.get('address')
+    data['address'] = f"{address.get('road')} {address.get('house_number')}"
+    data['city'] = address.get('city') or '-'
+    data['postal_code'] = address.get('postcode')
+    data['country'] = country_code_from_2_to_3_chars(address.get('country_code'))
+    tf = TimezoneFinder()
+    data['time_zone'] = tf.timezone_at_land(lat=lat, lng=lng)
+    return data
+
+
 class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
         fields = [
             'quick_url', 'id',
-            'name', 'address', 'city', 'postal_code', 'state', 'country',
+            'name', 'address', 'city', 'postal_code', 'state', 'country', 'time_zone',
             'latitude', 'longitude', 'evses',
         ]
 
     id = serializers.CharField(source='uid', validators=[uid_validator])
-    evses = EvseQuickSerializer(many=True)
+    evses = EvseQuickSerializer(many=True, required=False)
+    address = serializers.CharField(required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
+    city = serializers.CharField(required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
+    country = serializers.CharField(required=False, max_length=3)
+    time_zone = serializers.CharField(required=False, max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH)
 
     lookup_field = 'uid'
 
-    # noinspection PyUnresolvedReferences
     def create(self, validated_data, *args, **kwargs):
-        ic('create', validated_data)
         evses = validated_data.pop('evses', [])
+        validated_data = fill_out_location_address(
+            validated_data,
+            validated_data.get('latitude'),
+            validated_data.get('longitude')
+        )
         location = Location.objects.create(**validated_data)
         for evse_dict in evses:
             connectors = evse_dict.pop('connectors', [])
@@ -120,8 +150,12 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
 
     # noinspection PyUnresolvedReferences
     def update(self, location, validated_data, *args, **kwargs):
-        ic('update', location, validated_data)
         evses = validated_data.pop('evses', [])
+        validated_data = fill_out_location_address(
+            validated_data,
+            validated_data.get('latitude'),
+            validated_data.get('longitude')
+        )
         Location.objects.filter(uid=location.uid).update(**validated_data)
         for evse_dict in evses:
             connectors = evse_dict.pop('connectors', [])
