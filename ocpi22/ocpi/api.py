@@ -47,13 +47,11 @@ from ocpiconnector.ocpi_identities import ocpi_platform
 
 class TokenViewSet(mixins.ListModelMixin,
                    GenericViewSet):
-    # noinspection PyUnresolvedReferences
     queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
     renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
-
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'type']
 

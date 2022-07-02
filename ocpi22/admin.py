@@ -81,6 +81,12 @@ class TokenAdmin(admin.ModelAdmin):
         return Token.ocpi_object_owner in ocpi_identities or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_change_permission(self, request, obj: Token = None) -> bool:
+        if not super().has_change_permission(request, obj):
+            return False
+        # user: User = request.user
+        # ic(user.get_user_permissions())
+        # if not user.has_perm('ocpi22.change_token'):
+        #     return False
         return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
@@ -107,6 +113,8 @@ class ConnectorInline(NestedStackedInline):
     #     return []
 
     def has_change_permission(self, request, obj: Evse = None) -> bool:
+        if not super().has_change_permission(request, obj):
+            return False
         # Todo: Admin should only be able to change owned Connectors
         # ic(obj)
         if obj and hasattr(obj, 'location'):
@@ -133,6 +141,8 @@ class LocationAdmin(NestedModelAdmin):
         )
 
         def has_change_permission(self, request, obj=None) -> bool:
+            if not super().has_change_permission(request, obj):
+                return False
             return obj and obj.is_ours()
 
         # def has_delete_permission(self, request, obj=None) -> bool:
@@ -175,6 +185,8 @@ class LocationAdmin(NestedModelAdmin):
     )
 
     def has_change_permission(self, request, obj=None) -> bool:
+        if not super().has_change_permission(request, obj):
+            return False
         return obj and obj.is_ours()
 
     # def has_delete_permission(self, request, obj=None) -> bool:
@@ -215,6 +227,8 @@ class EvseAdmin(NestedModelAdmin):
         return []
 
     def has_change_permission(self, request, obj=None) -> bool:
+        if not super().has_change_permission(request, obj):
+            return False
         return not obj or (hasattr(obj, 'location') and obj.location.is_ours())
 
     # def has_delete_permission(self, request, obj=None) -> bool:
@@ -463,6 +477,8 @@ class TariffAdmin(NestedModelAdmin):
             model = PriceComponent
 
             def has_change_permission(self, request, obj=None) -> bool:
+                if not super().has_change_permission(request, obj):
+                    return False
                 if obj and hasattr(obj, 'tariff'):
                     obj = obj.tariff
                 return (not obj or obj.is_ours()) \
@@ -489,6 +505,8 @@ class TariffAdmin(NestedModelAdmin):
         ]
 
         def has_change_permission(self, request, obj=None) -> bool:
+            if not super().has_change_permission(request, obj):
+                return False
             return (not obj or obj.is_ours()) \
                    or ALLOW_ADMIN_DELETE_AND_CHANGE
 
@@ -539,6 +557,8 @@ class TariffAdmin(NestedModelAdmin):
         return readonly_fields
 
     def has_change_permission(self, request, obj=None) -> bool:
+        if not super().has_change_permission(request, obj):
+            return False
         return (obj and obj.is_ours()) \
                or ALLOW_ADMIN_DELETE_AND_CHANGE
 
@@ -584,10 +604,10 @@ class DynamicPriceAdmin(admin.ModelAdmin):
     search_fields = ['dynamic_price_source']
 
 
-admin.site.unregister(User)
+# admin.site.unregister(User)
 
 
-@admin.register(User)
+# @admin.register(User)
 class UserAdmin(NestedModelAdmin):
     class AccountAdmin(NestedStackedInline):
         class TransactionInline(NestedTabularInline):
