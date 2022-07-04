@@ -139,7 +139,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     def patch(self, request, uid=None):
         return self.put(request, uid, partial=True)
 
-    @action(methods=['GET', 'PATCH'], detail=False,
+    @action(methods=['GET', 'PATCH', 'PUT'], detail=False,
             url_path='(?P<uid>[^/.]+)')
     def by_id(self, request, uid) -> Response:
         try:
@@ -153,18 +153,17 @@ class LocationQuickViewSet(mixins.ListModelMixin,
                 serializer = LocationQuickSerializer(location, context={'request': request})
                 return Response(serializer.data)
 
-            elif request.method == 'PATCH':
-                serializer = LocationQuickSerializer(location, data=request.data, partial=True,
-                                                     context={'request': request})
-                if serializer.is_valid():
-                    serializer.save()
-                    # noinspection PyUnresolvedReferences
-                    serializer = LocationQuickSerializer(Location.objects.get(uid=uid))
-                    return Response(serializer.data)
-                else:
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            partial = bool(request.method == 'PATCH')
+            serializer = LocationQuickSerializer(location, data=request.data, partial=partial,
+                                                 context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+                # noinspection PyUnresolvedReferences
+                serializer = LocationQuickSerializer(Location.objects.get(uid=uid))
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response(status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError as e:
             return Response({'status_message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

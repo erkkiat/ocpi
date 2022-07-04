@@ -10,6 +10,7 @@ from ocpi22.choices import OcppStatusChoices
 from ocpi22.cpo.util import _find_our_evse, set_callbacks_parameter
 from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
+from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator
 
@@ -63,6 +64,17 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
             if session and hasattr(session, 'connector') and session.connector else ''
 
 
+class ConnectorTariffIdSerializer(serializers.Serializer):
+    def to_representation(self, instance):
+        return instance.uid
+
+    def to_internal_value(self, data):
+        tariff = Tariff.objects.filter(uid=data).first()
+        if not tariff:
+            raise ValidationError(f'Tariff {data} is not in the database, please create it before adding Locations')
+        return tariff
+
+
 class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Connector
@@ -70,25 +82,15 @@ class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
                   'max_voltage', 'max_amperage', 'max_electric_power',
                   'tariff_ids', 'last_updated']
 
-    uid = serializers.CharField(validators=[uid_validator])
-    max_electric_power = serializers.SerializerMethodField()
-    tariff_ids = serializers.SerializerMethodField()
+    uid = serializers.CharField(validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    tariff_ids = ConnectorTariffIdSerializer(required=False, many=True)
     last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-
-    @staticmethod
-    def get_tariff_ids(connector: Connector) -> list:
-        return [t.uid for t in connector.tariff_ids.all()]
-
-    @staticmethod
-    def get_max_electric_power(connector: Connector) -> str:
-        # Todo: what about 1-phase and 2-phase AC?
-        return connector.max_electric_power or connector.max_voltage * connector.max_amperage
 
 
 class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Evse
-        fields = ['status_url', 'uid', 'status', 'connectors', 'last_updated']
+        fields = ['status_url', 'uid', 'connectors', 'last_updated']
 
     uid = serializers.CharField(validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
     connectors = ConnectorQuickSerializer(many=True)
@@ -102,6 +104,8 @@ def country_code_from_2_to_3_chars(country_code: str) -> str:
 def fill_out_location_address(data: dict, lat: float | str, lng: float | str, language='en') -> dict:
     if 'address' in data and 'city' in data and 'country' in data:
         return data
+    if not lat or not lng:
+        return data
     locator = Nominatim(user_agent="ChargerHub.EU")
     coordinates = f"{lat},{lng}"
     location = locator.reverse(coordinates, language=language)
@@ -110,8 +114,11 @@ def fill_out_location_address(data: dict, lat: float | str, lng: float | str, la
     data['city'] = address.get('city') or '-'
     data['postal_code'] = address.get('postcode')
     data['country'] = country_code_from_2_to_3_chars(address.get('country_code'))
+
+    # Fill out the time zone based on coordinates
     tf = TimezoneFinder()
     data['time_zone'] = tf.timezone_at_land(lat=lat, lng=lng)
+
     return data
 
 
@@ -124,12 +131,24 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             'latitude', 'longitude', 'evses',
         ]
 
-    id = serializers.CharField(source='uid', validators=[uid_validator])
+    id = serializers.CharField(source='uid', validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
     evses = EvseQuickSerializer(many=True, required=False)
-    address = serializers.CharField(required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
-    city = serializers.CharField(required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
-    country = serializers.CharField(required=False, max_length=3)
-    time_zone = serializers.CharField(required=False, max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH)
+    address = serializers.CharField(
+        required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
+        help_text='If omitted, street address will be determined automatically based on coordinates'
+    )
+    city = serializers.CharField(
+        required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
+        help_text='If omitted, city will be determined automatically based on coordinates'
+    )
+    country = serializers.CharField(
+        required=False, max_length=3,
+        help_text='If omitted, country will be determined automatically based on coordinates'
+    )
+    time_zone = serializers.CharField(
+        required=False, max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
+        help_text='If omitted, time zone will be determined automatically based on coordinates'
+    )
 
     lookup_field = 'uid'
 
@@ -145,7 +164,9 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             connectors = evse_dict.pop('connectors', [])
             evse = Evse.objects.create(location=location, **evse_dict)
             for connector_dict in connectors:
-                Connector.objects.create(evse=evse, **connector_dict)
+                tariff_ids = connector_dict.pop('tariff_ids', None)
+                connector = Connector.objects.create(evse=evse, **connector_dict)
+                connector.tariff_ids.set(tariff_ids)
         return location
 
     # noinspection PyUnresolvedReferences
@@ -164,11 +185,13 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             if not created:
                 Evse.objects.filter(uid=evse.uid).update(**evse_dict)
             for connector_dict in connectors:
+                tariff_ids = connector_dict.pop('tariff_ids', None)
                 connector, created = Connector.objects.get_or_create(evse=evse,
                                                                      uid=connector_dict.pop('uid'),
                                                                      defaults=connector_dict)
                 if not created:
-                    Connector.objects.filter(uid=connector.uid).update(**connector_dict)
+                    Connector.objects.filter(uid=connector.uid, evse=evse).update(**connector_dict)
+                connector.tariff_ids.set(tariff_ids)
         return location
 
 
