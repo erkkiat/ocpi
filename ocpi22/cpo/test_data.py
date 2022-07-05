@@ -38,10 +38,7 @@ class LocationData:
                         "standard": "IEC_62196_T2",
                         "format": "SOCKET",
                         "max_voltage": 232,
-                        "max_amperage": 32,
-                        "tariff_ids": [
-                            "52"
-                        ]
+                        "max_amperage": 32
                     }
                 ]
             },

@@ -64,9 +64,10 @@ class TestQuickLocations(TestCase):
         location = Location.get_if_exists(uid='Aplinkkelis')
         data = LocationQuickSerializer(instance=location).data
         self.assertEqual(data,
+                         # Todo: Maybe we should have English addresses available in parallel?
                          {
                              'id': 'Aplinkkelis', 'name': 'IONITY High Power Charging Aplinkkelis',
-                             'address': 'Knyaz Boris Ⅰ 134', 'city': 'Sofia', 'postal_code': '1000', 'country': 'BGR',
+                             'address': 'Княз Борис Ⅰ 134', 'city': 'София', 'postal_code': '1000', 'country': 'BGR',
                              'time_zone': 'Europe/Sofia', 'latitude': 42.6975216, 'longitude': 23.3191493
                          },
                          'Updated Location data differs from expected')
@@ -92,7 +93,7 @@ class TestQuickLocations(TestCase):
                                              OrderedDict([('uid', '2'), ('connectors', [OrderedDict(
                                                  [('uid', '1'), ('standard', 'IEC_62196_T2'),
                                                   ('format', 'SOCKET'), ('max_voltage', 232),
-                                                  ('max_amperage', 32), ('tariff_ids', ['52'])])])]),
+                                                  ('max_amperage', 32)])])]),
                                              OrderedDict([('uid', 'JAAU254040-1'), ('connectors', [
                                                  OrderedDict([('uid', '1'), ('standard', 'IEC_62196_T2'),
                                                               ('format', 'CABLE'), ('max_voltage', 233),
@@ -115,16 +116,24 @@ class TestQuickLocations(TestCase):
             {
                 'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
                 'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
-                'longitude': 30.0, 'evses': [OrderedDict([('uid', '1'), ('connectors', [OrderedDict(
-                [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 233),
-                 ('max_amperage', 32), ('max_electric_power', 11000), ('tariff_ids', ['DC50'])])]),
-                                                          ('last_updated', '2022-06-19T12:13:14')]), OrderedDict(
-                [('uid', '2'), ('connectors', [OrderedDict(
-                    [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 232),
-                     ('max_amperage', 32), ('tariff_ids', ['52'])])])]), OrderedDict([('uid', 'JAAU254040-1'), (
-                'connectors', [OrderedDict(
-                    [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
-                     ('max_amperage', 32), ('tariff_ids', ['DC50'])])])])]
+                'longitude': 30.0,
+                'evses':
+                    [
+                        OrderedDict([('uid', '1'),
+                                     ('connectors', [OrderedDict(
+                                         [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'),
+                                          ('max_voltage', 233),
+                                          ('max_amperage', 32), ('max_electric_power', 11000),
+                                          ('tariff_ids', ['DC50'])])]),
+                                     ('last_updated', '2022-06-19T12:13:14')]),
+                        OrderedDict(
+                            [('uid', '2'), ('connectors', [OrderedDict(
+                                [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 232),
+                                 ('max_amperage', 32)])])]),
+                        OrderedDict([('uid', 'JAAU254040-1'), ('connectors', [OrderedDict(
+                            [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
+                             ('max_amperage', 32), ('tariff_ids', ['DC50'])])])])
+                    ]
             },
             'Updated Location data differs from expected')
 

@@ -1,7 +1,8 @@
+from typing import Union
+
 import pycountry
 from django.conf import settings
 from geopy import Nominatim
-from icecream import ic
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 from timezonefinder import TimezoneFinder
@@ -101,7 +102,8 @@ def country_code_from_2_to_3_chars(country_code: str) -> str:
     return country.alpha_3
 
 
-def fill_out_location_address(data: dict, lat: float | str, lng: float | str, language='en') -> dict:
+def fill_out_location_address(data: dict, lat: Union[float, str], lng: Union[float, str]) -> dict:
+    language = data.pop('language', False)
     if 'address' in data and 'city' in data and 'country' in data:
         return data
     if not lat or not lng:
@@ -110,9 +112,9 @@ def fill_out_location_address(data: dict, lat: float | str, lng: float | str, la
     coordinates = f"{lat},{lng}"
     location = locator.reverse(coordinates, language=language)
     address = location.raw.get('address')
-    data['address'] = f"{address.get('road')} {address.get('house_number')}"
+    data['address'] = f"{address.get('road') or '-'} {address.get('house_number')}"
     data['city'] = address.get('city') or '-'
-    data['postal_code'] = address.get('postcode')
+    data['postal_code'] = address.get('postcode') or '-'
     data['country'] = country_code_from_2_to_3_chars(address.get('country_code'))
 
     # Fill out the time zone based on coordinates
@@ -127,12 +129,16 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Location
         fields = [
             'quick_url', 'id',
-            'name', 'address', 'city', 'postal_code', 'state', 'country', 'time_zone',
+            'name', 'language', 'address', 'city', 'postal_code', 'state', 'country', 'time_zone',
             'latitude', 'longitude', 'evses',
         ]
 
     id = serializers.CharField(source='uid', validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
     evses = EvseQuickSerializer(many=True, required=False)
+    language = serializers.CharField(
+        required=False, max_length=6,
+        help_text='Optional language of the location address, if address is determined based on coordinates'
+    )
     address = serializers.CharField(
         required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
         help_text='If omitted, street address will be determined automatically based on coordinates'
@@ -149,7 +155,6 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         required=False, max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
         help_text='If omitted, time zone will be determined automatically based on coordinates'
     )
-
     lookup_field = 'uid'
 
     def create(self, validated_data, *args, **kwargs):
@@ -166,10 +171,12 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             for connector_dict in connectors:
                 tariff_ids = connector_dict.pop('tariff_ids', None)
                 connector = Connector.objects.create(evse=evse, **connector_dict)
-                connector.tariff_ids.set(tariff_ids)
+                if tariff_ids:
+                    connector.tariff_ids.set(tariff_ids)
+                else:
+                    connector.tariff_ids.clear()
         return location
 
-    # noinspection PyUnresolvedReferences
     def update(self, location, validated_data, *args, **kwargs):
         evses = validated_data.pop('evses', [])
         validated_data = fill_out_location_address(
@@ -191,7 +198,8 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
                                                                      defaults=connector_dict)
                 if not created:
                     Connector.objects.filter(uid=connector.uid, evse=evse).update(**connector_dict)
-                connector.tariff_ids.set(tariff_ids)
+                if tariff_ids:
+                    connector.tariff_ids.set(tariff_ids)
         return location
 
 
