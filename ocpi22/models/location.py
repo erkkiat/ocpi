@@ -331,7 +331,7 @@ class Connector(models.Model, ModelUtilMixin):
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return f'#{self.uid} - {self.power()}'
+        return f'#{self.uid} - {self.get_standard_display()} - {self.power()}'
 
     def power(self):
         return f'{int((self.max_electric_power or self.max_voltage * self.max_amperage) / 1000)} kW'
