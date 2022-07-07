@@ -113,7 +113,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
                            GenericViewSet):
     """
     This is the endpoint for updating locations.
-    Please note that all IDs should remain constant, since they are referred to by many systems in the roaming network.
+    **NOTE**: All IDs should remain constant, since they are referred to by many systems in the roaming network.
 
     """
     queryset = Location.objects.all().order_by('created')
@@ -158,7 +158,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
                                                  context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                # noinspection PyUnresolvedReferences
+                # Todo: PUT fails if UID is different, require UID to be same
                 serializer = LocationQuickSerializer(Location.objects.get(uid=uid))
                 return Response(serializer.data)
             else:
@@ -769,8 +769,11 @@ class ChargePointOperatorAPIView(routers.APIRootView):
                 )
             ),
             location_management=dict(
-                status_change=request.build_absolute_uri(
+                locations=request.build_absolute_uri(
                     reverse('quick-location-list')
+                ),
+                tariffs=request.build_absolute_uri(
+                    reverse('quick-tariff-list')
                 )
             ),
             charging_session=dict(

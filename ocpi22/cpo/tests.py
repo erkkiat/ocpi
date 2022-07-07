@@ -5,12 +5,14 @@ from django.test import TestCase
 
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import status
+from rest_framework.exceptions import ErrorDetail
 from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
 from ocpi22.cpo import test_data
 from ocpi22.cpo.api import LocationQuickViewSet
 from ocpi22.cpo.serializers import LocationQuickSerializer
+from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.models.location import Location
 
 api_factory = APIRequestFactory()
@@ -136,6 +138,122 @@ class TestQuickLocations(TestCase):
                     ]
             },
             'Updated Location data differs from expected')
+
+    def test_quick_tariff(self):
+        test_cases = [
+            dict(
+                data={
+                    "id": "ALLTYPES",
+                    "currency": "EUR",
+                    "price_per_kwh": 1.0,
+                    "price_per_min": 2.0,
+                    "price_flat": 3.0,
+                    "vat": 24.0
+                },
+                status=status.HTTP_201_CREATED
+            ),
+            dict(
+                data={
+                    "id": "ALLTYPES",
+                    "currency": "EUR",
+                    "price_per_kwh": 1.0,
+                    "price_per_min": 2.0,
+                    "price_flat": 3.0,
+                    "vat": 0.24
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+                expected_result={
+                    'vat': [ErrorDetail(string='VAT needs to be an integer value between 0 and 100', code='invalid')]
+                }
+            ),
+            dict(
+                method='PATCH',
+                data={
+                    "id": "ALLTYPES",
+                    "currency": "EUR",
+                    "price_per_kwh": 3.0,
+                    "price_per_min": 2.0,
+                },
+                status=status.HTTP_200_OK,
+                expected_result={
+                    "id": "ALLTYPES",
+                    "currency": "EUR",
+                    "price_per_kwh": 3.0,
+                    "price_per_min": 2.0,
+                    "price_flat": 3.0,
+                    "vat": 24
+                }
+            ),
+            dict(
+                method='PATCH',
+                data={
+                    "id": "ALLTYPES",
+                    "price_per_kwh": 0.0,
+                    "vat": 0,
+                },
+                status=status.HTTP_200_OK,
+                expected_result={
+                    "id": "ALLTYPES",
+                    "currency": "EUR",
+                    "price_per_kwh": 0.0,
+                    "price_per_min": 2.0,
+                    "price_flat": 3.0,
+                    "vat": 0
+                }
+            ),
+            dict(
+                method='PATCH',
+                data={
+                    "id": "ALLTYPES",
+                    "price_per_kwh": 0.0,
+                    "vat": None,
+                },
+                status=status.HTTP_200_OK,
+                expected_result={
+                    "id": "ALLTYPES",
+                    "currency": "EUR",
+                    "price_per_kwh": 0.0,
+                    "price_per_min": 2.0,
+                    "price_flat": 3.0,
+                    "vat": 0
+                }
+            ),
+        ]
+        for case in test_cases:
+            data = case['data']
+            if case.get('method') == 'PATCH':
+                response = patch(data, reverse('quick-tariff-list'), TariffQuickViewSet)
+            else:
+                response = put(data, reverse('quick-tariff-list'), TariffQuickViewSet)
+            self.assertEqual(response.status_code, case.get('status', status.HTTP_200_OK),
+                             'Quick Tariff creation/update response status differs from expected')
+            self.assertDictEqual(response.data, case.get('expected_result', data),
+                                 'Quick Tariff creation/update response data differs from expected')
+
+        # The below needs some work
+        # response = get(reverse('quick-tariff-list'), TariffQuickViewSet)
+        # ic(response.status_code, response.data)
+
+
+def put(data, url, viewset):
+    request = api_factory.put(url)
+    request.data = data
+    request.user = AnonymousUser
+    return viewset().put(request)
+
+
+def patch(data, url, viewset):
+    request = api_factory.patch(url)
+    request.data = data
+    request.user = AnonymousUser
+    return viewset().patch(request)
+
+
+def get(url, viewset):
+    request = api_factory.get(url, data={})
+    request.user = AnonymousUser
+    request.data = {}
+    return viewset().list(request)
 
 
 def put_location(data, url):

@@ -1,5 +1,6 @@
 import uuid
 from copy import deepcopy
+from typing import Optional
 
 from django.conf import settings
 from django.db import models
@@ -187,6 +188,14 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             return default_tariffs.tariffs.all()
         except DefaultTariffs.DoesNotExist:
             return DefaultTariffs.objects.none()
+
+    def get_type(self, tariff_type: str) -> Optional[object]:
+        for te in self.tariff_elements.all():
+            pc: PriceComponent
+            for pc in te.price_components.all():
+                if pc.type == tariff_type:
+                    return pc
+        return None
 
 
 class TariffElement(models.Model, ModelUtilMixin):

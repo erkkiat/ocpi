@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Union
 
 import pycountry
@@ -11,9 +12,10 @@ from ocpi22.choices import OcppStatusChoices
 from ocpi22.cpo.util import _find_our_evse, set_callbacks_parameter
 from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
-from ocpi22.models.tariff import Tariff
+from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator
+from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator, CURRENCY_CHOICES, \
+    SerializerCleanedUp
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -363,3 +365,118 @@ class CallbacksSerializer(serializers.Serializer):
         for key, value in self.validated_data.items():
             set_callbacks_parameter(key, value)
         # redis_store.save()  # This is not allowed in Heroku Redis
+
+
+class VatSerializer(serializers.IntegerField):
+    key = 'vat'
+
+    def to_representation(self, tariff: Tariff) -> Union[int, str]:
+        pe = tariff.tariff_elements.first()
+        # Iterate through the VATs for this Tariff and check if there are multiple different ones
+        vats = set(pe.price_components.values_list('vat', flat=True))
+        if len(vats) == 1:
+            return vats.pop()
+        return 'Multiple'
+
+    def to_internal_value(self, data) -> dict:
+        return {self.key: self.validate(data)}
+
+    def validate(self, data):
+        if data:
+            if not (0 <= data <= 100):
+                raise ValidationError(f'VAT percentage can only be between 0 and 100')
+            if 0 < data < 1:
+                raise ValidationError(f'VAT needs to be an integer value between 0 and 100')
+        return data
+
+
+class PriceSerializer(serializers.DecimalField):
+    def to_representation(self, tariff: Tariff) -> Decimal:
+        pc = tariff.get_type(self.tariff_type)
+        return pc.price if pc else None
+
+    def to_internal_value(self, data):
+        result = {self.key: data}
+        return result
+
+
+class PriceKwhSerializer(PriceSerializer):
+    tariff_type = 'ENERGY'
+    key = 'price_per_kwh'
+
+
+class PriceMinSerializer(PriceSerializer):
+    tariff_type = 'TIME'
+    key = 'price_per_min'
+
+
+class PriceFlatSerializer(PriceSerializer):
+    tariff_type = 'FLAT'
+    key = 'price_flat'
+
+
+class TariffQuickSerializer(SerializerCleanedUp):
+    id = serializers.CharField(source='uid', validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES, default='EUR')
+    price_per_kwh = PriceKwhSerializer(source='*',
+                                       max_digits=8, decimal_places=4, required=False,
+                                       help_text='The price per kWh of electricity charged'
+                                       )
+    price_per_min = PriceMinSerializer(source='*',
+                                       max_digits=8, decimal_places=4, required=False,
+                                       help_text='The price per minute of charging, not including parking'
+                                       )
+    price_flat = PriceFlatSerializer(source='*',
+                                     max_digits=8, decimal_places=4, required=False,
+                                     help_text='The flat price per started charging session'
+                                     )
+    vat = VatSerializer(source='*',
+                        required=False, allow_null=True,
+                        help_text='The Value Added Tax amount in percentage'
+                        )
+
+    def create(self, validated_data):
+        tariff = Tariff.objects.create(uid=validated_data.get('uid'))
+        te = TariffElement.objects.create(tariff=tariff)
+        per_kwh = validated_data.get(PriceKwhSerializer.key)
+        per_min = validated_data.get(PriceMinSerializer.key)
+        flat = validated_data.get(PriceFlatSerializer.key)
+        vat = validated_data.get(VatSerializer.key)
+
+        if per_kwh:
+            PriceComponent.objects.create(tariff_element=te, type='ENERGY', price=per_kwh, vat=vat, step_size=1)
+        if per_min:
+            PriceComponent.objects.create(tariff_element=te, type='TIME', price=per_min, vat=vat, step_size=1)
+        if flat:
+            PriceComponent.objects.create(tariff_element=te, type='FLAT', price=flat, vat=vat, step_size=1)
+        return tariff
+
+    def update(self, tariff: Tariff, validated_data: dict):
+        def update_price_components(price, tariff_type) -> None:
+            data = dict(price=price, vat=vat, step_size=1)
+            pc, created = PriceComponent.objects.get_or_create(tariff_element=te, type=tariff_type, defaults=data)
+            if not created:
+                for key, value in data.items():
+                    if value is not None:
+                        setattr(pc, key, value)
+                pc.save()
+
+        te, _created = TariffElement.objects.get_or_create(tariff=tariff)
+        per_kwh = validated_data.get(PriceKwhSerializer.key)
+        per_min = validated_data.get(PriceMinSerializer.key)
+        flat = validated_data.get(PriceFlatSerializer.key)
+        vat = validated_data.get(VatSerializer.key)
+
+        price_components = (
+            (per_kwh, 'ENERGY'),
+            (per_min, 'TIME'),
+            (flat, 'FLAT'),
+        )
+        for price, tariff_type in price_components:
+            if price is not None:
+                update_price_components(price, tariff_type)
+
+        if vat is not None:
+            te.price_components.update(vat=vat)
+
+        return tariff

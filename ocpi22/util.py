@@ -25,7 +25,7 @@ from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 slack_logging.init()
 
 
-def clear_empty(dict_with_possibly_empty_values):
+def clear_empty(dict_with_possibly_empty_values: dict) -> OrderedDict:
     """
     Do a recursive cleanup for a dict and remove empty values and dicts with no keys
 
@@ -43,7 +43,7 @@ def clear_empty(dict_with_possibly_empty_values):
     result = OrderedDict()
     for key, value in dict_with_possibly_empty_values.items():
         value = clear_empty(value)
-        if value or value == 0.0:
+        if value or value == 0.0 or value == 0:
             result[key] = value
     return result
 

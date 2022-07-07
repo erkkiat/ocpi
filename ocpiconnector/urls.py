@@ -7,6 +7,7 @@ from rest_framework.schemas import get_schema_view
 
 from cars.views import CarsViewSet
 from ocpi22 import msp
+from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.msp.map import MapViewSet
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
@@ -41,6 +42,7 @@ cpo_router = CPORouter()
 # cpo_router.register(r'cdrs', CpoCdrViewSet)
 # cpo_router.register(r'session', CpoSessionViewSet, basename='session')
 cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
+cpo_router.register(r'tariff/quick', TariffQuickViewSet, basename='quick-tariff')
 cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
 
 msp_router = MSPRouter()
