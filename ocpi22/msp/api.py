@@ -4,7 +4,6 @@ from decimal import Decimal
 
 import requests
 from django.utils.translation import get_language
-from icecream import ic
 from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -12,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.commands import send_start_command, send_stop_command
 from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.models.location import Location, Evse, Connector
@@ -20,11 +20,15 @@ from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
     MspSessionSerializer
 from ocpi22.msp.util import get_message_by_language
+from ocpi22.ocpi.api import TokenViewSet
+from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
+
+from ocpiconnector.ocpi_identities import get_our_party
 
 pp = PrettyPrinter(indent=4).pprint
 slack_logging.init()
@@ -199,6 +203,40 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         return None
 
 
+class MspTokenViewSet(TokenViewSet):
+    """
+    **GET**: List active and inactive Tokens.
+
+    **PUT**: Create or update a Token (usually an RFID).
+    Country_code and party_id are set automatically according to your MSP identity.
+
+    **PATCH**: Update a Token.
+    """
+
+    def check_ownership(self, token) -> bool:
+        # The MSP can always update, and we force the country_code and party_id to match
+        return True
+
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=None):
+        party = get_our_party(OcpiRolesEnum.EMSP)
+        data = request.data
+        data['country_code'] = party.country_code
+        data['party_id'] = party.party_id
+
+        result: OCPIResponse = super().put(request, party.country_code, party.party_id, uid, data)
+        return Response(result.data.get('data'))
+
+    def patch(self, request):
+        return self.put(request, partial=True)
+
+    def list(self, request):
+        result: OCPIResponse = super().list(request)
+        return Response({'data': result.data.get('data')})
+
+    def authorize(self, request, token_uid):
+        pass
+
+
 class MobilityServiceProviderAPIView(routers.APIRootView):
     """
     This API is not a part of the OCPI protocol. It is intended as fast shortcut to OCPI roaming.
@@ -233,6 +271,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 stop_charging=request.build_absolute_uri(
                     reverse('roaming-stop-charging')
                 ),
+            ),
+            tokens=request.build_absolute_uri(
+                reverse('msp-token-list')
             ),
             user=dict(
                 register=request.build_absolute_uri(

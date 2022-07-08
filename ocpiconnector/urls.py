@@ -18,7 +18,7 @@ from ocpi22.hub import CommandsHubViewSet
 
 from ocpi22.locations.location import LocationViewSet
 from ocpi22.models.credentials import new_connection
-from ocpi22.msp.api import MSPRouter, MspRoamingViewSet
+from ocpi22.msp.api import MSPRouter, MspRoamingViewSet, MspTokenViewSet
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
 from ocpi22.views import home
 from ocpiconnector import charger_simulator
@@ -47,6 +47,7 @@ cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
 
 msp_router = MSPRouter()
 msp_router.register(r'roaming', MspRoamingViewSet, basename='roaming')
+msp_router.register(r'token', MspTokenViewSet, basename='msp-token')
 msp_router.register(r'map', MapViewSet, basename='map')
 msp_router.register(r'user', UserViewSet, basename='user')
 msp_router.register(r'cdr', msp.user.CdrViewSet, basename='msp-cdr')

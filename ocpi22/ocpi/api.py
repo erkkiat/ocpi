@@ -68,32 +68,38 @@ class TokenViewSet(mixins.ListModelMixin,
         if uid:
             return get_object_or_404(Token, uid=uid)
 
-    @staticmethod
+    def check_ownership(self, token) -> bool:
+        return token and token.is_ours()
+
     @transaction.atomic
-    def put(request, country_code=None, party_id=None, uid=None, data=None):
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=False):
         data = data or request.data.get('data', request.data)
         uid = uid or data.get('uid')
         party_id = party_id or data.get('party_id')
         country_code = country_code or data.get('country_code')
 
         token: Token = Token.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
-        if token and token.is_ours():
+
+        if self.check_ownership(token) == False:
             return OCPIResponse(f'Object {token} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
         if token and request and not token.is_owner(request):
             return NotOwner()
-        serializer = TokenSerializer(data=data, instance=token, partial=True)
+        serializer = TokenSerializer(data=data, instance=token, partial=partial)
         if serializer.is_valid():
-            logging.info(f'Creating or updating Token {token.uid if token else ""}.')
+            logging.info(f'Creating or updating Token {token.uid if token else uid}.')
             new_token = serializer.save()
-            if ocpi_platform.is_cpo:
-                CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
+            # if ocpi_platform.is_cpo:
+            #     CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
             Token.send_hub_updates(serializer.data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
         else:
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request):
+        return self.put(request, partial=True)
 
     @csrf_exempt
     @action(methods=['POST', 'GET'], detail=False,

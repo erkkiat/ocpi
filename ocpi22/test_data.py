@@ -498,7 +498,7 @@ expected_get_headers = {
          'X-Limit': '100',
          'X-Total-Count': '6'},
     'http://localhost:8001/ocpi/cpo/2.2/tokens?limit=3':
-        {'Allow': 'GET, PUT, HEAD, OPTIONS',
+        {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '885',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
@@ -508,7 +508,7 @@ expected_get_headers = {
          'X-Limit': '100',
          'X-Total-Count': '6'},
     'http://testserver/ocpi/cpo/2.2/tokens?limit=3&offset=3':
-        {'Allow': 'GET, PUT, HEAD, OPTIONS',
+        {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '1091',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
