@@ -589,7 +589,6 @@ class ApiPutTests(TestCase):
             party_id = data.get('party_id')
 
             # Create CretentialsRoles
-            # noinspection PyUnresolvedReferences
             roles, _created = CredentialsRole.objects.get_or_create(
                 role='CPO', country_code=country_code,
                 party_id=party_id, defaults=dict(
@@ -609,9 +608,7 @@ class ApiPutTests(TestCase):
 
             # Verify the saved data
             uid = data.get('uid').upper()
-            # noinspection PyUnresolvedReferences
             try:
-                # noinspection PyUnresolvedReferences
                 saved_data = TokenSerializer(Token.objects.get(uid=uid)).data
                 # ic(saved_data)
             except Token.DoesNotExist:
