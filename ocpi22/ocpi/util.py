@@ -172,14 +172,14 @@ def ocpi_post(url, token_base64,
     if 'data' in kwargs:
         data = kwargs.pop('data')
         # ic(data)
-    response = requests.post(url, *args, **kwargs, json=data,
+    response = requests.post(url, *args, **kwargs, json=data, timeout=25,
                              headers=make_headers(token_base64, to, sender))
     if response.status_code >= 300:
         try:
             data = response.json()
             logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {data}')
             # raise ValidationError(data.get("status_message") or f'Unknown error: {data}')
-        except (Exception, requests.exceptions.JSONDecodeError) as e:
+        except (Exception, requests.exceptions.JSONDecodeError, requests.exceptions.Timeout) as e:
             logging.error(f'{settings.HOSTNAME}: `{url}` - {response.status_code} - {e}')
     return response
 

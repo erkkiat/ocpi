@@ -916,6 +916,7 @@ class CommandTests(TestCase):
                       'response_url': 'http://testserver/api/cpo/v2/chargepoint/remote_command_result.e86baa82cee14ac5bfd00b85371aa798',
                       'token_id': 'FI*001*T*ADMIN*TOKEN',
                       'token_type': 'OTHER'},
+             'timeout': 20,
              'url': 'http://fakehost/start/HELSINKI-3/',
              'verify': False}
         )
@@ -2248,7 +2249,9 @@ class TestMspApi(TestCase):
                                                          ('party_id', 'MSP'),
                                                          ('uid', 'FI*MSP*T*APP*MOCK-1'),
                                                          ('type', 'APP_USER'),
-                                                         ('contract_id', 'CONTRACT-123')])}},
+                                                         ('contract_id', 'CONTRACT-123')])},
+                          'timeout': 25
+                          },
                          'START_SESSION Command sent to CPO differs from expected'
                          )
 

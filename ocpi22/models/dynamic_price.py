@@ -90,7 +90,12 @@ class IbexBgIdm(PriceSource):
         try:
             credentials = os.environ.get('IBEX_CREDENTIALS', ':')
             user, password = credentials.split(':')
-            response = requests.get(os.environ.get('IBEX_URL'), verify=False, auth=HTTPBasicAuth(user, password))
+            response = requests.get(
+                os.environ.get('IBEX_URL'),
+                verify=False,
+                timeout=20,
+                auth=HTTPBasicAuth(user, password)
+            )
             prices = response.json()
             for p in prices:
                 end_date = self._convert_date_format(p['Date/Hour'])
@@ -99,7 +104,7 @@ class IbexBgIdm(PriceSource):
                 # print(p, start_date, end_date, price)
                 self._upsert_to_database(start_date, end_date, price)
         except JSONDecodeError as e:
-            raise requests.exceptions.ConnectionError('Missing IBEX_CREDENTIALS or JSON format error.')
+            raise requests.exceptions.ConnectionError(f'Missing IBEX_CREDENTIALS or JSON format error: {e}')
 
 
 class BgDa(PriceSource):
@@ -113,7 +118,12 @@ class BgDa(PriceSource):
         if url:
             credentials = os.environ.get('IBEX_CREDENTIALS', ':')
             user, password = credentials.split(':')
-            response = requests.get(url, verify=False, auth=HTTPBasicAuth(user, password))
+            response = requests.get(
+                url,
+                verify=False,
+                timeout=20,
+                auth=HTTPBasicAuth(user, password)
+            )
             # pprint(response.text)
             data = response.json()
             assert data.get('Currency').upper() == self.currency.upper(), \

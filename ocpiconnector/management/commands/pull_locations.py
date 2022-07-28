@@ -18,7 +18,7 @@ class Command(BaseCommand):
 
     def ocpi_get(self, url, token_base64):
         self.stdout.write(f'Getting {url}')
-        response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'))
+        response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'), timeout=20)
         if response.status_code != 200:
             self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
             self.stdout.write(response.text)

@@ -56,7 +56,7 @@ def remove_spacers(s: str) -> str:
 
 
 def get_json(url):
-    return requests.get(url).json()
+    return requests.get(url, timeout=10).json()
 
 
 @ttl_cache(maxsize=1, ttl=86400)  # 24 hours cache

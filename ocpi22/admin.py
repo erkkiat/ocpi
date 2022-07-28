@@ -250,7 +250,7 @@ class EvseAdmin(NestedModelAdmin):
                 level = messages.SUCCESS if data.get('status_code') == 1000 else messages.ERROR
                 data = data.get('data', data)
                 self.message_user(request, f"Response: {data.get('message')}", level=level)
-            except (APIException, requests.exceptions.ConnectionError) as e:
+            except (APIException, requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
                 logging.error(f"{settings.HOSTNAME}: admin:start_charging(), result: {e}")
                 self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
                                   level=messages.ERROR)

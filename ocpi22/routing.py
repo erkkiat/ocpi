@@ -126,7 +126,7 @@ def route_ocpi_request(request: HttpRequest, party: Party):
 
             response: requests.Response = requests.request(
                 method=request.method, url=urljoin(f'{route.url}/', ocpi_url.parameters),
-                data=getattr(request, 'body') or getattr(request, 'data'),
+                data=getattr(request, 'body') or getattr(request, 'data'), timeout=25,
                 headers=out_headers)
 
             return HttpResponse(response.text, status=response.status_code, content_type='application/json')

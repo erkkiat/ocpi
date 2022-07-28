@@ -153,6 +153,7 @@ class CommandsViewSet(GenericViewSet):
                         json=data,
                         headers=headers,
                         verify=False,
+                        timeout=20,
                         **kwargs)
                     data = cpo_response.json()
 
@@ -170,7 +171,7 @@ class CommandsViewSet(GenericViewSet):
                             http_status = status.HTTP_200_OK
                         else:
                             result = 'REJECTED'
-                except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
+                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, JSONDecodeError) as e:
                     message = MessageTexts.get('MS_CONNECTION_ERROR')
                     http_status = status.HTTP_424_FAILED_DEPENDENCY
                     logging.error(f'Unable to relay Command to CPO: {e}')
@@ -241,6 +242,7 @@ class CommandsViewSet(GenericViewSet):
                         json=data,
                         headers=headers,
                         verify=False,
+                        timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
                         **kwargs)
                     data = cpo_response.json()
 
@@ -258,7 +260,7 @@ class CommandsViewSet(GenericViewSet):
                             http_status = status.HTTP_200_OK
                         else:
                             result = result or 'REJECTED'  # Fill it if missing in response
-                except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
+                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, JSONDecodeError) as e:
                     message = MessageTexts.get('MS_CONNECTION_ERROR')
                     http_status = status.HTTP_424_FAILED_DEPENDENCY
                     logging.error(f'Unable to relay Command to CPO: {e}')

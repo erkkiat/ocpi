@@ -18,6 +18,7 @@ def send_sms(sender: str, msg_content: str, recipients: list):
         "https://gatewayapi.com/rest/mtsms",
         json=payload,
         auth=(token, ""),
+        timeout=10,
     )
     ic(resp, resp.json())
     resp.raise_for_status()

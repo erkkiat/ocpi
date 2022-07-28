@@ -141,7 +141,8 @@ def command_start(data, session_uid, update_url, url):
                 evse=session.evse.uid,
                 session=session.uid,
                 update_url=update_url
-            )
+            ),
+            timeout=20
         )
         result_status = 'ACCEPTED'
         result_data = result.json()
@@ -161,7 +162,7 @@ def command_start(data, session_uid, update_url, url):
             logging.warning(f'Unable to start charging at {session.location}, EVSE: {session.evse.evse_id} '
                             f'status code {result.status_code} - response text: {result.text}')
             status_text = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
-    except (requests.exceptions.ConnectionError, Http404, Exception) as e:
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, Http404, Exception) as e:
         status_text = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
         logging.error(f'{settings.HOSTNAME}: Cannot reach {update_url}, please check your request parameters.')
         logging.error(f'{settings.HOSTNAME}: {str(e)}')
@@ -176,8 +177,8 @@ def command_start(data, session_uid, update_url, url):
     )
     try:
         response_url = data.get('response_url')
-        requests.post(response_url, json=result_data)
-    except requests.exceptions.ConnectionError as e:
+        requests.post(response_url, json=result_data, timeout=28)
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
         logging.error(f'{settings.HOSTNAME}: {str(e)}')
 
 
@@ -225,7 +226,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
             json=result.json() if result.status_code < 300 else '',
             headers=dict(result.headers) if result.headers else {},
         )
-    except (requests.exceptions.ConnectionError, JSONDecodeError) as e:
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, JSONDecodeError) as e:
         logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}.")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
@@ -269,7 +270,7 @@ def pull_objects(object_list, limit=20, **kwargs) -> None:
                 pull_objects.apply_async((object_list,), kwargs=kwargs, countdown=random.randint(2, 10))
             else:
                 pull_objects(object_list, limit, **kwargs)
-    except requests.exceptions.ConnectionError as e:
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
         logging.error(f"{settings.HOSTNAME}: Unable to pull objects: {e}")
 
 
@@ -281,7 +282,7 @@ def check_still_alive(credentials_id: int = None) -> None:
         try:
             # noinspection PyUnresolvedReferences
             credentials = Credentials.objects.get(pk=credentials_id)
-            requests.get(credentials.url)
+            requests.get(credentials.url, timeout=10)
             credentials.last_connection = timezone.now()
             credentials.connection_status = 'CONNECTED'
             logging.info(f"{credentials} is alive")

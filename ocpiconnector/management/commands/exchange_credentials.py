@@ -67,7 +67,7 @@ class Command(BaseCommand):
 
     def ocpi_get(self, url, token_base64):
         logging.info(f'Getting {url}')
-        response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'))
+        response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'), timeout=20)
         if response.status_code != 200:
             logging.info(f'{Back.RED}*** Got response: {response.status_code} - {response.reason}')
             logging.info(response.text)
@@ -77,7 +77,10 @@ class Command(BaseCommand):
 
     def ocpi_post(self, url, token_base64, *args, **kwargs):
         logging.info(f'Posting to {url}')
-        response = requests.post(url=url, headers=dict(Authorization=f'Token {token_base64}'), *args, **kwargs)
+        response = requests.post(
+            url=url, headers=dict(Authorization=f'Token {token_base64}'), timeout=20,
+            *args, **kwargs
+        )
         if response.status_code != 200:
             logging.info(f'*** Got response: {response.status_code} - {response.reason}')
             logging.info(response.text)
@@ -190,7 +193,7 @@ class Command(BaseCommand):
 
             return True
 
-        except requests.exceptions.ConnectionError as e:
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             print(f'{Back.RED}*** Cannot reach the URL you specified: {str(e)}')
             raise
         except OCPIProtocolError as e:
