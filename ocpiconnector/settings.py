@@ -304,6 +304,8 @@ INSTALLED_APPS = (
     'django_filters',
     'nested_admin',
     'oauth2_provider',
+    'slick_reporting',
+    'crispy_forms',
 )
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
@@ -365,6 +367,11 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend'
     ],
     'DEFAULT_METADATA_CLASS': 'ocpi22.util.MyMetadata',
+    # 'DEFAULT_RENDERER_CLASSES': [
+    #     'rest_framework.renderers.JSONRenderer',
+    #     'rest_framework.renderers.BrowsableAPIRenderer',
+    #     'rest_framework_csv.renderers.CSVRenderer',
+    # ],
 }
 
 # Celery Configuration Options
@@ -390,3 +397,5 @@ MOESIF_MIDDLEWARE = {
     'CAPTURE_OUTGOING_REQUESTS': True,  # Set to True to also capture outgoing calls to 3rd parties.
     'IDENTIFY_USER': identifyUser  # Optional hook to link API calls to users
 }
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
