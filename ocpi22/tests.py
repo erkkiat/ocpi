@@ -6,7 +6,7 @@ import uuid
 from collections import OrderedDict, Counter
 from dataclasses import asdict, dataclass, field
 
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -64,6 +64,7 @@ from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpi22.test_data import expected_get_responses
 from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.settlement.calculate import calculate_invoice_data, Invoice
 
 faketime = datetime(2000, 1, 1, 12, 0)
 client = Client()
@@ -2105,7 +2106,8 @@ class TestCpoApi(TestCase):
         Cdr.objects.filter(session_id='FI*CPO*S*MOCK-1').delete()
 
         cdr_count_before = Cdr.objects.all().count()
-        response = stop_transaction(dict(session_id='FI*CPO*S*MOCK-1'))
+        with time_machine.travel(faketime + timedelta(minutes=23), tick=False):
+            response = stop_transaction(dict(session_id='FI*CPO*S*MOCK-1'))
         self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
         cdr_count_after = Cdr.objects.all().count()
 
@@ -2131,6 +2133,16 @@ class TestCpoApi(TestCase):
                          'There should be only one new CDR after trying to stop a session twice')
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
                          f'A duplicate CPO stop_transaction is expected to fail: {response.data}')
+
+        # Check the invoice creation
+        invoice = calculate_invoice_data(cdr.billed_to, date(2000, 1, 1), date(3000, 1, 1))
+        self.assertEqual(invoice, Invoice(currency='EUR',
+                                          total_cost_excl_vat={'total_cost_excl_vat__sum': 61.73},
+                                          total_cost_incl_vat={'total_cost_incl_vat__sum': 76.54},
+                                          total_energy={'total_energy__sum': 123.45},
+                                          total_time={'total_time__sum': 0.38333},
+                                          transactions=1),
+                         "The invoice resulting from RFID charging case differs from expected")
 
 
 def put_session_data(data):

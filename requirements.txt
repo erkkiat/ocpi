@@ -41,4 +41,5 @@ timezonefinder==6.0.2
 djangorestframework-csv==2.1.1
 django-slick-reporting==0.6.3
 django-crispy-forms==1.14.0
+stripe==3.5.0
 # potranslator==1.1.5  # Not used and not working in cloud, install locally in dev environment
