@@ -16,7 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
-    ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES
+    ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi.util import OcpiModule
 from ocpi22.util import ModelUtilMixin, generate_random_token, PREMIUM_MESSAGE
@@ -138,6 +138,11 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.last_connection = timezone.now()
         self.save(update_fields=['last_connection'])
 
+    def get_party_for_role(self, role: OcpiRolesEnum) -> Optional["CredentialsRole"]:
+        credentialsrole = self.roles.filter(role=role).first()
+        if credentialsrole:
+            return credentialsrole.party
+
 
 class CredentialsRole(models.Model, ModelUtilMixin):
     class Meta:
@@ -160,9 +165,12 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     def __str__(self):
         return f'{self.country_code}*{self.party_id} ({self.role})'
 
+    @property
+    def party(self):
+        return Party(self.country_code, self.party_id)
+
 
 class Endpoint(models.Model, ModelUtilMixin):
-
     identifier = models.CharField(max_length=13, choices=IDENTIFIER_CHOICES)
 
     url = models.URLField()
@@ -256,13 +264,11 @@ def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: OcpiModuleEnum)
     logging.info(f'Reading module {ocpi_module.value} endpoints for {roles} from database.')
     result = []
     role: CredentialsRole
-    # noinspection PyUnresolvedReferences
     for role in CredentialsRole.objects.filter(role__in=roles). \
             select_related('credentials'):
         credentials = role.credentials
         country_code = role.country_code
         party_id = role.party_id
-        # noinspection PyUnresolvedReferences
         result += [
             (endpoint.url, credentials.theirs_base64(), country_code, party_id)
             for endpoint in Endpoint.objects.filter(

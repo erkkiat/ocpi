@@ -103,6 +103,7 @@ class CommandsViewSet(GenericViewSet):
                         ad_hoc_token=token,
                         billed_to=str(billed_to),
                         authorize_from_msp=False,
+                        credentials=request.credentials,
                     )
                 )
                 params.pop('token')
@@ -127,9 +128,10 @@ class CommandsViewSet(GenericViewSet):
                         token_type=session.cdr_token_type,
                         authorization_reference=session.authorization_reference,
                         auth_method=session.auth_method,
-                        billed_to=session.billed_to,
+                        credentials=request.credentials,
                         evse_id=session.evse.uid,
                         connector_id=session.connector.uid if session.connector else None,
+                        billed_to=session.billed_to,
                     )
 
                     # ic(data)

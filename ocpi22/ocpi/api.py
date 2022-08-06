@@ -483,7 +483,9 @@ class SessionViewSet(mixins.ListModelMixin,
             if session.is_final():
                 return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        serializer = SessionSerializer(data=request.data, instance=session, partial=partial)
+        serializer = SessionSerializer(
+            data=request.data, instance=session, partial=partial, context={'request': request}
+        )
         if serializer.is_valid():
             serializer.save()
             Session.send_hub_updates(serializer.data)

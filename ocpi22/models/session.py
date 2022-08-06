@@ -187,10 +187,11 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING')
 
-    # Credentials is not a good pointer to billing party, if start_session came through a hub
-    # The party who will be billed for this Session
+    # The MSP or HUB which sent us the messages resulting in this Session
     credentials = models.ForeignKey('Credentials', on_delete=models.PROTECT, null=True, blank=True)
-    billed_to = models.CharField(max_length=6, null=True, blank=True)
+
+    # The party who will be billed for this Session
+    billed_to = models.CharField(max_length=6, null=True)
 
     # Store the (error) message from CPO
     message = models.JSONField(null=True, blank=True)

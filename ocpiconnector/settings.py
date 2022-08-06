@@ -298,6 +298,7 @@ INSTALLED_APPS = (
     'ocpi22',
     'ocpiconnector',
     'cars',
+    'settlement',
     'django.contrib.admin',
     'whitenoise',
     'rest_framework',

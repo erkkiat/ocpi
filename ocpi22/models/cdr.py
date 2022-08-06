@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from django.conf import settings
 from django.db import models
@@ -17,6 +16,7 @@ from ocpi22.msp.account import check_balance
 from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHOICES
 from ocpi22.ocpi.util import OcpiModule, Ocpi, generate_cdr_uid
 from ocpiconnector.ocpi_identities import ocpi_platform
+from settlement.models import Invoice
 
 
 class Cdr(models.Model, ModelUtilMixin, OcpiModule):
@@ -169,10 +169,12 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     credit_reference = models.ForeignKey('Cdr', blank=True, null=True, on_delete=models.PROTECT)
 
     # The party who will be billed for the transaction
-    billed_to = models.CharField(max_length=6, blank=True)
+    billed_to = models.CharField(max_length=6)
 
-    # The party who will be billed for this Session
-    credentials = models.ForeignKey('Credentials', on_delete=models.PROTECT, null=True, blank=True)
+    # Has this CDR been billed as a part of an invoice? Null means it's not yet on any invoice
+    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='cdrs', blank=True, null=True)
+
+    credentials = models.ForeignKey('Credentials', on_delete=models.PROTECT, null=True, related_name='cdrs')
 
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)

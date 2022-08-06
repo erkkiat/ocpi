@@ -37,7 +37,7 @@ from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
@@ -64,7 +64,7 @@ from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpi22.test_data import expected_get_responses
 from ocpiconnector.ocpi_identities import Party
-from ocpiconnector.settlement.calculate import calculate_invoice_data, Invoice
+from settlement.calculate import create_invoice
 
 faketime = datetime(2000, 1, 1, 12, 0)
 client = Client()
@@ -433,14 +433,14 @@ class ApiPutTests(TestCase):
 
     def test_cost_calculation(self):
         start_date_time = datetime(2000, 1, 1, 0, 0)
-        # noinspection PyUnresolvedReferences
         evse = Evse.objects.all().first()
         location = evse.location
+        credentials = Credentials.objects.first()
         session_params = dict(
             country_code='FI', party_id='FFF', start_date_time=start_date_time,
             cdr_token_uid='123', cdr_token_type='RFID', cdr_token_contract_id='123', auth_method='COMMAND',
             location=location, evse=evse, currency='EUR', status='ACTIVE',
-            end_date_time=start_date_time + timedelta(hours=1)
+            end_date_time=start_date_time + timedelta(hours=1), credentials=credentials,
         )
         testcases = (
             ('tariff_1_simple_2hour', dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 5, 5.5),
@@ -465,8 +465,7 @@ class ApiPutTests(TestCase):
         for filename, case_params, excl_vat, incl_vat in testcases:
             params = session_params.copy()
             params.update(case_params)
-            # noinspection PyUnresolvedReferences
-            session: Session = Session.objects.create(uid=uuid.uuid4().hex,
+            session: Session = Session.objects.create(uid=uuid.uuid4().hex, billed_to='FI*MSP',
                                                       **params)
             data = load_example(f'data/examples/{filename}.json')
             serializer = TariffSerializer(data=data)
@@ -701,7 +700,11 @@ class TariffTests(TestCase):
 
 
 class CdrTests(TestCase):
-    fixtures = ['ocpi22/data/initial.json', 'ocpi22/data/defaulttariffs.json']
+    fixtures = [
+        'ocpi22/data/initial.json',
+        'ocpi22/data/test-database-1.json',
+        'ocpi22/data/defaulttariffs.json'
+    ]
 
     def load_location(self, filename):
         data = load_example(f'data/examples/{filename}.json')
@@ -716,6 +719,7 @@ class CdrTests(TestCase):
         location = self.load_location('location_example')
         evse = location.evses.all()[0]
         connector = evse.connectors.all()[0]
+        credentials = Credentials.objects.first()
 
         # ic(connector, connector.get_tariffs()[0].price())
 
@@ -741,7 +745,8 @@ class CdrTests(TestCase):
             total_cost_incl_vat='1.24',
             status='COMPLETED',
             last_updated=timezone.now(),
-            billed_to='FI*EON'
+            credentials=credentials,
+            billed_to='FI*MSP',
         )
 
         # Check that the serializer gives the correct connector ID and Tariff
@@ -837,6 +842,7 @@ class CommandTests(TestCase):
         }
         request = api_factory.post(url, **headers)
         request.data = data
+        request.credentials = Credentials.objects.first()
 
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
@@ -905,6 +911,7 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        kwargs['json'].pop('credentials')  # I can't find a way to compare the diffs with an object included
         self.assertDictEqual(
             kwargs,
             {'auth': ('john', 'his-password'),
@@ -924,7 +931,6 @@ class CommandTests(TestCase):
 
         # Let's guess the new Session
         session = Session.objects.all().first()
-        self.assertEqual(session.billed_to, str(billed_party), 'Billed party appears not to be stored properly')
 
         check_ok_result(self, response)
 
@@ -1519,8 +1525,10 @@ class TestSession(TestCase):
         evse = Evse.objects.all()[0]
         location = evse.location
         uid = '12345'
+        credentials = Credentials.objects.first()
 
-        session = create_session(location.uid, evse.uid, 1, token_id="T1", billed_to='FI*MSP', uid=uid)
+        session = create_session(location.uid, evse.uid, 1, token_id="T1", credentials=credentials, uid=uid,
+                                 billed_to=credentials.get_party_for_role(OcpiRolesEnum.EMSP.value))
         self.assertTrue(bool(session))
         # ic(session)
 
@@ -1630,6 +1638,7 @@ class TestCpoApi(TestCase):
         start_transaction_url = reverse('chargepoint-start-transaction')
         cpo_viewset = ChargePointViewSet()
         cpo_request = api_factory.post(start_transaction_url)
+        cpo_request.credentials = Credentials.objects.first()
         cpo_request.data = {
             "evse_id": "HELSINKI-3",
             "connector_id": "1",
@@ -1853,7 +1862,7 @@ class TestCpoApi(TestCase):
         headers = make_headers('', Party('FI', 'CPO'), billed_party)
         request = api_factory.post(url, **headers)
         request.data = data
-
+        request.credentials = Credentials.objects.first()
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
 
@@ -1874,6 +1883,8 @@ class TestCpoApi(TestCase):
                          'CPO start transaction URL differs from expected')
         authorization_reference = 'FI*001-AUTH-REFERENCE'
         url = f'http://testserver/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
+        ic(kwargs)
+        kwargs['json'].pop('credentials')
         self.assertDictEqual(
             kwargs.get('json'),
             {'auth_method': 'COMMAND',
@@ -2135,20 +2146,22 @@ class TestCpoApi(TestCase):
                          f'A duplicate CPO stop_transaction is expected to fail: {response.data}')
 
         # Check the invoice creation
-        invoice = calculate_invoice_data(cdr.billed_to, date(2000, 1, 1), date(3000, 1, 1))
-        self.assertEqual(invoice, Invoice(currency='EUR',
-                                          total_cost_excl_vat={'total_cost_excl_vat__sum': 61.73},
-                                          total_cost_incl_vat={'total_cost_incl_vat__sum': 76.54},
-                                          total_energy={'total_energy__sum': 123.45},
-                                          total_time={'total_time__sum': 0.38333},
-                                          transactions=1),
-                         "The invoice resulting from RFID charging case differs from expected")
+        with time_machine.travel(faketime + timedelta(days=1), tick=False):
+            invoice = create_invoice(session.credentials)  # Should collect CDRs until the current date
+            self.assertDictEqual(asdict(invoice), {'currency': 'EUR',
+                                                   'total_cost_excl_vat': {'total_cost_excl_vat__sum': 61.73},
+                                                   'total_cost_incl_vat': {'total_cost_incl_vat__sum': 76.54},
+                                                   'total_energy': {'total_energy__sum': 123.45},
+                                                   'total_time': {'total_time__sum': 0.38333},
+                                                   'transactions': 1},
+                                 "The invoice resulting from RFID charging case differs from expected")
 
 
 def put_session_data(data):
     request = api_factory.post(reverse('session-list'))
     request.data = data
     request.user = get_fake_admin()
+    request.credentials = Credentials.objects.first()
     return SessionViewSet.put(request)
 
 
@@ -2438,11 +2451,12 @@ class TestMspUserApi(TestCase):
         evse = Evse.objects.all()[0]
         uid = 'test-transactions'
         token_uid = 'EKI1'
+        credentials = Credentials.objects.first()
 
         session = create_session(
             uid=uid, evse_uid=evse, location_id=evse.location, connector_id=evse.connectors.all().first().uid,
             token_id=token_uid, billed_to='FI*MSP', start_kwh=0.0, stop_kwh=100.0,
-            session_status=Session.ACTIVE
+            session_status=Session.ACTIVE, credentials=credentials,
         )
 
         self.assertTrue(bool(session))

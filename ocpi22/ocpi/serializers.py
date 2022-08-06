@@ -13,6 +13,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension, ChargingPeriodSerializer, TotalCostSerializer
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
+from ocpi22.ocpi.util import get_sender_party
 from ocpi22.util import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
 
 
@@ -313,9 +314,11 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     kwh = serializers.FloatField(required=False)
 
     def create(self, validated_data):
+        request = self.context.get("request")
+        billed_to = get_sender_party(request.META)
         chargingperiods = validated_data.pop('chargingperiods', [])
         session = Session.objects.create(
-            **validated_data
+            credentials=request.credentials, billed_to=billed_to, **validated_data
         )
         for chargingperiod in chargingperiods:
             dimensions = chargingperiod.pop('dimensions', None)

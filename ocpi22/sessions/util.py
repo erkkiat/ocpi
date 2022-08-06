@@ -34,9 +34,10 @@ def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACT
                                       statuses=statuses)
 
 
-def create_session(location_id, evse_uid, connector_id, internal_reference=None, token_id=None, ad_hoc_token=None,
-                   billed_to=None, uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorize_from_msp=True, authorization_reference=''
+def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
+                   internal_reference=None, token_id=None, ad_hoc_token=None,
+                   uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
+                   authorize_from_msp=True, authorization_reference='',
                    ) -> Session:
     # ic(location_id, evse_uid, connector_id, token_id, ad_hoc_token)
     if not uid:
@@ -92,6 +93,7 @@ def create_session(location_id, evse_uid, connector_id, internal_reference=None,
         connector=connector,
         currency=os.environ.get('CPO_CURRENCY', 'EUR'),
         billed_to=billed_to,
+        credentials=credentials
     )
 
     logging.info(f'New session {session.uid} pending at {evse.evse_id}')

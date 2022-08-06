@@ -2,7 +2,7 @@ import json
 import logging
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, TypeAlias, Union
 from urllib.parse import urljoin
 
 import requests
@@ -86,9 +86,18 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
     return None
 
 
+CredentialsType: TypeAlias = 'Credentials'
+
+
 @lru_cache(maxsize=None)
-def find_route(party: Party, ocpi_module: OcpiModuleEnum, add_path=None) -> Route:
-    credentials = find_credentials(party)
+def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, add_path=None) -> Optional[Route]:
+    if not to:
+        return None
+    if isinstance(to, Party):
+        credentials = find_credentials(to)
+    else:
+        credentials = to
+
     # Todo: Consider using urllib.parse.urlparse, maybe faster
 
     if credentials:

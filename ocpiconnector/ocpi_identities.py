@@ -2,8 +2,6 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 
-from icecream import ic
-
 from ocpi22.choices import ROLE_OPTIONS, OcpiRolesEnum
 
 

@@ -11,7 +11,6 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 from requests import Response
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import LimitOffsetPagination
 from ocpi22.choices import OcpiRolesEnum
 from rest_framework.response import Response
@@ -150,7 +149,7 @@ class OcpiModule:
         if hasattr(self, 'credentials'):
 
             if not hasattr(self, 'billed_to'):
-                log_error(f'Object #{self.uid} - {self} has no billed_to')
+                log_error(f'Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties')
                 return
 
             to = Party(*(self.billed_to.split('*')))

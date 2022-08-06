@@ -388,7 +388,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             uid=generate_session_uid(), internal_reference=internal_reference,
                             evse_uid=evse, location_id=evse.location, connector_id=connector_id,
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
-                            session_status=Session.ACTIVE
+                            session_status=Session.ACTIVE, credentials=request.credentials,
                         )
                         logging.info(f'Created session {session.uid} based on start_transaction from CPO')
 
@@ -674,20 +674,19 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     response_url = command.get('response_url')
                     party = session.billed_to.split('*')
                     to = Party(*party)
-                    credentials = find_credentials(to)
                     sender = get_our_party(OcpiRolesEnum.CPO)
 
                     # Send CommandResponse to MSP
                     response = send_ocpi_request(
                         ocpi_serializer.data,
                         response_url,
-                        credentials.theirs_base64(),
+                        session.credentials.theirs_base64(),
                         to_country_code=to.country_code,
                         to_party_id=to.party_id,
                         from_country_code=sender.country_code,
                         from_party_id=sender.party_id,
                         method='post',
-                        credentials_id=credentials.pk,
+                        credentials_id=session.credentials.pk,
                     )
 
                     # Invalidate the session in case an error has occured
