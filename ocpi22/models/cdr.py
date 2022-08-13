@@ -149,6 +149,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Currency of the CDR in ISO 4217 Code.
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)
 
+    # TODO: !!!!! ADD base_currency AND cost_in_base_currency
+
     # List of relevant Tariff Elements, see: Tariff. When relevant, a Free of Charge tariff
     # should also be in this list, and point to a defined Free of Charge Tariff.
     tariffs = models.ManyToManyField(Tariff, blank=True)

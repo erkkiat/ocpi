@@ -24,6 +24,7 @@ from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
 from ocpi22.views import home
 from ocpiconnector import charger_simulator
 from ocpiconnector.ocpi_identities import ocpi_platform
+from settlement.views import InvoiceReportViews
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials', CredentialsViewSet if settings.PREMIUM else NoPremiumViewSet,
@@ -45,6 +46,7 @@ cpo_router = CPORouter()
 cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
 cpo_router.register(r'tariff/quick', TariffQuickViewSet, basename='quick-tariff')
 cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
+cpo_router.register(r'reports/billing', InvoiceReportViews, basename='billing')
 
 msp_router = MSPRouter()
 msp_router.register(r'roaming', MspRoamingViewSet, basename='roaming')

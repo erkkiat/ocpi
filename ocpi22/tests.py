@@ -1883,7 +1883,6 @@ class TestCpoApi(TestCase):
                          'CPO start transaction URL differs from expected')
         authorization_reference = 'FI*001-AUTH-REFERENCE'
         url = f'http://testserver/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
-        ic(kwargs)
         kwargs['json'].pop('credentials')
         self.assertDictEqual(
             kwargs.get('json'),

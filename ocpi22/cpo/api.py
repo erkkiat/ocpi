@@ -797,6 +797,14 @@ class ChargePointOperatorAPIView(routers.APIRootView):
                     reverse('chargepoint-remote-command-result')
                 ),
             ),
+            reports=dict(
+                summary=request.build_absolute_uri(
+                    reverse('billing-summary')
+                ),
+                list=request.build_absolute_uri(
+                    reverse('billing-list')
+                ),
+            )
         )
         return Response(result)
 
