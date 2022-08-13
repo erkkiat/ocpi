@@ -3,7 +3,7 @@ from typing import Optional
 
 import pytz
 from icecream import ic
-from nordpool import elspot
+# from nordpool import elspot
 from pprint import pprint
 
 # Initialize class for fetching Elspot prices
