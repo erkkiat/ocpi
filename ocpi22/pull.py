@@ -13,7 +13,7 @@ from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 # Todo: Full object pull for Sessions and Cdrs
 
-def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
+def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
     logging.info(f'Scheduling full update: {credentials}')
     # Don't waste effort on offline parties, let still_alive continue trying
     if not credentials.is_complete() or not credentials.connection_state():
@@ -23,16 +23,19 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=20):
         return
     object_list = [
         dict(
+            party=credentials.party(),
             model='ocpi22.models.tariffs.Tariff', viewset='ocpi22.ocpi.api.TariffViewSet',
             url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
                                          identifier=Tariff.ocpi_module_name.value).first(), 'url', '')
         ),
         dict(
+            party=credentials.party(),
             model='ocpi22.models.tokens.Token', viewset='ocpi22.ocpi.api.TokenViewSet',
             url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
                                          identifier=Token.ocpi_module_name.value).first(), 'url', '')
         ),
         dict(
+            party=credentials.party(),
             model='ocpi22.models.locations.Location', viewset='ocpi22.locations.location.LocationViewSet',
             url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
                                          identifier=Location.ocpi_module_name.value).first(), 'url', '')

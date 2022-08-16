@@ -151,7 +151,7 @@ class LocationViewSet(mixins.ListModelMixin,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
             serializer = LocationSaveSerializer(location, data=data)
             if serializer.is_valid():
-                logging.info(f'Creating or updating Location {location.uid if location else ""}.')
+                logging.info(f'Creating or updating Location {country_code}*{party_id} - {uid}.')
                 serializer.save()
                 Location.send_hub_updates(serializer.data)
                 http_status = status.HTTP_200_OK if location else status.HTTP_201_CREATED

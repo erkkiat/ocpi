@@ -89,7 +89,7 @@ class TokenViewSet(mixins.ListModelMixin,
             return NotOwner()
         serializer = TokenSerializer(data=data, instance=token, partial=partial)
         if serializer.is_valid():
-            logging.info(f'Creating or updating Token {token.uid if token else uid}.')
+            logging.info(f'Creating or updating Token {country_code}*{party_id} - {uid}.')
             new_token = serializer.save()
             # if ocpi_platform.is_cpo:
             #     CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
@@ -414,7 +414,7 @@ class TariffViewSet(mixins.ListModelMixin,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         serializer = TariffSerializer(instance=tariff, data=data)
         if serializer.is_valid():
-            logging.info(f'Creating or updating Tariff {tariff.uid if tariff else ""}.')
+            logging.info(f'Creating or updating Tariff {country_code}*{party_id} - {uid}.')
             serializer.save()
             Tariff.send_hub_updates(data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if tariff else status.HTTP_201_CREATED)

@@ -1,7 +1,7 @@
 import os
 import random
 from datetime import timedelta
-from urllib.parse import urljoin
+from json import JSONDecodeError
 
 import celery
 import cronitor.celery
@@ -13,10 +13,8 @@ import sentry_sdk
 from celery import shared_task
 from celery.schedules import crontab
 from django.conf import settings
-from django.http import Http404
 from django.utils import timezone
 from django.utils.module_loading import import_string
-from requests import JSONDecodeError
 from rest_framework import status
 from sentry_sdk import capture_exception
 
@@ -29,7 +27,7 @@ pp = pprint.PrettyPrinter(indent=4).pprint
 slack_logging.init()
 
 # Set the default Django settings module for the 'celery' program.
-if not 'DJANGO_SETTINGS_MODULE' in os.environ:
+if 'DJANGO_SETTINGS_MODULE' not in os.environ:
     os.environ['DJANGO_SETTINGS_MODULE'] = 'ocpiconnector.settings'
 
 app = celery.Celery('ocpi22.tasks')
@@ -87,7 +85,6 @@ def set_spot_prices() -> bool:
             logging.warning(f"No price for {source.key}")
             continue
         from ocpi22.models.tariff import PriceComponent
-        # noinspection PyUnresolvedReferences
         pcs = PriceComponent.objects.filter(dynamic_price_source=source.key).select_related('tariff_element__tariff')
         pcs.update(price=round(price, 3), type='ENERGY')
         for pc in pcs:
@@ -122,64 +119,64 @@ else:
     logging.error(f'{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS')
 
 
-@shared_task(max_retries=0)
-def command_start(data, session_uid, update_url, url):
-    from ocpi22.models.session import Session
-    from rest_framework.generics import get_object_or_404
-    session: Session = Session.get_if_exists(uid=session_uid)
-    if not session:
-        logging.error(f"{settings.HOSTNAME}: Unable to find session {session_uid} to start charging.")
-        return False
-    try:
-        # POST the start command to CPO system
-        from ocpi22.cpo.util import get_callbacks_parameter
-        from ocpi22.cpo.serializers import CallbacksSerializer
-        result = requests.post(
-            get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL),
-            json=dict(
-                location=session.location.uid,
-                evse=session.evse.uid,
-                session=session.uid,
-                update_url=update_url
-            ),
-            timeout=20
-        )
-        result_status = 'ACCEPTED'
-        result_data = result.json()
-        if result_data:
-            result_status = result_data.get('status')
-
-        if result.status_code == 200:
-            from ocpi22.models.location import Connector
-            # session.status = 'ACTIVE'  # Don't activate yet, let's talk with the charge point first
-            session.connector = get_object_or_404(Connector, uid=result_data['connector'], evse=session.evse)
-            session.save()
-            logging.debug('*** Response from CPO/charger to OCPI Connector worker task:')
-            logging.debug(result.text)
-            logging.debug(f'Activated session {session}')
-            status_text = (result_status or 'ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
-        else:
-            logging.warning(f'Unable to start charging at {session.location}, EVSE: {session.evse.evse_id} '
-                            f'status code {result.status_code} - response text: {result.text}')
-            status_text = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, Http404, Exception) as e:
-        status_text = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
-        logging.error(f'{settings.HOSTNAME}: Cannot reach {update_url}, please check your request parameters.')
-        logging.error(f'{settings.HOSTNAME}: {str(e)}')
-
-    # Send asynchronous OCPI response to eMSP
-    result_data = dict(
-        result=status_text[0],
-        message=[
-            dict(language='EN', text=status_text[1]),
-            dict(language='FI', text=status_text[2])
-        ]
-    )
-    try:
-        response_url = data.get('response_url')
-        requests.post(response_url, json=result_data, timeout=28)
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-        logging.error(f'{settings.HOSTNAME}: {str(e)}')
+# @shared_task(max_retries=0)
+# def command_start(data, session_uid, update_url, url):
+#     from ocpi22.models.session import Session
+#     from rest_framework.generics import get_object_or_404
+#     session: Session = Session.get_if_exists(uid=session_uid)
+#     if not session:
+#         logging.error(f"{settings.HOSTNAME}: Unable to find session {session_uid} to start charging.")
+#         return False
+#     try:
+#         # POST the start command to CPO system
+#         from ocpi22.cpo.util import get_callbacks_parameter
+#         from ocpi22.cpo.serializers import CallbacksSerializer
+#         result = requests.post(
+#             get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL),
+#             json=dict(
+#                 location=session.location.uid,
+#                 evse=session.evse.uid,
+#                 session=session.uid,
+#                 update_url=update_url
+#             ),
+#             timeout=20
+#         )
+#         result_status = 'ACCEPTED'
+#         result_data = result.json()
+#         if result_data:
+#             result_status = result_data.get('status')
+#
+#         if result.status_code == 200:
+#             from ocpi22.models.location import Connector
+#             # session.status = 'ACTIVE'  # Don't activate yet, let's talk with the charge point first
+#             session.connector = get_object_or_404(Connector, uid=result_data['connector'], evse=session.evse)
+#             session.save()
+#             logging.debug('*** Response from CPO/charger to OCPI Connector worker task:')
+#             logging.debug(result.text)
+#             logging.debug(f'Activated session {session}')
+#             status_text = (result_status or 'ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
+#         else:
+#             logging.warning(f'Unable to start charging at {session.location}, EVSE: {session.evse.evse_id} '
+#                             f'status code {result.status_code} - response text: {result.text}')
+#             status_text = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
+#     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, Http404, Exception) as e:
+#         status_text = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
+#         logging.error(f'{settings.HOSTNAME}: Cannot reach {update_url}, please check your request parameters.')
+#         logging.error(f'{settings.HOSTNAME}: {str(e)}')
+#
+#     # Send asynchronous OCPI response to eMSP
+#     result_data = dict(
+#         result=status_text[0],
+#         message=[
+#             dict(language='EN', text=status_text[1]),
+#             dict(language='FI', text=status_text[2])
+#         ]
+#     )
+#     try:
+#         response_url = data.get('response_url')
+#         requests.post(response_url, json=result_data, timeout=28)
+#     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+#         logging.error(f'{settings.HOSTNAME}: {str(e)}')
 
 
 @shared_task
@@ -243,33 +240,55 @@ def exchange_credentials(token, url):
 
 
 @shared_task(max_retries=2, retry_jitter=True, retry_backoff=120)
-def pull_objects(object_list, limit=20, **kwargs) -> None:
+def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
     try:
         if not object_list:
+            logging.info('Empty object list, nothing to pull')
             return
+        next_url = ''
         obj = object_list[0]
-        url = kwargs.pop('url', None) or f"{obj.get('url')}?limit={limit}"
-        response = send_ocpi_request(data=dict(), url=url, **kwargs)
-        if response and response.get('status_code') < status.HTTP_400_BAD_REQUEST:
-            next_url, _rel = response.get('headers').get('Link', ';').strip('<>').split(';')
-            model = obj.get('model')
-            viewset = import_string(obj.get('viewset'))
-            for i in response.get('json', {}).get('data', []):
-                try:
-                    viewset.put(request=None, data=i)
-                except Exception as e:
-                    logging.error(f"{settings.HOSTNAME}: Unable to update {model} using data pulled from url {url} "
-                                  f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
+        url = kwargs.pop('url', obj.get('url', ''))
+        if url:
+            if "limit=" not in url:
+                url = f"{url}?limit={limit}"
+            response = send_ocpi_request(data=dict(), url=url, **kwargs)
+            if response and response.get('status_code') < status.HTTP_400_BAD_REQUEST:
+                next_url, _rel = response.get('headers').get('Link', ';').strip('<>').split(';')
+                model = obj.get('model')
+                viewset = import_string(obj.get('viewset'))
+                for i in response.get('json', {}).get('data', []):
+                    try:
+                        # TODO: Check that party matches with Credentials, don't allow third party data
+                        response = viewset.put(request=None, data=i)
+                        if response.status_code >= status.HTTP_400_BAD_REQUEST:
+                            raise Exception(response.data.get('status_message', '<no status message provided>'))
+                    except Exception as e:
+                        logging.error(f"{settings.HOSTNAME}: Unable to update {model} using data pulled from url {url} "
+                                      f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
+                if next_url:
+                    kwargs['url'] = next_url
+        else:
+            logging.info(f'No URL found for party {obj.get("party")} object {obj}, not pulling')
 
-            if next_url:
-                kwargs['url'] = next_url
+        if not next_url:
+            object_list.pop(0)
+            if len(object_list):
+                pass
+                # logging.info(f'Pulling the next object type {object_list[0].get("model")}')
             else:
-                object_list.pop(0)
+                logging.info('All objects pulled')
+                return
 
-            if settings.BACKGROUND_SEND:
-                pull_objects.apply_async((object_list,), kwargs=kwargs, countdown=random.randint(2, 10))
-            else:
-                pull_objects(object_list, limit, **kwargs)
+        countdown = random.randint(delay, delay * 1.5)
+
+        if settings.BACKGROUND_SEND:
+            # logging.info(f'Scheduling the next pull for {kwargs.get("url")} in {countdown} seconds')
+            # logging.info(f'My default_queue: {app.conf.task_default_queue}')
+
+            # pull_objects.subtask((object_list, limit), kwargs=kwargs, countdown=countdown)
+            pull_objects.apply_async((object_list, limit, delay), kwargs=kwargs, countdown=countdown)
+        else:
+            pull_objects(object_list, limit, delay, **kwargs)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
         logging.error(f"{settings.HOSTNAME}: Unable to pull objects: {e}")
 
@@ -280,7 +299,6 @@ def check_still_alive(credentials_id: int = None) -> None:
     if credentials_id:
         credentials = None
         try:
-            # noinspection PyUnresolvedReferences
             credentials = Credentials.objects.get(pk=credentials_id)
             requests.get(credentials.url, timeout=10)
             credentials.last_connection = timezone.now()
@@ -292,7 +310,6 @@ def check_still_alive(credentials_id: int = None) -> None:
             credentials.connection_status = 'OFFLINE'
         credentials.save(update_fields=['last_connection', 'connection_status'])
         return
-    # noinspection PyUnresolvedReferences
     stale_credentials = Credentials.objects.filter(
         last_connection__lte=timezone.now() - timedelta(seconds=STILL_ALIVE_FREQUENCY),
         valid=True

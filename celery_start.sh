@@ -16,6 +16,7 @@ echo "Reading ENV from file $FILENAME"
 export $(cat $FILENAME | xargs) || (echo 'Unable to read ENV file $FILENAME' && exit 1)
 
 echo "Celery queue $QUEUE"
+export CELERY_QUEUE=$QUEUE
 
 # Emptify the queue, in case there are some delayed tasks we don't need anymore in development
 celery --app ocpi22.tasks purge -f
