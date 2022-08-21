@@ -1,13 +1,13 @@
 from django.conf import settings
 from rest_framework import fields, serializers
 from rest_framework.exceptions import ValidationError
-from rest_framework.settings import api_settings
 
 from ocpi22.messages import default_error_messages
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.serializers import SessionSerializer
+from ocpi22.serializers import CallbacksSerializer
 
 
 class TokenIdSerializer(fields.CharField):
@@ -109,3 +109,12 @@ class MspSessionSerializer(SessionSerializer):
 
     def get_display_status(self, session):
         return session.get_status_display()
+
+
+class MSPCallbacksSerializer(CallbacksSerializer):
+    """
+    The URLs for callback endpoints in the MSP backend system
+    """
+    AUTHORIZE_TOKEN_URL = 'authorize_token_url'
+
+    authorize_token_url = serializers.URLField()

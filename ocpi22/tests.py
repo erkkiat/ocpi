@@ -1513,7 +1513,7 @@ class TestSession(TestCase):
     maxDiff = None
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.cpo.util.redis_store.get',
+    @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
@@ -1621,7 +1621,7 @@ class TestCpoApi(TestCase):
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.models.session.OcpiModule.send_update_to_interested_parties')
-    @patch('ocpi22.cpo.util.redis_store.get',
+    @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())

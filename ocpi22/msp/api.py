@@ -26,11 +26,11 @@ from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector import slack_logging
 
-from pprint import PrettyPrinter
+# from pprint import PrettyPrinter
 
 from ocpiconnector.ocpi_identities import get_our_party
 
-pp = PrettyPrinter(indent=4).pprint
+# pp = PrettyPrinter(indent=4).pprint
 slack_logging.init()
 
 

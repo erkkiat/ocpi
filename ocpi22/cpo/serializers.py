@@ -9,13 +9,13 @@ from rest_framework.exceptions import ValidationError
 from timezonefinder import TimezoneFinder
 
 from ocpi22.choices import OcppStatusChoices
-from ocpi22.cpo.util import _find_our_evse, set_callbacks_parameter
+from ocpi22.cpo.util import _find_our_evse
 from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, clear_empty, uid_validator, CURRENCY_CHOICES, \
-    SerializerCleanedUp
+from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES
+from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -347,7 +347,7 @@ class StopTransactionSerializer(serializers.Serializer):
         return attrs
 
 
-class CallbacksSerializer(serializers.Serializer):
+class CPOCallbacksSerializer(CallbacksSerializer):
     """
     The URLs for callback endpoints in the CPO system
     """
@@ -360,11 +360,6 @@ class CallbacksSerializer(serializers.Serializer):
     # unlock_connector_url = serializers.URLField(required=False)
     # reserve_now_url = serializers.URLField(required=False)
     # cancel_reservation_url = serializers.URLField(required=False)
-
-    def save(self):
-        for key, value in self.validated_data.items():
-            set_callbacks_parameter(key, value)
-        # redis_store.save()  # This is not allowed in Heroku Redis
 
 
 class VatSerializer(serializers.IntegerField):

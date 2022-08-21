@@ -15,7 +15,8 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, \
-    apply_step_size, SerializerCleanedUp
+    apply_step_size
+from ocpi22.serializers import SerializerCleanedUp
 from ocpi22.ocpi.util import OcpiModule
 
 

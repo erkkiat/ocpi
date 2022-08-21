@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from ocpi22.ocpi.serializers import LocationIdDictSerializer
 from ocpi22.models.token import Token
-from ocpi22.util import SerializerCleanedUp
+from ocpi22.serializers import SerializerCleanedUp
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 

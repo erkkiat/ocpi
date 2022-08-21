@@ -5,8 +5,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import lru_cache
-from gettext import gettext as _
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 import redis
 from django.conf import settings
@@ -18,7 +17,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
-from ocpi22.ocpi.util import OCPIResponse
+from ocpi22.ocpi.util import OCPIResponse, format_url
 from ocpiconnector import slack_logging
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 
@@ -89,80 +88,6 @@ def generate_random_token() -> str:
     True
     """
     return secrets.token_hex(32)
-
-
-class SerializerCleanedUp(serializers.Serializer):
-    def to_representation(self, value):
-        # Remove empty values
-        repr_dict = super().to_representation(value)
-        result = clear_empty(repr_dict)
-        return result
-
-
-class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer):
-    def to_representation(self, value):
-        # Remove empty values
-        repr_dict = super().to_representation(value)
-        result = clear_empty(repr_dict)
-        return result
-
-    def get_detail_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_absolute_url') or not request:
-            return ''
-        return f'{request.build_absolute_uri(obj.get_absolute_url())}'
-
-    def get_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_cpo_url') or not request:
-            return ''
-        return f'{request.build_absolute_uri(obj.get_cpo_url())}'
-
-    def get_quick_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_quick_url') or not request:
-            return ''
-        return f'{request.build_absolute_uri(obj.get_quick_url())}'
-
-    def get_status_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_status_url') or not request:
-            return ''
-        return f'{request.build_absolute_uri(obj.get_status_url())}'
-
-    detail_url = serializers.SerializerMethodField(
-        read_only=True,
-        help_text='This non-OCPI field exists for educational purposes'
-    )
-    url = serializers.SerializerMethodField(read_only=True)
-    quick_url = serializers.SerializerMethodField(
-        read_only=True,
-        help_text='This non-OCPI field exists for educational purposes'
-    )
-    status_url = serializers.SerializerMethodField(
-        read_only=True,
-        help_text='This non-OCPI field exists for educational purposes'
-    )
 
 
 class UpperCaseSerializerField(serializers.CharField):
@@ -613,3 +538,32 @@ class StandardResultsSetPagination(PageNumberPagination):
     page_size = 50
     page_size_query_param = 'page_size'
     max_page_size = 500
+
+
+command_store = RedisStore('command-result', expiration=settings.REMOTE_COMMAND_EXPIRATION)
+
+
+def _format_redis_key(key: str, namespace: str) -> str:
+    return f'{namespace}-{key}'
+
+
+def set_callbacks_parameter(key: str, value: str) -> None:
+    redis_store.set(_format_redis_key(key, 'callback'), value)
+
+
+@lru_cache(maxsize=128)
+def get_callbacks_parameter(key: str) -> Union[str, int, list]:
+    return redis_store.get(_format_redis_key(key, 'callback'))
+
+
+def build_callback_request(key: str, data: dict) -> tuple[str, dict]:
+    url = get_callbacks_parameter(key)
+    parsed = ParseUrl(url)
+    user = parsed.username
+    password = parsed.password
+    if user and password:
+        kwargs = dict(auth=(user, password))
+    else:
+        kwargs = dict()
+    url = format_url(parsed.url, **data)
+    return url, kwargs

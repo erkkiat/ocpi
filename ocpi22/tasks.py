@@ -279,7 +279,7 @@ def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
                 logging.info('All objects pulled')
                 return
 
-        countdown = random.randint(delay, delay * 1.5)
+        countdown = random.randint(delay, int(1.5 * delay))
 
         if settings.BACKGROUND_SEND:
             # logging.info(f'Scheduling the next pull for {kwargs.get("url")} in {countdown} seconds')

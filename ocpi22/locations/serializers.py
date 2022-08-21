@@ -6,7 +6,8 @@ from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.tariff import Tariff
-from ocpi22.util import HyperlinkedModelSerializerCleanedUp, uid_validator
+from ocpi22.util import uid_validator
+from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):

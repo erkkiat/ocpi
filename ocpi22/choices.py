@@ -219,18 +219,18 @@ class UserMessages:
 
 def get_language(language: str, source: list) -> str:
     """
-    >>> get_language('en', [dict(language='en', text='The token is accepted')])
+    >>> get_language('en', [dict(language='EN', text='The token is accepted')])
     'The token is accepted'
-    >>> get_language('xy', [dict(language='en', text='The token is accepted')])
-    ''
+    >>> get_language('xy', [dict(language='EN', text='The token is accepted')])
+    'The token is accepted'
     >>> get_language('xy', None)
     ''
     """
-    language = language.upper()
+    language = language.upper() or 'en'
     if not source or not language:
         return ''
     result = [l.get('text') for l in source if l.get('language').upper() == language]
     if len(result):
         return result[0]
     else:
-        return ''
+        return get_language('en', source) if language.lower() != 'en' else ''

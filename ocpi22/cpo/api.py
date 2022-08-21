@@ -21,8 +21,9 @@ from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts
 from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResultSerializer
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
-    StopTransactionSerializer, CallbacksSerializer, EvseSerializer, LocationQuickSerializer
-from ocpi22.cpo.util import get_callbacks_parameter, command_store
+    StopTransactionSerializer, EvseSerializer, LocationQuickSerializer
+from ocpi22.serializers import CallbacksSerializer
+from ocpi22.util import command_store, get_callbacks_parameter
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token

@@ -20,7 +20,8 @@ from ocpi22.msp.account import Transaction, Account
 from ocpi22.msp.models import PHONE_FIELD_LENGTH, VEHICLE_FIELD_LENGTH
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.ocpi.util import options_message
-from ocpi22.util import hours_minutes, HyperlinkedModelSerializerCleanedUp, StandardResultsSetPagination
+from ocpi22.util import hours_minutes, StandardResultsSetPagination
+from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp
 
 
 class Username(serializers.CharField):

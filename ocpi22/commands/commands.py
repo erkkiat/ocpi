@@ -21,8 +21,7 @@ from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, Mess
 from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer, \
     CommandResponse, CommandResultSerializer
 from ocpi22.cpo.api import CHARGER
-from ocpi22.cpo.util import get_callbacks_parameter, command_store
-from ocpi22.cpo.serializers import CallbacksSerializer
+from ocpi22.cpo.serializers import CPOCallbacksSerializer
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
@@ -35,7 +34,8 @@ import pprint
 
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, ParseUrl, build_absolute_uri
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, build_absolute_uri, command_store, \
+    build_callback_request
 from ocpi22.logging import log_error
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -67,17 +67,6 @@ class CommandsViewSet(GenericViewSet):
         if self.name:
             return f'{self.name.capitalize()}'
         return f'Commands'
-
-    @staticmethod
-    def _format_url(url, **kwargs) -> str:
-        """
-        >>> c = CommandsViewSet()
-        >>> c._format_url("https://fakehost/start/{evse_id}/", evse_id=1)
-        'https://fakehost/start/1/'
-        """
-        if isinstance(url, bytes):
-            url = url.decode("utf-8")
-        return url.format(**kwargs)
 
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
@@ -138,16 +127,11 @@ class CommandsViewSet(GenericViewSet):
                     # Use basic auth if required
                     kwargs = dict()
                     headers = {'content-type': 'application/json'}
-                    url = get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL)
-                    parsed = ParseUrl(url)
-                    user = parsed.username
-                    password = parsed.password
-                    if user and password:
-                        kwargs.update(dict(auth=(user, password)))
+                    url, kwargs_update = build_callback_request(
+                        CPOCallbacksSerializer.START_TRANSACTION_URL, data
+                    )
+                    kwargs.update(kwargs_update)
 
-                    url = self._format_url(parsed.url, user=user, evse_id=session.evse.uid)
-
-                    # ic(url, data, kwargs)
                     # Send start command to CPO
                     logging.info(f'Sending CPO command to url {url}')
                     cpo_response = requests.post(
@@ -227,17 +211,13 @@ class CommandsViewSet(GenericViewSet):
                     # Use basic auth if required
                     kwargs = dict()
                     headers = {'content-type': 'application/json'}
-                    url = get_callbacks_parameter(CallbacksSerializer.STOP_TRANSACTION_URL)
-                    parsed = ParseUrl(url)
-                    user = parsed.username
-                    password = parsed.password
-                    if user and password:
-                        kwargs.update(dict(auth=(user, password)))
 
-                    url = self._format_url(parsed.url, user=user, evse_id=session.evse.uid)
+                    url, kwargs_update = build_callback_request(
+                        CPOCallbacksSerializer.STOP_TRANSACTION_URL, data
+                    )
+                    kwargs.update(kwargs_update)
 
-                    # ic(url, data, kwargs)
-                    # Send start command to CPO
+                    # Send stop command to CPO
                     logging.info(f'Sending CPO command to url {url}')
                     cpo_response = requests.post(
                         url=url,

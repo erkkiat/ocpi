@@ -428,3 +428,13 @@ def generate_cdr_uid():
     Should be with the CPO identifier, since CDRs are owned by CPO
     """
     return generate_reference('C*', OcpiRolesEnum.CPO)
+
+
+def format_url(url, **kwargs) -> str:
+    """
+    >>> format_url("https://fakehost/start/{evse_id}/", evse_id=1)
+    'https://fakehost/start/1/'
+    """
+    if isinstance(url, bytes):
+        url = url.decode("utf-8")
+    return url.format(**kwargs)
