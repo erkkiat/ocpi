@@ -177,6 +177,7 @@ class MessageTexts:
         # dict(language='FI', text='Lataustunniste on hyväksytty'),
         TOKEN_NOT_VALID = _make_texts(_('Your token is no longer valid'))
         # dict(language='FI', text='Lataustunniste ei ole enää voimassa'),
+        PROTOCOL_ERROR = _make_texts(_('There is a protocol error with the CPO charge point management system'))
 
         _texts = dict(
             START_ACCEPTED=PREPARING_TO_CHARGE,
@@ -188,6 +189,7 @@ class MessageTexts:
             NO_BALANCE=NO_BALANCE,
             TOKEN_ACCEPTED=TOKEN_ACCEPTED,
             TOKEN_NOT_VALID=TOKEN_NOT_VALID,
+            PROTOCOL_ERROR=PROTOCOL_ERROR,
             ACCEPTED=PREPARING_TO_CHARGE,
             CANCELED_RESERVATION=_make_texts(_('The reservation has been cancelled')),
             EVSE_INOPERATIVE=_make_texts(_('The charger is inoperative')),
@@ -234,3 +236,11 @@ def get_language(language: str, source: list) -> str:
         return result[0]
     else:
         return get_language('en', source) if language.lower() != 'en' else ''
+
+
+class AuthorizationEnum(models.TextChoices):
+    ALLOWED = 'ALLOWED'
+    BLOCKED = 'BLOCKED'
+    EXPIRED = 'EXPIRED'
+    NO_CREDIT = 'NO_CREDIT'
+    NOT_ALLOWED = 'NOT_ALLOWED'

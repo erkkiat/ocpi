@@ -2,7 +2,9 @@ import json
 import logging
 from decimal import Decimal
 
+import redis
 import requests
+from django.conf import settings
 from django.utils.translation import get_language
 from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
@@ -18,19 +20,18 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
-    MspSessionSerializer
+    MspSessionSerializer, MSPCallbacksSerializer
 from ocpi22.msp.util import get_message_by_language
 from ocpi22.ocpi.api import TokenViewSet
+from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
+from ocpi22.util import get_callbacks_parameter
 from ocpiconnector import slack_logging
-
-# from pprint import PrettyPrinter
 
 from ocpiconnector.ocpi_identities import get_our_party
 
-# pp = PrettyPrinter(indent=4).pprint
 slack_logging.init()
 
 
@@ -86,6 +87,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     contract_id: str = serializer.validated_data.get('contract_id')
                     token = construct_adhoc_token(account.app_token_id, contract_id)
                     response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id)
+                    # ic(response)
                     return self._language_response(response)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -213,6 +215,11 @@ class MspTokenViewSet(TokenViewSet):
     **PATCH**: Update a Token.
     """
 
+    def get_serializer_class(self):
+        return dict(
+            callbacks=MSPCallbacksSerializer,
+        ).get(self.action_map.get('post'), TokenSerializer)
+
     def check_ownership(self, token) -> bool:
         # The MSP can always update, and we force the country_code and party_id to match
         return True
@@ -235,6 +242,53 @@ class MspTokenViewSet(TokenViewSet):
 
     def authorize(self, request, token_uid):
         pass
+
+    def _get_callbacks(self):
+        serializer = MSPCallbacksSerializer()
+        data = dict(
+            [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
+        )
+        serializer = MSPCallbacksSerializer(instance=data)
+        return serializer.data
+
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False)
+    def callbacks(self, request):
+        """
+        You need to tell the OCPI Connector where to send commands such as `authorize`.
+        Using this endpoint you can set and get your callback URLs and
+        user credentials needed for accessing the endpoints you specify.
+
+        > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
+        > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the callbacks were set successfully
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        """
+        try:
+            if request.method == 'GET':
+                result = self._get_callbacks()
+                return Response(result)
+            if request.method in ('POST', 'PATCH'):
+                partial = bool(request.method == 'PATCH')
+                serializer = MSPCallbacksSerializer(data=request.data, partial=partial)
+                if serializer.is_valid():
+                    serializer.save()
+                    get_callbacks_parameter.cache_clear()
+                    return Response(self._get_callbacks())
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except redis.exceptions.ConnectionError as e:
+            logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
+                          f'due to trouble connecting with Redis: {e}')
+            return Response(
+                dict(
+                    status_text='Unable to store settings due to connection problem with Redis. '
+                                'This is our fault, sorry. Support has been alerted.'
+                ),
+                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
 
 
 class MobilityServiceProviderAPIView(routers.APIRootView):
@@ -273,7 +327,10 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 ),
             ),
             tokens=request.build_absolute_uri(
-                reverse('msp-token-list')
+                reverse('msp-token-list'),
+            ),
+            callbacks=request.build_absolute_uri(
+                reverse('msp-token-callbacks'),
             ),
             user=dict(
                 register=request.build_absolute_uri(

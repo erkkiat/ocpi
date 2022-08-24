@@ -168,7 +168,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # When set to true, this is a Credit CDR, and the field credit_reference_id needs to be set as well.
     # Todo: Make a "create credit CDR" management command
     credit = models.BooleanField(default=False)
-    credit_reference = models.ForeignKey('Cdr', blank=True, null=True, on_delete=models.PROTECT)
+    credit_reference = models.ForeignKey('ocpi22.Cdr', blank=True, null=True, on_delete=models.PROTECT)
 
     # The party who will be billed for the transaction
     billed_to = models.CharField(max_length=6)
@@ -176,7 +176,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Has this CDR been billed as a part of an invoice? Null means it's not yet on any invoice
     invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='cdrs', blank=True, null=True)
 
-    credentials = models.ForeignKey('Credentials', on_delete=models.PROTECT, null=True, related_name='cdrs')
+    credentials = models.ForeignKey('ocpi22.Credentials', on_delete=models.PROTECT, null=True, related_name='cdrs')
 
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)

@@ -19,7 +19,7 @@ class AuthorizationInfo(models.Model, ModelUtilMixin):
     allowed = models.CharField(max_length=11, choices=ALLOWED_CHOICES)
 
     # The complete Token object for which this authorization was requested.
-    token = models.ForeignKey('Token', on_delete=models.PROTECT)
+    token = models.ForeignKey('ocpi22.Token', on_delete=models.PROTECT)
 
     # Optional reference to the location if it was included in the request, and if the EV driver is allowed
     # to charge at that location. Only the EVSEs the EV driver is allowed to charge at are returned.

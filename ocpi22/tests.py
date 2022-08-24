@@ -57,7 +57,8 @@ from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
-    accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, RfidTestData
+    accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, \
+    RfidTestData, accept_authorization_msp
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -94,7 +95,9 @@ def make_json_response(data, status_code=200) -> Response:
     response = Response()
     response.status_code = status_code
     response.encoding = 'UTF-8'
-    response._content = json.dumps(data).encode('UTF-8')
+    response.json = lambda: data
+    data_str = json.dumps(data).encode('UTF-8')
+    response._content = data_str
     return response
 
 
@@ -2414,7 +2417,12 @@ class TestMspUserApi(TestCase):
                          'Creating a duplicate user should result in HTTP 409')
 
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
-    def test_cdrs_and_transactions(self, _mocked_ocpi_post: Mock):
+    @patch('ocpi22.ocpi.api.requests.post', side_effect=[make_json_response(accept_authorization_msp)])
+    @patch('ocpi22.util.redis_store.get',
+           side_effect=lambda x: {
+               'callback-authorize_url': ''}.get(x))
+    def test_cdrs_and_transactions(self, _mocked_redis_store: Mock, _mocked_requests_post: Mock,
+                                   _mocked_ocpi_post: Mock):
         params = dict(email='rich@money.com', password='hello', confirm='hello')
         initial_balance = 70
         response = self._create_user(**params)

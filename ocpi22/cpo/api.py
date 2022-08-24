@@ -17,12 +17,11 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts
+from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts, AuthorizationEnum
 from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResultSerializer
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
-    StopTransactionSerializer, EvseSerializer, LocationQuickSerializer
-from ocpi22.serializers import CallbacksSerializer
+    StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, CPOCallbacksSerializer
 from ocpi22.util import command_store, get_callbacks_parameter
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -30,7 +29,6 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.ocpi.util import generate_session_uid, options_message
-from ocpi22.routing import find_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token, _authorize_token
@@ -195,7 +193,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             start_transaction=StartTransactionSerializer,
             meter_values=MeterValuesSerializer,
             stop_transaction=StopTransactionSerializer,
-            callbacks=CallbacksSerializer,
+            callbacks=CPOCallbacksSerializer,
             remote_command_result=CpoCommandResultSerializer,
         ).get(self.action_map.get('post'), StatusChangeSerializer)
 
@@ -305,7 +303,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             billed_to=token.party(),
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
-                        ), status=status.HTTP_200_OK if authorization.allowed == Token.ALLOWED
+                        ), status=status.HTTP_200_OK if authorization.allowed == AuthorizationEnum.ALLOWED.value
                         else status.HTTP_401_UNAUTHORIZED
                     )
                 else:
@@ -314,9 +312,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             # method == GET
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
-        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+        except (Evse.DoesNotExist, Token.DoesNotExist, ValueError, OSError) as e:
             return Response(
-                dict(status=str(e)),
+                dict(status_message=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=('GET', 'POST'), detail=False)
@@ -576,11 +574,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND)
 
     def _get_callbacks(self):
-        serializer = CallbacksSerializer()
+        serializer = CPOCallbacksSerializer()
         data = dict(
             [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
         )
-        serializer = CallbacksSerializer(instance=data)
+        serializer = CPOCallbacksSerializer(instance=data)
         return serializer.data
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False)
@@ -609,7 +607,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 return Response(result)
             if request.method in ('POST', 'PATCH'):
                 partial = bool(request.method == 'PATCH')
-                serializer = CallbacksSerializer(data=request.data, partial=partial)
+                serializer = CPOCallbacksSerializer(data=request.data, partial=partial)
                 if serializer.is_valid():
                     serializer.save()
                     get_callbacks_parameter.cache_clear()

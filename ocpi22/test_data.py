@@ -714,6 +714,8 @@ accept_authorization = dict(
     ),
 )
 
+accept_authorization_msp = dict(result='ALLOWED')
+
 
 class StopTransactionResponses:
     stop1 = {'charge_detail_record': {'auth_method': 'AUTH_REQUEST',

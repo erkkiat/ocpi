@@ -13,6 +13,7 @@ from rest_framework.generics import get_object_or_404
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.choices import AuthorizationEnum
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.tokens.util import get_token_id
@@ -50,7 +51,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
     if authorize_from_msp:
         from ocpi22.tokens.auth import authorize_token
         authorization: TokenAuthorization = authorize_token(token, location)
-        if not authorization or authorization.allowed != Token.ALLOWED:
+        if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
             msg = f'Token {token} is not authorized for use by MSP at this time: {authorization.info}'
             logging.error(msg)
             raise exceptions.PermissionDenied(msg)

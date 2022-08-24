@@ -5,6 +5,8 @@ from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from ocpi22 import logging
+from ocpi22.choices import AuthorizationEnum
 from ocpi22.messages import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
@@ -368,7 +370,15 @@ class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
 
 class LocationIdSerializer(serializers.Serializer):
     def to_internal_value(self, data):
-        return Location.get_if_exists(uid=data)
+        return Location.get_if_exists(uid=data) or data
+
+
+class StrictLocationIdSerializer(serializers.Serializer):
+    def to_internal_value(self, data):
+        result = Location.get_if_exists(uid=data)
+        if not result:
+            raise ValidationError(f"Location {data} cannot be found from MSP database")
+        return result
 
 
 class EvseUidSerializer(serializers.Serializer):
@@ -377,5 +387,9 @@ class EvseUidSerializer(serializers.Serializer):
 
 
 class AuthorizeSerializer(serializers.Serializer):
-    location_id = LocationIdSerializer(source='location')
+    location_id = StrictLocationIdSerializer(source='location', required=False)
     evse_uids = EvseUidSerializer(source='evses', many=True, required=False)
+
+
+class AuthorizationMspResponseSerializer(serializers.Serializer):
+    result = serializers.ChoiceField(choices=AuthorizationEnum.choices)

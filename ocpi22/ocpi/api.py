@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 
+import requests
 from django.core.handlers.wsgi import WSGIRequest
 from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
@@ -15,13 +16,14 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
-from ocpi22.choices import MessageTexts, UserMessages
+from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum
 from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
+from ocpi22.msp.serializers import MSPCallbacksSerializer
 from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
-    CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer
-from ocpi22.cpo.api import CHARGER
+    CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer, \
+    AuthorizationMspResponseSerializer
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location
@@ -30,7 +32,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.util import matching_operator, PREMIUM_RESPONSE, \
-    OnlyRawBrowsableAPIRenderer
+    OnlyRawBrowsableAPIRenderer, get_callbacks_parameter, build_callback_request
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
@@ -105,71 +107,124 @@ class TokenViewSet(mixins.ListModelMixin,
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
-        token: Token = Token.get_if_exists(uid=token_uid)
-        if not token:
-            return OCPIResponse(status_code=Ocpi.ClientError.UNKNOWN_TOKEN,
-                                status=status.HTTP_404_NOT_FOUND,
-                                status_message='Unknown Token')
-        allowed = Token.ALLOWED
+        allowed = AuthorizationEnum.ALLOWED.value
         ocpi_status = 1000
         http_status = 200
         info = None
         status_message = 'OK'
-
-        if request.data:
-            serializer = AuthorizeSerializer(data=request.data)
-            if serializer.is_valid():
-                ic(serializer.validated_data)
-                location: Location = serializer.validated_data.get('location')
-                location_name = f'{location.name} at {location.address}, {location.city}'
-                prices = location.get_prices_str()
-            else:
-                return OCPIResponse(serializer.errors)
-        else:
-            location_name = '-'
-            prices = 'not available'
-
         user_language = 'en'
-        if token.language:
-            user_language = token.language.lower()
 
-        if not token.valid:
-            allowed = Token.EXPIRED
-            info = MessageTexts.get('TOKEN_NOT_VALID')
-            ocpi_status = 2000
-            http_status = status.HTTP_401_UNAUTHORIZED
-            status_message = 'Your charging token is not valid at the moment'
-            message_user(status_message, '+358405480238')
+        try:
+            token: Token = Token.get_if_exists(uid=token_uid)
+            if not token:
+                # OCPI 2.2: If the token is not known, the response SHALL contain the status code:
+                # 2004: Unknown Token, and no data field.
+                return OCPIResponse(status_code=Ocpi.ClientError.UNKNOWN_TOKEN,
+                                    status=status.HTTP_404_NOT_FOUND,
+                                    status_message='Unknown Token')
+            if request.data:
+                serializer = AuthorizeSerializer(data=request.data)
+                # ic(token, request.data, serializer.initial_data)
+                if serializer.is_valid():
+                    ic(serializer.validated_data)
+                    location: Location = serializer.validated_data.get('location')
+                    location_name = f'{location.name} at {location.address}, {location.city}'
+                    prices = location.get_prices_str()
+                else:
+                    return OCPIResponse(serializer.errors)
+            else:
+                location_name = '-'
+                prices = 'not available'
 
-        # Todo: Callback for billing system to check user has enough balance
+            if token.language:
+                user_language = token.language.lower()
 
-        if token.total_balance_float() < 1.0:
-            log_error(request, f'Token {token} has no balance')
-            allowed = Token.NO_CREDIT
-            info = MessageTexts.get('NO_BALANCE')
-            ocpi_status = Ocpi.ClientError.GENERIC_CLIENT_ERROR
-            http_status = status.HTTP_401_UNAUTHORIZED
-            status_message = "You don't have enough balance on charging account, please deposit some more."
-            message_user(status_message, '+358405480238')
+            if not token.valid:
+                allowed = AuthorizationEnum.EXPIRED.value
+                info = MessageTexts.get('TOKEN_NOT_VALID')
+                ocpi_status = 2000
+                http_status = status.HTTP_401_UNAUTHORIZED
+                status_message = 'Your charging token is not valid at the moment'
+                message_user(status_message, '+358405480238')
 
-        if allowed == Token.ALLOWED:
-            message = UserMessages.approve_charging.get(user_language)
-            ic(message)
-            message_user(message, '+358405480238', location=location_name,
-                         price=prices, url="http://secureautocharge.com/132244/")
+            data = {'token_id': token_uid}
 
-        serializer = TokenSerializer(instance=token)
-        return OCPIResponse(
-            dict(
-                AuthorizationInfo=dict(
-                    allowed=allowed,
-                    token=serializer.data,
-                    authorization_reference=generate_auth_reference() if allowed == Token.ALLOWED else '',
-                    # Todo: Store in billing system
-                    info=info
-                )
-            ), status_code=ocpi_status, status=http_status, status_message=status_message
-        )
+            # Todo: Update tests for callbacks and
+
+            authorize_token_url, kwargs_update = build_callback_request(
+                MSPCallbacksSerializer.AUTHORIZE_TOKEN_URL, data
+            )
+
+            # authorize_token_url = f'https://chargerhub.free.beeceptor.com/authorize/{token_uid}/'
+
+            if authorize_token_url:
+                ic(authorize_token_url)
+                kwargs = {}
+                headers = {'content-type': 'application/json'}
+                kwargs.update(kwargs_update)
+
+                logging.info(f'Calling MSP authorize webhook at url {authorize_token_url}')
+                msp_response = requests.post(
+                    url=authorize_token_url,
+                    json=data,
+                    headers=headers,
+                    verify=False,
+                    timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
+                    **kwargs)
+                data = msp_response.json()
+                ic(data)
+                serializer = AuthorizationMspResponseSerializer(data=data)
+                if serializer.is_valid():
+                    allowed = data.get('result', 'NOT_ALLOWED').upper()
+                else:
+                    allowed = 'NOT_ALLOWED'
+                http_status = dict(
+                    ALLOWED=status.HTTP_200_OK
+                ).get(allowed, status.HTTP_401_UNAUTHORIZED)
+                ocpi_status = dict(
+                    ALLOWED=1000,
+                ).get(allowed, Ocpi.ServerError.GENERIC_SERVER_ERROR)
+            else:
+                if token.total_balance_float() < 1.0:
+                    log_error(request, f'Token {token} has no balance')
+                    allowed = AuthorizationEnum.NO_CREDIT.value
+                    info = MessageTexts.get('NO_BALANCE')
+                    ocpi_status = Ocpi.ClientError.GENERIC_CLIENT_ERROR
+                    http_status = status.HTTP_401_UNAUTHORIZED
+                    status_message = get_language(user_language, info)
+                    # message_user(status_message, '+358405480238')
+
+            # if allowed == AuthorizationEnum.ALLOWED.value:
+            #     message = UserMessages.approve_charging.get(user_language)
+            #     ic(message)
+            #     message_user(message, '+358405480238', location=location_name,
+            #                  price=prices, url="http://secureautocharge.com/132244/")
+
+            serializer = TokenSerializer(instance=token)
+            return OCPIResponse(
+                dict(
+                    AuthorizationInfo=dict(
+                        allowed=allowed,
+                        token=serializer.data,
+                        authorization_reference=generate_auth_reference() if allowed == AuthorizationEnum.ALLOWED.value else '',
+                        # Todo: Store in billing system
+                        info=info
+                    )
+                ), status_code=ocpi_status, status=http_status, status_message=status_message
+            )
+        except ValueError as e:
+            return OCPIResponse(
+                dict(
+                    AuthorizationInfo=dict(
+                        allowed=Token.NOT_ALLOWED,
+                        token=serializer.data,
+                        info=MessageTexts.get('PROTOCOL_ERROR')
+                    )
+                ),
+                status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                status=status.HTTP_424_FAILED_DEPENDENCY,
+                status_message=f'{get_language(user_language, info)}: {str(e)}'
+            )
 
     def get(self, request, country_code=None, party_id=None, uid=None):
         if country_code and party_id and uid:

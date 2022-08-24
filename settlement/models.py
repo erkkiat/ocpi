@@ -4,13 +4,12 @@ from django.db import models
 from django.db.models import Sum
 from django.utils.functional import cached_property
 
-from ocpi22.models.credentials import CredentialsRole
 from settlement.calculate import InvoiceData
 
 
 class Invoice(models.Model):
     # Who is to be billed
-    msp = models.ForeignKey(CredentialsRole, on_delete=models.PROTECT, related_name='invoices', null=True)
+    msp = models.ForeignKey("ocpi22.CredentialsRole", on_delete=models.PROTECT, related_name='invoices', null=True)
 
     class BillingChoices(models.TextChoices):
         NOT_BILLED = 'NO', 'Not billed yet'

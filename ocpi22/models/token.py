@@ -22,12 +22,6 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
 
     SENDER = None
 
-    ALLOWED = 'ALLOWED'
-    BLOCKED = 'BLOCKED'
-    EXPIRED = 'EXPIRED'
-    NO_CREDIT = 'NO_CREDIT'
-    NOT_ALLOWED = 'NOT_ALLOWED'
-
     upper_case_fields = ('country_code', 'party_id', 'uid', 'contract_id', 'language')
 
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
@@ -49,10 +43,10 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     RFID = 'RFID'
 
     TYPE_CHOICES = (
-        ('AD_HOC_USER', 'Ad hoc'),
-        ('APP_USER', 'App'),
-        ('OTHER', 'Other'),
-        ('RFID', 'RFID'),
+        (AD_HOC_USER, 'Ad hoc'),
+        (APP_USER, 'App'),
+        (OTHER, 'Other'),
+        (RFID, 'RFID'),
     )
     type = models.CharField(max_length=11, choices=TYPE_CHOICES)
 

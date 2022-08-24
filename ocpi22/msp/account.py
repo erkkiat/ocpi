@@ -46,7 +46,7 @@ class Transaction(models.Model):
         ordering = ['datetime']
 
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transactions')
-    cdr = models.ForeignKey("Cdr", blank=True, null=True, on_delete=models.DO_NOTHING)
+    cdr = models.ForeignKey("ocpi22.Cdr", blank=True, null=True, on_delete=models.DO_NOTHING)
 
     # Todo: add field for VAT?
 

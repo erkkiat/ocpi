@@ -117,7 +117,7 @@ class CommandsViewSet(GenericViewSet):
                         token_type=session.cdr_token_type,
                         authorization_reference=session.authorization_reference,
                         auth_method=session.auth_method,
-                        credentials=request.credentials,
+                        credentials=request.credentials.party(),
                         evse_id=session.evse.uid,
                         connector_id=session.connector.uid if session.connector else None,
                         billed_to=session.billed_to,

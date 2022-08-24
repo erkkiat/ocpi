@@ -89,7 +89,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         from ocpi22.pull import schedule_full_update
         schedule_full_update(self, countdown=10)
 
-    def party(self):
+    def party(self) -> str:
         # noinspection PyUnresolvedReferences
         return ", ".join([
             f'{r.country_code}*{r.party_id} ({r.role})'

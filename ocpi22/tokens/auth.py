@@ -9,7 +9,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, AuthorizationEnum
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import ocpi_post
@@ -81,7 +81,7 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
 
     # Not AD HOC, so Token should be found from database
     authorization = _authorize_token(token, location)
-    if not authorization or authorization.allowed != Token.ALLOWED:
+    if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
         _authorize_token.cache_clear()
         logging.info('Authorization declined, authorization cache cleared')
     return authorization
@@ -127,7 +127,7 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
     data = result.json()
     authorization = data.get('data', {}).get('AuthorizationInfo', {})
     allowed = authorization.get('allowed')
-    if result.status_code > 400 or allowed != Token.ALLOWED:
+    if result.status_code > 400 or allowed != AuthorizationEnum.ALLOWED.value:
         logging.warning(f'No authorization for token {token} at {location or "<not known>"} '
                         f'from {token.party()} (HTTP {result.status_code}), '
                         f'response: {allowed}. ')
