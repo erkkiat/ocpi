@@ -391,5 +391,5 @@ class AuthorizeSerializer(serializers.Serializer):
     evse_uids = EvseUidSerializer(source='evses', many=True, required=False)
 
 
-class AuthorizationMspResponseSerializer(serializers.Serializer):
+class MspAuthorizationResponseSerializer(serializers.Serializer):
     result = serializers.ChoiceField(choices=AuthorizationEnum.choices)

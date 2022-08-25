@@ -19,11 +19,11 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum
 from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
-from ocpi22.msp.serializers import MSPCallbacksSerializer
+from ocpi22.msp.serializers import MSPCallbacksSerializer, MSPAuthorizeCallbackSerializer
 from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
     CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer, \
-    AuthorizationMspResponseSerializer
+    MspAuthorizationResponseSerializer
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location
@@ -32,7 +32,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.util import matching_operator, PREMIUM_RESPONSE, \
-    OnlyRawBrowsableAPIRenderer, get_callbacks_parameter, build_callback_request
+    OnlyRawBrowsableAPIRenderer, build_callback_request
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
@@ -148,8 +148,10 @@ class TokenViewSet(mixins.ListModelMixin,
                 message_user(status_message, '+358405480238')
 
             data = {'token_id': token_uid}
+            serializer = MSPAuthorizeCallbackSerializer(data=data)
+            assert serializer.is_valid()
 
-            # Todo: Update tests for callbacks and
+            # Todo: Update tests for internal accounting and create tests for MSP authorize callback
 
             authorize_token_url, kwargs_update = build_callback_request(
                 MSPCallbacksSerializer.AUTHORIZE_TOKEN_URL, data
@@ -158,7 +160,7 @@ class TokenViewSet(mixins.ListModelMixin,
             # authorize_token_url = f'https://chargerhub.free.beeceptor.com/authorize/{token_uid}/'
 
             if authorize_token_url:
-                ic(authorize_token_url)
+                # ic(authorize_token_url)
                 kwargs = {}
                 headers = {'content-type': 'application/json'}
                 kwargs.update(kwargs_update)
@@ -166,14 +168,14 @@ class TokenViewSet(mixins.ListModelMixin,
                 logging.info(f'Calling MSP authorize webhook at url {authorize_token_url}')
                 msp_response = requests.post(
                     url=authorize_token_url,
-                    json=data,
+                    json=serializer.data,
                     headers=headers,
                     verify=False,
-                    timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
+                    # timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
                     **kwargs)
                 data = msp_response.json()
                 ic(data)
-                serializer = AuthorizationMspResponseSerializer(data=data)
+                serializer = MspAuthorizationResponseSerializer(data=data)
                 if serializer.is_valid():
                     allowed = data.get('result', 'NOT_ALLOWED').upper()
                 else:

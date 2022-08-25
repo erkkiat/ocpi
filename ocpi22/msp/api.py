@@ -2,9 +2,7 @@ import json
 import logging
 from decimal import Decimal
 
-import redis
 import requests
-from django.conf import settings
 from django.utils.translation import get_language
 from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
@@ -16,18 +14,18 @@ from rest_framework.reverse import reverse
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.commands import send_start_command, send_stop_command
 from ocpi22.commands.serializers import CommandResultSerializer
+from ocpi22.generic_views import WebhookViewSet
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
-    MspSessionSerializer, MSPCallbacksSerializer
+    MspSessionSerializer, MSPCallbacksSerializer, MSPAuthorizeCallbackSerializer
 from ocpi22.msp.util import get_message_by_language
 from ocpi22.ocpi.api import TokenViewSet
-from ocpi22.ocpi.serializers import TokenSerializer
+from ocpi22.ocpi.serializers import MspAuthorizationResponseSerializer
 from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
-from ocpi22.util import get_callbacks_parameter
 from ocpiconnector import slack_logging
 
 from ocpiconnector.ocpi_identities import get_our_party
@@ -215,11 +213,6 @@ class MspTokenViewSet(TokenViewSet):
     **PATCH**: Update a Token.
     """
 
-    def get_serializer_class(self):
-        return dict(
-            callbacks=MSPCallbacksSerializer,
-        ).get(self.action_map.get('post'), TokenSerializer)
-
     def check_ownership(self, token) -> bool:
         # The MSP can always update, and we force the country_code and party_id to match
         return True
@@ -243,52 +236,40 @@ class MspTokenViewSet(TokenViewSet):
     def authorize(self, request, token_uid):
         pass
 
-    def _get_callbacks(self):
-        serializer = MSPCallbacksSerializer()
-        data = dict(
-            [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
+
+class MspAuthorizeWebhookViewSet(WebhookViewSet):
+    """
+    You need to tell the OCPI Connector where to check for authorization of a specific RFID.
+    Using this endpoint you can set and get your callback URL and
+    user credentials needed for accessing the endpoint.
+
+    Example URL: `https://your.emsp.backend.server/authorize/{token_id}/`. The token_id will be substituted with
+    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+
+    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
+    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+    ## Status codes
+
+    * `HTTP_200_OK` when the webhook was set successfully
+    * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    """
+    serializer_class = MSPCallbacksSerializer
+    serializer = serializer_class()
+    queryset = Token.objects.none()
+
+    authorize_callback_serializer = MSPAuthorizeCallbackSerializer()
+
+    def get_extra_metadata(self, _request) -> dict:
+        return dict(authorize_webhook_details=dict(
+            data_sent=self.metadata.get_serializer_info(self.authorize_callback_serializer),
+            expected_result=self.metadata.get_serializer_info(MspAuthorizationResponseSerializer())
         )
-        serializer = MSPCallbacksSerializer(instance=data)
-        return serializer.data
+        )
 
-    @action(methods=('GET', 'POST', 'PATCH'), detail=False)
-    def callbacks(self, request):
-        """
-        You need to tell the OCPI Connector where to send commands such as `authorize`.
-        Using this endpoint you can set and get your callback URLs and
-        user credentials needed for accessing the endpoints you specify.
-
-        > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
-        > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
-
-        ## Status codes
-
-        * `HTTP_200_OK` when the callbacks were set successfully
-        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
-        """
-        try:
-            if request.method == 'GET':
-                result = self._get_callbacks()
-                return Response(result)
-            if request.method in ('POST', 'PATCH'):
-                partial = bool(request.method == 'PATCH')
-                serializer = MSPCallbacksSerializer(data=request.data, partial=partial)
-                if serializer.is_valid():
-                    serializer.save()
-                    get_callbacks_parameter.cache_clear()
-                    return Response(self._get_callbacks())
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except redis.exceptions.ConnectionError as e:
-            logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
-                          f'due to trouble connecting with Redis: {e}')
-            return Response(
-                dict(
-                    status_text='Unable to store settings due to connection problem with Redis. '
-                                'This is our fault, sorry. Support has been alerted.'
-                ),
-                status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-        return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='authorize')
+    def authorize_webhook(self, request):
+        return self.webhook(request)
 
 
 class MobilityServiceProviderAPIView(routers.APIRootView):
@@ -326,11 +307,13 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                     reverse('roaming-stop-charging')
                 ),
             ),
-            tokens=request.build_absolute_uri(
-                reverse('msp-token-list'),
-            ),
-            callbacks=request.build_absolute_uri(
-                reverse('msp-token-callbacks'),
+            authorization=dict(
+                tokens=request.build_absolute_uri(
+                    reverse('msp-token-list'),
+                ),
+                authorize_webhook=request.build_absolute_uri(
+                    reverse('msp-authorize-webhook'),
+                ),
             ),
             user=dict(
                 register=request.build_absolute_uri(

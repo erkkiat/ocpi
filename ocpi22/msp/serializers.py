@@ -2,6 +2,7 @@ from django.conf import settings
 from rest_framework import fields, serializers
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.choices import AuthorizationEnum
 from ocpi22.messages import default_error_messages
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
@@ -118,3 +119,7 @@ class MSPCallbacksSerializer(CallbacksSerializer):
     AUTHORIZE_TOKEN_URL = 'authorize_token_url'
 
     authorize_token_url = serializers.URLField()
+
+
+class MSPAuthorizeCallbackSerializer(serializers.Serializer):
+    token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
