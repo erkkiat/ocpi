@@ -380,6 +380,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         logging.info(f'New session {session.uid} active at {evse.evse_id}')
 
                     if not session:
+                        credentials = request.credentials if hasattr(request, 'credentials') else None
                         # Todo: Session.currency needs to match with Tariff currency
                         session = create_session(
                             # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
@@ -387,7 +388,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             uid=generate_session_uid(), internal_reference=internal_reference,
                             evse_uid=evse, location_id=evse.location, connector_id=connector_id,
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
-                            session_status=Session.ACTIVE, credentials=request.credentials,
+                            session_status=Session.ACTIVE, credentials=credentials,
                         )
                         logging.info(f'Created session {session.uid} based on start_transaction from CPO')
 
