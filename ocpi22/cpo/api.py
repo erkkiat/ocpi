@@ -21,8 +21,10 @@ from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts, Authorizat
 from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResultSerializer
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
-    StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, CPOCallbacksSerializer
-from ocpi22.util import command_store, get_callbacks_parameter
+    StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
+    CpoWebhookResponseSerializer, CpoOutboundWebhookSerializer, CPOStartWebhookSerializer, CPOStopWebhookSerializer
+from ocpi22.generic_views import WebhookViewSet
+from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
@@ -193,7 +195,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             start_transaction=StartTransactionSerializer,
             meter_values=MeterValuesSerializer,
             stop_transaction=StopTransactionSerializer,
-            callbacks=CPOCallbacksSerializer,
+            # callbacks=CPOCallbacksSerializer,
             remote_command_result=CpoCommandResultSerializer,
         ).get(self.action_map.get('post'), StatusChangeSerializer)
 
@@ -574,57 +576,57 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
 
-    def _get_callbacks(self):
-        serializer = CPOCallbacksSerializer()
-        data = dict(
-            [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
-        )
-        serializer = CPOCallbacksSerializer(instance=data)
-        return serializer.data
+    # def _get_callbacks(self):
+    #     serializer = CPOCallbacksSerializer()
+    #     data = dict(
+    #         [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
+    #     )
+    #     serializer = CPOCallbacksSerializer(instance=data)
+    #     return serializer.data
 
-    @action(methods=('GET', 'POST', 'PATCH'), detail=False)
-    def callbacks(self, request):
-        """
-        You need to tell the OCPI Connector where to send commands such as `start transaction` and
-        `stop transaction`. Using this endpoint you can set and get your callback URLs and
-        user credentials needed for accessing the endpoints you specify.
-
-        > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
-        > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
-
-        ## Status codes
-
-        * `HTTP_200_OK` when the callbacks were set successfully
-        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
-
-        """
-        try:
-            if request.method == 'GET':
-                result = self._get_callbacks()
-                # Example
-                # serializer = CallbacksSerializer()
-                # return_values = MyMetadata().get_serializer_info(serializer)
-                # result.update(return_values)
-                return Response(result)
-            if request.method in ('POST', 'PATCH'):
-                partial = bool(request.method == 'PATCH')
-                serializer = CPOCallbacksSerializer(data=request.data, partial=partial)
-                if serializer.is_valid():
-                    serializer.save()
-                    get_callbacks_parameter.cache_clear()
-                    return Response(self._get_callbacks())
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except redis.exceptions.ConnectionError as e:
-            logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
-                          f'due to trouble connecting with Redis: {e}')
-            return Response(
-                dict(
-                    status_text='Unable to store settings due to connection problem with Redis. '
-                                'This is our fault, sorry. Support has been alerted.'
-                ),
-                status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-        return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
+    # @action(methods=('GET', 'POST', 'PATCH'), detail=False)
+    # def callbacks(self, request):
+    #     """
+    #     You need to tell the OCPI Connector where to send commands such as `start transaction` and
+    #     `stop transaction`. Using this endpoint you can set and get your callback URLs and
+    #     user credentials needed for accessing the endpoints you specify.
+    #
+    #     > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
+    #     > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    #
+    #     ## Status codes
+    #
+    #     * `HTTP_200_OK` when the callbacks were set successfully
+    #     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    #
+    #     """
+    #     try:
+    #         if request.method == 'GET':
+    #             result = self._get_callbacks()
+    #             # Example
+    #             # serializer = CallbacksSerializer()
+    #             # return_values = MyMetadata().get_serializer_info(serializer)
+    #             # result.update(return_values)
+    #             return Response(result)
+    #         if request.method in ('POST', 'PATCH'):
+    #             partial = bool(request.method == 'PATCH')
+    #             serializer = CPOCallbacksSerializer(data=request.data, partial=partial)
+    #             if serializer.is_valid():
+    #                 serializer.save()
+    #                 get_callbacks_parameter.cache_clear()
+    #                 return Response(self._get_callbacks())
+    #             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #     except redis.exceptions.ConnectionError as e:
+    #         logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
+    #                       f'due to trouble connecting with Redis: {e}')
+    #         return Response(
+    #             dict(
+    #                 status_text='Unable to store settings due to connection problem with Redis. '
+    #                             'This is our fault, sorry. Support has been alerted.'
+    #             ),
+    #             status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    #
+    #     return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=('GET', 'POST'), detail=False,
             url_path='remote_command_result(?:/(?P<authorization_reference>[^/.]+))?')
@@ -738,6 +740,64 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         return None
 
 
+class CpoStartWebhookViewSet(WebhookViewSet):
+    """
+    You need to tell the OCPI Connector where to send remote start commands.
+    Using this endpoint you can set and get your callback URL and
+    user credentials needed for accessing the endpoint.
+
+    Example URL: `https://your.emsp.backend.server/start_charging/{token_id}/`. The token_id will be substituted with
+    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+
+    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
+    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+    ## Status codes
+
+    * `HTTP_200_OK` when the webhook was set successfully
+    * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    """
+    serializer_class = CPOStartWebhookSerializer
+    serializer = serializer_class()
+    queryset = Location.objects.none()
+
+    outbound_data_serializer = CpoOutboundWebhookSerializer()
+    response_data_serializer = CpoWebhookResponseSerializer()
+
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='start_transaction')
+    def start_transaction_webhook(self, request):
+        return self.webhook(request)
+
+
+class CpoStopWebhookViewSet(WebhookViewSet):
+    """
+    You need to tell the OCPI Connector where to send remote stop commands.
+    Using this endpoint you can set and get your callback URL and
+    user credentials needed for accessing the endpoint.
+
+    Example URL: `https://your.emsp.backend.server/stop_charging/{token_id}/`. The token_id will be substituted with
+    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+
+    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
+    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+    ## Status codes
+
+    * `HTTP_200_OK` when the webhook was set successfully
+    * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    """
+    serializer_class = CPOStopWebhookSerializer
+    serializer = serializer_class()
+    queryset = Location.objects.none()
+
+    outbound_data_serializer = CpoOutboundWebhookSerializer()
+    response_data_serializer = CpoWebhookResponseSerializer()
+
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='stop_transaction')
+    def stop_transaction_webhook(self, request):
+        return self.webhook(request)
+
+
 class ChargePointOperatorAPIView(routers.APIRootView):
     """
     This API is not a part of the OCPI protocol. It is intended as fast shortcut to OCPI roaming.
@@ -790,11 +850,16 @@ class ChargePointOperatorAPIView(routers.APIRootView):
                 ),
             ),
             remote_commands=dict(
-                callbacks=request.build_absolute_uri(
-                    reverse('chargepoint-callbacks')
-                ),
-                remote_command_result=request.build_absolute_uri(
-                    reverse('chargepoint-remote-command-result')
+                webhooks=dict(
+                    start_transaction=request.build_absolute_uri(
+                        reverse('cpo-start-transaction-webhook')
+                    ),
+                    stop_transaction=request.build_absolute_uri(
+                        reverse('cpo-stop-transaction-webhook')
+                    ),
+                    remote_command_result=request.build_absolute_uri(
+                        reverse('chargepoint-remote-command-result')
+                    ),
                 ),
             ),
             reports=dict(

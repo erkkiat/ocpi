@@ -131,7 +131,7 @@ def hostname_variants(hostname):
 
 
 ALLOWED_HOSTS = [
-                    'localhost', '127.0.0.1',
+                    'localhost', '127.0.0.1', 'testserver.test',
                 ] + hostname_variants(HOSTNAME)
 
 # Local time zone for this installation. Choices can be found here:

@@ -65,7 +65,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         * `HTTP_402_PAYMENT_REQUIRED` when the user account doesn't have enough balance for charging
         * `HTTP_404_NOT_FOUND` when the Token, Location or EVSE doesn't exist
         * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
-        * `HTTP_424_FAILED_DEPENDENCY` when there is no network connection to the charge point
+        * `HTTP_503_SERVICE_UNAVAILABLE` when there is no network connection to the charge point
         """
 
         # Todo: Fail if no Tariffs for any Connector in this EVSE

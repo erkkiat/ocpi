@@ -113,11 +113,7 @@ class MspSessionSerializer(SessionSerializer):
 
 
 class MSPCallbacksSerializer(CallbacksSerializer):
-    """
-    The URLs for callback endpoints in the MSP backend system
-    """
-    AUTHORIZE_TOKEN_URL = 'authorize_token_url'
-
+    URL = 'authorize_token_url'
     authorize_token_url = serializers.URLField()
 
 

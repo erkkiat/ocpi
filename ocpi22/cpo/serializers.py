@@ -9,6 +9,7 @@ from rest_framework.exceptions import ValidationError
 from timezonefinder import TimezoneFinder
 
 from ocpi22.choices import OcppStatusChoices
+from ocpi22.commands.serializers import CommandResultBaseSerializer
 from ocpi22.cpo.util import _find_our_evse
 from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
@@ -347,19 +348,61 @@ class StopTransactionSerializer(serializers.Serializer):
         return attrs
 
 
-class CPOCallbacksSerializer(CallbacksSerializer):
-    """
-    The URLs for callback endpoints in the CPO system
-    """
-    START_TRANSACTION_URL = 'start_transaction_url'
-    STOP_TRANSACTION_URL = 'stop_transaction_url'
+# class CPOCallbacksSerializer(CallbacksSerializer):
+#     """
+#     The URLs for callback endpoints in the CPO system
+#     """
+#     START_TRANSACTION_URL = 'start_transaction_url'
+#     STOP_TRANSACTION_URL = 'stop_transaction_url'
+#
+#     start_transaction_url = serializers.URLField()
+#     stop_transaction_url = serializers.URLField()
+#
+#     # unlock_connector_url = serializers.URLField(required=False)
+#     # reserve_now_url = serializers.URLField(required=False)
+#     # cancel_reservation_url = serializers.URLField(required=False)
 
+# class CPOCallbacksSerializer(CallbacksSerializer):
+#     """
+#     The URLs for callback endpoints in the CPO system
+#     """
+#     START_TRANSACTION_URL = 'start_transaction_url'
+#     STOP_TRANSACTION_URL = 'stop_transaction_url'
+#
+#     start_transaction_url = serializers.URLField()
+#     stop_transaction_url = serializers.URLField()
+#
+#     # unlock_connector_url = serializers.URLField(required=False)
+#     # reserve_now_url = serializers.URLField(required=False)
+#     # cancel_reservation_url = serializers.URLField(required=False)
+
+
+class CPOStartWebhookSerializer(CallbacksSerializer):
+    URL = 'start_transaction_url'
     start_transaction_url = serializers.URLField()
+
+
+class CPOStopWebhookSerializer(CallbacksSerializer):
+    URL = 'stop_transaction_url'
     stop_transaction_url = serializers.URLField()
 
-    # unlock_connector_url = serializers.URLField(required=False)
-    # reserve_now_url = serializers.URLField(required=False)
-    # cancel_reservation_url = serializers.URLField(required=False)
+
+class CpoOutboundWebhookSerializer(serializers.Serializer):
+    response_url = serializers.URLField()
+    token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    token_type = serializers.ChoiceField(choices=Token.TYPE_CHOICES)
+    authorization_reference = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
+                                                    allow_null=True)
+    auth_method = serializers.ChoiceField(choices=Session.AUTH_METHOD_CHOICES)
+    from_party = serializers.CharField()
+    evse_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
+    billed_to = serializers.CharField(max_length=6)
+
+
+class CpoWebhookResponseSerializer(serializers.Serializer):
+    timeout = serializers.IntegerField(required=False, allow_null=True)
+    result = serializers.ChoiceField(choices=CommandResultBaseSerializer.RESULT_OPTIONS)
 
 
 class VatSerializer(serializers.IntegerField):

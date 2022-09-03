@@ -496,8 +496,8 @@ class RedisStore():
         redis_store.set(namespace_key, value, self.expiration)
 
     def __getitem__(self, item):
-        # ic()
-        # ic(item)
+        ic()
+        ic(item)
         namespace_key = self._format_key(item)
         value = redis_store.get(namespace_key)
         if not value:
@@ -529,7 +529,7 @@ class MyMetadata(SimpleMetadata):
 def build_absolute_uri(path) -> str:
     """
     >>> str(build_absolute_uri('my/path'))
-    'http://testserver/my/path'
+    'http://testserver.test/my/path'
     """
     return str(Url(host=settings.HOSTNAME, path=path, scheme=settings.SCHEME))
 

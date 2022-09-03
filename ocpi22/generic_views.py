@@ -11,6 +11,14 @@ from ocpi22.util import MyMetadata, get_callbacks_parameter
 class WebhookViewSet(viewsets.GenericViewSet):
     metadata = MyMetadata()
 
+    def get_extra_metadata(self, _request) -> dict:
+        return dict(
+            webhook_details=dict(
+                data_sent=self.metadata.get_serializer_info(self.outbound_data_serializer),
+                expected_response=self.metadata.get_serializer_info(self.response_data_serializer)
+            )
+        )
+
     def _get_callbacks(self):
         data = dict(
             [(key, get_callbacks_parameter(key)) for key in self.serializer.fields.keys()]

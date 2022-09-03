@@ -153,14 +153,9 @@ class TokenViewSet(mixins.ListModelMixin,
 
             # Todo: Update tests for internal accounting and create tests for MSP authorize callback
 
-            authorize_token_url, kwargs_update = build_callback_request(
-                MSPCallbacksSerializer.AUTHORIZE_TOKEN_URL, data
-            )
-
-            # authorize_token_url = f'https://chargerhub.free.beeceptor.com/authorize/{token_uid}/'
+            authorize_token_url, kwargs_update = build_callback_request(MSPCallbacksSerializer.URL, data)
 
             if authorize_token_url:
-                # ic(authorize_token_url)
                 kwargs = {}
                 headers = {'content-type': 'application/json'}
                 kwargs.update(kwargs_update)
@@ -171,7 +166,7 @@ class TokenViewSet(mixins.ListModelMixin,
                     json=serializer.data,
                     headers=headers,
                     verify=False,
-                    # timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
+                    timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
                     **kwargs)
                 data = msp_response.json()
                 ic(data)
@@ -224,7 +219,7 @@ class TokenViewSet(mixins.ListModelMixin,
                     )
                 ),
                 status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                status=status.HTTP_424_FAILED_DEPENDENCY,
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 status_message=f'{get_language(user_language, info)}: {str(e)}'
             )
 

@@ -70,7 +70,18 @@ from settlement.calculate import create_invoice
 faketime = datetime(2000, 1, 1, 12, 0)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
-api_factory = APIRequestFactory()
+
+
+class MyAPIRequestFactory(APIRequestFactory):
+    # Use the hostname from our own settings ("testserver" is not a proper hostname in urllib)
+
+    def _base_environ(self, **request):
+        result = super()._base_environ(**request)
+        result['SERVER_NAME'] = settings.HOSTNAME
+        return result
+
+
+api_factory = MyAPIRequestFactory()
 
 
 def load_tests(_loader, tests, _ignore):
@@ -822,7 +833,9 @@ class CommandTests(TestCase):
            return_value=mock_uuid4())
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {
-               'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/'}.get(x))
+               'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/',
+               'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
+           }.get(x))
     @patch('ocpi22.commands.commands.requests.post')
     def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-start-session')
@@ -914,17 +927,17 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
-        kwargs['json'].pop('credentials')  # I can't find a way to compare the diffs with an object included
         self.assertDictEqual(
             kwargs,
             {'auth': ('john', 'his-password'),
              'headers': {'content-type': 'application/json'},
              'json': {'auth_method': 'COMMAND',
                       'authorization_reference': 'e86baa82cee14ac5bfd00b85371aa798',
+                      'from_party': 'FI*CP1 (CPO), FI*MSP (EMSP), FI*NAP (NAP), FI*HUB (HUB)',
                       'billed_to': 'FI*EON',
                       'connector_id': None,
                       'evse_id': 'HELSINKI-3',
-                      'response_url': 'http://testserver/api/cpo/v2/chargepoint/remote_command_result.e86baa82cee14ac5bfd00b85371aa798',
+                      'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result.e86baa82cee14ac5bfd00b85371aa798',
                       'token_id': 'FI*001*T*ADMIN*TOKEN',
                       'token_type': 'OTHER'},
              'timeout': 20,
@@ -940,7 +953,6 @@ class CommandTests(TestCase):
         self.assertEqual(response.data.get('data').get('result'), 'ACCEPTED',
                          msg='Expecting the result "ACCEPTED"')
 
-        # noinspection PyUnresolvedReferences
         session = Session.objects.get(status='PENDING')
         self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match expectation")
 
@@ -955,8 +967,12 @@ class CommandTests(TestCase):
         # Stop session, successful case
         #
 
-        data = dict(session_id=session.uid, response_url='http://localhost/response/')
-        response = stop_session(data)
+        requests_post_mock.return_value = make_json_response(dict(result=CommandResponse.ACCEPTED))
+        requests_post_mock.reset_mock()
+        uuid4_mock.return_value = mock_uuid4(99)
+
+        data = dict(session_id=session.uid, response_url='http://localhost.local/response/')
+        response = stop_session(data, AnonymousUser)
         self.assertEqual(response.status_code, status.HTTP_200_OK, 'Stop session was expected to succeed')
         self.assertDictEqual(
             response.data,
@@ -1249,7 +1265,7 @@ class TestCredentials(TestCase):
                                     'party_id': 'MSP',
                                     'role': 'EMSP'}],
                          'token': fake_token,
-                         'url': 'http://testserver/ocpi/versions/'}
+                         'url': 'http://testserver.test/ocpi/versions/'}
 
         json_data = kwargs['json']
         # ic(json_data)
@@ -1288,8 +1304,6 @@ class TestObjectPull(TestCase):
 
     def mocked_object_get(url, *_args, **kwargs):
         try:
-            # ic(url, _args, kwargs)
-            # noinspection PyUnresolvedReferences
             credentials = Credentials.objects.get(pk=2)
             headers = kwargs['headers']
             # Let's swap the other token and receive this request as if it comes from outside
@@ -1302,7 +1316,7 @@ class TestObjectPull(TestCase):
             assert content == expected_get_responses[url], f"Expecting a different result for {url}."
             assert response_headers == expected_get_headers[url], f"Expecting different headers for {url}."
             return result
-        except AssertionError as e:
+        except (AssertionError, KeyError) as e:
             ic(url, response_headers, expected_get_headers[url])
             ic(content, expected_get_responses[url])
             raise
@@ -1313,7 +1327,6 @@ class TestObjectPull(TestCase):
         settings.SEND_UPDATES = True
         settings.BACKGROUND_SEND = False
 
-        # noinspection PyUnresolvedReferences
         credentials = Credentials.objects.get(pk=2)
         schedule_full_update(credentials, countdown=0, limit=3)
 
@@ -1885,12 +1898,12 @@ class TestCpoApi(TestCase):
         self.assertEqual(kwargs.get('url'), 'http://fakehost/start/HELSINKI-3/',
                          'CPO start transaction URL differs from expected')
         authorization_reference = 'FI*001-AUTH-REFERENCE'
-        url = f'http://testserver/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
-        kwargs['json'].pop('credentials')
+        url = f'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
         self.assertDictEqual(
             kwargs.get('json'),
             {'auth_method': 'COMMAND',
              'authorization_reference': authorization_reference,
+             'from_party': 'FI*MSP (EMSP)',
              'billed_to': 'FI*EON',
              'connector_id': None,
              'evse_id': 'HELSINKI-3',
@@ -2271,7 +2284,7 @@ class TestMspApi(TestCase):
                                    'connector_id': '1',
                                    'evse_uid': 'HELSINKI-3',
                                    'location_id': 'HELSINKI-1',
-                                   'response_url': 'http://testserver/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/FI*MSP*A*MOCK-1',
+                                   'response_url': 'http://testserver.test/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/FI*MSP*A*MOCK-1',
                                    'token': OrderedDict([('country_code', 'FI'),
                                                          ('party_id', 'MSP'),
                                                          ('uid', 'FI*MSP*T*APP*MOCK-1'),
@@ -2320,9 +2333,11 @@ def start_session(data, user):
     return CommandsViewSet.start_session(request)
 
 
-def stop_session(data):
+def stop_session(data, user):
     request = api_factory.post(reverse('commands-stop-session'))
     request.data = data
+    request.user = user
+    request.credentials = Credentials.objects.first()
     return CommandsViewSet().stop_session(request)
 
 
