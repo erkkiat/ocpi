@@ -6,7 +6,7 @@ import uuid
 from collections import OrderedDict, Counter
 from dataclasses import asdict, dataclass, field
 
-from datetime import timedelta, datetime, date
+from datetime import timedelta, datetime
 from decimal import Decimal
 from unittest.mock import Mock, patch
 

@@ -14,10 +14,11 @@ from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 # Todo: Full object pull for Sessions and Cdrs
 
 def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
-    logging.info(f'Scheduling full update: {credentials}')
     # Don't waste effort on offline parties, let still_alive continue trying
     if not credentials.is_complete() or not credentials.connection_state():
+        logging.warning(f'Not doing a full update for an offline party: {credentials}')
         return
+    logging.info(f'Scheduling full update: {credentials}')
     endpoints = credentials.endpoints
     if not endpoints.count():
         return
@@ -40,9 +41,10 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
             url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
                                          identifier=Location.ocpi_module_name.value).first(), 'url', '')
         ),
+        # TODO: Pull also CDRs
     ]
     token = credentials.theirs_base64()
-    # noinspection PyUnresolvedReferences
+    # noinspection PyUnrexsolvedReferences
     role: CredentialsRole = credentials.roles.first()
     kwargs = dict(token_base64=token,
                   to_country_code=role.country_code, to_party_id=role.party_id,
