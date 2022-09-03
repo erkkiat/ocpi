@@ -1,5 +1,4 @@
 import logging
-from json import JSONDecodeError
 from typing import Union, Optional
 from urllib.parse import urljoin
 
@@ -208,8 +207,8 @@ class CommandsViewSet(GenericViewSet):
 
                     # Prepare the stop command for CPO management system
                     initial_data = dict(
-                        response_url=request.build_absolute_uri(reverse('chargepoint-remote-command-result',
-                                                                        args=(session.authorization_reference,))),
+                        response_url=build_absolute_uri(reverse('chargepoint-remote-command-result',
+                                                                args=(session.authorization_reference,))),
                         token_id=session.cdr_token_uid,
                         token_type=session.cdr_token_type,
                         authorization_reference=session.authorization_reference,
@@ -390,7 +389,7 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
         token_data = TokenSerializer(token).data
         authorization_reference = generate_auth_reference()
         data = dict(
-            response_url=request.build_absolute_uri(
+            response_url=build_absolute_uri(
                 reverse('commands-command-result', args=("start", authorization_reference,))
             ),
             token=token_data,

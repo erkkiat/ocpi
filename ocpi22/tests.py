@@ -70,18 +70,7 @@ from settlement.calculate import create_invoice
 faketime = datetime(2000, 1, 1, 12, 0)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
-
-
-class MyAPIRequestFactory(APIRequestFactory):
-    # Use the hostname from our own settings ("testserver" is not a proper hostname in urllib)
-
-    def _base_environ(self, **request):
-        result = super()._base_environ(**request)
-        result['SERVER_NAME'] = settings.HOSTNAME
-        return result
-
-
-api_factory = MyAPIRequestFactory()
+api_factory = APIRequestFactory()
 
 
 def load_tests(_loader, tests, _ignore):
