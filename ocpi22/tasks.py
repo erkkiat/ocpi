@@ -18,6 +18,7 @@ from django.utils.module_loading import import_string
 from rest_framework import status
 from sentry_sdk import capture_exception
 
+from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
 from ocpiconnector import slack_logging
@@ -298,27 +299,33 @@ def check_still_alive(credentials_id: int = None) -> None:
     from ocpi22.models.credentials import Credentials
     if credentials_id:
         credentials = None
+        time_since_last_connection = None
         try:
             credentials = Credentials.objects.get(pk=credentials_id)
+            time_since_last_connection = (timezone.now() - credentials.last_connection).seconds
             requests.get(credentials.url, timeout=10)
             credentials.last_connection = timezone.now()
-            credentials.connection_status = 'CONNECTED'
+            credentials.connection_status = choices.CONNECTED
             logging.info(f"{credentials} is alive")
+        except requests.exceptions.ConnectionError:
+            logging.error(f"{settings.HOSTNAME}: {credentials} is *NOT* alive ({credentials.url}), "
+                          f"last connection was {int(time_since_last_connection / 60)} minutes ago")
+            credentials.connection_status = choices.OFFLINE
         except Exception as e:
             logging.error(f"{settings.HOSTNAME}: STILL ALIVE CHECK: Unable to connect to "
-                          f"{credentials} ({credentials.url}): {e}")
-            credentials.connection_status = 'OFFLINE'
+                          f"{credentials} ({credentials.url}): {type(e)} - {e}")
+            credentials.connection_status = choices.OFFLINE
         credentials.save(update_fields=['last_connection', 'connection_status'])
         return
     stale_credentials = Credentials.objects.filter(
-        last_connection__lte=timezone.now() - timedelta(seconds=STILL_ALIVE_FREQUENCY),
+        last_connection__lte=timezone.now() - timedelta(seconds=STILL_ALIVE_FREQUENCY - 3),
         valid=True
     )
-    logging.info(f"Checking {stale_credentials.count()} parties for alive")
+    # logging.info(f"Checking {stale_credentials.count()} parties for alive")
     c: Credentials
     for c in stale_credentials:
         if c.is_complete():
-            since_last_time = (timezone.now() - c.last_connection).seconds
-            logging.info(f"{timezone.now()} - {c.last_connection}")
-            logging.info(f"Checking that {c} is alive and well, last time was {int(since_last_time / 60)} min ago")
+            # since_last_time = (timezone.now() - c.last_connection).seconds
+            # logging.info(f"Checking that {c} is alive and well, last successful "
+            #              f"connection was {int(since_last_time / 60)} min ago")
             check_still_alive.apply_async((c.pk,), countdown=random.randint(0, stale_credentials.count()))
