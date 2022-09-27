@@ -523,7 +523,8 @@ class SessionViewSet(mixins.ListModelMixin,
     @transaction.atomic
     def put(request, country_code=None, party_id=None, uid=None, partial=False) -> OCPIResponse:
         data = request.data.get('data', request.data)
-        # ic(data)
+        ic()
+        ic(data)
         uid = uid or data.get('uid')
         country_code = country_code or data.get('country_code')
         party_id = party_id or data.get('party_id')
@@ -539,10 +540,12 @@ class SessionViewSet(mixins.ListModelMixin,
             data=request.data, instance=session, partial=partial, context={'request': request}
         )
         if serializer.is_valid():
+            ic()
             serializer.save()
             Session.send_hub_updates(serializer.data)
             return OCPIResponse(serializer.data,
                                 http_status=status.HTTP_200_OK if session else status.HTTP_201_CREATED)
+        logging.error(f'Problem with PUT Session from {request.credentials}: {serializer.errors}')
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, country_code=None, party_id=None, uid=None):

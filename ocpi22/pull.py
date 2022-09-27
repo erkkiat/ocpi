@@ -11,7 +11,7 @@ from ocpi22.tasks import pull_objects
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
-# Todo: Full object pull for Sessions and Cdrs
+# Todo: Full object pull for Cdrs
 
 def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
     # Don't waste effort on offline parties, let still_alive continue trying
@@ -41,7 +41,6 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
             url=getattr(endpoints.filter(role=EndpointRoleEnum.SENDER.value,
                                          identifier=Location.ocpi_module_name.value).first(), 'url', '')
         ),
-        # TODO: Pull also CDRs
     ]
     token = credentials.theirs_base64()
     # noinspection PyUnrexsolvedReferences
