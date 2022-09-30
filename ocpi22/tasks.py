@@ -101,7 +101,7 @@ def set_spot_prices() -> bool:
 
 # For Heroku Redis and Redis Enterprise Cloud
 REDIS_URL = settings.REDIS_URL
-assert settings.DEBUG or REDIS_URL, 'REDIS_URL needs to be set at least in the production'
+assert settings.DEBUG or REDIS_URL, 'REDIS_URL or REDISCLOUD_URL needs to be set at least in the production'
 if 'rediss' in REDIS_URL and 'ssl_cert_reqs' not in REDIS_URL:
     REDIS_URL += '?ssl_cert_reqs=CERT_NONE'
 

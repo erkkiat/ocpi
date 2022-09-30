@@ -87,6 +87,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
         """
         evse = get_object_or_404(Evse, uid=evse_id)
         # Todo: Handle overlapping EVSE UIDs (how to refer to Evse.location.country_code...)
+        # (Not needed if MSP and CPO are separate instances, since the CPO only has their own charge points)
 
         if request.method == 'GET':
             serializer = EvseSerializer(evse, context={'request': request})
@@ -184,7 +185,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     status and other data from the charge point.
     """
 
-    # noinspection PyUnresolvedReferences
     queryset = Location.objects.all()  # Todo: Just in case, show only our Locations (unless we are a HUB)
     lookup_field = 'uid'
 
@@ -225,7 +225,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     ocpp_status = serializer.initial_data.get('status')
                     ocpi_status = serializer.validated_data.get('status')
 
-                    # Todo: Filter just our evses
+                    # Todo: Filter just our evses (is this needed if CPO instance has only their own charge points?)
                     evse: Evse = serializer.validated_data.get('evse')
 
                     evse.status = ocpi_status
@@ -386,7 +386,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         # Todo: Session.currency needs to match with Tariff currency
                         session = create_session(
                             # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
-                            #   Other CPO can have same ID
+                            #   Other CPO can have same ID (CPO instance should be separate from MSP)
                             uid=generate_session_uid(), internal_reference=internal_reference,
                             evse_uid=evse, location_id=evse.location, connector_id=connector_id,
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
