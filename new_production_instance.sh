@@ -38,15 +38,12 @@ echo "Creating app $HEROKU_APP..."
 heroku create --region eu $HEROKU_APP \
  && heroku addons:create rediscloud \
  && heroku addons:create jawsdb-maria \
- && heroku addons:create papertrail \
- && heroku addons:create sentry \
- && heroku addons:create moesif:free \
  && heroku config:set CRONITOR_API_KEY=$CRONITOR_API_KEY HOSTNAME=$HOST.ocpiconnector.com \
  SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` \
  BGDA_URL=$BGDA_URL IBEX_CREDENTIALS=$IBEX_CREDENTIALS $4 $5 $6 $ROLE1 $ROLE2 \
  SLACK_WEBHOOK=$SLACK_WEBHOOK DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE SCHEME=http \
  && echo "Let's give the Redis installer a moment to settle down..." \
- && sleep 5 \
+ && sleep 15 \
  && heroku pipelines:add ocpi-connector --stage=production \
  && heroku pipelines:promote --app=cpo-ocpi --to=$HEROKU_APP \
  && heroku run ./manage.py loaddata ocpi22/data/initial.json \
@@ -59,6 +56,10 @@ heroku create --region eu $HEROKU_APP \
  && heroku run  DJANGO_SUPERUSER_USERNAME="$USERNAME" \
                 DJANGO_SUPERUSER_PASSWORD="$PASSWORD" \
                 ./manage.py createsuperuser --username $USERNAME --email $EMAIL --noinput
+
+heroku addons:create papertrail || echo "*** Cannot activate papertrail"
+heroku addons:create sentry || echo "*** Cannot activate sentry"
+heroku addons:create moesif:free || echo "*** Cannot activate moesif API analytics"
 
 # Too many connections for the free database
 # && heroku ps:scale worker=1
