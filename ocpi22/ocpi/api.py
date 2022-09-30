@@ -169,7 +169,6 @@ class TokenViewSet(mixins.ListModelMixin,
                     timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
                     **kwargs)
                 data = msp_response.json()
-                ic(data)
                 serializer = MspAuthorizationResponseSerializer(data=data)
                 if serializer.is_valid():
                     allowed = data.get('result', 'NOT_ALLOWED').upper()
@@ -523,8 +522,6 @@ class SessionViewSet(mixins.ListModelMixin,
     @transaction.atomic
     def put(request, country_code=None, party_id=None, uid=None, partial=False) -> OCPIResponse:
         data = request.data.get('data', request.data)
-        ic()
-        ic(data)
         uid = uid or data.get('uid')
         country_code = country_code or data.get('country_code')
         party_id = party_id or data.get('party_id')
@@ -540,7 +537,6 @@ class SessionViewSet(mixins.ListModelMixin,
             data=request.data, instance=session, partial=partial, context={'request': request}
         )
         if serializer.is_valid():
-            ic()
             serializer.save()
             Session.send_hub_updates(serializer.data)
             return OCPIResponse(serializer.data,

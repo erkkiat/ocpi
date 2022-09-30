@@ -30,15 +30,11 @@ from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference, options_message
 
-import pprint
-
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
 from ocpi22.util import OnlyRawBrowsableAPIRenderer, build_absolute_uri, command_store, \
     build_callback_request
 from ocpi22.logging import log_error
-
-pp = pprint.PrettyPrinter(indent=4).pprint
 
 
 class CommandsViewSet(GenericViewSet):
@@ -287,10 +283,10 @@ class CommandsViewSet(GenericViewSet):
             serializer = UnlockConnectorSerializer(data=request.data)
             if serializer.is_valid():
                 result = 'ACCEPTED'
-                if not CHARGER.unlock_connector(**serializer.data):
-                    return OCPIResponse(status_message=f'Unable to unlock connector at this time',
-                                        http_status=status.HTTP_404_NOT_FOUND,
-                                        status_code=Ocpi.ClientError.UNKNOWN_LOCATION)
+                # if not CHARGER.unlock_connector(**serializer.data):
+                #     return OCPIResponse(status_message=f'Unable to unlock connector at this time',
+                #                         http_status=status.HTTP_404_NOT_FOUND,
+                #                         status_code=Ocpi.ClientError.UNKNOWN_LOCATION)
 
                 response_serializer = CommandResponse(
                     instance=dict(

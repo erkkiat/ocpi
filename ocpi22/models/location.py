@@ -90,8 +90,6 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         return dict(latitude=self.latitude, longitude=self.longitude)
 
     def set_coordinates(self, value):
-        ic()
-        ic(value)
         raise NotImplementedError()
 
     coordinates = property(get_coordinates, set_coordinates)

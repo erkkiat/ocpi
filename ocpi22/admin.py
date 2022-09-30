@@ -257,7 +257,6 @@ class EvseAdmin(NestedModelAdmin):
 
     @admin.action(description='Stop all active charging sessions')
     def stop_charging(self, request, queryset):
-        ic()
         evse: Evse
         for evse in queryset:
             ic(evse)
