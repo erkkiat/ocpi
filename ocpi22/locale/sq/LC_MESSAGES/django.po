@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 12:43+0000\n"
+"POT-Creation-Date: 2022-09-30 14:25+0000\n"
 "PO-Revision-Date: 2022-06-18 15:17:30.241644\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -87,73 +87,79 @@ msgstr "Shenja pranohet"
 msgid "Your token is no longer valid"
 msgstr "Shenja juaj nuk është më e vlefshme"
 
-#: choices.py:192
+#: choices.py:180
+#, fuzzy
+#| msgid "Unable to connect to charge point management system"
+msgid "There is a protocol error with the CPO charge point management system"
+msgstr "Nuk mund të lidhet me sistemin e menaxhimit të pikës së karikimit"
+
+#: choices.py:194
 msgid "The reservation has been cancelled"
 msgstr "Rezervimi është anuluar"
 
-#: choices.py:193 choices.py:197
+#: choices.py:195 choices.py:199
 msgid "The charger is inoperative"
 msgstr "Karikuesi nuk funksionon"
 
-#: choices.py:194
+#: choices.py:196
 msgid "Failed to start the charging"
 msgstr "Fillimi i karikimit dështoi"
 
-#: choices.py:195
+#: choices.py:197
 msgid "The operation is not supported by the charger"
 msgstr "Operacioni nuk mbështetet nga karikuesi"
 
-#: choices.py:196
+#: choices.py:198
 msgid "The command was rejected by the charger"
 msgstr "Komanda u refuzua nga karikuesi"
 
-#: choices.py:198
+#: choices.py:200
 msgid "There has been a problem with the reservation"
 msgstr "Ka pasur një problem me rezervimin"
 
-#: models/session.py:171
+#: models/session.py:172
 msgid "Active"
 msgstr "Aktiv"
 
-#: models/session.py:175
+#: models/session.py:176
 msgid "Completed"
 msgstr "E përfunduar"
 
-#: models/session.py:178
+#: models/session.py:179
 msgid "Invalid"
 msgstr "E pavlefshme"
 
-#: models/session.py:182
+#: models/session.py:183
 msgid "Pending"
 msgstr "Në pritje"
 
-#: models/session.py:186
+#: models/session.py:187
 msgid "Reservation"
 msgstr "Rezervimi"
 
-#: msp/user.py:63
+#: msp/user.py:64
 msgid "The current password doesn't match"
 msgstr "Fjalëkalimi aktual nuk përputhet"
 
-#: msp/user.py:65 msp/user.py:143
+#: msp/user.py:66 msp/user.py:144
 msgid "Password and confirm differ from each other"
 msgstr "Fjalëkalimi dhe konfirmimi ndryshojnë nga njëri-tjetri"
 
-#: msp/user.py:75
+#: msp/user.py:76
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Modeli i makinës %(car_id)s nuk është në bazën tonë të të dhënave"
 
-#: msp/user.py:252
+#: msp/user.py:253
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Përdoruesi {email} ekziston tashmë"
 
-#: msp/user.py:291
+#: msp/user.py:292
 msgid "Password has been changed successfully"
 msgstr "Fjalëkalimi është ndryshuar me sukses"
 
-#: msp/user.py:346
+#: msp/user.py:347
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Modeli i makinës {car_id} nuk është në bazën tonë të të dhënave"

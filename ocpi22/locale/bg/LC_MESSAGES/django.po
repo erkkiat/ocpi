@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 12:43+0000\n"
+"POT-Creation-Date: 2022-09-30 14:25+0000\n"
 "PO-Revision-Date: 2022-06-18 14:15:13.239757\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -88,73 +88,80 @@ msgstr "Токенът е приет"
 msgid "Your token is no longer valid"
 msgstr "Вашият токен вече не е валиден"
 
-#: choices.py:192
+#: choices.py:180
+#, fuzzy
+#| msgid "Unable to connect to charge point management system"
+msgid "There is a protocol error with the CPO charge point management system"
+msgstr ""
+"Не може да се свърже със системата за управление на точките на зареждане"
+
+#: choices.py:194
 msgid "The reservation has been cancelled"
 msgstr "Резервацията е анулирана"
 
-#: choices.py:193 choices.py:197
+#: choices.py:195 choices.py:199
 msgid "The charger is inoperative"
 msgstr "Зарядното устройство не работи"
 
-#: choices.py:194
+#: choices.py:196
 msgid "Failed to start the charging"
 msgstr "Неуспешно стартиране на зареждането"
 
-#: choices.py:195
+#: choices.py:197
 msgid "The operation is not supported by the charger"
 msgstr "Операцията не се поддържа от зарядното устройство"
 
-#: choices.py:196
+#: choices.py:198
 msgid "The command was rejected by the charger"
 msgstr "Командата беше отхвърлена от зарядното устройство"
 
-#: choices.py:198
+#: choices.py:200
 msgid "There has been a problem with the reservation"
 msgstr "Възникна проблем с резервацията"
 
-#: models/session.py:171
+#: models/session.py:172
 msgid "Active"
 msgstr "Активен"
 
-#: models/session.py:175
+#: models/session.py:176
 msgid "Completed"
 msgstr "Завършено"
 
-#: models/session.py:178
+#: models/session.py:179
 msgid "Invalid"
 msgstr "Невалидно"
 
-#: models/session.py:182
+#: models/session.py:183
 msgid "Pending"
 msgstr "Предстои"
 
-#: models/session.py:186
+#: models/session.py:187
 msgid "Reservation"
 msgstr "Резервация"
 
-#: msp/user.py:63
+#: msp/user.py:64
 msgid "The current password doesn't match"
 msgstr "Текущата парола не съвпада"
 
-#: msp/user.py:65 msp/user.py:143
+#: msp/user.py:66 msp/user.py:144
 msgid "Password and confirm differ from each other"
 msgstr "Парола и потвърждение се различават един от друг"
 
-#: msp/user.py:75
+#: msp/user.py:76
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Моделът на автомобил %(car_id)s не е намерен от базата данни"
 
-#: msp/user.py:252
+#: msp/user.py:253
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Потребителят {email} вече съществува"
 
-#: msp/user.py:291
+#: msp/user.py:292
 msgid "Password has been changed successfully"
 msgstr "Паролата е променена успешно"
 
-#: msp/user.py:346
+#: msp/user.py:347
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Моделът на автомобил {car_id} не е намерен от базата данни"

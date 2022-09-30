@@ -183,6 +183,7 @@ LANGUAGES = [
     ('lv', _('Latvian')),
 
     ('af', _('Afrikans')),
+    ('mi', _('Maori')),
 ]
 
 SITE_ID = 1

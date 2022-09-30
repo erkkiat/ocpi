@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 12:43+0000\n"
+"POT-Creation-Date: 2022-09-30 14:25+0000\n"
 "PO-Revision-Date: 2022-06-18 14:14:56.644889\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -87,73 +87,79 @@ msgstr "Il token è accettato"
 msgid "Your token is no longer valid"
 msgstr "Il tuo token non è più valido"
 
-#: choices.py:192
+#: choices.py:180
+#, fuzzy
+#| msgid "Unable to connect to charge point management system"
+msgid "There is a protocol error with the CPO charge point management system"
+msgstr "Impossibile connettersi al sistema di gestione dei punti di ricarica"
+
+#: choices.py:194
 msgid "The reservation has been cancelled"
 msgstr "La prenotazione è stata cancellata"
 
-#: choices.py:193 choices.py:197
+#: choices.py:195 choices.py:199
 msgid "The charger is inoperative"
 msgstr "Il caricatore non è operativo"
 
-#: choices.py:194
+#: choices.py:196
 msgid "Failed to start the charging"
 msgstr "Impossibile avviare la ricarica"
 
-#: choices.py:195
+#: choices.py:197
 msgid "The operation is not supported by the charger"
 msgstr "L'operazione non è supportata dal caricatore"
 
-#: choices.py:196
+#: choices.py:198
 msgid "The command was rejected by the charger"
 msgstr "Il comando è stato rifiutato dal caricatore"
 
-#: choices.py:198
+#: choices.py:200
 msgid "There has been a problem with the reservation"
 msgstr "Si è verificato un problema con la prenotazione"
 
-#: models/session.py:171
+#: models/session.py:172
 msgid "Active"
 msgstr "Attivo"
 
-#: models/session.py:175
+#: models/session.py:176
 msgid "Completed"
 msgstr "Completato"
 
-#: models/session.py:178
+#: models/session.py:179
 msgid "Invalid"
 msgstr "Non valido"
 
-#: models/session.py:182
+#: models/session.py:183
 msgid "Pending"
 msgstr "In attesa di"
 
-#: models/session.py:186
+#: models/session.py:187
 msgid "Reservation"
 msgstr "Prenotazione"
 
-#: msp/user.py:63
+#: msp/user.py:64
 msgid "The current password doesn't match"
 msgstr "La password corrente non corrisponde"
 
-#: msp/user.py:65 msp/user.py:143
+#: msp/user.py:66 msp/user.py:144
 msgid "Password and confirm differ from each other"
 msgstr "Password e conferma differiscono tra loro"
 
-#: msp/user.py:75
+#: msp/user.py:76
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Modello di auto %(car_id)s non trovato dal database"
 
-#: msp/user.py:252
+#: msp/user.py:253
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "L'utente {email} esiste già"
 
-#: msp/user.py:291
+#: msp/user.py:292
 msgid "Password has been changed successfully"
 msgstr "La password è stata modificata correttamente"
 
-#: msp/user.py:346
+#: msp/user.py:347
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Modello di auto {car_id} non trovato dal database"

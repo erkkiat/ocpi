@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 12:43+0000\n"
+"POT-Creation-Date: 2022-09-30 14:25+0000\n"
 "PO-Revision-Date: 2022-06-18 14:15:01.340937\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -87,73 +87,79 @@ msgstr "Jetonul este acceptat"
 msgid "Your token is no longer valid"
 msgstr "Jetonul dvs. nu mai este valabil"
 
-#: choices.py:192
+#: choices.py:180
+#, fuzzy
+#| msgid "Unable to connect to charge point management system"
+msgid "There is a protocol error with the CPO charge point management system"
+msgstr "Nu se poate conecta la sistemul de gestionare a punctelor de încărcare"
+
+#: choices.py:194
 msgid "The reservation has been cancelled"
 msgstr "Rezervarea a fost anulată"
 
-#: choices.py:193 choices.py:197
+#: choices.py:195 choices.py:199
 msgid "The charger is inoperative"
 msgstr "Încărcătorul nu funcționează"
 
-#: choices.py:194
+#: choices.py:196
 msgid "Failed to start the charging"
 msgstr "Nu s-a pornit încărcarea"
 
-#: choices.py:195
+#: choices.py:197
 msgid "The operation is not supported by the charger"
 msgstr "Funcționarea nu este acceptată de încărcător"
 
-#: choices.py:196
+#: choices.py:198
 msgid "The command was rejected by the charger"
 msgstr "Comanda a fost respinsă de încărcător"
 
-#: choices.py:198
+#: choices.py:200
 msgid "There has been a problem with the reservation"
 msgstr "A apărut o problemă cu rezervarea"
 
-#: models/session.py:171
+#: models/session.py:172
 msgid "Active"
 msgstr "Activ"
 
-#: models/session.py:175
+#: models/session.py:176
 msgid "Completed"
 msgstr "Efectuat"
 
-#: models/session.py:178
+#: models/session.py:179
 msgid "Invalid"
 msgstr "Invalid"
 
-#: models/session.py:182
+#: models/session.py:183
 msgid "Pending"
 msgstr "In asteptarea"
 
-#: models/session.py:186
+#: models/session.py:187
 msgid "Reservation"
 msgstr "Rezervare"
 
-#: msp/user.py:63
+#: msp/user.py:64
 msgid "The current password doesn't match"
 msgstr "Parola actuală nu se potrivește"
 
-#: msp/user.py:65 msp/user.py:143
+#: msp/user.py:66 msp/user.py:144
 msgid "Password and confirm differ from each other"
 msgstr "Parola și confirmarea diferă unele de altele"
 
-#: msp/user.py:75
+#: msp/user.py:76
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Modelul de mașină %(car_id)s nu a fost găsit din baza de date"
 
-#: msp/user.py:252
+#: msp/user.py:253
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Utilizatorul {email} există deja"
 
-#: msp/user.py:291
+#: msp/user.py:292
 msgid "Password has been changed successfully"
 msgstr "Parola a fost schimbată cu succes"
 
-#: msp/user.py:346
+#: msp/user.py:347
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Modelul de mașină {car_id} nu a fost găsit din baza de date"

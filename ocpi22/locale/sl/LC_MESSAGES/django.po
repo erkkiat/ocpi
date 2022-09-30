@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 12:43+0000\n"
+"POT-Creation-Date: 2022-09-30 14:25+0000\n"
 "PO-Revision-Date: 2022-06-18 15:14:49.410127\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -89,73 +89,80 @@ msgstr "Žeton je sprejet"
 msgid "Your token is no longer valid"
 msgstr "Vaš žeton ni več veljaven"
 
-#: choices.py:192
+#: choices.py:180
+#, fuzzy
+#| msgid "Unable to connect to charge point management system"
+msgid "There is a protocol error with the CPO charge point management system"
+msgstr ""
+"Povezave s sistemom za upravljanje polnilne točke ni mogoče vzpostaviti"
+
+#: choices.py:194
 msgid "The reservation has been cancelled"
 msgstr "Rezervacija je preklicana"
 
-#: choices.py:193 choices.py:197
+#: choices.py:195 choices.py:199
 msgid "The charger is inoperative"
 msgstr "Polnilnik ne deluje"
 
-#: choices.py:194
+#: choices.py:196
 msgid "Failed to start the charging"
 msgstr "Začetek polnjenja ni uspel"
 
-#: choices.py:195
+#: choices.py:197
 msgid "The operation is not supported by the charger"
 msgstr "Polnilnik ne podpira delovanja"
 
-#: choices.py:196
+#: choices.py:198
 msgid "The command was rejected by the charger"
 msgstr "Ukaz je polnilec zavrnil"
 
-#: choices.py:198
+#: choices.py:200
 msgid "There has been a problem with the reservation"
 msgstr "Pri rezervaciji je prišlo do težave"
 
-#: models/session.py:171
+#: models/session.py:172
 msgid "Active"
 msgstr "Aktiven"
 
-#: models/session.py:175
+#: models/session.py:176
 msgid "Completed"
 msgstr "Dokončano"
 
-#: models/session.py:178
+#: models/session.py:179
 msgid "Invalid"
 msgstr "Neveljavno"
 
-#: models/session.py:182
+#: models/session.py:183
 msgid "Pending"
 msgstr "V teku"
 
-#: models/session.py:186
+#: models/session.py:187
 msgid "Reservation"
 msgstr "Rezervacija"
 
-#: msp/user.py:63
+#: msp/user.py:64
 msgid "The current password doesn't match"
 msgstr "Trenutno geslo se ne ujema"
 
-#: msp/user.py:65 msp/user.py:143
+#: msp/user.py:66 msp/user.py:144
 msgid "Password and confirm differ from each other"
 msgstr "Geslo in potrditev se med seboj razlikujeta"
 
-#: msp/user.py:75
+#: msp/user.py:76
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Model avtomobila %(car_id)s ni v naši bazi podatkov"
 
-#: msp/user.py:252
+#: msp/user.py:253
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Uporabnik {email} že obstaja"
 
-#: msp/user.py:291
+#: msp/user.py:292
 msgid "Password has been changed successfully"
 msgstr "Geslo je bilo uspešno spremenjeno"
 
-#: msp/user.py:346
+#: msp/user.py:347
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Model avtomobila {car_id} ni v naši bazi podatkov"

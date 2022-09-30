@@ -1,0 +1,164 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-09-30 14:25+0000\n"
+"PO-Revision-Date: 2022-09-30 17:26:13.824016\n"
+"Last-Translator: potranslator 1.1.5\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: mi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Translated-By: potranslator 1.1.5\n"
+
+#: choices.py:77
+msgid "Available"
+msgstr "Kei te waatea"
+
+#: choices.py:78
+msgid "Preparing"
+msgstr "Te whakarite"
+
+#: choices.py:79
+msgid "Charging"
+msgstr "Te utu"
+
+#: choices.py:80
+msgid "Suspended by vehicle"
+msgstr "I whakatarewahia e te waka"
+
+#: choices.py:81
+msgid "Suspended by charger"
+msgstr "I whakatarewahia e te rihi"
+
+#: choices.py:82
+msgid "Finishing"
+msgstr "Whakaoti"
+
+#: choices.py:83
+msgid "Reserved"
+msgstr "Kua rahuitia"
+
+#: choices.py:84
+msgid "Unavailable"
+msgstr "Kāore i te wātea"
+
+#: choices.py:85
+msgid "Out of order"
+msgstr "Kei te ota"
+
+#: choices.py:165
+msgid "Preparing to charge"
+msgstr "E whakarite ana ki te utu"
+
+#: choices.py:166
+msgid "Stopping charging session"
+msgstr "Whakamutua te utu i te waahi"
+
+#: choices.py:168
+msgid "The charger is currently in use"
+msgstr "Kei te whakamahia te rihi i tenei wa"
+
+#: choices.py:170
+msgid "Unable to start charging at this time"
+msgstr "Kaore e taea te tiimata ki te utu i tenei wa"
+
+#: choices.py:172
+msgid "Unable to connect to charge point management system"
+msgstr "Kaore e taea te hono atu ki te punaha whakahaere tohu utu"
+
+#: choices.py:174
+msgid "The token doesn't have enough balance on the account"
+msgstr "Ko te tohu kaore i te nui te toenga i runga i te kaute"
+
+#: choices.py:176
+msgid "The token is accepted"
+msgstr "Ka whakaaetia te tohu"
+
+#: choices.py:178
+msgid "Your token is no longer valid"
+msgstr "Kua kore to tohu e whai mana"
+
+#: choices.py:180
+msgid "There is a protocol error with the CPO charge point management system"
+msgstr "He hapa kawa ki te punaha whakahaere tohu utu CPO"
+
+#: choices.py:194
+msgid "The reservation has been cancelled"
+msgstr "Kua whakakorehia te rahui"
+
+#: choices.py:195 choices.py:199
+msgid "The charger is inoperative"
+msgstr "Kare e mahi ana te rihi"
+
+#: choices.py:196
+msgid "Failed to start the charging"
+msgstr "I rahua te tiimata i te utu"
+
+#: choices.py:197
+msgid "The operation is not supported by the charger"
+msgstr "Ko te mahi kaore i te tautokohia e te rihi"
+
+#: choices.py:198
+msgid "The command was rejected by the charger"
+msgstr "I paopaohia te whakahau e te riihi"
+
+#: choices.py:200
+msgid "There has been a problem with the reservation"
+msgstr "Kua raru te rahui"
+
+#: models/session.py:172
+msgid "Active"
+msgstr "Hohe"
+
+#: models/session.py:176
+msgid "Completed"
+msgstr "Kua oti"
+
+#: models/session.py:179
+msgid "Invalid"
+msgstr "Muhu"
+
+#: models/session.py:183
+msgid "Pending"
+msgstr "Tarewa ana"
+
+#: models/session.py:187
+msgid "Reservation"
+msgstr "Rahui"
+
+#: msp/user.py:64
+msgid "The current password doesn't match"
+msgstr "Karekau te kupuhipa o naianei i te taurite"
+
+#: msp/user.py:66 msp/user.py:144
+msgid "Password and confirm differ from each other"
+msgstr "He rereke te kupuhipa me te whakau i tetahi ki tetahi"
+
+#: msp/user.py:76
+#, python-format
+msgid "Car model %(car_id)s is not in our database"
+msgstr ""
+"Ko te tauira waka %(car_id)s karekau i roto i ta maatau putunga raraunga"
+
+#: msp/user.py:253
+#, python-brace-format
+msgid "The user {email} already exists"
+msgstr "Kei te tīariari kē te kaiwhakamahi {email}."
+
+#: msp/user.py:292
+msgid "Password has been changed successfully"
+msgstr "Kua huri pai te kupuhipa"
+
+#: msp/user.py:347
+#, python-brace-format
+msgid "Car model {car_id} is not in our database"
+msgstr ""
+"Ko te tauira motoka {car_id} karekau i roto i ta maatau putunga raraunga"

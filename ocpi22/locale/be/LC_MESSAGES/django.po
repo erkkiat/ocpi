@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-18 12:43+0000\n"
+"POT-Creation-Date: 2022-09-30 14:25+0000\n"
 "PO-Revision-Date: 2022-06-18 15:17:37.589151\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -89,73 +89,79 @@ msgstr "Токен прыняты"
 msgid "Your token is no longer valid"
 msgstr "Ваш токен больш не дзейнічае"
 
-#: choices.py:192
+#: choices.py:180
+#, fuzzy
+#| msgid "Unable to connect to charge point management system"
+msgid "There is a protocol error with the CPO charge point management system"
+msgstr "Немагчыма падключыцца да сістэмы кіравання пунктам зарадкі"
+
+#: choices.py:194
 msgid "The reservation has been cancelled"
 msgstr "Браніраванне адменена"
 
-#: choices.py:193 choices.py:197
+#: choices.py:195 choices.py:199
 msgid "The charger is inoperative"
 msgstr "Зарадная прылада не працуе"
 
-#: choices.py:194
+#: choices.py:196
 msgid "Failed to start the charging"
 msgstr "Не ўдалося пачаць зарадку"
 
-#: choices.py:195
+#: choices.py:197
 msgid "The operation is not supported by the charger"
 msgstr "Аперацыя не падтрымліваецца зараднай прыладай"
 
-#: choices.py:196
+#: choices.py:198
 msgid "The command was rejected by the charger"
 msgstr "Каманда была адхілена зараднай прыладай"
 
-#: choices.py:198
+#: choices.py:200
 msgid "There has been a problem with the reservation"
 msgstr "Узнікла праблема з браніраваннем"
 
-#: models/session.py:171
+#: models/session.py:172
 msgid "Active"
 msgstr "Актыўныя"
 
-#: models/session.py:175
+#: models/session.py:176
 msgid "Completed"
 msgstr "Завершана"
 
-#: models/session.py:178
+#: models/session.py:179
 msgid "Invalid"
 msgstr "Несапраўдны"
 
-#: models/session.py:182
+#: models/session.py:183
 msgid "Pending"
 msgstr "У чаканні"
 
-#: models/session.py:186
+#: models/session.py:187
 msgid "Reservation"
 msgstr "Браніраванне"
 
-#: msp/user.py:63
+#: msp/user.py:64
 msgid "The current password doesn't match"
 msgstr "Бягучы пароль не супадае"
 
-#: msp/user.py:65 msp/user.py:143
+#: msp/user.py:66 msp/user.py:144
 msgid "Password and confirm differ from each other"
 msgstr "Пароль і пацверджанне адрозніваюцца адзін ад аднаго"
 
-#: msp/user.py:75
+#: msp/user.py:76
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Мадэлі аўтамабіля %(car_id)s няма ў нашай базе дадзеных"
 
-#: msp/user.py:252
+#: msp/user.py:253
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Карыстальнік {email} ужо існуе"
 
-#: msp/user.py:291
+#: msp/user.py:292
 msgid "Password has been changed successfully"
 msgstr "Пароль быў паспяхова зменены"
 
-#: msp/user.py:346
+#: msp/user.py:347
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Мадэлі аўтамабіля {car_id} няма ў нашай базе даных"
