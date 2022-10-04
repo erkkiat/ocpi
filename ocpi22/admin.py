@@ -259,13 +259,11 @@ class EvseAdmin(NestedModelAdmin):
     def stop_charging(self, request, queryset):
         evse: Evse
         for evse in queryset:
-            ic(evse)
             active_sessions = get_active_sessions(evse)
             if not active_sessions.count():
                 self.message_user(request, f'There are no active sessions at Evse {evse.evse_id}.',
                                   level=messages.WARNING)
             for session in active_sessions.all():
-                ic(session)
                 try:
                     response: Response = send_stop_command(session)
                     if response:

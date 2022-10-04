@@ -1,0 +1,18 @@
+{
+  "authorization_reference": "AUTH-REFERENCE",
+  "evse_uid": "HELSINKI-3",
+  "location_id": "HELSINKI-1",
+  "response_url": "http://localhost:8001/",
+  "token": {
+    "contract_id": "INTERNAL",
+    "country_code": "FI",
+    "issuer": "FI*001",
+    "last_updated": "2022-01-12T19:44:39.298178",
+    "party_id": "001",
+    "type": "OTHER",
+    "uid": "FI*001*T*ADMIN*TOKEN",
+    "valid": true
+  },
+  "expiry_date": "2022-01-12T19:44:39.298178",
+  "reservation_id": "RESERVATION-ID"
+}

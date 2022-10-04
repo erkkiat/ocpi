@@ -344,7 +344,7 @@ class Connector(models.Model, ModelUtilMixin):
         # Fetch the Tariffs specified for this Connector or find a DefaultTariff in case no specific Tariffs
         tariffs = self.tariff_ids.all() or Tariff.get_default_tariffs(self.standard)
         if tariffs.count() > 1:
-            log_error(f'Multiple Tariffs for Connector {str(self.evse)} {str(self)}')
+            log_error(str=f'Multiple Tariffs for Connector {str(self.evse)} {str(self)}')
         return tariffs
 
 

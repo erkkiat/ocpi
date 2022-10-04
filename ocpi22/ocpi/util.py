@@ -149,7 +149,8 @@ class OcpiModule:
         if hasattr(self, 'credentials'):
 
             if not hasattr(self, 'billed_to'):
-                log_error(f'Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties')
+                log_error(None,
+                          f'Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties')
                 return
 
             to = Party(*(self.billed_to.split('*')))

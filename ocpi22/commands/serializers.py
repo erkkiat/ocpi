@@ -69,6 +69,42 @@ class StartSessionSerializer(serializers.Serializer):
     )
 
 
+class ReserveNowSerializer(serializers.Serializer):
+    response_url = serializers.URLField(
+        help_text='URL that the CommandResult POST should be sent to. '
+                  'This URL might contain a unique ID to be able to distinguish between ReserveNow requests.'
+    )
+    token = CommandTokenSerializer(
+        help_text='Token object the Charge Point has to use to start a new session. '
+                  'The Token provided in this request is pre-authorized by the eMSP.'
+    )
+    location_id = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        help_text='Location.id of the Location (belonging to the CPO this request was sent to) '
+                  'on which a session is to be started.'
+    )
+    expiry_date = serializers.DateTimeField(
+        help_text='The Date/Time when this reservation ends, in UTC.'
+    )
+    reservation_id = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        help_text='Reservation id, unique for this reservation. '
+                  'If the Receiver (typically CPO) Point already has a reservation '
+                  'that matches this reservationId for that Location it will replace the reservation.'
+    )
+    evse_uid = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        required=False, allow_blank=True,
+        help_text='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
+    )
+    authorization_reference = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        required=False, allow_blank=True,
+        help_text='Optional reference to the authorization given by the eMSP, '
+                  'when given, this reference will be provided in the relevant Session and/or CDR.'
+    )
+
+
 class StopSessionSerializer(serializers.Serializer):
     response_url = serializers.URLField(
         help_text='URL that the CommandResult POST should be sent to. '

@@ -126,7 +126,6 @@ class TokenViewSet(mixins.ListModelMixin,
                 serializer = AuthorizeSerializer(data=request.data)
                 # ic(token, request.data, serializer.initial_data)
                 if serializer.is_valid():
-                    ic(serializer.validated_data)
                     location: Location = serializer.validated_data.get('location')
                     location_name = f'{location.name} at {location.address}, {location.city}'
                     prices = location.get_prices_str()

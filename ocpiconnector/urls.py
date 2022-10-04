@@ -15,7 +15,7 @@ from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionView
     RootRouter, ClientInfoViewSet, NoPremiumViewSet
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.cpo.api import CPORouter, ChargePointViewSet, LocationQuickViewSet, CpoStartWebhookViewSet, \
-    CpoStopWebhookViewSet
+    CpoStopWebhookViewSet, CpoReserveNowWebhookViewSet
 from ocpi22.hub import CommandsHubViewSet
 
 from ocpi22.locations.location import LocationViewSet
@@ -47,6 +47,7 @@ cpo_router = CPORouter()
 cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
 cpo_router.register(r'tariff/quick', TariffQuickViewSet, basename='quick-tariff')
 cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
+cpo_router.register(r'webhook', CpoReserveNowWebhookViewSet, basename='cpo')
 cpo_router.register(r'webhook', CpoStartWebhookViewSet, basename='cpo')
 cpo_router.register(r'webhook', CpoStopWebhookViewSet, basename='cpo')
 cpo_router.register(r'reports/billing', InvoiceReportViews, basename='billing')

@@ -543,6 +543,7 @@ class StandardResultsSetPagination(PageNumberPagination):
 command_store = RedisStore('command-result', expiration=settings.REMOTE_COMMAND_EXPIRATION)
 
 
+@lru_cache(maxsize=128)
 def _format_redis_key(key: str, namespace: str) -> str:
     return f'{namespace}-{key}'
 

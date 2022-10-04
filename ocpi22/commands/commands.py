@@ -1,4 +1,6 @@
 import logging
+from copy import deepcopy
+from dataclasses import dataclass
 from typing import Union, Optional
 from urllib.parse import urljoin
 
@@ -18,10 +20,10 @@ from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, MessageTexts
 from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer, \
-    CommandResponse, CommandResultSerializer
-from ocpi22.cpo.api import CHARGER
+    CommandResponse, CommandResultSerializer, ReserveNowSerializer
 from ocpi22.cpo.serializers import CPOStartWebhookSerializer, CPOStopWebhookSerializer, \
-    CpoOutboundWebhookSerializer, CpoWebhookResponseSerializer
+    CpoWebhookResponseSerializer, CpoReserveNowWebhookSerializer, \
+    CpoSessionCommandWebhookSerializer, CPOReserveNowWebhookSerializer
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
@@ -35,6 +37,15 @@ from ocpiconnector.ocpi_identities import get_our_party, Party
 from ocpi22.util import OnlyRawBrowsableAPIRenderer, build_absolute_uri, command_store, \
     build_callback_request
 from ocpi22.logging import log_error
+
+
+@dataclass(eq=True)
+class ResponseData:
+    ocpi_status: int
+    result: str
+    http_status: int
+    message: list
+    timeout: int
 
 
 class CommandsViewSet(GenericViewSet):
@@ -52,6 +63,7 @@ class CommandsViewSet(GenericViewSet):
             start_session=StartSessionSerializer,
             stop_session=StopSessionSerializer,
             unlock_connector=UnlockConnectorSerializer,
+            reserve_now=ReserveNowSerializer,
             command_result=CommandResultSerializer,
         ).get(self.action_map.get('post'), serializers.Serializer)
         return serializer
@@ -64,15 +76,137 @@ class CommandsViewSet(GenericViewSet):
             return f'{self.name.capitalize()}'
         return f'Commands'
 
+    @staticmethod
+    def _get_sender_party(request) -> Party:
+        billed_to = get_sender_party(request.META)
+        assert isinstance(billed_to, Party) and len(str(billed_to)) == 6, \
+            f'Billed_to needs to be set with party ID: {billed_to}.' \
+            f' (You need to be using Credentials for the connection.)'
+        return billed_to
+
+    error_response = ResponseData(ocpi_status=2000, result=CommandResponse.REJECTED,
+                                  http_status=status.HTTP_503_SERVICE_UNAVAILABLE, message=[], timeout=60)
+
+    @transaction.atomic
+    @action(methods=['GET', 'POST'], detail=False, url_name='reserve-now', url_path='RESERVE_NOW')
+    def reserve_now(self, request):
+        result = None
+        if not request.data:
+            return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            billed_to = self._get_sender_party(request)
+            serializer = ReserveNowSerializer(data=request.data)
+            if serializer.is_valid():
+                token = serializer.validated_data.get('token', '')
+                authorization_reference = serializer.validated_data.get('authorization_reference')
+                # evse_id = serializer.validated_data.get('evse_uid', '')
+                # expiry_date = serializer.validated_data.get('expiry_date', '')
+                # reservation_id = serializer.validated_data.get('reservation_id', '')
+                # location_id = serializer.validated_data.get('location_id', '')
+
+                # Store the command for use during the next {settings.REMOTE_COMMAND_EXPIRATION} seconds
+                command_store[authorization_reference] = serializer.validated_data
+
+                params = deepcopy(serializer.validated_data)
+                params.update(
+                    dict(
+                        ad_hoc_token=token,
+                        billed_to=str(billed_to),
+                        authorize_from_msp=False,
+                        credentials=request.credentials,
+                        connector_id=None
+                    )
+                )
+                for key in ('token', 'response_url', 'expiry_date', 'reservation_id'):
+                    params.pop(key)
+
+                session: Session = create_session(**params)
+                logging.info(f'Created session {session.uid} based on remote command from MSP')
+                # The default scenario, until proven successful
+                response: ResponseData = deepcopy(self.error_response)
+
+                try:
+                    # Prepare the start command for CPO management system
+                    initial_data = deepcopy(serializer.validated_data)
+                    initial_data.update(dict(
+                        response_url=ocpi22.util.build_absolute_uri(reverse('chargepoint-remote-command-result',
+                                                                            args=(session.authorization_reference,))),
+                        token_id=session.cdr_token_uid,
+                        token_type=session.cdr_token_type,
+                        auth_method=session.auth_method,
+                        from_party=str(request.credentials.party()),
+                        billed_to=session.billed_to,
+                    ))
+                    serializer = CpoReserveNowWebhookSerializer(data=initial_data)
+                    if not serializer.is_valid():
+                        logging.error('Malformed outbound data in start_session() (OCPI Connector bug)')
+                        logging.error(serializer.errors)
+                        raise ValidationError('Malformed outbound data (OCPI Connector bug)')
+                    data = serializer.data
+
+                    headers = {'content-type': 'application/json'}
+                    url, kwargs = build_callback_request(CPOReserveNowWebhookSerializer.URL, data)
+
+                    # Send start command to CPO
+                    logging.info(f'Sending CPO command to url {url}')
+                    cpo_response = requests.post(
+                        url=url,
+                        json=data,
+                        headers=headers,
+                        verify=False,
+                        timeout=20,
+                        **kwargs)
+                    data = cpo_response.json()
+
+                    serializer = CpoWebhookResponseSerializer(data=data)
+                    if serializer.is_valid():
+                        data = serializer.validated_data
+                        response.timeout = data.get('timeout', response.timeout)
+                        result = data.get('result')
+                        logging.info(f'Result from charger for start charging: {result}')
+                        response.message = MessageTexts.get(
+                            f'START_{result.upper()}',  # Try to get response message for START_<result>
+                            MessageTexts.get(
+                                result.upper(),  # Then just <result>
+                                MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
+                        response.ocpi_status = 1000
+                        response.http_status = status.HTTP_200_OK
+                    else:
+                        logging.error(
+                            f'Malformed response from CPO start_transaction webhook at URL {url}: {serializer.errors}'
+                        )
+                        raise ValidationError(
+                            f'Malformed response from CPO start_transaction webhook: {serializer.errors}'
+                        )
+                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError,
+                        ValidationError) as e:
+                    response.message = MessageTexts.get('MS_CONNECTION_ERROR')
+                    response.http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+                    logging.error(f'Unable to relay Command to CPO: {e}')
+
+                response_serializer = CommandResponse(
+                    instance=dict(result=result, timeout=response.timeout, message=response.message)
+                )
+                return OCPIResponse(response_serializer.data,
+                                    status_code=response.ocpi_status,
+                                    http_status=response.http_status)
+        except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist,
+                Connector.DoesNotExist, Token.DoesNotExist, AssertionError) as e:
+            log_error(request, e)
+            return OCPIResponse(None, status_message=f'Unable to start session: {e}',
+                                http_status=status.HTTP_400_BAD_REQUEST,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+        return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
+                            http_status=status.HTTP_400_BAD_REQUEST,
+                            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request):
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            billed_to = get_sender_party(request.META)
-            assert isinstance(billed_to, Party) and len(str(billed_to)) == 6, \
-                f'Billed_to needs to be set with party ID: {billed_to}'
+            billed_to = self._get_sender_party(request)
             serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
 
@@ -91,8 +225,8 @@ class CommandsViewSet(GenericViewSet):
                         credentials=request.credentials,
                     )
                 )
-                params.pop('token')
-                params.pop('response_url')
+                for key in ('token', 'response_url'):
+                    params.pop(key)
 
                 session: Session = create_session(**params)
                 logging.info(f'Created session {session.uid} based on remote command from MSP')
@@ -118,7 +252,7 @@ class CommandsViewSet(GenericViewSet):
                         connector_id=session.connector.uid if session.connector else None,
                         billed_to=session.billed_to,
                     )
-                    serializer = CpoOutboundWebhookSerializer(data=initial_data)
+                    serializer = CpoSessionCommandWebhookSerializer(data=initial_data)
                     if not serializer.is_valid():
                         logging.error('Malformed outbound data in start_session() (OCPI Connector bug)')
                         logging.error(serializer.errors)
@@ -170,7 +304,7 @@ class CommandsViewSet(GenericViewSet):
                 )
                 return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status)
         except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist,
-                Connector.DoesNotExist, Token.DoesNotExist,) as e:
+                Connector.DoesNotExist, Token.DoesNotExist, AssertionError) as e:
             log_error(request, e)
             return OCPIResponse(None, status_message=f'Unable to start session: {e}',
                                 http_status=status.HTTP_400_BAD_REQUEST,
@@ -214,7 +348,7 @@ class CommandsViewSet(GenericViewSet):
                         connector_id=session.connector.uid if session.connector else None,
                         billed_to=session.billed_to,
                     )
-                    serializer = CpoOutboundWebhookSerializer(data=initial_data)
+                    serializer = CpoSessionCommandWebhookSerializer(data=initial_data)
                     if not serializer.is_valid():
                         logging.error('Malformed outbound data in stop_session() (OCPI Connector bug)')
                         logging.error(serializer.errors)
@@ -265,7 +399,7 @@ class CommandsViewSet(GenericViewSet):
                 )
                 return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status)
         except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist,
-                Connector.DoesNotExist, Token.DoesNotExist,) as e:
+                Connector.DoesNotExist, Token.DoesNotExist, AssertionError) as e:
             log_error(request, e)
             return OCPIResponse(None, status_message=f'Unable to start session: {e}',
                                 http_status=status.HTTP_400_BAD_REQUEST,
@@ -346,6 +480,7 @@ class CommandsViewSet(GenericViewSet):
             start_session=request.build_absolute_uri(reverse('commands-start-session')),
             stop_session=request.build_absolute_uri(reverse('commands-stop-session')),
             unlock_connector=request.build_absolute_uri(reverse('commands-unlock-connector')),
+            reserve_now=request.build_absolute_uri(reverse('commands-reserve-now')),
             # command_result=request.build_absolute_uri(reverse('commands-command-result')),
         ))
 

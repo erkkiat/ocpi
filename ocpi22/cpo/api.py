@@ -22,7 +22,8 @@ from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResul
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
-    CpoWebhookResponseSerializer, CpoOutboundWebhookSerializer, CPOStartWebhookSerializer, CPOStopWebhookSerializer
+    CpoWebhookResponseSerializer, CPOStartWebhookSerializer, CPOStopWebhookSerializer, \
+    CpoSessionCommandWebhookSerializer, CPOReserveNowWebhookSerializer, CpoReserveNowWebhookSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
@@ -740,6 +741,35 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         return None
 
 
+class CpoReserveNowWebhookViewSet(WebhookViewSet):
+    """
+    You need to tell the OCPI Connector where to send remote ReserveNow commands.
+    Using this endpoint you can set and get your callback URL and
+    user credentials needed for accessing the endpoint.
+
+    Example URL: `https://your.emsp.backend.server/reserve/{location_id}/{token_id}/`. The token_id will be substituted with
+    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+
+    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
+    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+    ## Status codes
+
+    * `HTTP_200_OK` when the webhook was set successfully
+    * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    """
+    serializer_class = CPOReserveNowWebhookSerializer
+    serializer = serializer_class()
+    queryset = Location.objects.none()
+
+    outbound_data_serializer = CpoReserveNowWebhookSerializer()
+    response_data_serializer = CpoWebhookResponseSerializer()
+
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='reserve_now')
+    def reserve_now_webhook(self, request):
+        return self.webhook(request)
+
+
 class CpoStartWebhookViewSet(WebhookViewSet):
     """
     You need to tell the OCPI Connector where to send remote start commands.
@@ -761,7 +791,7 @@ class CpoStartWebhookViewSet(WebhookViewSet):
     serializer = serializer_class()
     queryset = Location.objects.none()
 
-    outbound_data_serializer = CpoOutboundWebhookSerializer()
+    outbound_data_serializer = CpoSessionCommandWebhookSerializer()
     response_data_serializer = CpoWebhookResponseSerializer()
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='start_transaction')
@@ -790,7 +820,7 @@ class CpoStopWebhookViewSet(WebhookViewSet):
     serializer = serializer_class()
     queryset = Location.objects.none()
 
-    outbound_data_serializer = CpoOutboundWebhookSerializer()
+    outbound_data_serializer = CpoSessionCommandWebhookSerializer()
     response_data_serializer = CpoWebhookResponseSerializer()
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='stop_transaction')
@@ -851,6 +881,9 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             ),
             remote_commands=dict(
                 webhooks=dict(
+                    reserve_now=request.build_absolute_uri(
+                        reverse('cpo-reserve-now-webhook')
+                    ),
                     start_transaction=request.build_absolute_uri(
                         reverse('cpo-start-transaction-webhook')
                     ),

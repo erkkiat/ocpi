@@ -826,7 +826,7 @@ class CommandTests(TestCase):
                'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
            }.get(x))
     @patch('ocpi22.commands.commands.requests.post')
-    def test_start_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
+    def test_start_stop_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -1005,6 +1005,130 @@ class CommandTests(TestCase):
              'status_message': '',
              'timestamp': datetime(2000, 1, 1, 12, 0)}
         )
+
+    @time_machine.travel(faketime, tick=False)
+    # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    @patch('ocpi22.ocpi.util.uuid.uuid4',
+           return_value=mock_uuid4())
+    @patch('ocpi22.util.redis_store.get',
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/',
+               'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
+               'callback-reserve_now_url': 'http://john:his-password@fakehost/reserve/{location_id}/{evse_id}/',
+           }.get(x))
+    @patch('ocpi22.commands.commands.requests.post')
+    def test_reserve_now(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
+        url = reverse('commands-reserve-now')
+        viewset = CommandsViewSet()
+
+        # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
+        request = api_factory.get(url)
+        request.data = {}
+        response = viewset.reserve_now(request)
+
+        check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST)
+
+        # Load up the test message and send it
+        data = load_example(f'data/examples/command_reserve_now.json')
+
+        billed_party = Party('FI', 'EON')
+        headers = {
+            'Ocpi-From-Country-Code': billed_party.country_code,
+            'Ocpi-From-Party-Id': billed_party.party_id
+        }
+        request = api_factory.post(url, **headers)
+        request.data = data
+        request.credentials = Credentials.objects.first()
+
+        self.assertFalse(Session.objects.all().exists(),
+                         'Please make sure there are no Sessions at the start of this test')
+
+        # Let's pretend to be the CPO and get an error from charger
+        requests_post_mock.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
+        requests_post_mock.reset_mock()
+        uuid4_mock.return_value = mock_uuid4(42)
+
+        response = viewset.reserve_now(request)
+
+        # Check the request sent to the CPO
+        requests_post_mock.assert_called_once()
+        args, kwargs = requests_post_mock.call_args
+        self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        self.assertDictEqual(
+            response.data,
+            {'data': {'result': 'EVSE_INOPERATIVE',
+                      'timeout': 60,
+                      'message': [{'language': 'EN', 'text': 'The charger is inoperative'},
+                                  {'language': 'DE', 'text': 'Das Ladegerät funktioniert nicht'},
+                                  {'language': 'FR', 'text': 'Le chargeur ne fonctionne pas'},
+                                  {'language': 'ES', 'text': 'El cargador no funciona'},
+                                  {'language': 'PT', 'text': 'O carregador está inoperante'},
+                                  {'language': 'LB', 'text': 'De Ladegerät ass net funktionnéiert'},
+                                  {'language': 'NL', 'text': 'De oplader werkt niet'},
+                                  {'language': 'CY', 'text': "Mae'r charger yn anweithredol"},
+                                  {'language': 'GA', 'text': 'Tá an charger neamhoibríoch'},
+                                  {'language': 'BE', 'text': 'Зарадная прылада не працуе'},
+                                  {'language': 'BG', 'text': 'Зарядното устройство не работи'},
+                                  {'language': 'RO', 'text': 'Încărcătorul nu funcționează'},
+                                  {'language': 'BS', 'text': 'Punjač nije u funkciji'},
+                                  {'language': 'MK', 'text': 'Полначот не работи'},
+                                  {'language': 'SQ', 'text': 'Karikuesi nuk funksionon'},
+                                  {'language': 'SR', 'text': 'Пуњач не ради'},
+                                  {'language': 'TR', 'text': 'şarj cihazı çalışmıyor'},
+                                  {'language': 'UK', 'text': 'Зарядний пристрій не працює'},
+                                  {'language': 'EL', 'text': 'Ο φορτιστής δεν λειτουργεί'},
+                                  {'language': 'PL', 'text': 'Ładowarka nie działa'},
+                                  {'language': 'HU', 'text': 'A töltő nem működik'},
+                                  {'language': 'CS', 'text': 'Nabíječka je nefunkční'},
+                                  {'language': 'SK', 'text': 'Nabíjačka je nefunkčná'},
+                                  {'language': 'SL', 'text': 'Polnilnik ne deluje'},
+                                  {'language': 'FI', 'text': 'Laturi on epäkunnossa'},
+                                  {'language': 'NO', 'text': 'Laderen er ute av drift'},
+                                  {'language': 'DA', 'text': 'Opladeren er ude af drift'},
+                                  {'language': 'SV', 'text': 'Laddaren fungerar inte'},
+                                  {'language': 'IS', 'text': 'Hleðslutækið er óvirkt'},
+                                  {'language': 'ET', 'text': 'Laadija ei tööta'},
+                                  {'language': 'LT', 'text': 'Įkroviklis neveikia'},
+                                  {'language': 'LV', 'text': 'Lādētājs nedarbojas'},
+                                  {'language': 'AF', 'text': 'Die laaier werk nie'},
+                                  {'language': 'MI', 'text': 'Kare e mahi ana te rihi'}]},
+             'status_code': 1000,
+             'status_message': '',
+             'timestamp': datetime(2000, 1, 1, 12, 0)}
+        )
+
+        # Let's pretend to be the CPO and all is good
+        requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
+        requests_post_mock.reset_mock()
+        uuid4_mock.return_value = mock_uuid4(99)
+
+        response = viewset.reserve_now(request)
+
+        # Check the request sent to the CPO
+        requests_post_mock.assert_called_once()
+        args, kwargs = requests_post_mock.call_args
+        self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        self.assertDictEqual(
+            kwargs.get('json'),
+            {
+                'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/AUTH-REFERENCE/',
+                'token_id': 'FI*001*T*ADMIN*TOKEN', 'token_type': 'OTHER', 'authorization_reference': 'AUTH-REFERENCE',
+                'auth_method': 'COMMAND', 'from_party': 'FI*CP1 (CPO), FI*MSP (EMSP), FI*NAP (NAP), FI*HUB (HUB)',
+                'location_id': 'HELSINKI-1', 'evse_id': None, 'connector_id': None, 'billed_to': 'FI*EON',
+                'expiry_date': '2022-01-12T19:44:39.298178', 'reservation_id': 'RESERVATION-ID'
+            }
+        )
+
+        # Let's guess the new Session
+        session = Session.objects.all().first()
+
+        check_ok_result(self, response)
+
+        self.assertEqual(response.data.get('data').get('result'), 'ACCEPTED',
+                         msg='Expecting the result "ACCEPTED"')
+
+        session = Session.objects.get(status='PENDING')
+        self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match expectation")
 
     def test_unlock_connector(self):
         url = reverse('commands-unlock-connector')
