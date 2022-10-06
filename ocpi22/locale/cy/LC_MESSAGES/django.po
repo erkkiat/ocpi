@@ -8,16 +8,15 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:16:11.764486\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:28.717466\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: cy\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n==1) ? 0 : (n==2) ? 1 : (n != 8 && n != "
-"11) ? 2 : 3;\n"
+"Plural-Forms: nplurals=4; plural=(n==1) ? 0 : (n==2) ? 1 : (n != 8 && n != 11) ? 2 : 3;\n"
 "Translated-By: potranslator 1.1.5\n"
 
 #: choices.py:77
@@ -61,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Paratoi i godi tâl"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Mae charger wedi'i gadw i chi"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Rhoi'r gorau i sesiwn codi tâl"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Mae'r charger yn cael ei ddefnyddio ar hyn o bryd"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Methu dechrau codi tâl ar hyn o bryd"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Methu cysylltu â system rheoli pwyntiau gwefru"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Nid oes gan y tocyn ddigon o falans ar y cyfrif"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Derbynnir y tocyn"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Nid yw eich tocyn yn ddilys bellach"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Methu cysylltu â system rheoli pwyntiau gwefru"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Mae'r archeb wedi'i chanslo"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Mae'r charger yn anweithredol"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Wedi methu cychwyn y codi tâl"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Ni chefnogir y llawdriniaeth gan y charger"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Gwrthodwyd y gorchymyn gan y charger"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Bu problem gyda'r archeb"
 

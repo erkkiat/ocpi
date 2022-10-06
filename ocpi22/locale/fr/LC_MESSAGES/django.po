@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 14:15:24.772746\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:27.833747\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: fr\n"
@@ -60,62 +60,66 @@ msgid "Preparing to charge"
 msgstr "Préparation à la charge"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Le chargeur vous est réservé"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Arrêt de la session de charge"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Le chargeur est actuellement utilisé"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Impossible de démarrer la charge pour le moment"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr ""
 "Impossible de se connecter au système de gestion des bornes de recharge"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Le jeton n'a pas assez de solde sur le compte"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Le jeton est accepté"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Votre jeton n'est plus valide"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr ""
 "Impossible de se connecter au système de gestion des bornes de recharge"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "La réservation a été annulée"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Le chargeur ne fonctionne pas"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Échec du démarrage de la charge"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "L'opération n'est pas prise en charge par le chargeur"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "La commande a été rejetée par le chargeur"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Il y a eu un problème avec la réservation"
 

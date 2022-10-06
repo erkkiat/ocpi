@@ -3,6 +3,7 @@ import logging
 from decimal import Decimal
 
 import requests
+from django.conf import settings
 from django.utils.translation import get_language
 from rest_framework import routers, status, viewsets
 from rest_framework.decorators import action
@@ -12,14 +13,14 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiRolesEnum
-from ocpi22.commands.commands import send_start_command, send_stop_command
+from ocpi22.commands.commands import send_start_command, send_stop_command, send_reserve_command
 from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
-    MspSessionSerializer, MSPCallbacksSerializer, MSPAuthorizeCallbackSerializer
+    MspSessionSerializer, MSPCallbacksSerializer, MSPAuthorizeCallbackSerializer, ReserveSerializer
 from ocpi22.msp.util import get_message_by_language
 from ocpi22.ocpi.api import TokenViewSet
 from ocpi22.ocpi.serializers import MspAuthorizationResponseSerializer
@@ -51,7 +52,64 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             start_charging=StartChargingSerializer,
             session_status=SessionStatusSerializer,
             stop_charging=StopChargingSerializer,
-        ).get(self.action_map.get('post'), StartChargingSerializer)
+            reserve=ReserveSerializer,
+        ).get(self.action_map.get('post'), None)
+
+    @action(methods=('GET', 'POST'), detail=False)
+    def reserve(self, request):
+        """
+        This call sends an OCPI ReserveNow command to the CPO.
+
+        ## Status codes
+
+        * `HTTP_200_OK` when the reservation was made successfully
+        * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+        * `HTTP_404_NOT_FOUND` when the Token, Location or EVSE doesn't exist
+        * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
+        * `HTTP_503_SERVICE_UNAVAILABLE` when there is no network connection to the charge point
+        """
+
+        # Todo: Fail if no Tariffs for any Connector in this EVSE
+
+        try:
+            if request.method == 'POST':
+                serializer = ReserveSerializer(data=request.data)
+                if serializer.is_valid():
+                    account = request.user.accounts.first()
+                    if settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
+                        return Response(dict(
+                            status_message='There is not enough balance in the account to make a reservation'),
+                            status=status.HTTP_402_PAYMENT_REQUIRED
+                        )
+                    location: Location = serializer.validated_data['location']
+                    evse: Evse = serializer.validated_data['evse']
+                    reservation_id: str = serializer.validated_data.get('reservation_id')
+                    connector_id: str = serializer.validated_data.get('connector_id')
+                    contract_id: str = serializer.validated_data.get('contract_id')
+                    token = construct_adhoc_token(account.app_token_id, contract_id)
+                    expiration: int = serializer.validated_data.get('expiration')
+                    ic(
+                        request, evse, token, connector_id, contract_id, expiration, reservation_id
+                    )
+                    response: requests.Response = send_reserve_command(
+                        request, location, evse, token, reservation_id, connector_id, contract_id, expiration
+                    )
+                    return self._language_response(response)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # method == GET
+            return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
+        except (Evse.DoesNotExist, Token.DoesNotExist, Location.DoesNotExist, Connector.DoesNotExist) as e:
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_404_NOT_FOUND)
+        except json.JSONDecodeError as e:
+            logging.error(f'Cannot process start_transaction response from CPO to eMSP: {e}')
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
 
     @action(methods=('GET', 'POST'), detail=False)
     def start_charging(self, request):
@@ -75,7 +133,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 serializer = StartChargingSerializer(data=request.data)
                 if serializer.is_valid():
                     account = request.user.accounts.first()
-                    if account.balance <= Decimal("2.0"):
+                    if settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
                         return Response(dict(
                             status_message='There is not enough balance in the account to start charging'),
                             status=status.HTTP_402_PAYMENT_REQUIRED
@@ -140,8 +198,12 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
     @staticmethod
     def _language_response(response):
         data = response.json()
-        data = data.get('data', data)
-        data.update(message_display=get_message_by_language(data.get('message'), get_language()))
+        data = data.get('data', data) or data
+        message = data.get('message')
+        if message:
+            data.update(message_display=get_message_by_language(data.get('message'), get_language()))
+        else:
+            data.update(message_display=data.get('status_message'))
         return Response(data, status=response.status_code)
 
     @action(methods=('GET', 'POST'), detail=False)
@@ -297,6 +359,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
 
         result = dict(
             charging=dict(
+                reserve=request.build_absolute_uri(
+                    reverse('roaming-reserve')
+                ),
                 start_charging=request.build_absolute_uri(
                     reverse('roaming-start-charging')
                 ),

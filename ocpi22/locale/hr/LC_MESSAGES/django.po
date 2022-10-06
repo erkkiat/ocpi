@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 14:15:09.260047\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:26.444973\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: hr\n"
@@ -60,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Priprema za punjenje"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Punjač je rezerviran za vas"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Zaustavljanje sesije punjenja"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Punjač je trenutno u upotrebi"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "U ovom trenutku nije moguće započeti punjenje"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Nije moguće povezati se sa sustavom upravljanja točkama punjenja"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Token nema dovoljno stanja na računu"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Token je prihvaćen"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Vaš token više nije valjan"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Nije moguće povezati se sa sustavom upravljanja točkama punjenja"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Rezervacija je otkazana"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Punjač ne radi"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Pokretanje punjenja nije uspjelo"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Punjač ne podržava rad"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Naredbu je odbio punjač"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Došlo je do problema s rezervacijom"
 

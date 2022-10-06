@@ -5,7 +5,6 @@ from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22 import logging
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.messages import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
@@ -228,9 +227,11 @@ class LocationIdDictSerializer(serializers.CharField):
     default_error_messages = default_error_messages
 
     def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(max_length=settings.OCPI_22_MAX_UID_LENGTH, **kwargs)
 
     def to_representation(self, instance: Union[Session, Location]):
+        if isinstance(instance, str):
+            return instance
         if isinstance(instance, Session):
             return instance.location.uid
         if isinstance(instance, dict):
@@ -373,7 +374,7 @@ class LocationIdSerializer(serializers.Serializer):
         return Location.get_if_exists(uid=data) or data
 
 
-class StrictLocationIdSerializer(serializers.Serializer):
+class StrictLocationIdSerializer(serializers.CharField):
     def to_internal_value(self, data):
         result = Location.get_if_exists(uid=data)
         if not result:
@@ -384,6 +385,14 @@ class StrictLocationIdSerializer(serializers.Serializer):
 class EvseUidSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         return Evse.get_if_exists(uid=data)
+
+
+class StrictEvseUidSerializer(serializers.CharField):
+    def to_internal_value(self, data):
+        evse = Evse.get_if_exists(uid=data)
+        if not evse:
+            return ValidationError(f'Evse with UID {data} is unknown')
+        return evse
 
 
 class AuthorizeSerializer(serializers.Serializer):

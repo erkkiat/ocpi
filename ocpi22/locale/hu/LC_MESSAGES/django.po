@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:15:48.707670\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:26.694268\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: hu\n"
@@ -60,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Töltésre készül"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "A töltő az Ön számára van fenntartva"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "A töltési munkamenet leállítása"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "A töltő jelenleg használatban van"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Jelenleg nem lehet elindítani a töltést"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Nem lehet csatlakozni a töltésipont-kezelő rendszerhez"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "A tokennek nincs elegendő egyenlege a számlán"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "A tokent elfogadják"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "A tokenje már nem érvényes"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Nem lehet csatlakozni a töltésipont-kezelő rendszerhez"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "A foglalást törölték"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "A töltő nem működik"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Nem sikerült elindítani a töltést"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "A műveletet a töltő nem támogatja"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "A parancsot a töltő elutasította"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Probléma lépett fel a foglalással"
 

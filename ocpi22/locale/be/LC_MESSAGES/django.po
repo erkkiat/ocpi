@@ -8,17 +8,15 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:17:37.589151\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:23.281243\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: be\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
-"%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n"
-"%100>=11 && n%100<=14)? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n%100>=11 && n%100<=14)? 2 : 3);\n"
 "Translated-By: potranslator 1.1.5\n"
 
 #: choices.py:77
@@ -62,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Рыхтуецца да зарадкі"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Зарадная прылада зарэзервавана для вас"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Спыненне сеансу зарадкі"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "У цяперашні час зарадная прылада выкарыстоўваецца"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Немагчыма пачаць зарадку ў гэты час"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Немагчыма падключыцца да сістэмы кіравання пунктам зарадкі"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Токену недастаткова балансу на рахунку"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Токен прыняты"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Ваш токен больш не дзейнічае"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Немагчыма падключыцца да сістэмы кіравання пунктам зарадкі"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Браніраванне адменена"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Зарадная прылада не працуе"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Не ўдалося пачаць зарадку"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Аперацыя не падтрымліваецца зараднай прыладай"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Каманда была адхілена зараднай прыладай"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Узнікла праблема з браніраваннем"
 

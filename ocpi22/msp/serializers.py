@@ -7,7 +7,7 @@ from ocpi22.messages import default_error_messages
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.ocpi.serializers import SessionSerializer
+from ocpi22.ocpi.serializers import SessionSerializer, StrictEvseUidSerializer, StrictLocationIdSerializer
 from ocpi22.serializers import CallbacksSerializer
 
 
@@ -44,12 +44,12 @@ class StrictSessionIdSerializer(fields.CharField):
 
 
 class StartChargingSerializer(serializers.Serializer):
-    location_id = serializers.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+    location_id = StrictLocationIdSerializer(
+        source='location',
         help_text='The UID of the location for charging'
     )
-    evse_id = serializers.CharField(
-        # source='*',
+    evse_id = StrictEvseUidSerializer(
+        source='evse',
         help_text='The identifier of the device which provides electricity to one or more connectors'
     )
     connector_id = serializers.CharField(
@@ -65,14 +65,19 @@ class StartChargingSerializer(serializers.Serializer):
 
     default_error_messages = default_error_messages
 
-    def to_internal_value(self, data):
-        evse_id = self.initial_data.get('evse_id')
-        location_id = self.initial_data.get('location_id')
-        location = Location.get_if_exists(uid=location_id, raise_exception=True)
-        evse = Evse.get_if_exists(uid=evse_id, location=location, raise_exception=True)
-        data = super().to_internal_value(data)
-        data['evse'] = evse
-        return data
+
+class ReserveSerializer(StartChargingSerializer):
+    expiration = serializers.IntegerField(
+        min_value=1,
+        max_value=settings.MAXIMUM_RESERVATION,
+        help_text='The length of this reservation in seconds'
+    )
+    reservation_id = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        help_text='Reservation id, unique for this reservation. If the Receiver (typically CPO) Point '
+                  'already has a reservation that matches this reservationId for that Location '
+                  'it will replace the reservation.'
+    )
 
 
 class StopChargingSerializer(serializers.Serializer):

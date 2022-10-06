@@ -8,16 +8,15 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:15:11.817665\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:23.119237\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: ga\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=5; plural=(n==1 ? 0 : n==2 ? 1 : n<7 ? 2 : n<11 ? 3 : "
-"4);\n"
+"Plural-Forms: nplurals=5; plural=(n==1 ? 0 : n==2 ? 1 : n<7 ? 2 : n<11 ? 3 : 4);\n"
 "Translated-By: potranslator 1.1.5\n"
 
 #: choices.py:77
@@ -61,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Ag ullmhú chun muirear"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Tá charger in áirithe duit"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Seisiún luchtaithe a stopadh"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Tá an charger in úsáid faoi láthair"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Ní féidir tús a chur le muirearú faoi láthair"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Ní féidir ceangal le córas bainistíochta na bpointí luchtaithe"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Níl go leor iarmhéid ar an gcuntas ar an chomhartha"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Glactar leis an comhartha"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Níl do chomhartha bailí a thuilleadh"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Ní féidir ceangal le córas bainistíochta na bpointí luchtaithe"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Cuireadh an áirithint ar ceal"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Tá an charger neamhoibríoch"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Theip ar an muirearú a thosú"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Ní thacaíonn an charger leis an oibríocht"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Dhiúltaigh an charger don ordú"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Bhí fadhb leis an áirithint"
 

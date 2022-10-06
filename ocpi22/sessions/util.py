@@ -38,14 +38,18 @@ def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACT
 def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
                    internal_reference=None, token_id=None, ad_hoc_token=None,
                    uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorize_from_msp=True, authorization_reference='',
+                   authorize_from_msp=True, authorization_reference='', *args, **kwargs
                    ) -> Session:
     # ic(location_id, evse_uid, connector_id, token_id, ad_hoc_token)
     if not uid:
         uid = generate_session_uid()
     token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
-    location = Location.get_if_exists(uid=location_id, raise_exception=True)
-    evse = Evse.get_if_exists(uid=evse_uid, location=location, raise_exception=True)
+    location = location_id
+    if not isinstance(location_id, Location):
+        location = Location.get_if_exists(uid=location_id, raise_exception=True)
+    evse = evse_uid
+    if not isinstance(evse_uid, Evse):
+        evse = Evse.get_if_exists(uid=evse_uid, location=location, raise_exception=True)
     # The Connector may be selected later and the information gotten from the charger
     connector = Connector.get_if_exists(uid=connector_id, evse=evse, raise_exception=True) if connector_id else None
     if authorize_from_msp:

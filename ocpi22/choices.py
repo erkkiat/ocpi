@@ -163,6 +163,7 @@ class MessageTexts:
     @classmethod
     def get(cls, s, default=None):
         PREPARING_TO_CHARGE = _make_texts(_('Preparing to charge'))
+        RESERVE_ACCEPTED = _make_texts(_('Charger is reserved for you'))
         STOPPING_TO_CHARGE = _make_texts(_('Stopping charging session'))
         # dict(language='FI', text='Latausta viimeistellään'),
         EVSE_OCCUPIED = _make_texts(_('The charger is currently in use'))
@@ -181,6 +182,7 @@ class MessageTexts:
 
         _texts = dict(
             START_ACCEPTED=PREPARING_TO_CHARGE,
+            RESERVE_ACCEPTED=RESERVE_ACCEPTED,
             STOPPING_TO_CHARGE=STOPPING_TO_CHARGE,
             EVSE_OCCUPIED=EVSE_OCCUPIED,
             STOP_ACCEPTED=STOPPING_TO_CHARGE,

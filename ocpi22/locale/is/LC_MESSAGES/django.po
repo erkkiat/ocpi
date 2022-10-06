@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:43:28.422819\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:24.933290\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: is\n"
@@ -60,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Að undirbúa hleðslu"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Hleðslutæki er frátekið fyrir þig"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Stöðvar hleðslulotu"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Hleðslutækið er í notkun"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Ekki er hægt að hefja hleðslu eins og er"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Ekki er hægt að tengjast hleðslustöðvarstjórnunarkerfi"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Táknið hefur ekki næga innistæðu á reikningnum"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Táknið er samþykkt"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Táknið þitt er ekki lengur gilt"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Ekki er hægt að tengjast hleðslustöðvarstjórnunarkerfi"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Hætt hefur verið við pöntun"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Hleðslutækið er óvirkt"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Ekki tókst að hefja hleðsluna"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Aðgerðin er ekki studd af hleðslutækinu"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Skipuninni var hafnað af hleðslutækinu"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Það hefur verið vandamál með bókunina"
 

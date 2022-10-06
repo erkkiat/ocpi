@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:16:18.835447\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:28.887556\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: tr\n"
@@ -60,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Şarj etmeye hazırlanıyor"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Şarj cihazı sizin için ayrılmıştır"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Şarj oturumunu durdurma"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Şarj cihazı şu anda kullanımda"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Şu anda şarj işlemi başlatılamıyor"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Şarj noktası yönetim sistemine bağlanılamıyor"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Jeton hesapta yeterli bakiyeye sahip değil"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "jeton kabul edildi"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Simgeniz artık geçerli değil"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Şarj noktası yönetim sistemine bağlanılamıyor"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "rezervasyon iptal edildi"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "şarj cihazı çalışmıyor"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Şarj işlemi başlatılamadı"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "İşlem şarj cihazı tarafından desteklenmiyor"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Komut, şarj cihazı tarafından reddedildi"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Rezervasyonla ilgili bir sorun oluştu"
 

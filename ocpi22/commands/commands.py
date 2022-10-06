@@ -1,12 +1,15 @@
 import logging
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Union, Optional
 from urllib.parse import urljoin
 
 import requests
+from django.conf import settings
 from django.db import transaction
 from django.http import Http404
+from django.utils.datetime_safe import datetime
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, APIException, ValidationError
@@ -99,10 +102,6 @@ class CommandsViewSet(GenericViewSet):
             if serializer.is_valid():
                 token = serializer.validated_data.get('token', '')
                 authorization_reference = serializer.validated_data.get('authorization_reference')
-                # evse_id = serializer.validated_data.get('evse_uid', '')
-                # expiry_date = serializer.validated_data.get('expiry_date', '')
-                # reservation_id = serializer.validated_data.get('reservation_id', '')
-                # location_id = serializer.validated_data.get('location_id', '')
 
                 # Store the command for use during the next {settings.REMOTE_COMMAND_EXPIRATION} seconds
                 command_store[authorization_reference] = serializer.validated_data
@@ -114,7 +113,7 @@ class CommandsViewSet(GenericViewSet):
                         billed_to=str(billed_to),
                         authorize_from_msp=False,
                         credentials=request.credentials,
-                        connector_id=None
+                        connector_id=None,
                     )
                 )
                 for key in ('token', 'response_url', 'expiry_date', 'reservation_id'):
@@ -139,7 +138,7 @@ class CommandsViewSet(GenericViewSet):
                     ))
                     serializer = CpoReserveNowWebhookSerializer(data=initial_data)
                     if not serializer.is_valid():
-                        logging.error('Malformed outbound data in start_session() (OCPI Connector bug)')
+                        logging.error('Malformed outbound data in reserve_now() (OCPI Connector bug)')
                         logging.error(serializer.errors)
                         raise ValidationError('Malformed outbound data (OCPI Connector bug)')
                     data = serializer.data
@@ -165,7 +164,7 @@ class CommandsViewSet(GenericViewSet):
                         result = data.get('result')
                         logging.info(f'Result from charger for start charging: {result}')
                         response.message = MessageTexts.get(
-                            f'START_{result.upper()}',  # Try to get response message for START_<result>
+                            f'RESERVE_{result.upper()}',  # Try to get response message for RESERVE_<result>
                             MessageTexts.get(
                                 result.upper(),  # Then just <result>
                                 MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
@@ -173,10 +172,10 @@ class CommandsViewSet(GenericViewSet):
                         response.http_status = status.HTTP_200_OK
                     else:
                         logging.error(
-                            f'Malformed response from CPO start_transaction webhook at URL {url}: {serializer.errors}'
+                            f'Malformed response from CPO reserve_transaction webhook at URL {url}: {serializer.errors}'
                         )
                         raise ValidationError(
-                            f'Malformed response from CPO start_transaction webhook: {serializer.errors}'
+                            f'Malformed response from CPO reserve_transaction webhook: {serializer.errors}'
                         )
                 except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError,
                         ValidationError) as e:
@@ -193,7 +192,7 @@ class CommandsViewSet(GenericViewSet):
         except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist,
                 Connector.DoesNotExist, Token.DoesNotExist, AssertionError) as e:
             log_error(request, e)
-            return OCPIResponse(None, status_message=f'Unable to start session: {e}',
+            return OCPIResponse(None, status_message=f'Unable to make reservation: {e}',
                                 http_status=status.HTTP_400_BAD_REQUEST,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         return OCPIResponse(serializer.errors, status_message='Please check your request parameters',
@@ -536,6 +535,50 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
                          data=serializer.data)
     else:
         message = f"Cannot find a route for START_SESSION to {evse.location.party()}"
+        log_error(request, message)
+        raise APIException(message)
+
+
+def send_reserve_command(request, location: Location, evse: Evse, token: Union[Token, str], reservation_id,
+                         connector_id=None, contract_id='', expiration=settings.MAXIMUM_RESERVATION) -> Response:
+    """
+    As an eMSP we send an OCPI Command RESERVE_NOW to the CPO
+    """
+    country_code = evse.location.country_code
+    party_id = evse.location.party_id
+
+    route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
+    if route:
+        logging.info(f'*** Sending reserve command for {evse.location.name} to {route.url}.')
+        if not isinstance(token, Token):
+            token = construct_adhoc_token(token, contract_id=contract_id)
+        token_data = TokenSerializer(token).data
+        authorization_reference = generate_auth_reference()
+        if evse.location != location:
+            raise ValidationError(f'The EVSE {evse.evse_id} is not at location {location.uid}')
+        data = dict(
+            response_url=build_absolute_uri(
+                reverse('commands-command-result', args=("reserve", authorization_reference,))
+            ),
+            token=token_data,
+            location_id=location.uid,
+            evse_uid=evse.uid,
+            connector_id=connector_id,
+            authorization_reference=authorization_reference,  # Todo: Store authorization for verifying CDR
+            expiry_date=datetime.now() + timedelta(seconds=expiration),
+            reservation_id=reservation_id
+        )
+        serializer = ReserveNowSerializer(data=data)
+        if not serializer.is_valid():
+            logging.error('Malformed outbound data in send_reserve_command() (OCPI Connector bug)')
+            logging.error(serializer.errors)
+            raise ValidationError('Malformed outbound data (OCPI Connector bug)')
+        return ocpi_post(urljoin(f'{route.url}/', 'RESERVE_NOW'), route.token_base64,
+                         to=Party(country_code, party_id),
+                         sender=get_our_party(OcpiRolesEnum.EMSP),
+                         data=serializer.data)
+    else:
+        message = f"Cannot find a route for RESERVE_NOW to {evse.location.party()}"
         log_error(request, message)
         raise APIException(message)
 

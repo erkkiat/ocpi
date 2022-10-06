@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 14:15:16.962198\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:27.464406\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: de\n"
@@ -60,62 +60,66 @@ msgid "Preparing to charge"
 msgstr "Ladevorgang vorbereiten"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Ladegerät ist für Sie reserviert"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Beenden der Ladesitzung"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Das Ladegerät wird derzeit verwendet"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Der Ladevorgang kann derzeit nicht gestartet werden"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr ""
 "Es kann keine Verbindung zum Ladepunkt-Verwaltungssystem hergestellt werden"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Der Token hat nicht genug Guthaben auf dem Konto"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Der Token wird akzeptiert"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Ihr Token ist nicht mehr gültig"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr ""
 "Es kann keine Verbindung zum Ladepunkt-Verwaltungssystem hergestellt werden"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Die Reservierung wurde storniert"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Das Ladegerät funktioniert nicht"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Der Ladevorgang konnte nicht gestartet werden"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Der Betrieb wird vom Ladegerät nicht unterstützt"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Der Befehl wurde vom Ladegerät abgelehnt"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Bei der Reservierung ist ein Problem aufgetreten"
 

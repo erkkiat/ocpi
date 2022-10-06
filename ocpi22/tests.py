@@ -2369,6 +2369,7 @@ class TestMspApi(TestCase):
         account = Account.objects.create(customer=user)
         new_balance = Decimal("0.80")
         account.deposit(new_balance)
+        settings.REQUIRE_WALLET_BALANCE = True
 
         # Try charging without enough money
         response = start_charging(data, user)

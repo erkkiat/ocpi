@@ -4,7 +4,7 @@ from collections import OrderedDict
 from django.conf import settings
 from rest_framework import serializers
 
-from ocpi22.ocpi.serializers import LocationIdDictSerializer
+from ocpi22.ocpi.serializers import LocationIdDictSerializer, StrictEvseUidSerializer
 from ocpi22.models.token import Token
 from ocpi22.serializers import SerializerCleanedUp
 
@@ -83,6 +83,11 @@ class ReserveNowSerializer(serializers.Serializer):
         help_text='Location.id of the Location (belonging to the CPO this request was sent to) '
                   'on which a session is to be started.'
     )
+    evse_uid = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        required=False, allow_blank=True,
+        help_text='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
+    )
     expiry_date = serializers.DateTimeField(
         help_text='The Date/Time when this reservation ends, in UTC.'
     )
@@ -91,11 +96,6 @@ class ReserveNowSerializer(serializers.Serializer):
         help_text='Reservation id, unique for this reservation. '
                   'If the Receiver (typically CPO) Point already has a reservation '
                   'that matches this reservationId for that Location it will replace the reservation.'
-    )
-    evse_uid = serializers.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        required=False, allow_blank=True,
-        help_text='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
     )
     authorization_reference = serializers.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
@@ -122,12 +122,10 @@ class UnlockConnectorSerializer(serializers.Serializer):
                   'This URL might contain an unique ID to be able to distinguish between UnlockConnector requests.'
     )
     location_id = LocationIdDictSerializer(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='Location.id of the Location (belonging to the CPO this request is send to) '
                   'of which it is requested to unlock the connector.'
     )
-    evse_uid = serializers.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+    evse_uid = StrictEvseUidSerializer(
         required=False, allow_blank=True,
         help_text='Optional EVSE.uid of the EVSE of this Location of which it is requested to unlock the connector.'
     )

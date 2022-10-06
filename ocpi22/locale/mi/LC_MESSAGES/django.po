@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-09-30 17:26:13.824016\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:23.899271\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: mi\n"
@@ -59,58 +59,62 @@ msgid "Preparing to charge"
 msgstr "E whakarite ana ki te utu"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Kua rahuitia te riihini mo koe"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Whakamutua te utu i te waahi"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Kei te whakamahia te rihi i tenei wa"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Kaore e taea te tiimata ki te utu i tenei wa"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Kaore e taea te hono atu ki te punaha whakahaere tohu utu"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Ko te tohu kaore i te nui te toenga i runga i te kaute"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Ka whakaaetia te tohu"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Kua kore to tohu e whai mana"
 
-#: choices.py:180
+#: choices.py:181
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "He hapa kawa ki te punaha whakahaere tohu utu CPO"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Kua whakakorehia te rahui"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Kare e mahi ana te rihi"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "I rahua te tiimata i te utu"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Ko te mahi kaore i te tautokohia e te rihi"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "I paopaohia te whakahau e te riihi"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Kua raru te rahui"
 

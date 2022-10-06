@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:17:44.915897\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:24.087147\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: el\n"
@@ -60,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Προετοιμασία για φόρτιση"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Ο φορτιστής έχει δεσμευτεί για εσάς"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Διακοπή περιόδου λειτουργίας φόρτισης"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Ο φορτιστής χρησιμοποιείται αυτήν τη στιγμή"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Δεν είναι δυνατή η έναρξη της φόρτισης αυτήν τη στιγμή"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Δεν είναι δυνατή η σύνδεση στο σύστημα διαχείρισης σημείου φόρτισης"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Το διακριτικό δεν έχει αρκετό υπόλοιπο στον λογαριασμό"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Το διακριτικό γίνεται αποδεκτό"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Το διακριτικό σας δεν είναι πλέον έγκυρο"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Δεν είναι δυνατή η σύνδεση στο σύστημα διαχείρισης σημείου φόρτισης"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Η κράτηση ακυρώθηκε"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Ο φορτιστής δεν λειτουργεί"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Η έναρξη της φόρτισης απέτυχε"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Η λειτουργία δεν υποστηρίζεται από το φορτιστή"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Η εντολή απορρίφθηκε από τον φορτιστή"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Παρουσιάστηκε πρόβλημα με την κράτηση"
 
@@ -148,7 +152,8 @@ msgstr "Ο κωδικός πρόσβασης και η επιβεβαίωση δ
 #: msp/user.py:76
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
-msgstr "Το μοντέλο αυτοκινήτου %(car_id)s δεν βρίσκεται στη βάση δεδομένων μας"
+msgstr ""
+"Το μοντέλο αυτοκινήτου %(car_id)s δεν βρίσκεται στη βάση δεδομένων μας"
 
 #: msp/user.py:253
 #, python-brace-format

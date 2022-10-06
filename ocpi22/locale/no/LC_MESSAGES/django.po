@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 14:14:47.595811\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:23.740455\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: no\n"
@@ -60,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Forbereder lading"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Laderen er reservert for deg"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Stopper ladeøkten"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Laderen er for øyeblikket i bruk"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Kan ikke starte lading nå"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Kan ikke koble til administrasjonssystemet for ladepunkt"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Tokenet har ikke nok saldo på kontoen"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Tokenet er akseptert"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Tokenet ditt er ikke lenger gyldig"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Kan ikke koble til administrasjonssystemet for ladepunkt"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Reservasjonen er kansellert"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Laderen er ute av drift"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Kunne ikke starte ladingen"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Operasjonen støttes ikke av laderen"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Kommandoen ble avvist av laderen"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Det har vært et problem med reservasjonen"
 

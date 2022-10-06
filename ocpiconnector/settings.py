@@ -46,8 +46,15 @@ UPDATES_DISABLED = 'Updates have been disabled using the environment variable SE
 
 REMOTE_COMMAND_EXPIRATION = os.environ.get('REMOTE_COMMAND_EXPIRATION', 2 * 60)
 
+# Use the builtin account functionality and require a wallet balance when user wants to charge
+USE_ACCOUNTS = _env_bool('USE_ACCOUNTS', False)
+REQUIRE_WALLET_BALANCE = bool(_env_bool('REQUIRE_WALLET_BALANCE', True) and USE_ACCOUNTS)
+
 # How often to check that other party is alive
 STILL_ALIVE_FREQUENCY = os.environ.get('STILL_ALIVE_FREQUENCY', 60 * 5)
+
+# How long can a charger be reserved
+MAXIMUM_RESERVATION = os.environ.get('MAXIMUM_RESERVATION', 60 * 30)
 
 # Send updates asynchronously using Celery
 BACKGROUND_SEND = _env_bool('BACKGROUND_SEND', True)

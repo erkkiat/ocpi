@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:15:55.864017\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:26.876923\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: nl\n"
@@ -60,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Opladen voorbereiden"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Oplader is voor u gereserveerd"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Oplaadsessie stoppen"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "De oplader is momenteel in gebruik"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Kan momenteel niet beginnen met opladen"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Kan geen verbinding maken met laadpuntbeheersysteem"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Het token heeft niet genoeg saldo op de rekening"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Het token wordt geaccepteerd"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Uw token is niet meer geldig"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Kan geen verbinding maken met laadpuntbeheersysteem"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "De reservering is geannuleerd"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "De oplader werkt niet"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Kan het opladen niet starten"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "De bediening wordt niet ondersteund door de oplader"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "De opdracht is afgewezen door de oplader"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Er is een probleem opgetreden met de reservering"
 

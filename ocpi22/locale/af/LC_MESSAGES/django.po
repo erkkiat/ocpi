@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-09-30 14:25+0000\n"
-"PO-Revision-Date: 2022-06-18 15:18:06.564172\n"
+"POT-Creation-Date: 2022-10-06 16:43+0000\n"
+"PO-Revision-Date: 2022-10-06 19:46:27.231177\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: af\n"
@@ -60,60 +60,64 @@ msgid "Preparing to charge"
 msgstr "Berei voor om te laai"
 
 #: choices.py:166
+msgid "Charger is reserved for you"
+msgstr "Lader is vir jou gereserveer"
+
+#: choices.py:167
 msgid "Stopping charging session"
 msgstr "Stop laaisessie"
 
-#: choices.py:168
+#: choices.py:169
 msgid "The charger is currently in use"
 msgstr "Die laaier is tans in gebruik"
 
-#: choices.py:170
+#: choices.py:171
 msgid "Unable to start charging at this time"
 msgstr "Kan nie op hierdie tydstip begin laai nie"
 
-#: choices.py:172
+#: choices.py:173
 msgid "Unable to connect to charge point management system"
 msgstr "Kan nie aan laaipuntbestuurstelsel koppel nie"
 
-#: choices.py:174
+#: choices.py:175
 msgid "The token doesn't have enough balance on the account"
 msgstr "Die token het nie genoeg balans op die rekening nie"
 
-#: choices.py:176
+#: choices.py:177
 msgid "The token is accepted"
 msgstr "Die teken word aanvaar"
 
-#: choices.py:178
+#: choices.py:179
 msgid "Your token is no longer valid"
 msgstr "Jou teken is nie meer geldig nie"
 
-#: choices.py:180
+#: choices.py:181
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Kan nie aan laaipuntbestuurstelsel koppel nie"
 
-#: choices.py:194
+#: choices.py:196
 msgid "The reservation has been cancelled"
 msgstr "Die bespreking is gekanselleer"
 
-#: choices.py:195 choices.py:199
+#: choices.py:197 choices.py:201
 msgid "The charger is inoperative"
 msgstr "Die laaier werk nie"
 
-#: choices.py:196
+#: choices.py:198
 msgid "Failed to start the charging"
 msgstr "Kon nie die laai begin nie"
 
-#: choices.py:197
+#: choices.py:199
 msgid "The operation is not supported by the charger"
 msgstr "Die bewerking word nie deur die laaier ondersteun nie"
 
-#: choices.py:198
+#: choices.py:200
 msgid "The command was rejected by the charger"
 msgstr "Die bevel is deur die laaier verwerp"
 
-#: choices.py:200
+#: choices.py:202
 msgid "There has been a problem with the reservation"
 msgstr "Daar was 'n probleem met die bespreking"
 
@@ -153,7 +157,7 @@ msgstr "Motormodel %(car_id)s is nie in ons databasis nie"
 #: msp/user.py:253
 #, python-brace-format
 msgid "The user {email} already exists"
-msgstr "Die gebruiker {e-pos} bestaan ​​reeds"
+msgstr "Die gebruiker {email} bestaan ​​reeds"
 
 #: msp/user.py:292
 msgid "Password has been changed successfully"
