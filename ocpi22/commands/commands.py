@@ -93,6 +93,19 @@ class CommandsViewSet(GenericViewSet):
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='reserve-now', url_path='RESERVE_NOW')
     def reserve_now(self, request):
+
+        # TODO: If this Token is of type RFID, the CPO SHALL NOT do a realtime authorization at the eMSP for
+        #  this Token at the given EVSE/Charge Point within 15 minutes after having received this ReserveNow.
+
+        # TODO: The eMSP MAY use Tokens that have not been pushed via the Token module, especially
+        #  AD_HOC_USER or APP_USER Tokens are only used by commands send by an eMSP.
+        #  As these are never used locally at the Charge Point like RFID.
+
+        # TODO: The reservation_id sent by the Sender (eMSP) to the Receiver (CPO) SHALL NOT be sent
+        #  directly to a Charge Point. The CPO SHALL make sure the Reservation ID sent to
+        #  the Charge Point is unique and is not used by another Sender (eMSP).
+        #  We don’t want a Sender (eMSP) to replace or cancel a reservation of another Sender (eMSP).
+
         result = None
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
