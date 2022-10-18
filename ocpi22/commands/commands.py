@@ -101,11 +101,6 @@ class CommandsViewSet(GenericViewSet):
         #  AD_HOC_USER or APP_USER Tokens are only used by commands send by an eMSP.
         #  As these are never used locally at the Charge Point like RFID.
 
-        # TODO: The reservation_id sent by the Sender (eMSP) to the Receiver (CPO) SHALL NOT be sent
-        #  directly to a Charge Point. The CPO SHALL make sure the Reservation ID sent to
-        #  the Charge Point is unique and is not used by another Sender (eMSP).
-        #  We don’t want a Sender (eMSP) to replace or cancel a reservation of another Sender (eMSP).
-
         result = None
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
@@ -148,6 +143,7 @@ class CommandsViewSet(GenericViewSet):
                         auth_method=session.auth_method,
                         from_party=str(request.credentials.party()),
                         billed_to=session.billed_to,
+                        ocpp_reservation_id=session.ocpp_reservation_id,
                     ))
                     serializer = CpoReserveNowWebhookSerializer(data=initial_data)
                     if not serializer.is_valid():
@@ -228,20 +224,24 @@ class CommandsViewSet(GenericViewSet):
                 # Store the command for use during the next {settings.REMOTE_COMMAND_EXPIRATION} seconds
                 command_store[authorization_reference] = serializer.validated_data
 
-                params = serializer.validated_data
-                params.update(
-                    dict(
-                        ad_hoc_token=token,
-                        billed_to=str(billed_to),
-                        authorize_from_msp=False,
-                        credentials=request.credentials,
+                session: Session = Session.get_if_exists(authorization_reference=authorization_reference)
+                if not session:
+                    params = serializer.validated_data
+                    params.update(
+                        dict(
+                            ad_hoc_token=token,
+                            billed_to=str(billed_to),
+                            authorize_from_msp=False,
+                            credentials=request.credentials,
+                        )
                     )
-                )
-                for key in ('token', 'response_url'):
-                    params.pop(key)
+                    for key in ('token', 'response_url'):
+                        params.pop(key)
 
-                session: Session = create_session(**params)
-                logging.info(f'Created session {session.uid} based on remote command from MSP')
+                    session: Session = create_session(**params)
+                    logging.info(f'Created session {session.uid} based on remote command from MSP')
+                else:
+                    logging.info(f'Found an existing session {session.uid} based on reservation from MSP')
 
                 # The worst scenario is this
                 ocpi_status = 2000
@@ -501,7 +501,6 @@ def get_our_first_token():
     our_country_code, our_party_id = Token.get_owner_identity().split('*')
 
     try:
-        # noinspection PyUnresolvedReferences
         return Token.objects.filter(country_code=our_country_code, party_id=our_party_id)[0]
     except IndexError:
         raise ValueError('Please create a Token first.')

@@ -8,6 +8,7 @@ from django.db import IntegrityError
 from django.utils import timezone
 from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
+from icecream import ic
 from rest_framework import routers, status, viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -249,6 +250,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             # method == GET
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            logging.error(f'Exception in CPO status_change(): {e}')
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -316,6 +318,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
         except (Evse.DoesNotExist, Token.DoesNotExist, ValueError, OSError) as e:
+            logging.error(f'Exception in CPO authorize(): {e}')
             return Response(
                 dict(status_message=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -414,6 +417,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+            logging.error(f'Exception in start_transaction(): {e}')
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -502,6 +506,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
         except ValidationError as e:
+            ic(e)
+            logging.error(f'Exception in meter_values(): {e}')
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_409_CONFLICT)
@@ -573,6 +579,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
+            logging.error(f'Exception in stop_transaction(): {e}')
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)

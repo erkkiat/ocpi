@@ -1,10 +1,11 @@
 import logging
 from decimal import Decimal
-from typing import Union
+from typing import Union, Optional
 
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -15,7 +16,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, \
-    apply_step_size
+    apply_step_size, str_to_deterministic_int
 from ocpi22.serializers import SerializerCleanedUp
 from ocpi22.ocpi.util import OcpiModule
 
@@ -53,6 +54,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     # The internal order number or other identifier from the CPO billing system, not part of OCPI
     internal_reference = models.CharField(max_length=36, blank=True, null=True, db_index=True)
+
+    # The optional ID of the reservation, if this session is based on one
+    reservation_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, null=True)
+
+    @cached_property
+    def ocpp_reservation_id(self) -> Optional[int]:
+        id = f'{self.country_code}{self.party_id}{self.reservation_id}'
+        return str_to_deterministic_int(id, limit=10)
 
     # The timestamp when the session became ACTIVE in the Charge Point.
     # When the session is still PENDING, this field SHALL be set to the time the Session was

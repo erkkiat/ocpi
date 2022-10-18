@@ -1,3 +1,4 @@
+import hashlib
 import json
 import secrets
 import urllib.parse
@@ -10,6 +11,7 @@ from typing import Optional, Any, Union
 import redis
 from django.conf import settings
 from django.core.validators import RegexValidator
+from icecream import ic
 from requests import Response
 from rest_framework import serializers, status
 from rest_framework.metadata import SimpleMetadata
@@ -568,3 +570,17 @@ def build_callback_request(key: str, data: dict) -> tuple[str, dict]:
         kwargs = dict()
     url = format_url(parsed.url, **data)
     return url, kwargs
+
+
+def str_to_deterministic_int(reservation_id, limit=None) -> Optional[int]:
+    """
+    >>> str_to_deterministic_int('FI*EON*R12345', 10)
+    2590367882
+    """
+    if not reservation_id:
+        return None
+    hex_id = hashlib.md5(reservation_id.encode()).hexdigest()
+    numerical_id = int(hex_id, 16)
+    if limit:
+        return int(str(numerical_id)[:limit])
+    return numerical_id

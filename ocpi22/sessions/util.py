@@ -38,7 +38,7 @@ def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACT
 def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
                    internal_reference=None, token_id=None, ad_hoc_token=None,
                    uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorize_from_msp=True, authorization_reference='', *args, **kwargs
+                   authorize_from_msp=True, authorization_reference='', reservation_id=None, *args, **kwargs
                    ) -> Session:
     # ic(location_id, evse_uid, connector_id, token_id, ad_hoc_token)
     if not uid:
@@ -83,6 +83,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
         country_code=our_country_code,
         party_id=our_party_id,
         uid=uid,
+        reservation_id=reservation_id,
         internal_reference=internal_reference,
         start_kwh=start_kwh,
         stop_kwh=stop_kwh,
