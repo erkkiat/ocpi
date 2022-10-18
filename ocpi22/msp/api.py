@@ -5,19 +5,24 @@ from decimal import Decimal
 import requests
 from django.conf import settings
 from django.utils.translation import get_language
-from rest_framework import routers, status, viewsets
+from rest_framework import routers, status, viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.commands import send_start_command, send_stop_command, send_reserve_command
 from ocpi22.commands.serializers import CommandResultSerializer
+from ocpi22.cpo.serializers import TariffQuickSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
+from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
     MspSessionSerializer, MSPCallbacksSerializer, MSPAuthorizeCallbackSerializer, ReserveSerializer
@@ -403,7 +408,10 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
             billing=dict(
                 cdr_list=request.build_absolute_uri(
                     reverse('msp-cdr-list')
-                )
+                ),
+                tariff_list=request.build_absolute_uri(
+                    reverse('msp-tariff-list')
+                ),
             ),
             navigation=dict(
                 charge_points=request.build_absolute_uri(
@@ -418,6 +426,32 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
 
     def get_view_name(self):
         return 'eMobility Service Provider API'
+
+
+class MspTariffQuickViewSet(mixins.ListModelMixin,
+                            mixins.RetrieveModelMixin,
+                            GenericViewSet):
+    """
+    This is the endpoint for listing tariffs with a simplified structure. If you need to view the complex
+    Tariffs, use the OCPI Tariff endpoints.
+
+    To get a single Quick Tariff, append the Tariff ID to the URL, e.g. .../T1/
+    """
+    queryset = Tariff.objects.all().filter(archived=False).order_by('uid')
+    serializer_class = TariffQuickSerializer
+    pagination_class = LimitOffsetPagination
+    lookup_field = 'uid'
+
+    def retrieve(self, request, *args, uid, **kwargs):
+        tariff = get_object_or_404(Tariff, uid=uid, archived=False)
+        serializer = self.serializer_class(instance=tariff)
+        return Response(serializer.data)
+
+    @staticmethod
+    def get_object(uid=None) -> Tariff:
+        # Needed for OPTIONS to work in list view, could just return None
+        if uid:
+            return get_object_or_404(Tariff, uid=uid)
 
 
 class MSPRouter(routers.DefaultRouter):

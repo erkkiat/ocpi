@@ -23,7 +23,7 @@ class TariffQuickViewSet(mixins.ListModelMixin,
     many systems in the roaming network.
 
     """
-    queryset = Tariff.objects.all().order_by('created')
+    queryset = Tariff.objects.filter(archived=False).order_by('uid')
     serializer_class = TariffQuickSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = 'uid'

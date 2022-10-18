@@ -26,7 +26,7 @@ from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 slack_logging.init()
 
 
-def clear_empty(dict_with_possibly_empty_values: dict) -> OrderedDict:
+def clear_empty(dict_with_possibly_empty_values: dict) -> Union[OrderedDict, dict]:
     """
     Do a recursive cleanup for a dict and remove empty values and dicts with no keys
 
@@ -479,7 +479,7 @@ class MyCommandResponse:
 redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
-class RedisStore():
+class RedisStore:
     def __init__(self, namespace=None, expiration=None):
         self.namespace = namespace
         self.expiration = expiration
