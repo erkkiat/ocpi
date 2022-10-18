@@ -22,7 +22,9 @@ reservation_store = ocpi22.RedisStore('rsv', expiration=settings.REMOTE_COMMAND_
 def store_reservation(reservation: Reservation):
     if not reservation.ocpp_reservation_id:
         reservation.ocpp_reservation_id = randint(1, 2 << 31)
-    assert all(reservation.ocpi_reservation_id, bool(reservation.expiry_date))
+    assert all(
+        (reservation.ocpi_reservation_id, bool(reservation.expiry_date))
+    )
     reservation_store[reservation.ocpi_reservation_id] = reservation
     reservation_store[reservation.ocpp_reservation_id] = reservation
 
