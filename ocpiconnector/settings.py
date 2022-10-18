@@ -36,7 +36,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY and DEBUG:
     SECRET_KEY = '1234567890'
 assert SECRET_KEY, 'Please set a SECRET_KEY in environment'
-SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT')
+SECURE_SSL_REDIRECT = _env_bool('SECURE_SSL_REDIRECT')
 REDIS_URL = os.environ.get('REDIS_URL', os.environ.get('REDISCLOUD_URL'))
 TWILIO_API_KEY = os.environ.get('TWILIO_API_KEY')
 
