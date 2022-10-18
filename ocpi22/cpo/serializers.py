@@ -472,22 +472,26 @@ class PriceFlatSerializer(PriceSerializer):
 class TariffQuickSerializer(SerializerCleanedUp):
     id = serializers.CharField(source='uid', validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
     currency = serializers.ChoiceField(choices=CURRENCY_CHOICES, default='EUR')
-    price_per_kwh = PriceKwhSerializer(source='*',
-                                       max_digits=8, decimal_places=4, required=False,
-                                       help_text='The price per kWh of electricity charged'
-                                       )
-    price_per_min = PriceMinSerializer(source='*',
-                                       max_digits=8, decimal_places=4, required=False,
-                                       help_text='The price per minute of charging, not including parking'
-                                       )
-    price_flat = PriceFlatSerializer(source='*',
-                                     max_digits=8, decimal_places=4, required=False,
-                                     help_text='The flat price per started charging session'
-                                     )
-    vat = VatSerializer(source='*',
-                        required=False, allow_null=True,
-                        help_text='The Value Added Tax amount in percentage'
-                        )
+    price_per_kwh = PriceKwhSerializer(
+        source='*',
+        max_digits=8, decimal_places=4, required=False,
+        help_text='The price per kWh of electricity charged excluding tax'
+    )
+    price_per_min = PriceMinSerializer(
+        source='*',
+        max_digits=8, decimal_places=4, required=False,
+        help_text='The price per minute of charging, excluding parking and tax'
+    )
+    price_flat = PriceFlatSerializer(
+        source='*',
+        max_digits=8, decimal_places=4, required=False,
+        help_text='The flat price per started charging session excluding tax'
+    )
+    vat = VatSerializer(
+        source='*',
+        required=False, allow_null=True,
+        help_text='The Value Added Tax amount in percentage'
+    )
 
     def create(self, validated_data):
         tariff = Tariff.objects.create(uid=validated_data.get('uid'))
