@@ -1,4 +1,4 @@
-import logging
+import ocpi22.logging as logging
 from typing import Optional
 
 import requests

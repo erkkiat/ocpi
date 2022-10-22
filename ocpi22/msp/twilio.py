@@ -1,4 +1,4 @@
-import logging
+import ocpi22.logging as logging
 
 from django.conf import settings
 from twilio.rest import Client

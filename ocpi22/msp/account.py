@@ -1,4 +1,4 @@
-import logging
+import ocpi22.logging as logging
 from decimal import Decimal
 from typing import Optional
 

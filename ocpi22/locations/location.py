@@ -1,4 +1,4 @@
-import logging
+import ocpi22.logging as logging
 
 from django.core.validators import RegexValidator
 from django.db import transaction

@@ -1,5 +1,5 @@
 import base64
-import logging
+import ocpi22.logging as logging
 import secrets
 from functools import lru_cache
 from typing import Optional

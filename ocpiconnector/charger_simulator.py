@@ -1,5 +1,5 @@
 import json
-import logging
+import ocpi22.logging as logging
 
 from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpResponse

@@ -1,5 +1,5 @@
 import json
-import logging
+import ocpi22.logging as logging
 from decimal import Decimal
 
 import requests
@@ -32,11 +32,12 @@ from ocpi22.ocpi.serializers import MspAuthorizationResponseSerializer
 from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
-from ocpiconnector import slack_logging
+# from ocpiconnector import slack_logging
 
 from ocpiconnector.ocpi_identities import get_our_party
 
-slack_logging.init()
+
+# slack_logging.init()
 
 
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
@@ -110,7 +111,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
         except json.JSONDecodeError as e:
-            logging.error(f'Cannot process start_transaction response from CPO to eMSP: {e}')
+            logging.error(f'Cannot process start_transaction response from CPO to eMSP: {e}', request=request)
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -160,7 +161,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
         except json.JSONDecodeError as e:
-            logging.error(f'Cannot process start_transaction response from CPO to eMSP: {e}')
+            logging.error(f'Cannot process start_transaction response from CPO to eMSP: {e}', request=request)
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -247,7 +248,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
         except (json.JSONDecodeError, AttributeError, ValidationError) as e:
-            logging.error(f'Unable to process start_transaction response from CPO to eMSP: {e}')
+            logging.error(f'Unable to process start_transaction response from CPO to eMSP: {e}', request=request)
             return Response(
                 dict(status_message=f'Unable to process response from CPO: {e}'),
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY

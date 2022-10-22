@@ -1,5 +1,5 @@
 import base64
-import logging
+import ocpi22.logging as logging
 import os
 
 import requests

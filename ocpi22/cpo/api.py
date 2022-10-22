@@ -1,4 +1,4 @@
-import logging
+import ocpi22.logging as logging
 import os
 from typing import Optional
 
@@ -38,14 +38,12 @@ from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token, _authorize_token
 from ocpi22.tokens.util import get_token_id
 from ocpi22.logging import log_error
-from ocpiconnector import slack_logging
 
 from pprint import PrettyPrinter
 
 from ocpiconnector.ocpi_identities import Party, get_our_party
 
 pp = PrettyPrinter(indent=4).pprint
-slack_logging.init()
 
 
 class CpoEvseViewSet(mixins.RetrieveModelMixin,
@@ -250,7 +248,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             # method == GET
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
-            logging.error(f'Exception in CPO status_change(): {e}')
+            logging.error(f'Exception in CPO status_change(): {e}', request=request)
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -318,7 +316,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
         except (Evse.DoesNotExist, Token.DoesNotExist, ValueError, OSError) as e:
-            logging.error(f'Exception in CPO authorize(): {e}')
+            logging.error(f'Exception in CPO authorize(): {e}', request=request)
             return Response(
                 dict(status_message=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -417,7 +415,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
-            logging.error(f'Exception in start_transaction(): {e}')
+            logging.error(f'Exception in start_transaction(): {e}', request=request)
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -506,8 +504,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
         except ValidationError as e:
-            ic(e)
-            logging.error(f'Exception in meter_values(): {e}')
+            # ic(e)
+            logging.error(f'Exception in meter_values(): {e}', request=request)
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_409_CONFLICT)
@@ -579,7 +577,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
-            logging.error(f'Exception in stop_transaction(): {e}')
+            logging.error(f'Exception in stop_transaction(): {e}', request=request)
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -716,8 +714,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     )
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except redis.exceptions.ConnectionError as e:
-            logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
-                          f'due to trouble connecting with Redis: {e}')
+            logging.error(f'Cannot read and store callback settings  '
+                          f'due to trouble connecting with Redis: {e}', request=request)
             return Response(
                 dict(
                     status_text='Unable to store settings due to connection problem. '

@@ -1,7 +1,7 @@
 import doctest
 import json
 import os
-import logging
+import ocpi22.logging as logging
 import uuid
 from collections import OrderedDict, Counter
 from dataclasses import asdict, dataclass, field
@@ -2214,7 +2214,6 @@ class TestCpoApi(TestCase):
 
         Session.objects.filter(internal_reference='MY-INTERNAL-REFERENCE-2').update(status=Session.COMPLETED)
         session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
-        ic(session)
 
         cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_403_FORBIDDEN)

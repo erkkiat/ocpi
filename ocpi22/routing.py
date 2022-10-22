@@ -1,5 +1,5 @@
 import json
-import logging
+import ocpi22.logging as logging
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional, TypeAlias, Union

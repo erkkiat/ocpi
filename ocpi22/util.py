@@ -20,10 +20,11 @@ from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
 from ocpi22.ocpi.util import OCPIResponse, format_url
-from ocpiconnector import slack_logging
+# from ocpiconnector import slack_logging
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 
-slack_logging.init()
+
+# slack_logging.init()
 
 
 def clear_empty(dict_with_possibly_empty_values: dict) -> Union[OrderedDict, dict]:

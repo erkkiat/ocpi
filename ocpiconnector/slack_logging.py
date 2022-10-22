@@ -1,4 +1,4 @@
-import logging
+import ocpi22.logging as logging
 import os
 
 from slack_logger import SlackHandler, SlackFormatter

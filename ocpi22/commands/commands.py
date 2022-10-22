@@ -1,4 +1,5 @@
-import logging
+import ocpi22.logging as logging
+
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta

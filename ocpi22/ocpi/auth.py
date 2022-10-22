@@ -1,5 +1,6 @@
 import base64
 import binascii
+from functools import cache
 
 from cachetools import cached
 from django.utils.functional import cached_property
@@ -18,7 +19,7 @@ class OcpiAuthTypes:
 
 
 def check_auth_token(request, token: str) -> bool:
-    @cached
+    @cache
     def allowed_for_token_a():
         return (
             reverse('base-versions'),  # The "Versions" endpoint

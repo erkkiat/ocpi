@@ -1,4 +1,4 @@
-import logging
+import ocpi22.logging as logging
 
 import redis
 from django.conf import settings

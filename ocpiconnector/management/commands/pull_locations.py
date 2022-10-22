@@ -1,4 +1,4 @@
-import logging
+import ocpi22.logging as logging
 from argparse import ArgumentParser
 
 import requests
