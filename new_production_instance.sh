@@ -63,3 +63,5 @@ heroku addons:create moesif:free || echo "*** Cannot activate moesif API analyti
 
 # Too many connections for the free database
 # && heroku ps:scale worker=1
+
+echo "Please go to https://www.hover.com/control_panel/domain/ocpiconnector.com/dns to configure the DNS."
