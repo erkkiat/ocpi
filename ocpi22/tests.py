@@ -858,7 +858,11 @@ class CommandTests(TestCase):
         requests_post_mock.reset_mock()
         uuid4_mock.return_value = mock_uuid4(42)
 
-        response = viewset.start_session(request)
+        try:
+            response = viewset.start_session(request)
+        except redis.exceptions.ConnectionError as e:
+            print(f'This test requires a local Redis instance to be running: {e}')
+            return False
 
         # Check the request sent to the CPO
         requests_post_mock.assert_called_once()
@@ -1053,7 +1057,7 @@ class CommandTests(TestCase):
             response = viewset.reserve_now(request)
         except redis.exceptions.ConnectionError as e:
             print(f'This test requires a local Redis instance to be running: {e}')
-            exit(0)
+            return False
 
         # Check the request sent to the CPO
         requests_post_mock.assert_called_once()
@@ -2207,6 +2211,10 @@ class TestCpoApi(TestCase):
         #
         # Try updating meter values for a non-active Session
         #
+
+        Session.objects.filter(internal_reference='MY-INTERNAL-REFERENCE-2').update(status=Session.COMPLETED)
+        session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
+        ic(session)
 
         cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_403_FORBIDDEN)

@@ -318,7 +318,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 raise ValidationError(f'Session {self.uid} has no connector specified')
             tariffs = self.connector.get_tariffs()
             if not tariffs.exists():
-                raise ValidationError(f'Session {self.uid} for EVSE {self.evse_id} '
+                raise ValidationError(f'Session {self.uid} for EVSE {self.evse.evse_id} '
                                       f'connector {self.connector} has no tariffs specified')
             period = ChargingPeriod.objects.create(
                 start_date_time=self.start_date_time, session=self, tariff=tariffs.first(),
