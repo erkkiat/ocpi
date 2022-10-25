@@ -83,3 +83,13 @@ class DebugMiddleware:
         # the view is called.
 
         return response
+
+
+class UserActivityMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        logging.log_user_activity(request.user.username)
+        response = self.get_response(request)
+        return response

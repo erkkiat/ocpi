@@ -2213,7 +2213,6 @@ class TestCpoApi(TestCase):
         #
 
         Session.objects.filter(internal_reference='MY-INTERNAL-REFERENCE-2').update(status=Session.COMPLETED)
-        session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
 
         cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_403_FORBIDDEN)

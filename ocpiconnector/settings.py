@@ -258,6 +258,7 @@ MIDDLEWARE = [
     'django.middleware.locale.LocaleMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'ocpi22.middleware.UserActivityMiddleware',
 ]
 
 if 'MOESIF_APPLICATION_ID' in os.environ:

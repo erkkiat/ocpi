@@ -2,10 +2,21 @@ import logging
 import os
 
 import requests
+from cachetools.func import ttl_cache
 from django.conf import settings
 
 CRITICAL = logging.CRITICAL
 SLACK_WEBHOOK = os.environ.get('SLACK_WEBHOOK')
+
+USER_ACTIVITY_LOGGING_FREQUENCY_HOURS = 2
+
+
+@ttl_cache(ttl=USER_ACTIVITY_LOGGING_FREQUENCY_HOURS * 60 * 60)
+def log_user_activity(username: str) -> None:
+    message = f'User {username} became active on {settings.HOSTNAME}.'
+    logging.info(message)
+    if SLACK_WEBHOOK:
+        requests.post(url=SLACK_WEBHOOK, json=dict(text=message))
 
 
 def log_error(request=None, s: str = None) -> None:
