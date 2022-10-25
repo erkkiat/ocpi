@@ -16,7 +16,7 @@ def log_user_activity(username: str) -> None:
     message = f'User {username} became active on {settings.HOSTNAME}.'
     logging.info(message)
     if SLACK_WEBHOOK:
-        requests.post(url=SLACK_WEBHOOK, json=dict(text=message))
+        requests.post(url=SLACK_WEBHOOK, json=dict(text=message, icon_emoji=':face_with_monocle:'))
 
 
 def log_error(request=None, s: str = None) -> None:
