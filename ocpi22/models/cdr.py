@@ -9,6 +9,7 @@ from django.utils.html import format_html
 from rest_framework.reverse import reverse
 
 from ocpi22.choices import OcpiModuleEnum
+from ocpi22.grafana import metrics
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
@@ -251,6 +252,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             billed_to=session.billed_to,
             last_updated=timezone.now(),
         )
+
         tariffs = session.connector.tariff_ids.all()
         if tariffs.count():
             cdr_tariffs = Tariff.make_copies(tariffs)
@@ -258,7 +260,16 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             cdr_tariffs = Tariff.make_copies(Tariff.get_default_tariffs(session.connector.standard))
         cdr.tariffs.set(cdr_tariffs)
 
-        cdr.send_updates()
+        try:
+            cdr.send_updates()
+        except Exception as e:
+            logging.error(f'Unable to send updates: {e}')
+
+        try:
+            metrics('charging.total_power', session.kwh)
+            metrics('charging.total_cost_excluding_vat', session.total_cost_excl_vat)
+        except Exception as e:
+            logging.error(f'Unable to record metrics: {e}')
 
         return cdr
 
