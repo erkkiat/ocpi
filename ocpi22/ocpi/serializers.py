@@ -5,6 +5,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from ocpi22 import logging
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.messages import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
@@ -352,7 +353,10 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
 class ConnectionStatusSerializer(serializers.Serializer):
     def to_representation(self, instance: CredentialsRole):
-        return instance.credentials.connection_status
+        if instance and instance.credentials:
+            return instance.credentials.connection_status
+        logging.error(f'No connection status for {instance}')
+        return False
 
 
 class LastConnectionSerializer(serializers.Serializer):
