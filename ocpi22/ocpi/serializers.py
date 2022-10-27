@@ -361,7 +361,10 @@ class ConnectionStatusSerializer(serializers.Serializer):
 
 class LastConnectionSerializer(serializers.Serializer):
     def to_representation(self, instance: CredentialsRole):
-        return instance.credentials.last_connection
+        if instance and instance.credentials:
+            return instance.credentials.last_connection
+        logging.error(f'No last_connection for {instance}')
+        return False
 
 
 class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
