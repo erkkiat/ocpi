@@ -1,3 +1,6 @@
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+
 import ocpi22.logging as logging
 import os
 from typing import Optional
@@ -850,7 +853,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
 
     """
 
-    # noinspection PyUnresolvedReferences
+    @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         """
         Compile the example URLs for the root page
