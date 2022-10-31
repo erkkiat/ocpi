@@ -33,6 +33,8 @@ PASSWORD=`python generate_password.py`
  && echo "Password: $PASSWORD" \
  && echo "================================"
 
+sleep 4
+
 echo "Creating app $HEROKU_APP..."
 
 heroku create --region eu $HEROKU_APP \

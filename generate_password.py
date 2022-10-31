@@ -2,6 +2,6 @@
 
 import random
 
-letters = 'zxcbnmkhgfdsaqwertyup23456789'
-length = 8
+letters = 'zxcbnmkhgfdsaqwertyupZXCBNMKHGFDSAQWERTYUP23456789!#%$/?+-'
+length = 12
 print(''.join(random.choice(letters) for i in range(length)))
