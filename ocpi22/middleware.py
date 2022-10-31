@@ -1,14 +1,17 @@
 import json
+
+import redis
+
 import ocpi22.logging as logging
 from json import JSONDecodeError
 from pprint import pprint
 
 from django.http import JsonResponse
 from rest_framework import status
-from django.conf import settings
 
 from ocpi22.ocpi.auth import OCPIPermission, check_auth_token
-from ocpi22.ocpi.util import format_ocpi_response, get_to_party
+from ocpi22.ocpi.util import format_ocpi_response
+from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
 
@@ -47,7 +50,7 @@ class OCPIHubMiddleware:
                 # Ok, it's not JSON, we can't route it over OCPI
                 pass
             except Exception as e:
-                logging.error(f'{settings.HOSTNAME}: Unable to route to {to if to else ""}: {e}')
+                logging.error(f'Unable to route to {to if to else ""}: {e}')
                 return JsonResponse(
                     data=format_ocpi_response(status_message=f'Unable to route this message due to unknown reason',
                                               status_code=2000),
@@ -90,6 +93,38 @@ class UserActivityMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        logging.log_user_activity(request.user.username)
+        if request.user.is_authenticated:
+            logging.log_user_activity(request.user.username)
+        else:
+            party = get_sender_party(request.META)
+            if party:
+                logging.log_ocpi_activity(str(party))
+
         response = self.get_response(request)
         return response
+
+
+class ErrorLoggingMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        try:
+            response = self.get_response(request)
+            if response.status_code >= 400:
+                party = get_sender_party(request.META)
+                if party:
+                    logging.error(f'Returning status code {response.status_code} for party {str(party)}.')
+                else:
+                    logging.error(f'Returning status code {response.status_code} for user {request.user}.')
+
+            return response
+        except redis.exceptions.ConnectionError as e:
+            logging.error(f'Unable to connect to Redis: {e}', request)
+            raise
+        except ConnectionRefusedError as e:
+            logging.error(f'An external connection was refused: {e}', request)
+            raise
+        except Exception as e:
+            logging.error(f'An exception occured: {e}', request)
+            raise

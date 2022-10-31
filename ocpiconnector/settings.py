@@ -250,6 +250,7 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE = [
+    'ocpi22.middleware.ErrorLoggingMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',  # Make sure this stays above OCPIHubMiddleware

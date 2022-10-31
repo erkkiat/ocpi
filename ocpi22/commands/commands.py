@@ -34,7 +34,8 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
-from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, get_sender_party, generate_auth_reference, options_message
+from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, generate_auth_reference, options_message
+from ocpi22.ocpi.util_party import get_sender_party
 
 from ocpi22.tokens.util import construct_adhoc_token
 from ocpiconnector.ocpi_identities import get_our_party, Party
