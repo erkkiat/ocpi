@@ -125,8 +125,9 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
         ) if location else dict()
     )
     data = result.json()
-    authorization = data.get('data', {}).get('AuthorizationInfo', {})
-    allowed = authorization.get('allowed')
+    data = data.get('data', data)
+    authorization = data.get('AuthorizationInfo', {}) if isinstance(data, dict) else {}
+    allowed = authorization.get('allowed', AuthorizationEnum.NOT_ALLOWED)
     if result.status_code > 400 or allowed != AuthorizationEnum.ALLOWED.value:
         logging.warning(f'No authorization for token {token} at {location or "<not known>"} '
                         f'from {token.party()} (HTTP {result.status_code}), '
