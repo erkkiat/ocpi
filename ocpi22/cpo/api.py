@@ -712,8 +712,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             status_text=f'Response received from eMSP',
                             token_id=token_id,
                             authorization_reference=command['authorization_reference'],
-                            data=response.get("json"),
-                        ), status=response.get('status_code')
+                            data=response.get('json') if response else '',
+                        ), status=response.get('status_code') if response else status.HTTP_503_SERVICE_UNAVAILABLE
                     )
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except redis.exceptions.ConnectionError as e:

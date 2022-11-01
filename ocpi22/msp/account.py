@@ -40,6 +40,9 @@ class Account(models.Model):
         if balance <= 0:
             logging.error(f'{self} has negative balance')
 
+    def create(self, customer, app_token_id='', currency=settings.DEFAULT_CURRENCY):
+        return Account(customer, app_token_id, currency)
+
 
 class Transaction(models.Model):
     class Meta:
@@ -100,13 +103,14 @@ def check_balance(session: Session):
 
 
 def update_balance(cdr) -> None:
-    account = get_user_account(cdr.session)
-    if account:
-        # Todo: do the payment callback
-        account.withdraw(Decimal(-cdr.total_cost_incl_vat), cdr=cdr, pos_reference='N/A')
-    else:
-        logging.error(f'{settings.HOSTNAME}: Unable to create user transaction for CDR #{cdr.uid} - {cdr}: '
-                      f'customer has no account to be found')
+    if settings.USE_ACCOUNTS:
+        account = get_user_account(cdr.session)
+        if account:
+            # Todo: do the payment callback
+            account.withdraw(Decimal(-cdr.total_cost_incl_vat), cdr=cdr, pos_reference='N/A')
+        else:
+            logging.error(f'{settings.HOSTNAME}: Unable to create user transaction for CDR #{cdr.uid} - {cdr}: '
+                          f'customer has no account to be found')
 
 
 @receiver(pre_save, sender=Account)

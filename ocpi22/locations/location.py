@@ -160,7 +160,7 @@ class LocationViewSet(mixins.ListModelMixin,
                 data = {
                     'location_id': evse.location.uid,
                     'evse_id': evse.uid,
-                    'new_status': evse.status
+                    'status': evse.status
                 }
                 send_to_webhook(data, MSPChargePointStatusCallbackSerializer)
                 return OCPIResponse(serializer.data)

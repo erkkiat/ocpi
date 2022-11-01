@@ -29,6 +29,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
+from ocpi22.msp.account import Account
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
     MspSessionSerializer, MSPAuthorizeCallbackSerializer, ReserveSerializer, \
     MSPChargePointStatusCallbackSerializer
@@ -37,12 +38,8 @@ from ocpi22.ocpi.api import TokenViewSet
 from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
-# from ocpiconnector import slack_logging
 
 from ocpiconnector.ocpi_identities import get_our_party
-
-
-# slack_logging.init()
 
 
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
@@ -86,7 +83,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = ReserveSerializer(data=request.data)
                 if serializer.is_valid():
-                    account = request.user.accounts.first()
+                    account = request.user.accounts.first() or Account.create(request.user)
                     if settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
                         return Response(dict(
                             status_message='There is not enough balance in the account to make a reservation'),
@@ -143,7 +140,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = StartChargingSerializer(data=request.data)
                 if serializer.is_valid():
-                    account = request.user.accounts.first()
+                    account = request.user.accounts.first() or Account.create(request.user)
                     if settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
                         return Response(dict(
                             status_message='There is not enough balance in the account to start charging'),
