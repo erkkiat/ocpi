@@ -26,8 +26,7 @@ from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResul
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
-    CpoWebhookResponseSerializer, CPOStartWebhookSerializer, CPOStopWebhookSerializer, \
-    CpoSessionCommandWebhookSerializer, CPOReserveNowWebhookSerializer, CpoReserveNowWebhookSerializer
+    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
@@ -698,6 +697,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         from_party_id=sender.party_id,
                         method='post',
                         credentials_id=session.credentials.pk,
+                        timeout=15
                     )
 
                     # Invalidate the session in case an error has occured
@@ -770,9 +770,6 @@ class CpoReserveNowWebhookViewSet(WebhookViewSet):
     serializer = serializer_class()
     queryset = Location.objects.none()
 
-    outbound_data_serializer = CpoReserveNowWebhookSerializer()
-    response_data_serializer = CpoWebhookResponseSerializer()
-
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='reserve_now')
     def reserve_now_webhook(self, request):
         return self.webhook(request)
@@ -799,9 +796,6 @@ class CpoStartWebhookViewSet(WebhookViewSet):
     serializer = serializer_class()
     queryset = Location.objects.none()
 
-    outbound_data_serializer = CpoSessionCommandWebhookSerializer()
-    response_data_serializer = CpoWebhookResponseSerializer()
-
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='start_transaction')
     def start_transaction_webhook(self, request):
         return self.webhook(request)
@@ -827,9 +821,6 @@ class CpoStopWebhookViewSet(WebhookViewSet):
     serializer_class = CPOStopWebhookSerializer
     serializer = serializer_class()
     queryset = Location.objects.none()
-
-    outbound_data_serializer = CpoSessionCommandWebhookSerializer()
-    response_data_serializer = CpoWebhookResponseSerializer()
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='stop_transaction')
     def stop_transaction_webhook(self, request):

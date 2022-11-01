@@ -1,3 +1,6 @@
+import requests
+from rest_framework.exceptions import ValidationError
+
 import ocpi22.logging as logging
 
 from django.core.validators import RegexValidator
@@ -12,9 +15,9 @@ from rest_framework.generics import get_object_or_404
 
 from ocpi22.locations.serializers import EvseSaveSerializer, EvseSerializer, LocationSerializer, LocationSaveSerializer
 from ocpi22.models.location import Location, Evse
-from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer
+from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
+from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, get_callbacks_parameter, build_callback_request
 from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
-
 
 # Todo: Fetch all Locations for reliable data update, but fetch Tariffs first, since Location refers to them
 # Todo: PATCH & PUT Connector
@@ -28,7 +31,6 @@ evse_validator = RegexValidator(r'[A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-
 class EvseViewSet(mixins.RetrieveModelMixin,
                   mixins.ListModelMixin,
                   GenericViewSet):
-    # noinspection PyUnresolvedReferences
     queryset = Evse.objects.all().order_by('created')
     serializer_class = EvseSerializer
     pagination_class = OCPIPaginationAndHeaders
@@ -36,7 +38,6 @@ class EvseViewSet(mixins.RetrieveModelMixin,
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
     def evse_by_id(self, request, country_code, party_id, uid, evse_id) -> OCPIResponse:
-        # noinspection PyUnresolvedReferences
         evse = get_object_or_404(Evse, uid=evse_id)
         location = evse.location
         if location.uid != uid or location.party_id != party_id or location.country_code != country_code:
@@ -55,7 +56,7 @@ class EvseViewSet(mixins.RetrieveModelMixin,
             for f in readonly_fields:
                 data.pop(f, None)
 
-            partial = request.method == 'PATCH'
+            partial = bool(request.method == 'PATCH')
 
             serializer = EvseSerializer(evse, data=data, partial=partial, context={'request': request})
             if serializer.is_valid():
@@ -67,6 +68,40 @@ class EvseViewSet(mixins.RetrieveModelMixin,
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
+
+def send_to_webhook(data, serializer, outbound_serializer=None, timeout=5) -> dict:
+    try:
+        OutboundSerializer = outbound_serializer or serializer.OutboundSerializer
+        outbound_serializer = OutboundSerializer(data=data)
+        assert outbound_serializer.is_valid(), outbound_serializer.errors
+
+        url, kwargs_update = build_callback_request(serializer.URL, data)
+
+        if url:
+            kwargs = {}
+            headers = {'content-type': 'application/json'}
+            kwargs.update(kwargs_update)
+
+            logging.info(f'Calling webhook at url {url}')
+
+            response = requests.post(
+                url=url,
+                json=outbound_serializer.data,
+                headers=headers,
+                verify=False,
+                timeout=timeout,
+                **kwargs)
+            if hasattr(serializer, 'ResponseSerializer'):
+                data = response.json()
+                response_serializer = serializer.ResponseSerializer(data=data)
+                if response_serializer.is_valid():
+                    return data
+                else:
+                    logging.error(f'Got a malformed response from webhook at {url}: {data}')
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError, ValidationError) as e:
+        logging.error(f'Problem communicating with webhook {serializer.__class__}: {e}')
+    return {}
 
 
 class LocationViewSet(mixins.ListModelMixin,
@@ -96,9 +131,8 @@ class LocationViewSet(mixins.ListModelMixin,
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False, url_name='by-evse-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
     def by_evse_id(self, request, country_code, party_id, uid, evse_id) -> OCPIResponse:
-        # noinspection PyUnresolvedReferences
-        evse = get_object_or_404(Evse, uid=evse_id, location__uid=uid)
-        location = evse.location
+        evse: Evse = get_object_or_404(Evse, uid=evse_id, location__uid=uid)
+        location: Location = evse.location
 
         if location.party_id != party_id or location.country_code != country_code:
             return OCPIResponse(
@@ -123,6 +157,12 @@ class LocationViewSet(mixins.ListModelMixin,
             serializer = EvseSaveSerializer(evse, data=data, partial=partial, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
+                data = {
+                    'location_id': evse.location.uid,
+                    'evse_id': evse.uid,
+                    'new_status': evse.status
+                }
+                send_to_webhook(data, MSPChargePointStatusCallbackSerializer)
                 return OCPIResponse(serializer.data)
             else:
                 return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,

@@ -377,21 +377,6 @@ class StopTransactionSerializer(serializers.Serializer):
 #     # cancel_reservation_url = serializers.URLField(required=False)
 
 
-class CPOReserveNowWebhookSerializer(CallbacksSerializer):
-    URL = 'reserve_now_url'
-    reserve_now_url = serializers.URLField()
-
-
-class CPOStartWebhookSerializer(CallbacksSerializer):
-    URL = 'start_transaction_url'
-    start_transaction_url = serializers.URLField()
-
-
-class CPOStopWebhookSerializer(CallbacksSerializer):
-    URL = 'stop_transaction_url'
-    stop_transaction_url = serializers.URLField()
-
-
 class CpoOutboundWebhookSerializer(serializers.Serializer):
     response_url = serializers.URLField()
     token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
@@ -405,20 +390,46 @@ class CpoOutboundWebhookSerializer(serializers.Serializer):
     billed_to = serializers.CharField(max_length=6)
 
 
-class CpoSessionCommandWebhookSerializer(CpoOutboundWebhookSerializer):
-    token_type = serializers.ChoiceField(choices=Token.TYPE_CHOICES)
-    connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
+class CPOStartWebhookSerializer(CallbacksSerializer):
+    URL = 'start_transaction_url'
+    start_transaction_url = serializers.URLField()
+
+    class OutboundSerializer(CpoOutboundWebhookSerializer):
+        token_type = serializers.ChoiceField(choices=Token.TYPE_CHOICES)
+        connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
+                                             allow_null=True)
+
+    class ResponseSerializer(serializers.Serializer):
+        timeout = serializers.IntegerField(required=False, allow_null=True)
+        result = serializers.ChoiceField(choices=CommandResultBaseSerializer.RESULT_OPTIONS)
 
 
-class CpoReserveNowWebhookSerializer(CpoOutboundWebhookSerializer):
-    expiry_date = serializers.DateTimeField()
-    location_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
-    reservation_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+class CPOStopWebhookSerializer(CallbacksSerializer):
+    URL = 'stop_transaction_url'
+    stop_transaction_url = serializers.URLField()
+
+    class OutboundSerializer(CpoOutboundWebhookSerializer):
+        token_type = serializers.ChoiceField(choices=Token.TYPE_CHOICES)
+        connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
+                                             allow_null=True)
+
+    class ResponseSerializer(serializers.Serializer):
+        timeout = serializers.IntegerField(required=False, allow_null=True)
+        result = serializers.ChoiceField(choices=CommandResultBaseSerializer.RESULT_OPTIONS)
 
 
-class CpoWebhookResponseSerializer(serializers.Serializer):
-    timeout = serializers.IntegerField(required=False, allow_null=True)
-    result = serializers.ChoiceField(choices=CommandResultBaseSerializer.RESULT_OPTIONS)
+class CPOReserveNowWebhookSerializer(CallbacksSerializer):
+    URL = 'reserve_now_url'
+    reserve_now_url = serializers.URLField()
+
+    class OutboundSerializer(CpoOutboundWebhookSerializer):
+        expiry_date = serializers.DateTimeField()
+        location_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+        reservation_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+
+    class ResponseSerializer(serializers.Serializer):
+        timeout = serializers.IntegerField(required=False, allow_null=True)
+        result = serializers.ChoiceField(choices=CommandResultBaseSerializer.RESULT_OPTIONS)
 
 
 class VatSerializer(serializers.IntegerField):

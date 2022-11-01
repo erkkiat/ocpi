@@ -21,11 +21,10 @@ from rest_framework.viewsets import GenericViewSet, ViewSet
 from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum
 from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
-from ocpi22.msp.serializers import MSPCallbacksSerializer, MSPAuthorizeCallbackSerializer
+from ocpi22.msp.serializers import MSPAuthorizeCallbackSerializer
 from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
-    CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer, \
-    MspAuthorizationResponseSerializer
+    CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location
@@ -84,7 +83,7 @@ class TokenViewSet(mixins.ListModelMixin,
 
         token: Token = Token.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
 
-        if self.check_ownership(token) == True:
+        if self.check_ownership(token) is True:
             return OCPIResponse(f'Object {token} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
@@ -94,9 +93,7 @@ class TokenViewSet(mixins.ListModelMixin,
         serializer = TokenSerializer(data=data, instance=token, partial=partial)
         if serializer.is_valid():
             logging.info(f'Creating or updating Token {country_code}*{party_id} - {uid}.')
-            new_token = serializer.save()
-            # if ocpi_platform.is_cpo:
-            #     CHARGER.add_or_update_token(new_token.uid, new_token.valid, created=bool(token))
+            serializer.save()
             Token.send_hub_updates(serializer.data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
         else:
@@ -149,12 +146,12 @@ class TokenViewSet(mixins.ListModelMixin,
                 message_user(status_message, '+358405480238')
 
             data = {'token_id': token_uid}
-            serializer = MSPAuthorizeCallbackSerializer(data=data)
+            serializer = MSPAuthorizeCallbackSerializer.OutboundSerializer(data=data)
             assert serializer.is_valid()
 
             # Todo: Update tests for internal accounting and create tests for MSP authorize callback
 
-            authorize_token_url, kwargs_update = build_callback_request(MSPCallbacksSerializer.URL, data)
+            authorize_token_url, kwargs_update = build_callback_request(MSPAuthorizeCallbackSerializer.URL, data)
 
             if authorize_token_url:
                 kwargs = {}
@@ -170,7 +167,7 @@ class TokenViewSet(mixins.ListModelMixin,
                     timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
                     **kwargs)
                 data = msp_response.json()
-                serializer = MspAuthorizationResponseSerializer(data=data)
+                serializer = MSPAuthorizeCallbackSerializer.ResponseSerializer(data=data)
                 if serializer.is_valid():
                     allowed = data.get('result', 'NOT_ALLOWED').upper()
                 else:

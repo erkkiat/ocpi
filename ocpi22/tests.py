@@ -602,7 +602,7 @@ class ApiPutTests(TestCase):
 
             # Send the request
             response = self.put(url, data, token_base64, viewset)
-            # if response.status_text:
+            # if response.status_text or response.status_code not in (200, 201):
             #     print(f'status_text: "{response.status_text}" for {filename} case.')
             #     ic(response.data)
             self.assertEqual(response.status_code, http_status,
@@ -617,10 +617,8 @@ class ApiPutTests(TestCase):
                 # ic(saved_data)
             except Token.DoesNotExist:
                 print(f"Unable to verify token {uid} from database.")
-                print('Available Tokens:')
-                # noinspection PyUnresolvedReferences
-                for t in Token.objects.all():
-                    print(t)
+                token_list = [str(t) for t in Token.objects.all()]
+                print(f'Available Tokens: {token_list}')
                 raise
 
             # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()

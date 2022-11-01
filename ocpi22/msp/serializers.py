@@ -4,10 +4,11 @@ from rest_framework.exceptions import ValidationError
 
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.messages import default_error_messages
-from ocpi22.models.location import Location, Evse
+from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.ocpi.serializers import SessionSerializer, StrictEvseUidSerializer, StrictLocationIdSerializer
+from ocpi22.ocpi.serializers import SessionSerializer, StrictEvseUidSerializer, StrictLocationIdSerializer, \
+    LocationIdSerializer
 from ocpi22.serializers import CallbacksSerializer
 
 
@@ -117,10 +118,29 @@ class MspSessionSerializer(SessionSerializer):
         return session.get_status_display()
 
 
-class MSPCallbacksSerializer(CallbacksSerializer):
+class MSPAuthorizeCallbackSerializer(CallbacksSerializer):
     URL = 'authorize_token_url'
     authorize_token_url = serializers.URLField()
 
+    class OutboundSerializer(serializers.Serializer):
+        token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
-class MSPAuthorizeCallbackSerializer(serializers.Serializer):
-    token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    class ResponseSerializer(serializers.Serializer):
+        result = serializers.ChoiceField(choices=AuthorizationEnum.choices)
+
+
+class MSPChargePointStatusCallbackSerializer(CallbacksSerializer):
+    URL = 'chargepoint_status_url'
+    chargepoint_status_url = serializers.URLField()
+
+    class OutboundSerializer(serializers.Serializer):
+        location_id = LocationIdSerializer(
+            help_text='The Location UID of the EVSE which had a status update'
+        )
+        evse_id = serializers.CharField(
+            help_text='The UID of the EVSE with the changed status'
+        )
+        status = serializers.ChoiceField(
+            choices=Evse.STATUS_CHOICES,
+            help_text='The new status of the EVSE'
+        )

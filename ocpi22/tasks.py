@@ -21,11 +21,9 @@ from sentry_sdk import capture_exception
 from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
-# from ocpiconnector import slack_logging
 from ocpiconnector.settings import STILL_ALIVE_FREQUENCY
 
 pp = pprint.PrettyPrinter(indent=4).pprint
-# slack_logging.init()
 
 # Set the default Django settings module for the 'celery' program.
 if 'DJANGO_SETTINGS_MODULE' not in os.environ:

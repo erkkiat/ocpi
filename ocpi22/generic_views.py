@@ -2,6 +2,7 @@ import ocpi22.logging as logging
 
 import redis
 from django.conf import settings
+from django.utils.translation import gettext as _
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 
@@ -10,12 +11,21 @@ from ocpi22.util import MyMetadata, get_callbacks_parameter
 
 class WebhookViewSet(viewsets.GenericViewSet):
     metadata = MyMetadata()
+    outbound_data_serializer = None
+    response_data_serializer = None
+    serializer = None
 
     def get_extra_metadata(self, _request) -> dict:
+        outbound_serializer = self.outbound_data_serializer or self.serializer.OutboundSerializer
+        response_serializer = self.response_data_serializer
+        if hasattr(self.serializer, 'ResponseSerializer'):
+            response_serializer = self.serializer.ResponseSerializer
+
         return dict(
             webhook_details=dict(
-                data_sent=self.metadata.get_serializer_info(self.outbound_data_serializer),
-                expected_response=self.metadata.get_serializer_info(self.response_data_serializer)
+                data_sent=self.metadata.get_serializer_info(outbound_serializer()),
+                expected_response=self.metadata.get_serializer_info(response_serializer()) \
+                    if response_serializer else _('Response can be anything')
             )
         )
 

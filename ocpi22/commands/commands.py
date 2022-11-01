@@ -1,3 +1,5 @@
+from icecream import ic
+
 import ocpi22.logging as logging
 
 from copy import deepcopy
@@ -20,14 +22,14 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 import ocpi22.util
+from ocpi22.locations.location import send_to_webhook
 from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, MessageTexts
 from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer, \
     CommandResponse, CommandResultSerializer, ReserveNowSerializer
 from ocpi22.cpo.serializers import CPOStartWebhookSerializer, CPOStopWebhookSerializer, \
-    CpoWebhookResponseSerializer, CpoReserveNowWebhookSerializer, \
-    CpoSessionCommandWebhookSerializer, CPOReserveNowWebhookSerializer
+    CPOReserveNowWebhookSerializer
 from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
@@ -226,6 +228,9 @@ class CommandsViewSet(GenericViewSet):
                 # Store the command for use during the next {settings.REMOTE_COMMAND_EXPIRATION} seconds
                 command_store[authorization_reference] = serializer.validated_data
 
+                # TODO: Do not create Session before making sure the charger is not busy,
+                #  it will close active Session(s)
+
                 session: Session = Session.get_if_exists(authorization_reference=authorization_reference)
                 if not session:
                     params = serializer.validated_data
@@ -266,47 +271,63 @@ class CommandsViewSet(GenericViewSet):
                         connector_id=session.connector.uid if session.connector else None,
                         billed_to=session.billed_to,
                     )
-                    serializer = CpoSessionCommandWebhookSerializer(data=initial_data)
-                    if not serializer.is_valid():
-                        logging.error('Malformed outbound data in start_session() (OCPI Connector bug)')
-                        logging.error(serializer.errors)
-                        raise ValidationError('Malformed outbound data (OCPI Connector bug)')
-                    data = serializer.data
 
-                    headers = {'content-type': 'application/json'}
-                    url, kwargs = build_callback_request(CPOStartWebhookSerializer.URL, data)
+                    data = send_to_webhook(initial_data, CPOStartWebhookSerializer)
+                    ic(data)
 
-                    # Send start command to CPO
-                    logging.info(f'Sending CPO command to url {url}')
-                    cpo_response = requests.post(
-                        url=url,
-                        json=data,
-                        headers=headers,
-                        verify=False,
-                        timeout=20,
-                        **kwargs)
-                    data = cpo_response.json()
+                    # serializer = CPOStartWebhookSerializer.OutboundSerializer(data=initial_data)
+                    # if not serializer.is_valid():
+                    #     logging.error('Malformed outbound data in start_session() (OCPI Connector bug)')
+                    #     logging.error(serializer.errors)
+                    #     raise ValidationError('Malformed outbound data (OCPI Connector bug)')
+                    # data = serializer.data
+                    #
+                    # headers = {'content-type': 'application/json'}
+                    # url, kwargs = build_callback_request(CPOStartWebhookSerializer.URL, data)
+                    #
+                    # # Send start command to CPO
+                    # logging.info(f'Sending CPO command to url {url}')
+                    # cpo_response = requests.post(
+                    #     url=url,
+                    #     json=data,
+                    #     headers=headers,
+                    #     verify=False,
+                    #     timeout=20,
+                    #     **kwargs)
+                    # data = cpo_response.json()
+                    #
+                    # serializer = CpoWebhookResponseSerializer(data=data)
+                    # if serializer.is_valid():
+                    #     data = serializer.validated_data
+                    #
+                    #     timeout = data.get('timeout', timeout)
+                    #     result = data.get('result')
+                    #     logging.info(f'Result from charger for start charging: {result}')
+                    #     message = MessageTexts.get(
+                    #         f'START_{result.upper()}',  # Try to get response message for START_<result>
+                    #         MessageTexts.get(
+                    #             result.upper(),  # Then just <result>
+                    #             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
+                    #     ocpi_status = 1000
+                    #     http_status = status.HTTP_200_OK
 
-                    serializer = CpoWebhookResponseSerializer(data=data)
-                    if serializer.is_valid():
-                        data = serializer.validated_data
-                        timeout = data.get('timeout', timeout)
-                        result = data.get('result')
-                        logging.info(f'Result from charger for start charging: {result}')
-                        message = MessageTexts.get(
-                            f'START_{result.upper()}',  # Try to get response message for START_<result>
-                            MessageTexts.get(
-                                result.upper(),  # Then just <result>
-                                MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
-                        ocpi_status = 1000
-                        http_status = status.HTTP_200_OK
-                    else:
-                        logging.error(
-                            f'Malformed response from CPO start_transaction webhook at URL {url}: {serializer.errors}'
-                        )
-                        raise ValidationError(
-                            f'Malformed response from CPO start_transaction webhook: {serializer.errors}'
-                        )
+                    timeout = int(data.get('timeout', timeout))
+                    result = data.get('result', '').upper()
+                    logging.info(f'Result from charger for start charging: {result}')
+                    message = MessageTexts.get(
+                        f'START_{result}',  # Try to get response message for START_<result>
+                        MessageTexts.get(
+                            result,  # Then just <result>
+                            MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
+                    ocpi_status = 1000
+                    http_status = status.HTTP_200_OK
+                #     else:
+                #         logging.error(
+                #             f'Malformed response from CPO start_transaction webhook at URL {url}: {serializer.errors}'
+                #         )
+                #         raise ValidationError(
+                #             f'Malformed response from CPO start_transaction webhook: {serializer.errors}'
+                #         )
                 except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError,
                         ValidationError) as e:
                     message = MessageTexts.get('MS_CONNECTION_ERROR')

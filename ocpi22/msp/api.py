@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from icecream import ic
 
 import ocpi22.logging as logging
 from decimal import Decimal
@@ -29,10 +30,10 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
-    MspSessionSerializer, MSPCallbacksSerializer, MSPAuthorizeCallbackSerializer, ReserveSerializer
+    MspSessionSerializer, MSPAuthorizeCallbackSerializer, ReserveSerializer, \
+    MSPChargePointStatusCallbackSerializer
 from ocpi22.msp.util import get_message_by_language
 from ocpi22.ocpi.api import TokenViewSet
-from ocpi22.ocpi.serializers import MspAuthorizationResponseSerializer
 from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
@@ -207,9 +208,15 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
 
     @staticmethod
     def _language_response(response):
-        data = response.json()
-        data = data.get('data', data) or data
-        message = data.get('message')
+        try:
+            data = response.json()
+            data = data.get('data', data) or data
+            message = data.get('message')
+        except Exception as e:
+            logging.error(f'Got a problematic message in response ({e}): {response.text[:500]}')
+            data = {}
+            message = None
+
         if message:
             data.update(message_display=get_message_by_language(data.get('message'), get_language()))
         else:
@@ -301,8 +308,8 @@ class MspTokenViewSet(TokenViewSet):
     def patch(self, request):
         return self.put(request, partial=True)
 
-    def list(self, request):
-        result: OCPIResponse = super().list(request)
+    def list(self, request, *args, **kwargs):
+        result: OCPIResponse = super().list(request, *args, **kwargs)
         return Response({'data': result.data.get('data')})
 
     def authorize(self, request, token_uid):
@@ -318,7 +325,7 @@ class MspAuthorizeWebhookViewSet(WebhookViewSet):
     Example URL: `https://your.emsp.backend.server/authorize/{token_id}/`. The token_id will be substituted with
     the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
 
-    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
+    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
     > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
     ## Status codes
@@ -326,21 +333,40 @@ class MspAuthorizeWebhookViewSet(WebhookViewSet):
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
-    serializer_class = MSPCallbacksSerializer
+    serializer_class = MSPAuthorizeCallbackSerializer
     serializer = serializer_class()
     queryset = Token.objects.none()
 
-    authorize_callback_serializer = MSPAuthorizeCallbackSerializer()
-
-    def get_extra_metadata(self, _request) -> dict:
-        return dict(authorize_webhook_details=dict(
-            data_sent=self.metadata.get_serializer_info(self.authorize_callback_serializer),
-            expected_result=self.metadata.get_serializer_info(MspAuthorizationResponseSerializer())
-        )
-        )
-
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='authorize')
     def authorize_webhook(self, request):
+        return self.webhook(request)
+
+
+class MspChargePointStatusWebhookViewSet(WebhookViewSet):
+    """
+    You need to tell the OCPI Connector where to send charge point status updates.
+    For example, when a charge point is reserved, the OCPI Connector pushes the new charge point status
+    to your webhook URL.
+    Using this endpoint you can set and get your callback URL and
+    user credentials needed for accessing the endpoint.
+
+    Example URL: `https://your.emsp.backend.server/authorize/{token_id}/`. The token_id will be substituted with
+    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+
+    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
+    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+    ## Status codes
+
+    * `HTTP_200_OK` when the webhook was set successfully
+    * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    """
+    serializer_class = MSPChargePointStatusCallbackSerializer
+    serializer = serializer_class()
+    queryset = Token.objects.none()
+
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='status')
+    def status_webhook(self, request):
         return self.webhook(request)
 
 
@@ -422,6 +448,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 charge_points=request.build_absolute_uri(
                     reverse('map-locations')
                 ),
+                chargepoint_status_webhook=request.build_absolute_uri(
+                    reverse('msp-status-webhook'),
+                ),
                 car_models=request.build_absolute_uri(
                     reverse('msp-cars-list')
                 ),
@@ -447,8 +476,8 @@ class MspTariffQuickViewSet(mixins.ListModelMixin,
     pagination_class = LimitOffsetPagination
     lookup_field = 'uid'
 
-    def retrieve(self, request, *args, uid, **kwargs):
-        tariff = get_object_or_404(Tariff, uid=uid, archived=False)
+    def retrieve(self, request, *args, **kwargs):
+        tariff = get_object_or_404(Tariff, uid=kwargs.get('uid'), archived=False)
         serializer = self.serializer_class(instance=tariff)
         return Response(serializer.data)
 

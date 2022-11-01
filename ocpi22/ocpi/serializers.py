@@ -15,7 +15,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension, ChargingPeriodSerializer, TotalCostSerializer
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
-from ocpi22.ocpi.util import get_sender_party
+from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
 
 
@@ -406,6 +406,5 @@ class AuthorizeSerializer(serializers.Serializer):
     location_id = StrictLocationIdSerializer(source='location', required=False)
     evse_uids = EvseUidSerializer(source='evses', many=True, required=False)
 
-
-class MspAuthorizationResponseSerializer(serializers.Serializer):
-    result = serializers.ChoiceField(choices=AuthorizationEnum.choices)
+# class MspAuthorizationResponseSerializer(serializers.Serializer):
+#     result = serializers.ChoiceField(choices=AuthorizationEnum.choices)
