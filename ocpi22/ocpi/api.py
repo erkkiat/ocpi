@@ -1,3 +1,5 @@
+from django.conf import settings
+
 import ocpi22.logging as logging
 from typing import Optional
 
@@ -180,7 +182,7 @@ class TokenViewSet(mixins.ListModelMixin,
                     ALLOWED=1000,
                 ).get(allowed, Ocpi.ServerError.GENERIC_SERVER_ERROR)
             else:
-                if token.total_balance_float() < 1.0:
+                if settings.REQUIRE_WALLET_BALANCE and token.total_balance_float() < 1.0:
                     log_error(request, f'Token {token} has no balance')
                     allowed = AuthorizationEnum.NO_CREDIT.value
                     info = MessageTexts.get('NO_BALANCE')

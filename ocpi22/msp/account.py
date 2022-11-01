@@ -86,16 +86,17 @@ def check_balance(session: Session):
     """
     Check balance and stop charging if money is about to run out
     """
-    cost = session.total_cost_incl_vat
-    account = get_user_account(session)
-    if (account and cost):
-        remaining = account.balance - Decimal(cost)
-        # print(f'Balance: {account.balance}, cost: {cost}, remaining: {remaining}')
-        if remaining < 0.5:
-            logging.error(f'Account #{account.pk} balance used, stopping session #{session.uid}')
-            from ocpi22.commands.commands import send_stop_command
-            if not send_stop_command(session):
-                logging.error(f'Unable to stop session #{session.uid} with account balance reaching zero')
+    if settings.USE_ACCOUNTS:
+        cost = session.total_cost_incl_vat
+        account = get_user_account(session)
+        if (account and cost):
+            remaining = account.balance - Decimal(cost)
+            # print(f'Balance: {account.balance}, cost: {cost}, remaining: {remaining}')
+            if remaining < 0.5:
+                logging.error(f'Account #{account.pk} balance used, stopping session #{session.uid}')
+                from ocpi22.commands.commands import send_stop_command
+                if not send_stop_command(session):
+                    logging.error(f'Unable to stop session #{session.uid} with account balance reaching zero')
 
 
 def update_balance(cdr) -> None:
