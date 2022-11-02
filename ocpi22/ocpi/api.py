@@ -347,7 +347,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
 
     @staticmethod
     def list(request, *_args, **_kwargs):
-        return Response(
+        return OCPIResponse(
             dict(
                 token=request.credentials.ours_base64()
                 if hasattr(request, 'credentials') else 'not available when using basic auth',
@@ -432,7 +432,7 @@ class TariffViewSet(mixins.ListModelMixin,
 
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', url_name='by-id')
-    def tariff_by_id(self, request, country_code, party_id, uid) -> Response:
+    def tariff_by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
@@ -498,7 +498,7 @@ class SessionViewSet(mixins.ListModelMixin,
     @transaction.atomic
     @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def session_by_id(self, request, country_code, party_id, uid) -> Response:
+    def session_by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
         # noinspection PyUnresolvedReferences
         session = get_object_or_404(Session, country_code=country_code, party_id=party_id, uid=uid)
 
