@@ -134,7 +134,7 @@ class Command(BaseCommand):
 
         token_base64 = base64.b64encode(str(options['token_a']).encode('ascii')).decode('ascii')
         url = options['versions_endpoint_url']
-        token_b = generate_random_token().upper()
+        token_b = generate_random_token()
         try:
             heading('1) Getting version info from other party '
                     'and selecting a version we both understand')

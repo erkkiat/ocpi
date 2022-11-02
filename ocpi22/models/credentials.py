@@ -35,8 +35,6 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     class Meta:
         verbose_name_plural = 'credentials'
 
-    upper_case_fields = ('token_a', 'ours', 'theirs')
-
     # The credentials token used only for the initial connection, and is communicated manually between parties
     token_a = models.CharField(max_length=64, default=secrets.token_hex(32))
 
