@@ -407,7 +407,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             # This can only be done async
             from ocpi22 import tasks
             tasks.exchange_credentials.apply_async(
-                (credentials.token_a, credentials.url),
+                (credentials.theirs, credentials.url),
                 countdown=2,
                 retry=True, retry_policy=dict(max_retries=5, interval_start=2))
 

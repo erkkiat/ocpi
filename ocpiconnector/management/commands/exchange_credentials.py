@@ -100,8 +100,8 @@ class Command(BaseCommand):
             # ic(versions_response.json())
             for version_option in versions_response.json():
                 if "version" not in version_option or "url" not in version_option:
-                    raise OCPIProtocolError('Version information not found in received data. '
-                                            'Make sure you have the OCPI versions URL.')
+                    raise OCPIProtocolError(f'Version information not found in received data. '
+                                            f'Make sure you have the OCPI versions URL. {str(versions_response)}')
                 # ic(version_option)
                 # Todo: Support earlier versions also
                 if version_option['version'] == '2.2':
@@ -176,7 +176,7 @@ class Command(BaseCommand):
 
             data_to_send = dict(
                 token=token_b,
-                url=f'http://{settings.HOSTNAME}{reverse("base-versions")}',
+                url=f'http://{settings.HOSTNAME}{reverse("base-versions")}blaablaa',
                 roles=roles,
             )
             _credentials_response = self.ocpi_post(
