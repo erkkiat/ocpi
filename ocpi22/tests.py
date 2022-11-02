@@ -905,7 +905,7 @@ class CommandTests(TestCase):
                                   {'language': 'AF', 'text': 'Die laaier werk nie'},
                                   {'language': 'MI', 'text': 'Kare e mahi ana te rihi'}]},
              'status_code': 1000,
-             'status_message': '',
+             'status_message': 'Success',
              'timestamp': datetime(2000, 1, 1, 12, 0)}
         )
 
@@ -1005,7 +1005,7 @@ class CommandTests(TestCase):
                                   {'language': 'AF', 'text': 'Stop laaisessie'},
                                   {'language': 'MI', 'text': 'Whakamutua te utu i te waahi'}]},
              'status_code': 1000,
-             'status_message': '',
+             'status_message': 'Success',
              'timestamp': datetime(2000, 1, 1, 12, 0)}
         )
 
@@ -1101,7 +1101,7 @@ class CommandTests(TestCase):
                                   {'language': 'AF', 'text': 'Die laaier werk nie'},
                                   {'language': 'MI', 'text': 'Kare e mahi ana te rihi'}]},
              'status_code': 1000,
-             'status_message': '',
+             'status_message': 'Success',
              'timestamp': datetime(2000, 1, 1, 12, 0)}
         )
 

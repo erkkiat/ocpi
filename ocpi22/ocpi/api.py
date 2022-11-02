@@ -612,7 +612,7 @@ class OcpiApi22View(routers.APIRootView):
 
     @staticmethod
     def get(request, **kwargs):
-        return Response(get_endpoints_dict(request))
+        return OCPIResponse(get_endpoints_dict(request))
 
     def get_view_name(self):
         return 'OCPI 2.2'

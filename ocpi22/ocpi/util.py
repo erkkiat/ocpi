@@ -193,8 +193,8 @@ def format_ocpi_response(status_code: int = 1000, status_message: str = '', data
 
 
 class OCPIResponse(Response):
-    def __init__(self, data='', status_code=1000, status_message='', http_status=status.HTTP_200_OK, errors=None,
-                 *args, **kwargs):
+    def __init__(self, data='', status_code=1000, status_message='Success',
+                 http_status=status.HTTP_200_OK, errors=None, *args, **kwargs):
         if isinstance(status_message, list):
             status_message = ', '.join([s for s in status_message])
         if isinstance(errors, dict):

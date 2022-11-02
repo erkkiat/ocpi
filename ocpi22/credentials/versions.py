@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 
+from ocpi22.ocpi.util import OCPIResponse
 from ocpiconnector.ocpi_identities import ocpi_platform
 
 _versions_url = None
@@ -23,7 +24,7 @@ def get_versions_dict(request):
     ]
 
 
-def get_endpoints_dict(request):
+def get_endpoints_dict(request) -> dict:
     R = "RECEIVER"
     S = "SENDER"
 
@@ -167,4 +168,4 @@ class VersionsViewSet(viewsets.ViewSet):
         This is the OCPI "versions" endpoint. A requesting party will use this information
         for choosing the OCPI version used between us and them.
         """
-        return Response(get_versions_dict(request))
+        return OCPIResponse(get_versions_dict(request))
