@@ -16,6 +16,7 @@ from rest_framework.generics import get_object_or_404
 from ocpi22.locations.serializers import EvseSaveSerializer, EvseSerializer, LocationSerializer, LocationSaveSerializer
 from ocpi22.models.location import Location, Evse
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
+from ocpi22.serializers import CallbacksSerializer
 from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, get_callbacks_parameter, build_callback_request
 from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 
@@ -71,6 +72,8 @@ class EvseViewSet(mixins.RetrieveModelMixin,
 
 
 def send_to_webhook(data, serializer, outbound_serializer=None, timeout=5) -> dict:
+    assert issubclass(serializer, CallbacksSerializer), \
+        'The serializer needs to be inherited from CallbacksSerializer'
     try:
         OutboundSerializer = outbound_serializer or serializer.OutboundSerializer
         outbound_serializer = OutboundSerializer(data=data)

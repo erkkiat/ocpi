@@ -933,7 +933,7 @@ class CommandTests(TestCase):
                       'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result.e86baa82cee14ac5bfd00b85371aa798',
                       'token_id': 'FI*001*T*ADMIN*TOKEN',
                       'token_type': 'OTHER'},
-             'timeout': 20,
+             'timeout': 5,
              'url': 'http://fakehost/start/HELSINKI-3/',
              'verify': False}
         )
@@ -1019,7 +1019,8 @@ class CommandTests(TestCase):
                'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
                'callback-reserve_now_url': 'http://john:his-password@fakehost/reserve/{location_id}/{evse_id}/',
            }.get(x))
-    @patch('ocpi22.commands.commands.requests.post')
+    # @patch('ocpi22.commands.commands.requests.post')
+    @patch('ocpi22.locations.location.requests.post')
     def test_reserve_now(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-reserve-now')
         viewset = CommandsViewSet()
@@ -1121,7 +1122,7 @@ class CommandTests(TestCase):
                 'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/AUTH-REFERENCE/',
                 'token_id': 'FI*001*T*ADMIN*TOKEN', 'token_type': 'OTHER', 'authorization_reference': 'AUTH-REFERENCE',
                 'auth_method': 'COMMAND', 'from_party': 'FI*CP1 (CPO), FI*MSP (EMSP), FI*NAP (NAP), FI*HUB (HUB)',
-                'location_id': 'HELSINKI-1', 'evse_id': None, 'connector_id': None, 'billed_to': 'FI*EON',
+                'location_id': 'HELSINKI-1', 'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*EON',
                 'expiry_date': '2022-01-12T19:44:39.298178', 'reservation_id': 'RESERVATION-ID'
             }
         )
@@ -2611,20 +2612,21 @@ class TestMspUserApi(TestCase):
         session.calculate_price()
         session.save()
 
-        Token.objects.filter(uid=token_uid).update(customer=user)
-        cdr = Cdr.create_based_on_session(session)
-        serializer = CdrSerializer(instance=cdr)
-        data = serializer.data
-        self.assertEqual([cdr.total_cost_incl_vat, cdr.total_cost_excl_vat], [62.0, 50.0],
-                         'CDR cost seems to be off')
+        with patch('django.conf.settings.USE_ACCOUNTS', True):
+            Token.objects.filter(uid=token_uid).update(customer=user)
+            cdr = Cdr.create_based_on_session(session)
+            serializer = CdrSerializer(instance=cdr)
+            data = serializer.data
+            self.assertEqual([cdr.total_cost_incl_vat, cdr.total_cost_excl_vat], [62.0, 50.0],
+                             'CDR cost seems to be off')
 
-        # Cleanup for next test
-        cdr.delete()
+            # Cleanup for next test
+            cdr.delete()
 
-        response = put_cdr(CdrMessages.test_transactions_rfid)
-        self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
-        self.assertEqual(account.balance, initial_balance - cdr.total_cost_incl_vat,
-                         'Account balance differs from expected after a charging session')
+            response = put_cdr(CdrMessages.test_transactions_rfid)
+            self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
+            self.assertEqual(account.balance, initial_balance - cdr.total_cost_incl_vat,
+                             'Account balance differs from expected after a charging session')
 
         # Try to put a duplicate CDR
 
@@ -2635,16 +2637,17 @@ class TestMspUserApi(TestCase):
         # Charge using the mobile app and an APP_TOKEN
         #
 
-        app_token_id = 'APP-TOKEN'
-        account.app_token_id = app_token_id
-        account.save()
-        previous_balance = account.balance
+        with patch('django.conf.settings.USE_ACCOUNTS', True):
+            app_token_id = 'APP-TOKEN'
+            account.app_token_id = app_token_id
+            account.save()
+            previous_balance = account.balance
 
-        response = put_cdr(CdrMessages.test_transactions_app_id)
-        cost = Decimal("6.20")
-        self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
-        self.assertEqual(account.balance, previous_balance - cost,
-                         'Account balance differs from expected after a charging session')
+            response = put_cdr(CdrMessages.test_transactions_app_id)
+            cost = Decimal("6.20")
+            self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
+            self.assertEqual(account.balance, previous_balance - cost,
+                             'Account balance differs from expected after a charging session')
 
 
 def send_create_user(data):
