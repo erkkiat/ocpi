@@ -96,9 +96,6 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     contract_id: str = serializer.validated_data.get('contract_id')
                     token = construct_adhoc_token(account.app_token_id, contract_id)
                     expiration: int = serializer.validated_data.get('expiration')
-                    ic(
-                        request, evse, token, connector_id, contract_id, expiration, reservation_id
-                    )
                     response: requests.Response = send_reserve_command(
                         request, location, evse, token, reservation_id, connector_id, contract_id, expiration
                     )

@@ -237,7 +237,7 @@ class CredentialsSerializer(serializers.ModelSerializer):
         credentials.save()
 
     def update(self, instance, validated_data):
-        instance.theirs = base64_to_ascii(validated_data.get('theirs'))
+        instance.theirs = validated_data.get('theirs')
         instance.url = validated_data.get('url')
         instance.roles.all().delete()
 

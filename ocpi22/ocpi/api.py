@@ -265,16 +265,13 @@ class CdrViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         if self.request.user.is_superuser:
-            # noinspection PyUnresolvedReferences
             return Cdr.objects.all().order_by('created')
         if hasattr(self.request, 'country_code'):
             ic(self.request.country_code, self.request.party_id)
-            # noinspection PyUnresolvedReferences
             return Cdr.objects.filter(
                 country_code=self.request.country_code,
                 party_id=self.request.party_id
             ).order_by('created')
-        # noinspection PyUnresolvedReferences
         return Cdr.objects.none()
 
     def get_view_name(self):
@@ -393,7 +390,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             endpoints = get_endpoints(selected_version['url'], token_base64)
             store_endpoints_for_party(credentials, endpoints)
             data = make_my_credentials_dict(request)
-            ic(data)
             serializer = CredentialsSerializer(data=data)
             if not serializer.is_valid():
                 logging.error(f'OCPI connector has a logic error in Credentials POST: {serializer.errors}')

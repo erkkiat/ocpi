@@ -16,6 +16,9 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['name', 'website', 'logo']
 
     def create(self, data):
+        if isinstance(data, BusinessDetails):
+            return data
+
         # Set all unset elements to ""
         defaults = dict(zip(self.fields, ["", "", ""]))
         defaults.update(data)
@@ -26,8 +29,8 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         )
         return business_details
 
-    # def to_representation(self, value):
-    #     return
+    def to_internal_value(self, data):
+        return self.create(data)
 
 
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -286,14 +289,12 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
             facilities = validated_data.pop('facilities', None)
             evses = validated_data.pop('evses', [])
 
-            # noinspection PyUnresolvedReferences
             location = Location.objects.create(**validated_data)
 
             for e in evses:
                 connectors = e.pop('connectors', [])
                 capabilities = e.pop('capabilities', [])
 
-                # noinspection PyUnresolvedReferences
                 evse = Evse.objects.create(**e, location=location)
 
                 # Capabilities
@@ -302,15 +303,12 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
                 # Connectors
                 for c in connectors:
                     tariff_ids = c.pop('tariff_ids', [])
-                    # noinspection PyUnresolvedReferences
                     connector = Connector.objects.create(**c, evse=evse)
 
                     # Tariffs
                     tariffs = []
                     for t in tariff_ids:
-                        # noinspection PyUnresolvedReferences
                         try:
-                            # noinspection PyUnresolvedReferences
                             tariff = Tariff.objects.get(uid=t,
                                                         country_code=location.country_code,
                                                         party_id=location.party_id,

@@ -401,8 +401,15 @@ class OCPIProtocolError(SyntaxError):
 
 
 def ocpi_credentials_get(url, token_base64):
-    logging.info(f'Getting {url} with {token_base64}')
-    response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'), timeout=20)
+    logging.info(f'Getting {url} with token {token_base64[:2]}****')
+    response = requests.get(
+        url,
+        headers=dict(
+            Authorization=f'Token {token_base64}',
+            Accept='application/json'
+        ),
+        timeout=20
+    )
     if response.status_code != 200:
         logging.info(f'*** Got response: {response.status_code} - {response.reason}')
         logging.info(response.text)

@@ -25,7 +25,8 @@ def check_auth_token(request, token: str) -> bool:
         return (
             reverse('base-versions'),  # The "Versions" endpoint
             reverse('credentials-list'),  # Getting the Credentials
-            reverse('ocpi-22')  # The "Endpoints" endpoint
+            reverse('ocpi-22'),  # The "Endpoints" endpoint
+            '/',  # The front page, which serves as HTML page and versions endpoint
         )
 
     token_ascii = ''
@@ -35,13 +36,10 @@ def check_auth_token(request, token: str) -> bool:
         token_ascii = base64.b64decode(token).decode('ascii')
         request.ocpi_auth = OcpiAuthTypes.NONE
 
-        ic(token_ascii, allowed_for_token_a())
         # First check for TOKEN_A, are we still getting to know each other?
         credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
         if credentials_matches.count():
-            ic(request.path)
             if request.path not in allowed_for_token_a():
-                ic()
                 raise exceptions.NotAuthenticated(  # HTTP 401
                     f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
                 )

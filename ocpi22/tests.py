@@ -1318,7 +1318,7 @@ class TestCredentials(TestCase):
         # ic(url, _args, _kwargs)
 
         response_data = {
-            'http://localhost/versions': [{'url': 'http://localhost/ocpi/cpo/2.2/', 'version': '2.2'}],
+            'http://localhost/versions': {'data': [{'url': 'http://localhost/ocpi/cpo/2.2/', 'version': '2.2'}]},
             'http://localhost/ocpi/cpo/2.2/': ocpi_endpoints_response,
             'http://localhost/ocpi/cpo/2.2/credentials': ocpi_endpoints_response,
         }
@@ -1372,7 +1372,7 @@ class TestCredentials(TestCase):
         # Let's examine what was actually sent
         args, kwargs = mock_get.call_args
 
-        expected_headers = {'Authorization': 'Token OTE4Mjcz'}
+        expected_headers = {'Accept': 'application/json', 'Authorization': 'Token OTE4Mjcz'}
 
         self.assertDictEqual(kwargs['headers'], expected_headers,
                              'Headers differ from expected')

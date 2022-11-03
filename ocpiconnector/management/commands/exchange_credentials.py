@@ -74,8 +74,6 @@ def select_version(url, token):
             if "version" not in version_option or "url" not in version_option:
                 raise OCPIProtocolError(f'Version information not found in received data. '
                                         f'Make sure you have the OCPI versions URL. {str(versions_response)}')
-            # ic(version_option)
-            # Todo: Support earlier versions also
             if version_option['version'] == '2.2':
                 selected_version = version_option
                 break
@@ -174,8 +172,6 @@ class Command(BaseCommand):
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             logging.error(f'CREDENTIALS - Cannot reach the specified endpoint: {e}')
             print(f'*** Cannot reach the URL you specified: {str(e)}')
-            raise
         except (OCPIProtocolError, JSONDecodeError, NotAuthenticated) as e:
             logging.error(f'CREDENTIALS - Credentials exchange protocol error: {e}')
             print(f'*** There has been a protocol error: {str(e)}')
-            raise
