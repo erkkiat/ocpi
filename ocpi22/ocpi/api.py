@@ -330,7 +330,7 @@ class CdrViewSet(mixins.ListModelMixin,
 
 def make_my_credentials_dict(request) -> dict:
     return dict(
-        token=request.credentials.ours_base64()
+        token=request.credentials.ours
         if hasattr(request, 'credentials') else 'not available when using basic auth',
 
         url=request.build_absolute_uri(reverse('base-versions')),
