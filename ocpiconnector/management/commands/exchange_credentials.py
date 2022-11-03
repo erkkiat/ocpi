@@ -95,7 +95,7 @@ def get_endpoints(url, token):
     return endpoints
 
 
-def find_endpoint_url(endpoints, identifier, role):
+def find_endpoint_url(endpoints, identifier, role) -> str:
     for endpoint in endpoints['endpoints']:
         ep_identifier = endpoint.get('identifier').lower()
         ep_role = endpoint.get('role').lower()
@@ -103,7 +103,7 @@ def find_endpoint_url(endpoints, identifier, role):
             credentials_url = endpoint.get('url')
             # logging.info(f'Credentials receiver URL: {credentials_url}')
             return credentials_url
-    raise OCPIProtocolError('There is no credentials_url provided by the other party')
+    return ''
 
 
 class Command(BaseCommand):
@@ -148,12 +148,12 @@ class Command(BaseCommand):
                 url=f'http://{settings.HOSTNAME}{reverse("base-versions")}',
                 roles=roles,
             )
-            credentials_response = ocpi_credentials_post(
-                find_endpoint_url(endpoints, 'credentials', 'receiver'),
-                token_a_base64,
-                json=data_to_send,
-                timeout=15
-            )
+            url = find_endpoint_url(endpoints, 'credentials', 'receiver') or find_endpoint_url(endpoints, 'credentials',
+                                                                                               'sender'),
+            if not url:
+                raise OCPIProtocolError(f'There is no Credentials Sender or Receiver url provided by the other party')
+
+            credentials_response = ocpi_credentials_post(url, token_a_base64, json=data_to_send, timeout=15)
             if credentials_response.status_code != status.HTTP_200_OK:
                 msg = f'CREDENTIALS - Endpoints returned HTTP {credentials_response.status_code} from Credentials Receiver'
                 logging.error(msg)
