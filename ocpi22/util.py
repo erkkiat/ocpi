@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import secrets
@@ -585,3 +586,7 @@ def str_to_deterministic_int(reservation_id, limit=None) -> Optional[int]:
     if limit:
         return int(str(numerical_id)[:limit])
     return numerical_id
+
+
+def base64_to_ascii(s: str) -> str:
+    return base64.b64decode(s).decode('ascii')

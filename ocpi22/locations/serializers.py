@@ -15,7 +15,7 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         model = BusinessDetails
         fields = ['name', 'website', 'logo']
 
-    def to_internal_value(self, data):
+    def create(self, data):
         # Set all unset elements to ""
         defaults = dict(zip(self.fields, ["", "", ""]))
         defaults.update(data)

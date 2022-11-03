@@ -1,4 +1,7 @@
 import base64
+
+from rest_framework.exceptions import ValidationError
+
 import ocpi22.logging as logging
 import secrets
 from functools import lru_cache
@@ -99,34 +102,31 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return base64.b64encode(str(token).encode('ascii')).decode('ascii')
 
     def token_a_base64(self):
-        # noinspection PyUnresolvedReferences
         return self.base64(self.token_a)
 
     def ours_base64(self):
-        # noinspection PyUnresolvedReferences
+        if not self.ours:
+            self.ours = generate_random_token()
+            self.save(update_fields=['ours'])
         return self.base64(self.ours)
 
     def theirs_base64(self):
-        # noinspection PyUnresolvedReferences
         return self.base64(self.theirs)
 
     @staticmethod
     def find(token, create=False):
-        # noinspection PyUnresolvedReferences
         credentials = Credentials.objects.filter(Q(token_a=token) | Q(ours=token) | Q(theirs=token))
         count = credentials.count()
         assert count <= 1, f"There are overlapping tokens in credentials {', '.join([str(a.pk) for a in credentials])}."
         if credentials.count() == 1:
             return credentials[0]
-        # noinspection PyUnresolvedReferences
         return Credentials.objects.create(token_a=token) if create else None
 
     def is_complete(self) -> bool:
-        # noinspection PyUnresolvedReferences
         return bool(self.ours and self.theirs and self.roles.count())
 
     def connection_state(self) -> bool:
-        return self.valid and self.connection_status == 'CONNECTED'
+        return bool(self.valid and self.connection_status == 'CONNECTED')
 
     # For admin so that there is a pretty boolean icon
     connection_state.boolean = True
@@ -140,6 +140,25 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         credentialsrole = self.roles.filter(role=role).first()
         if credentialsrole:
             return credentialsrole.party
+
+    def add_role(self, role: dict) -> "CredentialsRole":
+        assert isinstance(role, dict), f'Role should be a dict, not "{role}"'
+        from ocpi22.ocpi.serializers import RolesSerializer
+        serializer = RolesSerializer(data=role)
+        if serializer.is_valid():
+            data = serializer.data
+            bd = data.pop('business_details')
+            business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(
+                name=bd.get('name'), website=bd.get('website', ''), defaults=dict(logo=bd.get('logo', ''))
+            )
+
+            role, _role_created = CredentialsRole.objects.get_or_create(
+                **data, defaults=dict(business_details=business_details)
+            )
+            self.roles.add(role)
+            return role
+        else:
+            raise ValidationError(serializer.errors)
 
 
 class CredentialsRole(models.Model, ModelUtilMixin):
@@ -210,9 +229,7 @@ def new_connection(request):
                     messages.error(request, form.errors)
         except SyntaxError as e:
             msg = str(e)
-            # noinspection PyUnresolvedReferences
-            if e.errno > 400:
-                msg = f'The token is not accepted by the other party (HTTP {e.errno})'
+            logging.error(msg, request)
             messages.error(request, msg)
 
     return HttpResponseRedirect(reverse('admin:ocpi22_credentials_changelist'))
@@ -276,3 +293,31 @@ def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: OcpiModuleEnum)
             ) if credentials.valid
         ]
     return result
+
+
+def store_endpoints_for_party(credentials, endpoints):
+    credentials.version = endpoints['version'].replace('.', '')  # "2.2" => "22"
+    credentials.last_connection = timezone.now()
+    credentials.save()
+
+    # Replace any existing endpoints for this specific party
+    credentials.endpoints.all().delete()
+
+    for ep in endpoints['endpoints']:
+        endpoint = Endpoint(**ep)
+        endpoint.credentials = credentials
+        endpoint.save()
+
+
+def store_tokens_for_party(our_token, their_token, token_a) -> Credentials:
+    credentials: Credentials = Credentials.find(token_a, create=True)
+    assert their_token != credentials.token_a
+    assert our_token != credentials.token_a
+    if our_token:
+        credentials.ours = our_token
+    if token_a:
+        credentials.token_a = token_a
+    if their_token:
+        credentials.theirs = their_token
+    credentials.save()
+    return credentials

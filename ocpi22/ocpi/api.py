@@ -1,4 +1,5 @@
 from django.conf import settings
+from rest_framework.exceptions import ValidationError
 
 import ocpi22.logging as logging
 from typing import Optional
@@ -23,10 +24,9 @@ from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
 from ocpi22.msp.serializers import MSPAuthorizeCallbackSerializer
 from ocpi22.msp.twilio import message_user
-from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, RolesSerializer, \
+from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, \
     CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer
-from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.models.credentials import Credentials, CredentialsRole, store_endpoints_for_party
 from ocpi22.models.location import Location
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
@@ -37,7 +37,7 @@ from ocpi22.util import matching_operator, PREMIUM_RESPONSE, \
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
-from ocpiconnector.management.commands.exchange_credentials import get_our_roles
+from ocpiconnector.management.commands.exchange_credentials import get_our_roles, select_version, get_endpoints
 from ocpiconnector.ocpi_identities import ocpi_platform
 
 
@@ -330,6 +330,18 @@ class CdrViewSet(mixins.ListModelMixin,
         return OCPIResponse(errors=serializer.errors)
 
 
+def make_my_credentials_dict(request) -> dict:
+    return dict(
+        token=request.credentials.ours_base64()
+        if hasattr(request, 'credentials') else 'not available when using basic auth',
+
+        url=request.build_absolute_uri(reverse('base-versions')),
+
+        # Todo: Check this, should be "Retrieves the credentials object to access the server’s platform"
+        roles=get_our_roles(),
+    )
+
+
 class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     """
     Credential tokens exchange. Please note that the tokens are base64 encoded for transport, except in the
@@ -337,7 +349,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     ?auth-test=TOKEN.
     """
     # The queryset tells Django REST how to determine access to these endpoints
-    # noinspection PyUnresolvedReferences
     queryset = Credentials.objects.none()
     serializer_class = CredentialsSerializer
     renderer_classes = [OnlyRawBrowsableAPIRenderer, JSONRenderer]
@@ -347,17 +358,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
 
     @staticmethod
     def list(request, *_args, **_kwargs):
-        return OCPIResponse(
-            dict(
-                token=request.credentials.ours_base64()
-                if hasattr(request, 'credentials') else 'not available when using basic auth',
-
-                url=request.build_absolute_uri(reverse('base-versions')),
-
-                # Todo: Check this, should be "Retrieves the credentials object to access the server’s platform"
-                roles=get_our_roles(),
-            )
-        )
+        return OCPIResponse(make_my_credentials_dict(request))
 
     @staticmethod
     def delete(request: Request, *_args, **_kwargs):
@@ -372,51 +373,43 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
 
     @csrf_exempt
     def post(self, request: Request, *_args, **_kwargs):
-        assert hasattr(request, 'credentials')
-        # noinspection PyUnresolvedReferences
-        data = request.data
-        credentials: Credentials = request.credentials
-        credentials.theirs = data.get('token')
-        credentials.url = data.get('url')
-        # noinspection PyUnresolvedReferences
-        credentials.roles.all().delete()
+        try:
+            assert hasattr(request, 'credentials'), f'Posting to this endpoint requires OCPI Credentials'
+            data = request.data
+            data = data.get('data', data)
+            credentials: Credentials = request.credentials
+            credentials.theirs = data.get('token')
+            credentials.url = data.get('url')
+            credentials.roles.all().delete()
 
-        for role in data['roles']:
-            assert isinstance(role, dict)
-            serializer = RolesSerializer(data=role)
-            if serializer.is_valid():
-                data = serializer.data
-                bd = data.pop('business_details')
-                business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(
-                    name=bd.get('name'), website=bd.get('website', ''), defaults=dict(logo=bd.get('logo', ''))
-                )
+            for role in data['roles']:
+                credentials.add_role(role)
 
-                role, _role_created = CredentialsRole.objects.get_or_create(
-                    **data, defaults=dict(business_details=business_details))
-                # noinspection PyUnresolvedReferences
-                credentials.roles.add(role)
-            else:
-                return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+            # Delay storing tokens until now, in case the roles have some issue
+            credentials.save()
 
-        # Delay storing tokens until now, in case the roles have some issue
-        credentials.save()
-        serializer = CredentialsSerializer(instance=credentials)
-
-        if not credentials.is_complete():
-            # Let's respond, we are only half way through
-            # This can only be done async
-            from ocpi22 import tasks
-            tasks.exchange_credentials.apply_async(
-                (credentials.theirs, credentials.url),
-                countdown=2,
-                retry=True, retry_policy=dict(max_retries=5, interval_start=2))
-
-        return OCPIResponse(serializer.data)
+            token_base64 = credentials.theirs_base64()  # CREDENTIALS_TOKEN_B
+            selected_version = select_version(credentials.url, token_base64)
+            endpoints = get_endpoints(selected_version['url'], token_base64)
+            store_endpoints_for_party(credentials, endpoints)
+            data = make_my_credentials_dict(request)
+            ic(data)
+            serializer = CredentialsSerializer(data=data)
+            if not serializer.is_valid():
+                logging.error(f'OCPI connector has a logic error in Credentials POST: {serializer.errors}')
+                return Response(
+                    dict(
+                        status_text='Sorry, but we have a slight problem. Support has been alerted.'
+                    ),
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return OCPIResponse(serializer.data)
+        except (ValidationError, AssertionError, KeyError) as e:
+            logging.error(str(e), request)
+            return OCPIBadRequestResponse(str(e))
 
 
 class TariffViewSet(mixins.ListModelMixin,
                     GenericViewSet):
-    # noinspection PyUnresolvedReferences
     queryset = Tariff.objects.exclude(archived=True).order_by('created')
     serializer_class = TariffSerializer
     pagination_class = OCPIPaginationAndHeaders

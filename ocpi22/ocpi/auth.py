@@ -2,9 +2,10 @@ import base64
 import binascii
 from functools import cache
 
-from cachetools import cached
 from django.utils.functional import cached_property
+from icecream import ic
 from rest_framework import exceptions
+from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 from rest_framework.reverse import reverse
 
@@ -27,16 +28,20 @@ def check_auth_token(request, token: str) -> bool:
             reverse('ocpi-22')  # The "Endpoints" endpoint
         )
 
+    token_ascii = ''
+
     # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
     try:
         token_ascii = base64.b64decode(token).decode('ascii')
         request.ocpi_auth = OcpiAuthTypes.NONE
 
+        ic(token_ascii, allowed_for_token_a())
         # First check for TOKEN_A, are we still getting to know each other?
-        # noinspection PyUnresolvedReferences
         credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
         if credentials_matches.count():
+            ic(request.path)
             if request.path not in allowed_for_token_a():
+                ic()
                 raise exceptions.NotAuthenticated(  # HTTP 401
                     f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
                 )
@@ -44,10 +49,7 @@ def check_auth_token(request, token: str) -> bool:
             # Don't accept TOKEN_A anymore, if tokens have been exchanged
             # NOTE: At a given time, one party may possess all three tokens while the other has only two
 
-            credentials = credentials_matches[0]
-            if credentials.is_complete():
-                raise exceptions.NotAuthenticated(f'TOKEN_A has expired when the credentials exchange was completed')
-
+            credentials = credentials_matches.first()
             request.ocpi_auth = OcpiAuthTypes.TOKEN_A
             request.credentials = credentials
             return True
@@ -61,10 +63,11 @@ def check_auth_token(request, token: str) -> bool:
                 request.credentials = credentials
                 return True
     except (binascii.Error, UnicodeDecodeError) as e:
-        raise exceptions.NotAuthenticated(f'Authentication token: {e}')
+        raise NotAuthenticated(f'Authentication token: {e}')
     if token:
         # This token is no good
-        raise exceptions.NotAuthenticated(f'The token "{token}" doesn\'t match any of our current credentials')
+        raise NotAuthenticated(
+            f'The token "{token}" (ascii {token_ascii}) doesn\'t match any of our current credentials')
     # If no token, give other permission mechanisms a chance
     return False
 

@@ -208,10 +208,13 @@ class OCPIResponse(Response):
 
 
 class OCPIBadRequestResponse(OCPIResponse):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__(
+            *args,
             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            http_status=status.HTTP_400_BAD_REQUEST)
+            http_status=status.HTTP_400_BAD_REQUEST,
+            status_message='Bad request',
+            **kwargs)
 
 
 class NotOwner(OCPIResponse):
@@ -387,3 +390,40 @@ def format_url(url, **kwargs) -> str:
     if isinstance(url, bytes):
         url = url.decode("utf-8")
     return url.format(**kwargs)
+
+
+class OCPIProtocolError(SyntaxError):
+    errno = None
+
+    def __init__(self, msg, errno=None):
+        super().__init__(msg)
+        self.errno = errno
+
+
+def ocpi_credentials_get(url, token_base64):
+    logging.info(f'Getting {url} with {token_base64}')
+    response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'), timeout=20)
+    if response.status_code != 200:
+        logging.info(f'*** Got response: {response.status_code} - {response.reason}')
+        logging.info(response.text)
+        raise OCPIProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}',
+                                errno=response.status_code)
+    return response
+
+
+def ocpi_credentials_post(url, token_base64, timeout=20, *args, **kwargs):
+    headers = dict(
+        Authorization=f'Token {token_base64}',
+        Accept='application/json'
+    )
+    logging.info(f'Posting to {url}')
+    response = requests.post(
+        url=url, headers=headers, timeout=timeout,
+        *args, **kwargs
+    )
+    if response.status_code != 200:
+        logging.info(f'*** Got response: {response.status_code} - {response.reason}')
+        logging.info(response.text)
+        raise OCPIProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}',
+                                errno=response.status_code)
+    return response

@@ -6,7 +6,6 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from ocpi22 import logging
-from ocpi22.choices import AuthorizationEnum
 from ocpi22.messages import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
@@ -17,6 +16,7 @@ from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
+from ocpi22.util import base64_to_ascii
 
 
 class CdrTokenSerializer(SerializerCleanedUp):
@@ -221,6 +221,32 @@ class CredentialsSerializer(serializers.ModelSerializer):
     token = serializers.CharField(source='theirs')
     url = serializers.URLField()
     roles = RolesSerializer(many=True)
+
+    def create(self, validated_data):
+        credentials = Credentials.objects.create(
+            theirs=base64_to_ascii(validated_data.get('token')),
+            url=validated_data.get('url')
+        )
+
+        credentials.roles.all().delete()
+
+        for role in validated_data['roles']:
+            credentials.add_role(role)
+
+        # Delay storing tokens until now, in case the roles have some issue
+        credentials.save()
+
+    def update(self, instance, validated_data):
+        instance.theirs = base64_to_ascii(validated_data.get('theirs'))
+        instance.url = validated_data.get('url')
+        instance.roles.all().delete()
+
+        for role in validated_data['roles']:
+            instance.add_role(role)
+
+        # Delay storing tokens until now, in case the roles have some issue
+        instance.save()
+        return instance
 
 
 class LocationIdDictSerializer(serializers.CharField):
