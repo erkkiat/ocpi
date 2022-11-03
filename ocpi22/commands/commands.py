@@ -34,6 +34,7 @@ from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.rendering import RENDERERS
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, generate_auth_reference, options_message
@@ -60,7 +61,7 @@ class CommandsViewSet(GenericViewSet):
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
     permission_classes = [OCPIPermission]
-    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
+    renderer_classes = RENDERERS
 
     def get_serializer_class(self):
         if not hasattr(self, 'action_map'):

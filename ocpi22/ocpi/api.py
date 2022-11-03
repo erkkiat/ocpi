@@ -32,6 +32,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
+from ocpi22.rendering import RENDERERS
 from ocpi22.util import matching_operator, PREMIUM_RESPONSE, \
     OnlyRawBrowsableAPIRenderer, build_callback_request
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
@@ -54,7 +55,7 @@ class TokenViewSet(mixins.ListModelMixin,
     serializer_class = TokenSerializer
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
-    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
+    renderer_classes = RENDERERS
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'type']
 
@@ -261,7 +262,7 @@ class CdrViewSet(mixins.ListModelMixin,
     queryset = Cdr.objects.none()  # Default to no visibility, fine tune with get_queryset()
     serializer_class = CdrSerializer
     pagination_class = OCPIPaginationAndHeaders
-    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
+    renderer_classes = RENDERERS
 
     def get_queryset(self):
         if self.request.user.is_superuser:
@@ -410,7 +411,7 @@ class TariffViewSet(mixins.ListModelMixin,
     serializer_class = TariffSerializer
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
-    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
+    renderer_classes = RENDERERS
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
@@ -469,7 +470,7 @@ class SessionViewSet(mixins.ListModelMixin,
     # noinspection PyUnresolvedReferences
     queryset = Session.objects.all().order_by('created')
     serializer_class = SessionSerializer
-    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
+    renderer_classes = RENDERERS
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:

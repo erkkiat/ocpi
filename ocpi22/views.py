@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.shortcuts import render
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -11,7 +12,7 @@ from ocpiconnector.ocpi_identities import ocpi_platform
 @permission_classes([AllowAny])
 def home(request):
     # Return JSON when acting as the OCPI Versions endpoint
-    if request.META and 'application/json' in request.META.get('HTTP_ACCEPT', ''):
+    if settings.RENDER_ONLY_JSON or (request.META and 'application/json' in request.META.get('HTTP_ACCEPT', '')):
         return OCPIResponse(get_versions_dict(request))
 
     # Let's assume the client is a browser

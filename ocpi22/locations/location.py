@@ -8,7 +8,6 @@ from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status
 from rest_framework.decorators import action
-from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
@@ -16,8 +15,9 @@ from rest_framework.generics import get_object_or_404
 from ocpi22.locations.serializers import EvseSaveSerializer, EvseSerializer, LocationSerializer, LocationSaveSerializer
 from ocpi22.models.location import Location, Evse
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
+from ocpi22.rendering import RENDERERS
 from ocpi22.serializers import CallbacksSerializer
-from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, get_callbacks_parameter, build_callback_request
+from ocpi22.util import matching_operator, build_callback_request
 from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 
 # Todo: Fetch all Locations for reliable data update, but fetch Tariffs first, since Location refers to them
@@ -113,7 +113,7 @@ class LocationViewSet(mixins.ListModelMixin,
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = 'locations'
-    renderer_classes = [JSONRenderer, OnlyRawBrowsableAPIRenderer]
+    renderer_classes = RENDERERS
 
     lookup_field = "uid"
 

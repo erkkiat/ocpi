@@ -13,6 +13,7 @@ TRUE_OPTIONS = (1, '1', True, 'True', 'true')
 def _env_bool(key, default=False) -> bool:
     return bool(os.environ.get(key, default) in TRUE_OPTIONS)
 
+RENDER_ONLY_JSON = _env_bool('RENDER_ONLY_JSON', False)
 
 DEBUG = _env_bool('DEBUG', False)
 
@@ -380,10 +381,12 @@ REST_FRAMEWORK = {
     'DEFAULT_METADATA_CLASS': 'ocpi22.util.MyMetadata',
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',
         # 'rest_framework_csv.renderers.CSVRenderer',
     ],
 }
+
+if not RENDER_ONLY_JSON:
+    REST_FRAMEWORK['DEFAULT_RENDERER_CLASSES'].append('rest_framework.renderers.BrowsableAPIRenderer')
 
 # Celery Configuration Options
 # CELERY_TIMEZONE = "Finland/Helsinki"
