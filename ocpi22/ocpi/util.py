@@ -1,3 +1,5 @@
+from icecream import ic
+
 import ocpi22.logging as logging
 import uuid
 from collections import OrderedDict
@@ -424,6 +426,7 @@ def ocpi_credentials_post(url, token_base64, timeout=20, *args, **kwargs):
         Accept='application/json'
     )
     logging.info(f'Posting to {url}')
+    ic(url, headers, args, kwargs)
     response = requests.post(
         url=url, headers=headers, timeout=timeout,
         *args, **kwargs

@@ -101,7 +101,7 @@ def find_endpoint_url(endpoints, identifier, role) -> str:
         ep_role = endpoint.get('role').lower()
         if ep_identifier == identifier and ep_role == role:
             credentials_url = endpoint.get('url')
-            # logging.info(f'Credentials receiver URL: {credentials_url}')
+            logging.info(f'Credentials receiver URL: {credentials_url}')
             return credentials_url
     return ''
 
@@ -148,8 +148,8 @@ class Command(BaseCommand):
                 url=f'http://{settings.HOSTNAME}{reverse("base-versions")}',
                 roles=roles,
             )
-            url = find_endpoint_url(endpoints, 'credentials', 'receiver') or find_endpoint_url(endpoints, 'credentials',
-                                                                                               'sender'),
+            url = find_endpoint_url(endpoints, 'credentials', 'receiver') or \
+                  find_endpoint_url(endpoints, 'credentials', 'sender')
             if not url:
                 raise OCPIProtocolError(f'There is no Credentials Sender or Receiver url provided by the other party')
 
@@ -160,6 +160,7 @@ class Command(BaseCommand):
                 raise OCPIProtocolError(msg)
             data = credentials_response.json()
             data = data.get('data', data)
+            ic(data)
             serializer = CredentialsSerializer(data=data, instance=credentials)
             if serializer.is_valid():
                 serializer.save()

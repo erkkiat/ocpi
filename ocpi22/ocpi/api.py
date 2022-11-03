@@ -391,6 +391,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             endpoints = get_endpoints(selected_version['url'], token_base64)
             store_endpoints_for_party(credentials, endpoints)
             data = make_my_credentials_dict(request)
+            ic(data)
             serializer = CredentialsSerializer(data=data)
             if not serializer.is_valid():
                 logging.error(f'OCPI connector has a logic error in Credentials POST: {serializer.errors}')
