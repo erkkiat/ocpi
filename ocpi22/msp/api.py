@@ -156,6 +156,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             # method == GET
             return Response(dict(help='Please see `OPTIONS` for the schema'), status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist, Location.DoesNotExist, Connector.DoesNotExist) as e:
+            logging.error(f'Trying to start charging on a nonexistent Location, EVSE or Token: {e}', request)
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)

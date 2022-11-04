@@ -195,8 +195,10 @@ def format_ocpi_response(status_code: int = 1000, status_message: str = '', data
 
 
 class OCPIResponse(Response):
-    def __init__(self, data='', status_code=1000, status_message='Success',
+    def __init__(self, data='', status_code=1000, status_message='',
                  http_status=status.HTTP_200_OK, errors=None, *args, **kwargs):
+        if status_code == 1000 and not status_message:
+            status_message = 'Success'
         if isinstance(status_message, list):
             status_message = ', '.join([s for s in status_message])
         if isinstance(errors, dict):
@@ -206,6 +208,8 @@ class OCPIResponse(Response):
             http_status = status.HTTP_400_BAD_REQUEST
             logging.error(f'{settings.HOSTNAME}: {status_message}')
         result = format_ocpi_response(status_code, status_message, data)
+        if status_code != 1000 or http_status >= status.HTTP_401_UNAUTHORIZED:
+            logging.error(str(result))
         super().__init__(result, status=kwargs.pop('status', http_status), *args, **kwargs)
 
 

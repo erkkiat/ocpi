@@ -266,7 +266,7 @@ class CommandsViewSet(GenericViewSet):
                         ValidationError) as e:
                     message = MessageTexts.get('MS_CONNECTION_ERROR')
                     http_status = status.HTTP_503_SERVICE_UNAVAILABLE
-                    logging.error(f'Unable to relay Command to CPO: {e}')
+                    logging.error(f'Unable to relay Command to CPO: {e}', request)
 
                 response_serializer = CommandResponse(
                     instance=dict(result=result, timeout=timeout, message=message)
