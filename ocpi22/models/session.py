@@ -1,3 +1,5 @@
+import os
+
 import ocpi22.logging as logging
 from decimal import Decimal
 from typing import Union, Optional
@@ -41,6 +43,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.ocpi.serializers.SessionSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
+    subscribers = os.environ.get('SESSION_SUBSCRIBERS', '').split(',')
+
     # send_updates_to = ('EMSP', 'HUB')
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session

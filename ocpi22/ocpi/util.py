@@ -1,5 +1,3 @@
-from icecream import ic
-
 import ocpi22.logging as logging
 import uuid
 from collections import OrderedDict
@@ -30,6 +28,9 @@ class OcpiModule:
 
     # This determines which identity of ours we will use when sending updates for this type of object
     ocpi_object_owner = None
+
+    # A list of subscribers for objects of this type
+    subscribers = None
 
     # A list of roles to receive updates on this type of objects
     # If you set this to INTERESTED_PARTIES, updates will only be sent to the party which is billed for the transaction
@@ -146,22 +147,37 @@ class OcpiModule:
             # ic(data)
             cls._send_updates(data)
 
-    def send_update_to_interested_parties(self, data, method='put', path_components=None):
-        if hasattr(self, 'credentials'):
+    def send_update(self, data, method, to, path_components=None) -> None:
+        sender = Party(*(self.get_owner_identity().split('*')))
+        route = find_route(to, self.ocpi_module_name,
+                           add_path="/".join(path_components) if path_components else None)
+        # ic(sender, to, route)
+        if route:
+            self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
+        else:
+            logging.error(f'{settings.HOSTNAME}: Unable to find route to {str(to)}')
 
+    def send_update_to_interested_parties(self, *args, **kwargs) -> None:
+        if hasattr(self, 'credentials'):
             if not hasattr(self, 'billed_to'):
                 log_error(None,
                           f'Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties')
                 return
-
+            self.send_subscriber_updates(*args, **kwargs)
             to = Party(*(self.billed_to.split('*')))
-            sender = Party(*(self.get_owner_identity().split('*')))
-            route = find_route(to, self.ocpi_module_name,
-                               add_path="/".join(path_components) if path_components else None)
-            if route:
-                self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
-            else:
-                logging.error(f'{settings.HOSTNAME}: Unable to find route to {str(to)}')
+            return self.send_update(*args, to=to, **kwargs)
+
+    # @cachedmethod(cachetools.cache)
+    def _get_subscriber_parties(self, partylist=None) -> list:
+        partylist = partylist or self.subscribers or []
+        return [Party(*(p.split('*'))) for p in partylist if p]
+
+    def send_subscriber_updates(self, *args, **kwargs) -> None:
+        """
+        Some business models rely on receiving all objects of type X, for example for statistics purposes
+        """
+        for party in self._get_subscriber_parties():
+            self.send_update(*args, to=party, **kwargs)
 
 
 def ocpi_post(url, token_base64,
