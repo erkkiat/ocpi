@@ -205,9 +205,9 @@ def send_ocpi_request(data, url: str, token_base64: str,
 
         logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
-            logging.error(result.text[-500:])
             logging.error(
                 f'{settings.HOSTNAME}: Unable to send update to {url}: {result.status_code} - {result.reason}')
+            logging.error(result.text[-500:])
         if credentials_id:
             from ocpi22.models.credentials import Credentials
             credentials = Credentials.get_if_exists(pk=credentials_id)
@@ -226,7 +226,6 @@ def send_ocpi_request(data, url: str, token_base64: str,
         logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}.")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
-            # noinspection PyUnresolvedReferences
             Credentials.objects.filter(pk=credentials_id).update(connection_status='OFFLINE')
         capture_exception(e)
 
@@ -262,7 +261,7 @@ def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
                         if response.status_code >= status.HTTP_400_BAD_REQUEST:
                             raise Exception(response.data.get('status_message', '<no status message provided>'))
                     except Exception as e:
-                        logging.error(f"{settings.HOSTNAME}: Unable to update {model} using data pulled from url {url} "
+                        logging.error(f"Unable to update {model} using data pulled from url {url} "
                                       f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
                 if next_url:
                     kwargs['url'] = next_url
@@ -289,7 +288,7 @@ def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
         else:
             pull_objects(object_list, limit, delay, **kwargs)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-        logging.error(f"{settings.HOSTNAME}: Unable to pull objects: {e}")
+        logging.error(f"Unable to pull objects: {e}")
 
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways

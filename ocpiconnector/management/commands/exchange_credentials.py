@@ -151,28 +151,28 @@ class Command(BaseCommand):
             url = find_endpoint_url(endpoints, 'credentials', 'receiver') or \
                   find_endpoint_url(endpoints, 'credentials', 'sender')
             if not url:
-                raise OCPIProtocolError(f'There is no Credentials Sender or Receiver url provided by the other party')
+                raise OCPIProtocolError(
+                    f'CREDENTIALS - There is no Credentials Sender or Receiver url provided by the other party')
 
             credentials_response = ocpi_credentials_post(url, token_a_base64, json=data_to_send, timeout=15)
             if credentials_response.status_code != status.HTTP_200_OK:
                 msg = f'CREDENTIALS - Endpoints returned HTTP {credentials_response.status_code} from Credentials Receiver'
-                logging.error(msg)
                 raise OCPIProtocolError(msg)
             data = credentials_response.json()
             data = data.get('data', data)
-            ic(data)
             serializer = CredentialsSerializer(data=data, instance=credentials)
             if serializer.is_valid():
                 serializer.save()
             else:
                 msg = f'CREDENTIALS - Response from Credentials Receiver is invalid: {serializer.errors}'
-                logging.error(msg)
                 raise OCPIProtocolError(msg)
             return True
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             logging.error(f'CREDENTIALS - Cannot reach the specified endpoint: {e}')
             print(f'*** Cannot reach the URL you specified: {str(e)}')
-        except (OCPIProtocolError, JSONDecodeError, NotAuthenticated) as e:
+            raise
+        except (JSONDecodeError, NotAuthenticated) as e:
             logging.error(f'CREDENTIALS - Credentials exchange protocol error: {e}')
             print(f'*** There has been a protocol error: {str(e)}')
+            raise

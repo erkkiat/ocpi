@@ -398,42 +398,34 @@ class OCPIProtocolError(SyntaxError):
     errno = None
 
     def __init__(self, msg, errno=None):
+        logging.error(msg)
         super().__init__(msg)
         self.errno = errno
 
 
-def ocpi_credentials_get(url, token_base64):
-    logging.info(f'Getting {url} with token {token_base64[:2]}****')
-    response = requests.get(
-        url,
-        headers=dict(
-            Authorization=f'Token {token_base64}',
-            Accept='application/json'
-        ),
-        timeout=20
-    )
-    if response.status_code != 200:
-        logging.info(f'*** Got response: {response.status_code} - {response.reason}')
-        logging.info(response.text)
-        raise OCPIProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}',
-                                errno=response.status_code)
-    return response
+def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwargs):
+    function = getattr(requests, method)
+    if not function:
+        raise NotImplementedError(f'Method {method} is not supported for ocpi_credentials_request')
 
-
-def ocpi_credentials_post(url, token_base64, timeout=20, *args, **kwargs):
+    logging.info(f'{method.upper()} {url} with token {token_base64[:2]}****')
     headers = dict(
         Authorization=f'Token {token_base64}',
         Accept='application/json'
     )
-    logging.info(f'Posting to {url}')
-    ic(url, headers, args, kwargs)
-    response = requests.post(
-        url=url, headers=headers, timeout=timeout,
-        *args, **kwargs
+    response = function(
+        url, headers=headers, timeout=timeout, *args, **kwargs
     )
     if response.status_code != 200:
-        logging.info(f'*** Got response: {response.status_code} - {response.reason}')
-        logging.info(response.text)
-        raise OCPIProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}',
-                                errno=response.status_code)
+        raise OCPIProtocolError(
+            f'Got OCPI response {response.status_code} for {method.upper()} {url}: {response.reason} - {response.text}',
+            errno=response.status_code)
     return response
+
+
+def ocpi_credentials_get(*args, **kwargs):
+    return ocpi_credentials_request(*args, method='get', **kwargs)
+
+
+def ocpi_credentials_post(*args, **kwargs):
+    return ocpi_credentials_request(*args, method='post', **kwargs)

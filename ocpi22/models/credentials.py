@@ -1,5 +1,6 @@
 import base64
 
+from django.core.exceptions import ImproperlyConfigured
 from rest_framework.exceptions import ValidationError
 
 import ocpi22.logging as logging
@@ -21,7 +22,7 @@ from django.utils import timezone
 from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.ocpi.util import OcpiModule
+from ocpi22.ocpi.util import OcpiModule, OCPIProtocolError
 from ocpi22.util import ModelUtilMixin, generate_random_token, PREMIUM_MESSAGE
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
@@ -227,7 +228,7 @@ def new_connection(request):
                                      result if isinstance(result, str) else 'A new connection has been established')
                 else:
                     messages.error(request, form.errors)
-        except SyntaxError as e:
+        except (SyntaxError, OCPIProtocolError, ValueError, KeyError, ImproperlyConfigured) as e:
             msg = str(e)
             logging.error(msg, request)
             messages.error(request, msg)
