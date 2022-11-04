@@ -455,6 +455,9 @@ class SessionAdmin(NestedModelAdmin):
     #     # Disable add
     #     return False
 
+    def has_add_permission(self, request, obj=None) -> bool:
+        return False
+
     def response_post_save_change(self, request, obj: Session):
         if obj.kwh:
             if obj.calculate_price() == True:
