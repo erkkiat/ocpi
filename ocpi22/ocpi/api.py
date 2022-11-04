@@ -625,13 +625,13 @@ class NoPremiumViewSet(ViewSet):
         return 'This is a Premium Feature'
 
     def put(self, _request):
-        return PREMIUM_RESPONSE
+        return OCPIResponse(PREMIUM_RESPONSE)
 
     def post(self, _request):
-        return PREMIUM_RESPONSE
+        return OCPIResponse(PREMIUM_RESPONSE)
 
     def get(self, _request):
-        return PREMIUM_RESPONSE
+        return OCPIResponse(PREMIUM_RESPONSE)
 
     def list(self, _request):
-        return PREMIUM_RESPONSE
+        return OCPIResponse(PREMIUM_RESPONSE)

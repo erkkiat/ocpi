@@ -77,7 +77,7 @@ class OcpiModule:
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
         """
-        if settings.SEND_UPDATES in (True, 1, 'true', 'True'):
+        if settings.SEND_UPDATES:
             # Do we possess the role who controls the master data for this type of object or are we acting as HUB
             if self.ocpi_object_owner not in ocpi_identities.roles and not ocpi_platform.is_hub:
                 logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
@@ -132,7 +132,7 @@ class OcpiModule:
             from ocpi22.tasks import send_ocpi_request
             args = data, url, token_base64, to.country_code, to.party_id, \
                    sender.country_code, sender.party_id, method
-            if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
+            if settings.BACKGROUND_SEND:
                 send_ocpi_request.apply_async(args, retry=False)
             else:
                 send_ocpi_request(*args)
@@ -141,7 +141,7 @@ class OcpiModule:
 
     @classmethod
     def send_hub_updates(cls, data) -> None:
-        if ocpi_platform.is_hub and settings.SEND_UPDATES in (True, 1, 'true', 'True'):
+        if ocpi_platform.is_hub and settings.SEND_UPDATES:
             logging.info(f'Sending HUB updates for {cls}.')
             # ic(data)
             cls._send_updates(data)

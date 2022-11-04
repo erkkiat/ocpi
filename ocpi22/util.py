@@ -383,7 +383,7 @@ class ModelUtilMixin:
 
 PREMIUM_MESSAGE = 'This feature is available in the OCPI Connector Premium. ' \
                   'You can upgrade at http://ocpi.guide/compare/'
-PREMIUM_RESPONSE = OCPIResponse(
+PREMIUM_RESPONSE = dict(
     status_message=PREMIUM_MESSAGE,
     status_code=2999, http_status=status.HTTP_426_UPGRADE_REQUIRED
 )

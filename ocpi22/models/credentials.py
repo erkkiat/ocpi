@@ -267,7 +267,7 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
             args = data, e.url, e.get_token_base64(), role.country_code, role.party_id, \
                    our_party.country_code, our_party.party_id, 'delete'
             retry_policy = dict(max_retries=5, interval_start=5)
-            if settings.BACKGROUND_SEND in (True, 1, 'True', 'true'):
+            if settings.BACKGROUND_SEND:
                 send_ocpi_request.apply_async(args, retry=True, retry_policy=retry_policy)
             else:
                 send_ocpi_request(*args)
