@@ -92,7 +92,6 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         schedule_full_update(self, countdown=10)
 
     def party(self) -> str:
-        # noinspection PyUnresolvedReferences
         return ", ".join([
             f'{r.country_code}*{r.party_id} ({r.role})'
             for r in self.roles.all()
@@ -127,7 +126,11 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return bool(self.ours and self.theirs and self.roles.count())
 
     def connection_state(self) -> bool:
-        return bool(self.valid and self.connection_status == 'CONNECTED')
+        result = bool(self.valid and self.connection_status == 'CONNECTED')
+        if not result:
+            logging.error(f'Connecting to party {self.party()} is not possible: '
+                          f'(Credentials {"valid" if self.valid else "NOT VALID"}, server {self.connection_status}')
+        return result
 
     # For admin so that there is a pretty boolean icon
     connection_state.boolean = True

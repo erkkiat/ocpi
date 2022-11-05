@@ -155,7 +155,7 @@ class OcpiModule:
         if route:
             self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
         else:
-            logging.error(f'{settings.HOSTNAME}: Unable to find route to {str(to)}')
+            logging.error(f'Unable to find route to {str(to)}')
 
     def send_update_to_interested_parties(self, *args, **kwargs) -> None:
         if hasattr(self, 'credentials'):
