@@ -108,7 +108,7 @@ def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, a
         result = find_first_hub_route(ocpi_module)  # Nothing too fancy at this point
     if result and add_path:
         # Todo: This is suboptimal for caching, do this a level before
-        result.url = f"{result.url}/{add_path}"
+        result.url = urljoin(result.url, add_path)
     return result
 
 

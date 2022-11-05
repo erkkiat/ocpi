@@ -129,7 +129,7 @@ class OcpiModule:
         # ic()
         # ic(e, country_code, party_id, our_country_code, our_party_id)
         if url and token_base64 and to and sender:
-            logging.info(f'Send update {cls.ocpi_module_name.value}@{str(to)}, url {url}')
+            logging.info(f'Send {cls.ocpi_module_name.value} update to {str(to)}, url {url}')
             from ocpi22.tasks import send_ocpi_request
             args = data, url, token_base64, to.country_code, to.party_id, \
                    sender.country_code, sender.party_id, method
