@@ -257,7 +257,7 @@ def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
                 for i in response.get('json', {}).get('data', []):
                     try:
                         # TODO: Check that party matches with Credentials, don't allow third party data
-                        response = viewset.put(request=None, data=i)
+                        response = viewset().put(request=None, data=i)
                         if response.status_code >= status.HTTP_400_BAD_REQUEST:
                             raise Exception(response.data.get('status_message', '<no status message provided>'))
                     except Exception as e:
