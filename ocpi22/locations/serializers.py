@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -43,7 +44,7 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     id = serializers.CharField(source='uid')
     max_electric_power = serializers.SerializerMethodField()
     tariff_ids = serializers.SerializerMethodField(required=False)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
     @staticmethod
     def get_tariff_ids(connector: Connector) -> list:
@@ -107,7 +108,7 @@ class ConnectorSaveSerializer(HyperlinkedModelSerializerCleanedUp):
 
     id = serializers.CharField(source='uid')
     tariff_ids = TariffField(many=True, required=False)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
 
 class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -118,7 +119,7 @@ class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorSaveSerializer(many=True, required=False)
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySaveSerializer(many=True, required=False)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
     @staticmethod
     def process_connectors(evse: Evse, connectors: dict) -> None:
@@ -168,7 +169,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorSerializer(many=True)
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySaveSerializer(many=True, required=False)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
 
 class Coordinate(serializers.CharField):
@@ -221,7 +222,7 @@ class LocationSerializer(LocationSerializerBase, HyperlinkedModelSerializerClean
     evses = EvseSerializer(many=True, required=False)
     publish_allowed_to = serializers.SerializerMethodField()
     facilities = FacilitiesSaveSerializer()
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
     @staticmethod
     def get_coordinates(location: Location) -> dict:
@@ -271,7 +272,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
     owner = BusinessDetailsSerializer(required=False)
     operator = BusinessDetailsSerializer(required=False)
     suboperator = BusinessDetailsSerializer(required=False)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
     @staticmethod
     def process_coordinates(validated_data: dict):

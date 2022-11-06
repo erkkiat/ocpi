@@ -25,7 +25,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['url', 'uid', 'status', 'last_updated']
 
     uid = serializers.CharField(read_only=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
 
 class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -44,7 +44,7 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     location_id = serializers.SerializerMethodField(read_only=True)
     evse_uid = serializers.SerializerMethodField(read_only=True)
     connector_id = serializers.SerializerMethodField(read_only=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
     @staticmethod
     def get_token(session):
@@ -88,7 +88,7 @@ class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
 
     uid = serializers.CharField(validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
     tariff_ids = ConnectorTariffIdSerializer(required=False, many=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
 
 class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):

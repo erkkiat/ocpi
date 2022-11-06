@@ -205,7 +205,7 @@ def format_ocpi_response(status_code: int = 1000, status_message: str = '', data
     return dict(
         status_code=status_code,
         status_message=status_message,
-        timestamp=timezone.now(),  # .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        timestamp=timezone.now(),  # .strftime(settings.OCPI_DATE_FORMAT),
         data=data
     )
 
@@ -343,7 +343,8 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
         return Response(OrderedDict([
             ('status_code', 1000),
-            ('timestamp', timezone.now()),  # .strftime("%Y-%m-%dT%H:%M:%SZ")), if you want the date without fractions
+            ('timestamp', timezone.now()),
+            # .strftime(settings.OCPI_DATE_FORMAT)), if you want the date without fractions
             ('data', data),
         ]), headers=headers)
 

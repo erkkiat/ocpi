@@ -27,7 +27,7 @@ class CommandTokenSerializer(SerializerCleanedUp):
     uid = serializers.CharField(required=True)
     type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True)
     contract_id = serializers.CharField(required=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
     def create(self, validated_data):
         raise NotImplementedError()

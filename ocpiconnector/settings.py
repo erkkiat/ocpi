@@ -51,6 +51,8 @@ REMOTE_COMMAND_EXPIRATION = os.environ.get('REMOTE_COMMAND_EXPIRATION', 2 * 60)
 USE_ACCOUNTS = _env_bool('USE_ACCOUNTS', False)
 REQUIRE_WALLET_BALANCE = bool(_env_bool('REQUIRE_WALLET_BALANCE', True) and USE_ACCOUNTS)
 
+OCPI_DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
 # How often to check that other party is alive
 STILL_ALIVE_FREQUENCY = os.environ.get('STILL_ALIVE_FREQUENCY', 60 * 5)
 

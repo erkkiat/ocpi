@@ -215,7 +215,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def last_updated_str(self):
-        return self.last_updated.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return self.last_updated.strftime(settings.OCPI_DATE_FORMAT)
 
     # Django automatic dates
     updated = models.DateTimeField(auto_now=True)
@@ -406,7 +406,7 @@ class TariffIdSerializer(serializers.Serializer):
 
 
 class ChargingPeriodSerializer(serializers.Serializer):
-    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    start_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
     tariff = TariffIdSerializer()
     dimensions = CdrDimensionSerializer(many=True)
 

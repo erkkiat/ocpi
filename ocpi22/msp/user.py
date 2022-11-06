@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import User
@@ -163,7 +164,7 @@ class TransactionSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ('delta', 'balance_after', 'discount', 'cdr', 'datetime')
 
     cdr = CdrSerializer()
-    datetime = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
+    datetime = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT)
 
 
 class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -195,7 +196,7 @@ class BriefTransactionSerializer(HyperlinkedModelSerializerCleanedUp):
                   'datetime', 'display_date', 'display_time')
 
     cdr = BriefCdrSerializer()
-    datetime = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
+    datetime = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT)
     display_date = serializers.DateTimeField(source='datetime', format="%-d.%-m.%Y")
     display_time = serializers.DateTimeField(source='datetime', format="%H:%M")
     total_energy = serializers.SerializerMethodField()

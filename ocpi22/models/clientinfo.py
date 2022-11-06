@@ -23,7 +23,7 @@
 #
 #     def __str__(self):
 #         return f'{self.credentials_role.country_code}*{self.credentials_role.party_id} {self.credentials_role.role} ' \
-#                f'is {self.status} since {self.last_updated.strftime("%Y-%m-%dT%H:%M:%SZ")}'
+#                f'is {self.status} since {self.last_updated.strftime(settings.OCPI_DATE_FORMAT)}'
 #
 #     def save(self, *args, **kwargs):
 #         self.last_updated = timezone.now()

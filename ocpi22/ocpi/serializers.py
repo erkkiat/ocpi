@@ -34,7 +34,7 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
 
 class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -108,7 +108,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
                                    default=dict(max_price_excl_vat=None, max_price_incl_vat=None))
 
     tariff_alt_text = TariffAltTextSerializer(source='*', read_only=True)
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
     # last_updated = serializers.DateTimeField(read_only=False)
 
@@ -184,9 +184,9 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     total_cost = TotalCostSerializer(source='*')
     tariffs = TariffSerializer(many=True, required=True)
     cdr_location = CdrLocationSerializer(source='*')
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
-    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=True)
-    end_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=True)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    start_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=True)
+    end_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=True)
 
     def create(self, validated_data):
         try:
@@ -337,10 +337,10 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     connector_id = ConnectorIdSerializer(source='*', required=False)
     total_cost = TotalCostSerializer(source='*', required=False)
 
-    start_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ")
-    end_date_time = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    start_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT)
+    end_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
-    last_updated = serializers.DateTimeField(format="%Y-%m-%dT%H:%M:%SZ", required=False)
+    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
     kwh = serializers.FloatField(required=False)
 
     def create(self, validated_data):
