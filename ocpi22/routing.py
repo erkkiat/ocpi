@@ -141,8 +141,8 @@ def route_ocpi_request(request: HttpRequest, party: Party):
 
             return HttpResponse(response.text, status=response.status_code, content_type='application/json')
 
-        if route and not route.alive:
-            return JsonResponse({'error': f'Party {str(party)} is currently offline'},
+        if route:
+            return JsonResponse({'error': f'Party {str(party)} is unreachable'},
                                 status=status.HTTP_406_NOT_ACCEPTABLE)
 
         return JsonResponse({'error': f'Unable to find route to {str(party)}'}, status=status.HTTP_404_NOT_FOUND)
