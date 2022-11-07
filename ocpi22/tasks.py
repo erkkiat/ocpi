@@ -7,7 +7,7 @@ import celery
 import cronitor.celery
 import requests
 import pprint
-import ocpi22.logging as logging
+import logging
 
 import sentry_sdk
 from celery import shared_task
@@ -116,66 +116,6 @@ if REDIS_URL:
         cronitor.celery.initialize(app, api_key=CRONITOR_API_KEY)
 else:
     logging.error(f'{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS')
-
-
-# @shared_task(max_retries=0)
-# def command_start(data, session_uid, update_url, url):
-#     from ocpi22.models.session import Session
-#     from rest_framework.generics import get_object_or_404
-#     session: Session = Session.get_if_exists(uid=session_uid)
-#     if not session:
-#         logging.error(f"{settings.HOSTNAME}: Unable to find session {session_uid} to start charging.")
-#         return False
-#     try:
-#         # POST the start command to CPO system
-#         from ocpi22.cpo.util import get_callbacks_parameter
-#         from ocpi22.cpo.serializers import CallbacksSerializer
-#         result = requests.post(
-#             get_callbacks_parameter(CallbacksSerializer.START_TRANSACTION_URL),
-#             json=dict(
-#                 location=session.location.uid,
-#                 evse=session.evse.uid,
-#                 session=session.uid,
-#                 update_url=update_url
-#             ),
-#             timeout=20
-#         )
-#         result_status = 'ACCEPTED'
-#         result_data = result.json()
-#         if result_data:
-#             result_status = result_data.get('status')
-#
-#         if result.status_code == 200:
-#             from ocpi22.models.location import Connector
-#             # session.status = 'ACTIVE'  # Don't activate yet, let's talk with the charge point first
-#             session.connector = get_object_or_404(Connector, uid=result_data['connector'], evse=session.evse)
-#             session.save()
-#             logging.debug('*** Response from CPO/charger to OCPI Connector worker task:')
-#             logging.debug(result.text)
-#             logging.debug(f'Activated session {session}')
-#             status_text = (result_status or 'ACCEPTED', 'Starting to charge', 'Lataus käynnistyy')
-#         else:
-#             logging.warning(f'Unable to start charging at {session.location}, EVSE: {session.evse.evse_id} '
-#                             f'status code {result.status_code} - response text: {result.text}')
-#             status_text = (result_status or 'FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
-#     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, Http404, Exception) as e:
-#         status_text = ('FAILED', 'Unable to start charging', 'Latausta ei voida käynnistää')
-#         logging.error(f'{settings.HOSTNAME}: Cannot reach {update_url}, please check your request parameters.')
-#         logging.error(f'{settings.HOSTNAME}: {str(e)}')
-#
-#     # Send asynchronous OCPI response to eMSP
-#     result_data = dict(
-#         result=status_text[0],
-#         message=[
-#             dict(language='EN', text=status_text[1]),
-#             dict(language='FI', text=status_text[2])
-#         ]
-#     )
-#     try:
-#         response_url = data.get('response_url')
-#         requests.post(response_url, json=result_data, timeout=28)
-#     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-#         logging.error(f'{settings.HOSTNAME}: {str(e)}')
 
 
 @shared_task
@@ -300,7 +240,7 @@ def check_still_alive(credentials_id: int = None) -> None:
         try:
             credentials = Credentials.objects.get(pk=credentials_id)
             time_since_last_connection = (timezone.now() - credentials.last_connection).seconds
-            requests.get(credentials.url, timeout=10)
+            requests.get(credentials.url, timeout=20)
             credentials.last_connection = timezone.now()
             credentials.connection_status = choices.CONNECTED
             logging.info(f"{credentials} is alive")
