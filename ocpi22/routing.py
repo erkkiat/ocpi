@@ -30,22 +30,20 @@ class Route:
     direct: bool
 
     @property
-    def through_hub(self):
-        return not self.direct
+    def through_hub(self) -> bool:
+        return bool(not self.direct)
 
     def __bool__(self):
-        return self.url and self.alive
+        return bool(self.url and self.credentials_id)
 
 
 def get_hub_credentials() -> QuerySet:
     from ocpi22.models.credentials import Credentials
-    # noinspection PyUnresolvedReferences
     return Credentials.objects.filter(roles__role='HUB')
 
 
 def find_credentials(party: Party):
     from ocpi22.models.credentials import CredentialsRole
-    # noinspection PyUnresolvedReferences
     roles = CredentialsRole.objects.filter(
         country_code=party.country_code.upper(),
         party_id=party.party_id.upper()
@@ -103,14 +101,14 @@ def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, a
 
     if credentials:
         # Direct route found
-        result = find_route_from_credentials(credentials, ocpi_module)
+        route = find_route_from_credentials(credentials, ocpi_module)
     else:
         # Need a hub to route
-        result = find_first_hub_route(ocpi_module)  # Nothing too fancy at this point
-    if result and add_path:
+        route = find_first_hub_route(ocpi_module)  # Nothing too fancy at this point
+    if route and add_path:
         # Todo: This is suboptimal for caching, do this a level before
-        result.url = urljoin(f'{result.url}/', add_path)  # If URL is missing trailing slash, last component is cut off
-    return result
+        route.url = urljoin(f'{route.url}/', add_path)  # If URL is missing trailing slash, last component is cut off
+    return route
 
 
 def route_ocpi_request(request: HttpRequest, party: Party):
