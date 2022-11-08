@@ -114,7 +114,7 @@ class OcpiModule:
         # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis or cache them
 
         if isinstance(cls.send_updates_to, tuple):
-            for url, token_base64, country_code, party_id in find_endpoints_by_roles(
+            for url, token_base64, country_code, party_id, credentials in find_endpoints_by_roles(
                     cls.send_updates_to, cls.ocpi_module_name):
                 if path_components:
                     url = f'{url}/{"/".join(path_components)}'

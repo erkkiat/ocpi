@@ -704,15 +704,27 @@ class CdrMessages:
                                 'total_time': 0.0}
 
 
-accept_authorization = dict(
-    data=dict(
-        AuthorizationInfo=dict(
-            allowed='ALLOWED',
-            token_id='EKI1',
-            authorization_reference='MOCK-AUTHORIZATION-REFERENCE',
-        ),
-    ),
-)
+accept_authorization = {
+    "status_code": 1000,
+    "status_message": "Success",
+    "timestamp": "2022-11-07T06:41:41Z",
+    "data": {
+        "allowed": "ALLOWED",
+        "token": {
+            "country_code": "FI",
+            "party_id": "MSP",
+            "uid": "EKI1",
+            "type": "RFID",
+            "contract_id": "CONTRACT-EKI",
+            "visual_number": "123456",
+            "issuer": "EKI",
+            "valid": True,
+            "whitelist": "NEVER",
+            "language": "FI"
+        },
+        "authorization_reference": "MOCK-AUTHORIZATION-REFERENCE"
+    }
+}
 
 accept_authorization_msp = dict(result='ALLOWED')
 
@@ -1006,3 +1018,44 @@ class RfidTestData:
                        'start_date_time': '2000-01-01T12:00:00Z',
                        'status': 'ACTIVE',
                        'uid': 'FI*CPO*S*MOCK-1'}
+
+
+evse_inoperative_response = {'data': {'result': 'EVSE_INOPERATIVE',
+                                      'timeout': 60,
+                                      'message': [{'language': 'EN', 'text': 'The charger is inoperative'},
+                                                  {'language': 'DE', 'text': 'Das Ladegerät funktioniert nicht'},
+                                                  {'language': 'FR', 'text': 'Le chargeur ne fonctionne pas'},
+                                                  {'language': 'ES', 'text': 'El cargador no funciona'},
+                                                  {'language': 'PT', 'text': 'O carregador está inoperante'},
+                                                  {'language': 'LB', 'text': 'De Ladegerät ass net funktionnéiert'},
+                                                  {'language': 'NL', 'text': 'De oplader werkt niet'},
+                                                  {'language': 'CY', 'text': "Mae'r charger yn anweithredol"},
+                                                  {'language': 'GA', 'text': 'Tá an charger neamhoibríoch'},
+                                                  {'language': 'BE', 'text': 'Зарадная прылада не працуе'},
+                                                  {'language': 'BG', 'text': 'Зарядното устройство не работи'},
+                                                  {'language': 'RO', 'text': 'Încărcătorul nu funcționează'},
+                                                  {'language': 'BS', 'text': 'Punjač nije u funkciji'},
+                                                  {'language': 'MK', 'text': 'Полначот не работи'},
+                                                  {'language': 'SQ', 'text': 'Karikuesi nuk funksionon'},
+                                                  {'language': 'SR', 'text': 'Пуњач не ради'},
+                                                  {'language': 'TR', 'text': 'şarj cihazı çalışmıyor'},
+                                                  {'language': 'UK', 'text': 'Зарядний пристрій не працює'},
+                                                  {'language': 'EL', 'text': 'Ο φορτιστής δεν λειτουργεί'},
+                                                  {'language': 'PL', 'text': 'Ładowarka nie działa'},
+                                                  {'language': 'HU', 'text': 'A töltő nem működik'},
+                                                  {'language': 'CS', 'text': 'Nabíječka je nefunkční'},
+                                                  {'language': 'SK', 'text': 'Nabíjačka je nefunkčná'},
+                                                  {'language': 'SL', 'text': 'Polnilnik ne deluje'},
+                                                  {'language': 'FI', 'text': 'Laturi on epäkunnossa'},
+                                                  {'language': 'NO', 'text': 'Laderen er ute av drift'},
+                                                  {'language': 'DA', 'text': 'Opladeren er ude af drift'},
+                                                  {'language': 'SV', 'text': 'Laddaren fungerar inte'},
+                                                  {'language': 'IS', 'text': 'Hleðslutækið er óvirkt'},
+                                                  {'language': 'ET', 'text': 'Laadija ei tööta'},
+                                                  {'language': 'LT', 'text': 'Įkroviklis neveikia'},
+                                                  {'language': 'LV', 'text': 'Lādētājs nedarbojas'},
+                                                  {'language': 'AF', 'text': 'Die laaier werk nie'},
+                                                  {'language': 'MI', 'text': 'Kare e mahi ana te rihi'}]},
+                             'status_code': 1000,
+                             'status_message': 'Success',
+                             'timestamp': '2000-01-01T12:00:00Z'}
