@@ -65,6 +65,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
         authorization_method = Session.COMMAND
     try:
         active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
+        # Todo: DO NOT overwrite active sessions automatically, or someone can disrupt a charging session
         if active_sessions.exists():
             logging.warning(f'New session overlaps existing, completing previous active sessions at {evse.evse_id}: '
                             f'{",".join([s.uid for s in active_sessions])}')

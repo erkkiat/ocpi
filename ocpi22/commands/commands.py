@@ -163,7 +163,7 @@ class CommandsViewSet(GenericViewSet):
                             result,  # Then just <result>
                             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
                     if result:
-                        response.ocpi_status = 1000
+                        response.ocpi_status = Ocpi.OK
                         response.http_status = status.HTTP_200_OK
 
                 except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError,
@@ -259,7 +259,7 @@ class CommandsViewSet(GenericViewSet):
                             result,  # Then just <result>
                             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
                     if result:
-                        ocpi_status = 1000
+                        ocpi_status = Ocpi.OK
                         http_status = status.HTTP_200_OK
 
                 except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError,
@@ -329,7 +329,7 @@ class CommandsViewSet(GenericViewSet):
                             result,  # Then just <result>
                             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or finally just get the default
                     if result:
-                        ocpi_status = 1000
+                        ocpi_status = Ocpi.OK
                         http_status = status.HTTP_200_OK
 
                 except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError,

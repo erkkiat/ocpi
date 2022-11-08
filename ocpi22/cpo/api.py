@@ -277,15 +277,12 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data.get('evse')
                     token: Token = serializer.validated_data.get('token')
-                    if isinstance(token, str):
+                    authorization: TokenAuthorization = authorize_token(token, evse.location)
+                    if isinstance(token, str) and authorization:
                         # This is an AD_HOC_USER or APP_USER Token
-                        authorization: TokenAuthorization = authorize_token(token, evse.location)
-                        if authorization:
-                            # eMSP has already authorized this AD HOC token for 15 minutes
-                            token = AdhocToken(uid=token, valid=True, owner=authorization.party,
-                                               type=authorization.token_type)
-                    else:
-                        authorization: TokenAuthorization = authorize_token(token, evse.location)
+                        # eMSP has already authorized this AD HOC token for 15 minutes
+                        token = AdhocToken(uid=token, valid=True, owner=authorization.party,
+                                           type=authorization.token_type)
 
                     if not authorization:
                         return Response(

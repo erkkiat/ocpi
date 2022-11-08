@@ -108,10 +108,10 @@ class TokenViewSet(mixins.ListModelMixin,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid) -> OCPIResponse:
         allowed = AuthorizationEnum.ALLOWED.value
-        ocpi_status = 1000
+        ocpi_status = Ocpi.OK
         http_status = 200
         info = None
-        status_message = 'OK'
+        status_message = 'Success'
         user_language = 'en'
 
         try:
@@ -177,7 +177,7 @@ class TokenViewSet(mixins.ListModelMixin,
                     ALLOWED=status.HTTP_200_OK
                 ).get(allowed, status.HTTP_401_UNAUTHORIZED)
                 ocpi_status = dict(
-                    ALLOWED=1000,
+                    ALLOWED=Ocpi.OK,
                 ).get(allowed, Ocpi.ServerError.GENERIC_SERVER_ERROR)
             else:
                 if settings.REQUIRE_WALLET_BALANCE and token.total_balance_float() < 1.0:
@@ -198,24 +198,15 @@ class TokenViewSet(mixins.ListModelMixin,
             serializer = TokenSerializer(instance=token)
             return OCPIResponse(
                 dict(
-                    AuthorizationInfo=dict(
-                        allowed=allowed,
-                        token=serializer.data,
-                        authorization_reference=generate_auth_reference() if allowed == AuthorizationEnum.ALLOWED.value else '',
-                        # Todo: Store in billing system
-                        info=info
-                    )
+                    allowed=allowed,
+                    token=serializer.data,
+                    # Todo: Store authorization in billing system
+                    authorization_reference=generate_auth_reference() if allowed == AuthorizationEnum.ALLOWED.value else '',
                 ), status_code=ocpi_status, status=http_status, status_message=status_message
             )
         except ValueError as e:
             return OCPIResponse(
-                dict(
-                    AuthorizationInfo=dict(
-                        allowed=Token.NOT_ALLOWED,
-                        token=serializer.data,
-                        info=MessageTexts.get('PROTOCOL_ERROR')
-                    )
-                ),
+                {},
                 status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 status_message=f'{get_language(user_language, info)}: {str(e)}'

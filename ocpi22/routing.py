@@ -93,9 +93,9 @@ def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, a
     if not to:
         return None
     if isinstance(to, Party):
-        credentials = find_credentials(to)
+        credentials: CredentialsType = find_credentials(to)
     else:
-        credentials = to
+        credentials: CredentialsType = to
 
     # Todo: Consider using urllib.parse.urlparse, maybe faster
 

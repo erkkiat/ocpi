@@ -1,3 +1,7 @@
+import requests
+from rest_framework import status
+from rest_framework.exceptions import ValidationError
+
 import ocpi22.logging as logging
 from dataclasses import dataclass
 from datetime import timedelta
@@ -10,10 +14,12 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, AuthorizationEnum
+from ocpi22.models.credentials import find_endpoints_by_roles
+from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.ocpi.util import ocpi_post
-from ocpi22.routing import find_route
+from ocpi22.ocpi.util import ocpi_post, Ocpi
+from ocpi22.routing import find_route, Route
 
 from ocpiconnector.ocpi_identities import get_our_party, Party
 
@@ -63,6 +69,24 @@ class TokenAuthorization:
         return bool(self.auth_method)
 
 
+def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAuthorization]:
+    # do_authorization(token, location, route)
+    parties = find_endpoints_by_roles((OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS)
+    # ic(parties)
+    for url, token_base64, country_code, party_id, credentials in parties:
+        try:
+            route = find_route(credentials, OcpiModuleEnum.TOKENS)
+            to = Party(country_code, party_id)
+            authorization = do_authorization(token, location, route, to=to)
+            if authorization and authorization.allowed == AuthorizationEnum.ALLOWED.value:
+                return authorization
+        except requests.exceptions.ConnectionError as e:
+            logging.error(f'Unable to send Token authorization request to {to}: {e}')
+            continue
+    # Get authorization async from all MSP and construct regular Tokens (don't .save()) from response
+    return None
+
+
 @ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
 def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAuthorization]:
     if not isinstance(token, Token):
@@ -81,9 +105,12 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
 
     # Not AD HOC, so Token should be found from database
     authorization = _authorize_token(token, location)
-    if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
-        _authorize_token.cache_clear()
-        logging.info('Authorization declined, authorization cache cleared')
+    if not authorization:
+        # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
+        authorization = authorize_with_all_msps(token, location)
+    # if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
+    #     _authorize_token.cache_clear()  # Cannot clear all, there should be a 15-minute cache
+    #     logging.error(f'Authorization declined for {token}, authorization cache cleared')
     return authorization
 
 
@@ -114,25 +141,46 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
     if not route or not token:
         return None
 
+    return do_authorization(token, location, route)
+
+
+def do_authorization(token: Union[Token, str], location: Location, route: Route, to: Party = None) -> Optional[
+    TokenAuthorization]:
+    if isinstance(token, Token):
+        to = to or token.get_party()
+        token = token.uid
     result = ocpi_post(
-        f'{route.url}/{token.uid}/authorize',
+        f'{route.url}/{token}/authorize',
         token_base64=route.token_base64,
-        to=token.get_party(),
+        to=to,
         sender=get_our_party(OcpiRolesEnum.CPO),
         data=dict(
             location_id=location.uid,
             evse_uids=[e.uid for e in location.evses.all()]
         ) if location else dict()
     )
-    data = result.json()
-    data = data.get('data', data)
-    authorization = data.get('AuthorizationInfo', {}) if isinstance(data, dict) else {}
-    allowed = authorization.get('allowed', AuthorizationEnum.NOT_ALLOWED)
-    if result.status_code > 400 or allowed != AuthorizationEnum.ALLOWED.value:
-        logging.warning(f'No authorization for token {token} at {location or "<not known>"} '
-                        f'from {token.party()} (HTTP {result.status_code}), '
+    if result.status_code == status.HTTP_200_OK:
+        data = result.json()
+        authorization = data.get('data', data)
+        allowed = authorization.get('allowed', AuthorizationEnum.NOT_ALLOWED)
+    else:
+        data = {}
+        authorization = {}
+        allowed = AuthorizationEnum.NOT_ALLOWED.value
+
+    if allowed != AuthorizationEnum.ALLOWED.value:
+        logging.warning(f'Result for authorizing token {token} at {location or "<not known>"} '
+                        f'from {to} (HTTP {result.status_code}), '
                         f'response: {allowed}. ')
-        # raise exception.PermissionDenied("You don't have enough balance on your account.")
+        return None
+    if data.get('status_code') not in (Ocpi.OK, Ocpi.ClientError.UNKNOWN_TOKEN):
+        logging.error(f'Token {token} OCPI authorization request returned an error: {data}')
+        return None
+    try:
+        token = Token(**authorization.get('token', {}))
+    except (ValidationError, ValueError) as e:
+        logging.error(f'Cannot read Token data from authorization response from {to}: {e}')
+        return None
     return TokenAuthorization(
         allowed=allowed,
         info=authorization.get('info', ''),

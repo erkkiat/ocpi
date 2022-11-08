@@ -128,7 +128,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     def connection_state(self) -> bool:
         result = bool(self.valid and self.connection_status == 'CONNECTED')
         if not result:
-            logging.error(f'Connecting to party {self.party()} is not possible: '
+            logging.error(f'Connecting to party {self.party()} may not be possible: '
                           f'(Credentials {"valid" if self.valid else "NOT VALID"}, server {self.connection_status}')
         return result
 
@@ -289,9 +289,9 @@ def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: OcpiModuleEnum)
         country_code = role.country_code
         party_id = role.party_id
         result += [
-            (endpoint.url, credentials.theirs_base64(), country_code, party_id)
+            (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
             for endpoint in Endpoint.objects.filter(
-                identifier=ocpi_module.value,
+                identifier=ocpi_module.value.capitalize(),
                 role=EndpointRoleEnum.RECEIVER.value,
                 credentials=credentials,
             ) if credentials.valid
