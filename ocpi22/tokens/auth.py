@@ -26,6 +26,7 @@ from ocpi22.ocpi.util import ocpi_post, Ocpi
 from ocpi22.routing import find_route, Route
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party, Party
+from ocpiconnector.util import Timer
 
 
 @receiver(post_save, sender=Token)
@@ -145,28 +146,30 @@ def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAut
 
 @ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
 def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAuthorization]:
-    if not isinstance(token, Token):
-        session = get_session_by_adhoc_token(token, max_age_minutes=15)
-        if session:
-            # Token is AD HOC
-            return TokenAuthorization(
-                allowed='ALLOWED',
-                info=MessageTexts.get('TOKEN_ACCEPTED'),
-                token_id=token,
-                token_type=session.cdr_token_type,
-                party=session.get_party(),
-                authorization_reference=session.authorization_reference,
-                auth_method=session.auth_method,
-            )
+    with Timer() as t:
+        if not isinstance(token, Token):
+            session = get_session_by_adhoc_token(token, max_age_minutes=15)
+            if session:
+                # Token is AD HOC
+                return TokenAuthorization(
+                    allowed='ALLOWED',
+                    info=MessageTexts.get('TOKEN_ACCEPTED'),
+                    token_id=token,
+                    token_type=session.cdr_token_type,
+                    party=session.get_party(),
+                    authorization_reference=session.authorization_reference,
+                    auth_method=session.auth_method,
+                )
 
-    # Not AD HOC, so Token should be found from database
-    authorization = _authorize_token(token, location)
-    if not authorization:
-        # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
-        authorization = authorize_with_all_msps(token, location)
-    # if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
-    #     _authorize_token.cache_clear()  # Cannot clear all, there should be a 15-minute cache
-    #     logging.error(f'Authorization declined for {token}, authorization cache cleared')
+        # Not AD HOC, so Token should be found from database
+        authorization = _authorize_token(token, location)
+        if not authorization:
+            # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
+            authorization = authorize_with_all_msps(token, location)
+        # if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
+        #     _authorize_token.cache_clear()  # Cannot clear all, there should be a 15-minute cache
+        #     logging.error(f'Authorization declined for {token}, authorization cache cleared')
+    logging.info(f'{authorization.party} responded to authorization request in {float(t):.1f} seconds')
     return authorization
 
 
