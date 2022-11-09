@@ -1,4 +1,8 @@
+import celery
 import requests
+from celery.result import GroupResult
+from django.conf import settings
+from icecream import ic
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
@@ -20,7 +24,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import ocpi_post, Ocpi
 from ocpi22.routing import find_route, Route
-
+from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party, Party
 
 
@@ -69,21 +73,73 @@ class TokenAuthorization:
         return bool(self.auth_method)
 
 
+@dataclass(eq=True, frozen=True)
+class AuthorizationResult:
+    status_code: int
+    data: dict
+
+    def __bool__(self):
+        return bool(self.auth_method)
+
+    def json(self) -> dict:
+        return self.data
+
+    @property
+    def allowed(self) -> str:
+        return self.data.get('data', {}).get('allowed')
+
+
 def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAuthorization]:
     # do_authorization(token, location, route)
     parties = find_endpoints_by_roles((OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS)
     # ic(parties)
+    authorize_calls = []
     for url, token_base64, country_code, party_id, credentials in parties:
         try:
             route = find_route(credentials, OcpiModuleEnum.TOKENS)
             to = Party(country_code, party_id)
-            authorization = do_authorization(token, location, route, to=to)
-            if authorization and authorization.allowed == AuthorizationEnum.ALLOWED.value:
-                return authorization
+            sender = get_our_party(OcpiRolesEnum.CPO)
+            if settings.BACKGROUND_SEND:
+                authorize_calls.append(
+                    send_ocpi_request.s(
+                        dict(
+                            location_id=location.uid,
+                            evse_uids=[e.uid for e in location.evses.all()]
+                        ) if location else dict(),
+                        f'{route.url}/{token}/authorize', route.token_base64,
+                        to.country_code, to.party_id, sender.country_code, sender.party_id, 'post'
+                    )
+                )
+            else:
+                authorization = do_authorization(token, location, route, to=to)
+                if authorization and authorization.allowed == AuthorizationEnum.ALLOWED.value:
+                    return authorization
         except requests.exceptions.ConnectionError as e:
             logging.error(f'Unable to send Token authorization request to {to}: {e}')
             continue
-    # Get authorization async from all MSP and construct regular Tokens (don't .save()) from response
+    if authorize_calls:
+        # ic(authorize_calls)
+        job = celery.group(authorize_calls)
+        results: GroupResult = job.apply_async()
+        for i in range(10):
+            try:
+                ic(i)
+                responses = results.get(timeout=1)
+                # ic(responses)
+                first: dict = next((x for x in responses if x is not None), None)
+                if first and first.get('status_code') == status.HTTP_200_OK:
+                    sender = Party(**first.get('sender'))
+                    result = AuthorizationResult(status_code=first.get('status_code'), data=first.get('json'))
+                    logging.info(f'Token {token} was {result.allowed} by {sender}')
+                    token = first.get('json', {}).get('data', {}).get('token', {})
+                    country_code, party_id = token.get('country_code'), token.get('party_id')
+                    # ic(sender, country_code, party_id)
+                    if sender.country_code != country_code or sender.party_id != party_id:
+                        logging.error(f'Someone at {sender} is trying to masquerade as {country_code}*{party_id}')
+                        return None
+                    return process_authorization_response(result, token, location, sender)
+            except celery.exceptions.TimeoutError:
+                continue
     return None
 
 
@@ -159,6 +215,10 @@ def do_authorization(token: Union[Token, str], location: Location, route: Route,
             evse_uids=[e.uid for e in location.evses.all()]
         ) if location else dict()
     )
+    return process_authorization_response(result, token, location, to)
+
+
+def process_authorization_response(result, token, location, to) -> Optional[TokenAuthorization]:
     if result.status_code == status.HTTP_200_OK:
         data = result.json()
         authorization = data.get('data', data)

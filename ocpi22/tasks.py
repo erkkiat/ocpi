@@ -161,6 +161,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
             status_code=result.status_code,
             json=result.json() if result.status_code < 300 else '',
             headers=dict(result.headers) if result.headers else {},
+            sender=dict(country_code=to_country_code, party_id=to_party_id),
         )
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, JSONDecodeError) as e:
         logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}.")
