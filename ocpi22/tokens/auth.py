@@ -169,7 +169,8 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
         # if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
         #     _authorize_token.cache_clear()  # Cannot clear all, there should be a 15-minute cache
         #     logging.error(f'Authorization declined for {token}, authorization cache cleared')
-    logging.info(f'{authorization.party} responded to authorization request in {float(t):.1f} seconds')
+    if authorization and t:
+        logging.info(f'{authorization.party} responded to authorization request in {float(t):.1f} seconds')
     return authorization
 
 
