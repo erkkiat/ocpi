@@ -369,10 +369,10 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
     """
     This API is not a part of the OCPI protocol. It is intended as fast shortcut to OCPI roaming.
 
-    > Here you can use the eMSP API interfaces intearactively
+    > You can use these eMSP API interfaces intearactively
     > to support your development and integration work.
     > These streamlined interfaces provide the necessary tools for quickly but comprehensively connecting
-    > an eMSP backend to CPOs and hubs using the OCPI protocol.
+    > an eMSP backend to CPOs and roaming hubs.
 
     **ADMIN UI**: All the objects in the OCPI Connector are available for browsing
     and selective modification in the admin tools.
