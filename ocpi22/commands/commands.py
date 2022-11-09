@@ -124,7 +124,7 @@ class CommandsViewSet(GenericViewSet):
                     dict(
                         ad_hoc_token=token,
                         billed_to=str(billed_to),
-                        authorize_from_msp=False,
+                        authorization_method=Session.COMMAND,
                         credentials=request.credentials,
                         connector_id=None,
                     )
@@ -214,7 +214,7 @@ class CommandsViewSet(GenericViewSet):
                         dict(
                             ad_hoc_token=token,
                             billed_to=str(billed_to),
-                            authorize_from_msp=False,
+                            authorization_method=Session.COMMAND,
                             credentials=request.credentials,
                         )
                     )

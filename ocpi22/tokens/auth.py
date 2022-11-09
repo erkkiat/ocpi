@@ -22,6 +22,7 @@ from ocpi22.models.credentials import find_endpoints_by_roles
 from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.util import ocpi_post, Ocpi
 from ocpi22.routing import find_route, Route
 from ocpi22.tasks import send_ocpi_request
@@ -64,8 +65,7 @@ def _get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
 class TokenAuthorization:
     allowed: str
     info: list
-    token_id: str
-    token_type: str
+    token: Token
     party: Party
     authorization_reference: str
     auth_method: str
@@ -154,8 +154,7 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
                 return TokenAuthorization(
                     allowed='ALLOWED',
                     info=MessageTexts.get('TOKEN_ACCEPTED'),
-                    token_id=token,
-                    token_type=session.cdr_token_type,
+                    token=AdhocToken(True, session.get_party(), token, Token.AD_HOC_USER),
                     party=session.get_party(),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
@@ -166,16 +165,13 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
         if not authorization:
             # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
             authorization = authorize_with_all_msps(token, location)
-        # if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
-        #     _authorize_token.cache_clear()  # Cannot clear all, there should be a 15-minute cache
-        #     logging.error(f'Authorization declined for {token}, authorization cache cleared')
     if authorization and t:
         logging.info(f'{authorization.party} responded to authorization request in {float(t):.1f} seconds')
     return authorization
 
 
 @ttl_cache(maxsize=1024, ttl=14 * 60)
-def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
+def _authorize_token(token: Union[Token, str], location=None) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15-1 minutes
     (OCPI requirement)
@@ -188,8 +184,7 @@ def _authorize_token(token, location=None) -> Optional[TokenAuthorization]:
         return TokenAuthorization(
             allowed='ALLOWED',
             info=MessageTexts.get('TOKEN_ACCEPTED'),
-            token_id=token.uid,
-            token_type=Token.RFID,
+            token=token,
             party=token.get_party(),
             authorization_reference='',
             auth_method=Session.WHITELIST,
@@ -248,8 +243,7 @@ def process_authorization_response(result, token, location, to) -> Optional[Toke
     return TokenAuthorization(
         allowed=allowed,
         info=authorization.get('info', ''),
-        token_id=token.uid,
-        token_type=token.type,
+        token=token,
         party=token.get_party(),
         authorization_reference=authorization.get('authorization_reference'),
         auth_method=Session.AUTH_REQUEST,

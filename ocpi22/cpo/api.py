@@ -28,6 +28,7 @@ from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
     CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer
 from ocpi22.generic_views import WebhookViewSet
+from ocpi22.routing import find_credentials
 from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -282,7 +283,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         # This is an AD_HOC_USER or APP_USER Token
                         # eMSP has already authorized this AD HOC token for 15 minutes
                         token = AdhocToken(uid=token, valid=True, owner=authorization.party,
-                                           type=authorization.token_type)
+                                           type=authorization.token.type)
 
                     if not authorization:
                         return Response(
@@ -376,10 +377,18 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             ), status=status.HTTP_401_UNAUTHORIZED)
                         party = authorization.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
-                        session.connector = Connector.get_if_exists(uid=connector_id)
-                        session.internal_reference = internal_reference or None
-                        session.status = Session.ACTIVE
-                        session.save()
+                        if session:
+                            session.connector = Connector.get_if_exists(uid=connector_id)
+                            session.internal_reference = internal_reference or None
+                            session.status = Session.ACTIVE
+                            session.save()
+                        else:
+                            credentials = find_credentials(party)
+                            session = create_session(
+                                evse.location.uid, evse.uid, connector_id, party,
+                                credentials, internal_reference, authorization.token, session_status=Session.ACTIVE,
+                                authorization_method=Session.AUTH_REQUEST  # Already authorized above
+                            )
                         logging.info(f'New session {session.uid} active at {evse.evse_id}')
 
                     if not session:

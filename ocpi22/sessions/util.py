@@ -17,6 +17,7 @@ from ocpi22.choices import AuthorizationEnum
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.tokens.util import get_token_id
+from ocpiconnector.ocpi_identities import Party
 
 
 def get_token(token_id, ad_hoc_token):
@@ -35,15 +36,16 @@ def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACT
                                       statuses=statuses)
 
 
-def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
-                   internal_reference=None, token_id=None, ad_hoc_token=None,
+def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, str], credentials,
+                   internal_reference=None, token_id: Union[Token, str] = None, ad_hoc_token=None,
                    uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorize_from_msp=True, authorization_reference='', reservation_id=None, *args, **kwargs
+                   authorization_reference='', reservation_id=None, authorization_method=None,
+                   *args, **kwargs
                    ) -> Session:
     # ic(location_id, evse_uid, connector_id, token_id, ad_hoc_token)
     if not uid:
         uid = generate_session_uid()
-    token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
+    token: Token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
     location = location_id
     if not isinstance(location_id, Location):
         location = Location.get_if_exists(uid=location_id, raise_exception=True)
@@ -52,9 +54,9 @@ def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
         evse = Evse.get_if_exists(uid=evse_uid, location=location, raise_exception=True)
     # The Connector may be selected later and the information gotten from the charger
     connector = Connector.get_if_exists(uid=connector_id, evse=evse, raise_exception=True) if connector_id else None
-    if authorize_from_msp:
+    if not authorization_method:
         from ocpi22.tokens.auth import authorize_token
-        authorization: TokenAuthorization = authorize_token(token, location)
+        authorization: TokenAuthorization = authorize_token(token.uid, location)
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
             msg = f'Token {token} is not authorized for use by MSP at this time: ' \
                   f'{authorization.info if authorization else ""}'
@@ -62,7 +64,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
             raise exceptions.PermissionDenied(msg)
         authorization_method, authorization_reference = authorization.auth_method, authorization.authorization_reference
     else:
-        authorization_method = Session.COMMAND
+        authorization_method = authorization_method or Session.COMMAND
     try:
         active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
         # Todo: DO NOT overwrite active sessions automatically, or someone can disrupt a charging session
@@ -100,7 +102,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to, credentials,
         evse=evse,
         connector=connector,
         currency=os.environ.get('CPO_CURRENCY', 'EUR'),
-        billed_to=billed_to,
+        billed_to=str(billed_to),
         credentials=credentials
     )
 
