@@ -2,6 +2,7 @@ import os
 import random
 from datetime import timedelta
 from json import JSONDecodeError
+from typing import Optional
 
 import celery
 import cronitor.celery
@@ -122,7 +123,7 @@ else:
 def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
                       from_country_code: str, from_party_id: str, method='put',
-                      credentials_id=None, **_kwargs) -> dict:
+                      credentials_id=None, **_kwargs) -> Optional[dict]:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
     try:
@@ -169,6 +170,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
         if credentials_id:
             Credentials.objects.filter(pk=credentials_id).update(connection_status='OFFLINE')
         capture_exception(e)
+        return None
 
 
 @shared_task(max_retries=2, retry_backoff=2)
