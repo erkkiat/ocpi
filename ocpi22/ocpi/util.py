@@ -134,7 +134,7 @@ class OcpiModule:
             args = data, url, token_base64, to.country_code, to.party_id, \
                    sender.country_code, sender.party_id, method
             if settings.BACKGROUND_SEND:
-                send_ocpi_request.apply_async(args, retry=False)
+                send_ocpi_request.apply_async(args, retry=False, title=f'{cls.ocpi_module_name.value} update')
             else:
                 send_ocpi_request(*args)
         else:
@@ -412,9 +412,13 @@ def format_url(url, **kwargs) -> str:
     >>> format_url("https://fakehost/start/{evse_id}/", evse_id=1)
     'https://fakehost/start/1/'
     """
-    if isinstance(url, bytes):
-        url = url.decode("utf-8")
-    return url.format(**kwargs)
+    try:
+        if isinstance(url, bytes):
+            url = url.decode("utf-8")
+        return url.format(**kwargs)
+    except KeyError as e:
+        logging.error(f'Unknown URL variable in format_url: {e}')
+        return url
 
 
 class OCPIProtocolError(SyntaxError):

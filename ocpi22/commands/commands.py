@@ -22,7 +22,7 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 import ocpi22.util
-from ocpi22.locations.location import send_to_webhook
+from ocpi22.webhooks import send_to_webhook
 from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, MessageTexts

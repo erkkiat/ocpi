@@ -32,7 +32,7 @@ from ocpi22.models.token import Token
 from ocpi22.msp.account import Account
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
     MspSessionSerializer, MSPAuthorizeCallbackSerializer, ReserveSerializer, \
-    MSPChargePointStatusCallbackSerializer
+    MSPChargePointStatusCallbackSerializer, MSPSessionCallbackSerializer
 from ocpi22.msp.util import get_message_by_language
 from ocpi22.ocpi.api import TokenViewSet
 from ocpi22.ocpi.util import OCPIResponse
@@ -365,6 +365,33 @@ class MspChargePointStatusWebhookViewSet(WebhookViewSet):
         return self.webhook(request)
 
 
+class MspSessionWebhookViewSet(WebhookViewSet):
+    """
+    You need to tell the OCPI Connector where to send Session updates.
+
+    Using this endpoint you can set and get your callback URL and
+    user credentials needed for accessing the endpoint.
+
+    Example URL: `https://your.emsp.backend.server/session/{session_id}/`. The session_id will be substituted with
+    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+
+    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
+    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+    ## Status codes
+
+    * `HTTP_200_OK` when the webhook was set successfully
+    * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    """
+    serializer_class = MSPSessionCallbackSerializer
+    serializer = serializer_class()
+    queryset = Session.objects.none()
+
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='session')
+    def session_webhook(self, request):
+        return self.webhook(request)
+
+
 class MobilityServiceProviderAPIView(routers.APIRootView):
     """
     This API is not a part of the OCPI protocol. It is intended as fast shortcut to OCPI roaming.
@@ -407,9 +434,6 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 tokens=request.build_absolute_uri(
                     reverse('msp-token-list'),
                 ),
-                authorize_webhook=request.build_absolute_uri(
-                    reverse('msp-authorize-webhook'),
-                ),
             ),
             user=dict(
                 register=request.build_absolute_uri(
@@ -431,6 +455,17 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                     reverse('user-car-details')
                 ),
             ),
+            webhooks=dict(
+                authorize_webhook=request.build_absolute_uri(
+                    reverse('msp-authorize-webhook'),
+                ),
+                chargepoint_status_webhook=request.build_absolute_uri(
+                    reverse('msp-status-webhook'),
+                ),
+                session_webhook=request.build_absolute_uri(
+                    reverse('msp-session-webhook'),
+                ),
+            ),
             billing=dict(
                 cdr_list=request.build_absolute_uri(
                     reverse('msp-cdr-list')
@@ -442,9 +477,6 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
             navigation=dict(
                 charge_points=request.build_absolute_uri(
                     reverse('map-locations')
-                ),
-                chargepoint_status_webhook=request.build_absolute_uri(
-                    reverse('msp-status-webhook'),
                 ),
                 car_models=request.build_absolute_uri(
                     reverse('msp-cars-list')

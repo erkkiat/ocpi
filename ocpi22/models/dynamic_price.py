@@ -194,14 +194,13 @@ dynamic_price_sources = (
 
 def get_price(key: str, when: datetime) -> float:
     """
-    >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=1.0, start_datetime=datetime(2000,1,1,1,0), end_datetime=datetime(2000,1,1,2,0))
-    <DynamicPrice: ABC: 2000-01-01 01:00:00 - 2000-01-01 02:00:00 :: 1.0>
-    >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=2.0, start_datetime=datetime(2000,1,1,2,0), end_datetime=datetime(2000,1,1,3,0))
-    <DynamicPrice: ABC: 2000-01-01 02:00:00 - 2000-01-01 03:00:00 :: 2.0>
-    >>> get_price('ABC', datetime(2000,1,1,2,0))
+    >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=1.0, start_datetime=datetime(2022,1,1,1,0), end_datetime=datetime(2022,1,1,2,0))
+    <DynamicPrice: ABC: 2022-01-01 01:00:00 - 2022-01-01 02:00:00 :: 1.0>
+    >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=2.0, start_datetime=datetime(2022,1,1,2,0), end_datetime=datetime(2022,1,1,3,0))
+    <DynamicPrice: ABC: 2022-01-01 02:00:00 - 2022-01-01 03:00:00 :: 2.0>
+    >>> get_price('ABC', datetime(2022,1,1,2,0))
     2.0
     """
-    # noinspection PyUnresolvedReferences
     prices = DynamicPrice.objects.filter(dynamic_price_source=key, start_datetime__lte=when, end_datetime__gt=when)
     if prices.count() == 0:
         return 0.0

@@ -1,6 +1,3 @@
-import requests
-from rest_framework.exceptions import ValidationError
-
 import ocpi22.logging as logging
 
 from django.core.validators import RegexValidator
@@ -16,14 +13,13 @@ from ocpi22.locations.serializers import EvseSaveSerializer, EvseSerializer, Loc
 from ocpi22.models.location import Location, Evse
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.rendering import RENDERERS
-from ocpi22.serializers import CallbacksSerializer
-from ocpi22.util import matching_operator, build_callback_request
+from ocpi22.util import matching_operator
 from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 
 # Todo: Fetch all Locations for reliable data update, but fetch Tariffs first, since Location refers to them
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
-
+from ocpi22.webhooks import send_to_webhook
 
 evse_validator = RegexValidator(r'[A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}$',
                                 message='OCPI evse_id has to contain a valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)')
@@ -69,42 +65,6 @@ class EvseViewSet(mixins.RetrieveModelMixin,
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-
-
-def send_to_webhook(data, serializer, outbound_serializer=None, timeout=5) -> dict:
-    assert issubclass(serializer, CallbacksSerializer), \
-        'The serializer needs to be inherited from CallbacksSerializer'
-    try:
-        OutboundSerializer = outbound_serializer or serializer.OutboundSerializer
-        outbound_serializer = OutboundSerializer(data=data)
-        assert outbound_serializer.is_valid(), outbound_serializer.errors
-
-        url, kwargs_update = build_callback_request(serializer.URL, data)
-
-        if url:
-            kwargs = {}
-            headers = {'content-type': 'application/json'}
-            kwargs.update(kwargs_update)
-
-            logging.info(f'Calling webhook at url {url}')
-
-            response = requests.post(
-                url=url,
-                json=outbound_serializer.data,
-                headers=headers,
-                verify=False,
-                timeout=timeout,
-                **kwargs)
-            if hasattr(serializer, 'ResponseSerializer'):
-                data = response.json()
-                response_serializer = serializer.ResponseSerializer(data=data)
-                if response_serializer.is_valid():
-                    return data
-                else:
-                    logging.error(f'Got a malformed response from webhook at {url}: {data}')
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError, ValidationError) as e:
-        logging.error(f'Problem communicating with webhook {serializer.__class__}: {e}')
-    return {}
 
 
 class LocationViewSet(mixins.ListModelMixin,

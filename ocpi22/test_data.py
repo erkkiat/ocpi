@@ -108,7 +108,7 @@ expected_get_responses = {
                    'tariff_alt_text': {'language': 'EN', 'text': '2€/kWh'},
                    'type': 'REGULAR'}],
          'status_code': 1000,
-         'timestamp': '2000-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00'},
 
     'http://testserver/ocpi/cpo/2.2/tariffs?limit=3&offset=3':
         {'data': [{'country_code': 'FI',
@@ -143,7 +143,7 @@ expected_get_responses = {
                    'tariff_alt_text': {'language': 'EN', 'text': '0,30€/kWh'},
                    'type': 'REGULAR'}],
          'status_code': 1000,
-         'timestamp': '2000-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00'},
 
     'http://localhost:8001/ocpi/cpo/2.2/tokens?limit=3':
         {'data': [{'contract_id': 'CONTRACT3',
@@ -181,7 +181,7 @@ expected_get_responses = {
                    'visual_number': '123C',
                    'whitelist': 'NEVER'}],
          'status_code': 1000,
-         'timestamp': '2000-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00'},
 
     'http://testserver/ocpi/cpo/2.2/tokens?limit=3&offset=3':
         {'data': [{'contract_id': 'INTERNAL 1',
@@ -222,7 +222,7 @@ expected_get_responses = {
                    'visual_number': 'DF000-2001-8999-1',
                    'whitelist': 'ALLOWED'}],
          'status_code': 1000,
-         'timestamp': '2000-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00'},
 
     'http://localhost:8001/ocpi/cpo/2.2/locations?limit=3':
         {'data': [{'address': 'Warsawskaya 1',
@@ -330,7 +330,7 @@ expected_get_responses = {
                    'publish': True,
                    'time_zone': 'Europe/Helsinki'}],
          'status_code': 1000,
-         'timestamp': '2000-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00'},
 
     'http://testserver/ocpi/cpo/2.2/locations?limit=3&offset=3':
         {'data': [{'address': 'Vaasa 1',
@@ -455,7 +455,7 @@ expected_get_responses = {
                                    'website': 'http://www.chargerhub.eu/'},
                    'time_zone': 'Europe/Helsinki'}],
          'status_code': 1000,
-         'timestamp': '2000-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00'},
 
     'http://testserver/ocpi/cpo/2.2/locations?limit=3&offset=6':
         {'data': [{'address': 'Stockholm 1',
@@ -473,7 +473,7 @@ expected_get_responses = {
                    'publish': True,
                    'time_zone': 'Europe/Stockholm'}],
          'status_code': 1000,
-         'timestamp': '2000-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00'},
 }
 
 expected_get_headers = {
@@ -571,7 +571,7 @@ class ExpectedSessionUpdateResults:
                'last_updated': '2019-06-23T08:22:22Z',
                'location_id': 'WARSAW-1',
                'party_id': 'CPO',
-               'start_date_time': '2000-01-01T12:00:00Z',
+               'start_date_time': '2022-01-01T12:00:00Z',
                'status': 'PENDING',
                'total_cost': OrderedDict([('excl_vat', 1.0), ('incl_vat', 1.2)]),
                'uid': '12345'}
@@ -603,7 +603,7 @@ class ExpectedSessionUpdateResults:
                'last_updated': '2019-06-23T08:35:34Z',
                'location_id': 'WARSAW-1',
                'party_id': 'CPO',
-               'start_date_time': '2000-01-01T12:00:00Z',
+               'start_date_time': '2022-01-01T12:00:00Z',
                'status': 'PENDING',
                'total_cost': OrderedDict([('excl_vat', 1.1), ('incl_vat', 1.3)]),
                'uid': '12345'}
@@ -764,12 +764,12 @@ class StopTransactionResponses:
                                       'country_code': 'FI',
                                       'credit': False,
                                       'currency': 'EUR',
-                                      'end_date_time': '2000-01-01T12:23:00Z',
+                                      'end_date_time': '2022-01-01T12:23:00Z',
                                       'id': 'FI*CPO*C*MOCK-1',
-                                      'last_updated': '2000-01-01T12:23:00Z',
+                                      'last_updated': '2022-01-01T12:23:00Z',
                                       'party_id': 'CPO',
                                       'session_id': 'FI*CPO*S*MOCK-1',
-                                      'start_date_time': '2000-01-01T12:00:00Z',
+                                      'start_date_time': '2022-01-01T12:00:00Z',
                                       'tariffs': [OrderedDict([('id', 'EKI1'),
                                                                ('elements',
                                                                 [OrderedDict([('price_components',
@@ -800,12 +800,12 @@ class StopTransactionResponses:
                          'billed_to': 'FI*MSP',
                          'connector_id': '1',
                          'currency': 'EUR',
-                         'end_date_time': '2000-01-01T12:23:00',
+                         'end_date_time': '2022-01-01T12:23:00',
                          'evse_uid': 'HELSINKI-3',
                          'internal_reference': 'MY-INTERNAL-REFERENCE',
                          'location_id': 'HELSINKI-1',
                          'session_id': 'FI*CPO*S*MOCK-1',
-                         'start_date_time': '2000-01-01T12:00:00',
+                         'start_date_time': '2022-01-01T12:00:00',
                          'start_kwh': 120.0,
                          'stop_kwh': 155.0,
                          'status': 'COMPLETED',
@@ -851,12 +851,12 @@ class StopTransactionResponses:
                                       'country_code': 'FI',
                                       'credit': False,
                                       'currency': 'EUR',
-                                      'end_date_time': '2000-01-01T12:00:00Z',
+                                      'end_date_time': '2022-01-01T12:00:00Z',
                                       'id': 'FI*CPO*C*MOCK-2',
-                                      'last_updated': '2000-01-01T12:00:00Z',
+                                      'last_updated': '2022-01-01T12:00:00Z',
                                       'party_id': 'CPO',
                                       'session_id': 'FI*CPO*S*MOCK-1',
-                                      'start_date_time': '2000-01-01T12:00:00Z',
+                                      'start_date_time': '2022-01-01T12:00:00Z',
                                       'tariffs': [OrderedDict([('id', 'EKI1'),
                                                                ('elements',
                                                                 [OrderedDict([('price_components',
@@ -887,12 +887,12 @@ class StopTransactionResponses:
                          'billed_to': 'FI*EON',
                          'connector_id': '1',
                          'currency': 'EUR',
-                         'end_date_time': '2000-01-01T12:00:00',
+                         'end_date_time': '2022-01-01T12:00:00',
                          'evse_uid': 'HELSINKI-3',
                          'internal_reference': 'MY-INTERNAL-REFERENCE-2',
                          'location_id': 'HELSINKI-1',
                          'session_id': 'FI*CPO*S*MOCK-1',
-                         'start_date_time': '2000-01-01T12:00:00',
+                         'start_date_time': '2022-01-01T12:00:00',
                          'start_kwh': 0.0,
                          'status': 'COMPLETED',
                          'token': OrderedDict([('token_id', 'SOME-ADHOC-TOKEN'),
@@ -904,8 +904,8 @@ class StopTransactionResponses:
              'status_text': 'Session finished'}
 
     stop3 = {'charge_detail_record': {'country_code': 'FI', 'party_id': 'CPO', 'id': 'FI*CPO*C*MOCK-2',
-                                      'start_date_time': '2000-01-01T12:00:00Z',
-                                      'end_date_time': '2000-01-01T12:23:00Z', 'session_id': 'FI*CPO*S*MOCK-1',
+                                      'start_date_time': '2022-01-01T12:00:00Z',
+                                      'end_date_time': '2022-01-01T12:23:00Z', 'session_id': 'FI*CPO*S*MOCK-1',
                                       'cdr_token': OrderedDict([('uid', 'SOME-ADHOC-TOKEN'), ('type', 'AD_HOC_USER'),
                                                                 ('contract_id', 'INTERNAL')]), 'auth_method': 'COMMAND',
                                       'authorization_reference': 'FI*001-AUTH-REFERENCE', 'cdr_location': OrderedDict(
@@ -935,12 +935,12 @@ class StopTransactionResponses:
                                                                ('currency', 'EUR')])],
                                       'total_cost': OrderedDict([('excl_vat', 61.73), ('incl_vat', 76.54)]),
                                       'total_energy': 123.45, 'currency': 'EUR', 'total_time': 0.38333, 'credit': False,
-                                      'last_updated': '2000-01-01T12:23:00Z'},
+                                      'last_updated': '2022-01-01T12:23:00Z'},
              'internal_reference': 'MY-INTERNAL-REFERENCE-2',
              'kwh_total': Decimal('123.450'),
              'session': {'session_id': 'FI*CPO*S*MOCK-1', 'internal_reference': 'MY-INTERNAL-REFERENCE-2',
-                         'billed_to': 'FI*EON', 'start_date_time': '2000-01-01T12:00:00',
-                         'end_date_time': '2000-01-01T12:23:00', 'start_kwh': 0.0, 'stop_kwh': 123.45,
+                         'billed_to': 'FI*EON', 'start_date_time': '2022-01-01T12:00:00',
+                         'end_date_time': '2022-01-01T12:23:00', 'start_kwh': 0.0, 'stop_kwh': 123.45,
                          'token': OrderedDict(
                              [('token_id', 'SOME-ADHOC-TOKEN'), ('type', 'AD_HOC_USER'), ('contract_id', 'INTERNAL')]),
                          'auth_method': 'COMMAND', 'authorization_reference': 'FI*001-AUTH-REFERENCE',
@@ -955,7 +955,7 @@ class SessionData:
                       'cdr_token': OrderedDict([('uid', 'SOME-ADHOC-TOKEN'),
                                                 ('type', 'AD_HOC_USER'),
                                                 ('contract_id', 'INTERNAL')]),
-                      'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
+                      'charging_periods': [OrderedDict([('start_date_time', '2022-01-01T12:00:00Z'),
                                                         ('tariff', 'EKI1'),
                                                         ('dimensions',
                                                          [OrderedDict([('type', 'ENERGY'),
@@ -971,7 +971,7 @@ class SessionData:
                       'kwh': 123.45,
                       'location_id': 'HELSINKI-1',
                       'party_id': 'CPO',
-                      'start_date_time': '2000-01-01T12:00:00Z',
+                      'start_date_time': '2022-01-01T12:00:00Z',
                       'status': 'ACTIVE',
                       'total_cost': OrderedDict([('excl_vat', 61.73), ('incl_vat', 76.54)]),
                       'uid': 'FI*CPO*S*MOCK-1'}
@@ -981,7 +981,7 @@ class SessionData:
              'cdr_token': OrderedDict([('uid', 'EKI1'),
                                        ('type', 'RFID'),
                                        ('contract_id', 'DE8ACC12E46L89')]),
-             'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
+             'charging_periods': [OrderedDict([('start_date_time', '2022-01-01T12:00:00Z'),
                                                ('tariff', 'EKI1'),
                                                ('dimensions',
                                                 [OrderedDict([('type', 'ENERGY'),
@@ -991,12 +991,12 @@ class SessionData:
              'connector_id': '1',
              'country_code': 'FI',
              'currency': 'EUR',
-             'end_date_time': '2000-01-01T12:23:00Z',
+             'end_date_time': '2022-01-01T12:23:00Z',
              'evse_uid': 'HELSINKI-3',
              'kwh': 35.0,
              'location_id': 'HELSINKI-1',
              'party_id': 'CPO',
-             'start_date_time': '2000-01-01T12:00:00Z',
+             'start_date_time': '2022-01-01T12:00:00Z',
              'status': 'COMPLETED',
              'total_cost': OrderedDict([('excl_vat', 17.5), ('incl_vat', 21.7)]),
              'uid': 'FI*CPO*S*MOCK-1'}
@@ -1015,7 +1015,7 @@ class RfidTestData:
                        'kwh': 0.0,
                        'location_id': 'HELSINKI-1',
                        'party_id': 'CPO',
-                       'start_date_time': '2000-01-01T12:00:00Z',
+                       'start_date_time': '2022-01-01T12:00:00Z',
                        'status': 'ACTIVE',
                        'uid': 'FI*CPO*S*MOCK-1'}
 
@@ -1058,4 +1058,4 @@ evse_inoperative_response = {'data': {'result': 'EVSE_INOPERATIVE',
                                                   {'language': 'MI', 'text': 'Kare e mahi ana te rihi'}]},
                              'status_code': 1000,
                              'status_message': 'Success',
-                             'timestamp': '2000-01-01T12:00:00Z'}
+                             'timestamp': '2022-01-01T12:00:00Z'}

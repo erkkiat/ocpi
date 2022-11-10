@@ -68,7 +68,7 @@ from ocpi22.test_data import expected_get_responses
 from ocpiconnector.ocpi_identities import Party
 from settlement.calculate import create_invoice
 
-faketime = datetime(2000, 1, 1, 12, 0)
+faketime = datetime(2022, 1, 1, 12, 0)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = APIRequestFactory()
@@ -436,7 +436,7 @@ class ApiPutTests(TestCase):
                     self.assertTrue(check_function(tariff), f'Check function failed for {filename}')
 
     def test_cost_calculation(self):
-        start_date_time = datetime(2000, 1, 1, 0, 0)
+        start_date_time = datetime(2022, 1, 1, 0, 0)
         evse = Evse.objects.all().first()
         location = evse.location
         credentials = Credentials.objects.first()
@@ -965,7 +965,7 @@ class CommandTests(TestCase):
                                   {'language': 'MI', 'text': 'Whakamutua te utu i te waahi'}]},
              'status_code': 1000,
              'status_message': 'Success',
-             'timestamp': '2000-01-01T12:00:00Z'}
+             'timestamp': '2022-01-01T12:00:00Z'}
         )
 
     @time_machine.travel(faketime, tick=False)
@@ -979,7 +979,7 @@ class CommandTests(TestCase):
                'callback-reserve_now_url': 'http://john:his-password@fakehost/reserve/{location_id}/{evse_id}/',
            }.get(x))
     # @patch('ocpi22.commands.commands.requests.post')
-    @patch('ocpi22.locations.location.requests.post')
+    @patch('ocpi22.webhooks.requests.post')
     def test_reserve_now(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-reserve-now')
         viewset = CommandsViewSet()
@@ -1171,7 +1171,7 @@ class UpdatePartiesTest(TestCase):
         serializer = TokenSerializer(token)
         self.assertDictEqual(serializer.data, expected, 'Creating the admin token seems not to work')
 
-    @time_machine.travel(datetime(2000, 1, 1, 12, 0, tzinfo=pytz.utc), tick=False)
+    @time_machine.travel(datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc), tick=False)
     @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
     def test_update_new_token(self, mock_put: Mock):
         settings.SEND_UPDATES = True
@@ -1197,7 +1197,7 @@ class UpdatePartiesTest(TestCase):
         expected_json = {'contract_id': 'CONTRACT',
                          'country_code': 'FI',
                          'issuer': 'issuer',
-                         'last_updated': '2000-01-01T12:00:00Z',
+                         'last_updated': '2022-01-01T12:00:00Z',
                          'party_id': 'MSP',
                          'type': 'RFID',
                          'uid': 'UID',
@@ -1575,7 +1575,9 @@ class TestSession(TestCase):
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    @patch('ocpi22.webhooks.requests.post')
     def test_update_session(self,
+                            webhook_post_mock: Mock,
                             _ocpi_post_mock: Mock,
                             _uuid4_mock: Mock,
                             _get_parameter_mock: Mock):
@@ -1683,7 +1685,9 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    @patch('ocpi22.webhooks.requests.post')
     def test_rfid_charging_flow(self,
+                                webhook_post_mock: Mock,
                                 _ocpi_post_mock: Mock,
                                 _uuid4_mock: Mock,
                                 _get_parameter_mock: Mock,
@@ -1724,7 +1728,7 @@ class TestCpoApi(TestCase):
                                       'internal_reference': 'MY-INTERNAL-REFERENCE',
                                       'location_id': 'HELSINKI-1',
                                       'session_id': 'FI*CPO*S*MOCK-1',
-                                      'start_date_time': '2000-01-01T12:00:00',
+                                      'start_date_time': '2022-01-01T12:00:00',
                                       'start_kwh': 120.0,
                                       'stop_kwh': 120.0,
                                       'status': 'ACTIVE',
@@ -1760,7 +1764,7 @@ class TestCpoApi(TestCase):
                               'cdr_token': OrderedDict([('uid', 'EKI1'),
                                                         ('type', 'RFID'),
                                                         ('contract_id', 'DE8ACC12E46L89')]),
-                              'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
+                              'charging_periods': [OrderedDict([('start_date_time', '2022-01-01T12:00:00Z'),
                                                                 ('tariff', 'EKI1'),
                                                                 ('dimensions',
                                                                  [OrderedDict([('type', 'ENERGY'),
@@ -1774,16 +1778,16 @@ class TestCpoApi(TestCase):
                               'kwh': 3.45,
                               'location_id': 'HELSINKI-1',
                               'party_id': 'CPO',
-                              'start_date_time': '2000-01-01T12:00:00Z',
+                              'start_date_time': '2022-01-01T12:00:00Z',
                               'status': 'ACTIVE',
                               'total_cost': OrderedDict([('excl_vat', 1.73), ('incl_vat', 2.14)]),
                               'uid': 'FI*CPO*S*MOCK-1'},
                 expected_update_data={'charging_periods': [OrderedDict(
-                    [('start_date_time', '2000-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
+                    [('start_date_time', '2022-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
                         OrderedDict([('type', 'ENERGY'), ('volume', '3.4500')]),
                         OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '42.0000')])])])],
                     'kwh': Decimal('3.450'),
-                    'last_updated': '2000-01-01T12:00:00Z',
+                    'last_updated': '2022-01-01T12:00:00Z',
                     'total_cost': {'excl_vat': 1.73, 'incl_vat': 2.14}},
                 evse_status='CHARGING'
             ),
@@ -1807,7 +1811,7 @@ class TestCpoApi(TestCase):
                               'cdr_token': OrderedDict([('uid', 'EKI1'),
                                                         ('type', 'RFID'),
                                                         ('contract_id', 'DE8ACC12E46L89')]),
-                              'charging_periods': [OrderedDict([('start_date_time', '2000-01-01T12:00:00Z'),
+                              'charging_periods': [OrderedDict([('start_date_time', '2022-01-01T12:00:00Z'),
                                                                 ('tariff', 'EKI1'),
                                                                 ('dimensions',
                                                                  [OrderedDict([('type', 'ENERGY'),
@@ -1821,7 +1825,7 @@ class TestCpoApi(TestCase):
                               'kwh': 33.45,
                               'location_id': 'HELSINKI-1',
                               'party_id': 'CPO',
-                              'start_date_time': '2000-01-01T12:00:00Z',
+                              'start_date_time': '2022-01-01T12:00:00Z',
                               'status': 'ACTIVE',
                               'total_cost': OrderedDict([('excl_vat', 16.73), ('incl_vat', 20.74)]),
                               'uid': 'FI*CPO*S*MOCK-1'},
@@ -1904,7 +1908,9 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
     @patch('ocpi22.commands.commands.requests.post')
+    @patch('ocpi22.webhooks.requests.post')
     def test_adhoc_token(self,
+                         webhook_post_mock: Mock,
                          requests_post_mock: Mock,
                          uuid4_mock: Mock,
                          _set_parameter_mock: Mock,
@@ -1972,7 +1978,7 @@ class TestCpoApi(TestCase):
             {'data': {'command_id': 'FI*001-AUTH-REFERENCE'},
              'status_code': 1000,
              'status_message': 'Command result received, thank you!',
-             'timestamp': '2000-01-01T12:00:00Z'}
+             'timestamp': '2022-01-01T12:00:00Z'}
         )
 
         session = Session.objects.get(status='PENDING')
@@ -2059,7 +2065,7 @@ class TestCpoApi(TestCase):
                          'connector_id': '1',
                          'session_id': 'FI*CPO*S*MOCK-1',
                          'internal_reference': 'MY-INTERNAL-REFERENCE-2',
-                         'start_date_time': '2000-01-01T12:00:00',
+                         'start_date_time': '2022-01-01T12:00:00',
                          'start_kwh': 0.0,
                          'stop_kwh': 0.0,
                          'status': 'ACTIVE',
@@ -2227,7 +2233,11 @@ def put_session_data(data):
 class TestPutSession(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
 
-    def test_put_session_with_charging_periods(self):
+    @patch('ocpi22.webhooks.requests.post')
+    def test_put_session_with_charging_periods(
+            self,
+            webhook_post_mock: Mock,
+    ):
         response = put_session_data(SessionData.meter_values_1)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                          'Creating a session with ChargingPeriods should succeed')
@@ -2283,7 +2293,9 @@ class TestMspApi(TestCase):
     @patch('ocpi22.commands.commands.requests.post',
            return_value=FakeResponse(200, accepted_result)
            )
+    @patch('ocpi22.webhooks.requests.post')
     def test_app_charging(self,
+                          webhook_post_mock: Mock,
                           requests_post_mock: Mock,
                           _uuid4_mock: Mock):
         data = {

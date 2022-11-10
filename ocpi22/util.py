@@ -432,11 +432,11 @@ class TimePeriod:
 
         @return: How many Seconds of this session is within this Tariff
 
-        >>> dt = datetime(2000, 1, 1, 0, 0)
+        >>> dt = datetime(2022, 1, 1, 0, 0)
         >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=60), dt + timedelta(seconds=3*60), )
-        2000-01-01 00:01:00 - 2000-01-01 00:02:00, 60
+        2022-01-01 00:01:00 - 2022-01-01 00:02:00, 60
         >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=10*60), dt + timedelta(seconds=1*60), )
-        2000-01-01 00:00:00 - 2000-01-01 00:01:00, 60
+        2022-01-01 00:00:00 - 2022-01-01 00:01:00, 60
         >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=2*60), dt + timedelta(seconds=3*60), )
         -
         >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=2*60), dt - timedelta(seconds=60), )

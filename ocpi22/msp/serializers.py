@@ -144,3 +144,10 @@ class MSPChargePointStatusCallbackSerializer(CallbacksSerializer):
             choices=Evse.STATUS_CHOICES,
             help_text='The new status of the EVSE'
         )
+
+
+class MSPSessionCallbackSerializer(CallbacksSerializer):
+    URL = 'session_url'  # This needs to match the name of the below element
+    session_url = serializers.URLField()
+
+    OutboundSerializer = MspSessionSerializer

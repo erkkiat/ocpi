@@ -123,11 +123,11 @@ else:
 def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
                       from_country_code: str, from_party_id: str, method='put',
-                      credentials_id=None, **_kwargs) -> Optional[dict]:
+                      credentials_id=None, title=None, **_kwargs) -> Optional[dict]:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
     try:
-        logging.info(f"Sending {method.upper()} request {data.get('uid', data.get('id', ''))} to {url}")
+        logging.info(f"Sending {method.upper()} {title} request {data.get('uid', data.get('id', ''))} to {url}")
         headers = make_headers(
             token_base64, to=to, sender=sender
         )

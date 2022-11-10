@@ -20,9 +20,10 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet, ViewSet
 
 from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum
+from ocpi22.webhooks import send_to_webhook
 from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
-from ocpi22.msp.serializers import MSPAuthorizeCallbackSerializer
+from ocpi22.msp.serializers import MSPAuthorizeCallbackSerializer, MSPSessionCallbackSerializer, MspSessionSerializer
 from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, \
     CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer
@@ -480,20 +481,11 @@ class SessionViewSet(mixins.ListModelMixin,
     @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def session_by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
-        # noinspection PyUnresolvedReferences
         session = get_object_or_404(Session, country_code=country_code, party_id=party_id, uid=uid)
 
         if request.method == 'GET':
             serializer = SessionSerializer(session, context={'request': request})
             return OCPIResponse(serializer.data)
-
-        # elif request.method == 'PATCH':
-        #     serializer = SessionSerializer(session, data=request.data, partial=True, context={'request': request})
-        #     if serializer.is_valid():
-        #         serializer.save()
-        #         return OCPIResponse(serializer.data)
-        #     else:
-        #         return OCPIResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
@@ -504,9 +496,10 @@ class SessionViewSet(mixins.ListModelMixin,
         uid = uid or data.get('uid')
         country_code = country_code or data.get('country_code')
         party_id = party_id or data.get('party_id')
-
+        created = True
         session: Session = Session.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
         if session:
+            created = False
             if not session.is_owner(request):
                 return NotOwner()
             if session.is_final():
@@ -516,10 +509,12 @@ class SessionViewSet(mixins.ListModelMixin,
             data=request.data, instance=session, partial=partial, context={'request': request}
         )
         if serializer.is_valid():
-            serializer.save()
+            session = serializer.save()
             Session.send_hub_updates(serializer.data)
+            outbound_data = MSPSessionCallbackSerializer.OutboundSerializer(instance=session).data
+            send_to_webhook(data, MSPSessionCallbackSerializer, serialized_data=outbound_data)
             return OCPIResponse(serializer.data,
-                                http_status=status.HTTP_200_OK if session else status.HTTP_201_CREATED)
+                                http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
         logging.error(f'Problem with PUT Session from {request.credentials}: {serializer.errors}')
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
