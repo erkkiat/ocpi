@@ -139,7 +139,6 @@ def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAut
                         # ic(sender, country_code, party_id)
                         if sender.country_code != country_code or sender.party_id != party_id:
                             logging.error(f'Someone at {sender} is trying to masquerade as {country_code}*{party_id}')
-                        return None
                         return process_authorization_response(result, token, location, sender)
             except celery.exceptions.TimeoutError:
                 continue
