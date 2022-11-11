@@ -823,6 +823,7 @@ class CommandTests(TestCase):
            side_effect=lambda x: {
                'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/',
                'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/',
            }.get(x))
     @patch('ocpi22.commands.commands.requests.post')
     def test_start_stop_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
@@ -977,6 +978,7 @@ class CommandTests(TestCase):
                'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/',
                'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
                'callback-reserve_now_url': 'http://john:his-password@fakehost/reserve/{location_id}/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/',
            }.get(x))
     # @patch('ocpi22.commands.commands.requests.post')
     @patch('ocpi22.webhooks.requests.post')
@@ -1571,7 +1573,10 @@ class TestSession(TestCase):
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://localhost/start/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/'
+           }.get(x))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
@@ -1601,6 +1606,7 @@ class TestSession(TestCase):
         session_url = reverse('session-by-id', args=args)
         # ic(session_url)
 
+
         request = api_factory.patch(session_url)
         request.user = AnonymousUser
         request.credentials = Credentials.objects.get(pk=2)
@@ -1608,7 +1614,19 @@ class TestSession(TestCase):
         for filename, status_code, cost, charging_period_count, expected_dict in test_cases:
             data = load_example(f'data/examples/{filename}.json')
             request.data = data
+
+            webhook_post_mock.reset_mock()
             response = SessionViewSet().patch(request, *args)
+
+            webhook_post_mock.assert_called_once()
+            # ic()
+            # kwargs = dict(calls[0])
+            # ic(webhook_post_mock.call_args_list)  # webhook_post_mock.call_args makes the test explode
+
+            # if expected_webhook_data:
+            #     self.assertDictEqual(
+            #         kwargs, expected_webhook_data, f'Data sent to webhook differs from expected'
+            #     )
 
             self.assertEqual(response.status_code, status_code,
                              f'Expecting status code {status_code}')
@@ -1681,7 +1699,10 @@ class TestCpoApi(TestCase):
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.models.session.OcpiModule.send_update_to_interested_parties')
     @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {'callback-start_transaction_url': 'http://localhost/start/{evse_id}/'}.get(x))
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://localhost/start/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/'
+           }.get(x))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
@@ -1903,6 +1924,7 @@ class TestCpoApi(TestCase):
            side_effect=lambda x: {
                'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
                'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/',
            }.get(x))
     @patch('ocpi22.util.redis_store.set', return_value=True)
     @patch('ocpi22.ocpi.util.uuid.uuid4',
@@ -2325,6 +2347,7 @@ class TestMspApi(TestCase):
         self.assertEqual(account.balance, Decimal("50"), "Second account deposit not working as expected")
 
         response = start_charging(data, user)
+
         self.assertEqual(response.data, self.accepted_result.get('data'),
                          'Response from CPO for START_SESSION differs from expected')
         args, kwargs = requests_post_mock.call_args
@@ -2492,7 +2515,9 @@ class TestMspUserApi(TestCase):
     @patch('ocpi22.ocpi.api.requests.post', side_effect=[make_json_response(accept_authorization_msp)])
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {
-               'callback-authorize_url': ''}.get(x))
+               'callback-authorize_url': '',
+               'callback-session_url': 'http://localhost/session/{uid}/',
+           }.get(x))
     def test_cdrs_and_transactions(self, _mocked_redis_store: Mock, _mocked_requests_post: Mock,
                                    _mocked_ocpi_post: Mock):
         params = dict(email='rich@money.com', password='hello', confirm='hello')

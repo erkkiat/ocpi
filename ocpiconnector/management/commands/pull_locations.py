@@ -32,8 +32,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         ic(args, options)
-        clear = options['clear']
-        # noinspection PyUnresolvedReferences
+        # clear = options['clear']
         endpoints = Endpoint.objects.filter(identifier='locations', role='SENDER')
         for endpoint in endpoints:
             url = endpoint.url
