@@ -41,6 +41,8 @@ timezonefinder==6.1.6
 djangorestframework-csv==2.1.1
 django-slick-reporting==0.6.3
 django-crispy-forms==1.14.0
-walrus==0.9.2
+# walrus==0.9.2
+django-gdpr-assist==1.4.2   # Before upgrading, read the instructions
+                            # at https://django-gdpr-assist.readthedocs.io/en/latest/upgrading.html
 # stripe==3.5.0
 # potranslator==1.1.5  # Not used and not working in cloud, install locally in dev environment

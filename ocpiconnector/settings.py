@@ -104,7 +104,7 @@ JAWSDB_MARIA_URL = os.environ.get('JAWSDB_MARIA_URL',
                                   os.environ.get('JAWSDB_URL', None))
 if JAWSDB_MARIA_URL:
     # We're running on Heroku
-    DATABASES = parse_jawsdb_maria_url(JAWSDB_MARIA_URL)
+    DATABASES = (parse_jawsdb_maria_url(JAWSDB_MARIA_URL))
 else:
     DATABASES = {
         'default': {
@@ -118,6 +118,15 @@ else:
             'ATOMIC_REQUESTS': True,
         }
     }
+
+# Add a new database to log GDPR actions
+DATABASES.update({
+    'gdpr_log': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'gdpr-log.sqlite3'),
+    },
+})
+DATABASE_ROUTERS = ['gdpr_assist.routers.EventLogRouter']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -320,6 +329,7 @@ INSTALLED_APPS = (
     'oauth2_provider',
     'slick_reporting',
     'crispy_forms',
+    'gdpr_assist',
 )
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
