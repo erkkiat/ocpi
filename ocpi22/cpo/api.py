@@ -182,6 +182,20 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 # Todo: limit access to certain privilege holders
 
 
+def close_active_sessions_for_evse(evse: Evse) -> bool:
+    active_sessions = Session.objects.filter(
+        evse=evse,
+        status__in=(Session.ACTIVE, Session.PENDING)
+    )
+    for session in active_sessions:
+        last_updated = session.last_updated
+        session.status = Session.COMPLETED
+        session.end_date_time = last_updated if last_updated else timezone.now()
+        session.last_updated = session.end_date_time
+        session.save(update_fields=['status', 'end_date_time'])
+        logging.error(f'Completed active Session {session.uid} which has been left hanging')
+
+
 class ChargePointViewSet(viewsets.GenericViewSet):
     """
     The charge point is connected to roaming networks through this API. It interprets the OCPP
@@ -235,6 +249,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     evse.last_updated = timezone.now()
                     evse.location.update_last_updated()
                     evse.save()
+
+                    if ocpi_status == Evse.AVAILABLE:
+                        # Let's free up the charger for the OCPI network, in case we are out of sync
+                        close_active_sessions_for_evse(evse)
+
                     evse.send_status_updates()
 
                     return Response(

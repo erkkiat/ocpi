@@ -210,22 +210,27 @@ class Evse(models.Model, ModelUtilMixin):
 
     evse_id = models.CharField(max_length=48, blank=True, default='')
 
-    # @property
-    # def evse_id(self):
-    #     # The eMI3 1.0 standard ID
-    #     return f'{self.location.country_code}*{self.location.party_id}*E{self.location.uid}*{self.uid}'.upper()
+    AVAILABLE = 'AVAILABLE'
+    BLOCKED = 'BLOCKED'
+    CHARGING = 'CHARGING'
+    INOPERATIVE = 'INOPERATIVE'
+    OUTOFORDER = 'OUTOFORDER'
+    PLANNED = 'PLANNED'
+    REMOVED = 'REMOVED'
+    RESERVED = 'RESERVED'
+    UNKNOWN = 'UNKNOWN'
 
     # Indicates the current status of the EVSE
     STATUS_CHOICES = (
-        ('AVAILABLE', 'Available'),
-        ('BLOCKED', 'Physically blocked'),
-        ('CHARGING', 'Charging'),
-        ('INOPERATIVE', 'Inoperative (not yet active or it is no longer available)'),
-        ('OUTOFORDER', 'Out of order'),
-        ('PLANNED', 'Planned, will be operating soon'),
-        ('REMOVED', 'Discontinued/removed'),
-        ('RESERVED', 'Reserved for a particular EV driver'),
-        ('UNKNOWN', 'No status information available (also used when offline)'),
+        (AVAILABLE, 'Available'),
+        (BLOCKED, 'Physically blocked'),
+        (CHARGING, 'Charging'),
+        (INOPERATIVE, 'Inoperative (not yet active or it is no longer available)'),
+        (OUTOFORDER, 'Out of order'),
+        (PLANNED, 'Planned, will be operating soon'),
+        (REMOVED, 'Discontinued/removed'),
+        (RESERVED, 'Reserved for a particular EV driver'),
+        (UNKNOWN, 'No status information available (also used when offline)'),
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES)
 
