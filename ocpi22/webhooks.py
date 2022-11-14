@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from ocpi22 import logging as logging
 from ocpi22.serializers import CallbacksSerializer
 from ocpi22.util import build_callback_request
+from ocpiconnector.util import Timer
 
 
 def send_to_webhook(data: dict, serializer, serialized_data=None, outbound_serializer=None, timeout=5) -> dict:
@@ -28,13 +29,16 @@ def send_to_webhook(data: dict, serializer, serialized_data=None, outbound_seria
 
             logging.info(f'Calling webhook at url {url}')
 
-            response = requests.post(
-                url=url,
-                json=serialized_data,
-                headers=headers,
-                verify=False,
-                timeout=timeout,
-                **kwargs)
+            with Timer() as t:
+                response = requests.post(
+                    url=url,
+                    json=serialized_data,
+                    headers=headers,
+                    verify=False,
+                    timeout=timeout,
+                    **kwargs)
+            logging.info(f'Webhook {url} responded in {float(t):.2f} seconds')
+
             if hasattr(serializer, 'ResponseSerializer'):
                 data = response.json()
                 response_serializer = serializer.ResponseSerializer(data=data)
@@ -42,6 +46,8 @@ def send_to_webhook(data: dict, serializer, serialized_data=None, outbound_seria
                     return data
                 else:
                     logging.error(f'Got a malformed response from webhook at {url}: {data}')
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError, ValidationError) as e:
+    except (requests.exceptions.ConnectionError, ValueError, ValidationError) as e:
         logging.error(f'Problem communicating with webhook {serializer.__class__}: {e}')
+    except (requests.exceptions.Timeout) as e:
+        logging.error(f'Webhook call timed out ({serializer.__class__}): {e}')
     return {}

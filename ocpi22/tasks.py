@@ -23,6 +23,7 @@ from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
 from ocpiconnector.settings import STILL_ALIVE_FREQUENCY
+from ocpiconnector.util import Timer
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 
@@ -133,7 +134,9 @@ def send_ocpi_request(data, url: str, token_base64: str,
         )
 
         # Log the message to Sentry
-        sentry_sdk.set_context('data', data)
+        with Timer() as t:
+            sentry_sdk.set_context('data', data)
+        logging.info(f'Logged the message to Sentry in {float(t):.2f} seconds')
 
         kwargs = dict(url=url, json=data, headers=headers)
 
@@ -142,7 +145,9 @@ def send_ocpi_request(data, url: str, token_base64: str,
         if not function:
             raise NotImplementedError(f'Method {method} is not supported for send_ocpi_request')
 
-        result = function(**kwargs)
+        with Timer() as t:
+            result = function(**kwargs)
+        logging.info(f'OCPI request response took {float(t):.2f} seconds')
 
         logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
