@@ -111,7 +111,7 @@ class ErrorLoggingMiddleware:
     def __call__(self, request):
         try:
             response = self.get_response(request)
-            if response.status_code >= 400:
+            if response.status_code >= 405:
                 party = get_sender_party(request.META)
                 if party:
                     logging.error(f'Returning status code {response.status_code} for party {str(party)}.')
