@@ -499,12 +499,15 @@ class SessionViewSet(mixins.ListModelMixin,
         created = True
         session: Session = Session.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
         if session:
+            logging.info(f'Received an update for session {uid} from {country_code}*{party_id}')
             created = False
             if not session.is_owner(request):
                 return NotOwner()
             if session.is_final():
                 return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+        else:
+            logging.info(f'Creating new session {uid} received from {country_code}*{party_id}')
         serializer = SessionSerializer(
             data=request.data, instance=session, partial=partial, context={'request': request}
         )

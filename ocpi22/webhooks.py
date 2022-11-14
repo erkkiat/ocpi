@@ -27,8 +27,6 @@ def send_to_webhook(data: dict, serializer, serialized_data=None, outbound_seria
             headers = {'content-type': 'application/json'}
             kwargs.update(kwargs_update)
 
-            logging.info(f'Calling webhook at url {url}')
-
             with Timer() as t:
                 response = requests.post(
                     url=url,
@@ -37,7 +35,7 @@ def send_to_webhook(data: dict, serializer, serialized_data=None, outbound_seria
                     verify=False,
                     timeout=timeout,
                     **kwargs)
-            logging.info(f'Webhook {url} responded in {float(t):.2f} seconds')
+            logging.info(f'Webhook {serializer.URL} at {url} responded in {float(t):.2f} seconds')
 
             if hasattr(serializer, 'ResponseSerializer'):
                 data = response.json()
@@ -46,6 +44,8 @@ def send_to_webhook(data: dict, serializer, serialized_data=None, outbound_seria
                     return data
                 else:
                     logging.error(f'Got a malformed response from webhook at {url}: {data}')
+        else:
+            logging.info(f'No webhook {serializer.URL} specified => no action')
     except (requests.exceptions.ConnectionError, ValueError, ValidationError) as e:
         logging.error(f'Problem communicating with webhook {serializer.__class__}: {e}')
     except (requests.exceptions.Timeout) as e:

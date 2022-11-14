@@ -1030,6 +1030,9 @@ class CommandTests(TestCase):
         requests_post_mock.reset_mock()
         uuid4_mock.return_value = mock_uuid4(99)
 
+        # Clear out any Sessions which prevent new charging sessions and reservations
+        Session.objects.filter(status__in=[Session.PENDING, Session.ACTIVE]).update(status=Session.COMPLETED)
+
         response = viewset.reserve_now(request)
 
         # Check the request sent to the CPO
@@ -2556,6 +2559,9 @@ class TestMspUserApi(TestCase):
         uid = 'test-transactions'
         token_uid = 'EKI1'
         credentials = Credentials.objects.first()
+
+        # Clear out any Sessions which prevent new charging sessions
+        Session.objects.filter(status__in=[Session.PENDING, Session.ACTIVE]).update(status=Session.COMPLETED)
 
         session = create_session(
             uid=uid, evse_uid=evse, location_id=evse.location, connector_id=evse.connectors.all().first().uid,

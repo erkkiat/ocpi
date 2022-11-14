@@ -162,7 +162,7 @@ class CommandsViewSet(GenericViewSet):
                         MessageTexts.get(
                             result,  # Then just <result>
                             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
-                    if result:
+                    if result == CommandResponse.ACCEPTED:
                         response.ocpi_status = Ocpi.OK
                         response.http_status = status.HTTP_200_OK
 
@@ -194,37 +194,17 @@ class CommandsViewSet(GenericViewSet):
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            billed_to = self._get_sender_party(request)
+            billed_to = str(self._get_sender_party(request))
             serializer = StartSessionSerializer(data=request.data)
             if serializer.is_valid():
 
                 token = serializer.validated_data.get('token', '')
                 authorization_reference = serializer.validated_data.get('authorization_reference')
+                evse_uid = serializer.validated_data.get('evse_uid')
+                connector_id = serializer.validated_data.get('connector_id')
 
                 # Store the command for use during the next {settings.REMOTE_COMMAND_EXPIRATION} seconds
                 command_store[authorization_reference] = serializer.validated_data
-
-                # TODO: Do not create Session before making sure the charger is not busy,
-                #  it will close active Session(s)
-
-                session: Session = Session.get_if_exists(authorization_reference=authorization_reference)
-                if not session:
-                    params = serializer.validated_data
-                    params.update(
-                        dict(
-                            ad_hoc_token=token,
-                            billed_to=str(billed_to),
-                            authorization_method=Session.COMMAND,
-                            credentials=request.credentials,
-                        )
-                    )
-                    for key in ('token', 'response_url'):
-                        params.pop(key)
-
-                    session: Session = create_session(**params)
-                    logging.info(f'Created session {session.uid} based on remote command from MSP')
-                else:
-                    logging.info(f'Found an existing session {session.uid} based on reservation from MSP')
 
                 # The worst scenario is this
                 ocpi_status = 2000
@@ -232,20 +212,21 @@ class CommandsViewSet(GenericViewSet):
                 http_status = status.HTTP_503_SERVICE_UNAVAILABLE
                 message = []
                 timeout = 60
+                status_message = ''
 
                 try:
                     # Prepare the start command for CPO management system
                     initial_data = dict(
                         response_url=ocpi22.util.build_absolute_uri(reverse('chargepoint-remote-command-result',
-                                                                            args=(session.authorization_reference,))),
-                        token_id=session.cdr_token_uid,
-                        token_type=session.cdr_token_type,
-                        authorization_reference=session.authorization_reference,
-                        auth_method=session.auth_method,
+                                                                            args=(authorization_reference,))),
+                        token_id=token.get('uid'),
+                        token_type=token.get('type'),
+                        authorization_reference=authorization_reference,
+                        auth_method=Session.COMMAND,
                         from_party=str(request.credentials.party()),
-                        evse_id=session.evse.uid,
-                        connector_id=session.connector.uid if session.connector else None,
-                        billed_to=session.billed_to,
+                        evse_id=evse_uid,
+                        connector_id=connector_id,
+                        billed_to=billed_to,
                     )
 
                     data = send_to_webhook(initial_data, CPOStartWebhookSerializer)
@@ -258,20 +239,47 @@ class CommandsViewSet(GenericViewSet):
                         MessageTexts.get(
                             result,  # Then just <result>
                             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
-                    if result:
+                    if result == CommandResponse.ACCEPTED:
+                        session: Session = Session.get_if_exists(authorization_reference=authorization_reference)
+                        if not session:
+                            params = serializer.validated_data
+                            params.update(
+                                dict(
+                                    ad_hoc_token=token,
+                                    billed_to=billed_to,
+                                    authorization_method=Session.COMMAND,
+                                    credentials=request.credentials,
+                                )
+                            )
+                            for key in ('token', 'response_url'):
+                                params.pop(key)
+
+                            session: Session = create_session(**params)
+                            logging.info(f'Created session {session.uid} based on remote command from MSP')
+                        else:
+                            logging.info(f'Found an existing session {session.uid} based on reservation from MSP')
                         ocpi_status = Ocpi.OK
                         http_status = status.HTTP_200_OK
 
-                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, ValueError,
-                        ValidationError) as e:
+                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
                     message = MessageTexts.get('MS_CONNECTION_ERROR')
                     http_status = status.HTTP_503_SERVICE_UNAVAILABLE
                     logging.error(f'Unable to relay Command to CPO: {e}', request)
+                    status_message = str(e)
+                    result = CommandResponse.REJECTED
+                except (ValueError, ValidationError) as e:
+                    ic(e)
+                    message = MessageTexts.get('EVSE_OCCUPIED')
+                    http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+                    logging.error(f'Unable to relay Command to CPO: {e}', request)
+                    status_message = str(e)
+                    result = CommandResponse.REJECTED
 
                 response_serializer = CommandResponse(
                     instance=dict(result=result, timeout=timeout, message=message)
                 )
-                return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status)
+                return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status,
+                                    status_message=status_message)
         except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist,
                 Connector.DoesNotExist, Token.DoesNotExist, AssertionError) as e:
             log_error(request, e)

@@ -1,3 +1,5 @@
+from rest_framework.exceptions import ValidationError
+
 import ocpi22.logging as logging
 import os
 import uuid
@@ -65,18 +67,13 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         authorization_method, authorization_reference = authorization.auth_method, authorization.authorization_reference
     else:
         authorization_method = authorization_method or Session.COMMAND
-    try:
-        active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
-        # Todo: DO NOT overwrite active sessions automatically, or someone can disrupt a charging session
-        if active_sessions.exists():
-            logging.warning(f'New session overlaps existing, completing previous active sessions at {evse.evse_id}: '
-                            f'{",".join([s.uid for s in active_sessions])}')
-            for session in active_sessions:
-                session.status = Session.COMPLETED
-                session.save()  # This doesn't seem to send an update for some reason
-                session.send_updates()
-    except Exception as e:
-        logging.error(f'{settings.HOSTNAME}: Inactivating overlapping sessions failed for EVSE {evse.uid}: {e}')
+
+    # Make sure there are no active Sessions in progress
+    active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
+    if active_sessions.exists():
+        logging.error(f'Cannot start a new Session because there are {active_sessions.count()} '
+                      f'active sessions at EVSE {evse.evse_id}: {",".join([s.uid for s in active_sessions])}')
+        raise ValidationError(f'Cannot start a new session because there is an active charging session in progress')
 
     our_country_code, our_party_id = Session.get_owner_identity().split('*')
 
