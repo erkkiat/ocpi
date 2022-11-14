@@ -2,7 +2,7 @@ FROM python:3
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONPATH=$PYTHONPATH:/code:/code/ocpiconnector:/code/ocpiconnector
 RUN mkdir /code
-RUN ./manage.py migrate --database=gdpr_log
+RUN ./manage.py migrate --database=gdpr_log gdpr_assist
 WORKDIR /code
 COPY requirements.txt /code/
 RUN pip3 install --upgrade pip
