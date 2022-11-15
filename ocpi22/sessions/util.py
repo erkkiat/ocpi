@@ -38,13 +38,16 @@ def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACT
                                       statuses=statuses)
 
 
+class EvseOccupied(ValidationError):
+    pass
+
+
 def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, str], credentials,
                    internal_reference=None, token_id: Union[Token, str] = None, ad_hoc_token=None,
                    uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
                    authorization_reference='', reservation_id=None, authorization_method=None,
                    *args, **kwargs
                    ) -> Session:
-    # ic(location_id, evse_uid, connector_id, token_id, ad_hoc_token)
     if not uid:
         uid = generate_session_uid()
     token: Token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
@@ -73,7 +76,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     if active_sessions.exists():
         logging.error(f'Cannot start a new Session because there are {active_sessions.count()} '
                       f'active sessions at EVSE {evse.evse_id}: {",".join([s.uid for s in active_sessions])}')
-        raise ValidationError(f'Cannot start a new session because there is an active charging session in progress')
+        raise EvseOccupied(f'Cannot start a new session because there is an active charging session in progress')
 
     our_country_code, our_party_id = Session.get_owner_identity().split('*')
 

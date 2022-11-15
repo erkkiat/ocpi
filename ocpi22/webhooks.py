@@ -9,7 +9,7 @@ from ocpi22.util import build_callback_request
 from ocpiconnector.util import Timer
 
 
-def send_to_webhook(data: dict, serializer, serialized_data=None, outbound_serializer=None, timeout=5) -> dict:
+def send_to_webhook(data: dict, serializer, serialized_data=None, outbound_serializer=None, timeout=10) -> dict:
     assert issubclass(serializer, CallbacksSerializer), \
         'The serializer needs to be inherited from CallbacksSerializer'
     assert isinstance(data, (dict, OrderedDict))

@@ -192,7 +192,8 @@ def close_active_sessions_for_evse(evse: Evse) -> bool:
         session.status = Session.COMPLETED
         session.end_date_time = last_updated if last_updated else timezone.now()
         session.last_updated = session.end_date_time
-        session.save(update_fields=['status', 'end_date_time'])
+        session.save(update_fields=['status', 'end_date_time', 'last_updated'])
+        session.send_updates()
         logging.error(f'Completed active Session {session.uid} which has been left hanging')
 
 
@@ -508,7 +509,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     else:
                         return Response(
                             dict(
-                                status_text=f'Updating a finished session is not possible',
+                                status_text=f'You can only update an Session which has a status "ACTIVE".',
                                 session_id=session.uid,
                                 internal_reference=session.internal_reference,
                                 start_kwh=session.start_kwh,

@@ -36,7 +36,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.rendering import RENDERERS
 from ocpi22.routing import find_route, Route
-from ocpi22.sessions.util import create_session
+from ocpi22.sessions.util import create_session, EvseOccupied
 from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, generate_auth_reference, options_message
 from ocpi22.ocpi.util_party import get_sender_party
 
@@ -267,9 +267,14 @@ class CommandsViewSet(GenericViewSet):
                     logging.error(f'Unable to relay Command to CPO: {e}', request)
                     status_message = str(e)
                     result = CommandResponse.REJECTED
-                except (ValueError, ValidationError) as e:
-                    ic(e)
+                except EvseOccupied as e:
                     message = MessageTexts.get('EVSE_OCCUPIED')
+                    http_status = status.HTTP_409_CONFLICT
+                    logging.error(f'Unable to relay Command to CPO: {e}', request)
+                    status_message = str(e)
+                    result = CommandResponse.REJECTED
+                except Exception as e:
+                    message = MessageTexts.get('FAILED')
                     http_status = status.HTTP_503_SERVICE_UNAVAILABLE
                     logging.error(f'Unable to relay Command to CPO: {e}', request)
                     status_message = str(e)
