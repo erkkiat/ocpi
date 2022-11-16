@@ -6,7 +6,10 @@ from django.conf import settings
 from geopy import Nominatim
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
-from timezonefinder import TimezoneFinder
+
+from ocpi22 import logging
+
+from tzwhere import tzwhere
 
 from ocpi22.choices import OcppStatusChoices
 from ocpi22.commands.serializers import CommandResultBaseSerializer
@@ -17,6 +20,8 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
 from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer
+
+tz = tzwhere.tzwhere(forceTZ=True)
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -121,8 +126,11 @@ def fill_out_location_address(data: dict, lat: Union[float, str], lng: Union[flo
     data['country'] = country_code_from_2_to_3_chars(address.get('country_code'))
 
     # Fill out the time zone based on coordinates
-    tf = TimezoneFinder()
-    data['time_zone'] = tf.timezone_at_land(lat=lat, lng=lng)
+    try:
+        data['time_zone'] = tz.tzNameAt(latitude=lat, longitude=lng, forceTZ=True)
+    except Exception as e:
+        data['time_zone'] = 'unknown/unknown'
+        logging.error(f'Timezone finder has a problem: {e}.')
 
     return data
 
