@@ -1,4 +1,5 @@
 import base64
+import csv
 import hashlib
 import json
 import secrets
@@ -9,9 +10,12 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Any, Union
 
+import cachetools
+import pycountry
 import redis
 from django.conf import settings
 from django.core.validators import RegexValidator
+from geopy import Nominatim
 from icecream import ic
 from requests import Response
 from rest_framework import serializers, status
@@ -20,6 +24,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
+from ocpi22 import logging
 from ocpi22.ocpi.util import OCPIResponse, format_url
 # from ocpiconnector import slack_logging
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
@@ -589,3 +594,49 @@ def str_to_deterministic_int(reservation_id, limit=None) -> Optional[int]:
 
 def base64_to_ascii(s: str) -> str:
     return base64.b64decode(s).decode('ascii')
+
+
+timezones = dict()
+
+
+@cachetools.cached(cache=timezones)
+def get_timezones():
+    result = dict()
+    with open('ocpi22/data/timezones.csv') as file:
+        data = csv.reader(file, delimiter=';')
+        for code, name, timezone in data:
+            result[code] = timezone
+    logging.info(f'Read {len(result)} timezones from file')
+    return result
+
+
+def get_time_zone(country_code_2_chars: str) -> str:
+    timezones = get_timezones()
+    return timezones.get(country_code_2_chars.upper(), '')
+
+
+def country_code_from_2_to_3_chars(country_code: str) -> str:
+    country = pycountry.countries.get(alpha_2=country_code)
+    return country.alpha_3
+
+
+def fill_out_location_address(data: dict, lat: Union[float, str], lng: Union[float, str]) -> dict:
+    language = data.pop('language', False)
+    if 'address' in data and 'city' in data and 'country' in data:
+        return data
+    if not lat or not lng:
+        return data
+    locator = Nominatim(user_agent="ChargerHub.EU")
+    coordinates = f"{lat},{lng}"
+    location = locator.reverse(coordinates, language=language)
+    address = location.raw.get('address')
+    data['address'] = f"{address.get('road') or '-'} {address.get('house_number')}"
+    data['city'] = address.get('city') or '-'
+    data['postal_code'] = address.get('postcode') or '-'
+    country_code_2_chars = address.get('country_code')
+    data['country'] = country_code_from_2_to_3_chars(country_code_2_chars)
+
+    # Todo: Fill out the time zone based on country code
+    data['time_zone'] = get_time_zone(country_code_2_chars)
+
+    return data

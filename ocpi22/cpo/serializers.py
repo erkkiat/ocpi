@@ -1,15 +1,9 @@
 from decimal import Decimal
 from typing import Union
 
-import pycountry
 from django.conf import settings
-from geopy import Nominatim
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
-
-from ocpi22 import logging
-
-from tzwhere import tzwhere
 
 from ocpi22.choices import OcppStatusChoices
 from ocpi22.commands.serializers import CommandResultBaseSerializer
@@ -18,10 +12,8 @@ from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
-from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES
+from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES, fill_out_location_address
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer
-
-tz = tzwhere.tzwhere(forceTZ=True)
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -103,36 +95,6 @@ class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
 
     uid = serializers.CharField(validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
     connectors = ConnectorQuickSerializer(many=True)
-
-
-def country_code_from_2_to_3_chars(country_code: str) -> str:
-    country = pycountry.countries.get(alpha_2=country_code)
-    return country.alpha_3
-
-
-def fill_out_location_address(data: dict, lat: Union[float, str], lng: Union[float, str]) -> dict:
-    language = data.pop('language', False)
-    if 'address' in data and 'city' in data and 'country' in data:
-        return data
-    if not lat or not lng:
-        return data
-    locator = Nominatim(user_agent="ChargerHub.EU")
-    coordinates = f"{lat},{lng}"
-    location = locator.reverse(coordinates, language=language)
-    address = location.raw.get('address')
-    data['address'] = f"{address.get('road') or '-'} {address.get('house_number')}"
-    data['city'] = address.get('city') or '-'
-    data['postal_code'] = address.get('postcode') or '-'
-    data['country'] = country_code_from_2_to_3_chars(address.get('country_code'))
-
-    # Fill out the time zone based on coordinates
-    try:
-        data['time_zone'] = tz.tzNameAt(latitude=lat, longitude=lng, forceTZ=True)
-    except Exception as e:
-        data['time_zone'] = 'unknown/unknown'
-        logging.error(f'Timezone finder has a problem: {e}.')
-
-    return data
 
 
 class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
