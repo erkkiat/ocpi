@@ -152,6 +152,10 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
             session = get_session_by_adhoc_token(token, max_age_minutes=15)
             if session:
                 # Token is AD HOC
+                logging.info(f'Pre-existing Session {session.uid} '
+                             f'with authorization {session.authorization_reference}')
+                if not session.authorization_reference:
+                    raise ValueError(f'Session {session.uid} is missing authorization_reference')
                 return TokenAuthorization(
                     allowed='ALLOWED',
                     info=MessageTexts.get('TOKEN_ACCEPTED'),
@@ -167,7 +171,7 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
             # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
             authorization = authorize_with_all_msps(token, location)
     if authorization and t:
-        logging.info(f'{authorization.party} responded to authorization request in {float(t):.1f} seconds')
+        logging.info(f'Request for authorization from {authorization.party} finished in {float(t):.1f} seconds')
     return authorization
 
 
@@ -182,6 +186,7 @@ def _authorize_token(token: Union[Token, str], location=None) -> Optional[TokenA
     if not token or not token.valid:
         return None
     if token.whitelist == Token.ALWAYS:
+        logging.info(f'Token {token} is whitelisted, no authorization request sent')
         return TokenAuthorization(
             allowed='ALLOWED',
             info=MessageTexts.get('TOKEN_ACCEPTED'),
@@ -195,6 +200,7 @@ def _authorize_token(token: Union[Token, str], location=None) -> Optional[TokenA
     route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)
     # ic(route)
     if not route or not token:
+        logging.warning(f'Route ({route}) or Token ({token}) missing, cannot authorize Token')
         return None
 
     return do_authorization(token, location, route)
@@ -241,6 +247,7 @@ def process_authorization_response(result, token, location, to) -> Optional[Toke
     except (ValidationError, ValueError) as e:
         logging.error(f'Cannot read Token data from authorization response from {to}: {e}')
         return None
+
     return TokenAuthorization(
         allowed=allowed,
         info=authorization.get('info', ''),

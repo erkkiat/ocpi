@@ -556,7 +556,6 @@ def set_callbacks_parameter(key: str, value: str) -> None:
     redis_store.set(_format_redis_key(key, 'callback'), value)
 
 
-@lru_cache(maxsize=128)
 def get_callbacks_parameter(key: str) -> Union[str, int, list]:
     return redis_store.get(_format_redis_key(key, 'callback'))
 

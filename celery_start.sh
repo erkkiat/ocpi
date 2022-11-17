@@ -10,7 +10,7 @@ if [ -z "$PORT" ]
     exit 1
 fi
 
-brew services start redis || exit 1
+brew services restart redis || exit 1
 
 echo "Reading ENV from file $FILENAME"
 export $(cat $FILENAME | xargs) || (echo 'Unable to read ENV file $FILENAME' && exit 1)

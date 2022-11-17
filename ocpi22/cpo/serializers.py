@@ -349,6 +349,9 @@ class StopTransactionSerializer(serializers.Serializer):
         max_digits=8, decimal_places=4, required=False,
         help_text='Optionally, the final kWh reading from the charger',
     )
+    stop_timestamp = serializers.DateTimeField(
+        help_text='The timestamp of the moment when the driver has unplugged the vehicle'
+    )
 
     def validate(self, attrs):
         if 'session' not in attrs and 'internal_reference' not in attrs:

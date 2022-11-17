@@ -893,7 +893,7 @@ class CommandTests(TestCase):
                       'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result.e86baa82cee14ac5bfd00b85371aa798',
                       'token_id': 'FI*001*T*ADMIN*TOKEN',
                       'token_type': 'OTHER'},
-             'timeout': 5,
+             'timeout': 10,
              'url': 'http://fakehost/start/HELSINKI-3/',
              'verify': False}
         )
@@ -979,7 +979,7 @@ class CommandTests(TestCase):
                'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
                'callback-reserve_now_url': 'http://john:his-password@fakehost/reserve/{location_id}/{evse_id}/',
                'callback-session_url': 'http://localhost/session/{uid}/',
-           }.get(x))
+           }.get(x, 'http://localhost/fallback/'))
     # @patch('ocpi22.commands.commands.requests.post')
     @patch('ocpi22.webhooks.requests.post')
     def test_reserve_now(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
@@ -1579,7 +1579,7 @@ class TestSession(TestCase):
            side_effect=lambda x: {
                'callback-start_transaction_url': 'http://localhost/start/{evse_id}/',
                'callback-session_url': 'http://localhost/session/{uid}/'
-           }.get(x))
+           }.get(x, 'http://localhost/fallback/'))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
@@ -1619,7 +1619,9 @@ class TestSession(TestCase):
             request.data = data
 
             webhook_post_mock.reset_mock()
-            response = SessionViewSet().patch(request, *args)
+            with patch('ocpi22.util.redis_store.get') as get:
+                get.return_value = 'http://localhost/session/'
+                response = SessionViewSet().patch(request, *args)
 
             webhook_post_mock.assert_called_once()
             # ic()
@@ -1910,7 +1912,8 @@ class TestCpoApi(TestCase):
 
         data = dict(
             internal_reference='MY-INTERNAL-REFERENCE',
-            stop_kwh=155
+            stop_kwh=155,
+            stop_timestamp=timezone.now()
         )
         with time_machine.travel(faketime + timedelta(minutes=23), tick=False):
             response = stop_transaction(data)
@@ -2208,7 +2211,7 @@ class TestCpoApi(TestCase):
 
         cdr_count_before = Cdr.objects.all().count()
         with time_machine.travel(faketime + timedelta(minutes=23), tick=False):
-            response = stop_transaction(dict(session_id='FI*CPO*S*MOCK-1'))
+            response = stop_transaction(dict(session_id='FI*CPO*S*MOCK-1', stop_timestamp=timezone.now()))
         self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
         cdr_count_after = Cdr.objects.all().count()
 
@@ -2228,7 +2231,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(cdr.authorization_reference, session.authorization_reference)
 
         # Try to end the same Session again, should fail
-        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2'))
+        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2', stop_timestamp=timezone.now()))
         cdr_count_after = Cdr.objects.all().count()
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be only one new CDR after trying to stop a session twice')
