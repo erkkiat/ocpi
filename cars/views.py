@@ -9,6 +9,8 @@ from ocpi22.models.location import Location
 
 
 class CarsViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
+    publicly_visible = True
+
     queryset = Location.objects.none()  # To determine access
 
     def list(self, request, *args, **kwargs) -> Response:
