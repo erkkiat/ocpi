@@ -513,6 +513,8 @@ class SessionViewSet(mixins.ListModelMixin,
         )
         if serializer.is_valid():
             session = serializer.save()
+            if 'last_updated' not in request.data:
+                session.update_last_updated()
             Session.send_hub_updates(serializer.data)
             outbound_data = MSPSessionCallbackSerializer.OutboundSerializer(instance=session).data
             send_to_webhook(data, MSPSessionCallbackSerializer, serialized_data=outbound_data)

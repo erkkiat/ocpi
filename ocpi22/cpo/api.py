@@ -561,7 +561,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     session = serializer.validated_data.get('session')
                     stop_kwh = serializer.validated_data.get('stop_kwh')
-                    end_timestamp = serializer.validated_data.get('end_timestamp')
+                    stop_timestamp = serializer.validated_data.get('stop_timestamp')
                     if not session:
                         internal_reference = serializer.validated_data.get('internal_reference')
                         session = Session.get_if_exists(internal_reference=internal_reference)
@@ -575,13 +575,13 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.stop_kwh = stop_kwh
                         session.update_latest_charging_period(session.kwh)
                     session.status = Session.COMPLETED
-                    session.end_date_time = end_timestamp
-                    session.last_updated = end_timestamp
+                    session.end_date_time = stop_timestamp
+                    session.last_updated = stop_timestamp
                     session.calculate_price()
                     session.save(update_fields=['stop_kwh', 'status', 'last_updated', 'end_date_time',
                                                 'total_cost_incl_vat', 'total_cost_excl_vat'])
                     session.send_updates()
-                    logging.info(f'Stopped session {session.uid} with {session.kwh} kWh and '
+                    logging.info(f'Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and '
                                  f'cost {session.total_cost_incl_vat} {session.currency}')
 
                     # Create the corresponding CDR (it will also be sent to other party)
