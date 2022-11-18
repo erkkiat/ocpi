@@ -135,7 +135,7 @@ else:
 #     },
 # })
 
-# GDPR_LOG_DATABASE_NAME = 'default'
+GDPR_LOG_DATABASE_NAME = 'default'
 # DATABASE_ROUTERS = ['gdpr_assist.routers.EventLogRouter']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
