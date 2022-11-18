@@ -46,7 +46,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
                    internal_reference=None, token_id: Union[Token, str] = None, ad_hoc_token=None,
                    uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
                    authorization_reference='', reservation_id=None, authorization_method=None,
-                   *args, **kwargs
+                   *_args, **kwargs
                    ) -> Session:
     if not uid:
         uid = generate_session_uid()
@@ -71,6 +71,8 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     else:
         authorization_method = authorization_method or Session.COMMAND
 
+    assert authorization_reference, f'No authorization reference for Session {uid}'
+
     # Make sure there are no active Sessions in progress
     active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
     if active_sessions.exists():
@@ -82,8 +84,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
 
     assert billed_to, 'Unable to bill session without billed_to'
 
-    # noinspection PyUnresolvedReferences
-    session = Session.objects.create(
+    params = dict(
         country_code=our_country_code,
         party_id=our_party_id,
         uid=uid,
@@ -93,6 +94,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         stop_kwh=stop_kwh,
         status=session_status,
         start_date_time=timezone.now(),
+        last_updated=timezone.now(),
         cdr_token_uid=token.uid,
         cdr_token_type=token.type,
         cdr_token_contract_id=token.contract_id,
@@ -103,8 +105,10 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         connector=connector,
         currency=os.environ.get('CPO_CURRENCY', 'EUR'),
         billed_to=str(billed_to),
-        credentials=credentials
+        credentials=credentials,
     )
+    params.update(kwargs)
+    session = Session.objects.create(**params)
 
     logging.info(f'New session {session.uid} pending at {evse.evse_id}')
     return session

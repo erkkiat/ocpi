@@ -40,15 +40,12 @@ def token_post_save(sender, instance: Token, *_args, **_kwargs):
 
 def get_session_by_adhoc_token(token_uid: str, max_age_minutes,
                                statuses=(Session.PENDING, Session.ACTIVE)) -> Optional[Session]:
-    # ic()
     time_start = timezone.now() - timedelta(minutes=max_age_minutes)
-    # ic(token_uid, timespan, timezone.now())
     sessions = Session.objects.filter(
         Q(cdr_token_uid=token_uid) & Q(status__in=statuses) & Q(created__gte=time_start)
     ).order_by('-created')
     if sessions.exists():
         session = sessions.first()
-        # ic(session.get_party(), session.auth_method, session.authorization_reference)
         return session
     return None
 
@@ -129,11 +126,12 @@ def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAut
                 # ic(i)
                 for result in results:
                     response = result.get(timeout=delay)
-                    # ic(response)
+                    ic(response)
                     if response and response.get('status_code') == status.HTTP_200_OK:
                         sender = Party(**response.get('sender'))
                         result = AuthorizationResult(status_code=response.get('status_code'), data=response.get('json'))
-                        logging.info(f'Token {token} was {result.allowed} by {sender}')
+                        logging.info(f'Token {token} was {result.allowed} by {sender}, authorization reference '
+                                     f'{result.data.get("data", {}).get("authorization_reference")}')
                         token = response.get('json', {}).get('data', {}).get('token', {})
                         country_code, party_id = token.get('country_code'), token.get('party_id')
                         # ic(sender, country_code, party_id)

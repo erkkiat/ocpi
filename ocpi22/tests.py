@@ -25,7 +25,6 @@ from django.test import TestCase, Client
 # Todo: Tariff_id: Regular Expression: [A-Z]{2}[A-Za-z0-9]{3}[T][A-Z0-9][A-Z0-9\*]{0,29}
 # Todo: evse_id Regular Expression: [A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
-from icecream import ic
 from requests import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -59,7 +58,7 @@ from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
     accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, \
-    RfidTestData, accept_authorization_msp, evse_inoperative_response
+    RfidTestData, accept_authorization_msp, evse_inoperative_response, authorization_success
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -439,12 +438,13 @@ class ApiPutTests(TestCase):
         start_date_time = datetime(2022, 1, 1, 0, 0)
         evse = Evse.objects.all().first()
         location = evse.location
+        connector = evse.connectors.first()
         credentials = Credentials.objects.first()
         session_params = dict(
             country_code='FI', party_id='FFF', start_date_time=start_date_time,
             cdr_token_uid='123', cdr_token_type='RFID', cdr_token_contract_id='123', auth_method='COMMAND',
             location=location, evse=evse, currency='EUR', status='ACTIVE',
-            end_date_time=start_date_time + timedelta(hours=1), credentials=credentials,
+            end_date_time=start_date_time + timedelta(hours=1), credentials=credentials, connector=connector
         )
         testcases = (
             ('tariff_1_simple_2hour', dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 5, 5.5),
@@ -1017,7 +1017,10 @@ class CommandTests(TestCase):
             response = viewset.reserve_now(request)
         except redis.exceptions.ConnectionError as e:
             print(f'This test requires a local Redis instance to be running: {e}')
-            return False
+            self.fail()
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE,
+                         'Expecting the reservation to fail')
 
         # Check the request sent to the CPO
         requests_post_mock.assert_called_once()
@@ -1691,7 +1694,6 @@ class TestCpoApi(TestCase):
         for case in testcases:
             cpo_request.data = case.get('request')
             cpo_response = cpo_viewset.status_change(cpo_request)
-            # ic(cpo_response, cpo_response.data)
 
             self.assertEqual(cpo_response.status_code, case.get('status_code'),
                              'Status change should succeed')
@@ -1754,10 +1756,11 @@ class TestCpoApi(TestCase):
                                       'internal_reference': 'MY-INTERNAL-REFERENCE',
                                       'location_id': 'HELSINKI-1',
                                       'session_id': 'FI*CPO*S*MOCK-1',
-                                      'start_date_time': '2022-01-01T12:00:00',
+                                      'start_date_time': '2022-01-01T12:00:00Z',
                                       'start_kwh': 120.0,
                                       'stop_kwh': 120.0,
                                       'status': 'ACTIVE',
+                                      'last_updated': '2022-01-01T12:00:00Z',
                                       'token': OrderedDict([('token_id', 'EKI1'),
                                                             ('type', 'RFID'),
                                                             ('contract_id', 'DE8ACC12E46L89')])},
@@ -1806,6 +1809,7 @@ class TestCpoApi(TestCase):
                               'party_id': 'CPO',
                               'start_date_time': '2022-01-01T12:00:00Z',
                               'status': 'ACTIVE',
+                              'last_updated': '2022-01-01T12:00:00Z',
                               'total_cost': OrderedDict([('excl_vat', 1.73), ('incl_vat', 2.14)]),
                               'uid': 'FI*CPO*S*MOCK-1'},
                 expected_update_data={'charging_periods': [OrderedDict(
@@ -1853,6 +1857,7 @@ class TestCpoApi(TestCase):
                               'party_id': 'CPO',
                               'start_date_time': '2022-01-01T12:00:00Z',
                               'status': 'ACTIVE',
+                              'last_updated': '2022-01-01T12:00:00Z',
                               'total_cost': OrderedDict([('excl_vat', 16.73), ('incl_vat', 20.74)]),
                               'uid': 'FI*CPO*S*MOCK-1'},
                 evse_status='CHARGING'
@@ -1913,10 +1918,11 @@ class TestCpoApi(TestCase):
         data = dict(
             internal_reference='MY-INTERNAL-REFERENCE',
             stop_kwh=155,
-            stop_timestamp=timezone.now()
+            stop_timestamp=faketime + timedelta(minutes=23)  # This should apply, in case of a connection problem
         )
-        with time_machine.travel(faketime + timedelta(minutes=23), tick=False):
+        with time_machine.travel(faketime + timedelta(minutes=60), tick=False):
             response = stop_transaction(data)
+
         self.assertEqual(response.data, StopTransactionResponses.stop1,
                          'stop_transaction response differs from expected')
         send_updates_mock.assert_called()
@@ -2021,54 +2027,10 @@ class TestCpoApi(TestCase):
             token_id='SOME-ADHOC-TOKEN'
         )
         cpo_response = authorize(data)
-        # ic(cpo_response, cpo_response.data)
 
         self.assertEqual(cpo_response.status_code, 200,
                          'Token should be authorized')
-        self.assertDictEqual(cpo_response.data,
-                             {'allowed': 'ALLOWED',
-                              'authorization_method': 'COMMAND',
-                              'authorization_reference': 'FI*001-AUTH-REFERENCE',
-                              'billed_to': 'FI*CPO',
-                              'display_text': [{'language': 'EN', 'text': 'The token is accepted'},
-                                               {'language': 'DE', 'text': 'Der Token wird akzeptiert'},
-                                               {'language': 'FR', 'text': 'Le jeton est accepté'},
-                                               {'language': 'ES', 'text': 'Se acepta la ficha'},
-                                               {'language': 'PT', 'text': 'O token é aceito'},
-                                               {'language': 'LB', 'text': 'Den Token gëtt ugeholl'},
-                                               {'language': 'NL', 'text': 'Het token wordt geaccepteerd'},
-                                               {'language': 'CY', 'text': 'Derbynnir y tocyn'},
-                                               {'language': 'GA', 'text': 'Glactar leis an comhartha'},
-                                               {'language': 'BE', 'text': 'Токен прыняты'},
-                                               {'language': 'BG', 'text': 'Токенът е приет'},
-                                               {'language': 'RO', 'text': 'Jetonul este acceptat'},
-                                               {'language': 'BS', 'text': 'Token je prihvaćen'},
-                                               {'language': 'MK', 'text': 'Токенот е прифатен'},
-                                               {'language': 'SQ', 'text': 'Shenja pranohet'},
-                                               {'language': 'SR', 'text': 'Токен је прихваћен'},
-                                               {'language': 'TR', 'text': 'jeton kabul edildi'},
-                                               {'language': 'UK', 'text': 'Токен прийнято'},
-                                               {'language': 'EL', 'text': 'Το διακριτικό γίνεται αποδεκτό'},
-                                               {'language': 'PL', 'text': 'Token jest akceptowany'},
-                                               {'language': 'HU', 'text': 'A tokent elfogadják'},
-                                               {'language': 'CS', 'text': 'Token je přijat'},
-                                               {'language': 'SK', 'text': 'Token je akceptovaný'},
-                                               {'language': 'SL', 'text': 'Žeton je sprejet'},
-                                               {'language': 'FI', 'text': 'Lataustunniste on hyväksytty'},
-                                               {'language': 'NO', 'text': 'Tokenet er akseptert'},
-                                               {'language': 'DA', 'text': 'Tokenet accepteres'},
-                                               {'language': 'SV', 'text': 'Token accepteras'},
-                                               {'language': 'IS', 'text': 'Táknið er samþykkt'},
-                                               {'language': 'ET', 'text': 'Token on vastu võetud'},
-                                               {'language': 'LT', 'text': 'Žetonas priimtas'},
-                                               {'language': 'LV', 'text': 'Žetons ir pieņemts'},
-                                               {'language': 'AF', 'text': 'Die teken word aanvaar'},
-                                               {'language': 'MI', 'text': 'Ka whakaaetia te tohu'}],
-                              'evse_id': 'HELSINKI-3',
-                              'status_text': 'The token is accepted',
-                              'token_id': 'SOME-ADHOC-TOKEN',
-                              'token_type': 'AD_HOC_USER'}
-                             )
+        self.assertDictEqual(cpo_response.data, authorization_success, 'Expecting authorization to succeed')
 
         #
         # Start session based on authorization from eMSP Command
@@ -2093,10 +2055,11 @@ class TestCpoApi(TestCase):
                          'connector_id': '1',
                          'session_id': 'FI*CPO*S*MOCK-1',
                          'internal_reference': 'MY-INTERNAL-REFERENCE-2',
-                         'start_date_time': '2022-01-01T12:00:00',
+                         'start_date_time': '2022-01-01T12:00:00Z',
                          'start_kwh': 0.0,
                          'stop_kwh': 0.0,
                          'status': 'ACTIVE',
+                         'last_updated': '2022-01-01T12:00:00Z',
                          'token': OrderedDict([('token_id', 'SOME-ADHOC-TOKEN'),
                                                ('type', 'AD_HOC_USER'),
                                                ('contract_id', 'INTERNAL')])},
@@ -2210,8 +2173,10 @@ class TestCpoApi(TestCase):
         Cdr.objects.filter(session_id='FI*CPO*S*MOCK-1').delete()
 
         cdr_count_before = Cdr.objects.all().count()
+
         with time_machine.travel(faketime + timedelta(minutes=23), tick=False):
             response = stop_transaction(dict(session_id='FI*CPO*S*MOCK-1', stop_timestamp=timezone.now()))
+
         self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
         cdr_count_after = Cdr.objects.all().count()
 
@@ -2245,7 +2210,6 @@ class TestCpoApi(TestCase):
                                                    'total_cost_excl_vat': {'total_cost_excl_vat__sum': 61.73},
                                                    'total_cost_incl_vat': {'total_cost_incl_vat__sum': 76.54},
                                                    'total_energy': {'total_energy__sum': 123.45},
-                                                   'total_time': {'total_time__sum': 0.38333},
                                                    'transactions': 1},
                                  "The invoice resulting from RFID charging case differs from expected")
 

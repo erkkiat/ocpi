@@ -15,7 +15,6 @@ class InvoiceData:
     total_cost_excl_vat: Decimal
     total_cost_incl_vat: Decimal
     total_energy: Decimal
-    total_time: Decimal
     transactions: int
 
 
@@ -30,7 +29,6 @@ def calculate_invoice_data(credentials: Credentials, end_date: date, start_date:
             total_cost_excl_vat=transactions.aggregate(Sum('total_cost_excl_vat')),
             total_cost_incl_vat=transactions.aggregate(Sum('total_cost_incl_vat')),
             total_energy=transactions.aggregate(Sum('total_energy')),
-            total_time=transactions.aggregate(Sum('total_time')),
             transactions=transactions.count(),
         )
         return result

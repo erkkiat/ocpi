@@ -41,6 +41,8 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     location_id = serializers.SerializerMethodField(read_only=True)
     evse_uid = serializers.SerializerMethodField(read_only=True)
     connector_id = serializers.SerializerMethodField(read_only=True)
+    start_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT)
+    end_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
     @staticmethod
@@ -292,6 +294,9 @@ class StartTransactionSerializer(serializers.Serializer):
         help_text='The optional kWh measurement at the meter at start of the transaction, can start from zero '
                   'or start from where the previous charging session ended or some other value'
     )
+
+    def is_adhoc_token(self) -> bool:
+        return isinstance(self.validated_data.get('token'), str)
 
 
 class StopTransactionSerializer(serializers.Serializer):

@@ -1,4 +1,4 @@
-from icecream import ic
+from django.utils import timezone
 
 import ocpi22.logging as logging
 
@@ -22,6 +22,7 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 import ocpi22.util
+from ocpi22.cpo.api import close_active_sessions_for_evse
 from ocpi22.webhooks import send_to_webhook
 from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
@@ -127,6 +128,7 @@ class CommandsViewSet(GenericViewSet):
                         authorization_method=Session.COMMAND,
                         credentials=request.credentials,
                         connector_id=None,
+                        reservation_start_date_time=timezone.now()
                     )
                 )
                 for key in ('token', 'response_url', 'expiry_date', 'reservation_id'):
@@ -156,7 +158,7 @@ class CommandsViewSet(GenericViewSet):
 
                     response.timeout = data.get('timeout', response.timeout)
                     result = data.get('result', '').upper()
-                    logging.info(f'Result from charger for start charging: {result}')
+                    logging.info(f'Result from charger for reservation: {result}')
                     response.message = MessageTexts.get(
                         f'RESERVE_{result}',  # Try to get response message for RESERVE_<result>
                         MessageTexts.get(
@@ -230,6 +232,8 @@ class CommandsViewSet(GenericViewSet):
                     )
 
                     data = send_to_webhook(initial_data, CPOStartWebhookSerializer)
+                    if not data:
+                        logging.error(f'Unable to connect to CPMS webhook to start charging')
 
                     timeout = int(data.get('timeout', timeout))
                     result = data.get('result', '').upper()
@@ -240,6 +244,7 @@ class CommandsViewSet(GenericViewSet):
                             result,  # Then just <result>
                             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
                     if result == CommandResponse.ACCEPTED:
+                        close_active_sessions_for_evse(evse_uid)
                         session: Session = Session.get_if_exists(authorization_reference=authorization_reference)
                         if not session:
                             params = serializer.validated_data
@@ -248,7 +253,7 @@ class CommandsViewSet(GenericViewSet):
                                     ad_hoc_token=token,
                                     billed_to=billed_to,
                                     authorization_method=Session.COMMAND,
-                                    credentials=request.credentials,
+                                    credentials=request.credentials
                                 )
                             )
                             for key in ('token', 'response_url'):
@@ -258,6 +263,10 @@ class CommandsViewSet(GenericViewSet):
                             logging.info(f'Created session {session.uid} based on remote command from MSP')
                         else:
                             logging.info(f'Found an existing session {session.uid} based on reservation from MSP')
+                            # Reservation may have started earlier, but charging session starts now
+                            session.start_date_time = timezone.now()
+                            session.save(update_fields=['start_date_time'])
+
                         ocpi_status = Ocpi.OK
                         http_status = status.HTTP_200_OK
 

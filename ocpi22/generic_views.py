@@ -46,7 +46,6 @@ class WebhookViewSet(viewsets.GenericViewSet):
                 serializer = self.serializer_class(data=request.data, partial=partial)
                 if serializer.is_valid():
                     serializer.save()
-                    get_callbacks_parameter.cache_clear()
                     return Response(self._get_callbacks())
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except redis.exceptions.ConnectionError as e:

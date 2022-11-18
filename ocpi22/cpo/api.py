@@ -3,7 +3,7 @@ from django.utils.decorators import method_decorator
 
 import ocpi22.logging as logging
 import os
-from typing import Optional
+from typing import Optional, Union
 
 import redis
 from django.conf import settings
@@ -182,12 +182,21 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 # Todo: limit access to certain privilege holders
 
 
-def close_active_sessions_for_evse(evse: Evse) -> bool:
+def get_evse_object(evse: Union[Evse, str]) -> Evse:
+    if isinstance(evse, Evse):
+        return evse
+    assert isinstance(evse, str), f'Unknown type for Evse identification: {evse}'
+    return Evse.get_if_exists(uid=evse)
+
+
+def close_active_sessions_for_evse(evse: Union[Evse, str]):
+    evse = get_evse_object(evse)
     active_sessions = Session.objects.filter(
         evse=evse,
         status__in=(Session.ACTIVE, Session.PENDING)
     )
     for session in active_sessions:
+        logging.error(f'Closing the hanging session {session.uid}.')
         last_updated = session.last_updated
         session.status = Session.COMPLETED
         session.end_date_time = last_updated if last_updated else timezone.now()
@@ -385,10 +394,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             status=status.HTTP_409_CONFLICT,
                         )
 
-                    if isinstance(token, Token):
-                        party = token.party()
-                    else:
-                        # AD HOC Token uid, we need to fetch needed info
+                    if serializer.is_adhoc_token():
                         authorization: TokenAuthorization = authorize_token(token)
                         if not authorization:
                             return Response(dict(
@@ -401,15 +407,21 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             session.connector = Connector.get_if_exists(uid=connector_id)
                             session.internal_reference = internal_reference or None
                             session.status = Session.ACTIVE
-                            session.save()
+                            session.authorization_reference = authorization.authorization_reference
+                            session.save(update_fields=[
+                                'connector', 'internal_reference', 'status', 'authorization_reference'
+                            ])
                         else:
                             credentials = find_credentials(party)
                             session = create_session(
                                 evse.location.uid, evse.uid, connector_id, party,
                                 credentials, internal_reference, authorization.token, session_status=Session.ACTIVE,
-                                authorization_method=Session.AUTH_REQUEST  # Already authorized above
+                                authorization_method=Session.AUTH_REQUEST,  # Already authorized above
+                                authorization_reference=authorization.authorization_reference
                             )
                         logging.info(f'New session {session.uid} active at {evse.evse_id}')
+                    else:
+                        party = token.party()
 
                     if not session:
                         credentials = request.credentials if hasattr(request, 'credentials') else None
@@ -576,7 +588,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.update_latest_charging_period(session.kwh)
                     session.status = Session.COMPLETED
                     session.end_date_time = stop_timestamp
-                    session.last_updated = stop_timestamp
+                    session.last_updated = timezone.now()
                     session.calculate_price()
                     session.save(update_fields=['stop_kwh', 'status', 'last_updated', 'end_date_time',
                                                 'total_cost_incl_vat', 'total_cost_excl_vat'])

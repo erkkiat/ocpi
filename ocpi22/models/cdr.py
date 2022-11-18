@@ -55,6 +55,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Start timestamp of the charging session, or in-case of a reservation
     # (before the start of a session) the start of the reservation.
     start_date_time = models.DateTimeField()
+    reservation_start_date_time = models.DateTimeField(blank=True, null=True)
 
     # The timestamp when the session was completed/finished, charging might have finished before
     # the session ends, for example: EV is full, but parking cost also has to be paid.
@@ -164,7 +165,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     total_energy = models.FloatField()
 
     # Total duration of the charging session (including the duration of charging and not charging), in hours.
-    total_time = models.FloatField()
+    @property
+    def total_time(self) -> float:
+        return round((self.end_date_time - self.start_date_time).seconds / 3600.0, 3)
 
     # When set to true, this is a Credit CDR, and the field credit_reference_id needs to be set as well.
     # Todo: Make a "create credit CDR" management command
@@ -204,6 +207,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     @classmethod
     def create_based_on_session(cls, session: Session):
+        if not session.connector:
+            logging.error(f'Not creating a CDR from Session {session.uid} since no Connector is specified')
+            return None
         # Was there already a CDR created for this Session?
         cdr = cls.objects.filter(session_id=session.uid)
         if cdr.exists():
@@ -247,7 +253,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             total_cost_excl_vat=session.total_cost_excl_vat or 0.0,
             total_cost_incl_vat=session.total_cost_incl_vat or 0.0,
             total_energy=session.kwh,
-            total_time=round((session.end_date_time - session.start_date_time).seconds / 3600.0, 5),
             credentials=session.credentials,
             billed_to=session.billed_to,
             last_updated=timezone.now(),

@@ -7,11 +7,19 @@ from django.utils.translation import gettext_lazy as _
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
+# Install icecream globally, no need for local imports
+from icecream import install
+
+install()
+
+ic.configureOutput(includeContext=True)
+
 TRUE_OPTIONS = (1, '1', True, 'True', 'true')
 
 
 def _env_bool(key, default=False) -> bool:
     return bool(os.environ.get(key, default) in TRUE_OPTIONS)
+
 
 RENDER_ONLY_JSON = _env_bool('RENDER_ONLY_JSON', False)
 

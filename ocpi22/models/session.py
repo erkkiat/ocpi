@@ -72,6 +72,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # created at the Charge Point.
     # Todo: When a Session goes from PENDING to ACTIVE, this field SHALL be update to the moment the Session went to ACTIVE in the Charge Point.
     start_date_time = models.DateTimeField()
+    reservation_start_date_time = models.DateTimeField(blank=True, null=True)
 
     # The timestamp when the session was completed/finished, charging might have finished before the session ends,
     # for example: EV is full, but parking cost also has to be paid.
