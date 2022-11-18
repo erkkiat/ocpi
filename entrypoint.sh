@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cd /code
+cd /code || return
 pip3 install -r requirements.txt
 #sleep 10
 #python manage.py makemigrations
