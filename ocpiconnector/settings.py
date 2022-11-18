@@ -127,15 +127,16 @@ else:
         }
     }
 
-# Add a new database to log GDPR actions
-DATABASES.update({
-    'gdpr_log': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'gdpr-log.sqlite3'),
-    },
-})
-DATABASE_ROUTERS = ['gdpr_assist.routers.EventLogRouter']
+# # Add a new database to log GDPR actions
+# DATABASES.update({
+#     'gdpr_log': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'gdpr-log.sqlite3'),
+#     },
+# })
 
+# GDPR_LOG_DATABASE_NAME = 'default'
+# DATABASE_ROUTERS = ['gdpr_assist.routers.EventLogRouter']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 if os.environ.get('_system_arch') == 'arm64':  # This is an M1 or M2 chip, need to hack mysql to work
