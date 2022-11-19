@@ -13,6 +13,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+from rest_framework.serializers import Serializer
 
 from cars import cars
 from cars.cars import model_exists
@@ -218,6 +219,7 @@ class UserViewSet(viewsets.GenericViewSet):
         return {
             'register': RegistrationSerializer,
             'account': ProfileSerializer,
+            'gdpr_delete': Serializer,
             'password': ChangePasswordSerializer,
             'transaction_list_brief': BriefTransactionSerializer,
             'transaction_list_full': TransactionSerializer
@@ -277,7 +279,7 @@ class UserViewSet(viewsets.GenericViewSet):
         except ValidationError as e:
             return Response({'status_message': e}, status.HTTP_400_BAD_REQUEST)
 
-    # @method_decorator(login_required)
+    @method_decorator(login_required)
     @action(methods=['GET', 'POST', 'PATCH'], detail=False, url_name='password')
     def password(self, request):
         try:
@@ -296,6 +298,24 @@ class UserViewSet(viewsets.GenericViewSet):
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         except ValidationError as e:
             return Response({'status_message': e}, status=status.HTTP_400_BAD_REQUEST)
+
+    @method_decorator(login_required)
+    @action(methods=['GET', 'POST', 'PATCH', 'PUT'], detail=False, url_name='gdpr-delete')
+    def gdpr_delete(self, request):
+        try:
+            user: User = request.user
+            if request.method == 'GET':
+                return Response({
+                    'status_message': 'When you POST or PUT to this endpoint, the user will be anonymised permanently. '
+                                      'The invoicing and session information remains, but it cannot connected to '
+                                      'the user\'s personal information.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.profile.anonymise()
+            user.anonymise()
+
+            return Response({'status_message': _('User has been anonymised according to GDPR requirements')})
+        except ValidationError as e:
+            return Response({'status_message': e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _build_transaction_list_urls(self, request) -> dict:
         transactions = Transaction.objects.all()
@@ -348,6 +368,11 @@ class UserViewSet(viewsets.GenericViewSet):
             return Response({'status_message': _(f'Car model {car_id} is not in our database')},
                             status=status.HTTP_404_NOT_FOUND)
         return Response(car.original_json)
+
+    @staticmethod
+    def get_object(uid=None) -> None:
+        # Needed for OPTIONS to work in list view
+        return None
 
 
 class CdrViewSet(viewsets.GenericViewSet, viewsets.mixins.ListModelMixin, viewsets.mixins.RetrieveModelMixin):

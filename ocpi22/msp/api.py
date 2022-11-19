@@ -454,6 +454,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 car_details=request.build_absolute_uri(
                     reverse('user-car-details')
                 ),
+                gdpr_delete=request.build_absolute_uri(
+                    reverse('user-gdpr-delete')
+                ),
             ),
             webhooks=dict(
                 authorize_webhook=request.build_absolute_uri(
