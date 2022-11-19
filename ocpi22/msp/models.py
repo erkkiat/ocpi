@@ -35,6 +35,7 @@ class Profile(models.Model):
                 'first_name': instance.user.first_name,
                 'last_name': instance.user.last_name,
                 'phone': instance.phone,
+                'vehicle': instance.vehicle,
                 'password': '********'
             }
 

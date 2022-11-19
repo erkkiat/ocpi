@@ -1,3 +1,4 @@
+import csv
 from decimal import Decimal
 
 from django.conf import settings
@@ -6,6 +7,7 @@ from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
 from rest_framework import serializers, status
@@ -306,9 +308,11 @@ class UserViewSet(viewsets.GenericViewSet):
             user: User = request.user
             if request.method == 'GET':
                 return Response({
-                    'status_message': 'When you POST or PUT to this endpoint, the user will be anonymised permanently. '
-                                      'The invoicing and session information remains, but it cannot connected to '
-                                      'the user\'s personal information.'}, status=status.HTTP_400_BAD_REQUEST)
+                    'status_message': 'When you POST or PUT anything to this endpoint, '
+                                      'the user will be anonymised permanently. '
+                                      'The invoicing and session information remains, but it cannot be connected to '
+                                      'the user\'s personal information, which no longer exists.'},
+                    status=status.HTTP_400_BAD_REQUEST)
 
             user.profile.anonymise()
             user.anonymise()
@@ -316,6 +320,34 @@ class UserViewSet(viewsets.GenericViewSet):
             return Response({'status_message': _('User has been anonymised according to GDPR requirements')})
         except ValidationError as e:
             return Response({'status_message': e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @method_decorator(login_required)
+    @action(methods=['GET'], detail=False, url_name='gdpr-export')
+    def gdpr_export(self, request):
+        try:
+            user: User = request.user
+
+            ic(format)
+
+            return Response({
+                'status_message': 'Success',
+                'gdpr_personal_information': user.profile._privacy_meta.export(user.profile)
+            })
+        except ValidationError as e:
+            return Response({'status_message': e}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @method_decorator(login_required)
+    @action(methods=['GET'], detail=False, url_name='gdpr-export-csv', url_path='gdpr_export/csv')
+    def gdpr_export_csv(self, request):
+        user: User = request.user
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="gdpr-export-{user.username}.csv"'
+        userdata = user.profile._privacy_meta.export(user.profile)
+        ic(userdata, userdata.keys())
+        writer = csv.DictWriter(response, fieldnames=userdata.keys())
+        writer.writeheader()
+        writer.writerow(userdata)
+        return response
 
     def _build_transaction_list_urls(self, request) -> dict:
         transactions = Transaction.objects.all()
