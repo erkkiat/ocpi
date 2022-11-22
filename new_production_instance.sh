@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-USAGE="$0 [OCPI connector instance name] [username] [email] [one or more OCPI roles, e.g. CPO=`FI*AAA`]"
+USAGE='[OCPI connector instance name] [username] [email] [one or more OCPI roles, e.g. CPO=`FI*AAA`]'
 if [ -z "$3" ]
   then
-    echo "$USAGE"
+    echo $USAGE
     exit 1
 fi
 
@@ -13,7 +13,7 @@ if [ -z "$4" ]
     ROLE2="EMSP='FI*MSP'"
 fi
 
-export "$(cat .env | xargs)"
+export $(cat .env | xargs)
 
 if [ -z "$CRONITOR_API_KEY" ] || [ -z "$BGDA_URL" ] || [ -z "$IBEX_CREDENTIALS" ]
   then
@@ -25,7 +25,7 @@ HOST=$1
 USERNAME=$2
 EMAIL=$3
 export HEROKU_APP=$1-ocpi
-PASSWORD=$(python generate_password.py)
+PASSWORD=`python generate_password.py`
 
  echo "================================" \
  && echo "URL: http://$HOST.ocpiconnector.com/" \
@@ -37,17 +37,17 @@ sleep 4
 
 echo "Creating app $HEROKU_APP..."
 
-heroku create --region eu "$HEROKU_APP" \
+heroku create --region eu $HEROKU_APP \
  && heroku addons:create rediscloud \
  && heroku addons:create jawsdb-maria \
- && heroku config:set CRONITOR_API_KEY="$CRONITOR_API_KEY" HOSTNAME="$HOST.ocpiconnector.com" \
- SECRET_KEY="$(python -c 'import uuid; print(uuid.uuid4())')" \
- BGDA_URL="$BGDA_URL" IBEX_CREDENTIALS="$IBEX_CREDENTIALS" "$4" "$5" "$6" "$ROLE1" "$ROLE2" \
- SLACK_WEBHOOK="$SLACK_WEBHOOK" DJANGO_SETTINGS_MODULE="$DJANGO_SETTINGS_MODULE" SCHEME="http" \
+ && heroku config:set CRONITOR_API_KEY=$CRONITOR_API_KEY HOSTNAME=$HOST.ocpiconnector.com \
+ SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` \
+ BGDA_URL=$BGDA_URL IBEX_CREDENTIALS=$IBEX_CREDENTIALS $4 $5 $6 $ROLE1 $ROLE2 \
+ SLACK_WEBHOOK=$SLACK_WEBHOOK DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE SCHEME=http \
  && echo "Let's give the Redis installer a moment to settle down..." \
  && sleep 15 \
  && heroku pipelines:add ocpi-connector --stage=production \
- && heroku pipelines:promote --app=cpo-ocpi --to="$HEROKU_APP" \
+ && heroku pipelines:promote --app=cpo-ocpi --to=$HEROKU_APP \
  && heroku run ./manage.py loaddata ocpi22/data/initial.json \
  && heroku run ./manage.py createsuperuser --username eki --email erkki.tapola@pohdinto.com \
  && echo "================================" \
@@ -57,7 +57,7 @@ heroku create --region eu "$HEROKU_APP" \
  && echo "================================" \
  && heroku run  DJANGO_SUPERUSER_USERNAME="$USERNAME" \
                 DJANGO_SUPERUSER_PASSWORD="$PASSWORD" \
-                ./manage.py createsuperuser --username "$USERNAME" --email "$EMAIL" --noinput
+                ./manage.py createsuperuser --username $USERNAME --email $EMAIL --noinput
 
 heroku addons:create papertrail || echo "*** Cannot activate papertrail"
 heroku addons:create sentry || echo "*** Cannot activate sentry"
