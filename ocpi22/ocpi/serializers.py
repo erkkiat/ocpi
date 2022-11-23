@@ -323,13 +323,14 @@ def update_charging_periods(session, chargingperiods):
 class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
-        fields = ['detail_url', 'country_code', 'party_id', 'uid',
+        fields = ['detail_url', 'country_code', 'party_id', 'id',
                   'start_date_time', 'end_date_time',
                   'kwh', 'charging_periods',
                   'cdr_token', 'auth_method', 'authorization_reference',
                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
                   'status', 'last_updated']
 
+    id = serializers.CharField(source='uid', max_length=settings.OCPI_22_MAX_UID_LENGTH)
     charging_periods = ChargingPeriodSerializer(many=True, source='chargingperiods', required=False)
     cdr_token = CdrTokenSerializer(required=True, source='*')
     location_id = LocationIdDictSerializer(source='*')
