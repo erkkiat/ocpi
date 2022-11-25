@@ -26,6 +26,7 @@ from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
 from ocpi22.views import home
 from ocpiconnector import charger_simulator
 from ocpiconnector.ocpi_identities import ocpi_platform
+from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
 
 ocpi_router = OCPIRouter()
@@ -64,6 +65,7 @@ msp_router.register(r'map', MapViewSet, basename='map')
 msp_router.register(r'user', UserViewSet, basename='user')
 msp_router.register(r'cdr', msp.user.CdrViewSet, basename='msp-cdr')
 msp_router.register(r'cars', CarsViewSet, basename='msp-cars')
+msp_router.register(r'payment', PaymentViewSet, basename='msp-payment')
 
 root_router = RootRouter()
 

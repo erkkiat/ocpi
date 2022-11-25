@@ -26,7 +26,6 @@ slack-logger>=0.3.1,<1.0
 colorama==0.4.6
 django-nested-admin==4.0.0
 cronitor==4.6.0
-# nordpool==0.3.2
 time_machine==2.8.2
 django-multiselectfield==0.1.12
 moesifdjango==2.3.1
@@ -38,12 +37,10 @@ sentry-sdk==1.10.1
 googletrans==3.1.0a0
 geopy==2.2.0
 pycountry==22.3.5
-# tzwhere==3.0.3  # It takes too much memory on Heroku
 djangorestframework-csv==2.1.1
 django-slick-reporting==0.6.3
 django-crispy-forms==1.14.0
-# walrus==0.9.2
 django-gdpr-assist==1.4.2   # Before upgrading, read the instructions
                             # at https://django-gdpr-assist.readthedocs.io/en/latest/upgrading.html
-# stripe==3.5.0
+stripe==5.0.0
 # potranslator==1.1.5  # Not used and not working in cloud, install locally in dev environment

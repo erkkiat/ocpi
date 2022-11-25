@@ -44,4 +44,4 @@ class MapViewSet(viewsets.GenericViewSet):
                 )
             ) for location in Location.objects.all()]
         )
-        return Response(geometry)
+        return Response(geometry, headers={'content-type': 'application/json; charset=UTF-8'})

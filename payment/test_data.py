@@ -1,0 +1,422 @@
+session = {
+    "after_expiration": None,
+    "allow_promotion_codes": None,
+    "amount_subtotal": None,
+    "amount_total": None,
+    "automatic_tax": {
+        "enabled": False,
+        "status": None
+    },
+    "billing_address_collection": None,
+    "cancel_url": "http://localhost:8002/api/msp/v1/payment/cancel/",
+    "client_reference_id": None,
+    "consent": None,
+    "consent_collection": None,
+    "created": 1668943166,
+    "currency": None,
+    "custom_text": {
+        "shipping_address": None,
+        "submit": None
+    },
+    "customer": "cus_MpaqQOHTYhC7q4",
+    "customer_creation": None,
+    "customer_details": {
+        "address": None,
+        "email": "erkki.tapola@iki.fi",
+        "name": None,
+        "phone": None,
+        "tax_exempt": None,
+        "tax_ids": None
+    },
+    "customer_email": None,
+    "expires_at": 1669029566,
+    "id": "cs_test_c1qBdRFUxIBJf4ymNEehenhxPZXRgJdSio3tZ7swV9o6vI9Y5lNm9ZVZul",
+    "livemode": False,
+    "locale": None,
+    "metadata": {},
+    "mode": "setup",
+    "object": "checkout.session",
+    "payment_intent": None,
+    "payment_link": None,
+    "payment_method_collection": "always",
+    "payment_method_options": {},
+    "payment_method_types": [
+        "card"
+    ],
+    "payment_status": "no_payment_required",
+    "phone_number_collection": {
+        "enabled": False
+    },
+    "recovered_from": None,
+    "setup_intent": "seti_1M6BYYBsWTl6iWOLaXR2CbHl",
+    "shipping": None,
+    "shipping_address_collection": None,
+    "shipping_options": [],
+    "shipping_rate": None,
+    "status": "complete",
+    "submit_type": None,
+    "subscription": None,
+    "success_url": "http://localhost:8002/api/msp/v1/payment/success/?session_id={CHECKOUT_SESSION_ID}",
+    "total_details": None,
+    "url": None
+}
+
+setup_intent = {
+    "application": None,
+    "cancellation_reason": None,
+    "client_secret": "seti_1M6BYYBsWTl6iWOLaXR2CbHl_secret_MprHz4KAJKG6mqvNtsAxTHCdKx3jdFd",
+    "created": 1668943166,
+    "customer": "cus_MpaqQOHTYhC7q4",
+    "description": None,
+    "flow_directions": None,
+    "id": "seti_1M6BYYBsWTl6iWOLaXR2CbHl",
+    "last_setup_error": None,
+    "latest_attempt": "setatt_1M6BYnBsWTl6iWOLQHBE25YX",
+    "livemode": False,
+    "mandate": None,
+    "metadata": {},
+    "next_action": None,
+    "object": "setup_intent",
+    "on_behalf_of": None,
+    "payment_method": "pm_1M6BYnBsWTl6iWOLzxyt6Af8",
+    "payment_method_options": {
+        "card": {
+            "mandate_options": None,
+            "network": None,
+            "request_three_d_secure": "automatic"
+        }
+    },
+    "payment_method_types": [
+        "card"
+    ],
+    "single_use_mandate": None,
+    "status": "succeeded",
+    "usage": "off_session"
+}
+
+payment_intent = {
+    "amount": 3000,
+    "amount_capturable": 3000,
+    "amount_details": {
+        "tip": {}
+    },
+    "amount_received": 0,
+    "application": None,
+    "application_fee_amount": None,
+    "automatic_payment_methods": None,
+    "canceled_at": None,
+    "cancellation_reason": None,
+    "capture_method": "manual",
+    "charges": {
+        "data": [
+            {
+                "amount": 3000,
+                "amount_captured": 0,
+                "amount_refunded": 0,
+                "application": None,
+                "application_fee": None,
+                "application_fee_amount": None,
+                "balance_transaction": None,
+                "billing_details": {
+                    "address": {
+                        "city": None,
+                        "country": "FI",
+                        "line1": None,
+                        "line2": None,
+                        "postal_code": None,
+                        "state": None
+                    },
+                    "email": "erkki.tapola@iki.fi",
+                    "name": "1",
+                    "phone": None
+                },
+                "calculated_statement_descriptor": "OCPIGUIDE.COM",
+                "captured": False,
+                "created": 1668943185,
+                "currency": "eur",
+                "customer": "cus_MpaqQOHTYhC7q4",
+                "description": "Charging session at CCS #3, Mannerheimintie 1, 00100 Helsinki",
+                "destination": None,
+                "dispute": None,
+                "disputed": False,
+                "failure_balance_transaction": None,
+                "failure_code": None,
+                "failure_message": None,
+                "fraud_details": {},
+                "id": "ch_3M6BYrBsWTl6iWOL3LuLGj3W",
+                "invoice": None,
+                "livemode": False,
+                "metadata": {},
+                "object": "charge",
+                "on_behalf_of": None,
+                "order": None,
+                "outcome": {
+                    "network_status": "approved_by_network",
+                    "reason": None,
+                    "risk_level": "normal",
+                    "risk_score": 60,
+                    "seller_message": "Payment complete.",
+                    "type": "authorized"
+                },
+                "paid": True,
+                "payment_intent": "pi_3M6BYrBsWTl6iWOL3mOrPFEt",
+                "payment_method": "pm_1M6BYnBsWTl6iWOLzxyt6Af8",
+                "payment_method_details": {
+                    "card": {
+                        "brand": "visa",
+                        "checks": {
+                            "address_line1_check": None,
+                            "address_postal_code_check": None,
+                            "cvc_check": "pass"
+                        },
+                        "country": "US",
+                        "exp_month": 12,
+                        "exp_year": 2034,
+                        "fingerprint": "yhqUDBFcPOh7vrTc",
+                        "funding": "credit",
+                        "installments": None,
+                        "last4": "4242",
+                        "mandate": None,
+                        "network": "visa",
+                        "three_d_secure": None,
+                        "wallet": None
+                    },
+                    "type": "card"
+                },
+                "receipt_email": None,
+                "receipt_number": None,
+                "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xS1o2dDhCc1dUbDZpV09MKNKa6JsGMgZ1yoAeb206LBZa9iNMS8DAAUTSP73FX6nUivo45-w98Cey9Q6Z-QHY1kvznmLgXv_JNLwe",
+                "refunded": False,
+                "refunds": {
+                    "data": [],
+                    "has_more": False,
+                    "object": "list",
+                    "total_count": 0,
+                    "url": "/v1/charges/ch_3M6BYrBsWTl6iWOL3LuLGj3W/refunds"
+                },
+                "review": None,
+                "shipping": None,
+                "source": None,
+                "source_transfer": None,
+                "statement_descriptor": None,
+                "statement_descriptor_suffix": None,
+                "status": "succeeded",
+                "transfer_data": None,
+                "transfer_group": None
+            }
+        ],
+        "has_more": False,
+        "object": "list",
+        "total_count": 1,
+        "url": "/v1/charges?payment_intent=pi_3M6BYrBsWTl6iWOL3mOrPFEt"
+    },
+    "client_secret": "pi_3M6BYrBsWTl6iWOL3mOrPFEt_secret_8GL1iZGRlkoBRGibAj68gP3hI",
+    "confirmation_method": "automatic",
+    "created": 1668943185,
+    "currency": "eur",
+    "customer": "cus_MpaqQOHTYhC7q4",
+    "description": "Charging session at CCS #3, Mannerheimintie 1, 00100 Helsinki",
+    "id": "pi_3M6BYrBsWTl6iWOL3mOrPFEt",
+    "invoice": None,
+    "last_payment_error": None,
+    "livemode": False,
+    "metadata": {},
+    "next_action": None,
+    "object": "payment_intent",
+    "on_behalf_of": None,
+    "payment_method": "pm_1M6BYnBsWTl6iWOLzxyt6Af8",
+    "payment_method_options": {
+        "card": {
+            "installments": None,
+            "mandate_options": None,
+            "network": None,
+            "request_three_d_secure": "automatic"
+        }
+    },
+    "payment_method_types": [
+        "card"
+    ],
+    "processing": None,
+    "receipt_email": None,
+    "review": None,
+    "setup_future_usage": None,
+    "shipping": None,
+    "source": None,
+    "statement_descriptor": None,
+    "statement_descriptor_suffix": None,
+    "status": "requires_capture",
+    "transfer_data": None,
+    "transfer_group": None
+}
+
+captured = {
+    "amount": 3000,
+    "amount_capturable": 0,
+    "amount_details": {
+        "tip": {}
+    },
+    "amount_received": 1500,
+    "application": None,
+    "application_fee_amount": None,
+    "automatic_payment_methods": None,
+    "canceled_at": None,
+    "cancellation_reason": None,
+    "capture_method": "manual",
+    "charges": {
+        "data": [
+            {
+                "amount": 3000,
+                "amount_captured": 1500,
+                "amount_refunded": 1500,
+                "application": None,
+                "application_fee": None,
+                "application_fee_amount": None,
+                "balance_transaction": "txn_3M6BYrBsWTl6iWOL3T60oIyf",
+                "billing_details": {
+                    "address": {
+                        "city": None,
+                        "country": "FI",
+                        "line1": None,
+                        "line2": None,
+                        "postal_code": None,
+                        "state": None
+                    },
+                    "email": "erkki.tapola@iki.fi",
+                    "name": "1",
+                    "phone": None
+                },
+                "calculated_statement_descriptor": "OCPIGUIDE.COM",
+                "captured": True,
+                "created": 1668943185,
+                "currency": "eur",
+                "customer": "cus_MpaqQOHTYhC7q4",
+                "description": "Charging session at CCS #3, Mannerheimintie 1, 00100 Helsinki",
+                "destination": None,
+                "dispute": None,
+                "disputed": False,
+                "failure_balance_transaction": None,
+                "failure_code": None,
+                "failure_message": None,
+                "fraud_details": {},
+                "id": "ch_3M6BYrBsWTl6iWOL3LuLGj3W",
+                "invoice": None,
+                "livemode": False,
+                "metadata": {},
+                "object": "charge",
+                "on_behalf_of": None,
+                "order": None,
+                "outcome": {
+                    "network_status": "approved_by_network",
+                    "reason": None,
+                    "risk_level": "normal",
+                    "risk_score": 60,
+                    "seller_message": "Payment complete.",
+                    "type": "authorized"
+                },
+                "paid": True,
+                "payment_intent": "pi_3M6BYrBsWTl6iWOL3mOrPFEt",
+                "payment_method": "pm_1M6BYnBsWTl6iWOLzxyt6Af8",
+                "payment_method_details": {
+                    "card": {
+                        "brand": "visa",
+                        "checks": {
+                            "address_line1_check": None,
+                            "address_postal_code_check": None,
+                            "cvc_check": "pass"
+                        },
+                        "country": "US",
+                        "exp_month": 12,
+                        "exp_year": 2034,
+                        "fingerprint": "yhqUDBFcPOh7vrTc",
+                        "funding": "credit",
+                        "installments": None,
+                        "last4": "4242",
+                        "mandate": None,
+                        "network": "visa",
+                        "three_d_secure": None,
+                        "wallet": None
+                    },
+                    "type": "card"
+                },
+                "receipt_email": None,
+                "receipt_number": None,
+                "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xS1o2dDhCc1dUbDZpV09MKNOa6JsGMgY-ThHQ1_E6LBZR8Sxi_iPw3FcSN3vAGf5Hk427yb-TEcZPVBDgGVz2Q9SZhSJR8wjBctJn",
+                "refunded": False,
+                "refunds": {
+                    "data": [
+                        {
+                            "amount": 1500,
+                            "balance_transaction": "txn_3M6BYrBsWTl6iWOL3VBAPKIJ",
+                            "charge": "ch_3M6BYrBsWTl6iWOL3LuLGj3W",
+                            "created": 1668943187,
+                            "currency": "eur",
+                            "id": "re_3M6BYrBsWTl6iWOL3bGNFDH4",
+                            "metadata": {},
+                            "object": "refund",
+                            "payment_intent": "pi_3M6BYrBsWTl6iWOL3mOrPFEt",
+                            "reason": None,
+                            "receipt_number": None,
+                            "source_transfer_reversal": None,
+                            "status": "succeeded",
+                            "transfer_reversal": None
+                        }
+                    ],
+                    "has_more": False,
+                    "object": "list",
+                    "total_count": 1,
+                    "url": "/v1/charges/ch_3M6BYrBsWTl6iWOL3LuLGj3W/refunds"
+                },
+                "review": None,
+                "shipping": None,
+                "source": None,
+                "source_transfer": None,
+                "statement_descriptor": None,
+                "statement_descriptor_suffix": None,
+                "status": "succeeded",
+                "transfer_data": None,
+                "transfer_group": None
+            }
+        ],
+        "has_more": False,
+        "object": "list",
+        "total_count": 1,
+        "url": "/v1/charges?payment_intent=pi_3M6BYrBsWTl6iWOL3mOrPFEt"
+    },
+    "client_secret": "pi_3M6BYrBsWTl6iWOL3mOrPFEt_secret_8GL1iZGRlkoBRGibAj68gP3hI",
+    "confirmation_method": "automatic",
+    "created": 1668943185,
+    "currency": "eur",
+    "customer": "cus_MpaqQOHTYhC7q4",
+    "description": "Charging session at CCS #3, Mannerheimintie 1, 00100 Helsinki",
+    "id": "pi_3M6BYrBsWTl6iWOL3mOrPFEt",
+    "invoice": None,
+    "last_payment_error": None,
+    "livemode": False,
+    "metadata": {},
+    "next_action": None,
+    "object": "payment_intent",
+    "on_behalf_of": None,
+    "payment_method": "pm_1M6BYnBsWTl6iWOLzxyt6Af8",
+    "payment_method_options": {
+        "card": {
+            "installments": None,
+            "mandate_options": None,
+            "network": None,
+            "request_three_d_secure": "automatic"
+        }
+    },
+    "payment_method_types": [
+        "card"
+    ],
+    "processing": None,
+    "receipt_email": None,
+    "review": None,
+    "setup_future_usage": None,
+    "shipping": None,
+    "source": None,
+    "statement_descriptor": None,
+    "statement_descriptor_suffix": None,
+    "status": "succeeded",
+    "transfer_data": None,
+    "transfer_group": None
+}

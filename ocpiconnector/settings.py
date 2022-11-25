@@ -351,6 +351,7 @@ INSTALLED_APPS = (
     'slick_reporting',
     'crispy_forms',
     'gdpr_assist',
+    'payment',
 )
 
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'

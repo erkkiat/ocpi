@@ -1529,7 +1529,8 @@ class TestRouting(TestCase):
         )
 
         for testcase in test_cases:
-            # print(f'Testing `{testcase.get("label")}`')
+
+            # Todo: with self.subTest(testcase)
             mock_request.reset_mock()
             routing = testcase.get('routing', True)
             mock_is_our_identifier.return_value = testcase.get('this_is_us')

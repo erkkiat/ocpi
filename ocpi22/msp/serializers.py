@@ -28,11 +28,11 @@ class StrictTokenIdSerializer(fields.CharField):
         return token
 
 
-class SessionIdSerializer(fields.CharField):
-    # Return the Session object or pass through the session ID if unknown
-    def to_internal_value(self, data):
-        session = Session.get_if_exists(uid=data) or data
-        return session
+# class SessionIdSerializer(fields.CharField):
+#     # Return the Session object or pass through the session ID if unknown
+#     def to_internal_value(self, data):
+#         session = Session.get_if_exists(uid=data) or data
+#         return session
 
 
 class StrictSessionIdSerializer(fields.CharField):
@@ -40,7 +40,7 @@ class StrictSessionIdSerializer(fields.CharField):
     def to_internal_value(self, data):
         session = Session.get_if_exists(uid=data)
         if not session:
-            raise ValidationError(f'Session with UID {data} not found')
+            raise ValidationError(f'Session with ID {data} not found')
         return session
 
 

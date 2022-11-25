@@ -208,6 +208,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # The party who will be billed for this Session
     billed_to = models.CharField(max_length=6, null=True)
 
+    # The payment for this session
+    payment = models.ForeignKey('payment.Payment', on_delete=models.PROTECT, null=True)
+
     # Store the (error) message from CPO
     message = models.JSONField(null=True, blank=True)
 
