@@ -56,6 +56,10 @@ class Payment(models.Model):
     currency = models.CharField(choices=CURRENCY_CHOICES, max_length=3)
     provider_data = models.JSONField(null=True, blank=True)
 
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
     def __str__(self):
         return f'{self.payment_method.customer.user.email} {self.get_status_display()} {self.amount} {self.currency}'
 
