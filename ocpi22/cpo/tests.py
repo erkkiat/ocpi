@@ -1,6 +1,7 @@
 import doctest
 from collections import OrderedDict
 
+import geopy
 from django.test import TestCase
 
 from django.contrib.auth.models import AnonymousUser
@@ -38,18 +39,22 @@ class TestQuickLocations(TestCase):
             "latitude": "55.67309",
             "longitude": "24.33591"
         }
-        response = put_location(data, reverse('quick-location-list'))
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED,
-                         'Expecting Location to be created successfully')
-        location = Location.get_if_exists(uid='Aplinkkelis')
-        data = LocationQuickSerializer(instance=location).data
-        self.assertEqual(data,
-                         {
-                             'id': 'APLINKKELIS', 'name': 'IONITY High Power Charging Aplinkkelis',
-                             'address': 'Panevėžio aplinkl. 20', 'city': '-', 'postal_code': '38417', 'country': 'LTU',
-                             'time_zone': 'Europe/Vilnius', 'latitude': 55.67309, 'longitude': 24.33591
-                         },
-                         'New Location data differs from expected')
+        try:
+            response = put_location(data, reverse('quick-location-list'))
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED,
+                             'Expecting Location to be created successfully')
+            location = Location.get_if_exists(uid='Aplinkkelis')
+            data = LocationQuickSerializer(instance=location).data
+            self.assertEqual(data,
+                             {
+                                 'id': 'APLINKKELIS', 'name': 'IONITY High Power Charging Aplinkkelis',
+                                 'address': 'Panevėžio aplinkl. 20', 'city': '-', 'postal_code': '38417',
+                                 'country': 'LTU',
+                                 'time_zone': 'Europe/Vilnius', 'latitude': 55.67309, 'longitude': 24.33591
+                             },
+                             'New Location data differs from expected')
+        except geopy.exc.GeocoderUnavailable:
+            self.skipTest('Geocoder is unavailable')
 
         #
         # Try updating Location data with new coordinates, address should be updated automatically

@@ -13,6 +13,7 @@ from icecream import install
 install()
 
 ic.configureOutput(includeContext=True)
+ic.disable()
 
 TRUE_OPTIONS = (1, '1', True, 'True', 'true')
 

@@ -1,4 +1,6 @@
 import time
+from collections import OrderedDict
+from typing import Any
 
 
 class Timer:
@@ -20,3 +22,18 @@ class Timer:
 
     def __bool__(self):
         return bool(self.interval)
+
+
+def _sorted_subdict(d: Any) -> OrderedDict:
+    # print(f'subdict candidate: {d}')
+    if isinstance(d, dict):
+        return recursive_sort_dict(d)
+    return d
+
+
+def recursive_sort_dict(d: dict) -> OrderedDict:
+    result = dict()
+    for item in d.items():
+        # print(f'Item: {item}')
+        result[item[0]] = _sorted_subdict(item[1])
+    return OrderedDict(sorted(result.items(), key=lambda x: x[0]))

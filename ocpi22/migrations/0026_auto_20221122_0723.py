@@ -14,6 +14,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='session',
             name='payment',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, to='payment.payment'),
+            field=models.ForeignKey(null=True, blank=True,
+                                    on_delete=django.db.models.deletion.PROTECT, to='payment.payment'),
         ),
     ]

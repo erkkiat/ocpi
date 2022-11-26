@@ -574,7 +574,7 @@ class ExpectedSessionUpdateResults:
                'start_date_time': '2022-01-01T12:00:00Z',
                'status': 'PENDING',
                'total_cost': OrderedDict([('excl_vat', 1.0), ('incl_vat', 1.2)]),
-               'uid': '12345'}
+               'id': '12345'}
 
     update2 = {'auth_method': 'AUTH_REQUEST',
                'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
@@ -606,7 +606,7 @@ class ExpectedSessionUpdateResults:
                'start_date_time': '2022-01-01T12:00:00Z',
                'status': 'PENDING',
                'total_cost': OrderedDict([('excl_vat', 1.1), ('incl_vat', 1.3)]),
-               'uid': '12345'}
+               'id': '12345'}
 
 
 class CdrMessages:
@@ -978,7 +978,7 @@ class SessionData:
                       'last_updated': '2022-01-01T12:00:00Z',
                       'status': 'ACTIVE',
                       'total_cost': OrderedDict([('excl_vat', 61.73), ('incl_vat', 76.54)]),
-                      'uid': 'FI*CPO*S*MOCK-1'}
+                      'id': 'FI*CPO*S*MOCK-1'}
 
     stop4 = {'auth_method': 'AUTH_REQUEST',
              'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
@@ -1003,7 +1003,7 @@ class SessionData:
              'start_date_time': '2022-01-01T12:00:00Z',
              'status': 'COMPLETED',
              'total_cost': OrderedDict([('excl_vat', 17.5), ('incl_vat', 21.7)]),
-             'uid': 'FI*CPO*S*MOCK-1',
+             'id': 'FI*CPO*S*MOCK-1',
              'last_updated': '2022-01-01T13:00:00Z'}
 
 
@@ -1023,7 +1023,7 @@ class RfidTestData:
                        'start_date_time': '2022-01-01T12:00:00Z',
                        'status': 'ACTIVE',
                        'last_updated': '2022-01-01T12:00:00Z',
-                       'uid': 'FI*CPO*S*MOCK-1'}
+                       'id': 'FI*CPO*S*MOCK-1'}
 
 
 evse_inoperative_response = {'data': {'result': 'EVSE_INOPERATIVE',

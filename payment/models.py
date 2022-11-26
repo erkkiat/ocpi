@@ -46,8 +46,6 @@ class PaymentStatusEnum(Enum):
 
 PAYMENT_CHOICES = [(x.value, x.name.capitalize().replace('_', ' ')) for x in PaymentStatusEnum]
 
-ic(PAYMENT_CHOICES)
-
 
 class Payment(models.Model):
     session_id = models.CharField(max_length=64, db_index=True)

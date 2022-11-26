@@ -17,8 +17,6 @@ from rest_framework.reverse import reverse
 from ocpi22.util import CURRENCY_CHOICES
 from payment.models import Customer, Payment, PaymentStatusEnum, PaymentMethod
 
-ic.disable()
-
 stripe.api_key = os.environ.get(
     'STRIPE_API_KEY',
     'sk_test_51KZ6t8BsWTl6iWOLgXMH6YeAcORsv4Xa9aIAQzUJ2yItL7tapaLPGdNjD6vYD7qp4uixKHSFsngv5WeUoXPwc9RE00vL4IYemQ'

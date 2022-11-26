@@ -1619,40 +1619,41 @@ class TestSession(TestCase):
         request.credentials = Credentials.objects.get(pk=2)
 
         for filename, status_code, cost, charging_period_count, expected_dict in test_cases:
-            data = load_example(f'data/examples/{filename}.json')
-            request.data = data
+            with self.subTest(filename=filename):
+                data = load_example(f'data/examples/{filename}.json')
+                request.data = data
 
-            webhook_post_mock.reset_mock()
-            with patch('ocpi22.util.redis_store.get') as get:
-                get.return_value = 'http://localhost/session/'
-                response = SessionViewSet().patch(request, *args)
+                webhook_post_mock.reset_mock()
+                with patch('ocpi22.util.redis_store.get') as get:
+                    get.return_value = 'http://localhost/session/'
+                    response = SessionViewSet().patch(request, *args)
 
-            webhook_post_mock.assert_called_once()
-            # ic()
-            # kwargs = dict(calls[0])
-            # ic(webhook_post_mock.call_args_list)  # webhook_post_mock.call_args makes the test explode
+                webhook_post_mock.assert_called_once()
+                # ic()
+                # kwargs = dict(calls[0])
+                # ic(webhook_post_mock.call_args_list)  # webhook_post_mock.call_args makes the test explode
 
-            # if expected_webhook_data:
-            #     self.assertDictEqual(
-            #         kwargs, expected_webhook_data, f'Data sent to webhook differs from expected'
-            #     )
+                # if expected_webhook_data:
+                #     self.assertDictEqual(
+                #         kwargs, expected_webhook_data, f'Data sent to webhook differs from expected'
+                #     )
 
-            self.assertEqual(response.status_code, status_code,
-                             f'Expecting status code {status_code}')
+                self.assertEqual(response.status_code, status_code,
+                                 f'Expecting status code {status_code}')
 
-            session = Session.objects.get(uid=uid)
-            self.assertEqual(session.total_cost_excl_vat, cost,
-                             f'Session price was not changed to {cost}')
+                session = Session.objects.get(uid=uid)
+                self.assertEqual(session.total_cost_excl_vat, cost,
+                                 f'Session price was not changed to {cost}')
 
-            self.assertEqual(session.chargingperiods.count(), charging_period_count,
-                             f'Expecting {charging_period_count} ChargingPeriods')
+                self.assertEqual(session.chargingperiods.count(), charging_period_count,
+                                 f'Expecting {charging_period_count} ChargingPeriods')
 
-            if expected_dict:
-                session_data = SessionSerializer(instance=session).data
-                # ic(session_data)
+                if expected_dict:
+                    session_data = SessionSerializer(instance=session).data
+                    # ic(session_data)
 
-                self.assertDictEqual(session_data, expected_dict,
-                                     'The charging session content differs from expected')
+                    self.assertDictEqual(session_data, expected_dict,
+                                         'The charging session content differs from expected')
 
 
 class TestCpoApi(TestCase):
@@ -1812,7 +1813,7 @@ class TestCpoApi(TestCase):
                               'status': 'ACTIVE',
                               'last_updated': '2022-01-01T12:00:00Z',
                               'total_cost': OrderedDict([('excl_vat', 1.73), ('incl_vat', 2.14)]),
-                              'uid': 'FI*CPO*S*MOCK-1'},
+                              'id': 'FI*CPO*S*MOCK-1'},
                 expected_update_data={'charging_periods': [OrderedDict(
                     [('start_date_time', '2022-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
                         OrderedDict([('type', 'ENERGY'), ('volume', '3.4500')]),
@@ -1860,7 +1861,7 @@ class TestCpoApi(TestCase):
                               'status': 'ACTIVE',
                               'last_updated': '2022-01-01T12:00:00Z',
                               'total_cost': OrderedDict([('excl_vat', 16.73), ('incl_vat', 20.74)]),
-                              'uid': 'FI*CPO*S*MOCK-1'},
+                              'id': 'FI*CPO*S*MOCK-1'},
                 evse_status='CHARGING'
             ),
             dict(
@@ -1874,41 +1875,42 @@ class TestCpoApi(TestCase):
         )
 
         for case in testcases:
-            send_updates_mock.reset_mock()
-            cpo_response = meter_values(case.get('request'))
+            with self.subTest(request=case.get('request')):
+                send_updates_mock.reset_mock()
+                cpo_response = meter_values(case.get('request'))
 
-            expected_status = case.get('status_code', 200)
-            self.assertEqual(cpo_response.status_code, expected_status,
-                             f'Expecting HTTP status {expected_status} for {case.get("request")}')
-            self.assertDictEqual(cpo_response.data, case.get('expected_response'),
-                                 f'Case request {case.get("request")}, response {cpo_response.data}')
+                expected_status = case.get('status_code', 200)
+                self.assertEqual(cpo_response.status_code, expected_status,
+                                 f'Expecting HTTP status {expected_status} for {case.get("request")}')
+                self.assertDictEqual(cpo_response.data, case.get('expected_response'),
+                                     f'Case request {case.get("request")}, response {cpo_response.data}')
 
-            # Make sure the updated session was sent after meter_values was called
-            if expected_status == 200:
-                send_updates_mock.assert_called()
-                args, kwargs = send_updates_mock.call_args
-                # Check the outgoing update call
-                self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
+                # Make sure the updated session was sent after meter_values was called
+                if expected_status == 200:
+                    send_updates_mock.assert_called()
+                    args, kwargs = send_updates_mock.call_args
+                    # Check the outgoing update call
+                    self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
 
-                expected_update_data = case.get('expected_update_data')
-                if expected_update_data:
-                    update_data = args[0]
-                    expected_serializer = SessionSerializer(data=update_data, partial=True)
-                    self.assertTrue(expected_serializer.is_valid(),
-                                    f'The Session update data does not comply with schema: {expected_serializer.errors}')
-                    self.assertTrue(update_data.get('charging_periods'),
-                                    'Charging periods missing from Session update')
-                    self.assertDictEqual(update_data, expected_update_data,
-                                         f'Sending Session update differs from expected')
+                    expected_update_data = case.get('expected_update_data')
+                    if expected_update_data:
+                        update_data = args[0]
+                        expected_serializer = SessionSerializer(data=update_data, partial=True)
+                        self.assertTrue(expected_serializer.is_valid(),
+                                        f'The Session update data does not comply with schema: {expected_serializer.errors}')
+                        self.assertTrue(update_data.get('charging_periods'),
+                                        'Charging periods missing from Session update')
+                        self.assertDictEqual(update_data, expected_update_data,
+                                             f'Sending Session update differs from expected')
 
-                expected_session_data = case.get('session_data')
-                if expected_session_data:
-                    session = Session.objects.get(internal_reference=cpo_request.data.get('internal_reference'))
-                    self.assertTrue(session.total_cost_excl_vat and session.total_cost_incl_vat,
-                                    'meter_values does not result in an updated price for the session')
-                    session_data = SessionSerializer(instance=session).data
-                    self.assertDictEqual(session_data, expected_session_data,
-                                         'Session data differs')
+                    expected_session_data = case.get('session_data')
+                    if expected_session_data:
+                        session = Session.objects.get(internal_reference=cpo_request.data.get('internal_reference'))
+                        self.assertTrue(session.total_cost_excl_vat and session.total_cost_incl_vat,
+                                        'meter_values does not result in an updated price for the session')
+                        session_data = SessionSerializer(instance=session).data
+                        self.assertDictEqual(session_data, expected_session_data,
+                                             'Session data differs')
 
         #
         # CPO stops the session
@@ -2164,6 +2166,7 @@ class TestCpoApi(TestCase):
 
         session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
         session_data = SessionSerializer(session).data
+        # ic(recursive_sort_dict(session_data), recursive_sort_dict(SessionData.meter_values_1))
         self.assertEqual(session_data, SessionData.meter_values_1, 'Session differs from expected')
 
         #
