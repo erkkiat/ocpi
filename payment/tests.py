@@ -35,7 +35,6 @@ class PaymentTests(TestCase):
 
             response = PaymentViewSet().add_card(request)
             data = response.data
-            self.assertIn('id', data, 'Stripe response is missing "id"')
             self.assertIn('redirect_url', data, 'Stripe response is missing "redirect_url"')
             self.assertIn('success_url', data, 'Stripe response is missing "success_url"')
             self.assertIn('cancel_url', data, 'Stripe response is missing "cancel_url"')
@@ -83,7 +82,7 @@ class PaymentTests(TestCase):
         # Make a reservation on the credit card
         #
 
-        url = reverse('msp-payment-reserve')
+        url = reverse('msp-payment-reserve-amount')
 
         # Wrong format for data
 
@@ -93,7 +92,7 @@ class PaymentTests(TestCase):
 
         ic(request.user, request.user.payment_customer.payment_methods.all())
 
-        response = PaymentViewSet().reserve(request)
+        response = PaymentViewSet().reserve_amount(request)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, 'Expecting payment reservation to fail')
 
@@ -103,7 +102,7 @@ class PaymentTests(TestCase):
 
         ic(request.user, request.user.payment_customer.payment_methods.all())
 
-        response = PaymentViewSet().reserve(request)
+        response = PaymentViewSet().reserve_amount(request)
 
         self.assertTrue(response, 'There is no response from the payments reserve() endpoint')
         ic(response, response.data)
