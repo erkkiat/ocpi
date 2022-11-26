@@ -102,7 +102,8 @@ class StripePayments:
         payment = Payment.objects.create(session_id=pi.get('id'),
                                          payment_method=payment_method,
                                          status=PaymentStatusEnum.RESERVED.value,
-                                         amount=amount
+                                         amount=amount,
+                                         currency=currency
                                          )
         if not payment:
             logging.error(
@@ -279,7 +280,7 @@ class PaymentViewSet(viewsets.ViewSet):
                     dict(
                         status_text=_('Reservation has been made successfully'),
                         amount=amount,
-                        user_id=request.user.pk,
+                        msp_user_id=request.user.pk,
                     )
                 )
             else:
