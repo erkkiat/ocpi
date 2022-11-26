@@ -394,7 +394,8 @@ class MspSessionWebhookViewSet(WebhookViewSet):
 
 class MobilityServiceProviderAPIView(routers.APIRootView):
     """
-    This API is not a part of the OCPI protocol. It is intended as fast shortcut to OCPI roaming.
+    This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for MSPs,
+    a shortcut to roaming across OCPI networks.
 
     > You can use these eMSP API interfaces intearactively
     > to support your development and integration work.
@@ -408,6 +409,8 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
     For more details, click the links below and you will find the step-by-step technical documentation.
 
     """
+
+    metadata_class = None
 
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
@@ -479,7 +482,7 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
             ),
             payment=dict(
                 add_card=request.build_absolute_uri(reverse('msp-payment-add-card')),
-                reserve=request.build_absolute_uri(reverse('msp-payment-reserve')),
+                reserve=request.build_absolute_uri(reverse('msp-payment-reserve-amount')),
             ),
             billing=dict(
                 cdr_list=request.build_absolute_uri(
