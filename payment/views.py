@@ -22,6 +22,8 @@ stripe.api_key = os.environ.get(
     'sk_test_51KZ6t8BsWTl6iWOLgXMH6YeAcORsv4Xa9aIAQzUJ2yItL7tapaLPGdNjD6vYD7qp4uixKHSFsngv5WeUoXPwc9RE00vL4IYemQ'
 )
 
+options_message = f'Please see OPTIONS to learn what you can POST at this endpoint'
+
 # Are we in production?
 if not settings.DEBUG and 'test' in stripe.api_key:
     raise Exception('**** Do not use a Stripe payments test key in production')
@@ -29,7 +31,7 @@ if not settings.DEBUG and 'test' in stripe.api_key:
 
 def payment_intent(amount, currency='eur', **kwargs):
     return stripe.PaymentIntent.create(
-        amount=amount,
+        amount=int(amount * 100),
         currency=currency,
         payment_method_types=["card"],
         **kwargs
@@ -61,20 +63,20 @@ class StripePayments:
             logging.info(f'Creating Stripe customer for "{request.user.email}"')
             stripe_customer = stripe.Customer.create(idempotency_key=str(request.user.pk))
             customer = Customer.objects.create(user=request.user, customer_id=stripe_customer.id)
-        ic(stripe_customer, customer)
+            ic(stripe_customer, customer)
         success_url = request.build_absolute_uri(reverse("msp-payment-success"))
         cancel_url = request.build_absolute_uri(reverse("msp-payment-cancel"))
         params = dict(
             payment_method_types=['card'],
             mode='setup',
-            customer=stripe_customer.id,
+            customer=customer.customer_id,
             success_url=f'{success_url}?{query}',
             cancel_url=f'{cancel_url}',
         )
         # ic(params)
         session = stripe.checkout.Session.create(**params)
         result = dict(
-            id=session.id,
+            # id=session.id,
             redirect_url=session.url,
             success_url=success_url,
             cancel_url=cancel_url
@@ -94,7 +96,7 @@ class StripePayments:
 
         ic(customer, payment_method)
         pi = payment_intent(amount=amount, capture_method='manual', currency=currency,
-                            payment_method=payment_method, customer=customer,
+                            payment_method=payment_method, customer=customer.customer_id,
                             confirm=True, description=description)
         ic(PaymentStatusEnum.RESERVED.value)
         payment = Payment.objects.create(session_id=pi.get('id'),
@@ -149,13 +151,26 @@ class PaymentViewSet(viewsets.ViewSet):
             return serializers.Serializer
         # ic(self.action_map['post'])
         serializer = dict(
-            reserve=ReservePaymentSerializer,
-        ).get(self.action_map['post'])
+            reserve_amount=ReservePaymentSerializer,
+        ).get(self.action_map['post'], serializers.Serializer)
+        return serializer
+
+    def get_serializer(self):
+        serializer = self.get_serializer_class()
+        return serializer()
+
+    def get_metadata_class(self):
+        if not hasattr(self, 'action_map'):
+            return serializers.Serializer
+        # ic(self.action_map['post'])
+        serializer = dict(
+            reserve_amount=ReservePaymentSerializer,
+        ).get(self.action_map['post'], ReservePaymentSerializer)
         return serializer
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
-            return f'Payments {self.kwargs.get("uid")}'
+            return f'Payment {self.kwargs.get("uid")}'
         if self.name:
             return f'{self.name.capitalize()}'
         return f'Payments'
@@ -238,9 +253,9 @@ class PaymentViewSet(viewsets.ViewSet):
         return HttpResponse('')
 
     @action(methods=('GET', 'POST'), detail=False)
-    def reserve(self, request):
+    def reserve_amount(self, request):
         """
-        This call starts the charging transaction (which equals the OCPI session in the roaming network).
+        This call reserves an amount of currency from the logged in customer's payment method.
 
         ## Status codes
 
@@ -249,18 +264,33 @@ class PaymentViewSet(viewsets.ViewSet):
         * `HTTP_406_NOT_ACCEPTABLE` when the user has no payment methods specified
         """
         try:
+            if request.method == 'GET':
+                return Response(options_message, status=status.HTTP_400_BAD_REQUEST)
+
             serializer = ReservePaymentSerializer(data=request.data)
             if serializer.is_valid():
                 payment_method = request.user.payment_customer.payment_methods.first()
+                amount = float(serializer.validated_data.get("amount"))
                 result = payments.reserve(user=request.user, payment_method=payment_method,
-                                          amount=float(serializer.validated_data.get("amount")),
+                                          amount=amount,
                                           currency=serializer.validated_data.get("currency"))
                 ic(payment_method, result)
-                return Response(dict(status_text='Reservation has been made successfully'))
+                return Response(
+                    dict(
+                        status_text=_('Reservation has been made successfully'),
+                        amount=amount,
+                        user_id=request.user.pk,
+                    )
+                )
             else:
                 ic(serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except User.payment_customer.RelatedObjectDoesNotExist as e:
-            logging.error(f'Cannot make reservation for user {request.user.pk} without any payment methods added',
+            logging.error(f'Cannot make reservation for user {request.user.pk} without any payment methods added: {e}',
                           request)
-            return Response('User has no payment methods specified', status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response(f'User has no payment methods specified: {e}', status=status.HTTP_406_NOT_ACCEPTABLE)
+
+    @staticmethod
+    def get_object(uid=None) -> None:
+        # Needed for OPTIONS to work in list view
+        return None

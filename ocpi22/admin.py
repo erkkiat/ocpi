@@ -26,6 +26,7 @@ from ocpi22.msp.account import Account, Transaction
 from ocpi22.sessions.util import get_active_sessions
 from ocpi22.tokens.util import get_admin_token
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
+from payment.models import Payment
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = False
 
@@ -639,6 +640,14 @@ class UserAdmin(NestedModelAdmin):
                 [account.app_token_id for account in obj.accounts.all()]
             )
         )
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    model = Payment
+    exclude = []
+    list_display = ('status', 'email', 'amount', 'currency')
+    search_fields = ('amount', 'payment_method__customer__user__email')
 
 
 admin.site.register(Token, TokenAdmin)

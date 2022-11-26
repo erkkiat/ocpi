@@ -55,3 +55,14 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
     currency = models.CharField(choices=CURRENCY_CHOICES, max_length=3)
     provider_data = models.JSONField(null=True, blank=True)
+
+    def __str__(self):
+        return f'{self.payment_method.customer.user.email} {self.get_status_display()} {self.amount} {self.currency}'
+
+    @property
+    def user(self) -> User:
+        return self.payment_method.customer.user
+
+    @property
+    def email(self) -> str:
+        return self.user.email

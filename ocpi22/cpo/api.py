@@ -871,7 +871,8 @@ class CpoStopWebhookViewSet(WebhookViewSet):
 
 class ChargePointOperatorAPIView(routers.APIRootView):
     """
-    This API is not a part of the OCPI protocol. It is intended as fast shortcut to OCPI roaming.
+    This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for CPOs,
+    a shortcut to roaming across OCPI networks.
 
     > You can use these CPO API interfaces intearactively
     > to support your development and integration work.
@@ -955,66 +956,65 @@ class CPORouter(routers.DefaultRouter):
     APIRootView = ChargePointOperatorAPIView
     root_view_name = 'cpo-api'
 
+# class Charger:
+#     AUTHORIZATION_CHOICES = (
+#         ('Accepted', 'Accepted'),
+#         ('Blocked', 'Blocked'),
+#         ('Expired', 'Expired'),
+#         ('Invalid', 'Invalid'),
+#         ('ConcurrentTx', 'ConcurrentTx'),
+#     )
+#
+#     class UnlockStatus:
+#         value = None
+#
+#         def __int__(self, value):
+#             assert value in ('Unlocked', 'UnlockFailed', 'NotSupported')
+#             self.value = value
+#
+#         def __str__(self):
+#             return self.value
+#
+#     @staticmethod
+#     def remote_start_transaction(token: str, evse: Evse) -> Optional[str]:
+#         """
+#         Start a charging session
+#
+#         @param session:
+#         @return: Connector ID
+#         """
+#         # ic()
+#         # ic(token, evse)
+#         # noinspection PyUnresolvedReferences
+#         connectors = evse.connectors.all()
+#         if connectors.count(): return connectors[0]
+#         return None
+#
+#     @staticmethod
+#     def remote_stop_transaction(session: Session) -> bool:
+#         # ic()
+#         # ic(session)
+#         return True
+#
+#     @staticmethod
+#     def unlock_connector(location_id, evse_uid, connector_id, **kwargs) -> bool:
+#         # ic()
+#         # ic(location_id, evse_uid, connector_id, kwargs)
+#         return True
+#
+#     @staticmethod
+#     def add_or_update_token(id_token: str, validity: bool, created=None) -> bool:
+#         """
+#         Send a new or changed token to charge point
+#
+#         @param id_token: Token UID
+#         @param validity: Is the token valid for use or not
+#         @return: True, if the token was updated
+#         """
+#         # ic()
+#         # ic(id_token, validity, created)
+#         return True
 
-class Charger:
-    AUTHORIZATION_CHOICES = (
-        ('Accepted', 'Accepted'),
-        ('Blocked', 'Blocked'),
-        ('Expired', 'Expired'),
-        ('Invalid', 'Invalid'),
-        ('ConcurrentTx', 'ConcurrentTx'),
-    )
 
-    class UnlockStatus:
-        value = None
-
-        def __int__(self, value):
-            assert value in ('Unlocked', 'UnlockFailed', 'NotSupported')
-            self.value = value
-
-        def __str__(self):
-            return self.value
-
-    @staticmethod
-    def remote_start_transaction(token: str, evse: Evse) -> Optional[str]:
-        """
-        Start a charging session
-
-        @param session:
-        @return: Connector ID
-        """
-        # ic()
-        # ic(token, evse)
-        # noinspection PyUnresolvedReferences
-        connectors = evse.connectors.all()
-        if connectors.count(): return connectors[0]
-        return None
-
-    @staticmethod
-    def remote_stop_transaction(session: Session) -> bool:
-        # ic()
-        # ic(session)
-        return True
-
-    @staticmethod
-    def unlock_connector(location_id, evse_uid, connector_id, **kwargs) -> bool:
-        # ic()
-        # ic(location_id, evse_uid, connector_id, kwargs)
-        return True
-
-    @staticmethod
-    def add_or_update_token(id_token: str, validity: bool, created=None) -> bool:
-        """
-        Send a new or changed token to charge point
-
-        @param id_token: Token UID
-        @param validity: Is the token valid for use or not
-        @return: True, if the token was updated
-        """
-        # ic()
-        # ic(id_token, validity, created)
-        return True
-
-
-charger_class = os.environ.get('CHARGER_CLASS', 'ocpi22.cpo.api.Charger')
-CHARGER = import_string(charger_class)
+# charger_class = os.environ.get('CHARGER_CLASS', 'ocpi22.cpo.api.Charger')
+# CHARGER = import_string(charger_class)
