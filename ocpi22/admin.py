@@ -646,8 +646,11 @@ class UserAdmin(NestedModelAdmin):
 class PaymentAdmin(admin.ModelAdmin):
     model = Payment
     exclude = []
-    list_display = ('status', 'email', 'amount', 'currency')
+    list_display = ('status', 'email', 'amount', 'currency', 'created')
     search_fields = ('amount', 'payment_method__customer__user__email')
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 admin.site.register(Token, TokenAdmin)
