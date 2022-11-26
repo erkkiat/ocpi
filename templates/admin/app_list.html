@@ -9,10 +9,10 @@
                 </div>
             </div>
             <div class="col pt-2">
-                <a href="{% url 'admin:ocpi22_location_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_location_changelist' %}">
                     {% translate "Locations" %}
                 </a>
-                <a class="secondary" href="{% url 'admin:ocpi22_evse_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_evse_changelist' %}">
                     {% translate "EVSEs" %}
                 </a>
             </div>
@@ -27,13 +27,16 @@
                 </div>
             </div>
             <div class="col pt-2">
-                <a href="{% url 'admin:auth_user_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:auth_user_changelist' %}">
                     {% translate "Users" %}
                 </a>
-                <a class="muted secondary" href="{% url 'admin:auth_group_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:auth_group_changelist' %}">
                     {% translate "Groups" %}
                 </a>
-                <a class="muted secondary" href="{% url 'admin:gdpr_assist_personaldata_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:payment_payment_changelist' %}">
+                    {% translate "Payments" %}
+                </a>
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:gdpr_assist_personaldata_changelist' %}">
                     {% translate "GDPR" %}
                 </a>
             </div>
@@ -47,10 +50,10 @@
                 </div>
             </div>
             <div class="col pt-2">
-                <a href="{% url 'admin:ocpi22_credentials_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_credentials_changelist' %}">
                     {% translate "Credentials" %}
                 </a>
-                <a class="muted secondary" href="{% url 'admin:ocpi22_credentialsrole_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_credentialsrole_changelist' %}">
                     {% translate "Roles" %}
                 </a>
             </div>
@@ -64,19 +67,19 @@
                 </div>
             </div>
             <div class="col pt-2">
-                <a href="{% url 'admin:ocpi22_cdr_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_cdr_changelist' %}">
                     {% translate "Billing records" %}
                 </a>
-                <a class="muted secondary" href="{% url 'admin:ocpi22_session_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_session_changelist' %}">
                     {% translate "Sessions" %}
                 </a>
-                <a class="muted secondary" href="{% url 'admin:ocpi22_tariff_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_tariff_changelist' %}">
                     {% translate "Tariffs" %}
                 </a>
-                <a class="muted secondary" href="{% url 'admin:ocpi22_defaulttariffs_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_defaulttariffs_changelist' %}">
                     {% translate "Default Tariffs" %}
                 </a>
-                <a class="muted secondary" href="{% url 'admin:ocpi22_dynamicprice_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_dynamicprice_changelist' %}">
                     {% translate "Dynamic prices" %}
                 </a>
             </div>
@@ -90,7 +93,7 @@
                 </div>
             </div>
             <div class="col pt-2">
-                <a href="{% url 'admin:ocpi22_token_changelist' %}">
+                <a class="btn btn-primary text-white mb-2" href="{% url 'admin:ocpi22_token_changelist' %}">
                     {% translate "Tokens" %}
                 </a>
             </div>
