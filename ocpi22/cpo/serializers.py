@@ -12,6 +12,7 @@ from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
+from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES, fill_out_location_address
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer
 
@@ -527,3 +528,14 @@ class TariffQuickSerializer(SerializerCleanedUp):
             te.price_components.update(vat=vat)
 
         return tariff
+
+
+class CPOInvoicingCallbackSerializer(CallbacksSerializer):
+    URL = 'invoicing_url'  # Must match with below
+    invoicing_url = serializers.URLField()
+
+    class OutboundSerializer(CdrSerializer):
+        pass
+
+    class ResponseSerializer(serializers.Serializer):
+        pass

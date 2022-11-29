@@ -99,6 +99,9 @@ class OcpiModule:
             else:
                 logging.info('Sending updates to ALL connected parties')
                 self._send_updates(data, method=method)
+
+            # if hasattr(self, 'send_extra_updates'):
+            #     self.send_extra_updates(data, method, path_components, serializer_class)
         else:
             logging.warning(settings.UPDATES_DISABLED)
 

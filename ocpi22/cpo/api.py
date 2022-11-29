@@ -1,17 +1,16 @@
 from django.contrib.auth.decorators import login_required
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.decorators import method_decorator
 
 import ocpi22.logging as logging
-import os
-from typing import Optional, Union
+from typing import Union
 
 import redis
 from django.conf import settings
 from django.db import IntegrityError
 from django.utils import timezone
-from django.utils.module_loading import import_string
 from django_filters.rest_framework import DjangoFilterBackend
-from icecream import ic
 from rest_framework import routers, status, viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -26,8 +25,9 @@ from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResul
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
-    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer
+    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer, CPOInvoicingCallbackSerializer
 from ocpi22.generic_views import WebhookViewSet
+from ocpi22.models.cdr import Cdr
 from ocpi22.routing import find_credentials
 from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
@@ -44,7 +44,8 @@ from ocpi22.logging import log_error
 
 from pprint import PrettyPrinter
 
-from ocpiconnector.ocpi_identities import Party, get_our_party
+from ocpi22.webhooks import send_to_webhook
+from ocpiconnector.ocpi_identities import Party, get_our_party, OCPIPlatform
 
 pp = PrettyPrinter(indent=4).pprint
 
@@ -625,58 +626,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
 
-    # def _get_callbacks(self):
-    #     serializer = CPOCallbacksSerializer()
-    #     data = dict(
-    #         [(key, get_callbacks_parameter(key)) for key in serializer.fields.keys()]
-    #     )
-    #     serializer = CPOCallbacksSerializer(instance=data)
-    #     return serializer.data
-
-    # @action(methods=('GET', 'POST', 'PATCH'), detail=False)
-    # def callbacks(self, request):
-    #     """
-    #     You need to tell the OCPI Connector where to send commands such as `start transaction` and
-    #     `stop transaction`. Using this endpoint you can set and get your callback URLs and
-    #     user credentials needed for accessing the endpoints you specify.
-    #
-    #     > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
-    #     > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
-    #
-    #     ## Status codes
-    #
-    #     * `HTTP_200_OK` when the callbacks were set successfully
-    #     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
-    #
-    #     """
-    #     try:
-    #         if request.method == 'GET':
-    #             result = self._get_callbacks()
-    #             # Example
-    #             # serializer = CallbacksSerializer()
-    #             # return_values = MyMetadata().get_serializer_info(serializer)
-    #             # result.update(return_values)
-    #             return Response(result)
-    #         if request.method in ('POST', 'PATCH'):
-    #             partial = bool(request.method == 'PATCH')
-    #             serializer = CPOCallbacksSerializer(data=request.data, partial=partial)
-    #             if serializer.is_valid():
-    #                 serializer.save()
-    #                 get_callbacks_parameter.cache_clear()
-    #                 return Response(self._get_callbacks())
-    #             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    #     except redis.exceptions.ConnectionError as e:
-    #         logging.error(f'{settings.HOSTNAME}: Cannot read and store callback settings  '
-    #                       f'due to trouble connecting with Redis: {e}')
-    #         return Response(
-    #             dict(
-    #                 status_text='Unable to store settings due to connection problem with Redis. '
-    #                             'This is our fault, sorry. Support has been alerted.'
-    #             ),
-    #             status=status.HTTP_503_SERVICE_UNAVAILABLE)
-    #
-    #     return Response(f'{request.method} is not supported', status=status.HTTP_400_BAD_REQUEST)
-
     @action(methods=('GET', 'POST'), detail=False,
             url_path='remote_command_result(?:/(?P<authorization_reference>[^/.]+))?')
     def remote_command_result(self, request, authorization_reference=None):
@@ -868,6 +817,33 @@ class CpoStopWebhookViewSet(WebhookViewSet):
         return self.webhook(request)
 
 
+class CpoInvoiceWebhookViewSet(WebhookViewSet):
+    """
+    You need to tell the OCPI Connector where to send the invoicing lines (Charge Detail Records).
+
+    Using this endpoint you can set and get your callback URL and
+    user credentials needed for accessing the endpoint.
+
+    Example URL: `https://your.emsp.backend.server/session/{session_id}/`. The session_id will be substituted with
+    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+
+    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
+    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+    ## Status codes
+
+    * `HTTP_200_OK` when the webhook was set successfully
+    * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    """
+    serializer_class = CPOInvoicingCallbackSerializer
+    serializer = serializer_class()
+    queryset = Session.objects.none()
+
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='invoice')
+    def invoicing_webhook(self, request):
+        return self.webhook(request)
+
+
 class ChargePointOperatorAPIView(routers.APIRootView):
     """
     This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for CPOs,
@@ -920,8 +896,8 @@ class ChargePointOperatorAPIView(routers.APIRootView):
                     reverse('chargepoint-stop-transaction')
                 ),
             ),
-            remote_commands=dict(
-                webhooks=dict(
+            webhooks=dict(
+                remote_commands=dict(
                     reserve_now=request.build_absolute_uri(
                         reverse('cpo-reserve-now-webhook')
                     ),
@@ -934,6 +910,9 @@ class ChargePointOperatorAPIView(routers.APIRootView):
                     remote_command_result=request.build_absolute_uri(
                         reverse('chargepoint-remote-command-result')
                     ),
+                ),
+                invoice=request.build_absolute_uri(
+                    reverse('cpo-invoicing-webhook')
                 ),
             ),
             reports=dict(
@@ -955,65 +934,12 @@ class CPORouter(routers.DefaultRouter):
     APIRootView = ChargePointOperatorAPIView
     root_view_name = 'cpo-api'
 
-# class Charger:
-#     AUTHORIZATION_CHOICES = (
-#         ('Accepted', 'Accepted'),
-#         ('Blocked', 'Blocked'),
-#         ('Expired', 'Expired'),
-#         ('Invalid', 'Invalid'),
-#         ('ConcurrentTx', 'ConcurrentTx'),
-#     )
-#
-#     class UnlockStatus:
-#         value = None
-#
-#         def __int__(self, value):
-#             assert value in ('Unlocked', 'UnlockFailed', 'NotSupported')
-#             self.value = value
-#
-#         def __str__(self):
-#             return self.value
-#
-#     @staticmethod
-#     def remote_start_transaction(token: str, evse: Evse) -> Optional[str]:
-#         """
-#         Start a charging session
-#
-#         @param session:
-#         @return: Connector ID
-#         """
-#         # ic()
-#         # ic(token, evse)
-#         # noinspection PyUnresolvedReferences
-#         connectors = evse.connectors.all()
-#         if connectors.count(): return connectors[0]
-#         return None
-#
-#     @staticmethod
-#     def remote_stop_transaction(session: Session) -> bool:
-#         # ic()
-#         # ic(session)
-#         return True
-#
-#     @staticmethod
-#     def unlock_connector(location_id, evse_uid, connector_id, **kwargs) -> bool:
-#         # ic()
-#         # ic(location_id, evse_uid, connector_id, kwargs)
-#         return True
-#
-#     @staticmethod
-#     def add_or_update_token(id_token: str, validity: bool, created=None) -> bool:
-#         """
-#         Send a new or changed token to charge point
-#
-#         @param id_token: Token UID
-#         @param validity: Is the token valid for use or not
-#         @return: True, if the token was updated
-#         """
-#         # ic()
-#         # ic(id_token, validity, created)
-#         return True
 
-
-# charger_class = os.environ.get('CHARGER_CLASS', 'ocpi22.cpo.api.Charger')
-# CHARGER = import_string(charger_class)
+@receiver(post_save, sender=Cdr)
+def cdr_post_save(sender, instance: Cdr, created, *_args, **_kwargs):
+    try:
+        if created and OCPIPlatform.is_cpo:
+            cdr_serializer = CdrSerializer(instance)
+            send_to_webhook(serialized_data=cdr_serializer.data, serializer=CPOInvoicingCallbackSerializer)
+    except Exception as e:
+        logging.error(f'Unable to send the new CDR to CpoInvoiceWebhook: {e}')
