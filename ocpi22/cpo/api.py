@@ -599,7 +599,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
                     cdr = Cdr.create_based_on_session(session)
-                    cdr.save()
 
                     cdr_json = CdrSerializer(instance=cdr)
                     session_serializer = CpoSessionSerializer(instance=session)
