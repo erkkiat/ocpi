@@ -9,8 +9,8 @@ fi
 
 if [ -z "$4" ]
   then
-    ROLE1="CPO='FI*CPO'"
-    ROLE2="EMSP='FI*MSP'"
+    ROLE1="CPO=FI*CPO"
+    ROLE2="EMSP=FI*MSP"
 fi
 
 export $(cat .env | xargs)
