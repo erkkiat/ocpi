@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+clear
+
 USAGE='[OCPI connector instance name] [username] [email] [one or more OCPI roles, e.g. CPO=`FI*AAA`]'
 if [ -z "$3" ]
   then
@@ -64,6 +66,6 @@ heroku addons:create sentry || echo "*** Cannot activate sentry"
 heroku addons:create moesif:free || echo "*** Cannot activate moesif API analytics"
 
 # Too many connections for the free database
-# && heroku ps:scale worker=1
+heroku ps:scale worker=1
 
 echo "Please go to https://www.hover.com/control_panel/domain/ocpiconnector.com/dns to configure the DNS."
