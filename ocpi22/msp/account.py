@@ -41,8 +41,8 @@ class Account(models.Model):
             logging.error(f'{self} has negative balance')
 
     @staticmethod
-    def create(cls, customer, app_token_id='', currency=settings.DEFAULT_CURRENCY):
-        return cls(customer, app_token_id, currency)
+    def create(customer, app_token_id='', currency=settings.DEFAULT_CURRENCY):
+        return Account.objects.create(customer, app_token_id, currency)
 
 
 class Transaction(models.Model):
