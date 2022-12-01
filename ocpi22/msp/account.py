@@ -42,7 +42,7 @@ class Account(models.Model):
 
     @staticmethod
     def create(customer, app_token_id='', currency=settings.DEFAULT_CURRENCY):
-        return Account.objects.create(customer, app_token_id, currency)
+        return Account.objects.create(customer=customer, app_token_id=app_token_id, currency=currency)
 
 
 class Transaction(models.Model):
