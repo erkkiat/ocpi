@@ -223,7 +223,7 @@ def pretty_currency(c):
     >>> pretty_currency('PLN')
     'zł'
     """
-    return dict(EUR='€', GBP='£', USD='$', PLN='zł').get(c, c)
+    return dict(EUR='€', GBP='£', USD='$', PLN='zł', ALL='L').get(c, c)
 
 
 def format_currency(number: Optional[float], currency: Optional[str]) -> str:

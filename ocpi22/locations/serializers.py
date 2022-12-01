@@ -316,6 +316,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
                                                         archived=False)
                             tariffs.append(tariff)
                         except Tariff.DoesNotExist:
+                            # Todo: Fetch Tariffs from other party
                             raise ValidationError(f"Tariff `{t}` for {location.country_code}*{location.party_id} "
                                                   "does not exist in our database")
                     connector.tariff_ids.set(tariffs)
