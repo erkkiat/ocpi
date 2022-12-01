@@ -26,7 +26,7 @@ options_message = f'Please see OPTIONS to learn what you can POST at this endpoi
 
 # Are we in production?
 if not settings.DEBUG and 'test' in stripe.api_key:
-    raise Exception('**** Do not use a Stripe payments test key in production')
+    logging.error('**** Using a Stripe payments test key in production')
 
 
 def payment_intent(amount, currency='eur', **kwargs):
