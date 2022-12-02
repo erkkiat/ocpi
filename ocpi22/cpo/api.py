@@ -409,8 +409,12 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             session.internal_reference = internal_reference or None
                             session.status = Session.ACTIVE
                             session.authorization_reference = authorization.authorization_reference
+                            if session.connector and session.connector.tariff_ids:
+                                first_tariff = session.connector.tariff_ids.first()
+                                if first_tariff:
+                                    session.currency = first_tariff.currency
                             session.save(update_fields=[
-                                'connector', 'internal_reference', 'status', 'authorization_reference'
+                                'connector', 'internal_reference', 'status', 'authorization_reference', 'currency'
                             ])
                         else:
                             credentials = find_credentials(party)

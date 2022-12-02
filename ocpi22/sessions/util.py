@@ -45,7 +45,7 @@ class EvseOccupied(ValidationError):
 def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, str], credentials,
                    internal_reference=None, token_id: Union[Token, str] = None, ad_hoc_token=None,
                    uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorization_reference='', reservation_id=None, authorization_method=None,
+                   authorization_reference='', reservation_id=None, authorization_method=None, currency=None,
                    *_args, **kwargs
                    ) -> Session:
     if not uid:
@@ -84,6 +84,12 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
 
     assert billed_to, 'Unable to bill session without billed_to'
 
+    currency = currency or os.environ.get('CPO_CURRENCY', 'EUR')
+    if connector and connector.tariff_ids:
+        first_tariff = connector.tariff_ids.first()
+        if first_tariff:
+            currency = first_tariff.currency
+
     params = dict(
         country_code=our_country_code,
         party_id=our_party_id,
@@ -103,7 +109,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         location=location,
         evse=evse,
         connector=connector,
-        currency=os.environ.get('CPO_CURRENCY', 'EUR'),
+        currency=currency,
         billed_to=str(billed_to),
         credentials=credentials,
     )
