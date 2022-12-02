@@ -63,7 +63,7 @@ class StripePayments:
             logging.info(f'Creating Stripe customer for "{request.user.email}"')
             stripe_customer = stripe.Customer.create(idempotency_key=str(request.user.pk))
             customer = Customer.objects.create(user=request.user, customer_id=stripe_customer.id)
-            ic(stripe_customer, customer)
+            # ic(stripe_customer, customer)
         success_url = request.build_absolute_uri(reverse("msp-payment-success"))
         cancel_url = request.build_absolute_uri(reverse("msp-payment-cancel"))
         params = dict(
@@ -87,18 +87,18 @@ class StripePayments:
     @staticmethod
     def reserve(user: User, amount: float, currency: str,
                 description: str = _('Payment for EV charging'), payment_method: PaymentMethod = None):
-        ic(amount, currency, description, payment_method)
+        # ic(amount, currency, description, payment_method)
         customer = user.payment_customer
         if not payment_method:
             payment_method = customer.payment_methods.first()
         if not payment_method:
             raise NoPaymentMethod('Customer has no payment methods available')
 
-        ic(customer, payment_method)
+        # ic(customer, payment_method)
         pi = payment_intent(amount=amount, capture_method='manual', currency=currency,
                             payment_method=payment_method, customer=customer.customer_id,
                             confirm=True, description=description)
-        ic(PaymentStatusEnum.RESERVED.value)
+        # ic(PaymentStatusEnum.RESERVED.value)
         payment = Payment.objects.create(session_id=pi.get('id'),
                                          payment_method=payment_method,
                                          status=PaymentStatusEnum.RESERVED.value,
@@ -133,7 +133,7 @@ class StripePayments:
     def capture(payment: Payment, amount: float):
         try:
             captured = stripe.PaymentIntent.capture(payment.session_id, amount_to_capture=amount)
-            ic(captured)
+            # ic(captured)
             payment.status = PaymentStatusEnum.COMPLETED.value
             payment.save(update_fields=['status'])
             return HttpResponse('Payment captured.', status=status.HTTP_200_OK)
@@ -224,10 +224,10 @@ class PaymentViewSet(viewsets.ViewSet):
                     customer = Customer.objects.get(customer_id=customer_id)
                     payment_method = PaymentMethod.objects.create(payment_method_id=payment_method_id,
                                                                   customer=customer)
-                    ic(payment_method_id, customer_id, customer, payment_method)
+                    # ic(payment_method_id, customer_id, customer, payment_method)
                     if len(request.user.payment_customer.payment_methods.all()):
                         logging.info(f'Payment method {payment_method_id} added for user {request.user.pk}')
-                        ic(payment_method_id, request.user.pk, request.user.payment_customer.payment_methods.all())
+                        # ic(payment_method_id, request.user.pk, request.user.payment_customer.payment_methods.all())
                         return HttpResponse('The payment method has been added. Please wait to be redirected.',
                                             status=status.HTTP_200_OK)
                     else:
@@ -275,7 +275,7 @@ class PaymentViewSet(viewsets.ViewSet):
                 result = payments.reserve(user=request.user, payment_method=payment_method,
                                           amount=amount,
                                           currency=serializer.validated_data.get("currency"))
-                ic(payment_method, result)
+                # ic(payment_method, result)
                 return Response(
                     dict(
                         status_text=_('Reservation has been made successfully'),
@@ -284,7 +284,6 @@ class PaymentViewSet(viewsets.ViewSet):
                     )
                 )
             else:
-                ic(serializer.errors)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except User.payment_customer.RelatedObjectDoesNotExist as e:
             logging.error(f'Cannot make reservation for user {request.user.pk} without any payment methods added: {e}',

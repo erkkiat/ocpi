@@ -483,7 +483,14 @@ class ApiPutTests(TestCase):
             self.assertEqual(session.total_cost_incl_vat, incl_vat,
                              f"Total cost including VAT doesn't match in case {filename}")
 
-    def test_put_cdr(self):
+    @patch('ocpi22.util.redis_store.get',
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
+               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/',
+               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
+           }.get(x))
+    def test_put_cdr(self, redis_store_mock: Mock):
         url = reverse('cdr-list')
         token_base64 = self.credentials.ours_base64()
         viewset = CdrViewSet
@@ -715,7 +722,14 @@ class CdrTests(TestCase):
             self.fail(serializer.errors)
         return serializer.save()
 
-    def test_session_to_cdr(self):
+    @patch('ocpi22.util.redis_store.get',
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
+               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/',
+               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
+           }.get(x))
+    def test_session_to_cdr(self, redis_store_mock: Mock):
         for t in [11, 12, 13]:
             create_tariff(uid=str(t), country_code='BE', party_id='BEC')
         location = self.load_location('location_example')
@@ -1710,7 +1724,8 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {
                'callback-start_transaction_url': 'http://localhost/start/{evse_id}/',
-               'callback-session_url': 'http://localhost/session/{uid}/'
+               'callback-session_url': 'http://localhost/session/{uid}/',
+               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
            }.get(x))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
@@ -1940,6 +1955,7 @@ class TestCpoApi(TestCase):
                'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
                'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
                'callback-session_url': 'http://localhost/session/{uid}/',
+               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
            }.get(x))
     @patch('ocpi22.util.redis_store.set', return_value=True)
     @patch('ocpi22.ocpi.util.uuid.uuid4',
@@ -2229,10 +2245,18 @@ def put_session_data(data):
 class TestPutSession(TestCase):
     fixtures = ['ocpi22/data/test-database-cpo-api.json']
 
+    @patch('ocpi22.util.redis_store.get',
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
+               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/',
+               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
+           }.get(x))
     @patch('ocpi22.webhooks.requests.post')
     def test_put_session_with_charging_periods(
             self,
             webhook_post_mock: Mock,
+            redis_store_mock: Mock,
     ):
         response = put_session_data(SessionData.meter_values_1)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED,

@@ -944,6 +944,7 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, **_kwargs):
     try:
         if created and OCPIPlatform.is_cpo:
             cdr_serializer = CdrSerializer(instance)
-            send_to_webhook(serialized_data=cdr_serializer.data, serializer=CPOInvoicingCallbackSerializer)
+            if not settings.TEST:
+                send_to_webhook(serialized_data=cdr_serializer.data, serializer=CPOInvoicingCallbackSerializer)
     except Exception as e:
         logging.error(f'Unable to send the new CDR to CpoInvoiceWebhook: {e}')

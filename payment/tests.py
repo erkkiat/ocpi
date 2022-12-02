@@ -64,7 +64,7 @@ class PaymentTests(TestCase):
 
         # With Session ID
         session_id = test_data.session.get('id')
-        ic(session_id)
+        # ic(session_id)
         request = api_factory.get(f'url?session_id={session_id}')
         request.user = self.testuser
         Customer.objects.create(user=request.user, customer_id='cus_MpaqQOHTYhC7q4')
@@ -90,7 +90,7 @@ class PaymentTests(TestCase):
         request.data = dict(amount="abc", currency=123)
         request.user = self.testuser
 
-        ic(request.user, request.user.payment_customer.payment_methods.all())
+        # ic(request.user, request.user.payment_customer.payment_methods.all())
 
         response = PaymentViewSet().reserve_amount(request)
 
@@ -100,12 +100,12 @@ class PaymentTests(TestCase):
         request.data = dict(amount=123, currency='EUR')
         request.user = self.testuser
 
-        ic(request.user, request.user.payment_customer.payment_methods.all())
+        # ic(request.user, request.user.payment_customer.payment_methods.all())
 
         response = PaymentViewSet().reserve_amount(request)
 
         self.assertTrue(response, 'There is no response from the payments reserve() endpoint')
-        ic(response, response.data)
+        # ic(response, response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK, 'Expecting payment reservation to succeed')
         paymentintent_create_mock.assert_called_once()
 
@@ -115,6 +115,6 @@ class PaymentTests(TestCase):
 
         payment = Payment.objects.get(payment_method=payment_method)
         result = payments.capture(payment, 3.14)
-        ic(result)
+        # ic(result)
 
         paymentintent_capture_mock.assert_called_once()

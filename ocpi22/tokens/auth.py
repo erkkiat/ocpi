@@ -126,7 +126,6 @@ def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAut
                 # ic(i)
                 for result in results:
                     response = result.get(timeout=delay)
-                    ic(response)
                     if response and response.get('status_code') == status.HTTP_200_OK:
                         sender = Party(**response.get('sender'))
                         result = AuthorizationResult(status_code=response.get('status_code'), data=response.get('json'))
@@ -134,7 +133,6 @@ def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAut
                                      f'{result.data.get("data", {}).get("authorization_reference")}')
                         token = response.get('json', {}).get('data', {}).get('token', {})
                         country_code, party_id = token.get('country_code'), token.get('party_id')
-                        # ic(sender, country_code, party_id)
                         if sender.country_code != country_code or sender.party_id != party_id:
                             logging.error(f'Someone at {sender} is trying to masquerade as {country_code}*{party_id}')
                         return process_authorization_response(result, token, location, sender)
