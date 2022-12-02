@@ -25,7 +25,7 @@ from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResul
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
-    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer, CPOInvoicingCallbackSerializer
+    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer, InvoicingCallbackSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.models.cdr import Cdr
 from ocpi22.routing import find_credentials
@@ -821,7 +821,7 @@ class CpoStopWebhookViewSet(WebhookViewSet):
         return self.webhook(request)
 
 
-class CpoInvoiceWebhookViewSet(WebhookViewSet):
+class InvoiceWebhookViewSet(WebhookViewSet):
     """
     You need to tell the OCPI Connector where to send the invoicing lines (Charge Detail Records).
 
@@ -839,7 +839,7 @@ class CpoInvoiceWebhookViewSet(WebhookViewSet):
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
-    serializer_class = CPOInvoicingCallbackSerializer
+    serializer_class = InvoicingCallbackSerializer
     serializer = serializer_class()
     queryset = Session.objects.none()
 
@@ -942,9 +942,8 @@ class CPORouter(routers.DefaultRouter):
 @receiver(post_save, sender=Cdr)
 def cdr_post_save(sender, instance: Cdr, created, *_args, **_kwargs):
     try:
-        if created and OCPIPlatform.is_cpo:
-            cdr_serializer = CdrSerializer(instance)
-            if not settings.TEST:
-                send_to_webhook(serialized_data=cdr_serializer.data, serializer=CPOInvoicingCallbackSerializer)
+        cdr_serializer = CdrSerializer(instance)
+        if not settings.TEST:
+            send_to_webhook(serialized_data=cdr_serializer.data, serializer=InvoicingCallbackSerializer)
     except Exception as e:
         logging.error(f'Unable to send the new CDR to CpoInvoiceWebhook: {e}')

@@ -25,6 +25,7 @@ def _env_bool(key, default=False) -> bool:
 RENDER_ONLY_JSON = _env_bool('RENDER_ONLY_JSON', False)
 
 DEBUG = _env_bool('DEBUG', False)
+TEST = _env_bool('TEST', False)
 
 if not DEBUG:
     sentry_sdk.init(

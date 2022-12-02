@@ -530,7 +530,7 @@ class TariffQuickSerializer(SerializerCleanedUp):
         return tariff
 
 
-class CPOInvoicingCallbackSerializer(CallbacksSerializer):
+class InvoicingCallbackSerializer(CallbacksSerializer):
     URL = 'invoicing_url'  # Must match with below
     invoicing_url = serializers.URLField()
 

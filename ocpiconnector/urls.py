@@ -15,7 +15,7 @@ from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionView
     RootRouter, ClientInfoViewSet, NoPremiumViewSet
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.cpo.api import CPORouter, ChargePointViewSet, LocationQuickViewSet, CpoStartWebhookViewSet, \
-    CpoStopWebhookViewSet, CpoReserveNowWebhookViewSet, CpoInvoiceWebhookViewSet
+    CpoStopWebhookViewSet, CpoReserveNowWebhookViewSet, InvoiceWebhookViewSet
 from ocpi22.hub import CommandsHubViewSet
 
 from ocpi22.locations.location import LocationViewSet
@@ -52,7 +52,7 @@ cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
 cpo_router.register(r'webhook', CpoReserveNowWebhookViewSet, basename='cpo')
 cpo_router.register(r'webhook', CpoStartWebhookViewSet, basename='cpo')
 cpo_router.register(r'webhook', CpoStopWebhookViewSet, basename='cpo')
-cpo_router.register(r'webhook', CpoInvoiceWebhookViewSet, basename='cpo')
+cpo_router.register(r'webhook', InvoiceWebhookViewSet, basename='cpo')
 cpo_router.register(r'reports/billing', InvoiceReportViews, basename='billing')
 
 msp_router = MSPRouter()
@@ -62,6 +62,7 @@ msp_router.register(r'tariff', MspTariffQuickViewSet, basename='msp-tariff')
 msp_router.register(r'webhook', MspAuthorizeWebhookViewSet, basename='msp')
 msp_router.register(r'webhook', MspChargePointStatusWebhookViewSet, basename='msp')
 msp_router.register(r'webhook', MspSessionWebhookViewSet, basename='msp')
+cpo_router.register(r'webhook', InvoiceWebhookViewSet, basename='msp')
 msp_router.register(r'map', MapViewSet, basename='map')
 msp_router.register(r'user', UserViewSet, basename='user')
 msp_router.register(r'cdr', msp.user.CdrViewSet, basename='msp-cdr')

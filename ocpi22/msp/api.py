@@ -479,6 +479,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 session_webhook=request.build_absolute_uri(
                     reverse('msp-session-webhook'),
                 ),
+                invoice=request.build_absolute_uri(
+                    reverse('cpo-invoicing-webhook')
+                ),
             ),
             payment=dict(
                 add_card=request.build_absolute_uri(reverse('msp-payment-add-card')),
