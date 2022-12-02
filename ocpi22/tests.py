@@ -2326,7 +2326,14 @@ class TestMspApi(TestCase):
         }
 
         user = User.objects.create_user('eki')
-        account = Account.objects.create(customer=user)
+
+        # See that Account is created automatically
+        response = start_charging(data, user)
+        self.assertEqual(response.status_code, status.HTTP_200_OK,
+                         f'Expecting charging to start without specifically creating an account {response.data}')
+
+        # Create an account with insufficient balance
+        account = user.accounts.first()  # There should be an automatically created Account
         new_balance = Decimal("0.80")
         account.deposit(new_balance)
         settings.REQUIRE_WALLET_BALANCE = True
