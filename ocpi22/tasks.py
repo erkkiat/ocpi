@@ -247,7 +247,7 @@ def check_still_alive(credentials_id: int = None) -> None:
         time_since_last_connection = None
         try:
             credentials = Credentials.objects.get(pk=credentials_id)
-            time_since_last_connection = (timezone.now() - credentials.last_connection).seconds
+            time_since_last_connection = (timezone.now() - credentials.last_connection).total_seconds()
             requests.get(credentials.url, timeout=20)
             credentials.last_connection = timezone.now()
             credentials.connection_status = choices.CONNECTED
