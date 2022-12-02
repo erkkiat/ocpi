@@ -71,8 +71,6 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     else:
         authorization_method = authorization_method or Session.COMMAND
 
-    assert authorization_reference, f'No authorization reference for Session {uid}'
-
     # Make sure there are no active Sessions in progress
     active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
     if active_sessions.exists():
