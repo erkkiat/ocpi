@@ -80,7 +80,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def total_time_float(self):
-        return ((self.end_date_time or timezone.now()) - self.start_date_time).seconds / 3600
+        return ((self.end_date_time or timezone.now()) - self.start_date_time).total_seconds() / 3600
 
     # How many kWh are in the charge point meter at the start of the session
     start_kwh = models.FloatField(default=0.0)

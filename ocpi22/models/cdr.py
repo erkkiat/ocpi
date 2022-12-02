@@ -167,7 +167,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Total duration of the charging session (including the duration of charging and not charging), in hours.
     @property
     def total_time(self) -> float:
-        return round((self.end_date_time - self.start_date_time).seconds / 3600.0, 3)
+        return round((self.end_date_time - self.start_date_time).total_seconds() / 3600.0, 3)
 
     # When set to true, this is a Credit CDR, and the field credit_reference_id needs to be set as well.
     # Todo: Make a "create credit CDR" management command
