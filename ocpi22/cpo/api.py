@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.decorators import method_decorator
+from django.utils.safestring import mark_safe
 
 import ocpi22.logging as logging
 from typing import Union
@@ -27,6 +28,7 @@ from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
     CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer, InvoicingCallbackSerializer
 from ocpi22.generic_views import WebhookViewSet
+from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.routing import find_credentials
 from ocpi22.util import command_store
@@ -376,6 +378,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         * `HTTP_409_CONFLICT` when a Session with the same internal_reference already exists
         """
         try:
+            next_url = reverse('chargepoint-meter-values')
             session: Session = Session.objects.none()
 
             if request.method == 'POST':
@@ -416,6 +419,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             session.save(update_fields=[
                                 'connector', 'internal_reference', 'status', 'authorization_reference', 'currency'
                             ])
+                            if session.auth_method == Session.COMMAND:
+                                messages.success(request, 'This Session is based on an authorization which was '
+                                                          'implied when receiving the remote command from MSP')
                         else:
                             credentials = find_credentials(party)
                             session = create_session(
@@ -440,8 +446,12 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             session_status=Session.ACTIVE, credentials=credentials,
                         )
                         logging.info(f'Created session {session.uid} based on start_transaction from CPO')
-
                     session.send_updates()
+                    messages.success(request,
+                                     mark_safe('You created a new OCPI Session. '
+                                               f'Make a note of the Session ID, <b>{session.uid}</b>. '
+                                               'You will need it for meter_values and stop_session.'
+                                               f'<div>Next, you can send <a href="{next_url}">meter values</a>.</div>'))
 
                     # The most recent authorization is now used
                     _authorize_token.cache_clear()
@@ -454,6 +464,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         )
                     )
                 else:
+                    messages.error(request, 'Unable to start the session you requested, '
+                                            'please check that the parameters are as required. '
+                                            'You can find the schema by pressing "OPTIONS".')
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
             # method == GET
@@ -468,8 +481,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def meter_values(self, request):
         """
-        Update the session progress. This endpoint should be called at least once per minute with the
-        up to date information about the ongoing charging session.
+        Update the session progress, so that the MSP and finally the end user will see the status
+        and kWh of the current charging session. This endpoint should be called at least once per minute with the
+        up to date information about the ongoing charging session, preferably every 10-15 seconds.
 
         ## Status codes
 
@@ -485,9 +499,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         """
         try:
+
             if request.method == 'POST':
                 serializer = MeterValuesSerializer(data=request.data)
                 if serializer.is_valid():
+                    next_url = reverse('chargepoint-stop-transaction')
                     kwh = serializer.validated_data['kwh']
                     soc = serializer.validated_data.get('soc')
                     power = serializer.validated_data.get('power')
@@ -509,6 +525,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.save(update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat'])
                         chargingperiods = session.set_charging_period(serializer.validated_data)
                         session.send_updates(chargingperiods)
+                        messages.success(request,
+                                         mark_safe(f"You have updated the OCPI Session <b>{session.uid}</b> "
+                                                   f"with {kwh} kWh. <div>When you're done, you can "
+                                                   f"<a href=\"{next_url}\">stop the Session</a>.</div>"))
 
                         return Response(
                             dict(
@@ -558,7 +578,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def stop_transaction(self, request):
         """
-        End the transaction, charging session has been finished.
+        This call will end the OCPI Session. Call it when the cable is disconnected from the vehicle.
 
         **ENERGY**: The used energy is calculated by `stop_kwh - start_kwh`
         (`start_kwh` was given in `start_transaction`).
@@ -600,6 +620,23 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     session.send_updates()
                     logging.info(f'Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and '
                                  f'cost {session.total_cost_incl_vat} {session.currency}')
+
+                    extra_information = {
+                        Session.COMMAND:
+                            '<div>This session was started by using the MSP mobile application, '
+                            'but the flow is almost the same with RFID charging.</div>',
+                        Session.AUTH_REQUEST:
+                            '<div>This session was started by using an RFID, '
+                            'but the flow has just a few extra steps when the driver starts the charging session '
+                            'using an MSP mobile application.</div>',
+                    }.get(session.auth_method, '')
+
+                    messages.success(request,
+                                     mark_safe(f"You have concluded the OCPI Session <b>{session.uid}</b> "
+                                               f"with {session.kwh} kWh. At this point, the Charger Detail Record is "
+                                               f"created automatically, and if you have set your URL for the "
+                                               f"invoicing webhook, the CDR is sent to the webhook. "
+                                               f"{extra_information}"))
 
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
