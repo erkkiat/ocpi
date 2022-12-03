@@ -419,9 +419,19 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             session.save(update_fields=[
                                 'connector', 'internal_reference', 'status', 'authorization_reference', 'currency'
                             ])
-                            if session.auth_method == Session.COMMAND:
-                                messages.success(request, 'This Session is based on an authorization which was '
-                                                          'implied when receiving the remote command from MSP')
+                            messages.success(
+                                request,
+                                {
+                                    Session.COMMAND:
+                                        'This Session is based on an authorization which was '
+                                        f'implied when receiving the remote command from MSP {session.billed_to}.',
+                                    Session.AUTH_REQUEST:
+                                        f'This Session was authorized by MSP {session.billed_to}.',
+                                    Session.WHITELIST:
+                                        'No authorization was requested from an MSP, because the Token '
+                                        'is whitelisted and hence no authorization is to be done.'
+                                }.get(session.auth_method)
+                            )
                         else:
                             credentials = find_credentials(party)
                             session = create_session(
@@ -448,13 +458,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         logging.info(f'Created session {session.uid} based on start_transaction from CPO')
                     session.send_updates()
                     messages.success(request,
-                                     mark_safe('You created a new OCPI Session. '
+                                     mark_safe('A new OCPI Session has been started. '
                                                f'Make a note of the Session ID, <b>{session.uid}</b>. '
                                                'You will need it for meter_values and stop_session.'
                                                f'<div>Next, you can send <a href="{next_url}">meter values</a>.</div>'))
-
-                    # The most recent authorization is now used
-                    _authorize_token.cache_clear()
 
                     session_serializer = CpoSessionSerializer(instance=session)
                     return Response(
@@ -633,7 +640,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     messages.success(request,
                                      mark_safe(f"You have concluded the OCPI Session <b>{session.uid}</b> "
-                                               f"with {session.kwh} kWh. At this point, the Charger Detail Record is "
+                                               f"with {session.kwh} kWh. At this point, the OCPI Charge Detail Record is "
                                                f"created automatically, and if you have set your URL for the "
                                                f"invoicing webhook, the CDR is sent to the webhook. "
                                                f"{extra_information}"))
