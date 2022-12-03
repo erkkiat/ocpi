@@ -84,6 +84,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
 
     currency = currency or os.environ.get('CPO_CURRENCY', 'EUR')
     if connector and connector.tariff_ids:
+        # Is there some other currency specified in the Tariff for this Connector?
         first_tariff = connector.tariff_ids.first()
         if first_tariff:
             currency = first_tariff.currency

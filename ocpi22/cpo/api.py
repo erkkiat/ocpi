@@ -38,16 +38,16 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.ocpi.util import generate_session_uid, options_message
-from ocpi22.sessions.util import create_session
+from ocpi22.sessions.util import create_session, EvseOccupied
 from ocpi22.tasks import send_ocpi_request
-from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token, _authorize_token
+from ocpi22.tokens.auth import authorize_token, TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.tokens.util import get_token_id
 from ocpi22.logging import log_error
 
 from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
-from ocpiconnector.ocpi_identities import Party, get_our_party, OCPIPlatform
+from ocpiconnector.ocpi_identities import Party, get_our_party
 
 pp = PrettyPrinter(indent=4).pprint
 
@@ -234,7 +234,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         Update the charge point availability to the roaming network parties.
 
-        **IMPORTANT**: To prevent the EV battery from running out , please update the status
+        **IMPORTANT**: To prevent the EV driver from relying on malfunctioning chargers, please update the status
         whenever your monitoring notices a possible problem with the charge point. This way
         we will be able to show the real availability status to the driver.
 
@@ -269,6 +269,15 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     evse.send_status_updates()
 
+                    messages.success(request,
+                                     f'You have successfully changed the EVSE status to "{evse.status}". '
+                                     f"Please note that the statuses in OCPP and OCPI won't always match each other "
+                                     f"due to differences in protocols.")
+                    next_url = reverse('chargepoint-authorize')
+                    messages.success(request,
+                                     mark_safe('<div>Next, you can go and '
+                                               f'<a href="{next_url}">authorize a Token</a> for charging.</div>'))
+
                     return Response(
                         dict(
                             status_text=f'EVSE status has been changed',
@@ -283,7 +292,14 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             # method == GET
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         except (Evse.DoesNotExist, Token.DoesNotExist) as e:
-            logging.error(f'Exception in CPO status_change(): {e}', request=request)
+            logging.error(f'Exception in CPO status_change(): {e}')
+            evse_admin = reverse("admin:ocpi22_evse_changelist")
+            token_admin = reverse("admin:ocpi22_token_changelist")
+            messages.info(request,
+                          mark_safe('Seems that the ID for the EVSE or the Token was not quite correct. You can '
+                                    f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
+                                    f'and <a target="tokenadmin" href="{token_admin}">the list of known Tokens</a> '
+                                    'using the admin tools. You should use the value from the UID field below.'))
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -291,10 +307,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     @action(methods=('GET', 'POST'), detail=False)
     def authorize(self, request):
         """
-        Authorize charging using a specific RFID token. This API call is not mandatory for starting a
-        charging session. `Start_transaction` will request authorization from MSP if needed.
+        Authorize charging using a specific RFID token. Call this when the driver has tapped an RFID
+        which is not known to your Charger Point Management System.
 
-        **NOTE**: Authorization responses are cached for 15 minutes, so feel free to
+        **NOTE**: Authorization responses from MSPs are cached for 15 minutes, so feel free to
         call this endpoint multiple times when preparing to start a charging session.
 
         ## Status codes
@@ -308,9 +324,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = AuthorizationSerializer(data=request.data)
                 if serializer.is_valid():
+                    next_url = reverse('chargepoint-start-transaction')
+
                     evse: Evse = serializer.validated_data.get('evse')
-                    token: Token = serializer.validated_data.get('token')
-                    authorization: TokenAuthorization = authorize_token(token, evse.location)
+                    token: Union[Token, AdhocToken, str] = serializer.validated_data.get('token')
+                    authorization: TokenAuthorization = authorize_token(token, evse.location, request=request)
                     if isinstance(token, str) and authorization:
                         # This is an AD_HOC_USER or APP_USER Token
                         # eMSP has already authorized this AD HOC token for 15 minutes
@@ -318,6 +336,13 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                                            type=authorization.token.type)
 
                     if not authorization:
+                        token_admin = reverse('admin:ocpi22_token_changelist')
+                        messages.error(request, f'The response was "{authorization.allowed}" for the Token "{token}".')
+                        messages.info(request,
+                                      mark_safe(
+                                          f'You can <a target="tokenadmin" href="{token_admin}">browse the list of '
+                                          'known Tokens in our database</a> or try one which an MSP has in their database.')
+                                      )
                         return Response(
                             dict(
                                 status_text='Token is (temporarily) not valid',
@@ -325,6 +350,12 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             ),
                             status=status.HTTP_401_UNAUTHORIZED
                         )
+                    elif authorization.allowed == AuthorizationEnum.ALLOWED.value:
+                        messages.success(request,
+                                         mark_safe('Next, you can '
+                                                   f'<a href="{next_url}">start the charging session</a>. '
+                                                   f'Make sure to use the Token "{get_token_id(token)}", '
+                                                   f'which has been authorized. The authorization expires in 15 minutes.'))
 
                     return Response(
                         dict(
@@ -348,7 +379,14 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
         except (Evse.DoesNotExist, Token.DoesNotExist, ValueError, OSError) as e:
-            logging.error(f'Exception in CPO authorize(): {e}', request=request)
+            logging.error(f'Exception in CPO authorize(): {e}')
+            evse_admin = reverse("admin:ocpi22_evse_changelist")
+            token_admin = reverse("admin:ocpi22_token_changelist")
+            messages.info(request,
+                          mark_safe('Seems that the ID for the EVSE or the Token was not quite correct. You can '
+                                    f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
+                                    f'and <a target="tokenadmin" href="{token_admin}">the list of known Tokens</a> '
+                                    'using the admin tools. You should use the value from the UID field below.'))
             return Response(
                 dict(status_message=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -375,7 +413,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_401_UNAUTHORIZED` when the APP_USER token has expired
         * `HTTP_404_NOT_FOUND` when the Token or the EVSE doesn't exist
-        * `HTTP_409_CONFLICT` when a Session with the same internal_reference already exists
+        * `HTTP_409_CONFLICT` when a Session with the same internal_reference already exists or the EVSE is occupied
         """
         try:
             next_url = reverse('chargepoint-meter-values')
@@ -419,19 +457,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             session.save(update_fields=[
                                 'connector', 'internal_reference', 'status', 'authorization_reference', 'currency'
                             ])
-                            messages.success(
-                                request,
-                                {
-                                    Session.COMMAND:
-                                        'This Session is based on an authorization which was '
-                                        f'implied when receiving the remote command from MSP {session.billed_to}.',
-                                    Session.AUTH_REQUEST:
-                                        f'This Session was authorized by MSP {session.billed_to}.',
-                                    Session.WHITELIST:
-                                        'No authorization was requested from an MSP, because the Token '
-                                        'is whitelisted and hence no authorization is to be done.'
-                                }.get(session.auth_method)
-                            )
                         else:
                             credentials = find_credentials(party)
                             session = create_session(
@@ -457,11 +482,26 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         )
                         logging.info(f'Created session {session.uid} based on start_transaction from CPO')
                     session.send_updates()
+                    messages.info(
+                        request,
+                        {
+                            Session.COMMAND:
+                                'This Session is based on an authorization which was '
+                                f'implied when receiving the remote command from MSP {session.billed_to}.',
+                            Session.AUTH_REQUEST:
+                                f'This Session was authorized by MSP {session.billed_to}.',
+                            Session.WHITELIST:
+                                'No authorization was requested from an MSP, because the Token '
+                                'is whitelisted and hence no authorization is to be done.'
+                        }.get(session.auth_method, '')
+                    )
                     messages.success(request,
                                      mark_safe('A new OCPI Session has been started. '
-                                               f'Make a note of the Session ID, <b>{session.uid}</b>. '
-                                               'You will need it for meter_values and stop_session.'
-                                               f'<div>Next, you can send <a href="{next_url}">meter values</a>.</div>'))
+                                               f'Store the Session ID, <b>{session.uid}</b>. '
+                                               'You will need it for meter_values and stop_session.'))
+                    messages.success(request,
+                                     mark_safe('<div>Next, you can go and send some '
+                                               f'<a href="{next_url}">meter values</a>.</div>'))
 
                     session_serializer = CpoSessionSerializer(instance=session)
                     return Response(
@@ -484,6 +524,16 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
+        except EvseOccupied as e:
+            stop_transaction_url = reverse('charger-stop-transaction')
+            status_change_url = reverse('charger-status-change')
+            messages.error(request,
+                           mark_safe('There is an active Session on this EVSE. You can finish it using the '
+                                     f'<a href="{stop_transaction_url}">stop_transaction</a> or by '
+                                     f'<a href="{status_change_url}">changing the EVSE status</a> to "AVAILABLE".'))
+            return Response(
+                dict(status=str(e)),
+                status=status.HTTP_409_CONFLICT)
 
     @action(methods=('GET', 'POST'), detail=False)
     def meter_values(self, request):
@@ -534,8 +584,15 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.send_updates(chargingperiods)
                         messages.success(request,
                                          mark_safe(f"You have updated the OCPI Session <b>{session.uid}</b> "
-                                                   f"with {kwh} kWh. <div>When you're done, you can "
-                                                   f"<a href=\"{next_url}\">stop the Session</a>.</div>"))
+                                                   f"with {kwh} kWh."))
+                        messages.info(request,
+                                      mark_safe("It's good to send the kWh and power values frequently "
+                                                "enough, so that the driver can see the up-to-date status "
+                                                "from the mobile application. For DC charging, "
+                                                "please update the State of Charge as well."))
+                        messages.success(request,
+                                         mark_safe(f"When you're done, next you can "
+                                                   f"<a href=\"{next_url}\">stop the Session</a>."))
 
                         return Response(
                             dict(
@@ -631,10 +688,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     extra_information = {
                         Session.COMMAND:
                             '<div>This session was started by using the MSP mobile application, '
-                            'but the flow is almost the same with RFID charging.</div>',
+                            'but the flow is mostly the same with RFID token charging.</div>',
                         Session.AUTH_REQUEST:
-                            '<div>This session was started by using an RFID, '
-                            'but the flow has just a few extra steps when the driver starts the charging session '
+                            '<div>This session was started by using an RFID token, '
+                            'but the flow is mostly the same when the driver starts the charging session '
                             'using an MSP mobile application.</div>',
                     }.get(session.auth_method, '')
 
@@ -695,7 +752,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
             command = command_store[authorization_reference]
 
-            if request.method in ('POST'):
+            if request.method == 'POST':
                 serializer = CpoCommandResultSerializer(data=request.data)
                 if serializer.is_valid():
                     token_element = command.get('token') or command.get('ad_hoc_token')

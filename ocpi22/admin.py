@@ -206,7 +206,8 @@ class LocationAdmin(NestedModelAdmin):
 class EvseAdmin(NestedModelAdmin):
     model = Evse
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
-    list_display = ['object_owner', 'evse_id', 'location_url', 'status', 'connector_list']
+    list_display = ['object_owner', 'uid', 'location_url', 'status', 'connector_list']
+    list_display_links = ['uid']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
     actions = ['start_charging', 'stop_charging']

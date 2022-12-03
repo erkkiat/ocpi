@@ -2,7 +2,7 @@ import celery
 import requests
 from celery.result import GroupResult
 from django.conf import settings
-from icecream import ic
+from django.utils.safestring import mark_safe
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
@@ -18,6 +18,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, AuthorizationEnum
+from ocpi22.messages import messages
 from ocpi22.models.credentials import find_endpoints_by_roles
 from ocpi22.models.location import Location
 from ocpi22.models.session import Session
@@ -62,7 +63,7 @@ def _get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
 class TokenAuthorization:
     allowed: str
     info: list
-    token: Token
+    token: Union[Token, AdhocToken, None]
     party: Party
     authorization_reference: str
     auth_method: str
@@ -87,7 +88,7 @@ class AuthorizationResult:
         return self.data.get('data', {}).get('allowed')
 
 
-def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAuthorization]:
+def authorize_with_all_msps(token: str, location: Location, request=None) -> Optional[TokenAuthorization]:
     # do_authorization(token, location, route)
     parties = find_endpoints_by_roles((OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS)
     # ic(parties)
@@ -113,7 +114,7 @@ def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAut
                 if authorization and authorization.allowed == AuthorizationEnum.ALLOWED.value:
                     return authorization
         except requests.exceptions.ConnectionError as e:
-            logging.error(f'Unable to send Token authorization request to {to}: {e}')
+            logging.error(f'Unable to send Token authorization request to {to}: {e}', request=request)
             continue
     if authorize_calls:
         # ic(authorize_calls)
@@ -130,26 +131,32 @@ def authorize_with_all_msps(token: str, location: Location) -> Optional[TokenAut
                         sender = Party(**response.get('sender'))
                         result = AuthorizationResult(status_code=response.get('status_code'), data=response.get('json'))
                         logging.info(f'Token {token} was {result.allowed} by {sender}, authorization reference '
-                                     f'{result.data.get("data", {}).get("authorization_reference")}')
+                                     f'{result.data.get("data", {}).get("authorization_reference")}', request=request)
                         token = response.get('json', {}).get('data', {}).get('token', {})
                         country_code, party_id = token.get('country_code'), token.get('party_id')
                         if sender.country_code != country_code or sender.party_id != party_id:
                             logging.error(f'Someone at {sender} is trying to masquerade as {country_code}*{party_id}')
-                        return process_authorization_response(result, token, location, sender)
+                        messages.success(request, f'This Token was recognized and allowed by {sender}.')
+                        return process_authorization_response(result, token, location, sender, request=request)
             except celery.exceptions.TimeoutError:
                 continue
-    return None
+    messages.info(request, 'It appears that this Token is not known by any MSP which was reachable at the moment.')
+    return TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, info=[], token=None, party=Party('', ''),
+                              authorization_reference='', auth_method='')
 
 
 @ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
-def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAuthorization]:
+def authorize_token(token: Union[str, Token], location=None, request=None) -> Optional[TokenAuthorization]:
     with Timer() as t:
         if not isinstance(token, Token):
             session = get_session_by_adhoc_token(token, max_age_minutes=15)
             if session:
                 # Token is AD HOC
                 logging.info(f'Pre-existing Session {session.uid} '
-                             f'with authorization {session.authorization_reference}')
+                             f'with authorization {session.authorization_reference}', request=request)
+                messages.success(request, mark_safe(f'This Token, <b>{token}</b> has been authorized '
+                                                    f'earlier by MSP {session.billed_to} and the '
+                                                    f'authorization was cached in the OCPI Connector.'))
                 if not session.authorization_reference:
                     raise ValueError(f'Session {session.uid} is missing authorization_reference')
                 return TokenAuthorization(
@@ -163,16 +170,30 @@ def authorize_token(token: Union[str, Token], location=None) -> Optional[TokenAu
 
         # Not AD HOC, so Token should be found from database
         authorization = _authorize_token(token, location)
-        if not authorization:
+        if authorization is None:
             # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
-            authorization = authorize_with_all_msps(token, location)
+            messages.info(request, 'This Token is not in our database, '
+                                   'so an authorization request was sent to all MSPs connected to us.')
+            authorization = authorize_with_all_msps(token, location, request=request)
+        else:
+            func = {
+                AuthorizationEnum.ALLOWED.value: messages.success,
+            }.get(authorization.allowed, messages.error)
+            func(request, f'Response for OCPI authorization request was "{authorization.allowed}".')
     if authorization and t:
+        if authorization.authorization_reference:
+            messages.info(request,
+                          f"The MSP generated the authorization reference \"{authorization.authorization_reference}\" "
+                          "for this specific session. "
+                          "It is the way to connect the record in the MSP database to the record in the CPO database. "
+                          "After the charging session is finished, the MSP will receive the Charge Detail Record, which "
+                          "has an authorization reference matching the one stored by the MSP internally.")
         logging.info(f'Request for authorization from {authorization.party} finished in {float(t):.1f} seconds')
     return authorization
 
 
 @ttl_cache(maxsize=1024, ttl=14 * 60)
-def _authorize_token(token: Union[Token, str], location=None) -> Optional[TokenAuthorization]:
+def _authorize_token(token: Union[Token, str], location=None, request=None) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15-1 minutes
     (OCPI requirement)
@@ -182,7 +203,7 @@ def _authorize_token(token: Union[Token, str], location=None) -> Optional[TokenA
     if not token or not token.valid:
         return None
     if token.whitelist == Token.ALWAYS:
-        logging.info(f'Token {token} is whitelisted, no authorization request sent')
+        logging.info(f'Token {token} is whitelisted, no authorization request sent', request=request)
         return TokenAuthorization(
             allowed='ALLOWED',
             info=MessageTexts.get('TOKEN_ACCEPTED'),
@@ -196,14 +217,14 @@ def _authorize_token(token: Union[Token, str], location=None) -> Optional[TokenA
     route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)
     # ic(route)
     if not route or not token:
-        logging.warning(f'Route ({route}) or Token ({token}) missing, cannot authorize Token')
+        logging.warning(f'Route ({route}) or Token ({token}) missing, cannot authorize Token', request=request)
         return None
 
     return do_authorization(token, location, route)
 
 
-def do_authorization(token: Union[Token, str], location: Location, route: Route, to: Party = None) -> Optional[
-    TokenAuthorization]:
+def do_authorization(token: Union[Token, str], location: Location, route: Route, to: Party = None,
+                     request=None) -> Optional[TokenAuthorization]:
     if isinstance(token, Token):
         to = to or token.get_party()
         token = token.uid
@@ -217,10 +238,10 @@ def do_authorization(token: Union[Token, str], location: Location, route: Route,
             evse_uids=[e.uid for e in location.evses.all()]
         ) if location else dict()
     )
-    return process_authorization_response(result, token, location, to)
+    return process_authorization_response(result, token, location, to, request=request)
 
 
-def process_authorization_response(result, token, location, to) -> Optional[TokenAuthorization]:
+def process_authorization_response(result, token, location, to, request=None) -> Optional[TokenAuthorization]:
     if result.status_code == status.HTTP_200_OK:
         data = result.json()
         authorization = data.get('data', data)
@@ -233,15 +254,34 @@ def process_authorization_response(result, token, location, to) -> Optional[Toke
     if allowed != AuthorizationEnum.ALLOWED.value:
         logging.warning(f'Result for authorizing token {token} at {location or "<not known>"} '
                         f'from {to} (HTTP {result.status_code}), '
-                        f'response: {allowed}. ')
-        return None
+                        f'response: {allowed}. ', request=request)
+        messages.error(request, f'Token {token} was not authorized by {to}: {allowed}.')
+        return TokenAuthorization(
+            allowed=AuthorizationEnum.NOT_ALLOWED,
+            info=authorization.get('info', ''),
+            token=token,
+            party=token.get_party() if not isinstance(token, str) else Party('', ''),
+            authorization_reference=authorization.get('authorization_reference'),
+            auth_method=Session.AUTH_REQUEST,
+        )
     if data.get('status_code') not in (Ocpi.OK, Ocpi.ClientError.UNKNOWN_TOKEN):
-        logging.error(f'Token {token} OCPI authorization request returned an error: {data}')
-        return None
+        msg = f'Token {token} OCPI authorization request returned an error: {data}'
+        # messages.error(request, msg)
+        logging.error(msg, request=request)
+        return TokenAuthorization(
+            allowed=AuthorizationEnum.NOT_ALLOWED,
+            info=authorization.get('info', ''),
+            token=token,
+            party=token.get_party(),
+            authorization_reference=authorization.get('authorization_reference'),
+            auth_method=Session.AUTH_REQUEST,
+        )
     try:
         token = Token(**authorization.get('token', {}))
     except (ValidationError, ValueError) as e:
-        logging.error(f'Cannot read Token data from authorization response from {to}: {e}')
+        msg = f'Cannot read Token data from authorization response from {to}: {e}'
+        # messages.error(request, msg)
+        logging.error(msg, request=request)
         return None
 
     return TokenAuthorization(

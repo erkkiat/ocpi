@@ -5,6 +5,7 @@ import requests
 from cachetools.func import ttl_cache
 from django.conf import settings
 
+from ocpi22.messages import messages
 from ocpi22.ocpi.util_party import get_sender_party
 
 CRITICAL = logging.CRITICAL
@@ -35,6 +36,8 @@ def log_error(request=None, s: str = None) -> None:
                     f'server: {settings.HOSTNAME})'
     if SLACK_WEBHOOK:
         requests.post(url=SLACK_WEBHOOK, json=dict(text=error_message))
+    if request:
+        messages.error(request, s)
     logging.error(error_message)
 
 
@@ -42,11 +45,15 @@ def error(s: str, request=None) -> None:
     log_error(request, s)
 
 
-def info(s: str, *args, **kwargs):
+def info(s: str, *args, request=None, **kwargs):
+    if request:
+        messages.info(request, s)
     return logging.info(s, *args, **kwargs)
 
 
-def warning(s: str, *args, **kwargs):
+def warning(s: str, *args, request=None, **kwargs):
+    if request:
+        messages.warning(request, s)
     return logging.warning(s, *args, **kwargs)
 
 
