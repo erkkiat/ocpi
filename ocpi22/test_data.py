@@ -1026,7 +1026,7 @@ class RfidTestData:
                        'id': 'FI*CPO*S*MOCK-1'}
 
 
-evse_inoperative_response = {'data': {'result': 'EVSE_INOPERATIVE',
+evse_inoperative_response = {'data': {'result': 'REJECTED',
                                       'timeout': 60,
                                       'message': [{'language': 'EN', 'text': 'The charger is inoperative'},
                                                   {'language': 'DE', 'text': 'Das Ladegerät funktioniert nicht'},

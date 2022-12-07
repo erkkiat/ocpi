@@ -167,14 +167,7 @@ class CommandResponse(serializers.Serializer):
     timeout = serializers.IntegerField()
 
     # Human-readable description of the result (if one can be provided), multiple languages can be provided.
-    message = serializers.SerializerMethodField()
-
-    @staticmethod
-    def get_message(obj):
-        return [
-            dict(language=o['language'], text=o['text'])
-            for o in obj['message']
-        ]
+    message = MessageSerializer(many=True, required=False)
 
 
 class CommandResultBaseSerializer(serializers.Serializer):

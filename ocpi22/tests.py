@@ -900,7 +900,7 @@ class CommandTests(TestCase):
              'headers': {'content-type': 'application/json'},
              'json': {'auth_method': 'COMMAND',
                       'authorization_reference': 'e86baa82cee14ac5bfd00b85371aa798',
-                      'from_party': 'FI*CP1 (CPO), FI*MSP (EMSP), FI*NAP (NAP), FI*HUB (HUB)',
+                      'from_party': 'FI*MSP',
                       'billed_to': 'FI*EON',
                       'connector_id': None,
                       'evse_id': 'HELSINKI-3',
@@ -1061,7 +1061,7 @@ class CommandTests(TestCase):
             {
                 'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/AUTH-REFERENCE/',
                 'token_id': 'FI*001*T*ADMIN*TOKEN', 'token_type': 'OTHER', 'authorization_reference': 'AUTH-REFERENCE',
-                'auth_method': 'COMMAND', 'from_party': 'FI*CP1 (CPO), FI*MSP (EMSP), FI*NAP (NAP), FI*HUB (HUB)',
+                'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
                 'location_id': 'HELSINKI-1', 'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*EON',
                 'expiry_date': '2022-01-12T19:44:39.298178', 'reservation_id': 'RESERVATION-ID'
             }
@@ -2003,7 +2003,7 @@ class TestCpoApi(TestCase):
             kwargs.get('json'),
             {'auth_method': 'COMMAND',
              'authorization_reference': authorization_reference,
-             'from_party': 'FI*MSP (EMSP)',
+             'from_party': 'FI*MSP',
              'billed_to': 'FI*EON',
              'connector_id': None,
              'evse_id': 'HELSINKI-3',

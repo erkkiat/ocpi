@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, OrderedDict
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.token import Token
@@ -34,6 +34,16 @@ def construct_adhoc_token(token_uid, contract_id, token_type=Token.APP_USER):
 
 
 def get_token_id(token: Union[Token, AdhocToken, str, int]) -> str:
-    if isinstance(token, Token) or isinstance(token, AdhocToken):
+    if isinstance(token, (Token, AdhocToken)):
         return token.uid
+    if isinstance(token, (dict, OrderedDict)):
+        return token.get('uid', '')
     return token
+
+
+def get_token_type(token: Union[Token, AdhocToken, str, int], default_type) -> str:
+    if isinstance(token, (Token, AdhocToken)):
+        return token.type
+    if isinstance(token, (dict, OrderedDict)):
+        return token.get('type', default_type)
+    return default_type

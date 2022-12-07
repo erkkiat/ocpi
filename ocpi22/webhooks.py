@@ -51,4 +51,6 @@ def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
         logging.error(f'Problem communicating with webhook {serializer.__class__}: {e}')
     except requests.exceptions.Timeout as e:
         logging.error(f'Webhook call timed out ({serializer.__class__}): {e}')
+    except Exception as e:
+        logging.error(f'Webhook error: {e}')
     return {}

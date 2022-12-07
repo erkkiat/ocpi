@@ -140,7 +140,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.last_connection = timezone.now()
         self.save(update_fields=['last_connection'])
 
-    def get_party_for_role(self, role: OcpiRolesEnum) -> Optional["CredentialsRole"]:
+    def get_party_for_role(self, role: OcpiRolesEnum) -> Optional[Party]:
         credentialsrole = self.roles.filter(role=role).first()
         if credentialsrole:
             return credentialsrole.party

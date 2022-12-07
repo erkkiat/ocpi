@@ -38,7 +38,7 @@ def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACT
                                       statuses=statuses)
 
 
-class EvseOccupied(ValidationError):
+class EvseOccupied(RuntimeError):
     pass
 
 
@@ -113,6 +113,8 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         credentials=credentials,
     )
     params.update(kwargs)
+    params.pop('expiry_date', None)  # Todo: Finish implementing reservations
+
     session = Session.objects.create(**params)
 
     logging.info(f'New session {session.uid} pending at {evse.evse_id}')
