@@ -733,13 +733,12 @@ class CdrTests(TestCase):
         for t in [11, 12, 13]:
             create_tariff(uid=str(t), country_code='BE', party_id='BEC')
         location = self.load_location('location_example')
-        evse = location.evses.all()[0]
-        connector = evse.connectors.all()[0]
+        evse = location.evses.first()
+        connector = evse.connectors.first()
         credentials = Credentials.objects.first()
 
         # ic(connector, connector.get_tariffs()[0].price())
 
-        # noinspection PyUnresolvedReferences
         session = Session.objects.create(
             country_code='FI',
             party_id='EON',
@@ -778,11 +777,9 @@ class CdrTests(TestCase):
 
         # Check that Tariffs are archived copies and that they exist
 
-        # noinspection PyUnresolvedReferences
         self.assertTrue(all(t.archived for t in cdr1.tariffs.all()),
                         'Cdr needs to point to only archived Tariffs, so that they are not modified anymore.')
 
-        # noinspection PyUnresolvedReferences
         self.assertEqual(cdr1.tariffs.count(), 1,
                          'Cdr is missing a Tariff')
 
@@ -2154,9 +2151,11 @@ class TestCpoApi(TestCase):
         # Try updating meter values without a tariff specified
         #
 
-        Session.objects.filter(internal_reference='MY-INTERNAL-REFERENCE-2').update(status=Session.ACTIVE)
+        with patch('ocpi22.models.location.Connector.get_tariffs') as get_tariffs:
+            Session.objects.filter(internal_reference='MY-INTERNAL-REFERENCE-2').update(status=Session.ACTIVE)
+            get_tariffs.return_value = Tariff.objects.filter(uid='DOES_NOT_EXIST')  # Let's give it an empty QuerySet
+            cpo_response = meter_values(data)
 
-        cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_409_CONFLICT)
 
         #

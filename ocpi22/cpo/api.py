@@ -446,7 +446,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         party = authorization.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
                         if session:
-                            session.connector = Connector.get_if_exists(uid=connector_id)
+                            session.connector = Connector.get_if_exists(uid=connector_id, evse=evse)
                             session.internal_reference = internal_reference or None
                             session.status = Session.ACTIVE
                             session.authorization_reference = authorization.authorization_reference
@@ -579,7 +579,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.stop_kwh = kwh
                         session.update_last_updated()
                         session.calculate_price()
-                        session.save(update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat'])
+                        session.save(
+                            update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
+                        )
                         chargingperiods = session.set_charging_period(serializer.validated_data)
                         session.send_updates(chargingperiods)
                         messages.success(request,

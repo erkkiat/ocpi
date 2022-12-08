@@ -19,6 +19,7 @@ from geopy import Nominatim
 from icecream import ic
 from requests import Response
 from rest_framework import serializers, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
@@ -317,17 +318,6 @@ def is_our_identifier(party: Party, identities=None) -> bool:
     return result
 
 
-@lru_cache(maxsize=32)
-def parse_class_name(class_name: str) -> str:
-    """
-    >>> parse_class_name("<class \'ocpi22.models.location.Connector\'>")
-    'Connector'
-    """
-    if not isinstance(class_name, str):
-        return ''
-    return class_name.split('.')[-1].split("'")[0]
-
-
 class ModelUtilMixin:
     @classmethod
     def get_if_exists(cls, *args, raise_exception=False, **kwargs) -> any:
@@ -336,12 +326,13 @@ class ModelUtilMixin:
         if isinstance(uid, cls):
             return uid
 
-        # noinspection PyUnresolvedReferences
         objects = cls.objects.filter(*args, **kwargs)
-        if objects.count():
+        if objects.count() > 1:
+            raise ValidationError(f'There are more than one {cls.__name__} with the criteria {kwargs} in the database')
+        if objects.count() == 1:
             return objects.first()
         if raise_exception:
-            error_message = f"{parse_class_name(str(cls))} with UID " \
+            error_message = f"{cls.__name__} with UID " \
                             f"{kwargs.get('uid', 'N/A')} doesn't exist in the database"
             raise cls.DoesNotExist(error_message)
         return None

@@ -337,7 +337,7 @@ class Connector(models.Model, ModelUtilMixin):
         return f'#{self.uid} - {self.get_standard_display()} - {self.power()}'
 
     def power(self):
-        return f'{int((self.max_electric_power or self.max_voltage * self.max_amperage) / 1000)} kW'
+        return f'{int((self.max_electric_power or int(self.max_voltage) * int(self.max_amperage)) / 1000)} kW'
 
     def tariff(self):
         return ','.join([t.price() for t in self.tariff_ids.all()])
@@ -349,7 +349,7 @@ class Connector(models.Model, ModelUtilMixin):
         # Fetch the Tariffs specified for this Connector or find a DefaultTariff in case no specific Tariffs
         tariffs = self.tariff_ids.all() or Tariff.get_default_tariffs(self.standard)
         if tariffs.count() > 1:
-            log_error(str=f'Multiple Tariffs for Connector {str(self.evse)} {str(self)}')
+            log_error(s=f'Multiple Tariffs for Connector {str(self.evse)} {str(self)}')
         return tariffs
 
 

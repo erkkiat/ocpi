@@ -294,7 +294,8 @@ class ConnectorIdSerializer(serializers.Serializer):
         return instance.connector.uid if hasattr(instance, 'connector') and instance.connector else None
 
     def to_internal_value(self, data: str):
-        connector = Connector.get_if_exists(uid=data)
+        evse = Evse.get_if_exists(uid=self.parent.initial_data.get('evse_uid'))
+        connector = Connector.get_if_exists(uid=data, evse=evse)
         if not connector:
             self.fail('object_missing', name='Connector', uid=data)
         return dict(connector=connector)

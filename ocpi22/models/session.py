@@ -61,6 +61,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     # The optional ID of the reservation, if this session is based on one
     reservation_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, null=True)
+    # Todo: Add expiry_date for reservation
 
     @cached_property
     def ocpp_reservation_id(self) -> Optional[int]:
@@ -330,6 +331,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                                       f'connector {self.connector} has no tariffs specified')
             period = ChargingPeriod.objects.create(
                 start_date_time=self.start_date_time, session=self, tariff=tariffs.first(),
+                # Todo: Select a Tariff that applies
                 # Todo: Handle multiple Tariffs per Connector or limit to one Tariff
             )
         return period
