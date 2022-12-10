@@ -296,50 +296,50 @@ class ApiPutTests(TestCase):
         }]
 
         for filename, country_code, party_id, http_status, ocpi_status, tariffs, evses, connectors in testcases:
+            with self.subTest('Putting location', filename=filename):
+                data = load_example(f'data/examples/{filename}.json')
 
-            data = load_example(f'data/examples/{filename}.json')
+                # Create the needed Tariffs
+                for t in tariffs:
+                    create_tariff(uid=t, country_code=country_code, party_id=party_id)
 
-            # Create the needed Tariffs
-            for t in tariffs:
-                create_tariff(uid=t, country_code=country_code, party_id=party_id)
-
-            # And CretentialsRoles
-            # noinspection PyUnresolvedReferences
-            roles, _created = CredentialsRole.objects.get_or_create(
-                role='CPO', country_code=country_code,
-                party_id=party_id, defaults=dict(
-                    business_details=self.business_details)
-            )
-            self.credentials.roles.add(roles)
-
-            # Send the request
-            response = self.put(url, data, token_base64, LocationViewSet)
-            # if response.status_text:
-            #     print(f'status_text: "{response.status_text}" for {filename} case.')
-            self.assertEqual(response.status_code, http_status,
-                             f'Expected a HTTP status code {http_status} for {filename} case.')
-            self.assertEqual(response.data['status_code'], ocpi_status,
-                             f'Expected an OCPI status code {ocpi_status} for {filename} case.')
-
-            if evses:
-                uid = data.get('id').upper()
+                # And CretentialsRoles
                 # noinspection PyUnresolvedReferences
-                try:
+                roles, _created = CredentialsRole.objects.get_or_create(
+                    role='CPO', country_code=country_code,
+                    party_id=party_id, defaults=dict(
+                        business_details=self.business_details)
+                )
+                self.credentials.roles.add(roles)
+
+                # Send the request
+                response = self.put(url, data, token_base64, LocationViewSet)
+                self.assertEqual(response.status_code, http_status,
+                                 f'Expected a HTTP status code {http_status} '
+                                 f'for {filename} case: {response.data}.')
+                self.assertEqual(response.data['status_code'], ocpi_status,
+                                 f'Expected an OCPI status code {ocpi_status} '
+                                 f'for {filename} case: {response.data}.')
+
+                if evses:
+                    uid = data.get('id').upper()
                     # noinspection PyUnresolvedReferences
-                    location = Location.objects.get(uid=uid)
-                    # print(f"Evses: {location.evses.count()}")
-                    self.assertEqual(location.evses.count(), evses,
-                                     f'There should be {evses} evses after {filename} case.')
-                    connector_count = 0
-                    for evse in location.evses.all():
-                        connector_count += evse.connectors.count()
-                    # print(f"Connectors: {connector_count}")
-                    self.assertEqual(connector_count, connectors,
-                                     f'There should be {connectors} connectors after {filename} case.')
-                except Location.DoesNotExist:
-                    print(f'Unable to fetch Location {uid} created from file {filename}.')
-                    # noinspection PyUnresolvedReferences
-                    self.fail(f'Possible options are: {", ".join([l.uid for l in Location.objects.all()])}')
+                    try:
+                        # noinspection PyUnresolvedReferences
+                        location = Location.objects.get(uid=uid)
+                        # print(f"Evses: {location.evses.count()}")
+                        self.assertEqual(location.evses.count(), evses,
+                                         f'There should be {evses} evses after {filename} case.')
+                        connector_count = 0
+                        for evse in location.evses.all():
+                            connector_count += evse.connectors.count()
+                        # print(f"Connectors: {connector_count}")
+                        self.assertEqual(connector_count, connectors,
+                                         f'There should be {connectors} connectors after {filename} case.')
+                    except Location.DoesNotExist:
+                        print(f'Unable to fetch Location {uid} created from file {filename}.')
+                        # noinspection PyUnresolvedReferences
+                        self.fail(f'Possible options are: {", ".join([l.uid for l in Location.objects.all()])}')
 
     def test_put_tariff(self):
         url = reverse('tariff-list')
