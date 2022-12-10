@@ -1,3 +1,8 @@
+from gettext import gettext as _
+
+from django import forms
+from django.core.exceptions import ValidationError
+
 import ocpi22.logging as logging
 
 import requests
@@ -84,8 +89,20 @@ class TokenAdmin(admin.ModelAdmin):
 # Todo: Prevent Connector editing if not owner, get_readonly_fields() doesn't do it
 
 
+class ConnectorAdminForm(forms.ModelForm):
+    def clean_tariff_ids(self):
+        data = self.cleaned_data.get('tariff_ids')
+        if not data:
+            raise ValidationError(
+                _('Connector needs to have a Tariff selected, so that billing is possible'),
+                code='missing'
+            )
+        return data
+
+
 class ConnectorInline(NestedStackedInline):
     model = Connector
+    form = ConnectorAdminForm
 
     fieldsets = [
         (None, dict(fields=[('uid', 'standard'), ('format', 'power_type'),
