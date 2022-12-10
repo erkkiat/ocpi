@@ -6,7 +6,6 @@ from django.contrib import admin, messages
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils.html import format_html
-from icecream import ic
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from requests import Response
 from rest_framework import exceptions
@@ -73,21 +72,12 @@ class TokenAdmin(admin.ModelAdmin):
         )),
     ]
 
-    # def has_delete_permission(self, request, obj=None) -> bool:
-    #     # Disable delete
-    #     return ALLOW_ADMIN_DELETE_AND_CHANGE
-
     def has_add_permission(self, request) -> bool:
-        # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
         return Token.ocpi_object_owner in ocpi_identities or ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_change_permission(self, request, obj: Token = None) -> bool:
         if not super().has_change_permission(request, obj):
             return False
-        # user: User = request.user
-        # ic(user.get_user_permissions())
-        # if not user.has_perm('ocpi22.change_token'):
-        #     return False
         return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
@@ -108,26 +98,16 @@ class ConnectorInline(NestedStackedInline):
     )
     autocomplete_fields = ['tariff_ids']
 
-    # def get_readonly_fields(self, request, obj=None):
-    #     if obj:
-    #         return ['uid']
-    #     return []
-
     def has_change_permission(self, request, obj: Evse = None) -> bool:
         if not super().has_change_permission(request, obj):
             return False
         # Todo: Admin should only be able to change owned Connectors
-        # ic(obj)
         if obj and hasattr(obj, 'location'):
             obj = obj.location
         return obj and hasattr(obj, 'is_ours') and obj.is_ours()
 
     def has_add_permission(self, request, obj=None) -> bool:
-        # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
         return Location.ocpi_object_owner in ocpi_identities
-
-    # def has_delete_permission(self, request, obj=None) -> bool:
-    #     return False
 
 
 class LocationAdmin(NestedModelAdmin):
@@ -146,24 +126,12 @@ class LocationAdmin(NestedModelAdmin):
                 return False
             return obj and obj.is_ours()
 
-        # def has_delete_permission(self, request, obj=None) -> bool:
-        #     return ALLOW_ADMIN_DELETE_AND_CHANGE
-
         def has_add_permission(self, request, obj=None) -> bool:
-            # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
             return Location.ocpi_object_owner in ocpi_identities
-
-        # def get_readonly_fields(self, request, obj=None) -> list:
-        #     if obj:
-        #         return ['uid']
-        #     return []
 
     model = Location
     search_fields = ['country_code', 'party_id', 'uid', 'name', 'address', 'city',
                      'postal_code', 'state', 'country', 'parking_type']
-    # fields = ['uid', 'publish', 'publish_allowed_to',
-    #           ('name', 'address'), ('postal_code', 'city'), ('state', 'country'), ('latitude', 'longitude'),
-    #           ('parking_type', 'facilities'), ('operator', 'suboperator', 'owner'), 'time_zone']
     fieldsets = [
         (None, dict(fields=('uid', 'publish', 'publish_allowed_to'))),
         ('Address', dict(
@@ -190,11 +158,7 @@ class LocationAdmin(NestedModelAdmin):
             return False
         return obj and obj.is_ours()
 
-    # def has_delete_permission(self, request, obj=None) -> bool:
-    #     return ALLOW_ADMIN_DELETE_AND_CHANGE
-
     def has_add_permission(self, request) -> bool:
-        # ic(Token.ocpi_object_owner, Token.ocpi_object_owner in ocpi_identities)
         return Location.ocpi_object_owner in ocpi_identities
 
     def get_readonly_fields(self, request, obj=None) -> list:
@@ -214,7 +178,6 @@ class EvseAdmin(NestedModelAdmin):
     autocomplete_fields = ['capabilities', 'location']
 
     def get_queryset(self, request):
-        # noinspection PyUnresolvedReferences
         return Evse.objects.select_related('location').all().order_by('-last_updated')
 
     @staticmethod
@@ -232,13 +195,6 @@ class EvseAdmin(NestedModelAdmin):
         if not super().has_change_permission(request, obj):
             return False
         return not obj or (hasattr(obj, 'location') and obj.location.is_ours())
-
-    # def has_delete_permission(self, request, obj=None) -> bool:
-    #     return ALLOW_ADMIN_DELETE_AND_CHANGE
-
-    # def delete_model(self, request, obj):
-    #     obj.status = 'REMOVED'
-    #     obj.save()
 
     location_url.short_description = "Location"
 
@@ -353,15 +309,10 @@ class CdrAdmin(admin.ModelAdmin):
         ('Time period', dict(fields=(('start_date_time', 'end_date_time'), 'last_updated'))),
         ('Credited or not', dict(fields=(('credit', 'credit_reference'),))),
     )
-    # list_filter = ['party_id', 'auth_method', 'credit']
     list_display_links = ['start_date_time']
     search_fields = ['party_id', 'country_code', 'session_id', 'uid', 'cdr_location_evse_id', 'cdr_location_name',
                      'billed_to']
     autocomplete_fields = ['tariffs']
-
-    # def has_delete_permission(self, request, obj=None) -> bool:
-    #     # Disable delete
-    #     return ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request) -> bool:
         # Disable add
@@ -417,45 +368,10 @@ class SessionAdmin(NestedModelAdmin):
     )
     # Todo: Show only connectors for the selected evse
 
-    # fields = (
-    #     ('start_date_time', 'end_date_time'),
-    #     ('cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id'),
-    #     ('status', 'kwh'),
-    #     ('total_cost_excl_vat', 'total_cost_incl_vat', 'currency')
-    # )
     list_display_links = ['start_date_time']
     search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid',
                      'uid', 'authorization_reference']
-    # list_filter = ['status', 'party_id',]
     readonly_fields = ['uid', 'party_id', 'country_code']
-
-    # def formfield_for_foreignkey(self, db_field, request, **kwargs):
-    #     if db_field.name == "connector":
-    #         kwargs["queryset"] = Connector.objects.filter(evse=??)
-    #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
-    # def get_readonly_fields(self, request, obj=None) -> list:
-    #     if obj:
-    #         return [
-    #             'country_code', 'party_id', 'meter_id',
-    #             'authorization_reference', 'uid', 'auth_method',
-    #             'cdr_token_uid', 'cdr_token_type', 'cdr_token_contract_id',
-    #             'location', 'evse', 'start_date_time', 'total_cost_incl_vat', 'total_cost_excl_vat',
-    #         ]
-    #     return []
-
-    # def has_delete_permission(self, request, obj=None) -> bool:
-    #     # Disable delete except for invalid sessions
-    #     return (obj and obj.status == 'INVALID') or ALLOW_ADMIN_DELETE_AND_CHANGE
-
-    # def has_change_permission(self, request, obj: Session = None) -> bool:
-    #     if obj and obj.status == Session.COMPLETED and obj.total_cost_excl_vat:
-    #         return False
-    #     return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
-
-    # def has_add_permission(self, request) -> bool:
-    #     # Disable add
-    #     return False
 
     def has_add_permission(self, request, obj=None) -> bool:
         return False
@@ -517,15 +433,12 @@ class TariffAdmin(NestedModelAdmin):
 
     model = Tariff
     list_display = [
-        # 'archived',
         'object_owner', 'uid', 'price', 'references'
     ]
     list_display_links = ['uid']
     inlines = [ElementsInline]
     search_fields = ['uid']
-    # list_filter = ['archived']
     radio_fields = dict(type=admin.HORIZONTAL)
-    # exclude = ['archived', 'last_updated']
     fieldsets = [
         ('',
          dict(
@@ -549,7 +462,6 @@ class TariffAdmin(NestedModelAdmin):
 
     def get_queryset(self, _request):
         # Hide archived
-        # noinspection PyUnresolvedReferences
         return Tariff.objects.exclude(archived=True)
 
     def get_readonly_fields(self, request, obj=None) -> list:
