@@ -402,16 +402,15 @@ def get_our_first_token():
     our_country_code, our_party_id = Token.get_owner_identity().split('*')
 
     try:
-        return Token.objects.filter(country_code=our_country_code, party_id=our_party_id)[0]
+        return Token.objects.filter(country_code=our_country_code, party_id=our_party_id).first()
     except IndexError:
         raise ValueError('Please create a Token first.')
 
 
 def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_role: EndpointRoleEnum) -> Endpoint:
-    # noinspection PyUnresolvedReferences
+    # Todo: Optimize using https://docs.djangoproject.com/en/4.1/ref/models/querysets/#in
     for role in CredentialsRole.objects.filter(country_code=country_code, party_id=party_id):
         for credentials in role.credentials.all():
-            # noinspection PyUnresolvedReferences
             endpoints = credentials.endpoints.filter(identifier=identifier.value, role=endpoint_role.value)
             if endpoints.count():
                 return endpoints[0]
