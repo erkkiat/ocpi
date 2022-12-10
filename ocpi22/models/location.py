@@ -16,7 +16,7 @@ from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
-from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition
+from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
@@ -351,6 +351,14 @@ class Connector(models.Model, ModelUtilMixin):
         if tariffs.count() > 1:
             log_error(s=f'Multiple Tariffs for Connector {str(self.evse)} {str(self)}')
         return tariffs
+
+    def get_admin_url(self):
+        return build_absolute_uri(reverse('admin:ocpi22_evse_change', kwargs=dict(object_id=self.evse.pk)))
+
+    @property
+    def issue_parent(self):
+        # For showing the EVSE of this Connector in the issue list
+        return self.evse
 
 
 @receiver(pre_save, sender=Evse)

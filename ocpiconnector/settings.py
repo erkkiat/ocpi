@@ -325,6 +325,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'ocpi22.context_processors.export_environment_variables',
+                'ocpi22.context_processors.export_issue_count',
                 # 'django.template.context_processors.i18n',
             ],
         },

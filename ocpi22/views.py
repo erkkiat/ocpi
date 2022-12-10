@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
 from ocpi22.credentials.versions import get_versions_dict
+from ocpi22.issues import get_issues, issue_count
 from ocpi22.ocpi.util import OCPIResponse
 from ocpiconnector.ocpi_identities import ocpi_platform
 
@@ -20,3 +21,13 @@ def home(request):
         ocpi_platform=ocpi_platform
     )
     return render(request, template_name='index.html', context=context)
+
+
+def issues(request, template_name='issues.html'):
+    results = get_issues()
+    context = dict(
+        results=results,
+        user=request.user,
+        issue_count=issue_count(results),
+    )
+    return render(request, template_name, context)

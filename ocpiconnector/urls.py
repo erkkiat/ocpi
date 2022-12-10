@@ -6,7 +6,7 @@ from django.urls import path
 from rest_framework.schemas import get_schema_view
 
 from cars.views import CarsViewSet
-from ocpi22 import msp
+from ocpi22 import msp, views
 from ocpi22.cpo.reports import ChargingSessionsReport
 from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.msp.map import MapViewSet
@@ -88,6 +88,7 @@ urlpatterns = (
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/ocpi22/credentials/connection/new', new_connection, name='new-connection'),
     path('admin/', admin.site.urls),
+    path('issues/', views.issues, name='issues'),
     path('_nested_admin/', include('nested_admin.urls')),
     path('openapi', get_schema_view(
         title="OCPI Connector",

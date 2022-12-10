@@ -1,0 +1,48 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/dashboard.css' %}">{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} Issues{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main" class="p-4">
+    <h1>Issue List</h1>
+
+    <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Danger:">
+            <use xlink:href="#exclamation-triangle-fill"/>
+        </svg>
+        <div>
+            There are a total of {{ issue_count }} issues requiring attention.
+        </div>
+    </div>
+
+    {% for result in results %}
+    <hr class="m-2">
+    <h2>{{ result.heading }}</h2>
+    <p class="">{{ result.help_text }}</p>
+    <ul>
+        {% for item in result.items %}
+        <li>
+            {% if item.issue_parent %}<b>{{ item.issue_parent }}</b>:{% endif %}
+            <a href="{{ item.get_admin_url }}">{{ item }}</a>
+        </li>
+        {% empty %}
+        <p>No issues to report</p>
+        {% endfor %}
+    </ul>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block sidebar %}
+{% endblock %}

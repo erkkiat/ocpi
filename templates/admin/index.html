@@ -2,7 +2,7 @@
 {% load i18n static %}
 
 {% block extrastyle %}{{ block.super }}
-<link rel="stylesheet" type="text/css" href="{% static " admin/css/dashboard.css" %}">{% endblock %}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/dashboard.css' %}">{% endblock %}
 
 {% block coltype %}colMS{% endblock %}
 
@@ -15,6 +15,17 @@
 
 {% block content %}
 <div id="content-main">
+  {% if issue_count %}
+  <div class="alert alert-danger d-flex align-items-center mt-3" role="alert">
+    <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Danger:">
+      <use xlink:href="#exclamation-triangle-fill"/>
+    </svg>
+    <div>
+      You have {{ issue_count }} issues requiring attention.
+      <a class="alert-link" href="{% url 'issues' %}">show issues</a>
+    </div>
+  </div>
+  {% endif %}
   {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
 </div>
 {% endblock %}
