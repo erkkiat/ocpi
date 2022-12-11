@@ -173,7 +173,9 @@ def send_ocpi_request(data, url: str, token_base64: str,
         logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}.")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
-            Credentials.objects.filter(pk=credentials_id).update(connection_status='OFFLINE')
+            Credentials.objects.filter(
+                pk=credentials_id,
+                connection_status=choices.CONNECTED).update(connection_status=choices.OFFLINE)
         capture_exception(e)
         return None
 

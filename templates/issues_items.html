@@ -1,0 +1,16 @@
+{% load i18n static %}
+{% for issue in issues %}
+<hr class="m-2">
+{% if issue.items %}
+<h2>{{ issue.heading }}</h2>
+<p class="">{{ issue.help_text|safe }}</p>
+<ul>
+    {% for item in issue.items %}
+    <li>
+        {% if item.issue_parent %}<b>{{ item.issue_parent }}</b>:{% endif %}
+        <a href="{{ item.get_admin_url }}">{{ item }}</a>
+    </li>
+    {% endfor %}
+    {% endif %}
+</ul>
+{% endfor %}

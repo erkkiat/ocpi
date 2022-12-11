@@ -26,21 +26,8 @@
         </div>
     </div>
 
-    {% for result in results %}
-    <hr class="m-2">
-    <h2>{{ result.heading }}</h2>
-    <p class="">{{ result.help_text }}</p>
-    <ul>
-        {% for item in result.items %}
-        <li>
-            {% if item.issue_parent %}<b>{{ item.issue_parent }}</b>:{% endif %}
-            <a href="{{ item.get_admin_url }}">{{ item }}</a>
-        </li>
-        {% empty %}
-        <p>No issues to report</p>
-        {% endfor %}
-    </ul>
-    {% endfor %}
+    {% include "issues_items.html" with issues=connector_issues %}
+    {% include "issues_items.html" with issues=credentials_issues %}
 </div>
 {% endblock %}
 

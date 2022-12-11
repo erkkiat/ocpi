@@ -2,7 +2,7 @@ import os
 
 import cachetools
 
-from ocpi22.issues import get_issues, issue_count
+from ocpi22.issues import issue_count, get_connector_issues, get_credential_issues
 from ocpiconnector.ocpi_identities import ocpi_identities
 
 
@@ -19,4 +19,7 @@ def export_environment_variables(_request):
 
 
 def export_issue_count(_request):
-    return dict(issue_count=issue_count(get_issues()))
+    credentials_issues = get_credential_issues()
+    return dict(
+        issue_count=issue_count(get_connector_issues()) + issue_count(credentials_issues)
+    )

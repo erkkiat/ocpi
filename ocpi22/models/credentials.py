@@ -19,11 +19,12 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
 
+from ocpi22 import choices
 from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi.util import OcpiModule, OCPIProtocolError
-from ocpi22.util import ModelUtilMixin, generate_random_token, PREMIUM_MESSAGE
+from ocpi22.util import ModelUtilMixin, generate_random_token, PREMIUM_MESSAGE, build_absolute_uri
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
@@ -126,7 +127,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return bool(self.ours and self.theirs and self.roles.count())
 
     def connection_state(self) -> bool:
-        result = bool(self.valid and self.connection_status == 'CONNECTED')
+        result = bool(self.valid and self.connection_status == choices.CONNECTED)
         if not result:
             logging.error(f'Connecting to party {self.party()} may not be possible: '
                           f'(Credentials {"valid" if self.valid else "NOT VALID"}, server {self.connection_status}')
@@ -163,6 +164,9 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
             return role
         else:
             raise ValidationError(serializer.errors)
+
+    def get_admin_url(self):
+        return build_absolute_uri(reverse('admin:ocpi22_credentials_change', kwargs=dict(object_id=self.pk)))
 
 
 class CredentialsRole(models.Model, ModelUtilMixin):
