@@ -60,7 +60,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     VERSION_CHOICES = (
         ('22', '2.2'),
-        ('211', '2.1.1')
+        # ('211', '2.1.1')
     )
     version = models.CharField(max_length=10, choices=VERSION_CHOICES, blank=True, null=True)
 
