@@ -11,7 +11,7 @@ issues_cache = dict()
 
 
 @cachetools.cached(cache=issues_cache)
-def get_connector_issues() -> list:
+def get_connector_issues():
     connectors_with_overlapping_tariffs = Connector.objects.filter(tariff_ids__isnull=False).distinct()
     tariffs_overlap_list = []
     for connector in connectors_with_overlapping_tariffs:
@@ -39,7 +39,7 @@ def get_connector_issues() -> list:
 
 
 @ttl_cache(ttl=5 * 60)
-def get_credential_issues() -> list:
+def get_credential_issues():
     results = [
         dict(
             heading='Parties Offline',
@@ -56,6 +56,19 @@ def get_credential_issues() -> list:
     return results
 
 
+@ttl_cache(ttl=5 * 60)
+def get_issues() -> list:
+    return get_credential_issues() + get_connector_issues()
+
+
+# Todo: Sessions active for over 1 day
+# Todo: Sessions with 0 kWh? Not good to warn about them since you can't do anything. Maybe a report is needed?
+# Todo: Sessions or CDRs with mixed currencies or not matching Tariff currency
+# Todo: Connectors with mixed currency Tariffs (not needed yet, since just a single Tariff per connector)
+# Todo: Any other issues with CDRs
+# Todo: Analyse which elements overlap in two Tariffs (in the future)
+
+
 def issue_count(issue_list) -> int:
     return sum([
         len(i.get('items')) for i in issue_list
@@ -65,6 +78,7 @@ def issue_count(issue_list) -> int:
 @receiver(pre_save)
 def object_pre_save(sender, instance, **_kwargs):
     # Issues will be recompiled whenever an object changes, in case the issue has been resolved
+    get_issues.cache_clear()
     if sender == Connector:
         get_connector_issues.cache_clear()
     if sender == Credentials:

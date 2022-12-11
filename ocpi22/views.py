@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
 from ocpi22.credentials.versions import get_versions_dict
-from ocpi22.issues import issue_count, get_connector_issues, get_credential_issues
+from ocpi22.issues import issue_count, get_issues
 from ocpi22.ocpi.util import OCPIResponse
 from ocpiconnector.ocpi_identities import ocpi_platform
 
@@ -24,16 +24,10 @@ def home(request):
 
 
 def issues(request, template_name='issues.html'):
-    connector_issues = get_connector_issues()
-    connector_issue_count = issue_count(connector_issues)
-    credentials_issues = get_credential_issues()
-    credentials_issue_count = issue_count(credentials_issues)
+    issues = get_issues()
     context = dict(
         user=request.user,
-        connector_issues=connector_issues,
-        connector_issue_count=connector_issue_count,
-        credentials_issues=credentials_issues,
-        credentials_issue_count=credentials_issue_count,
-        issue_count=connector_issue_count + credentials_issue_count
+        issues=issues,
+        issue_count=issue_count(issues),
     )
     return render(request, template_name, context)
