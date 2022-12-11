@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -23,6 +24,7 @@ def home(request):
     return render(request, template_name='index.html', context=context)
 
 
+@staff_member_required
 def issues(request, template_name='issues.html'):
     issues = get_issues()
     context = dict(
