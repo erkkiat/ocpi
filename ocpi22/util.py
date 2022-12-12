@@ -18,7 +18,7 @@ from django.core.validators import RegexValidator
 from geopy import Nominatim
 from icecream import ic
 from requests import Response
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.pagination import PageNumberPagination
@@ -26,7 +26,7 @@ from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
 from ocpi22 import logging
-from ocpi22.ocpi.util import OCPIResponse, format_url
+from ocpi22.ocpi.util import format_url
 # from ocpiconnector import slack_logging
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 
@@ -375,14 +375,6 @@ class ModelUtilMixin:
                 if f and isinstance(f, str):
                     upper_value = f.upper()
                     self.__setattr__(field, upper_value)
-
-
-PREMIUM_MESSAGE = 'This feature is available in the OCPI Connector Premium. ' \
-                  'You can upgrade at http://ocpi.guide/compare/'
-PREMIUM_RESPONSE = dict(
-    status_message=PREMIUM_MESSAGE,
-    status_code=2999, http_status=status.HTTP_426_UPGRADE_REQUIRED
-)
 
 
 class ParseUrl:

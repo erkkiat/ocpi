@@ -78,7 +78,7 @@ class OcpiModule:
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
         """
-        if settings.SEND_UPDATES:
+        if settings.SEND_UPDATES and settings.PREMIUM:
             # Do we possess the role who controls the master data for this type of object or are we acting as HUB
             if self.ocpi_object_owner not in ocpi_identities.roles and not ocpi_platform.is_hub:
                 logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")

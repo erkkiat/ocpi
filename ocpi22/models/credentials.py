@@ -24,7 +24,7 @@ from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi.util import OcpiModule, OCPIProtocolError
-from ocpi22.util import ModelUtilMixin, generate_random_token, PREMIUM_MESSAGE, build_absolute_uri
+from ocpi22.util import ModelUtilMixin, generate_random_token, build_absolute_uri
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
@@ -220,7 +220,8 @@ class NewConnection(forms.Form):
 
 def new_connection(request):
     if not settings.PREMIUM:
-        messages.warning(request, PREMIUM_MESSAGE)
+        import premium
+        premium.premium_message()
     else:
         try:
             if request.method == 'POST':

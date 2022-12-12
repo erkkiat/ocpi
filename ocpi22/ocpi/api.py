@@ -17,13 +17,13 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
-from rest_framework.viewsets import GenericViewSet, ViewSet
+from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum
 from ocpi22.webhooks import send_to_webhook
 from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
-from ocpi22.msp.serializers import MSPAuthorizeCallbackSerializer, MSPSessionCallbackSerializer, MspSessionSerializer
+from ocpi22.msp.serializers import MSPAuthorizeCallbackSerializer, MSPSessionCallbackSerializer
 from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, \
     CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer
@@ -34,13 +34,13 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.rendering import RENDERERS
-from ocpi22.util import matching_operator, PREMIUM_RESPONSE, \
-    OnlyRawBrowsableAPIRenderer, build_callback_request
+from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, build_callback_request
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles, select_version, get_endpoints
 from ocpiconnector.ocpi_identities import ocpi_platform
+from premium import requires_premium
 
 
 # Todo: In case a PATCH request fails, the client is expected to call the GET method to check the state
@@ -281,14 +281,15 @@ class CdrViewSet(mixins.ListModelMixin,
 
     @action(methods=['GET'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
+    @requires_premium
     def by_id(self, request, country_code=None, party_id=None, uid=None) -> Response:
         cdr = get_object_or_404(Cdr, country_code=country_code, party_id=party_id, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
 
-    @staticmethod
     @transaction.atomic
-    def put(request) -> OCPIResponse:
+    @requires_premium
+    def put(self, request) -> OCPIResponse:
         data = request.data.get('data', request.data)
         country_code = data.get('country_code')
         party_id = data.get('party_id')
@@ -296,19 +297,6 @@ class CdrViewSet(mixins.ListModelMixin,
         if not matching_operator(request, country_code, party_id):
             return NotOwner()
 
-        # tariffs = data.pop('tariffs', [])
-        # ic(data)
-        # ic(tariffs)
-        tariff_list = []
-        # for t in tariffs:
-        #     ic(t)
-        #     tariff = Tariff.get_if_exists(uid=t.get('uid', None))
-        #     if not tariff:
-        #         tariff_serializer = TariffSerializer(data=t)
-        #         if tariff_serializer.is_valid():
-        #             tariff = tariff_serializer.save()
-        #     tariff_list.append(tariff)
-        # ic(data)
         serializer = CdrSerializer(data=data)
         if serializer.is_valid():
             cdr = serializer.save()
@@ -346,12 +334,12 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     def get_view_name(self):
         return 'Credentials'
 
-    @staticmethod
-    def list(request, *_args, **_kwargs):
+    @requires_premium
+    def list(self, request, *_args, **_kwargs):
         return OCPIResponse(make_my_credentials_dict(request))
 
-    @staticmethod
-    def delete(request: Request, *_args, **_kwargs):
+    @requires_premium
+    def delete(self, request: Request, *_args, **_kwargs):
         # Todo: Make sure deletition is not possible for others than owner
         if not hasattr(request, 'credentials'):
             return OCPIResponse("There seem to be no credentials in use for this request.",
@@ -361,6 +349,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         request.credentials.soft_delete()
         return OCPIResponse(status_message='Your credentials have been deleted, as requested.')
 
+    @requires_premium
     @csrf_exempt
     def post(self, request: Request, *_args, **_kwargs):
         try:
@@ -412,8 +401,13 @@ class TariffViewSet(mixins.ListModelMixin,
             return f'{self.name.capitalize()}'
         return 'Tariffs'
 
+    @requires_premium
+    def list(self, *args, **kwargs):
+        return super().list(*args, **kwargs)
+
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', url_name='by-id')
+    @requires_premium
     def tariff_by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
@@ -425,9 +419,9 @@ class TariffViewSet(mixins.ListModelMixin,
         if uid:
             return get_object_or_404(Tariff, uid=uid)
 
-    @staticmethod
+    @requires_premium
     @transaction.atomic
-    def put(request, country_code=None, party_id=None, uid=None, data=None) -> OCPIResponse:
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None) -> OCPIResponse:
         # This PUT is used both for the Tariff endpoint root and the path with country_code, party_id and Tariff uid
         data = data or request.data.get('data', request.data)
         country_code = country_code or data.get('country_code')
@@ -607,22 +601,3 @@ class OCPIRouter(routers.DefaultRouter):
     def __init__(self):
         super().__init__()
         self.trailing_slash = '/?'
-
-
-class NoPremiumViewSet(ViewSet):
-    queryset = Location.objects.none()
-
-    def get_view_name(self):
-        return 'This is a Premium Feature'
-
-    def put(self, _request):
-        return OCPIResponse(PREMIUM_RESPONSE)
-
-    def post(self, _request):
-        return OCPIResponse(PREMIUM_RESPONSE)
-
-    def get(self, _request):
-        return OCPIResponse(PREMIUM_RESPONSE)
-
-    def list(self, _request):
-        return OCPIResponse(PREMIUM_RESPONSE)

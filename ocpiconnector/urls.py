@@ -12,7 +12,7 @@ from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.msp.map import MapViewSet
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
-    RootRouter, ClientInfoViewSet, NoPremiumViewSet
+    RootRouter, ClientInfoViewSet
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.cpo.api import CPORouter, ChargePointViewSet, LocationQuickViewSet, CpoStartWebhookViewSet, \
     CpoStopWebhookViewSet, CpoReserveNowWebhookViewSet, InvoiceWebhookViewSet
@@ -30,14 +30,13 @@ from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
 
 ocpi_router = OCPIRouter()
-ocpi_router.register(r'credentials', CredentialsViewSet if settings.PREMIUM else NoPremiumViewSet,
-                     basename='credentials')
+ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
 ocpi_router.register(r'hubclientinfo', ClientInfoViewSet, basename='clientinfo')
 ocpi_router.register(r'tokens', TokenViewSet)
-ocpi_router.register(r'locations', LocationViewSet if settings.PREMIUM else NoPremiumViewSet, basename='location')
-ocpi_router.register(r'tariffs', TariffViewSet if settings.PREMIUM else NoPremiumViewSet, basename='tariff')
+ocpi_router.register(r'locations', LocationViewSet, basename='location')
+ocpi_router.register(r'tariffs', TariffViewSet, basename='tariff')
 ocpi_router.register(r'sessions', SessionViewSet)
-ocpi_router.register(r'cdrs', CdrViewSet if settings.PREMIUM else NoPremiumViewSet, basename='cdr')
+ocpi_router.register(r'cdrs', CdrViewSet, basename='cdr')
 if ocpi_platform.is_hub:
     ocpi_router.register(r'commands', CommandsHubViewSet, basename='commands')
 ocpi_router.register(r'commands', CommandsViewSet, basename='commands')

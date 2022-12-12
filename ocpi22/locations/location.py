@@ -20,6 +20,7 @@ from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHead
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
 from ocpi22.webhooks import send_to_webhook
+from premium import requires_premium
 
 evse_validator = RegexValidator(r'[A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}$',
                                 message='OCPI evse_id has to contain a valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)')
@@ -84,6 +85,10 @@ class LocationViewSet(mixins.ListModelMixin,
             return f'{self.name.capitalize()}'
         return 'Locations'
 
+    @requires_premium
+    def list(self, *args, **kwargs):
+        return super().list(*args, **kwargs)
+
     @staticmethod
     def get_object(uid=None) -> Location:
         # Needed for OPTIONS to work in list view, could just return None
@@ -93,6 +98,7 @@ class LocationViewSet(mixins.ListModelMixin,
     @transaction.atomic
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False, url_name='by-evse-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
+    @requires_premium
     def by_evse_id(self, request, country_code, party_id, uid, evse_id) -> OCPIResponse:
         evse: Evse = get_object_or_404(Evse, uid=evse_id, location__uid=uid)
         location: Location = evse.location
@@ -134,9 +140,9 @@ class LocationViewSet(mixins.ListModelMixin,
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    @staticmethod
     @transaction.atomic
-    def put(request, data=None, **_kwargs):
+    @requires_premium
+    def put(self, request, data=None, **_kwargs):
         data = data or request.data.get('data', request.data)
         # print(data)
         uid = data.get('id')
@@ -168,33 +174,11 @@ class LocationViewSet(mixins.ListModelMixin,
                 http_status=status.HTTP_400_BAD_REQUEST,
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    # @action(methods=['GET', 'PATCH'], detail=False,
-    #         url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_uid>[^/.]+)')
-    # def by_evse_id(self, request: Request, country_code, party_id, uid, evse_uid, partial=True) -> OCPIResponse:
-    #     if request.method != 'GET' and not hasattr(request, 'credentials'):
-    #         return OCPIResponse('Credentials are needed for creating Locations.',
-    #                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-    #                             http_status=status.HTTP_401_UNAUTHORIZED)
-    #     location = get_object_or_404(Location, uid=uid, party_id=party_id, country_code=country_code)
-    #     evse = get_object_or_404(Evse, uid=evse_uid, location=location)
-    #     if request.method == 'PATCH':
-    #         print(f'*** Updating Evse {evse_uid} with new status {request.data.get("status")} '
-    #               f'from {request.credentials.party()}')
-    #         serializer = EvseSerializer(instance=evse, data=request.data, partial=partial)
-    #         if serializer.is_valid():
-    #             serializer.save()
-    #         else:
-    #             return OCPIResponse(serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
-    #                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-    #     else:
-    #         serializer = EvseSerializer(instance=evse)
-    #     return OCPIResponse(serializer.data)
-
     @transaction.atomic
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
+    @requires_premium
     def location_by_id(self, request: Request, country_code, party_id, uid) -> OCPIResponse:
-        # noinspection PyUnresolvedReferences
         location = get_object_or_404(Location,
                                      country_code=country_code,
                                      party_id=party_id,
@@ -220,6 +204,5 @@ class LocationViewSet(mixins.ListModelMixin,
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    # noinspection PyUnresolvedReferences
     queryset = Location.objects.all().order_by('created')
     serializer_class = LocationSerializer

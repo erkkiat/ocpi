@@ -2,7 +2,6 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
-from icecream import ic
 
 import ocpi22.logging as logging
 from decimal import Decimal
@@ -25,6 +24,7 @@ from ocpi22.commands.commands import send_start_command, send_stop_command, send
 from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.cpo.serializers import TariffQuickSerializer
 from ocpi22.generic_views import WebhookViewSet
+from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff
@@ -40,6 +40,7 @@ from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 
 from ocpiconnector.ocpi_identities import get_our_party
+from premium import requires_premium
 
 
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
@@ -64,6 +65,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         ).get(self.action_map.get('post'), None)
 
     @action(methods=('GET', 'POST'), detail=False)
+    @requires_premium
     def reserve(self, request):
         """
         This call sends an OCPI ReserveNow command to the CPO.
@@ -117,6 +119,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             )
 
     @action(methods=('GET', 'POST'), detail=False)
+    @requires_premium
     def start_charging(self, request):
         """
         This call starts the charging transaction (which equals the OCPI session in the roaming network).
@@ -168,6 +171,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             )
 
     @action(methods=('GET', 'POST'), detail=False)
+    @requires_premium
     def session_status(self, request):
         """
         Get the status of the ongoing session for this user. Currently only one session at a time is supported.
@@ -219,6 +223,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         return Response(data, status=response.status_code)
 
     @action(methods=('GET', 'POST'), detail=False)
+    @requires_premium
     def stop_charging(self, request):
         """
         This call stops the charging transaction.

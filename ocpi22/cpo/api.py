@@ -48,6 +48,7 @@ from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.ocpi_identities import Party, get_our_party
+from premium import requires_premium
 
 pp = PrettyPrinter(indent=4).pprint
 
@@ -305,6 +306,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=('GET', 'POST'), detail=False)
+    @requires_premium
     def authorize(self, request):
         """
         Authorize charging using a specific RFID token. Call this when the driver has tapped an RFID
@@ -392,6 +394,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=('GET', 'POST'), detail=False)
+    @requires_premium
     def start_transaction(self, request):
         """
         This call starts the charging transaction (which equals the OCPI session in the roaming network).
@@ -536,6 +539,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_409_CONFLICT)
 
     @action(methods=('GET', 'POST'), detail=False)
+    @requires_premium
     def meter_values(self, request):
         """
         Update the session progress, so that the MSP and finally the end user will see the status
@@ -642,6 +646,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_409_CONFLICT)
 
     @action(methods=('GET', 'POST'), detail=False)
+    @requires_premium
     def stop_transaction(self, request):
         """
         This call will end the OCPI Session. Call it when the cable is disconnected from the vehicle.

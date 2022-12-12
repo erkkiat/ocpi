@@ -2633,6 +2633,6 @@ def put_cdr(data):
     request = api_factory.post(reverse('cdr-list'))
     request.data = data
     request.user = get_fake_admin()
-    return CdrViewSet.put(request)
+    return CdrViewSet().put(request)
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)
