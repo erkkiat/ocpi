@@ -75,7 +75,7 @@ def consecutive_ranges(numbers):
 
 def weekday_range_to_str(weekday_list: list[int]) -> str:
     """
-    >>> weekday_range_to_str([0,1,2,3,4])
+    >>> weekday_range_to_str([0,1,3,2,4])
     'Weekdays'
     >>> weekday_range_to_str([0,1,5,6])
     'Mon-Tue, weekends'
@@ -86,7 +86,7 @@ def weekday_range_to_str(weekday_list: list[int]) -> str:
     """
     weekdays = list(calendar.day_abbr)
     results = []
-    ranges = consecutive_ranges(weekday_list)
+    ranges = consecutive_ranges(sorted(weekday_list))
 
     for start, stop in ranges:
         if start == stop:
