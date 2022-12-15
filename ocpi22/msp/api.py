@@ -186,8 +186,16 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             if serializer.is_valid():
                 session = serializer.validated_data.get('session')
                 if not session:
+                    # Let's see if we can find a Session started with an app token
                     token = request.user.accounts.first().app_token_id
                     session = get_session(token, (Session.PENDING, Session.ACTIVE, Session.COMPLETED, Session.INVALID))
+                    if not session:
+                        # Ok, maybe there's a Session started with an RFID
+                        tokens = Token.objects.filter(customer=request.user).values_list('uid', flat=True)
+                        sessions = Session.objects.filter(cdr_token_uid__in=tokens).order_by('-created')
+                        ic(tokens, sessions)
+                        # Let's get the most recent Session, if multiple
+                        session = sessions.first()
                     if not session:
                         return Response(dict(status=f'No session found for token `{token}`. '
                                                     f'There may not have been a Session update from CPO.'),
