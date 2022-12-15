@@ -125,9 +125,6 @@ def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
                       from_country_code: str, from_party_id: str, method='put',
                       credentials_id=None, title=None, **_kwargs) -> Optional[dict]:
-    if not settings.PREMIUM:
-        logging.info('Sending OCPI objects requires the OCPI Connector Premium')
-        return {}
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
     try:
