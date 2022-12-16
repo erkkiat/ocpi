@@ -210,6 +210,11 @@ def close_active_sessions_for_evse(evse: Union[Evse, str]):
         logging.error(f'Completed active Session {session.uid} which has been left hanging')
 
 
+def url_link(href, text, target='') -> str:
+    target = f' target="{target}" ' if target else ''
+    return f'<a{target} href="{href}">{text}</a>'
+
+
 class ChargePointViewSet(viewsets.GenericViewSet):
     """
     The charge point is connected to roaming networks through this API. It interprets the OCPP
@@ -614,6 +619,17 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             )
                         )
                     else:
+                        explain = {
+                            Session.PENDING: 'is waiting for the CPO to start the actual charging',
+                            Session.INVALID: 'has never started',
+                            Session.COMPLETED: 'has been finished',
+                            Session.RESERVATION: 'is a reservation waiting for the actual charging session',
+                        }.get(session.status, 'is in an unknown state')
+                        session_admin_link = url_link(reverse('admin:ocpi22_session_changelist'),
+                                                      'the sessions and their statuses', target='sessions')
+                        messages.warning(request, mark_safe('Only active sessions can be updated, and this session has '
+                                                            f'the status "{session.status}", which means that it {explain}. '
+                                                            f'You can see {session_admin_link}.'))
                         return Response(
                             dict(
                                 status_text=f'You can only update an Session which has a status "ACTIVE".',

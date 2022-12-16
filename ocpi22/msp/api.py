@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.utils.safestring import mark_safe
 
 import ocpi22.logging as logging
 from decimal import Decimal
@@ -151,7 +152,20 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     contract_id: str = serializer.validated_data.get('contract_id')
                     token = construct_adhoc_token(account.app_token_id, contract_id)
                     response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id)
-                    # ic(response)
+                    if response.status_code == status.HTTP_200_OK:
+                        messages.success(request,
+                                         'You have gotten a positive response from the CPO. '
+                                         'Next the CPO backend system will check if the charger '
+                                         'can actually start a charging session. If everything is ok, '
+                                         'you will receive a Session object followed by Session updates '
+                                         'with an updated kWh measurement.')
+                        session_status_url = reverse('roaming-session-status')
+                        webhook_url = reverse('msp-session-webhook')
+                        messages.info(request, mark_safe('Next, you can go and '
+                                                         f'<a class="alert-link" href="{session_status_url}">pull the Session</a>, '
+                                                         'if it is already available. A more efficient solution is to '
+                                                         f'<a class="alert-link" href="{webhook_url}">define a webhook URL</a> '
+                                                         'where the Session object will be pushed when an update is received from the CPO.'))
                     return self._language_response(response)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -197,13 +211,15 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                         # Let's get the most recent Session, if multiple
                         session = sessions.first()
                     if not session:
+                        messages.info(request, 'Seems that there is no Session update yet. The CPO needs to start '
+                                               'the Session first and then it will be sent over OCPI to you.')
                         return Response(dict(status=f'No session found for token `{token}`. '
                                                     f'There may not have been a Session update from CPO.'),
                                         status=status.HTTP_404_NOT_FOUND)
                 data = MspSessionSerializer(instance=session).data
-                messages = data.get('message')
-                if messages:
-                    data.update(message_display=get_message_by_language(messages, get_language()))
+                ocpi_messages = data.get('message')
+                if ocpi_messages:
+                    data.update(message_display=get_message_by_language(ocpi_messages, get_language()))
                 return Response(data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
