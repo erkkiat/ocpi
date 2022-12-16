@@ -5,7 +5,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22 import logging
+from ocpi22 import logging, choices
 from ocpi22.messages import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
@@ -45,6 +45,12 @@ class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
     step_size = serializers.IntegerField(min_value=0)
 
 
+class MultipleChoiceFieldList(serializers.MultipleChoiceField):
+    def to_representation(self, value):
+        # The output needs to be JSON serializable, type "set" is not
+        return list(super().to_representation(value))
+
+
 class RestrictionSerializer(SerializerCleanedUp):
     start_time = serializers.TimeField(required=False)
     end_time = serializers.TimeField(required=False)
@@ -64,8 +70,8 @@ class RestrictionSerializer(SerializerCleanedUp):
     min_duration = serializers.IntegerField(required=False)
     max_duration = serializers.IntegerField(required=False)
 
-    day_of_week = serializers.MultipleChoiceField(choices=TariffElement.DAY_OF_WEEK_CHOICES, required=False)
-    reservation = serializers.ChoiceField(choices=TariffElement.RESERVATION_CHOICES, required=False)
+    day_of_week = MultipleChoiceFieldList(choices=choices.DAY_OF_WEEK_CHOICES, required=False)
+    reservation = serializers.ChoiceField(choices=choices.RESERVATION_CHOICES, required=False)
 
 
 class ElementsSaveSerializer(SerializerCleanedUp):

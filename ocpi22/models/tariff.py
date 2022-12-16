@@ -11,11 +11,13 @@ from django.utils.html import format_html
 from multiselectfield import MultiSelectField
 from rest_framework.reverse import reverse
 
+from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
 from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
+from ocpiconnector.util import weekday_range_to_str, humanize_time
 
 
 # Todo: When the CPO deletes a Tariff, they will update the eMSPs systems
@@ -124,7 +126,6 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
 
     def price(self) -> str:
         """Format the price components in a readable form"""
-        # noinspection PyUnresolvedReferences
         components = [
             str(pc)
             for pc in [
@@ -132,7 +133,6 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
                 for element in self.tariff_elements.all()
             ]
         ]
-        # noinspection PyUnresolvedReferences
         return f"{' + '.join(components or [f'{self.uid}'])}{self.min_and_max_price()}"
 
     def link(self):
@@ -229,17 +229,23 @@ class TariffElement(models.Model, ModelUtilMixin):
 
     day_of_week = MultiSelectField(max_length=56, null=True, blank=True, choices=DAY_OF_WEEK_CHOICES)
 
-    RESERVATION_CHOICES = (
-        ('RESERVATION', 'Costs for a reservation'),
-        ('RESERVATION_EXPIRES', 'Costs for a reservation that expires'),
-    )
-    reservation = models.CharField(max_length=19, null=True, blank=True, choices=RESERVATION_CHOICES)
+    reservation = models.CharField(max_length=19, null=True, blank=True, choices=choices.RESERVATION_CHOICES)
 
     tariff = models.ForeignKey(Tariff, related_name='tariff_elements', on_delete=models.CASCADE)
 
+    def weekday_numbers(self) -> tuple:
+        return tuple(map(lambda x: choices.DAY_OF_WEEK_NUMBERS.get(x), list(self.day_of_week)))
+
+    def restrictions_str(self):
+        days_of_week_str = weekday_range_to_str(self.weekday_numbers())
+        times = f' {humanize_time(self.start_time)}-{humanize_time(self.end_time)}' if self.start_time else ''
+        return f' ({days_of_week_str}{times})' \
+            if days_of_week_str else f' (during {times})' \
+            if times else ''
+
     def __str__(self):
-        # noinspection PyUnresolvedReferences
-        return " + ".join([str(pc) for pc in self.price_components.all()])
+        result = " + ".join([str(pc) for pc in self.price_components.all()])
+        return f'{result}{self.restrictions_str()}'
 
 
 class PriceComponent(models.Model, ModelUtilMixin):
@@ -319,7 +325,6 @@ class PriceComponent(models.Model, ModelUtilMixin):
         return result
 
     def __str__(self):
-        # noinspection PyUnresolvedReferences
         return f'{format_currency(self.price or 0.0, self.tariff.currency)}' \
                f'{self._format_step_and_type()}{self._format_duration()}'
 

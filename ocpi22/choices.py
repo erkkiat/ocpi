@@ -246,3 +246,22 @@ class AuthorizationEnum(models.TextChoices):
     EXPIRED = 'EXPIRED'
     NO_CREDIT = 'NO_CREDIT'
     NOT_ALLOWED = 'NOT_ALLOWED'
+
+
+DAY_OF_WEEK_CHOICES = (
+    ('MONDAY', _('Monday')),
+    ('TUESDAY', _('Tuesday')),
+    ('WEDNESDAY', _('Wednesday')),
+    ('THURSDAY', _('Thursday')),
+    ('FRIDAY', _('Friday')),
+    ('SATURDAY', _('Saturday')),
+    ('SUNDAY', _('Sunday'))
+)
+
+# dict(MONDAY=0, TUESDAY=1,...)
+DAY_OF_WEEK_NUMBERS = dict([(DAY_OF_WEEK_CHOICES[x][0], x) for x in range(0, len(DAY_OF_WEEK_CHOICES))])
+
+RESERVATION_CHOICES = (
+    ('RESERVATION', _('Costs for a reservation')),
+    ('RESERVATION_EXPIRES', _('Costs for a reservation that expires')),
+)

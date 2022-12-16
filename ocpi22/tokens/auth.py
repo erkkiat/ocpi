@@ -46,8 +46,8 @@ def get_session_by_adhoc_token(token_uid: str, max_age_minutes,
         Q(cdr_token_uid=token_uid) & Q(status__in=statuses) & Q(created__gte=time_start)
     ).order_by('-created')
     if sessions.exists():
-        session = sessions.first()
-        return session
+        most_recent_session = sessions.first()
+        return most_recent_session
     return None
 
 

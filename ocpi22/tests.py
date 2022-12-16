@@ -32,7 +32,6 @@ from rest_framework.reverse import reverse
 from rest_framework.test import APIRequestFactory
 
 from cars import test_data
-from ocpi22.msp.account import Account
 from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
@@ -126,11 +125,8 @@ def create_tariff(*_args, **kwargs) -> Tariff:
         currency='EUR'
     )
     params.update(kwargs)
-    # noinspection PyUnresolvedReferences
     tariff = Tariff.objects.create(**params)
-    # noinspection PyUnresolvedReferences
     tariff_element = TariffElement.objects.create(tariff=tariff)
-    # noinspection PyUnresolvedReferences
     PriceComponent.objects.create(type='FLAT', price=1.0, step_size=1, tariff_element=tariff_element)
     return tariff
 

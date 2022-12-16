@@ -1,8 +1,12 @@
 import calendar
+import datetime
 import time
 from collections import OrderedDict
+from functools import lru_cache
 from gettext import gettext
-from typing import Any
+from typing import Any, Union
+
+from django.db.models import TimeField
 
 
 class Timer:
@@ -73,17 +77,24 @@ def consecutive_ranges(numbers):
     return ranges
 
 
-def weekday_range_to_str(weekday_list: list[int]) -> str:
+@lru_cache
+def weekday_range_to_str(weekday_list: tuple[int]) -> str:
     """
-    >>> weekday_range_to_str([0,1,3,2,4])
+    >>> weekday_range_to_str((0,1,3,2,4,5,6))
+    ''
+    >>> weekday_range_to_str((0,1,3,2,4))
     'Weekdays'
-    >>> weekday_range_to_str([0,1,5,6])
+    >>> weekday_range_to_str((0,1,5,6))
     'Mon-Tue, weekends'
-    >>> weekday_range_to_str([5,6])
+    >>> weekday_range_to_str(tuple())
+    ''
+    >>> weekday_range_to_str((5,6))
     'Weekends'
-    >>> weekday_range_to_str([0,1,3,4,6])
+    >>> weekday_range_to_str((0,1,3,4,6))
     'Mon-Tue, Thu-Fri, Sun'
     """
+    if not weekday_list:
+        return ''
     weekdays = list(calendar.day_abbr)
     results = []
     ranges = consecutive_ranges(sorted(weekday_list))
@@ -95,10 +106,20 @@ def weekday_range_to_str(weekday_list: list[int]) -> str:
             results.append(gettext('weekends'))
         elif start == 0 and stop == 4:
             results.append(gettext('weekdays'))
+        elif start == 0 and stop == 6:
+            pass
         else:
             results.append(f'{gettext(weekdays[start])}-{gettext(weekdays[stop])}')
 
-    result = ', '.join(results)
+    if not results:
+        return ''
 
+    result = ', '.join(results)
     # Capitalize the first letter, leave the rest alone
     return f'{result[0].upper()}{result[1:]}'
+
+
+def humanize_time(t: Union[datetime.time, TimeField]) -> str:
+    if not t.minute:
+        return str(t.hour)
+    return f'{t.hour}:{t.minute:02d}'
