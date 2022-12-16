@@ -49,14 +49,14 @@ app.conf.beat_schedule = {
         'task': 'ocpi22.tasks.check_still_alive',
         'schedule': STILL_ALIVE_FREQUENCY
     },
-    'set-spot-prices-every-hour': {
-        'task': 'ocpi22.tasks.set_spot_prices',
-        'schedule': crontab(minute=0)
-    },
-    'update-spot-prices-daily': {
-        'task': 'ocpi22.tasks.update_spot_prices',
-        'schedule': crontab(minute=59)
-    },
+    # 'set-spot-prices-every-hour': {
+    #     'task': 'ocpi22.tasks.set_spot_prices',
+    #     'schedule': crontab(minute=0)
+    # },
+    # 'update-spot-prices-daily': {
+    #     'task': 'ocpi22.tasks.update_spot_prices',
+    #     'schedule': crontab(minute=59)
+    # },
 }
 
 
