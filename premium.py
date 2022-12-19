@@ -36,24 +36,24 @@ class NoPremiumViewSet(ViewSet):
 
     def put(self, request):
         premium_message(request)
-        return OCPIResponse(PREMIUM_RESPONSE)
+        return OCPIResponse(PREMIUM_RESPONSE, status=status.HTTP_426_UPGRADE_REQUIRED)
 
     def post(self, request):
         premium_message(request)
-        return OCPIResponse(PREMIUM_RESPONSE)
+        return OCPIResponse(PREMIUM_RESPONSE, status=status.HTTP_426_UPGRADE_REQUIRED)
 
     def get(self, request):
         premium_message(request)
-        return OCPIResponse(PREMIUM_RESPONSE)
+        return OCPIResponse(PREMIUM_RESPONSE, status=status.HTTP_426_UPGRADE_REQUIRED)
 
     def list(self, request):
         premium_message(request)
-        return OCPIResponse(PREMIUM_RESPONSE)
+        return OCPIResponse(PREMIUM_RESPONSE, status=status.HTTP_426_UPGRADE_REQUIRED)
 
 
 PREMIUM_MESSAGE = 'This feature is available in the OCPI Connector Premium. ' \
                   'You can upgrade at http://ocpi.guide/compare/'
 PREMIUM_RESPONSE = dict(
     status_message=PREMIUM_MESSAGE,
-    status_code=2999, http_status=status.HTTP_426_UPGRADE_REQUIRED
+    status_code=2999
 )
