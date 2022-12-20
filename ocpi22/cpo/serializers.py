@@ -264,6 +264,11 @@ class MeterValuesSerializer(serializers.Serializer):
                   'When negative, more energy was feed into the grid then charged into the EV. '
                   'Default step_size is 1.',
     )
+    timestamp = serializers.DateTimeField(
+        required=False,
+        help_text="Optional timestamp for the meter values. Using this field is highly recommended, so that "
+                  "disruptions in connectivity won't distort cost calculation."
+    )
 
     def validate(self, attrs):
         if 'session' not in attrs and 'internal_reference' not in attrs:

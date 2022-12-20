@@ -1,7 +1,11 @@
 import doctest
 from collections import OrderedDict
+from datetime import datetime
+from decimal import Decimal
+from unittest.mock import patch
 
 import geopy
+import time_machine
 from django.test import TestCase
 
 from django.contrib.auth.models import AnonymousUser
@@ -15,6 +19,8 @@ from ocpi22.cpo.api import LocationQuickViewSet
 from ocpi22.cpo.serializers import LocationQuickSerializer
 from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.models.location import Location
+from ocpi22.models.session import Session
+from ocpi22.tests import meter_values
 
 api_factory = APIRequestFactory()
 
@@ -227,7 +233,7 @@ class TestQuickLocations(TestCase):
         for case in test_cases:
             data = case['data']
             if case.get('method') == 'PATCH':
-                response = patch(data, reverse('quick-tariff-list'), TariffQuickViewSet)
+                response = send_patch(data, reverse('quick-tariff-list'), TariffQuickViewSet)
             else:
                 response = put(data, reverse('quick-tariff-list'), TariffQuickViewSet)
             self.assertEqual(response.status_code, case.get('status', status.HTTP_200_OK),
@@ -240,6 +246,69 @@ class TestQuickLocations(TestCase):
         # ic(response.status_code, response.data)
 
 
+class TestChargingPeriods(TestCase):
+    fixtures = ['ocpi22/cpo/database-dumps/complex-tariffs-1.json']
+    maxDiff = None
+
+    def test_tariff_change(self):
+        meter_values_data = (
+            # (kWh, SoC, timestamp)
+            (2, 52, datetime(2022, 12, 25, 23, 55),  # Weekday 5 = Saturday
+             {  # Check send_update() parameters for the first call
+                 'kwh': Decimal('2.000'),
+                 'last_updated': '2022-12-14T17:03:19Z',
+                 'total_cost': {'excl_vat': 2.4, 'incl_vat': 2.98},
+                 'charging_periods': [
+                     OrderedDict([('start_date_time', '2022-12-14T17:03:19Z'), (
+                         'tariff', 'WEEKDAYS'), ('dimensions',
+                                                 [OrderedDict([('type', 'ENERGY'), ('volume', '2.0000')]),
+                                                  OrderedDict([('type', 'STATE_OF_CHARGE'), (
+                                                      'volume', '52.0000')])])])
+                 ]
+             }, {
+                 'internal_reference': None,
+                 'now_kwh': 2.0,
+                 'power': None,
+                 'price': '2,98zł',
+                 'session_id': 'FI*000*S*B58DDC4D3B304A47AD623C22147',
+                 'soc': 52.0,
+                 'start_kwh': 0.0,
+                 'status_text': 'Session updated',
+                 'total_kwh': Decimal('2.000')
+             }
+             ),
+            (7, 57, datetime(2022, 12, 25, 23, 58), None, None),
+            (10, 60, datetime(2022, 12, 26, 00, 1), None, None),  # Weekday 6 = Sunday
+            (13, 63, datetime(2022, 12, 26, 00, 3), None, None),
+            (15, 65, datetime(2022, 12, 26, 00, 5), None, None),
+            (45, 95, datetime(2022, 12, 26, 8, 0), None, None),
+        )
+
+        session_id = 'FI*000*S*B58DDC4D3B304A47AD623C22147'
+
+        session = Session.get_if_exists(uid=session_id)
+        self.assertEqual(
+            session.connector.tariff_ids.all().first().price(),
+            '0,50€/kWh (Weekdays 7-21) + 0,40€/kWh (Weekdays 21-7) + 0,30€/kWh (Weekends)',
+            'Price formatting works differently than expected'
+        )
+
+        for kwh, soc, timestamp, expected_args, expected_response in meter_values_data:
+            with self.subTest(kwh=kwh, timestamp=timestamp):
+                with time_machine.travel(timestamp), patch('ocpi22.ocpi.util.OcpiModule.send_updates') as send_updates:
+                    response = meter_values(dict(session_id=session_id, kwh=kwh, soc=soc))
+
+                self.assertEqual(response.status_code, 200, f'Unexpected response from meter_values(): {response.data}')
+                self.assertEqual(send_updates.call_count, 1, 'send_update() should have been called once')
+
+                args, kwargs = send_updates.call_args
+                if expected_args:
+                    self.assertDictEqual(args[0], expected_args, 'send_update() got different parameters than expected')
+
+                if expected_response:
+                    self.assertDictEqual(response.data, expected_response, 'Response differs from expected')
+
+
 def put(data, url, viewset):
     request = api_factory.put(url)
     request.data = data
@@ -247,7 +316,7 @@ def put(data, url, viewset):
     return viewset().put(request)
 
 
-def patch(data, url, viewset):
+def send_patch(data, url, viewset):
     request = api_factory.patch(url)
     request.data = data
     request.user = AnonymousUser

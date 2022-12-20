@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from django.contrib.auth.decorators import login_required
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -5,7 +7,7 @@ from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 
 import ocpi22.logging as logging
-from typing import Union
+from typing import Union, Optional
 
 import redis
 from django.conf import settings
@@ -30,6 +32,7 @@ from ocpi22.cpo.serializers import CpoSessionSerializer, \
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
+from ocpi22.models.tariff import TariffElement
 from ocpi22.routing import find_credentials
 from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
@@ -213,6 +216,127 @@ def close_active_sessions_for_evse(evse: Union[Evse, str]):
 def url_link(href, text, target='') -> str:
     target = f' target="{target}" ' if target else ''
     return f'<a{target} href="{href}">{text}</a>'
+
+
+def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
+    def convert(t):
+        if isinstance(t, str):
+            return time(*t.split(':'))
+        if isinstance(t, datetime):
+            return t.time()
+        return t
+
+    time1 = convert(time1)
+    time2 = convert(time2)
+    return time1 < time2
+
+
+def applying_tariff_element(_request, _serializer, session_instance: Session, kwh, power=None, soc=None, session=None,
+                            internal_reference=None, timestamp: datetime = None) -> Optional[TariffElement]:
+    def matching_weekday(wd, wd_numbers):
+        return not wd_numbers or wd in wd_numbers
+
+    def crossing_day_boundary(start_time: time, end_time: time) -> bool:
+        return start_time is not None and end_time is not None and start_time > end_time
+
+    timestamp = timestamp or timezone.now()
+    weekday = timestamp.weekday()
+    tariffs = session_instance.connector.tariff_ids.all()
+    for tariff in tariffs:
+        element: TariffElement
+        for element in tariff.tariff_elements.all():
+            weekday_numbers = element.weekday_numbers()
+            if matching_weekday(weekday, weekday_numbers):
+                if crossing_day_boundary(element.start_time, element.end_time):
+                    if time_lt(element.start_time, timestamp) or time_lt(timestamp, element.end_time):
+                        print('Matching weekday and time (crossing day boundary)')
+                        # ic(weekday, str(timestamp), element, [str(pc) for pc in element.price_components.all()])
+                        return element
+                elif not element.start_time or time_lt(element.start_time, timestamp):
+                    if not element.end_time or time_lt(timestamp, element.end_time):
+                        # Matching time range
+                        print('Matching weekday and time')
+                        # ic(weekday, str(timestamp), element, [str(pc) for pc in element.price_components.all()])
+                        return element
+    return None
+
+
+def process_meter_values(request, serializer, kwh, power=None, soc=None, session=None,
+                         internal_reference=None, timestamp=None):
+    next_url = reverse('chargepoint-stop-transaction')
+    if not session:
+        session = Session.get_if_exists(
+            internal_reference=internal_reference
+        )
+        if not session:
+            raise ValidationError(f'Session with internal reference `{internal_reference}` not found')
+        serializer.validated_data.pop('internal_reference', None)
+
+    # We found a valid Session
+    if session.status == Session.ACTIVE:
+        session.stop_kwh = kwh
+        session.update_last_updated()
+        session.calculate_price()
+        session.save(
+            update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
+        )
+
+        # tariff_element = applying_tariff_element(request, serializer, session, **serializer.validated_data)
+        # ic(tariff_element)
+        # assert tariff_element
+
+        chargingperiods = session.set_charging_period(serializer.validated_data)
+        session.send_updates(chargingperiods)
+        messages.success(request,
+                         mark_safe(f"You have updated the OCPI Session <b>{session.uid}</b> "
+                                   f"with {kwh} kWh."))
+        messages.info(request,
+                      mark_safe("It's good to send the kWh and power values frequently "
+                                "enough, so that the driver can see the up-to-date status "
+                                "from the mobile application. For DC charging, "
+                                "please update the State of Charge as well."))
+        messages.success(request,
+                         mark_safe(f"When you're done, next you can "
+                                   f"<a href=\"{next_url}\">stop the Session</a>."))
+
+        return Response(
+            dict(
+                status_text=f'Session updated',
+                session_id=session.uid,
+                internal_reference=session.internal_reference,
+                start_kwh=session.start_kwh,
+                now_kwh=kwh,
+                total_kwh=session.kwh,
+                power=power,
+                price=session.cost(),
+                soc=soc,
+            )
+        )
+    else:
+        explain = {
+            Session.PENDING: 'is waiting for the CPO to start the actual charging',
+            Session.INVALID: 'has never started',
+            Session.COMPLETED: 'has been finished',
+            Session.RESERVATION: 'is a reservation waiting for the actual charging session',
+        }.get(session.status, 'is in an unknown state')
+        session_admin_link = url_link(reverse('admin:ocpi22_session_changelist'),
+                                      'the sessions and their statuses', target='sessions')
+        messages.warning(request, mark_safe('Only active sessions can be updated, and this session has '
+                                            f'the status "{session.status}", which means that it {explain}. '
+                                            f'You can see {session_admin_link}.'))
+        return Response(
+            dict(
+                status_text=f'You can only update an Session which has a status "ACTIVE".',
+                session_id=session.uid,
+                internal_reference=session.internal_reference,
+                start_kwh=session.start_kwh,
+                now_kwh=kwh,
+                total_kwh=session.kwh,
+                power=power,
+                price=session.cost(),
+                soc=soc,
+            ), status=status.HTTP_403_FORBIDDEN
+        )
 
 
 class ChargePointViewSet(viewsets.GenericViewSet):
@@ -569,81 +693,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = MeterValuesSerializer(data=request.data)
                 if serializer.is_valid():
-                    next_url = reverse('chargepoint-stop-transaction')
-                    kwh = serializer.validated_data['kwh']
-                    soc = serializer.validated_data.get('soc')
-                    power = serializer.validated_data.get('power')
-                    session = serializer.validated_data.get('session')
-                    if not session:
-                        internal_reference = serializer.validated_data.get('internal_reference')
-                        session = Session.get_if_exists(
-                            internal_reference=internal_reference
-                        )
-                        if not session:
-                            raise ValidationError(f'Session with internal reference `{internal_reference}` not found')
-                        serializer.validated_data.pop('internal_reference', None)
-
-                    # We found a valid Session
-                    if session.status == Session.ACTIVE:
-                        session.stop_kwh = kwh
-                        session.update_last_updated()
-                        session.calculate_price()
-                        session.save(
-                            update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
-                        )
-                        chargingperiods = session.set_charging_period(serializer.validated_data)
-                        session.send_updates(chargingperiods)
-                        messages.success(request,
-                                         mark_safe(f"You have updated the OCPI Session <b>{session.uid}</b> "
-                                                   f"with {kwh} kWh."))
-                        messages.info(request,
-                                      mark_safe("It's good to send the kWh and power values frequently "
-                                                "enough, so that the driver can see the up-to-date status "
-                                                "from the mobile application. For DC charging, "
-                                                "please update the State of Charge as well."))
-                        messages.success(request,
-                                         mark_safe(f"When you're done, next you can "
-                                                   f"<a href=\"{next_url}\">stop the Session</a>."))
-
-                        return Response(
-                            dict(
-                                status_text=f'Session updated',
-                                session_id=session.uid,
-                                internal_reference=session.internal_reference,
-                                start_kwh=session.start_kwh,
-                                now_kwh=kwh,
-                                total_kwh=session.kwh,
-                                power=power,
-                                price=session.cost(),
-                                soc=soc,
-                            )
-                        )
-                    else:
-                        explain = {
-                            Session.PENDING: 'is waiting for the CPO to start the actual charging',
-                            Session.INVALID: 'has never started',
-                            Session.COMPLETED: 'has been finished',
-                            Session.RESERVATION: 'is a reservation waiting for the actual charging session',
-                        }.get(session.status, 'is in an unknown state')
-                        session_admin_link = url_link(reverse('admin:ocpi22_session_changelist'),
-                                                      'the sessions and their statuses', target='sessions')
-                        messages.warning(request, mark_safe('Only active sessions can be updated, and this session has '
-                                                            f'the status "{session.status}", which means that it {explain}. '
-                                                            f'You can see {session_admin_link}.'))
-                        return Response(
-                            dict(
-                                status_text=f'You can only update an Session which has a status "ACTIVE".',
-                                session_id=session.uid,
-                                internal_reference=session.internal_reference,
-                                start_kwh=session.start_kwh,
-                                now_kwh=kwh,
-                                total_kwh=session.kwh,
-                                power=power,
-                                price=session.cost(),
-                                soc=soc,
-                            ), status=status.HTTP_403_FORBIDDEN
-                        )
-
+                    return process_meter_values(request, serializer, **serializer.validated_data)
                 else:
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
