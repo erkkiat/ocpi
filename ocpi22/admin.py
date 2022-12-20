@@ -27,6 +27,7 @@ from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
 from ocpi22.msp.account import Account, Transaction
+from ocpi22.msp.models import Authorization
 from ocpi22.sessions.util import get_active_sessions
 from ocpi22.tokens.util import get_admin_token
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
@@ -580,6 +581,23 @@ class PaymentAdmin(admin.ModelAdmin):
     search_fields = ('amount', 'payment_method__customer__user__email')
 
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Authorization)
+class AuthorizationAdmin(admin.ModelAdmin):
+    model = Authorization
+    exclude = []
+    list_display = ('authorization_reference', 'session', 'max_price', 'created')
+    search_fields = ('authorization_reference', 'session__uid')
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
 

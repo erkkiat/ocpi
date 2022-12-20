@@ -20,6 +20,8 @@ from rest_framework.reverse import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum
+from ocpi22.commands.commands import send_stop_command
+from ocpi22.msp.models import Authorization
 from ocpi22.webhooks import send_to_webhook
 from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
@@ -448,13 +450,26 @@ class TariffViewSet(mixins.ListModelMixin,
             return OCPIResponse(errors=serializer.errors)
 
 
+def stop_session_if_money_runs_out(request, session):
+    if hasattr(session, 'authorization'):
+        authorization = session.authorization
+        if authorization:
+            reserved_money = authorization.max_price
+            if reserved_money is not None and session.total_cost_incl_vat is not None \
+                    and float(reserved_money) - session.total_cost_incl_vat < 2.0:
+                response = send_stop_command(session)
+                if response.status_code != status.HTTP_200_OK:
+                    logging.error(
+                        f'Unable to stop Session {session.uid} before the reserved money {reserved_money} runs out',
+                        request)
+
+
 class SessionViewSet(mixins.ListModelMixin,
                      GenericViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token_uid', 'authorization_reference']
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
-    # noinspection PyUnresolvedReferences
     queryset = Session.objects.all().order_by('created')
     serializer_class = SessionSerializer
     renderer_classes = RENDERERS
@@ -508,11 +523,19 @@ class SessionViewSet(mixins.ListModelMixin,
         )
         if serializer.is_valid():
             session = serializer.save()
+            try:
+                authorization = Authorization.objects.get(authorization_reference=session.authorization_reference)
+                authorization.session = session
+                authorization.save(update_fields=['session'])
+            except Authorization.DoesNotExist:
+                logging.error(f'Authorization {session.authorization_reference} is not known by MSP.', request)
+
             if 'last_updated' not in request.data:
                 session.update_last_updated()
             Session.send_hub_updates(serializer.data)
             outbound_data = MSPSessionCallbackSerializer.OutboundSerializer(instance=session).data
             send_to_webhook(data, MSPSessionCallbackSerializer, serialized_data=outbound_data)
+            stop_session_if_money_runs_out(request, session)
             return OCPIResponse(serializer.data,
                                 http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
         logging.error('Problem with PUT Session from '

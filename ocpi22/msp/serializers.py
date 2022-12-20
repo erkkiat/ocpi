@@ -63,6 +63,15 @@ class StartChargingSerializer(serializers.Serializer):
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='The contract ID for the EV driver who is charging'
     )
+    internal_reference = serializers.CharField(
+        max_length=36,
+        help_text='Optional session ID from the MSP platform or order number from the MSP billing system',
+        required=False, allow_null=True
+    )
+    max_price = serializers.DecimalField(
+        max_digits=6, decimal_places=2, required=False,
+        help_text='Optional maximum price for the Session (the amount of money reserved from the debit/credit card)'
+    )
 
     default_error_messages = default_error_messages
 
@@ -114,7 +123,8 @@ class MspSessionSerializer(SessionSerializer):
     display_start_time = serializers.DateTimeField(source='start_date_time', format="%H:%M", read_only=True)
     display_status = serializers.SerializerMethodField()
 
-    def get_display_status(self, session):
+    @staticmethod
+    def get_display_status(session):
         return session.get_status_display()
 
 

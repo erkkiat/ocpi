@@ -33,6 +33,7 @@ from rest_framework.test import APIRequestFactory
 
 from cars import test_data
 from ocpi22.msp.api import MspRoamingViewSet
+from ocpi22.msp.models import Authorization
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
@@ -1605,9 +1606,11 @@ class TestSession(TestCase):
         location = evse.location
         uid = '12345'
         credentials = Credentials.objects.first()
+        authorization_reference = 'MOCK-AUTHORIZATION-REFERENCE'
 
         session = create_session(location.uid, evse.uid, 1, token_id="T1", credentials=credentials, uid=uid,
-                                 billed_to=credentials.get_party_for_role(OcpiRolesEnum.EMSP.value))
+                                 billed_to=credentials.get_party_for_role(OcpiRolesEnum.EMSP.value),
+                                 authorization_reference=authorization_reference)
         self.assertTrue(bool(session))
         # ic(session)
 
@@ -1621,16 +1624,15 @@ class TestSession(TestCase):
         session_url = reverse('session-by-id', args=args)
         # ic(session_url)
 
-
         request = api_factory.patch(session_url)
         request.user = AnonymousUser
         request.credentials = Credentials.objects.get(pk=2)
+        Authorization.objects.create(authorization_reference=authorization_reference)
 
         for filename, status_code, cost, charging_period_count, expected_dict in test_cases:
             with self.subTest(filename=filename):
                 data = load_example(f'data/examples/{filename}.json')
                 request.data = data
-
                 webhook_post_mock.reset_mock()
                 with patch('ocpi22.util.redis_store.get') as get:
                     get.return_value = 'http://localhost/session/'
@@ -2230,11 +2232,14 @@ class TestCpoApi(TestCase):
                                  "The invoice resulting from RFID charging case differs from expected")
 
 
-def put_session_data(data):
+def put_session_data(data, create_authorization=True):
     request = api_factory.post(reverse('session-list'))
     request.data = data
     request.user = get_fake_admin()
     request.credentials = Credentials.objects.first()
+    if create_authorization:
+        authorization_reference = data.get('authorization_reference')
+        Authorization.objects.create(authorization_reference=authorization_reference)
     return SessionViewSet.put(request)
 
 
@@ -2252,11 +2257,22 @@ class TestPutSession(TestCase):
     def test_put_session_with_charging_periods(
             self,
             webhook_post_mock: Mock,
-            redis_store_mock: Mock,
+            _redis_store_mock: Mock,
     ):
+        # First I decided to reject Session PUT if there is no matching Authorization on the MSP end,
+        # But I realized that such Sessions need to be sorted by hand afterwards
+        #
+        # response = put_session_data(SessionData.meter_values_1, create_authorization=False)
+        # self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+        #                  'Creating a session with no authorization from the MSP should fail')
+        # sessions = Session.objects.filter(authorization_reference='FI*001-AUTH-REFERENCE')
+        # assert sessions.count() == 1
+        # sessions.delete()
+
         response = put_session_data(SessionData.meter_values_1)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                          'Creating a session with ChargingPeriods should succeed')
+        webhook_post_mock.assert_called_once()
 
 
 def meter_values(data):
@@ -2318,7 +2334,8 @@ class TestMspApi(TestCase):
             "location_id": "HELSINKI-1",
             "evse_id": "HELSINKI-3",
             "connector_id": "1",
-            "contract_id": "CONTRACT-123"
+            "contract_id": "CONTRACT-123",
+            "internal_reference": "REFERENCE-123"
         }
 
         user = User.objects.create_user('eki')
@@ -2361,11 +2378,44 @@ class TestMspApi(TestCase):
                                       'OCPI-to-country-code': 'FI',
                                       'OCPI-to-party-id': 'CPO',
                                       'content-type': 'application/json'},
-                          'json': {'authorization_reference': 'FI*MSP*A*MOCK-1',
+                          'json': {'authorization_reference': 'REFERENCE-123',
                                    'connector_id': '1',
                                    'evse_uid': 'HELSINKI-3',
                                    'location_id': 'HELSINKI-1',
-                                   'response_url': 'http://testserver.test/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/FI*MSP*A*MOCK-1',
+                                   'response_url': 'http://testserver.test/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/REFERENCE-123',
+                                   'token': OrderedDict([('country_code', 'FI'),
+                                                         ('party_id', 'MSP'),
+                                                         ('uid', 'FI*MSP*T*APP*MOCK-1'),
+                                                         ('type', 'APP_USER'),
+                                                         ('contract_id', 'CONTRACT-123')])},
+                          'timeout': 25
+                          },
+                         'START_SESSION Command sent to CPO differs from expected'
+                         )
+
+        settings.REQUIRE_WALLET_BALANCE = False
+
+        data["max_price"] = Decimal(30)
+        requests_post_mock.reset_mock()
+
+        response = start_charging(data, user)
+        self.assertEqual(response.status_code, status.HTTP_200_OK,
+                         'Expecting charging to start succesfully')
+        args, kwargs = requests_post_mock.call_args
+        self.assertEqual(args, ('http://fakehost/command/START_SESSION',),
+                         'URL for CPO Command START_SESSION differs from expected')
+        self.assertEqual(kwargs,
+                         {'headers': {'Authorization': 'Token VEhFSVJT',
+                                      'OCPI-from-country-code': 'FI',
+                                      'OCPI-from-party-id': 'MSP',
+                                      'OCPI-to-country-code': 'FI',
+                                      'OCPI-to-party-id': 'CPO',
+                                      'content-type': 'application/json'},
+                          'json': {'authorization_reference': 'REFERENCE-123',
+                                   'connector_id': '1',
+                                   'evse_uid': 'HELSINKI-3',
+                                   'location_id': 'HELSINKI-1',
+                                   'response_url': 'http://testserver.test/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/REFERENCE-123',
                                    'token': OrderedDict([('country_code', 'FI'),
                                                          ('party_id', 'MSP'),
                                                          ('uid', 'FI*MSP*T*APP*MOCK-1'),
@@ -2534,19 +2584,20 @@ class TestMspUserApi(TestCase):
         self.assertEquals(account.balance, Decimal("0.0"), 'User has some money out of nowhere')
 
         # Try to authorize charging with no money in account
-        token_id = 'EKI1'
-        Token.objects.filter(uid=token_id).update(customer=user)
-        response = msp_authorize(token_id)
-        # Todo: Test authorize also with Location and Evses
-        self.assertEquals(response.status_code, status.HTTP_401_UNAUTHORIZED,
-                          'Charging should not be authorized if account is empty')
-        self.assertEquals(response.data.get('data').get('allowed'), 'NO_CREDIT',
-                          'Declined authorization should have allowed status "NO_CREDIT"')
+        with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
+            token_id = 'EKI1'
+            Token.objects.filter(uid=token_id).update(customer=user)
+            response = msp_authorize(token_id)
+            # Todo: Test authorize also with Location and Evses
+            self.assertEquals(response.status_code, status.HTTP_401_UNAUTHORIZED,
+                              'Charging should not be authorized if account is empty')
+            self.assertEquals(response.data.get('data').get('allowed'), 'NO_CREDIT',
+                              'Declined authorization should have allowed status "NO_CREDIT"')
 
-        # Deposit some money to new user's account
-        account = user.accounts.first()
-        account.deposit(initial_balance)
-        self.assertEqual(account.balance, initial_balance, 'Account balance differs from expected after a deposit')
+            # Deposit some money to new user's account
+            account = user.accounts.first()
+            account.deposit(initial_balance)
+            self.assertEqual(account.balance, initial_balance, 'Account balance differs from expected after a deposit')
 
         #
         # Try an RFID

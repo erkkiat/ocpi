@@ -416,7 +416,8 @@ def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_r
                 return endpoints[0]
 
 
-def send_start_command(request, evse: Evse, token: Union[Token, str], connector_id=None, contract_id='') -> Response:
+def send_start_command(request, evse: Evse, token: Union[Token, str], connector_id=None, contract_id='',
+                       authorization_reference: str = None) -> Response:
     """
     As an eMSP we send an OCPI Command START_SESSION to the CPO
     """
@@ -429,7 +430,6 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
         if not isinstance(token, Token):
             token = construct_adhoc_token(token, contract_id=contract_id)
         token_data = TokenSerializer(token).data
-        authorization_reference = generate_auth_reference()
         data = dict(
             response_url=build_absolute_uri(
                 reverse('commands-command-result', args=("start", authorization_reference,))
@@ -496,9 +496,6 @@ def send_reserve_command(request, location: Location, evse: Evse, token: Union[T
 
 
 def send_stop_command(session: Session) -> Optional[Response]:
-    if session.status != session.ACTIVE:
-        raise ValidationError(f'Session {session.uid} is not active and cannot be stopped')
-
     country_code = session.location.country_code
     party_id = session.location.party_id
 

@@ -31,12 +31,13 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.msp.account import Account
+from ocpi22.msp.models import Authorization
 from ocpi22.msp.serializers import StartChargingSerializer, StopChargingSerializer, SessionStatusSerializer, \
     MspSessionSerializer, MSPAuthorizeCallbackSerializer, ReserveSerializer, \
     MSPChargePointStatusCallbackSerializer, MSPSessionCallbackSerializer
 from ocpi22.msp.util import get_message_by_language
 from ocpi22.ocpi.api import TokenViewSet
-from ocpi22.ocpi.util import OCPIResponse
+from ocpi22.ocpi.util import OCPIResponse, generate_auth_reference
 from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 
@@ -47,6 +48,57 @@ from premium import requires_premium
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
 
 # Todo: limit access to certain privilege holders
+
+
+def _language_response(response):
+    try:
+        data = response.json()
+        data = data.get('data', data) or data
+        message = data.get('message')
+    except Exception as e:
+        logging.error(f'Got a problematic message in response ({e}): {response.text[:500]}')
+        data = {}
+        message = None
+
+    if message:
+        data.update(message_display=get_message_by_language(data.get('message'), get_language()))
+    else:
+        data.update(message_display=data.get('status_message'))
+    return Response(data, status=response.status_code)
+
+
+def process_start_charging(request, serializer, location, evse, connector_id: str, contract_id: str,
+                           internal_reference: str = None, max_price: Decimal = None):
+    account = request.user.accounts.first() or Account.create(request.user)
+    if not max_price and settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
+        return Response(dict(
+            status_message='There is not enough balance in the account to start charging'),
+            status=status.HTTP_402_PAYMENT_REQUIRED
+        )
+    token = construct_adhoc_token(account.app_token_id, contract_id)
+    authorization_reference = internal_reference or generate_auth_reference()
+
+    response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id,
+                                                     authorization_reference)
+    auth = Authorization.objects.create(
+        authorization_reference=authorization_reference,
+        max_price=max_price
+    )
+    if response.status_code == status.HTTP_200_OK:
+        messages.success(request,
+                         'You have gotten a positive response from the CPO. '
+                         'Next the CPO backend system will check if the charger '
+                         'can actually start a charging session. If everything is ok, '
+                         'you will receive a Session object followed by Session updates '
+                         'with an updated kWh measurement.')
+        session_status_url = reverse('roaming-session-status')
+        webhook_url = reverse('msp-session-webhook')
+        messages.info(request, mark_safe('Next, you can go and '
+                                         f'<a class="alert-link" href="{session_status_url}">pull the Session</a>, '
+                                         'if it is already available. A more efficient solution is to '
+                                         f'<a class="alert-link" href="{webhook_url}">define a webhook URL</a> '
+                                         'where the Session object will be pushed when an update is received from the CPO.'))
+    return _language_response(response)
 
 
 class MspRoamingViewSet(viewsets.GenericViewSet):
@@ -102,7 +154,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     response: requests.Response = send_reserve_command(
                         request, location, evse, token, reservation_id, connector_id, contract_id, expiration
                     )
-                    return self._language_response(response)
+                    return _language_response(response)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -130,6 +182,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         * `HTTP_200_OK` when the charging session was started successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_402_PAYMENT_REQUIRED` when the user account doesn't have enough balance for charging
+        (if the internal payments account functionality is configured to be in use)
         * `HTTP_404_NOT_FOUND` when the Token, Location or EVSE doesn't exist
         * `HTTP_422_UNPROCESSABLE_ENTITY` when the response from CPO is broken
         * `HTTP_503_SERVICE_UNAVAILABLE` when there is no network connection to the charge point
@@ -141,32 +194,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             if request.method == 'POST':
                 serializer = StartChargingSerializer(data=request.data)
                 if serializer.is_valid():
-                    account = request.user.accounts.first() or Account.create(request.user)
-                    if settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
-                        return Response(dict(
-                            status_message='There is not enough balance in the account to start charging'),
-                            status=status.HTTP_402_PAYMENT_REQUIRED
-                        )
-                    evse: Evse = serializer.validated_data['evse']
-                    connector_id: str = serializer.validated_data.get('connector_id')
-                    contract_id: str = serializer.validated_data.get('contract_id')
-                    token = construct_adhoc_token(account.app_token_id, contract_id)
-                    response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id)
-                    if response.status_code == status.HTTP_200_OK:
-                        messages.success(request,
-                                         'You have gotten a positive response from the CPO. '
-                                         'Next the CPO backend system will check if the charger '
-                                         'can actually start a charging session. If everything is ok, '
-                                         'you will receive a Session object followed by Session updates '
-                                         'with an updated kWh measurement.')
-                        session_status_url = reverse('roaming-session-status')
-                        webhook_url = reverse('msp-session-webhook')
-                        messages.info(request, mark_safe('Next, you can go and '
-                                                         f'<a class="alert-link" href="{session_status_url}">pull the Session</a>, '
-                                                         'if it is already available. A more efficient solution is to '
-                                                         f'<a class="alert-link" href="{webhook_url}">define a webhook URL</a> '
-                                                         'where the Session object will be pushed when an update is received from the CPO.'))
-                    return self._language_response(response)
+                    return process_start_charging(request, serializer, **serializer.validated_data)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -229,23 +257,6 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
 
-    @staticmethod
-    def _language_response(response):
-        try:
-            data = response.json()
-            data = data.get('data', data) or data
-            message = data.get('message')
-        except Exception as e:
-            logging.error(f'Got a problematic message in response ({e}): {response.text[:500]}')
-            data = {}
-            message = None
-
-        if message:
-            data.update(message_display=get_message_by_language(data.get('message'), get_language()))
-        else:
-            data.update(message_display=data.get('status_message'))
-        return Response(data, status=response.status_code)
-
     @action(methods=('GET', 'POST'), detail=False)
     @requires_premium
     def stop_charging(self, request):
@@ -272,7 +283,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                                                         f'There may not have been a Session update from CPO.'),
                                             status=status.HTTP_404_NOT_FOUND)
                     response: requests.Response = send_stop_command(session)
-                    return self._language_response(response)
+                    return _language_response(response)
                 else:
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

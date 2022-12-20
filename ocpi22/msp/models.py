@@ -6,6 +6,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from gdpr_assist.signals import pre_anonymise
 
+from ocpi22.models.session import Session
+
 PHONE_FIELD_LENGTH = 20
 VEHICLE_FIELD_LENGTH = 40
 
@@ -51,4 +53,21 @@ def create_profile(sender, instance, created, **_kwargs):
 
 @receiver(pre_anonymise, sender=Profile)
 def anonymise_related(sender, instance, **kwargs):
+    # When user Profile is anonymised, propagate it to the Django User object
     instance.user.anonymise()
+
+
+class Authorization(models.Model):
+    authorization_reference = models.CharField(max_length=36, blank=True, db_index=True, default='')
+    session = models.OneToOneField(
+        Session, related_name='authorization', on_delete=models.SET_NULL, blank=True, null=True
+    )
+    max_price = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        session_str = self.session.uid if self.session else ''
+        return f'{self.authorization_reference} - {self.max_price} - {session_str}'
