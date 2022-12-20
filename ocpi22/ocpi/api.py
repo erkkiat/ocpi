@@ -304,6 +304,7 @@ class CdrViewSet(mixins.ListModelMixin,
             Cdr.send_hub_updates(serializer.data)
             if ocpi_platform.is_emsp:
                 update_balance(cdr)
+                # capture_reservation(cdr)
             return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED)
         return OCPIResponse(errors=serializer.errors)
 
@@ -514,7 +515,8 @@ class SessionViewSet(mixins.ListModelMixin,
             send_to_webhook(data, MSPSessionCallbackSerializer, serialized_data=outbound_data)
             return OCPIResponse(serializer.data,
                                 http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-        logging.error(f'Problem with PUT Session from {request.credentials}: {serializer.errors}')
+        logging.error('Problem with PUT Session from '
+                      f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}')
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, country_code=None, party_id=None, uid=None):
