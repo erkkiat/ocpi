@@ -18,7 +18,7 @@ from django.core.validators import RegexValidator
 from geopy import Nominatim
 from icecream import ic
 from requests import Response
-from rest_framework import serializers
+from rest_framework import serializers, versioning
 from rest_framework.exceptions import ValidationError
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.pagination import PageNumberPagination
@@ -623,3 +623,12 @@ def fill_out_location_address(data: dict, lat: Union[float, str], lng: Union[flo
     data['time_zone'] = get_time_zone(country_code_2_chars)
 
     return data
+
+
+class OCPIVersioning(versioning.BaseVersioning):
+    default_version = '2.2.1'
+
+    def determine_version(self, request, *args, **kwargs):
+        if 'ocpi/2.2/' in request.path:
+            return '2.2'
+        return '2.2.1'

@@ -34,6 +34,17 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         return self.create(data)
 
 
+class PowerTypeSerializer(serializers.Serializer):
+    def to_representation(self, power_type):
+        version = self.context.get('version', '2.2.1')
+        if version == '2.2':
+            power_type = dict(
+                AC_2_PHASE='AC_1_PHASE',
+                AC_2_PHASE_SPLIT='AC_1_PHASE',
+            ).get(power_type, power_type)
+        return power_type
+
+
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Connector
@@ -45,6 +56,7 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     max_electric_power = serializers.SerializerMethodField()
     tariff_ids = serializers.SerializerMethodField(required=False)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    power_type = PowerTypeSerializer()
 
     @staticmethod
     def get_tariff_ids(connector: Connector) -> list:
@@ -171,6 +183,10 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     capabilities = CapabilitySaveSerializer(many=True, required=False)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
+    # def validate(self, attrs):
+    #     ic(attrs)
+    #     return attrs
+
 
 class Coordinate(serializers.CharField):
     def to_representation(self, value):
@@ -207,7 +223,7 @@ class LocationSerializerBase(serializers.Serializer):
         pass
 
 
-class LocationSerializer(LocationSerializerBase, HyperlinkedModelSerializerCleanedUp):
+class LocationSerializer221(LocationSerializerBase, HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
         fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
@@ -248,6 +264,16 @@ class LocationSerializer(LocationSerializerBase, HyperlinkedModelSerializerClean
     def get_facilities(location: Location):
         # Create a list of facility names
         return [facility.name for facility in location.facilities.all()]
+
+
+class LocationSerializer(LocationSerializer221):
+    class Meta:
+        model = Location
+        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
+                  'name', 'address', 'city', 'postal_code', 'country',
+                  'coordinates', 'parking_type', 'evses',
+                  'operator', 'suboperator', 'owner',
+                  'facilities', 'time_zone', 'last_updated']
 
 
 class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerCleanedUp):
@@ -342,32 +368,25 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
         for e in evses:
             connectors = e.pop('connectors', [])
             capabilities = e.pop('capabilities', [])
-            # noinspection PyUnresolvedReferences
             try:
-                # noinspection PyUnresolvedReferences
                 evse = Evse.objects.get(uid=e.get('uid'), location=location)
                 for key, value in e.items():
                     if key not in ('uid', 'evse_id'):
                         setattr(evse, key, value)
                 evse.save()
             except Evse.DoesNotExist:
-                # noinspection PyUnresolvedReferences
                 evse = Evse.objects.create(**e, location=location)
             evse.capabilities.set(capabilities)
 
             for c in connectors:
-                # noinspection PyUnresolvedReferences
                 tariff_ids = c.pop('tariff_ids', [])
-                # noinspection PyUnresolvedReferences
                 try:
-                    # noinspection PyUnresolvedReferences
                     connector = Connector.objects.get(uid=c.get('uid'), evse=evse)
                     for key, value in c.items():
                         if key not in ['uid']:
                             setattr(connector, key, value)
                     connector.save()
                 except Connector.DoesNotExist:
-                    # noinspection PyUnresolvedReferences
                     connector = Connector.objects.create(**c, evse=evse)
                 connector.tariff_ids.set(tariff_ids)
 

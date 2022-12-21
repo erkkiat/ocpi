@@ -9,7 +9,7 @@ from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.utils.html import format_html
 from multiselectfield import MultiSelectField
-from rest_framework.reverse import reverse
+from util import reverse
 
 from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum

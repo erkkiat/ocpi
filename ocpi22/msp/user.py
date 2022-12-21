@@ -14,7 +14,7 @@ from rest_framework import serializers, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from util import reverse
 from rest_framework.serializers import Serializer
 
 from cars import cars

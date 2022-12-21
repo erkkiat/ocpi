@@ -9,11 +9,13 @@ from rest_framework.request import Request
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
-from ocpi22.locations.serializers import EvseSaveSerializer, EvseSerializer, LocationSerializer, LocationSaveSerializer
+from ocpi22.locations.serializers import EvseSaveSerializer, EvseSerializer, LocationSerializer, LocationSaveSerializer, \
+    LocationSerializer221
+from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.rendering import RENDERERS
-from ocpi22.util import matching_operator
+from ocpi22.util import matching_operator, OCPIVersioning
 from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 
 # Todo: Fetch all Locations for reliable data update, but fetch Tariffs first, since Location refers to them
@@ -44,7 +46,7 @@ class EvseViewSet(mixins.RetrieveModelMixin,
                 status_message='The EVSE is not owned by the specified party or is not in the specified country')
 
         if request.method == 'GET':
-            serializer = EvseSerializer(evse, context={'request': request})
+            serializer = EvseSerializer(evse, context={'version': request.version})
             return OCPIResponse(serializer.data)
 
         elif request.method in ('PATCH', 'PUT'):
@@ -56,7 +58,7 @@ class EvseViewSet(mixins.RetrieveModelMixin,
 
             partial = bool(request.method == 'PATCH')
 
-            serializer = EvseSerializer(evse, data=data, partial=partial, context={'request': request})
+            serializer = EvseSerializer(evse, data=data, partial=partial, context={'version': request.version})
             if serializer.is_valid():
                 serializer.save()
                 return OCPIResponse(serializer.data)
@@ -75,6 +77,7 @@ class LocationViewSet(mixins.ListModelMixin,
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = 'locations'
     renderer_classes = RENDERERS
+    versioning_class = OCPIVersioning
 
     lookup_field = "uid"
 
@@ -99,7 +102,7 @@ class LocationViewSet(mixins.ListModelMixin,
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False, url_name='by-evse-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
     @requires_premium
-    def by_evse_id(self, request, country_code, party_id, uid, evse_id) -> OCPIResponse:
+    def by_evse_id(self, request, country_code, party_id, uid, evse_id, **_kwargs) -> OCPIResponse:
         evse: Evse = get_object_or_404(Evse, uid=evse_id, location__uid=uid)
         location: Location = evse.location
 
@@ -109,7 +112,7 @@ class LocationViewSet(mixins.ListModelMixin,
                 status_message='The EVSE is not owned by the specified party or is not in the specified country')
 
         if request.method == 'GET':
-            serializer = EvseSerializer(evse, context={'request': request})
+            serializer = EvseSerializer(evse, context={'version': request.version})
             return OCPIResponse(serializer.data)
 
         elif request.method in ('PATCH', 'PUT'):
@@ -178,12 +181,19 @@ class LocationViewSet(mixins.ListModelMixin,
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     @requires_premium
-    def location_by_id(self, request: Request, country_code, party_id, uid) -> OCPIResponse:
+    def location_by_id(self, request: Request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
         location = get_object_or_404(Location,
                                      country_code=country_code,
                                      party_id=party_id,
                                      uid=uid)
-        serializer = LocationSerializer(location, context={'request': request})
+        if request.version == '2.2':
+            messages.info(request,
+                          'Please note that 2-phase connectors are missing in OCPI 2.2, so they are mapped to 1-phase. '
+                          'Also, the state is missing from the OCPI 2.2 postal address.')
+            serializer = LocationSerializer(location, context={'version': request.version})
+        else:
+            serializer = LocationSerializer221(location, context={'version': request.version})
+
         if request.method == 'GET':
             return OCPIResponse(serializer.data)
 

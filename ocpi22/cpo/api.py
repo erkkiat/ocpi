@@ -20,7 +20,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts, AuthorizationEnum
@@ -72,9 +72,8 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
     def put(request, evse_id=None):
         if not evse_id:
             evse_id = request.data['uid']
-        # noinspection PyUnresolvedReferences
         evse = Evse.objects.get(uid=evse_id)
-        serializer = EvseSerializer(evse, data=request.data)
+        serializer = EvseSerializer(evse, data=request.data, context={'version': request.version})
         if serializer.is_valid():
             location = serializer.save()
             location.send_updates()
@@ -100,11 +99,11 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
         # (Not needed if MSP and CPO are separate instances, since the CPO only has their own charge points)
 
         if request.method == 'GET':
-            serializer = EvseSerializer(evse, context={'request': request})
+            serializer = EvseSerializer(evse, context={'version': request.version})
             return Response(serializer.data)
 
         elif request.method == 'PATCH':
-            serializer = EvseSerializer(evse, data=request.data, partial=True, context={'request': request})
+            serializer = EvseSerializer(evse, data=request.data, partial=True, context={'version': request.version})
             if serializer.is_valid():
                 evse: Evse = serializer.save()
                 evse.location.send_updates()

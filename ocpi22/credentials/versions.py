@@ -1,25 +1,33 @@
+from django.conf import settings
 from rest_framework import routers, viewsets
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
 
 from ocpi22.ocpi.util import OCPIResponse
+from ocpi22.util import build_absolute_uri
+from util import reverse
 from ocpiconnector.ocpi_identities import ocpi_platform
 
 _versions_url = None
+_versions_url_221 = None
 
 
-def get_versions_dict(request):
+def get_versions_dict():
     # Called often by hubinfo, make sure no excess steps
     # Cannot use caching due to changing requests
 
-    global _versions_url
+    global _versions_url, _versions_url_221
     if not _versions_url:
-        _versions_url = request.build_absolute_uri(reverse('ocpi-22'))
+        _versions_url = build_absolute_uri(settings.OCPI_22_URL)
+    if not _versions_url_221:
+        _versions_url_221 = build_absolute_uri(settings.OCPI_221_URL)
 
     return [
         dict(
             version='2.2', url=_versions_url
+        ),
+        dict(
+            version='2.2.1', url=_versions_url_221
         )
     ]
 
@@ -29,22 +37,22 @@ def get_endpoints_dict(request) -> dict:
     S = "SENDER"
 
     result = dict(
-        version="2.2",
+        version=request.version,
         endpoints=[
             dict(
                 identifier="credentials",
                 role=R,
-                url=request.build_absolute_uri(reverse('credentials-list'))
+                url=request.build_absolute_uri(reverse('credentials-list', args=[request.version]))
             ),
             dict(
                 identifier="credentials",
                 role=S,
-                url=request.build_absolute_uri(reverse('credentials-list'))
+                url=request.build_absolute_uri(reverse('credentials-list', args=[request.version]))
             ),
             dict(
                 identifier="hubclientinfo",
                 role=R,
-                url=request.build_absolute_uri(reverse('clientinfo-list'))
+                url=request.build_absolute_uri(reverse('clientinfo-list', args=[request.version]))
             ),
             # Todo: Locations receiver and Tokens sender are for simulator, and should only be active when in debug
         ]
@@ -55,7 +63,7 @@ def get_endpoints_dict(request) -> dict:
             dict(
                 identifier="hubclientinfo",
                 role=S,
-                url=request.build_absolute_uri(reverse('clientinfo-list'))
+                url=request.build_absolute_uri(reverse('clientinfo-list', args=[request.version]))
             ),
         ]
 
@@ -64,32 +72,32 @@ def get_endpoints_dict(request) -> dict:
             dict(
                 identifier="locations",
                 role=S,
-                url=request.build_absolute_uri(reverse('location-list'))
+                url=request.build_absolute_uri(reverse('location-list', args=[request.version]))
             ),
             dict(
                 identifier="commands",
                 role=R,
-                url=request.build_absolute_uri(reverse('commands-list'))
+                url=request.build_absolute_uri(reverse('commands-list', args=[request.version]))
             ),
             dict(
                 identifier="tariffs",
                 role=S,
-                url=request.build_absolute_uri(reverse('tariff-list'))
+                url=request.build_absolute_uri(reverse('tariff-list', args=[request.version]))
             ),
             dict(
                 identifier="sessions",
                 role=S,
-                url=request.build_absolute_uri(reverse('session-list'))
+                url=request.build_absolute_uri(reverse('session-list', args=[request.version]))
             ),
             dict(
                 identifier="cdrs",
                 role=S,
-                url=request.build_absolute_uri(reverse('cdr-list'))
+                url=request.build_absolute_uri(reverse('cdr-list', args=[request.version]))
             ),
             dict(
                 identifier="tokens",
                 role=R,
-                url=request.build_absolute_uri(reverse('token-list'))
+                url=request.build_absolute_uri(reverse('token-list', args=[request.version]))
             ),
         ]
     if ocpi_platform.is_emsp or ocpi_platform.is_hub:
@@ -98,32 +106,32 @@ def get_endpoints_dict(request) -> dict:
             dict(
                 identifier="tokens",
                 role=R,
-                url=request.build_absolute_uri(reverse('token-list'))
+                url=request.build_absolute_uri(reverse('token-list', args=[request.version]))
             ),
             dict(
                 identifier="locations",
                 role=R,
-                url=request.build_absolute_uri(reverse('location-list'))
+                url=request.build_absolute_uri(reverse('location-list', args=[request.version]))
             ),
             dict(
                 identifier="cdrs",
                 role=R,
-                url=request.build_absolute_uri(reverse('cdr-list'))
+                url=request.build_absolute_uri(reverse('cdr-list', args=[request.version]))
             ),
             dict(
                 identifier="tokens",
                 role=S,
-                url=request.build_absolute_uri(reverse('token-list'))
+                url=request.build_absolute_uri(reverse('token-list', args=[request.version]))
             ),
             dict(
                 identifier="tariffs",
                 role=R,
-                url=request.build_absolute_uri(reverse('tariff-list'))
+                url=request.build_absolute_uri(reverse('tariff-list', args=[request.version]))
             ),
             dict(
                 identifier="sessions",
                 role=R,
-                url=request.build_absolute_uri(reverse('session-list'))
+                url=request.build_absolute_uri(reverse('session-list', args=[request.version]))
             ),
         ]
     return result
@@ -135,7 +143,6 @@ class OCPIBaseView(routers.APIRootView):
     below.
     """
 
-    # noinspection PyUnresolvedReferences
     def get(self, request, *args, **kwargs):
         """
         Compile the example URLs for the front page
@@ -143,7 +150,7 @@ class OCPIBaseView(routers.APIRootView):
 
         result = dict(
             versions=request.build_absolute_uri(
-                reverse('base-versions')
+                reverse('base-versions', request=request)
             ),
             # openapi=request.build_absolute_uri(
             #     reverse('openapi-schema')
@@ -163,9 +170,18 @@ class VersionsViewSet(viewsets.ViewSet):
     publicly_visible = True  # This is understood by OCPIPermission
 
     @action(methods=['GET'], url_path='versions', detail=False)
-    def versions(self, request, *_args, **_kwargs):
+    def versions(self, request, version='2.2.1', *_args, **_kwargs):
         """
         This is the OCPI "versions" endpoint. A requesting party will use this information
         for choosing the OCPI version used between us and them.
         """
-        return OCPIResponse(get_versions_dict(request))
+        return OCPIResponse(get_versions_dict())
+
+
+@api_view()
+def versions(request, version='2.2.1', *_args, **_kwargs):
+    """
+    This is the OCPI "versions" endpoint. A requesting party will use this information
+    for choosing the OCPI version used between us and them.
+    """
+    return OCPIResponse(get_versions_dict())

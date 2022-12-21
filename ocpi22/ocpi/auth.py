@@ -2,12 +2,13 @@ import base64
 import binascii
 from functools import cache
 
+from django.conf import settings
 from django.utils.functional import cached_property
-from icecream import ic
 from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
-from rest_framework.reverse import reverse
+
+from util import reverse
 
 from ocpi22.models.credentials import Credentials
 from ocpiconnector.settings import PUBLIC_VIEWS
@@ -24,8 +25,10 @@ def check_auth_token(request, token: str) -> bool:
     def allowed_for_token_a():
         return (
             reverse('base-versions'),  # The "Versions" endpoint
-            reverse('credentials-list'),  # Getting the Credentials
-            reverse('ocpi-22'),  # The "Endpoints" endpoint
+            reverse('credentials-list', args=['2.2']),  # Getting the Credentials
+            reverse('credentials-list', args=['2.2.1']),  # Getting the Credentials
+            settings.OCPI_22_URL,  # The "Endpoints" endpoint
+            settings.OCPI_221_URL,  # The "Endpoints" endpoint
             '/',  # The front page, which serves as HTML page and versions endpoint
         )
 
@@ -101,6 +104,7 @@ class OCPIPermission(DjangoModelPermissions):
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
         # Remove the "Token" keyword if present to get just the token value
+
         token = self.get_token(request)
         # Check for token authentication, secondarily basic auth
         if token and check_auth_token(request, token):

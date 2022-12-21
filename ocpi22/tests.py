@@ -28,7 +28,9 @@ from django.test import TestCase, Client
 from requests import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from rest_framework.reverse import reverse
+
+from ocpiconnector.util import recursive_sort_dict
+from util import reverse
 from rest_framework.test import APIRequestFactory
 
 from cars import test_data
@@ -189,6 +191,7 @@ class ApiPutTests(TestCase):
                       args=[loc.country_code, loc.party_id, loc.uid, evse.uid])
 
         request = api_factory.get(url)
+        request.version = '2.2.1'
         viewset = LocationViewSet()
         response = viewset.by_evse_id(request, loc.country_code, loc.party_id, loc.uid, evse.uid)
         data = response.data.get('data')
@@ -202,6 +205,7 @@ class ApiPutTests(TestCase):
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
 
         request = api_factory.get(url)
+        request.version = '2.2.1'
         loc = self.location
         viewset = LocationViewSet()
         response = viewset.location_by_id(request, loc.country_code, loc.party_id, loc.uid)
@@ -537,7 +541,6 @@ class ApiPutTests(TestCase):
 
             # Verify the saved data
             uid = data.get('id')
-            # noinspection PyUnresolvedReferences
             saved_cdr = Cdr.objects.get(uid=uid)
             saved_data = CdrSerializer(saved_cdr).data
             # ic(saved_data)
@@ -570,10 +573,11 @@ class ApiPutTests(TestCase):
 
             saved_data = json.loads(json.dumps(saved_data))
             # Remove non-OCPI and unsupported fields
-            ignored_fields = ('credit', 'total_time_cost', 'charging_periods', 'tariff_alt_text')
+            ignored_fields = ('credit', 'total_time_cost', 'charging_periods', 'tariff_alt_text', 'detail_url')
             for i in ignored_fields:
                 saved_data.pop(i, None)
                 data.pop(i, None)
+            saved_data['tariffs'][0].pop('detail_url')
             for t in range(0, len(saved_data['tariffs'])):
                 del saved_data['tariffs'][t]['tariff_alt_text']
             self.assertEqual(saved_data, data)
@@ -643,6 +647,7 @@ class ApiPutTests(TestCase):
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
 
         request = api_factory.get(url)
+        request.version = '2.2.1'
         loc = self.location
         viewset = LocationViewSet()
         response = viewset.location_by_id(request, loc.country_code, loc.party_id, loc.uid)
@@ -1173,7 +1178,8 @@ class UpdatePartiesTest(TestCase):
         # Get the existing admin token
         token = get_admin_token()
         serializer = TokenSerializer(token)
-        expected = {'contract_id': 'INTERNAL',
+        expected = {'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/MSP/FI*MSP*T*ADMIN*TOKEN',
+                    'contract_id': 'INTERNAL',
                     'country_code': 'FI',
                     'issuer': 'FI*MSP',
                     'party_id': 'MSP',
@@ -1211,7 +1217,8 @@ class UpdatePartiesTest(TestCase):
                             'OCPI-to-country-code': 'FI',
                             'OCPI-to-party-id': 'HUB',  # The recipient comes from the Credentials in the fixture
                             'content-type': 'application/json'}
-        expected_json = {'contract_id': 'CONTRACT',
+        expected_json = {'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/MSP/UID',
+                         'contract_id': 'CONTRACT',
                          'country_code': 'FI',
                          'issuer': 'issuer',
                          'last_updated': '2022-01-01T12:00:00Z',
@@ -1221,7 +1228,7 @@ class UpdatePartiesTest(TestCase):
                          'valid': True,
                          'whitelist': 'ALWAYS'}
 
-        self.assertEqual(kwargs['url'], 'http://localhost:8001/ocpi/cpo/2.2/tokens',
+        self.assertEqual(kwargs['url'], 'http://localhost:8001/ocpi/2.2.1/tokens',
                          'Expected to send the update to another address')
         assert (isinstance(expected_headers, dict))
         assert (isinstance(kwargs['headers'], dict))
@@ -1253,9 +1260,9 @@ class TestCredentials(TestCase):
         # ic(url, _args, _kwargs)
 
         response_data = {
-            'http://localhost/versions': {'data': [{'url': 'http://localhost/ocpi/cpo/2.2/', 'version': '2.2'}]},
-            'http://localhost/ocpi/cpo/2.2/': ocpi_endpoints_response,
-            'http://localhost/ocpi/cpo/2.2/credentials': ocpi_endpoints_response,
+            'http://localhost/versions': {'data': [{'url': 'http://localhost/ocpi/2.2.1/', 'version': '2.2'}]},
+            'http://localhost/ocpi/2.2.1/': ocpi_endpoints_response,
+            'http://localhost/ocpi/2.2.1/credentials': ocpi_endpoints_response,
         }
         return MockResponse(response_data[url], 200)
 
@@ -1371,8 +1378,10 @@ class TestObjectPull(TestCase):
             assert 'DOCTYPE' not in json_text, f"URL {url} is returning HTML, when excepting JSON"
             content = json.loads(json_text)
             response_headers = dict(result.headers)
-            assert content == expected_get_responses[url], f"Expecting a different result for {url}."
-            assert response_headers == expected_get_headers[url], f"Expecting different headers for {url}."
+            assert content == expected_get_responses[url], \
+                f"Expecting a different result for {url}: {content}"
+            assert response_headers == expected_get_headers[url], \
+                f"Expecting different headers for {url}: {response_headers}"
             return result
         except (AssertionError, KeyError) as e:
             ic(url, response_headers, expected_get_headers[url])
@@ -1414,32 +1423,33 @@ class CredentialsTest(TestCase):
         counter = 0
         ocpi_object: OcpiModule
         for ocpi_object, endpoints_result in testcases:
-            roles = ocpi_object.send_updates_to
-            self.assertIsInstance(
-                roles, tuple,
-                f'{ocpi_object} needs to have a send_updates_to specified as a tuple, so that caching works.'
-            )
+            with self.subTest(endpoints_result=endpoints_result):
+                roles = ocpi_object.send_updates_to
+                self.assertIsInstance(
+                    roles, tuple,
+                    f'{ocpi_object} needs to have a send_updates_to specified as a tuple, so that caching works.'
+                )
 
-            cache_info = find_endpoints_by_roles.cache_info()
-            self.assertEqual((cache_info.hits, cache_info.misses), (counter, counter),
-                             f"Cache doesn't work as expected for {ocpi_object}")
-            # Check that the cache is in use
-            find_endpoints_by_roles(roles, ocpi_object.ocpi_module_name)
-            cache_info = find_endpoints_by_roles.cache_info()
-            self.assertEqual((cache_info.hits, cache_info.misses), (counter, counter + 1),
-                             f"Cache doesn't work as expected for {ocpi_object}")
+                cache_info = find_endpoints_by_roles.cache_info()
+                self.assertEqual((cache_info.hits, cache_info.misses), (counter, counter),
+                                 f"Cache doesn't work as expected for {ocpi_object}")
+                # Check that the cache is in use
+                find_endpoints_by_roles(roles, ocpi_object.ocpi_module_name)
+                cache_info = find_endpoints_by_roles.cache_info()
+                self.assertEqual((cache_info.hits, cache_info.misses), (counter, counter + 1),
+                                 f"Cache doesn't work as expected for {ocpi_object}")
 
-            endpoints = find_endpoints_by_roles(roles, ocpi_object.ocpi_module_name)
-            cache_info = find_endpoints_by_roles.cache_info()
-            self.assertEqual((cache_info.hits, cache_info.misses), (counter + 1, counter + 1),
-                             f"Cache doesn't work as expected for {ocpi_object}")
-            counter += 1
+                endpoints = find_endpoints_by_roles(roles, ocpi_object.ocpi_module_name)
+                cache_info = find_endpoints_by_roles.cache_info()
+                self.assertEqual((cache_info.hits, cache_info.misses), (counter + 1, counter + 1),
+                                 f"Cache doesn't work as expected for {ocpi_object}")
+                counter += 1
 
-            endpoints = [e[:4] for e in endpoints]  # Skip the Credentials, I don't know how to match it
-            self.assertEqual(
-                endpoints, endpoints_result,
-                f'Cannot find the right endpoints for {roles} to send updates to'
-            )
+                endpoints = [e[:4] for e in endpoints]  # Skip the Credentials, I don't know how to match it
+                self.assertEqual(
+                    endpoints, endpoints_result,
+                    f'Cannot find the right endpoints for {roles} to send updates to'
+                )
 
         # Check that changes to Credentials reset the endpoint cache
         self.assertGreater(find_endpoints_by_roles.cache_info().currsize, 0)
@@ -1481,7 +1491,8 @@ class TestRouting(TestCase):
                  'direct': True,
                  'identifier': OcpiModuleEnum.LOCATIONS.value,
                  'token_base64': 'dGhlaXJzLTI=',
-                 'url': 'http://localhost:8001/ocpi/nap/2.2/locations'},
+                 'url': 'http://localhost:8001/ocpi/nap/2.2/locations',
+                 'version': '22'},
                 'Expected route not found')
         except AttributeError as e:
             self.fail(f"find_route() is probably not cached: {e}")
@@ -1497,7 +1508,8 @@ class TestRouting(TestCase):
              'direct': False,
              'identifier': 'locations',
              'token_base64': 'dGhlaXJzLTM=',
-             'url': 'http://localhost:8001/ocpi/hub/2.2/locations'},
+             'url': 'http://localhost:8001/ocpi/hub/2.2/locations',
+             'version': '22'},
             'Expecting a different route through hub')
 
     def mocked_request(*_args, **kwargs):
@@ -1704,16 +1716,17 @@ class TestCpoApi(TestCase):
         )
 
         for case in testcases:
-            cpo_request.data = case.get('request')
-            cpo_response = cpo_viewset.status_change(cpo_request)
+            with self.subTest(request=case.get('request')):
+                cpo_request.data = case.get('request')
+                cpo_response = cpo_viewset.status_change(cpo_request)
 
-            self.assertEqual(cpo_response.status_code, case.get('status_code'),
-                             'Status change should succeed')
-            self.assertDictEqual(cpo_response.data, case.get('response'),
-                                 f'Case request {case.get("request")}, response {case.get("response")}')
-            if cpo_response.status_code != 404:
-                evse = Evse.objects.get(uid=case.get('request').get('evse_id'))
-                self.assertEqual(evse.status, case.get('evse_status'))
+                self.assertEqual(cpo_response.status_code, case.get('status_code'),
+                                 'Status change should succeed')
+                self.assertDictEqual(cpo_response.data, case.get('response'),
+                                     f'Case request {case.get("request")}, response {case.get("response")}')
+                if cpo_response.status_code != 404:
+                    evse = Evse.objects.get(uid=case.get('request').get('evse_id'))
+                    self.assertEqual(evse.status, case.get('evse_status'))
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.models.session.OcpiModule.send_update_to_interested_parties')
@@ -1801,7 +1814,8 @@ class TestCpoApi(TestCase):
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
                                    'total_kwh': Decimal('3.450')},
-                session_data={'auth_method': 'AUTH_REQUEST',
+                session_data={'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                              'auth_method': 'AUTH_REQUEST',
                               'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                               'cdr_token': OrderedDict([('uid', 'EKI1'),
                                                         ('type', 'RFID'),
@@ -1849,7 +1863,8 @@ class TestCpoApi(TestCase):
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
                                    'total_kwh': Decimal('33.450')},
-                session_data={'auth_method': 'AUTH_REQUEST',
+                session_data={'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                              'auth_method': 'AUTH_REQUEST',
                               'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                               'cdr_token': OrderedDict([('uid', 'EKI1'),
                                                         ('type', 'RFID'),
@@ -1937,6 +1952,7 @@ class TestCpoApi(TestCase):
         with time_machine.travel(faketime + timedelta(minutes=60), tick=False):
             response = stop_transaction(data)
 
+        # ic(recursive_sort_dict(response.data), recursive_sort_dict(StopTransactionResponses.stop1))
         self.assertEqual(response.data, StopTransactionResponses.stop1,
                          'stop_transaction response differs from expected')
         send_updates_mock.assert_called()
@@ -2327,7 +2343,7 @@ class TestMspApi(TestCase):
            )
     @patch('ocpi22.webhooks.requests.post')
     def test_app_charging(self,
-                          webhook_post_mock: Mock,
+                          _webhook_post_mock: Mock,
                           requests_post_mock: Mock,
                           _uuid4_mock: Mock):
         data = {
@@ -2366,32 +2382,33 @@ class TestMspApi(TestCase):
 
         response = start_charging(data, user)
 
+        # ic(recursive_sort_dict(response.data), recursive_sort_dict(self.accepted_result.get('data')))
         self.assertEqual(response.data, self.accepted_result.get('data'),
                          'Response from CPO for START_SESSION differs from expected')
         args, kwargs = requests_post_mock.call_args
         self.assertEqual(args, ('http://fakehost/command/START_SESSION',),
                          'URL for CPO Command START_SESSION differs from expected')
-        self.assertEqual(kwargs,
-                         {'headers': {'Authorization': 'Token VEhFSVJT',
-                                      'OCPI-from-country-code': 'FI',
-                                      'OCPI-from-party-id': 'MSP',
-                                      'OCPI-to-country-code': 'FI',
-                                      'OCPI-to-party-id': 'CPO',
-                                      'content-type': 'application/json'},
-                          'json': {'authorization_reference': 'REFERENCE-123',
-                                   'connector_id': '1',
-                                   'evse_uid': 'HELSINKI-3',
-                                   'location_id': 'HELSINKI-1',
-                                   'response_url': 'http://testserver.test/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/REFERENCE-123',
-                                   'token': OrderedDict([('country_code', 'FI'),
-                                                         ('party_id', 'MSP'),
-                                                         ('uid', 'FI*MSP*T*APP*MOCK-1'),
-                                                         ('type', 'APP_USER'),
-                                                         ('contract_id', 'CONTRACT-123')])},
-                          'timeout': 25
-                          },
-                         'START_SESSION Command sent to CPO differs from expected'
-                         )
+        expected_data_sent = {'headers': {'Authorization': 'Token VEhFSVJT',
+                                          'OCPI-from-country-code': 'FI',
+                                          'OCPI-from-party-id': 'MSP',
+                                          'OCPI-to-country-code': 'FI',
+                                          'OCPI-to-party-id': 'CPO',
+                                          'content-type': 'application/json'},
+                              'json': {'authorization_reference': 'REFERENCE-123',
+                                       # 'connector_id': '1', # OCPI 2.2 should exclude the connector_id from remote command
+                                       'evse_uid': 'HELSINKI-3',
+                                       'location_id': 'HELSINKI-1',
+                                       'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/REFERENCE-123',
+                                       'token': dict([('country_code', 'FI'),
+                                                      ('party_id', 'MSP'),
+                                                      ('uid', 'FI*MSP*T*APP*MOCK-1'),
+                                                      ('type', 'APP_USER'),
+                                                      ('contract_id', 'CONTRACT-123')])},
+                              'timeout': 25
+                              }
+        # ic(recursive_sort_dict(kwargs), recursive_sort_dict(expected_data_sent))
+        self.assertEqual(recursive_sort_dict(kwargs), recursive_sort_dict(expected_data_sent),
+                         'START_SESSION Command sent to CPO differs from expected')
 
         settings.REQUIRE_WALLET_BALANCE = False
 
@@ -2412,10 +2429,10 @@ class TestMspApi(TestCase):
                                       'OCPI-to-party-id': 'CPO',
                                       'content-type': 'application/json'},
                           'json': {'authorization_reference': 'REFERENCE-123',
-                                   'connector_id': '1',
+                                   # 'connector_id': '1',  # OCPI 2.2 doesn't support this in the remote start command
                                    'evse_uid': 'HELSINKI-3',
                                    'location_id': 'HELSINKI-1',
-                                   'response_url': 'http://testserver.test/ocpi/cpo/2.2/commands/COMMAND_RESULT/start/REFERENCE-123',
+                                   'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/REFERENCE-123',
                                    'token': OrderedDict([('country_code', 'FI'),
                                                          ('party_id', 'MSP'),
                                                          ('uid', 'FI*MSP*T*APP*MOCK-1'),

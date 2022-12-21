@@ -1,9 +1,8 @@
 from django.http import Http404
 from rest_framework import serializers, status
 from rest_framework.decorators import action
-from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.ocpi.auth import OCPIPermission

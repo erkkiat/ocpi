@@ -11,7 +11,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from rest_framework.reverse import reverse
+from util import reverse
 
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum
 from ocpi22.models.location import Location, Evse, Connector

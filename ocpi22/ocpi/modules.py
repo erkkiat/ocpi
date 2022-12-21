@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from rest_framework.reverse import reverse
+from util import reverse
 
 from ocpi22.choices import OcpiModuleEnum
 

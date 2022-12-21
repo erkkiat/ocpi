@@ -28,6 +28,7 @@ class Route:
     token_base64: str
     alive: bool
     direct: bool
+    version: str  # "22" or "221", etc.
 
     @property
     def through_hub(self) -> bool:
@@ -66,7 +67,8 @@ def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum, role: 
             logging.error(f'Multiple Endpoints for {credentials.party()} in the database')
         endpoint = endpoints.first()
         return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
-                     token_base64=credentials.theirs_base64(), direct=True, alive=credentials.connection_state())
+                     token_base64=credentials.theirs_base64(), direct=True, alive=credentials.connection_state(),
+                     version=credentials.version)
     error_text = f'Endpoint `{ocpi_module.value}` not found for party {credentials}'
     logging.error(error_text)
     raise ValueError(error_text)
@@ -81,7 +83,8 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
             return None
         endpoint = endpoints.first()
         return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
-                     token_base64=credentials.theirs_base64(), direct=False, alive=credentials.connection_state())
+                     token_base64=credentials.theirs_base64(), direct=False, alive=credentials.connection_state(),
+                     version=credentials.version)
     return None
 
 

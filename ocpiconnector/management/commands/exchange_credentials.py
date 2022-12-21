@@ -12,7 +12,7 @@ import requests
 from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
-from rest_framework.reverse import reverse
+from util import reverse
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
 from ocpi22.ocpi.serializers import CredentialsSerializer
@@ -61,8 +61,7 @@ class NoCommonVersion(SyntaxError):
     pass
 
 
-def select_version(url, token):
-    selected_version = None
+def select_version(url, token) -> str:
     versions_response = ocpi_credentials_get(url, token)
     if versions_response.status_code == 200:
         data = versions_response.json()
@@ -70,20 +69,15 @@ def select_version(url, token):
             raise OCPIProtocolError(f'Expecting a data element in response from version endpoint, '
                                     f'got "{data}"')
         data = data.get('data', data)
-        for version_option in data:
-            if "version" not in version_option or "url" not in version_option:
-                raise OCPIProtocolError(f'Version information not found in received data. '
-                                        f'Make sure you have the OCPI versions URL. {str(versions_response)}')
-            if version_option['version'] == '2.2':
-                selected_version = version_option
-                break
-        if not selected_version:
+        versions = dict([x for x in map(lambda x: (x.get('version'), x.get('url')), data)])
+        version_url = versions.get('2.2.1', versions.get('2.2'))
+        if not version_url:
             raise NoCommonVersion('There is no common version available.')
     else:
         raise ConnectionError(f'Error connecting: {versions_response.status_code} {versions_response.reason}')
 
-    logging.info(f'CREDENTIALS - Selected version: {selected_version}.')
-    return selected_version
+    logging.info(f'CREDENTIALS - Selected version: {version_url}.')
+    return version_url
 
 
 def get_endpoints(url, token):
@@ -126,12 +120,14 @@ class Command(BaseCommand):
             heading('1) Getting version info from other party '
                     'and selecting a version we both understand')
 
-            selected_version = select_version(url, token_a_base64)
+            version_url = select_version(url, token_a_base64)
 
             heading('2) Getting endpoints from other party')
 
-            endpoints = get_endpoints(selected_version['url'], token_a_base64)
-            credentials = store_tokens_for_party(our_token=our_token, their_token=None, token_a=token_a)
+            endpoints = get_endpoints(version_url, token_a_base64)
+            version = endpoints.get('version')
+            credentials = store_tokens_for_party(our_token=our_token, their_token=None, token_a=token_a,
+                                                 version=version)
             store_endpoints_for_party(credentials, endpoints)
 
             heading('3) Sending our Credentials Roles to the other party')

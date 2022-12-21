@@ -8,7 +8,7 @@ from django.dispatch import receiver
 from django.urls import NoReverseMatch
 from django.utils.html import format_html
 from icecream import ic
-from rest_framework.reverse import reverse
+from util import reverse
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.logging import log_error
@@ -27,6 +27,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     """
 
     ocpi_serializer_class = 'ocpi22.locations.serializers.LocationSerializer'
+    ocpi_serializer_class_221 = 'ocpi22.locations.serializers.LocationSerializer221'
     ocpi_module_name = OcpiModuleEnum.LOCATIONS
     ocpi_object_owner = 'CPO'
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')
@@ -296,7 +297,7 @@ class Evse(models.Model, ModelUtilMixin):
         )
         location = self.location
         method = 'patch'
-        Location._send_updates(data, method=method,
+        Location._send_updates(data, data, method=method,
                                path_components=[location.country_code, location.party_id, location.uid, self.uid])
 
 
@@ -315,7 +316,7 @@ class Connector(models.Model, ModelUtilMixin):
 
     format = models.CharField(max_length=6, choices=Ocpi.FORMAT_CHOICES)
 
-    power_type = models.CharField(max_length=10, choices=Ocpi.POWERTYPE_CHOICES)
+    power_type = models.CharField(max_length=16, choices=Ocpi.POWERTYPE_CHOICES_221)
 
     max_voltage = models.SmallIntegerField()
     max_amperage = models.SmallIntegerField()

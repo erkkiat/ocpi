@@ -1,8 +1,6 @@
-from django.conf import settings
 from django.conf.urls import include
-from django.conf.urls.i18n import i18n_patterns
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path
 from rest_framework.schemas import get_schema_view
 
 from cars.views import CarsViewSet
@@ -11,8 +9,8 @@ from ocpi22.cpo.reports import ChargingSessionsReport
 from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.msp.map import MapViewSet
 from ocpi22.msp.user import UserViewSet
-from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, CredentialsViewSet, \
-    RootRouter, ClientInfoViewSet
+from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, \
+    CredentialsViewSet, RootRouter, ClientInfoViewSet
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.cpo.api import CPORouter, ChargePointViewSet, LocationQuickViewSet, CpoStartWebhookViewSet, \
     CpoStopWebhookViewSet, CpoReserveNowWebhookViewSet, InvoiceWebhookViewSet
@@ -79,7 +77,7 @@ urlpatterns = (
     path('', include(root_router.urls), name='root-view'),
     path('reports/cpo/sessions/', ChargingSessionsReport.as_view()),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
-    path('ocpi/cpo/2.2/', include(ocpi_router.urls), name='ocpi-22-root'),
+    re_path(r'^ocpi/(?P<version>[1-2\.]+?)/', include(ocpi_router.urls), name='ocpi-22-root'),
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),
     path('api/msp/v1/', include(msp_router.urls), name='msp-interface'),
     path('ocpi/', include(common_router.urls)),

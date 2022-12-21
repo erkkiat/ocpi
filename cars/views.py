@@ -2,7 +2,7 @@ from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from util import reverse
 
 from cars.cars import search, get_models
 from ocpi22.models.location import Location

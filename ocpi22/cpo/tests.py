@@ -11,7 +11,8 @@ from django.test import TestCase
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
-from rest_framework.reverse import reverse
+
+from util import reverse
 from rest_framework.test import APIRequestFactory
 
 from ocpi22.cpo import test_data
@@ -53,6 +54,7 @@ class TestQuickLocations(TestCase):
             data = LocationQuickSerializer(instance=location).data
             self.assertEqual(data,
                              {
+                                 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/APLINKKELIS/',
                                  'id': 'APLINKKELIS', 'name': 'IONITY High Power Charging Aplinkkelis',
                                  'address': 'Panevėžio aplinkl. 20', 'city': '-', 'postal_code': '38417',
                                  'country': 'LTU',
@@ -79,6 +81,7 @@ class TestQuickLocations(TestCase):
         self.assertEqual(data,
                          # Todo: Maybe we should have English addresses available in parallel?
                          {
+                             'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/Aplinkkelis/',
                              'id': 'Aplinkkelis', 'name': 'IONITY High Power Charging Aplinkkelis',
                              'address': 'Княз Борис Ⅰ 134', 'city': 'София', 'postal_code': '1000', 'country': 'BGR',
                              'time_zone': 'Europe/Sofia', 'latitude': 42.6975216, 'longitude': 23.3191493
@@ -95,25 +98,24 @@ class TestQuickLocations(TestCase):
                          'Expecting Location to be created successfully')
         location = Location.get_if_exists(uid=test_data.LocationData.location1.get('id'))
         data = LocationQuickSerializer(instance=location).data
-        self.assertEqual(
-            data,
-            {
-                'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
-                'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
-                'longitude': 30.0, 'evses': [OrderedDict([('uid', '1'), ('connectors', [OrderedDict(
+        expected_data = {
+            'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/EKI1/',
+            'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
+            'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
+            'longitude': 30.0, 'evses': [dict([('uid', '1'), ('connectors', [dict(
                 [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
                  ('max_amperage', 32), ('max_electric_power', 22200), ('tariff_ids', ['EKI1'])])])]),
-                                             OrderedDict([('uid', '2'), ('connectors', [OrderedDict(
-                                                 [('uid', '1'), ('standard', 'IEC_62196_T2'),
-                                                  ('format', 'SOCKET'), ('max_voltage', 232),
-                                                  ('max_amperage', 32)])])]),
-                                             OrderedDict([('uid', 'JAAU254040-1'), ('connectors', [
-                                                 OrderedDict([('uid', '1'), ('standard', 'IEC_62196_T2'),
-                                                              ('format', 'CABLE'), ('max_voltage', 233),
-                                                              ('max_amperage', 32),
-                                                              ('tariff_ids', ['DC50'])])])])]
-            },
-            'New Location data differs from expected')
+                                         dict([('uid', '2'), ('connectors', [dict(
+                                             [('uid', '1'), ('standard', 'IEC_62196_T2'),
+                                              ('format', 'SOCKET'), ('max_voltage', 232),
+                                              ('max_amperage', 32)])])]),
+                                         dict([('uid', 'JAAU254040-1'), ('connectors', [
+                                             dict([('uid', '1'), ('standard', 'IEC_62196_T2'),
+                                                   ('format', 'CABLE'), ('max_voltage', 233),
+                                                   ('max_amperage', 32),
+                                                   ('tariff_ids', ['DC50'])])])])]
+        }
+        self.assertEqual(dict(data), dict(expected_data), 'New Location data differs from expected')
 
         #
         # Update Location
@@ -124,31 +126,29 @@ class TestQuickLocations(TestCase):
                          'Expecting Location to be updated successfully')
         location = Location.get_if_exists(uid=test_data.LocationData.location_update1.get('id'))
         data = LocationQuickSerializer(instance=location).data
-        self.assertEqual(
-            data,
-            {
-                'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
-                'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
-                'longitude': 30.0,
-                'evses':
-                    [
-                        OrderedDict([('uid', '1'),
-                                     ('connectors', [OrderedDict(
-                                         [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'),
-                                          ('max_voltage', 233),
-                                          ('max_amperage', 32), ('max_electric_power', 11000),
-                                          ('tariff_ids', ['DC50'])])]),
-                                     ('last_updated', '2022-06-19T12:13:14')]),
-                        OrderedDict(
-                            [('uid', '2'), ('connectors', [OrderedDict(
-                                [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 232),
-                                 ('max_amperage', 32)])])]),
-                        OrderedDict([('uid', 'JAAU254040-1'), ('connectors', [OrderedDict(
-                            [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
-                             ('max_amperage', 32), ('tariff_ids', ['DC50'])])])])
-                    ]
-            },
-            'Updated Location data differs from expected')
+        expected_data = {
+            'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
+            'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
+            'longitude': 30.0, 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/EKI1/',
+            'evses':
+                [
+                    OrderedDict([('uid', '1'),
+                                 ('connectors', [OrderedDict(
+                                     [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'),
+                                      ('max_voltage', 233),
+                                      ('max_amperage', 32), ('max_electric_power', 11000),
+                                      ('tariff_ids', ['DC50'])])]),
+                                 ('last_updated', '2022-06-19T12:13:14')]),
+                    OrderedDict(
+                        [('uid', '2'), ('connectors', [OrderedDict(
+                            [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 232),
+                             ('max_amperage', 32)])])]),
+                    OrderedDict([('uid', 'JAAU254040-1'), ('connectors', [OrderedDict(
+                        [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
+                         ('max_amperage', 32), ('tariff_ids', ['DC50'])])])])
+                ]
+        }
+        self.assertEqual(data, expected_data, 'Updated Location data differs from expected')
 
     def test_quick_tariff(self):
         test_cases = [

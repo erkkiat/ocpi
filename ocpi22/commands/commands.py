@@ -16,7 +16,7 @@ from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, APIException, ValidationError
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
 import ocpi22.util
@@ -95,7 +95,7 @@ class CommandsViewSet(GenericViewSet):
 
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
-    def start_session(self, request):
+    def start_session(self, request, **_kwargs):
         return self.process_remote_command(request,
                                            command_serializer=StartSessionSerializer,
                                            webhook_serializer=CPOStartWebhookSerializer,
@@ -103,7 +103,7 @@ class CommandsViewSet(GenericViewSet):
 
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='reserve-now', url_path='RESERVE_NOW')
-    def reserve_now(self, request):
+    def reserve_now(self, request, **_kwargs):
         # TODO: If this Token is of type RFID, the CPO SHALL NOT do a realtime authorization at the eMSP for
         #  this Token at the given EVSE/Charge Point within 15 minutes after having received this ReserveNow.
 
@@ -254,7 +254,7 @@ class CommandsViewSet(GenericViewSet):
 
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_path='STOP_SESSION')
-    def stop_session(self, request):
+    def stop_session(self, request, **_kwargs):
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -323,7 +323,7 @@ class CommandsViewSet(GenericViewSet):
 
     @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_path='UNLOCK_CONNECTOR')
-    def unlock_connector(self, request):
+    def unlock_connector(self, request, **_kwargs):
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -440,6 +440,8 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
             connector_id=connector_id,
             authorization_reference=authorization_reference,  # Todo: Store authorization for verifying CDR
         )
+        if route.version == '22':
+            data.pop('connector_id', '')
         serializer = StartSessionSerializer(instance=data)
         return ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
                          to=Party(country_code, party_id),

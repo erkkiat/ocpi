@@ -17,7 +17,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
@@ -67,7 +67,7 @@ def _language_response(response):
     return Response(data, status=response.status_code)
 
 
-def process_start_charging(request, serializer, location, evse, connector_id: str, contract_id: str,
+def process_start_charging(request, serializer, location, evse, connector_id: str = None, contract_id: str = None,
                            internal_reference: str = None, max_price: Decimal = None):
     account = request.user.accounts.first() or Account.create(request.user)
     if not max_price and settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
@@ -80,10 +80,7 @@ def process_start_charging(request, serializer, location, evse, connector_id: st
 
     response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id,
                                                      authorization_reference)
-    auth = Authorization.objects.create(
-        authorization_reference=authorization_reference,
-        max_price=max_price
-    )
+    Authorization.objects.create(authorization_reference=authorization_reference, max_price=max_price)
     if response.status_code == status.HTTP_200_OK:
         messages.success(request,
                          'You have gotten a positive response from the CPO. '

@@ -4,11 +4,10 @@ from unittest import TestCase
 from unittest.mock import patch, Mock
 
 from django.contrib.auth.models import AnonymousUser, User
-from django.core.exceptions import ValidationError
-from icecream import ic
+
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from util import reverse
 from rest_framework.test import APIRequestFactory
 
 from cars import test_data

@@ -19,6 +19,13 @@ from ocpi22.routing import find_route
 from ocpi22.logging import log_error
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party, get_our_party
 
+
+def get_serializer(ocpi_serializer_class):
+    if isinstance(ocpi_serializer_class, str):
+        return import_string(ocpi_serializer_class)
+    return ocpi_serializer_class
+
+
 class OcpiModule:
     # The serializer class to use when sending updates to other OCPI parties
     ocpi_serializer_class = None
@@ -84,21 +91,28 @@ class OcpiModule:
                 logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
                 return
 
-            if not data:
-                serializer_class = self.ocpi_serializer_class
-
-                if isinstance(serializer_class, str):
-                    serializer_class = import_string(serializer_class)
-
+            if data:
+                data_22 = data
+                data_221 = data
+            else:
+                serializer_class = get_serializer(self.ocpi_serializer_class)
                 serializer = serializer_class(self)
-                data = serializer.data
+                data_22 = serializer.data
+
+                if hasattr(self, 'ocpi_serializer_class_221'):
+                    serializer_class_221 = get_serializer(self.ocpi_serializer_class_221)
+                    serializer_221 = serializer_class_221(self)
+                    data_221 = serializer_221.data
+                else:
+                    data_221 = data_22
 
             if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
                 logging.info('Sending updates to INTERESTED PARTIES')
-                self.send_update_to_interested_parties(data, method=method, path_components=path_components)
+                self.send_update_to_interested_parties(data_22, data_221, method=method,
+                                                       path_components=path_components)
             else:
                 logging.info('Sending updates to ALL connected parties')
-                self._send_updates(data, method=method)
+                self._send_updates(data_22, data_221, method=method)
 
             # if hasattr(self, 'send_extra_updates'):
             #     self.send_extra_updates(data, method, path_components, serializer_class)
@@ -106,21 +120,20 @@ class OcpiModule:
             logging.warning(settings.UPDATES_DISABLED)
 
     @classmethod
-    def _send_updates(cls, data, method='put', path_components=None) -> bool:
+    def _send_updates(cls, data_22, data_221, method='put', path_components=None) -> bool:
         from ocpi22.models.credentials import find_endpoints_by_roles
         our_country_code, our_party_id = cls.get_owner_identity().split('*')
-        uid = data.get('uid', data.get('id', 'N/A'))
+        uid = data_221.get('uid', data_221.get('id', 'N/A'))
         logging.info(
             f'Sending updates for {cls} {uid} from {our_country_code}*{our_party_id} to {cls.send_updates_to}'
         )
-
-        # Todo: Speed would be increased by removing dynamic imports => get endpoints from Redis or cache them
 
         if isinstance(cls.send_updates_to, tuple):
             for url, token_base64, country_code, party_id, credentials in find_endpoints_by_roles(
                     cls.send_updates_to, cls.ocpi_module_name):
                 if path_components:
                     url = f'{url}/{"/".join(path_components)}'
+                data = data_22 if credentials.version == '22' else data_221
                 cls._send_update(data, url, token_base64, to=Party(country_code, party_id),
                                  sender=Party(our_country_code, our_party_id), method=method)
             return True
@@ -150,12 +163,13 @@ class OcpiModule:
             # ic(data)
             cls._send_updates(data)
 
-    def send_update(self, data, method, to, path_components=None) -> None:
+    def send_update(self, data_22, data_221, method, to, path_components=None) -> None:
         sender = Party(*(self.get_owner_identity().split('*')))
         route = find_route(to, self.ocpi_module_name,
                            add_path="/".join(path_components) if path_components else None)
         # ic(sender, to, route)
         if route:
+            data = {"22": data_22, "221": data_221}.get(route.version)
             self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
         else:
             logging.error(f'Unable to find route to {str(to)}')
@@ -289,6 +303,14 @@ class Ocpi:
     POWERTYPE_CHOICES = (
         ('AC_1_PHASE', 'AC 1-phase'),
         ('AC_3_PHASE', 'AC 3-phase'),
+        ('DC', 'DC')
+    )
+
+    POWERTYPE_CHOICES_221 = (
+        ('AC_1_PHASE', 'AC 1-phase'),
+        ('AC_2_PHASE', 'AC 2-phase'),
+        ('AC_3_PHASE', 'AC 3-phase'),
+        ('AC_2_PHASE_SPLIT', 'AC 2-phase split'),
         ('DC', 'DC')
     )
 

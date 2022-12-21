@@ -8,14 +8,14 @@ from ocpi22.ocpi.dataclasses import OCPIUrlComponents
 @lru_cache(maxsize=100)
 def parse_ocpi_url(url: str) -> OCPIUrlComponents:
     """
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION?a=1')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION?a=1')
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/commands/START_SESSION/')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION')
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/tokens/EKI1/authorize')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/tokens', module=<OcpiModuleEnum.TOKENS: 'tokens'>, parameters='EKI1/authorize')
-    >>> parse_ocpi_url('/ocpi/cpo/2.2/locations?limit=5')
-    OCPIUrlComponents(path='/ocpi/cpo/2.2/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
+    >>> parse_ocpi_url('/ocpi//2.2.1/commands/START_SESSION?a=1')
+    OCPIUrlComponents(path='/ocpi//2.2.1/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION?a=1')
+    >>> parse_ocpi_url('/ocpi//2.2.1/commands/START_SESSION/')
+    OCPIUrlComponents(path='/ocpi//2.2.1/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION')
+    >>> parse_ocpi_url('/ocpi//2.2.1/tokens/EKI1/authorize')
+    OCPIUrlComponents(path='/ocpi//2.2.1/tokens', module=<OcpiModuleEnum.TOKENS: 'tokens'>, parameters='EKI1/authorize')
+    >>> parse_ocpi_url('/ocpi//2.2.1/locations?limit=5')
+    OCPIUrlComponents(path='/ocpi//2.2.1/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
     """
     url = url.rstrip('/')
     path = ''

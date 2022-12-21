@@ -9,7 +9,7 @@ import requests
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import User
-from django.urls import reverse
+from util import reverse
 from django.utils.html import format_html
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from requests import Response

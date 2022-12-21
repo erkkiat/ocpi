@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils.html import format_html
-from rest_framework.reverse import reverse
+from util import reverse
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.util import ModelUtilMixin

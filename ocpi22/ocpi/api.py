@@ -16,7 +16,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
+from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum
@@ -36,7 +36,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.rendering import RENDERERS
-from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, build_callback_request
+from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, build_callback_request, OCPIVersioning
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
@@ -79,7 +79,7 @@ class TokenViewSet(mixins.ListModelMixin,
         return token and token.is_ours()
 
     @transaction.atomic
-    def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=False):
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=False, **_kwargs):
         data = data or request.data.get('data', request.data)
         uid = uid or data.get('uid')
         party_id = party_id or data.get('party_id')
@@ -103,13 +103,13 @@ class TokenViewSet(mixins.ListModelMixin,
         else:
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request):
+    def patch(self, request, **_kwargs):
         return self.put(request, partial=True)
 
     @csrf_exempt
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
-    def authorize(self, request: Request, token_uid) -> OCPIResponse:
+    def authorize(self, request: Request, token_uid, **_kwargs) -> OCPIResponse:
         allowed = AuthorizationEnum.ALLOWED.value
         ocpi_status = Ocpi.OK
         http_status = 200
@@ -215,7 +215,7 @@ class TokenViewSet(mixins.ListModelMixin,
                 status_message=f'{get_language(user_language, info)}: {str(e)}'
             )
 
-    def get(self, request, country_code=None, party_id=None, uid=None):
+    def get(self, request, country_code=None, party_id=None, uid=None, **_kwargs):
         if country_code and party_id and uid:
             token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
             serializer = TokenSerializer(token, many=False, context={'request': request})
@@ -224,7 +224,7 @@ class TokenViewSet(mixins.ListModelMixin,
 
     @action(methods=['PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def token_by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
+    def token_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
         token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
 
         # Method is PUT or PATCH
@@ -284,14 +284,14 @@ class CdrViewSet(mixins.ListModelMixin,
     @action(methods=['GET'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     @requires_premium
-    def by_id(self, request, country_code=None, party_id=None, uid=None) -> Response:
+    def by_id(self, request, country_code=None, party_id=None, uid=None, **_kwargs) -> Response:
         cdr = get_object_or_404(Cdr, country_code=country_code, party_id=party_id, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
 
     @transaction.atomic
     @requires_premium
-    def put(self, request) -> OCPIResponse:
+    def put(self, request, **_kwargs) -> OCPIResponse:
         data = request.data.get('data', request.data)
         country_code = data.get('country_code')
         party_id = data.get('party_id')
@@ -316,7 +316,7 @@ def make_my_credentials_dict(request) -> dict:
         token=request.credentials.ours
         if hasattr(request, 'credentials') else 'not available when using basic auth',
 
-        url=request.build_absolute_uri(reverse('base-versions')),
+        url=request.build_absolute_uri(reverse('base-versions', request=request)),
 
         # Todo: Check this, should be "Retrieves the credentials object to access the server’s platform"
         roles=get_our_roles(),
@@ -371,8 +371,8 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             credentials.save()
 
             token_base64 = credentials.theirs_base64()  # CREDENTIALS_TOKEN_B
-            selected_version = select_version(credentials.url, token_base64)
-            endpoints = get_endpoints(selected_version['url'], token_base64)
+            versions_url = select_version(credentials.url, token_base64)
+            endpoints = get_endpoints(versions_url, token_base64)
             store_endpoints_for_party(credentials, endpoints)
             data = make_my_credentials_dict(request)
             serializer = CredentialsSerializer(data=data)
@@ -411,7 +411,7 @@ class TariffViewSet(mixins.ListModelMixin,
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', url_name='by-id')
     @requires_premium
-    def tariff_by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
+    def tariff_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
         serializer = TariffSerializer(tariff, many=False, context={'request': request})
         return OCPIResponse(serializer.data)
@@ -424,7 +424,7 @@ class TariffViewSet(mixins.ListModelMixin,
 
     @requires_premium
     @transaction.atomic
-    def put(self, request, country_code=None, party_id=None, uid=None, data=None) -> OCPIResponse:
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None, **_kwargs) -> OCPIResponse:
         # This PUT is used both for the Tariff endpoint root and the path with country_code, party_id and Tariff uid
         data = data or request.data.get('data', request.data)
         country_code = country_code or data.get('country_code')
@@ -490,7 +490,7 @@ class SessionViewSet(mixins.ListModelMixin,
     @transaction.atomic
     @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
-    def session_by_id(self, request, country_code, party_id, uid) -> OCPIResponse:
+    def session_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
         session = get_object_or_404(Session, country_code=country_code, party_id=party_id, uid=uid)
 
         if request.method == 'GET':
@@ -501,7 +501,7 @@ class SessionViewSet(mixins.ListModelMixin,
 
     @staticmethod
     @transaction.atomic
-    def put(request, country_code=None, party_id=None, uid=None, partial=False) -> OCPIResponse:
+    def put(request, country_code=None, party_id=None, uid=None, partial=False, **_kwargs) -> OCPIResponse:
         data = request.data.get('data', request.data)
         uid = uid or data.get('uid')
         country_code = country_code or data.get('country_code')
@@ -542,7 +542,7 @@ class SessionViewSet(mixins.ListModelMixin,
                       f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}')
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request, country_code=None, party_id=None, uid=None):
+    def patch(self, request, country_code=None, party_id=None, uid=None, **_kwargs):
         return self.put(request, country_code, party_id, uid, partial=True)
 
 
@@ -572,9 +572,9 @@ class ClientInfoViewSet(mixins.ListModelMixin,
 class RootView(routers.APIRootView):
     """
     Welcome to the OCPI Connector Developer Central.
-    Here you have interactive access to the OCPI 2.2 endpoints with examples.
+    Here you have interactive access to the OCPI 2.2 and 2.2.1 endpoints with examples.
 
-    > **OCPI 2.2** is the starting point for the OCPI hierarchy, where the OCPI modules reside.
+    > **OCPI** is the starting point for the OCPI hierarchy, where the OCPI modules reside.
     >
     > **CPO API** is a cost-effective shortcut to OCPI connectivity.
     >
@@ -586,13 +586,13 @@ class RootView(routers.APIRootView):
     @staticmethod
     def get(request: WSGIRequest, **kwargs):
         result = dict({
-            "OCPI 2.2": request.build_absolute_uri(reverse('ocpi-22')),
-            # "OpenAPI": request.build_absolute_uri(reverse('openapi-schema')),
+            "OCPI 2.2.1": request.build_absolute_uri(reverse('ocpi-221', request=request)),
+            # "OpenAPI": request.build_absolute_uri(reverse('openapi-schema', request=request)),
         })
         if ocpi_platform.is_cpo:
-            result.update({"CPO API": request.build_absolute_uri(reverse('cpo-api'))})
+            result.update({"CPO API": request.build_absolute_uri(reverse('cpo-api', request=request))})
         if ocpi_platform.is_emsp:
-            result.update({"eMSP API": request.build_absolute_uri(reverse('msp-api'))})
+            result.update({"eMSP API": request.build_absolute_uri(reverse('msp-api', request=request))})
         return Response(result)
 
     def get_view_name(self):
@@ -610,12 +610,14 @@ class OcpiApi22View(routers.APIRootView):
     the available endpoints to update and mirror data structures.
     """
 
+    versioning_class = OCPIVersioning
+
     @staticmethod
     def get(request, **kwargs):
         return OCPIResponse(get_endpoints_dict(request))
 
     def get_view_name(self):
-        return 'OCPI 2.2'
+        return 'Endpoints'
 
 
 class OCPIRouter(routers.DefaultRouter):

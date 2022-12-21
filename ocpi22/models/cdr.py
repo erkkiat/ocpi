@@ -6,7 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.html import format_html
-from rest_framework.reverse import reverse
+from util import reverse
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.grafana import metrics
@@ -113,7 +113,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     cdr_location_city = models.CharField(max_length=45)
 
     # Postal code of the location.
-    cdr_location_postal_code = models.CharField(max_length=10)
+    cdr_location_postal_code = models.CharField(max_length=10, blank=True, default='')
+
+    # State only to be used when relevant.
+    cdr_location_state = models.CharField(max_length=20, blank=True)
 
     # ISO 3166-1 alpha-3 code for the country of this location.
     cdr_location_country = models.CharField(max_length=3)
@@ -146,7 +149,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     cdr_location_connector_format = models.CharField(max_length=6, choices=Ocpi.FORMAT_CHOICES)
 
     # The power type of the connector (AC/DC, phases)
-    cdr_location_connector_power_type = models.CharField(max_length=10, choices=Ocpi.POWERTYPE_CHOICES)
+    cdr_location_connector_power_type = models.CharField(max_length=16, choices=Ocpi.POWERTYPE_CHOICES_221)
 
     # Currency of the CDR in ISO 4217 Code.
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)

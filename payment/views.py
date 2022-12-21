@@ -12,7 +12,7 @@ from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 import stripe
-from rest_framework.reverse import reverse
+from util import reverse
 
 from ocpi22.util import CURRENCY_CHOICES
 from payment.models import Customer, Payment, PaymentStatusEnum, PaymentMethod

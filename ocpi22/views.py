@@ -15,7 +15,7 @@ from ocpiconnector.ocpi_identities import ocpi_platform
 def home(request):
     # Return JSON when acting as the OCPI Versions endpoint
     if settings.RENDER_ONLY_JSON or (request.META and 'application/json' in request.META.get('HTTP_ACCEPT', '')):
-        return OCPIResponse(get_versions_dict(request))
+        return OCPIResponse(get_versions_dict())
 
     # Let's assume the client is a browser
     context = dict(

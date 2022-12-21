@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from ocpi22.util import clear_empty, set_callbacks_parameter
+from ocpi22.util import clear_empty, set_callbacks_parameter, build_absolute_uri
 
 
 class SerializerCleanedUp(serializers.Serializer):
@@ -24,10 +24,9 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_absolute_url') or not request:
+        if not hasattr(obj, 'get_absolute_url'):
             return ''
-        return f'{request.build_absolute_uri(obj.get_absolute_url())}'
+        return f'{build_absolute_uri(obj.get_absolute_url())}'
 
     def get_url(self, obj) -> str:
         """
@@ -35,10 +34,9 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_cpo_url') or not request:
+        if not hasattr(obj, 'get_cpo_url'):
             return ''
-        return f'{request.build_absolute_uri(obj.get_cpo_url())}'
+        return f'{build_absolute_uri(obj.get_cpo_url())}'
 
     def get_quick_url(self, obj) -> str:
         """
@@ -46,10 +44,9 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_quick_url') or not request:
+        if not hasattr(obj, 'get_quick_url'):
             return ''
-        return f'{request.build_absolute_uri(obj.get_quick_url())}'
+        return f'{build_absolute_uri(obj.get_quick_url())}'
 
     def get_status_url(self, obj) -> str:
         """
@@ -57,10 +54,11 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        request = self.context.get("request")
-        if not hasattr(obj, 'get_status_url') or not request:
+        if not hasattr(obj, 'get_status_url'):
             return ''
-        return f'{request.build_absolute_uri(obj.get_status_url())}'
+        url = obj.get_status_url()
+        if url:
+            return f'{build_absolute_uri(url)}'
 
     detail_url = serializers.SerializerMethodField(
         read_only=True,

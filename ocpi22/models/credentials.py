@@ -16,7 +16,7 @@ from django.db.models import Q
 from django.db.models.signals import pre_save, pre_delete
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
-from django.urls import reverse
+from util import reverse
 from django.utils import timezone
 
 from ocpi22 import choices
@@ -60,9 +60,9 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     VERSION_CHOICES = (
         ('22', '2.2'),
-        # ('211', '2.1.1')
+        ('221', '2.2.1')
     )
-    version = models.CharField(max_length=10, choices=VERSION_CHOICES, blank=True, null=True)
+    version = models.CharField(max_length=3, choices=VERSION_CHOICES, blank=True, null=True)
 
     # Connections are only accepted for valid Credentials
     valid = models.BooleanField(default=True)
@@ -318,7 +318,7 @@ def store_endpoints_for_party(credentials, endpoints):
         endpoint.save()
 
 
-def store_tokens_for_party(our_token, their_token, token_a) -> Credentials:
+def store_tokens_for_party(our_token, their_token, token_a, version) -> Credentials:
     credentials: Credentials = Credentials.find(token_a, create=True)
     assert their_token != credentials.token_a
     assert our_token != credentials.token_a
@@ -328,5 +328,6 @@ def store_tokens_for_party(our_token, their_token, token_a) -> Credentials:
         credentials.token_a = token_a
     if their_token:
         credentials.theirs = their_token
+    credentials.version = version.replace('.', '')
     credentials.save()
     return credentials

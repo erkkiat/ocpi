@@ -54,7 +54,7 @@ class StartChargingSerializer(serializers.Serializer):
         help_text='The identifier of the device which provides electricity to one or more connectors'
     )
     connector_id = serializers.CharField(
-        required=False,
+        required=False, allow_blank=True, allow_null=True,  # Not supported in OCPI 2.2
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='The connector number used for charging during this transaction'
     )

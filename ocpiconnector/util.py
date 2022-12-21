@@ -31,12 +31,14 @@ class Timer:
 
 
 def recursive_sort_dict(d: dict) -> OrderedDict:
-    def _sorted_subdict(d: Any) -> OrderedDict:
+    def _sorted_subdict(d: Any) -> Union[OrderedDict, list]:
         if isinstance(d, dict):
             return recursive_sort_dict(d)
         return d
 
     result = dict()
+    if isinstance(d, (list, tuple)):
+        return [recursive_sort_dict(i) for i in d]
     for item in d.items():
         # print(f'Item: {item}')
         result[item[0]] = _sorted_subdict(item[1])

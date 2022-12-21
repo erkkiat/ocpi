@@ -57,7 +57,7 @@ class StartSessionSerializer(serializers.Serializer):
     )
     connector_id = serializers.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        required=False, default=None,
+        required=False, allow_blank=True,
         help_text='Optional Connector.id of the Connector of the EVSE on which a session is to be started. '
                   'This field is required when the capability: START_SESSION_CONNECTOR_REQUIRED is set on the EVSE.'
     )

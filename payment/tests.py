@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from icecream import ic
 from rest_framework import status
-from rest_framework.reverse import reverse
+from util import reverse
 from rest_framework.test import APIRequestFactory
 
 from payment import test_data
