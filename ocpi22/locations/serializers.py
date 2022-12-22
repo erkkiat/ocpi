@@ -97,13 +97,10 @@ class FacilitiesSaveSerializer(serializers.StringRelatedField):
 
 class CapabilitySaveSerializer(serializers.Serializer):
     def to_internal_value(self, data):
-        # noinspection PyUnresolvedReferences
         try:
-            # noinspection PyUnresolvedReferences
             c = Capability.objects.get(name=data)
             return c
         except Capability.DoesNotExist:
-            # noinspection PyUnresolvedReferences
             raise ValidationError(f'Capability `{data}` is not a valid choice. '
                                   f'The options are: {", ".join([a.name for a in Capability.objects.all()])}')
 
@@ -183,9 +180,15 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     capabilities = CapabilitySaveSerializer(many=True, required=False)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
-    # def validate(self, attrs):
-    #     ic(attrs)
-    #     return attrs
+    def to_representation(self, evse: Evse):
+        result = super().to_representation(evse)
+        version = self.context.get('version', None)
+        if version == '2.2' and 'capabilities' in result:
+            try:
+                result['capabilities'].remove('START_SESSION_CONNECTOR_REQUIRED')  # Not supported in OCPI 2.2
+            except ValueError:
+                pass
+        return result
 
 
 class Coordinate(serializers.CharField):

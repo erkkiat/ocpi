@@ -7,7 +7,6 @@ from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.urls import NoReverseMatch
 from django.utils.html import format_html
-from icecream import ic
 from util import reverse
 
 from ocpi22.choices import OcpiModuleEnum
@@ -235,20 +234,6 @@ class Evse(models.Model, ModelUtilMixin):
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES)
 
-    CAPABILITY_CHOICES = (
-        ('CHARGING_PROFILE_CAPABLE', 'The EVSE supports charging profiles'),
-        ('CHARGING_PREFERENCES_CAPABLE', 'The EVSE supports charging preferences'),
-        ('CHIP_CARD_SUPPORT', 'EVSE has a payment terminal that supports chip cards'),
-        ('CONTACTLESS_CARD_SUPPORT', 'EVSE has a payment terminal that supports contactless cards'),
-        ('CREDIT_CARD_PAYABLE', 'EVSE has a payment terminal that makes it possible to pay for charging using a credit card'),
-        ('DEBIT_CARD_PAYABLE', 'EVSE has a payment terminal that makes it possible to pay for charging using a debit card'),
-        ('PED_TERMINAL', 'EVSE has a payment terminal with a pin-code entry device'),
-        ('REMOTE_START_STOP_CAPABLE', 'The EVSE can remotely be started / stopped'),
-        ('RESERVABLE', 'The EVSE can be reserved'),
-        ('RFID_READER', 'Charging at this EVSE can be authorized with an RFID token'),
-        ('TOKEN_GROUP_CAPABLE', 'This EVSE supports token groups, two or more tokens work as one'),
-        ('UNLOCK_CAPABLE', 'Connectors can be unlocked remotely'),
-    )
     capabilities = models.ManyToManyField(Capability, related_name='evses')
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses')
