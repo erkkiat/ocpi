@@ -7,6 +7,7 @@ from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.tariff import Tariff
+from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import uid_validator
 from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp
 
@@ -34,38 +35,15 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         return self.create(data)
 
 
-class PowerTypeSerializer(serializers.Serializer):
+class PowerTypeSerializer(serializers.CharField):
     def to_representation(self, power_type):
-        version = self.context.get('version', '2.2.1')
+        version = self.context.get('version', None)  # Action required only for OCPI 2.2
         if version == '2.2':
             power_type = dict(
                 AC_2_PHASE='AC_1_PHASE',
                 AC_2_PHASE_SPLIT='AC_1_PHASE',
             ).get(power_type, power_type)
         return power_type
-
-
-class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Connector
-        fields = ['id', 'standard', 'format',
-                  'power_type', 'max_voltage', 'max_amperage', 'max_electric_power',
-                  'tariff_ids', 'terms_and_conditions', 'last_updated']
-
-    id = serializers.CharField(source='uid')
-    max_electric_power = serializers.SerializerMethodField()
-    tariff_ids = serializers.SerializerMethodField(required=False)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
-    power_type = PowerTypeSerializer()
-
-    @staticmethod
-    def get_tariff_ids(connector: Connector) -> list:
-        return [t.uid for t in connector.tariff_ids.all()]
-
-    @staticmethod
-    def get_max_electric_power(connector: Connector) -> str:
-        # Todo: what about 1-phase and 2-phase AC?
-        return connector.max_electric_power or connector.max_voltage * connector.max_amperage
 
 
 class TariffField(serializers.StringRelatedField):
@@ -95,7 +73,7 @@ class FacilitiesSaveSerializer(serializers.StringRelatedField):
         return value.name
 
 
-class CapabilitySaveSerializer(serializers.Serializer):
+class CapabilitySerializer(serializers.Serializer):
     def to_internal_value(self, data):
         try:
             c = Capability.objects.get(name=data)
@@ -108,7 +86,16 @@ class CapabilitySaveSerializer(serializers.Serializer):
         return instance.name
 
 
-class ConnectorSaveSerializer(HyperlinkedModelSerializerCleanedUp):
+class MaxElectricPowerSerializer(serializers.Serializer):
+    def to_representation(self, connector):
+        phases = Ocpi.POWERTYPE_PHASES.get(connector.power_type, 1)
+        return connector.max_electric_power or connector.max_voltage * connector.max_amperage * phases
+
+    def to_internal_value(self, data):
+        return data
+
+
+class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Connector
         fields = ['id', 'standard', 'format',
@@ -118,35 +105,45 @@ class ConnectorSaveSerializer(HyperlinkedModelSerializerCleanedUp):
     id = serializers.CharField(source='uid')
     tariff_ids = TariffField(many=True, required=False)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    power_type = PowerTypeSerializer()
+    max_electric_power = MaxElectricPowerSerializer(source='*', required=False)
 
 
-class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
+class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Evse
-        fields = ['uid', 'evse_id', 'status', 'last_updated', 'connectors', 'capabilities']
+        fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors', 'capabilities']
 
-    connectors = ConnectorSaveSerializer(many=True, required=False)
+    lookup_field = 'uid'
+
+    connectors = ConnectorSerializer(many=True, required=False)
     uid = serializers.CharField(validators=[uid_validator])
-    capabilities = CapabilitySaveSerializer(many=True, required=False)
+    capabilities = CapabilitySerializer(many=True, required=False)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+
+    def to_representation(self, evse: Evse):
+        result = super().to_representation(evse)
+        version = self.context.get('version', None)
+        if version == '2.2' and 'capabilities' in result:
+            try:
+                result['capabilities'].remove('START_SESSION_CONNECTOR_REQUIRED')  # Not supported in OCPI 2.2
+            except ValueError:
+                pass  # Ok, no such capability in this EVSE anyway
+        return result
 
     @staticmethod
     def process_connectors(evse: Evse, connectors: dict) -> None:
         for c in connectors:
-            # noinspection PyUnresolvedReferences
             try:
-                # noinspection PyUnresolvedReferences
                 connector = Connector.objects.get(uid=c.get('uid'), evse=evse)
             except Connector.DoesNotExist:
-                # noinspection PyUnresolvedReferences
                 connector = None
-            connector_serializer = ConnectorSaveSerializer(connector, data=c)
+            connector_serializer = ConnectorSerializer(connector, data=c)
             if connector_serializer.is_valid():
                 connector_serializer.save(evse=evse)
 
     def create(self, validated_data):
         connectors = validated_data.pop('connectors', [])
-        # noinspection PyUnresolvedReferences
         evse = Evse.objects.create(**validated_data)
         self.process_connectors(evse, connectors)
         return evse
@@ -166,29 +163,6 @@ class EvseSaveSerializer(HyperlinkedModelSerializerCleanedUp):
 
         evse.save()
         return evse
-
-
-class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Evse
-        fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors', 'capabilities']
-
-    lookup_field = 'uid'
-
-    connectors = ConnectorSerializer(many=True)
-    uid = serializers.CharField(validators=[uid_validator])
-    capabilities = CapabilitySaveSerializer(many=True, required=False)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
-
-    def to_representation(self, evse: Evse):
-        result = super().to_representation(evse)
-        version = self.context.get('version', None)
-        if version == '2.2' and 'capabilities' in result:
-            try:
-                result['capabilities'].remove('START_SESSION_CONNECTOR_REQUIRED')  # Not supported in OCPI 2.2
-            except ValueError:
-                pass
-        return result
 
 
 class Coordinate(serializers.CharField):
@@ -294,7 +268,7 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
     lookup_field = 'uid'
 
     id = serializers.CharField(source='uid')
-    evses = EvseSaveSerializer(many=True, required=False)
+    evses = EvseSerializer(many=True, required=False)
     coordinates = CoordinatesSaveSerializer()
     name = serializers.CharField(required=False)
     facilities = FacilitiesSaveSerializer(many=True, required=False)

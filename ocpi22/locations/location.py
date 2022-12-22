@@ -9,7 +9,7 @@ from rest_framework.request import Request
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
-from ocpi22.locations.serializers import EvseSaveSerializer, EvseSerializer, LocationSerializer, LocationSaveSerializer, \
+from ocpi22.locations.serializers import EvseSerializer, LocationSerializer, LocationSaveSerializer, \
     LocationSerializer221
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse
@@ -126,7 +126,7 @@ class LocationViewSet(mixins.ListModelMixin,
 
             partial = request.method == 'PATCH'
 
-            serializer = EvseSaveSerializer(evse, data=data, partial=partial, context={'request': request})
+            serializer = EvseSerializer(evse, data=data, partial=partial, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 data = {

@@ -1383,9 +1383,9 @@ class TestObjectPull(TestCase):
             assert response_headers == expected_get_headers[url], \
                 f"Expecting different headers for {url}: {response_headers}"
             return result
-        except (AssertionError, KeyError) as e:
-            ic(url, response_headers, expected_get_headers[url])
-            ic(content, expected_get_responses[url])
+        except (AssertionError, KeyError):
+            ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_get_headers[url]))
+            ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
             raise
 
     @time_machine.travel(faketime, tick=False)

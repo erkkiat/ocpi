@@ -300,19 +300,16 @@ class Ocpi:
         IEC_62196_T2='AC_3_PHASE'
     )
 
-    POWERTYPE_CHOICES = (
-        ('AC_1_PHASE', 'AC 1-phase'),
-        ('AC_3_PHASE', 'AC 3-phase'),
-        ('DC', 'DC')
+    _POWERTYPE_DATA = (
+        ('AC_1_PHASE', 'AC 1-phase', 1),
+        ('AC_2_PHASE', 'AC 2-phase', 2),
+        ('AC_3_PHASE', 'AC 3-phase', 3),
+        ('AC_2_PHASE_SPLIT', 'AC 2-phase split', 2),
+        ('DC', 'DC', 3)
     )
 
-    POWERTYPE_CHOICES_221 = (
-        ('AC_1_PHASE', 'AC 1-phase'),
-        ('AC_2_PHASE', 'AC 2-phase'),
-        ('AC_3_PHASE', 'AC 3-phase'),
-        ('AC_2_PHASE_SPLIT', 'AC 2-phase split'),
-        ('DC', 'DC')
-    )
+    POWERTYPE_CHOICES_221 = ((x[0], x[1]) for x in _POWERTYPE_DATA)  # For model: (('AC_1_PHASE', 'AC 1-phase'), ... )
+    POWERTYPE_PHASES = dict((x[0], x[2]) for x in _POWERTYPE_DATA)  # For power calculation: (('AC_1_PHASE', 1), ... )
 
 
 class OCPIResponse(Response):
