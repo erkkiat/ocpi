@@ -234,6 +234,8 @@ class TariffElement(models.Model, ModelUtilMixin):
     tariff = models.ForeignKey(Tariff, related_name='tariff_elements', on_delete=models.CASCADE)
 
     def weekday_numbers(self) -> tuple:
+        if not self.day_of_week:
+            return tuple()
         return tuple(map(lambda x: choices.DAY_OF_WEEK_NUMBERS.get(x), list(self.day_of_week)))
 
     def restrictions_str(self):
