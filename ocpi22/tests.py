@@ -1252,12 +1252,12 @@ class UpdatePartiesTest(TestCase):
 def check_ok_result(testcase: TestCase, response, status_code: int = 1000, http_status: int = 200,
                     command_result: str = None) -> None:
     testcase.assertEqual(response.data.get('status_code'), status_code,
-                         msg=f'Expecting OCPI status code {status_code}')
+                         msg=f'Expecting OCPI status code {status_code}: {response}, {response.data}')
     testcase.assertEqual(response.status_code, http_status,
-                         msg=f'Expecting HTTP status code {http_status}')
+                         msg=f'Expecting HTTP status code {http_status}: {response}, {response.data}')
     if command_result:
         testcase.assertEqual(response.data.get('data').get('result'), command_result,
-                             msg=f'Expecting the result "{command_result}"')
+                             msg=f'Expecting the result "{command_result}": {response}, {response.data}')
 
 
 fake_token = '1234567890'

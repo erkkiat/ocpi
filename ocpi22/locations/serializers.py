@@ -87,13 +87,14 @@ class CapabilitySerializer(serializers.Serializer):
         return instance.name
 
 
-class MaxElectricPowerSerializer(serializers.Serializer):
+class MaxElectricPowerSerializer(serializers.IntegerField):
     def to_representation(self, connector):
+        assert isinstance(connector, Connector)  # Must use source='*'
         phases = Ocpi.POWERTYPE_PHASES.get(connector.power_type, 1)
         return connector.max_electric_power or connector.max_voltage * connector.max_amperage * phases
 
     def to_internal_value(self, data):
-        return data
+        return dict(max_electric_power=data)
 
 
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -182,32 +183,18 @@ class CoordinatesSerializer(serializers.Serializer):
     longitude = Coordinate()
 
 
-class LocationSerializerBase(serializers.Serializer):
-    id = serializers.CharField(source='uid')
-    operator = BusinessDetailsSerializer(required=False, many=False)
-    suboperator = BusinessDetailsSerializer(required=False, many=False)
-    owner = BusinessDetailsSerializer(required=False, many=False)
-
-    def update(self, instance, validated_data):
-        pass
-
-    def create(self, validated_data):
-        pass
-
-
 class PublishAllowedToSerializer(serializers.Serializer):
     def to_internal_value(self, data) -> Token:
         token = Token.get_if_exists(**data)
         if not token:
-            return ValidationError(f'Unable to find token with {str(data)}.')
+            raise ValidationError(f'Unable to find token with {str(data)}. Try to send the Token to us first.')
         return token
 
     def to_representation(self, token: Token) -> dict:
-        ic(token)
-        return dict(uid=token.uid)
+        return dict(uid=token.uid, issuer=token.issuer)
 
 
-class LocationSerializer221(LocationSerializerBase, HyperlinkedModelSerializerCleanedUp):
+class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
         fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish',

@@ -432,7 +432,7 @@ class StrictEvseUidSerializer(serializers.CharField):
     def to_internal_value(self, data):
         evse = Evse.get_if_exists(uid=data)
         if not evse:
-            return ValidationError(f'Evse with UID {data} is unknown')
+            raise ValidationError(f'Evse with UID {data} is unknown')
         return evse
 
 
