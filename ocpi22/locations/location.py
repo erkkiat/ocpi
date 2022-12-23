@@ -9,8 +9,7 @@ from rest_framework.request import Request
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
-from ocpi22.locations.serializers import EvseSerializer, LocationSerializer, LocationSaveSerializer, \
-    LocationSerializer221
+from ocpi22.locations.serializers import EvseSerializer, LocationSerializer, LocationSerializer221
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
@@ -70,15 +69,15 @@ class EvseViewSet(mixins.RetrieveModelMixin,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
 
-class LocationViewSet(mixins.ListModelMixin,
-                      GenericViewSet):
+class LocationViewSet(GenericViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'parking_type', 'city', 'publish', 'facilities', 'country']
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = 'locations'
     renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
-
+    queryset = Location.objects.all().order_by('created')
+    serializer_class = LocationSerializer221
     lookup_field = "uid"
 
     def get_view_name(self):
@@ -89,8 +88,11 @@ class LocationViewSet(mixins.ListModelMixin,
         return 'Locations'
 
     @requires_premium
-    def list(self, *args, **kwargs):
-        return super().list(*args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        serializer_class = self.get_location_serializer(request)
+        serializer = serializer_class(self.paginator.paginate_queryset(self.queryset, request),
+                                      many=True, context={'version': request.version})
+        return self.paginator.get_paginated_response(serializer.data)
 
     @staticmethod
     def get_object(uid=None) -> Location:
@@ -161,7 +163,7 @@ class LocationViewSet(mixins.ListModelMixin,
                 return OCPIResponse(f'Location {location} is owned by us and cannot be updated from outside.',
                                     http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-            serializer = LocationSaveSerializer(location, data=data)
+            serializer = LocationSerializer221(location, data=data, context={'version': request.version})
             if serializer.is_valid():
                 logging.info(f'Creating or updating Location {country_code}*{party_id} - {uid}.')
                 serializer.save()
@@ -186,24 +188,19 @@ class LocationViewSet(mixins.ListModelMixin,
                                      country_code=country_code,
                                      party_id=party_id,
                                      uid=uid)
-        if request.version == '2.2':
-            messages.info(request,
-                          'Please note that 2-phase connectors are missing in OCPI 2.2, so they are mapped to 1-phase. '
-                          'Also, the state is missing from the OCPI 2.2 postal address.')
-            serializer = LocationSerializer(location, context={'version': request.version})
-        else:
-            serializer = LocationSerializer221(location, context={'version': request.version})
 
         if request.method == 'GET':
+            serializer_class = self.get_location_serializer(request)
+            serializer = serializer_class(location, context={'version': request.version})
             return OCPIResponse(serializer.data)
 
         elif request.method in ('PUT', 'PATCH'):
             partial = request.method == 'PATCH'
 
-            serializer = LocationSaveSerializer(location,
-                                                data=request.data.get('data', request.data),
-                                                partial=partial,
-                                                context={'request': request})
+            serializer = LocationSerializer(location,
+                                            data=request.data.get('data', request.data),
+                                            partial=partial,
+                                            context={'request': request, 'version': request.version})
             if serializer.is_valid():
                 serializer.save()
                 return OCPIResponse(serializer.data)
@@ -214,5 +211,12 @@ class LocationViewSet(mixins.ListModelMixin,
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    queryset = Location.objects.all().order_by('created')
-    serializer_class = LocationSerializer
+    @staticmethod
+    def get_location_serializer(request):
+        if request.version == '2.2':
+            messages.info(request,
+                          'Please note that 2-phase connectors are missing in OCPI 2.2, so they are mapped to 1-phase. '
+                          'Also, the state is missing from the OCPI 2.2 postal address and the '
+                          'START_SESSION_CONNECTOR_REQUIRED capability is filtered out.')
+            return LocationSerializer
+        return LocationSerializer221

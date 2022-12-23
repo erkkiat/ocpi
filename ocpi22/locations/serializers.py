@@ -7,6 +7,7 @@ from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.tariff import Tariff
+from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import uid_validator
 from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp
@@ -176,13 +177,7 @@ class Coordinate(serializers.CharField):
         return f"{float(value):.6f}"
 
 
-class CoordinatesSaveSerializer(serializers.Serializer):
-    def update(self, instance, validated_data):
-        pass
-
-    def create(self, validated_data):
-        pass
-
+class CoordinatesSerializer(serializers.Serializer):
     latitude = Coordinate()
     longitude = Coordinate()
 
@@ -200,64 +195,23 @@ class LocationSerializerBase(serializers.Serializer):
         pass
 
 
+class PublishAllowedToSerializer(serializers.Serializer):
+    def to_internal_value(self, data) -> Token:
+        token = Token.get_if_exists(**data)
+        if not token:
+            return ValidationError(f'Unable to find token with {str(data)}.')
+        return token
+
+    def to_representation(self, token: Token) -> dict:
+        ic(token)
+        return dict(uid=token.uid)
+
+
 class LocationSerializer221(LocationSerializerBase, HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
-        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
-                  'name', 'address', 'city', 'postal_code', 'state', 'country',
-                  'coordinates', 'parking_type', 'evses',
-                  'operator', 'suboperator', 'owner',
-                  'facilities', 'time_zone', 'last_updated']
-
-    lookup_field = 'uid'
-
-    coordinates = CoordinatesSaveSerializer(source='*')
-    evses = EvseSerializer(many=True, required=False)
-    publish_allowed_to = serializers.SerializerMethodField()
-    facilities = FacilitiesSaveSerializer()
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
-
-    @staticmethod
-    def get_coordinates(location: Location) -> dict:
-        # Create a dict to be placed inside the Location json
-        # Longitude/Latitude has to be a string (OCPI) and have a fixed length of 6 decimals (e-clearing.net)
-        return dict(latitude=f'{location.latitude:.6f}', longitude=f'{location.longitude:.6f}')
-
-    # @staticmethod
-    # def put_coordinates(data) -> None:
-    #     ic(data.coordinates)
-
-    @staticmethod
-    def get_publish_allowed_to(location: Location) -> list:
-        """
-        List the token IDs of the drivers who are allowed to see this Location
-        """
-        if location.publish:
-            # Location is public to everyone, no need to specify exceptions
-            return []
-        return [token.uid for token in location.publish_allowed_to.all()]
-
-    @staticmethod
-    def get_facilities(location: Location):
-        # Create a list of facility names
-        return [facility.name for facility in location.facilities.all()]
-
-
-class LocationSerializer(LocationSerializer221):
-    class Meta:
-        model = Location
-        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
-                  'name', 'address', 'city', 'postal_code', 'country',
-                  'coordinates', 'parking_type', 'evses',
-                  'operator', 'suboperator', 'owner',
-                  'facilities', 'time_zone', 'last_updated']
-
-
-class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Location
-        fields = ['country_code', 'party_id', 'id', 'publish',
-                  # 'publish_allowed_to',
+        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish',
+                  'publish_allowed_to',
                   'name', 'address', 'city', 'postal_code', 'state', 'country',
                   'coordinates', 'parking_type',
                   'evses',
@@ -269,13 +223,14 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
 
     id = serializers.CharField(source='uid')
     evses = EvseSerializer(many=True, required=False)
-    coordinates = CoordinatesSaveSerializer()
+    coordinates = CoordinatesSerializer()
     name = serializers.CharField(required=False)
     facilities = FacilitiesSaveSerializer(many=True, required=False)
     owner = BusinessDetailsSerializer(required=False)
     operator = BusinessDetailsSerializer(required=False)
     suboperator = BusinessDetailsSerializer(required=False)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    publish_allowed_to = PublishAllowedToSerializer(many=True, required=False)
 
     @staticmethod
     def process_coordinates(validated_data: dict):
@@ -292,8 +247,10 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
             validated_data = self.process_coordinates(validated_data)
             facilities = validated_data.pop('facilities', None)
             evses = validated_data.pop('evses', [])
+            publish_allowed_to = validated_data.pop('publish_allowed_to', [])
 
             location = Location.objects.create(**validated_data)
+            location.publish_allowed_to.set(publish_allowed_to)
 
             for e in evses:
                 connectors = e.pop('connectors', [])
@@ -334,7 +291,10 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
         validated_data = self.process_coordinates(validated_data)
         evses = validated_data.pop('evses', [])
         facilities = validated_data.pop('facilities', [])
+        publish_allowed_to = validated_data.pop('publish_allowed_to', [])
+
         location.facilities.set(facilities)
+        location.publish_allowed_to.set(publish_allowed_to)
 
         for key, value in validated_data.items():
             if key not in readonly_fields:
@@ -368,3 +328,13 @@ class LocationSaveSerializer(LocationSerializerBase, HyperlinkedModelSerializerC
                 connector.tariff_ids.set(tariff_ids)
 
         return location
+
+
+class LocationSerializer(LocationSerializer221):
+    class Meta:
+        model = Location
+        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
+                  'name', 'address', 'city', 'postal_code', 'country',
+                  'coordinates', 'parking_type', 'evses',
+                  'operator', 'suboperator', 'owner',
+                  'facilities', 'time_zone', 'last_updated']

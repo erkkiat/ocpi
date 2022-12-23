@@ -287,10 +287,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         start_time = self.start_date_time.strftime(settings.DATETIME_FORMAT)
         return f'{self.cdr_token_uid} - {start_time} - {self.kwh}kWh - ' \
                f'EVSE {self.evse.evse_id}'
-               # f'{self.connector.get_standard_display() if self.connector else "no connector"}'
+        # f'{self.connector.get_standard_display() if self.connector else "no connector"}'
 
-    def get_absolute_url(self):
-        return reverse('session-by-id', args=[self.country_code, self.party_id, self.uid])
+    def get_absolute_url(self, version=None):
+        return reverse('session-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def total_time(self):
         if self.status == 'INVALID':

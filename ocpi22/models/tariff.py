@@ -142,8 +142,8 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             f"<a href='{url}'>{self.price()}</a>"
         )
 
-    def get_absolute_url(self):
-        return reverse('tariff-by-id', args=[self.country_code, self.party_id, self.uid])
+    def get_absolute_url(self, version=None):
+        return reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def references(self):
         if settings.DEBUG:

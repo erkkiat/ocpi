@@ -128,8 +128,8 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         self.change_fields_to_upper_case()
         return super(self.__class__, self).save(*args, **kwargs)
 
-    def get_absolute_url(self):
-        return reverse('token-by-id', args=[self.country_code, self.party_id, self.uid])
+    def get_absolute_url(self, version=None):
+        return reverse('token-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def total_balance_float(self) -> float:
         if self.customer:

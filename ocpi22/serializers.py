@@ -26,7 +26,8 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         """
         if not hasattr(obj, 'get_absolute_url'):
             return ''
-        return f'{build_absolute_uri(obj.get_absolute_url())}'
+        version = self.context.get('version')
+        return f'{build_absolute_uri(obj.get_absolute_url(version))}'
 
     def get_url(self, obj) -> str:
         """

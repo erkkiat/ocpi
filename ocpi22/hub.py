@@ -44,9 +44,9 @@ class CommandsHubViewSet(GenericViewSet):
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            serializer = StartSessionSerializer(data=request.data)
+            serializer = StartSessionSerializer(data=request.data, context={'version': request.version})
             if serializer.is_valid():
-                # Forward the command
+                # Todo: Forward the OCPI remote command to CPO
                 pass
         except (Http404, KeyError) as e:
             return OCPIResponse(None, status_message=str(e),

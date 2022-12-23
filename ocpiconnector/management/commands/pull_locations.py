@@ -43,6 +43,8 @@ class Command(BaseCommand):
             for location in data:
                 ic(location)
                 serializer = LocationSerializer(data=location)
+                # context={'version': endpoint.credentials.get_version_display()})
+
                 if serializer.is_valid():
                     ic(serializer.data)
                     # serializer.save()

@@ -372,7 +372,7 @@ class UserViewSet(viewsets.GenericViewSet):
         transactions = self.paginator.paginate_queryset(
             account.transactions.all().order_by('-datetime') if account else Transaction.objects.none(), request
         )
-        serializer = serializer(instance=transactions, many=True)
+        serializer = serializer(instance=transactions, many=True, context={'version': request.version})
         return self.paginator.get_paginated_response(serializer.data)
 
     @method_decorator(login_required)

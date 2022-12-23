@@ -299,7 +299,7 @@ class CdrViewSet(mixins.ListModelMixin,
         if not matching_operator(request, country_code, party_id):
             return NotOwner()
 
-        serializer = CdrSerializer(data=data)
+        serializer = CdrSerializer(data=data, context={'version': request.version})
         if serializer.is_valid():
             cdr = serializer.save()
             # cdr.tariffs.set(tariff_list)

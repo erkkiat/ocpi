@@ -151,8 +151,8 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         self.change_fields_to_upper_case()
         return super(self.__class__, self).save(*args, **kwargs)
 
-    def get_absolute_url(self):
-        return reverse('location-by-id', args=[self.country_code, self.party_id, self.uid])
+    def get_absolute_url(self, version=None):
+        return reverse('location-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def get_quick_url(self):
         return reverse('quick-location-by-id', args=[self.uid])
@@ -249,15 +249,15 @@ class Evse(models.Model, ModelUtilMixin):
         return self.evse_id
 
     def connector_list(self):
-        # noinspection PyUnresolvedReferences
         return format_html(
             '<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff_html()}' for c in self.connectors.all()])
         )
 
-    def get_absolute_url(self):
+    def get_absolute_url(self, version=None):
         try:
             return reverse('location-by-evse-id',
-                           args=[self.location.country_code, self.location.party_id, self.location.uid, self.uid])
+                           args=[version or '2.2.1', self.location.country_code, self.location.party_id,
+                                 self.location.uid, self.uid])
         except NoReverseMatch:
             return ''
 

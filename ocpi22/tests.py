@@ -29,6 +29,7 @@ from requests import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.locations.serializers import LocationSerializer
 from ocpiconnector.util import recursive_sort_dict
 from util import reverse
 from rest_framework.test import APIRequestFactory
@@ -44,7 +45,6 @@ from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet
-from ocpi22.locations.serializers import LocationSaveSerializer
 from ocpi22.middleware import OCPIHubMiddleware
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole, find_endpoints_by_roles
@@ -185,7 +185,6 @@ class ApiPutTests(TestCase):
 
     def test_evse_format(self):
         loc = self.create_location()
-        # noinspection PyUnresolvedReferences
         evse = loc.evses.all()[0]
         url = reverse('location-by-evse-id',
                       args=[loc.country_code, loc.party_id, loc.uid, evse.uid])
@@ -238,7 +237,7 @@ class ApiPutTests(TestCase):
         request.data = data
         request.user = AnonymousUser
         request.credentials = self.credentials
-
+        request.version = '2.2.1'
         return viewset().put(request)
 
     def test_put_location(self):
@@ -286,16 +285,25 @@ class ApiPutTests(TestCase):
              1, 1),
         )
 
-        _publish_allowed_to = [{
-            "visual_number": "12345-67",
-            "issuer": "NewMotion"
-        }, {
-            "visual_number": "0055375624",
-            "issuer": "ANWB"
-        }, {
-            "uid": "12345678905880",
-            "type": "RFID"
-        }]
+        publish_allowed_to = [
+            {
+                "uid": "123123",
+                "visual_number": "12345-67",
+                "issuer": "NewMotion"
+            }, {
+                "uid": "321321",
+                "visual_number": "0055375624",
+                "issuer": "ANWB"
+            }, {
+                "uid": "12345678905880"
+            }, {
+                'visual_number': '0123456-99',
+                'issuer': 'MoveMove'
+            }
+        ]
+
+        for p in publish_allowed_to:
+            Token.objects.create(type='RFID', contract_id='123', **p)
 
         for filename, country_code, party_id, http_status, ocpi_status, tariffs, evses, connectors in testcases:
             with self.subTest('Putting location', filename=filename):
@@ -542,7 +550,7 @@ class ApiPutTests(TestCase):
             # Verify the saved data
             uid = data.get('id')
             saved_cdr = Cdr.objects.get(uid=uid)
-            saved_data = CdrSerializer(saved_cdr).data
+            saved_data = CdrSerializer(saved_cdr, context={'version': '2.2.1'}).data
             # ic(saved_data)
 
             # Check that all Tariffs are archived, so that they won't be modified
@@ -657,9 +665,12 @@ class ApiPutTests(TestCase):
         self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
 
         detail_url = data.get('detail_url')
+        self.assertURLEqual(detail_url, 'http://testserver.test/ocpi/2.2.1/locations/FI/F1/1',
+                            'Location detail URL differs from expected')
 
         # This should fail without authentication
         result = self.client.get(detail_url)
+        ic(result, result.status_code)
         self.assertTrue(result.status_code in [401, 403], 'A Location request should require OCPI authentication.')
 
     def _create_credentials(self, country_code, party_id):
@@ -720,7 +731,7 @@ class CdrTests(TestCase):
 
     def load_location(self, filename):
         data = load_example(f'data/examples/{filename}.json')
-        serializer = LocationSaveSerializer(data=data)
+        serializer = LocationSerializer(data=data)
         if not serializer.is_valid():
             self.fail(serializer.errors)
         return serializer.save()
@@ -2698,6 +2709,7 @@ def put_cdr(data):
     request = api_factory.post(reverse('cdr-list'))
     request.data = data
     request.user = get_fake_admin()
+    request.version = '2.2.1'
     return CdrViewSet().put(request)
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)
