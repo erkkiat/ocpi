@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
-import ocpi22.util
+from ocpi22.util import OCPIVersioning
 from ocpi22.cpo.api import close_active_sessions_for_evse
 from ocpi22.webhooks import send_to_webhook
 from ocpi22.ocpi.serializers import TokenSerializer
@@ -56,8 +56,8 @@ class ResponseData:
 
 class CommandsViewSet(GenericViewSet):
     # root_view_name = 'commands'
-    # noinspection PyUnresolvedReferences
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
+    versioning_class = OCPIVersioning
     permission_classes = [OCPIPermission]
     renderer_classes = RENDERERS
 
@@ -145,8 +145,8 @@ class CommandsViewSet(GenericViewSet):
                 try:
                     # Prepare the command for CPO management system
                     initial_data = dict(
-                        response_url=ocpi22.util.build_absolute_uri(reverse('chargepoint-remote-command-result',
-                                                                            args=(authorization_reference,))),
+                        response_url=build_absolute_uri(reverse('chargepoint-remote-command-result',
+                                                                args=(authorization_reference,))),
                         token_id=get_token_id(token),
                         token_type=get_token_type(token, Token.APP_USER),
                         authorization_reference=authorization_reference,
@@ -389,11 +389,12 @@ class CommandsViewSet(GenericViewSet):
 
     @staticmethod
     def list(request, *_args, **_kwargs):
+        ic(request.version)
         return Response(dict(
-            start_session=request.build_absolute_uri(reverse('commands-start-session')),
-            stop_session=request.build_absolute_uri(reverse('commands-stop-session')),
-            unlock_connector=request.build_absolute_uri(reverse('commands-unlock-connector')),
-            reserve_now=request.build_absolute_uri(reverse('commands-reserve-now')),
+            start_session=request.build_absolute_uri(reverse('commands-start-session', request=request)),
+            stop_session=request.build_absolute_uri(reverse('commands-stop-session', request=request)),
+            unlock_connector=request.build_absolute_uri(reverse('commands-unlock-connector', request=request)),
+            reserve_now=request.build_absolute_uri(reverse('commands-reserve-now', request=request)),
             # command_result=request.build_absolute_uri(reverse('commands-command-result')),
         ))
 

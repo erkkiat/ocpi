@@ -26,7 +26,7 @@ from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
 from ocpi22 import logging
-from ocpi22.ocpi.util import format_url
+from ocpi22.ocpi.util import format_url, OCPIResponse
 # from ocpiconnector import slack_logging
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 
@@ -632,3 +632,17 @@ class OCPIVersioning(versioning.BaseVersioning):
         if 'ocpi/2.2/' in request.path:
             return '2.2'
         return '2.2.1'
+
+
+class OCPIListModelMixin:
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer_class = self.get_serializer_class() \
+            if hasattr(self, 'get_serializer_class') else self.serializer_class
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = serializer_class(page, many=True, context={'version': request.version, 'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = serializer_class(queryset, many=True, context={'version': request.version, 'request': request})
+        return OCPIResponse(serializer.data)

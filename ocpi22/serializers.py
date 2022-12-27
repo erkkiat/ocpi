@@ -18,13 +18,18 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         result = clear_empty(repr_dict)
         return result
 
+    def is_browser(self):
+        request = self.context.get('request')
+        if request and hasattr(request, 'accepted_media_type'):
+            return bool('text/html' in request.accepted_media_type)
+
     def get_detail_url(self, obj) -> str:
         """
         Construct a URL which points to the object instance view
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_absolute_url'):
+        if not hasattr(obj, 'get_absolute_url') or not self.is_browser():
             return ''
         version = self.context.get('version')
         return f'{build_absolute_uri(obj.get_absolute_url(version))}'
@@ -35,7 +40,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_cpo_url'):
+        if not hasattr(obj, 'get_cpo_url') or not self.is_browser():
             return ''
         return f'{build_absolute_uri(obj.get_cpo_url())}'
 
@@ -45,7 +50,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_quick_url'):
+        if not hasattr(obj, 'get_quick_url') or not self.is_browser():
             return ''
         return f'{build_absolute_uri(obj.get_quick_url())}'
 
@@ -55,7 +60,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_status_url'):
+        if not hasattr(obj, 'get_status_url') or not self.is_browser():
             return ''
         url = obj.get_status_url()
         if url:

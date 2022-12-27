@@ -551,7 +551,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             session: Session = Session.objects.none()
 
             if request.method == 'POST':
-                serializer = StartTransactionSerializer(data=request.data)
+                serializer = StartTransactionSerializer(data=request.data,
+                                                        context={'version': request.version, 'request': request})
                 if serializer.is_valid():
                     evse: Evse = serializer.validated_data['evse']
                     connector_id: str = serializer.validated_data['connector_id']
@@ -634,7 +635,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                                      mark_safe('<div>Next, you can go and send some '
                                                f'<a href="{next_url}">meter values</a>.</div>'))
 
-                    session_serializer = CpoSessionSerializer(instance=session)
+                    session_serializer = CpoSessionSerializer(instance=session,
+                                                              context={'version': request.version, 'request': request})
                     return Response(
                         dict(
                             status_text=f'Session started',
@@ -690,7 +692,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         try:
 
             if request.method == 'POST':
-                serializer = MeterValuesSerializer(data=request.data)
+                serializer = MeterValuesSerializer(data=request.data,
+                                                   context={'version': request.version, 'request': request})
                 if serializer.is_valid():
                     return process_meter_values(request, serializer, **serializer.validated_data)
                 else:
@@ -730,7 +733,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         """
         try:
             if request.method == 'POST':
-                serializer = StopTransactionSerializer(data=request.data)
+                serializer = StopTransactionSerializer(data=request.data,
+                                                       context={'version': request.version, 'request': request})
                 if serializer.is_valid():
                     session = serializer.validated_data.get('session')
                     stop_kwh = serializer.validated_data.get('stop_kwh')
@@ -778,8 +782,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     from ocpi22.models.cdr import Cdr
                     cdr = Cdr.create_based_on_session(session)
 
-                    cdr_json = CdrSerializer(instance=cdr)
-                    session_serializer = CpoSessionSerializer(instance=session)
+                    cdr_json = CdrSerializer(instance=cdr, context={'version': request.version, 'request': request})
+                    session_serializer = CpoSessionSerializer(instance=session,
+                                                              context={'version': request.version, 'request': request})
 
                     return Response(
                         dict(
@@ -825,7 +830,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             command = command_store[authorization_reference]
 
             if request.method == 'POST':
-                serializer = CpoCommandResultSerializer(data=request.data)
+                serializer = CpoCommandResultSerializer(data=request.data,
+                                                        context={'version': request.version, 'request': request})
                 if serializer.is_valid():
                     token_element = command.get('token') or command.get('ad_hoc_token')
                     token_id = token_element.get('uid') if token_element else ''

@@ -16,6 +16,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
+
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -36,7 +37,8 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.rendering import RENDERERS
-from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, build_callback_request, OCPIVersioning
+from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, build_callback_request, OCPIVersioning, \
+    OCPIListModelMixin
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
@@ -52,11 +54,12 @@ from premium import requires_premium
 #  so need the routing headers.
 
 
-class TokenViewSet(mixins.ListModelMixin,
+class TokenViewSet(OCPIListModelMixin,
                    GenericViewSet):
     queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
     pagination_class = OCPIPaginationAndHeaders
+    versioning_class = OCPIVersioning
     lookup_field = 'uid'
     renderer_classes = RENDERERS
     filter_backends = [DjangoFilterBackend]
@@ -94,7 +97,7 @@ class TokenViewSet(mixins.ListModelMixin,
 
         if token and request and not token.is_owner(request):
             return NotOwner()
-        serializer = TokenSerializer(data=data, instance=token, partial=partial)
+        serializer = TokenSerializer(data=data, instance=token, partial=partial, context={'version': request.version})
         if serializer.is_valid():
             logging.info(f'Creating or updating Token {country_code}*{party_id} - {uid}.')
             serializer.save()
@@ -198,7 +201,7 @@ class TokenViewSet(mixins.ListModelMixin,
             #     message_user(message, '+358405480238', location=location_name,
             #                  price=prices, url="http://secureautocharge.com/132244/")
 
-            serializer = TokenSerializer(instance=token)
+            serializer = TokenSerializer(instance=token, context={'version': request.version})
             return OCPIResponse(
                 dict(
                     allowed=allowed,
@@ -218,7 +221,7 @@ class TokenViewSet(mixins.ListModelMixin,
     def get(self, request, country_code=None, party_id=None, uid=None, **_kwargs):
         if country_code and party_id and uid:
             token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
-            serializer = TokenSerializer(token, many=False, context={'request': request})
+            serializer = TokenSerializer(token, many=False, context={'request': request, 'version': request.version})
             return OCPIResponse(serializer.data)
         return OCPIBadRequestResponse()
 
@@ -236,7 +239,7 @@ class TokenViewSet(mixins.ListModelMixin,
         serializer = TokenSerializer(token,
                                      data=request.data,
                                      partial=method_is_patch,
-                                     context={'request': request})
+                                     context={'request': request, 'version': request.version})
         if serializer.is_valid():
             serializer.save()
             return OCPIResponse(serializer.data)
@@ -244,7 +247,7 @@ class TokenViewSet(mixins.ListModelMixin,
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
 
-class CdrViewSet(mixins.ListModelMixin,
+class CdrViewSet(OCPIListModelMixin,
                  GenericViewSet):
     """
     These are the records created for the purpose of billing. Once a CDR is created, it must not be modified or removed.
@@ -252,9 +255,9 @@ class CdrViewSet(mixins.ListModelMixin,
     **VISIBILITY**: A CDR record is only available to relevant parties,
     so fetching another party's CDR should not be allowed. (When logged in as a superuser, you can see all CDRs)
     """
-    # noinspection PyUnresolvedReferences
-    queryset = Cdr.objects.none()  # Default to no visibility, fine tune with get_queryset()
+    # queryset = Cdr.objects.none()  # Default to no visibility, fine tune with get_queryset()
     serializer_class = CdrSerializer
+    versioning_class = OCPIVersioning
     pagination_class = OCPIPaginationAndHeaders
     renderer_classes = RENDERERS
 
@@ -286,7 +289,7 @@ class CdrViewSet(mixins.ListModelMixin,
     @requires_premium
     def by_id(self, request, country_code=None, party_id=None, uid=None, **_kwargs) -> Response:
         cdr = get_object_or_404(Cdr, country_code=country_code, party_id=party_id, uid=uid)
-        serializer = CdrSerializer(cdr, many=False, context={'request': request})
+        serializer = CdrSerializer(cdr, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 
     @transaction.atomic
@@ -375,7 +378,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             endpoints = get_endpoints(versions_url, token_base64)
             store_endpoints_for_party(credentials, endpoints)
             data = make_my_credentials_dict(request)
-            serializer = CredentialsSerializer(data=data)
+            serializer = CredentialsSerializer(data=data, context={'version': request.version})
             if not serializer.is_valid():
                 logging.error(f'OCPI connector has a logic error in Credentials POST: {serializer.errors}')
                 return Response(
@@ -389,10 +392,11 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             return OCPIBadRequestResponse(str(e))
 
 
-class TariffViewSet(mixins.ListModelMixin,
+class TariffViewSet(OCPIListModelMixin,
                     GenericViewSet):
     queryset = Tariff.objects.exclude(archived=True).order_by('created')
     serializer_class = TariffSerializer
+    versioning_class = OCPIVersioning
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
     renderer_classes = RENDERERS
@@ -413,7 +417,7 @@ class TariffViewSet(mixins.ListModelMixin,
     @requires_premium
     def tariff_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
-        serializer = TariffSerializer(tariff, many=False, context={'request': request})
+        serializer = TariffSerializer(tariff, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 
     @staticmethod
@@ -440,7 +444,7 @@ class TariffViewSet(mixins.ListModelMixin,
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        serializer = TariffSerializer(instance=tariff, data=data)
+        serializer = TariffSerializer(instance=tariff, data=data, context={'version': request.version})
         if serializer.is_valid():
             logging.info(f'Creating or updating Tariff {country_code}*{party_id} - {uid}.')
             serializer.save()
@@ -464,7 +468,7 @@ def stop_session_if_money_runs_out(request, session):
                         request)
 
 
-class SessionViewSet(mixins.ListModelMixin,
+class SessionViewSet(OCPIListModelMixin,
                      GenericViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token_uid', 'authorization_reference']
@@ -473,6 +477,7 @@ class SessionViewSet(mixins.ListModelMixin,
     queryset = Session.objects.all().order_by('created')
     serializer_class = SessionSerializer
     renderer_classes = RENDERERS
+    versioning_class = OCPIVersioning
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
@@ -494,7 +499,7 @@ class SessionViewSet(mixins.ListModelMixin,
         session = get_object_or_404(Session, country_code=country_code, party_id=party_id, uid=uid)
 
         if request.method == 'GET':
-            serializer = SessionSerializer(session, context={'request': request})
+            serializer = SessionSerializer(session, context={'request': request, 'version': request.version})
             return OCPIResponse(serializer.data)
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
@@ -519,7 +524,8 @@ class SessionViewSet(mixins.ListModelMixin,
         else:
             logging.info(f'Creating new session {uid} received from {country_code}*{party_id}')
         serializer = SessionSerializer(
-            data=request.data, instance=session, partial=partial, context={'request': request}
+            data=request.data, instance=session, partial=partial,
+            context={'request': request, 'version': request.version}
         )
         if serializer.is_valid():
             session = serializer.save()

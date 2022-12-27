@@ -133,7 +133,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
                 for element in self.tariff_elements.all()
             ]
         ]
-        return f"{' + '.join(components or [f'{self.uid}'])}{self.min_and_max_price()}"
+        return f"{', '.join(components or [f'{self.uid}'])}{self.min_and_max_price()}"
 
     def link(self):
         url = reverse('admin:ocpi22_tariff_change', args=[self.pk])

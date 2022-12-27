@@ -374,6 +374,8 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         queryset = apply_ocpi22_filters(request, queryset)
+        if not queryset or not queryset.count():
+            return None
         return super().paginate_queryset(queryset, request, view)
 
 

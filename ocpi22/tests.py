@@ -207,6 +207,7 @@ class ApiPutTests(TestCase):
         request.version = '2.2.1'
         loc = self.location
         viewset = LocationViewSet()
+        viewset.request = request
         response = viewset.location_by_id(request, loc.country_code, loc.party_id, loc.uid)
         # ic(response, response.data)
         data = response.data.get('data')
@@ -585,7 +586,7 @@ class ApiPutTests(TestCase):
             for i in ignored_fields:
                 saved_data.pop(i, None)
                 data.pop(i, None)
-            saved_data['tariffs'][0].pop('detail_url')
+            # saved_data['tariffs'][0].pop('detail_url')
             for t in range(0, len(saved_data['tariffs'])):
                 del saved_data['tariffs'][t]['tariff_alt_text']
             self.assertEqual(saved_data, data)
@@ -656,8 +657,10 @@ class ApiPutTests(TestCase):
 
         request = api_factory.get(url)
         request.version = '2.2.1'
+        request.accepted_media_type = 'text/html'  # To get the detail_url in the response
         loc = self.location
         viewset = LocationViewSet()
+        viewset.request = request
         response = viewset.location_by_id(request, loc.country_code, loc.party_id, loc.uid)
         # ic(response, response.data)
         data = response.data.get('data')
@@ -670,7 +673,6 @@ class ApiPutTests(TestCase):
 
         # This should fail without authentication
         result = self.client.get(detail_url)
-        ic(result, result.status_code)
         self.assertTrue(result.status_code in [401, 403], 'A Location request should require OCPI authentication.')
 
     def _create_credentials(self, country_code, party_id):
@@ -1189,14 +1191,14 @@ class UpdatePartiesTest(TestCase):
         # Get the existing admin token
         token = get_admin_token()
         serializer = TokenSerializer(token)
-        expected = {'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/MSP/FI*MSP*T*ADMIN*TOKEN',
-                    'contract_id': 'INTERNAL',
-                    'country_code': 'FI',
-                    'issuer': 'FI*MSP',
-                    'party_id': 'MSP',
-                    'type': 'OTHER',
-                    'uid': 'FI*MSP*T*ADMIN*TOKEN',
-                    'valid': True}
+        expected = {  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/MSP/FI*MSP*T*ADMIN*TOKEN',
+            'contract_id': 'INTERNAL',
+            'country_code': 'FI',
+            'issuer': 'FI*MSP',
+            'party_id': 'MSP',
+            'type': 'OTHER',
+            'uid': 'FI*MSP*T*ADMIN*TOKEN',
+            'valid': True}
         self.assertDictEqual(serializer.data, expected, 'Getting the admin token seems not to work')
 
         # Creating the admin token
@@ -1228,8 +1230,7 @@ class UpdatePartiesTest(TestCase):
                             'OCPI-to-country-code': 'FI',
                             'OCPI-to-party-id': 'HUB',  # The recipient comes from the Credentials in the fixture
                             'content-type': 'application/json'}
-        expected_json = {'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/MSP/UID',
-                         'contract_id': 'CONTRACT',
+        expected_json = {'contract_id': 'CONTRACT',
                          'country_code': 'FI',
                          'issuer': 'issuer',
                          'last_updated': '2022-01-01T12:00:00Z',
@@ -1387,15 +1388,21 @@ class TestObjectPull(TestCase):
             result = client.get(url, **headers)
             json_text = result.content.decode('utf-8')
             assert 'DOCTYPE' not in json_text, f"URL {url} is returning HTML, when excepting JSON"
+
             content = json.loads(json_text)
-            response_headers = dict(result.headers)
             assert content == expected_get_responses[url], \
                 f"Expecting a different result for {url}: {content}"
-            assert response_headers == expected_get_headers[url], \
+
+            response_headers = dict(result.headers)
+            response_headers.pop('Content-Length', None)
+            expected_headers = expected_get_headers[url]
+            expected_headers.pop('Content-Length', None)
+            assert response_headers == expected_headers, \
                 f"Expecting different headers for {url}: {response_headers}"
+
             return result
         except (AssertionError, KeyError):
-            ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_get_headers[url]))
+            ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_headers))
             ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
             raise
 
@@ -1656,6 +1663,8 @@ class TestSession(TestCase):
             with self.subTest(filename=filename):
                 data = load_example(f'data/examples/{filename}.json')
                 request.data = data
+                request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+                request.version = '2.2.1'
                 webhook_post_mock.reset_mock()
                 with patch('ocpi22.util.redis_store.get') as get:
                     get.return_value = 'http://localhost/session/'
@@ -1683,8 +1692,7 @@ class TestSession(TestCase):
 
                 if expected_dict:
                     session_data = SessionSerializer(instance=session).data
-                    # ic(session_data)
-
+                    # ic(recursive_sort_dict(session_data), recursive_sort_dict(expected_dict))
                     self.assertDictEqual(session_data, expected_dict,
                                          'The charging session content differs from expected')
 
@@ -1765,6 +1773,8 @@ class TestCpoApi(TestCase):
         cpo_viewset = ChargePointViewSet()
         cpo_request = api_factory.post(start_transaction_url)
         cpo_request.credentials = Credentials.objects.first()
+        cpo_request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+        cpo_request.version = '2.2.1'
         cpo_request.data = {
             "evse_id": "HELSINKI-3",
             "connector_id": "1",
@@ -1779,12 +1789,15 @@ class TestCpoApi(TestCase):
         args, kwargs = send_updates_mock.call_args
 
         data_sent = args[0]
+        # ic(recursive_sort_dict(data_sent), recursive_sort_dict(RfidTestData.expected_data_1))
         self.assertDictEqual(data_sent, RfidTestData.expected_data_1,
                              "The Session update doesn't look as expected")
 
         self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
+        # ic(recursive_sort_dict(cpo_response.data))
         self.assertEqual(cpo_response.data,
-                         {'session': {'auth_method': 'AUTH_REQUEST',
+                         {'session': {'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                                      'auth_method': 'AUTH_REQUEST',
                                       'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                                       'billed_to': 'FI*MSP',
                                       'connector_id': '1',
@@ -1825,17 +1838,17 @@ class TestCpoApi(TestCase):
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
                                    'total_kwh': Decimal('3.450')},
-                session_data={'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
-                              'auth_method': 'AUTH_REQUEST',
-                              'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
-                              'cdr_token': OrderedDict([('uid', 'EKI1'),
-                                                        ('type', 'RFID'),
-                                                        ('contract_id', 'DE8ACC12E46L89')]),
-                              'charging_periods': [OrderedDict([('start_date_time', '2022-01-01T12:00:00Z'),
-                                                                ('tariff', 'EKI1'),
-                                                                ('dimensions',
-                                                                 [OrderedDict([('type', 'ENERGY'),
-                                                                               ('volume', '3.4500')]),
+                session_data={  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                    'auth_method': 'AUTH_REQUEST',
+                    'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
+                    'cdr_token': OrderedDict([('uid', 'EKI1'),
+                                              ('type', 'RFID'),
+                                              ('contract_id', 'DE8ACC12E46L89')]),
+                    'charging_periods': [OrderedDict([('start_date_time', '2022-01-01T12:00:00Z'),
+                                                      ('tariff', 'EKI1'),
+                                                      ('dimensions',
+                                                       [OrderedDict([('type', 'ENERGY'),
+                                                                     ('volume', '3.4500')]),
                                                                   OrderedDict([('type', 'STATE_OF_CHARGE'),
                                                                                ('volume', '42.0000')])])])],
                               'connector_id': '1',
@@ -1874,17 +1887,17 @@ class TestCpoApi(TestCase):
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
                                    'total_kwh': Decimal('33.450')},
-                session_data={'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
-                              'auth_method': 'AUTH_REQUEST',
-                              'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
-                              'cdr_token': OrderedDict([('uid', 'EKI1'),
-                                                        ('type', 'RFID'),
-                                                        ('contract_id', 'DE8ACC12E46L89')]),
-                              'charging_periods': [OrderedDict([('start_date_time', '2022-01-01T12:00:00Z'),
-                                                                ('tariff', 'EKI1'),
-                                                                ('dimensions',
-                                                                 [OrderedDict([('type', 'ENERGY'),
-                                                                               ('volume', '33.4500')]),
+                session_data={  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                    'auth_method': 'AUTH_REQUEST',
+                    'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
+                    'cdr_token': OrderedDict([('uid', 'EKI1'),
+                                              ('type', 'RFID'),
+                                              ('contract_id', 'DE8ACC12E46L89')]),
+                    'charging_periods': [OrderedDict([('start_date_time', '2022-01-01T12:00:00Z'),
+                                                      ('tariff', 'EKI1'),
+                                                      ('dimensions',
+                                                       [OrderedDict([('type', 'ENERGY'),
+                                                                     ('volume', '33.4500')]),
                                                                   OrderedDict([('type', 'STATE_OF_CHARGE'),
                                                                                ('volume', '80.0000')])])])],
                               'connector_id': '1',
@@ -1914,7 +1927,10 @@ class TestCpoApi(TestCase):
         for case in testcases:
             with self.subTest(request=case.get('request')):
                 send_updates_mock.reset_mock()
-                cpo_response = meter_values(case.get('request'))
+                data = case.get('request')
+                # request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+                # request.version = '2.2.1'
+                cpo_response = meter_values(data)
 
                 expected_status = case.get('status_code', 200)
                 self.assertEqual(cpo_response.status_code, expected_status,
@@ -1946,6 +1962,7 @@ class TestCpoApi(TestCase):
                         self.assertTrue(session.total_cost_excl_vat and session.total_cost_incl_vat,
                                         'meter_values does not result in an updated price for the session')
                         session_data = SessionSerializer(instance=session).data
+                        # ic(recursive_sort_dict(session_data), recursive_sort_dict(expected_session_data))
                         self.assertDictEqual(session_data, expected_session_data,
                                              'Session data differs')
 
@@ -1969,6 +1986,7 @@ class TestCpoApi(TestCase):
         send_updates_mock.assert_called()
         args, kwargs = send_updates_mock.call_args
         sent_data = args[0]
+        # ic(recursive_sort_dict(sent_data), recursive_sort_dict(SessionData.stop4))
         self.assertDictEqual(sent_data, SessionData.stop4,
                              'stop_transaction is sending different session data than expected to MSP')
 
@@ -2086,9 +2104,11 @@ class TestCpoApi(TestCase):
         )
         cpo_response = start_transaction(data)
 
+        # ic(recursive_sort_dict(cpo_response.data))
         self.assertDictEqual(
             cpo_response.data,
-            {'session': {'auth_method': 'COMMAND',
+            {'session': {'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                         'auth_method': 'COMMAND',
                          'authorization_reference': 'FI*001-AUTH-REFERENCE',
                          'billed_to': 'FI*EON',
                          'currency': 'EUR',
@@ -2228,7 +2248,9 @@ class TestCpoApi(TestCase):
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be one new CDR after stopping a session')
 
-        self.assertEqual(response.data, StopTransactionResponses.stop3,
+        # ic(recursive_sort_dict(response.data.get('session')), recursive_sort_dict(StopTransactionResponses.stop3.get('session')))
+        # ic(recursive_sort_dict(response.data.get('charge_detail_record')), recursive_sort_dict(StopTransactionResponses.stop3.get('charge_detail_record')))
+        self.assertEqual(recursive_sort_dict(response.data), recursive_sort_dict(StopTransactionResponses.stop3),
                          'stop_transaction response differs from expected')
 
         # Check that the Session looks correct
@@ -2264,6 +2286,8 @@ def put_session_data(data, create_authorization=True):
     request.data = data
     request.user = get_fake_admin()
     request.credentials = Credentials.objects.first()
+    request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+    request.version = '2.2.1'
     if create_authorization:
         authorization_reference = data.get('authorization_reference')
         Authorization.objects.create(authorization_reference=authorization_reference)
@@ -2303,15 +2327,19 @@ class TestPutSession(TestCase):
 
 
 def meter_values(data):
-    cpo_request = api_factory.post(reverse('chargepoint-meter-values'))
-    cpo_request.data = data
-    return ChargePointViewSet().meter_values(cpo_request)
+    request = api_factory.post(reverse('chargepoint-meter-values'))
+    request.data = data
+    request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+    request.version = '2.2.1'
+    return ChargePointViewSet().meter_values(request)
 
 
 def start_transaction(data):
     start_url = reverse('chargepoint-start-transaction')
     start_request = api_factory.post(start_url)
     start_request.data = data
+    start_request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+    start_request.version = '2.2.1'
     return ChargePointViewSet().start_transaction(start_request)
 
 
@@ -2319,6 +2347,8 @@ def stop_transaction(data):
     url = reverse('chargepoint-stop-transaction')
     stop_request = api_factory.post(url)
     stop_request.data = data
+    stop_request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+    stop_request.version = '2.2.1'
     return ChargePointViewSet().stop_transaction(stop_request)
 
 
@@ -2326,6 +2356,8 @@ def authorize(data):
     authorize_url = reverse('chargepoint-authorize')
     cpo_request = api_factory.post(authorize_url)
     cpo_request.data = data
+    cpo_request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+    cpo_request.version = '2.2.1'
     return ChargePointViewSet().authorize(cpo_request)
 
 
@@ -2551,6 +2583,8 @@ def msp_authorize(loser_token_id):
     request = api_factory.post(reverse('token-authorize', args=[loser_token_id]))
     request.data = dict()
     request.user = get_fake_admin()
+    request.accepted_media_type = 'text/html'  # To get the detail_url in the response
+    request.version = '2.2.1'
     return TokenViewSet().authorize(request, loser_token_id)
 
 

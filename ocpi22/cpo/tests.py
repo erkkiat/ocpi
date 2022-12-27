@@ -54,13 +54,13 @@ class TestQuickLocations(TestCase):
             data = LocationQuickSerializer(instance=location).data
             self.assertEqual(data,
                              {
-                                 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/APLINKKELIS/',
+                                 # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/APLINKKELIS/',
                                  'id': 'APLINKKELIS', 'name': 'IONITY High Power Charging Aplinkkelis',
                                  'address': 'Panevėžio aplinkl. 20', 'city': '-', 'postal_code': '38417',
                                  'country': 'LTU',
                                  'time_zone': 'Europe/Vilnius', 'latitude': 55.67309, 'longitude': 24.33591
                              },
-                             'New Location data differs from expected')
+                             f'New Location data differs from expected: {data}')
         except geopy.exc.GeocoderUnavailable:
             self.skipTest('Geocoder is unavailable')
 
@@ -81,7 +81,7 @@ class TestQuickLocations(TestCase):
         self.assertEqual(data,
                          # Todo: Maybe we should have English addresses available in parallel?
                          {
-                             'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/Aplinkkelis/',
+                             # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/Aplinkkelis/',
                              'id': 'Aplinkkelis', 'name': 'IONITY High Power Charging Aplinkkelis',
                              'address': 'Княз Борис Ⅰ 134', 'city': 'София', 'postal_code': '1000', 'country': 'BGR',
                              'time_zone': 'Europe/Sofia', 'latitude': 42.6975216, 'longitude': 23.3191493
@@ -99,7 +99,7 @@ class TestQuickLocations(TestCase):
         location = Location.get_if_exists(uid=test_data.LocationData.location1.get('id'))
         data = LocationQuickSerializer(instance=location).data
         expected_data = {
-            'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/EKI1/',
+            # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/EKI1/',
             'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
             'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
             'longitude': 30.0, 'evses': [dict([('uid', '1'), ('connectors', [dict(
@@ -115,7 +115,7 @@ class TestQuickLocations(TestCase):
                                                    ('max_amperage', 32),
                                                    ('tariff_ids', ['DC50'])])])])]
         }
-        self.assertEqual(dict(data), dict(expected_data), 'New Location data differs from expected')
+        self.assertEqual(data, expected_data, 'New Location data differs from expected')
 
         #
         # Update Location
@@ -129,7 +129,7 @@ class TestQuickLocations(TestCase):
         expected_data = {
             'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
             'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
-            'longitude': 30.0, 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/EKI1/',
+            'longitude': 30.0,  # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/EKI1/',
             'evses':
                 [
                     OrderedDict([('uid', '1'),
@@ -289,7 +289,7 @@ class TestChargingPeriods(TestCase):
         session = Session.get_if_exists(uid=session_id)
         self.assertEqual(
             session.connector.tariff_ids.all().first().price(),
-            '0,50€/kWh (Weekdays 7-21) + 0,40€/kWh (Weekdays 21-7) + 0,30€/kWh (Weekends)',
+            '0,50€/kWh (Weekdays 7-21), 0,40€/kWh (Weekdays 21-7), 0,30€/kWh (Weekends)',
             'Price formatting works differently than expected'
         )
 
