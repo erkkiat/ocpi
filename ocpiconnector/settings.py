@@ -360,6 +360,7 @@ INSTALLED_APPS = (
     'payment',
 )
 
+MESSAGE_STORAGE = 'ocpiconnector.util.SessionDedupStorage'  # Removes duplicate messages, like the OCPI 2.2 explanations
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
 
 # A sample logging configuration. The only tangible logging

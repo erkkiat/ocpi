@@ -4,8 +4,10 @@ import time
 from collections import OrderedDict
 from functools import lru_cache
 from gettext import gettext
+from itertools import chain
 from typing import Any, Union
 
+from django.contrib.messages.storage.session import SessionStorage
 from django.db.models import TimeField
 
 
@@ -125,3 +127,16 @@ def humanize_time(t: Union[datetime.time, TimeField]) -> str:
     if not t.minute:
         return str(t.hour)
     return f'{t.hour}:{t.minute:02d}'
+
+
+class DedupMessageMixin(object):
+    def add(self, level, message, extra_tags):
+        messages = chain(self._loaded_messages, self._queued_messages)
+        for m in messages:
+            if m.message == message:
+                return
+        return super(DedupMessageMixin, self).add(level, message, extra_tags)
+
+
+class SessionDedupStorage(DedupMessageMixin, SessionStorage):
+    pass
