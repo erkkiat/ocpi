@@ -738,7 +738,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     session = serializer.validated_data.get('session')
                     stop_kwh = serializer.validated_data.get('stop_kwh')
-                    stop_timestamp = serializer.validated_data.get('stop_timestamp')
+                    stop_timestamp = serializer.validated_data.get('stop_timestamp', timezone.now())
                     if not session:
                         internal_reference = serializer.validated_data.get('internal_reference')
                         session = Session.get_if_exists(internal_reference=internal_reference)

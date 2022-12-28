@@ -323,6 +323,7 @@ class StopTransactionSerializer(serializers.Serializer):
         help_text='Optionally, the final kWh reading from the charger',
     )
     stop_timestamp = serializers.DateTimeField(
+        required=False,
         help_text='The timestamp of the moment when the driver has unplugged the vehicle'
     )
 
