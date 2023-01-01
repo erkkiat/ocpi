@@ -234,7 +234,7 @@ class Evse(models.Model, ModelUtilMixin):
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES)
 
-    capabilities = models.ManyToManyField(Capability, related_name='evses')
+    capabilities = models.ManyToManyField(Capability, related_name='evses', blank=True)
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses')
 
