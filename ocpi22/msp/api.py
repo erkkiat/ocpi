@@ -232,7 +232,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                         # Ok, maybe there's a Session started with an RFID
                         tokens = Token.objects.filter(customer=request.user).values_list('uid', flat=True)
                         sessions = Session.objects.filter(cdr_token_uid__in=tokens).order_by('-created')
-                        ic(tokens, sessions)
+                        # ic(tokens, sessions)
                         # Let's get the most recent Session, if multiple
                         session = sessions.first()
                     if not session:

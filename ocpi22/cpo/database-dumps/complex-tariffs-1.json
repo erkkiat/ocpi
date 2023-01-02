@@ -12560,27 +12560,6 @@
     }
   },
   {
-    "model": "ocpi22.tariffelement",
-    "pk": 283,
-    "fields": {
-      "start_time": null,
-      "end_time": null,
-      "start_date": null,
-      "end_date": null,
-      "min_kwh": null,
-      "max_kwh": null,
-      "min_current": null,
-      "max_current": null,
-      "min_power": null,
-      "max_power": null,
-      "min_duration": null,
-      "max_duration": null,
-      "day_of_week": "SATURDAY,SUNDAY",
-      "reservation": null,
-      "tariff": 183
-    }
-  },
-  {
     "model": "ocpi22.pricecomponent",
     "pk": 7,
     "fields": {
@@ -15497,18 +15476,6 @@
     }
   },
   {
-    "model": "ocpi22.pricecomponent",
-    "pk": 282,
-    "fields": {
-      "type": "ENERGY",
-      "price": 0.3,
-      "vat": 24.0,
-      "step_size": 1,
-      "dynamic_price_source": null,
-      "tariff_element": 283
-    }
-  },
-  {
     "model": "ocpi22.defaulttariffs",
     "pk": 1,
     "fields": {
@@ -15862,7 +15829,8 @@
       "updated": "2022-12-17T09:06:57.600",
       "created": "2022-10-22T07:59:53.110",
       "tariff_ids": [
-        183
+        183,
+        199
       ]
     }
   },

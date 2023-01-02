@@ -307,6 +307,7 @@ class Connector(models.Model, ModelUtilMixin):
     max_amperage = models.SmallIntegerField()
     max_electric_power = models.IntegerField(null=True, blank=True)
 
+    # If you want the default tariffs to be in use when needed use get_tariffs() instead of accessing tariff_ids
     tariff_ids = models.ManyToManyField(Tariff, related_name='tariffs', blank=True)
 
     terms_and_conditions = models.URLField(blank=True, default='')
@@ -334,8 +335,6 @@ class Connector(models.Model, ModelUtilMixin):
     def get_tariffs(self):
         # Fetch the Tariffs specified for this Connector or find a DefaultTariff in case no specific Tariffs
         tariffs = self.tariff_ids.all() or Tariff.get_default_tariffs(self.standard)
-        if tariffs.count() > 1:
-            log_error(s=f'Multiple Tariffs for Connector {str(self.evse)} {str(self)}')
         return tariffs
 
     def get_admin_url(self):

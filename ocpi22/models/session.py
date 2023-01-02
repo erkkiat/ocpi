@@ -1,5 +1,8 @@
 import os
 
+from django.db.models import QuerySet, Sum
+from rest_framework.fields import DateTimeField
+
 import ocpi22.logging as logging
 from decimal import Decimal
 from typing import Union, Optional
@@ -11,6 +14,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+
 from util import reverse
 
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum
@@ -98,14 +102,19 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         self.stop_kwh = Decimal(self.start_kwh) + Decimal(value)
         return self.kwh
 
-    def update_latest_charging_period(self, kwh) -> None:
-        error_msg = f'No active charging period found to update kWh in {self.uid}'
-        cp = self.get_active_charging_period()
-        if cp:
-            if not cp.dimensions.filter(type=CdrDimensionEnum.ENERGY.value).update(volume=kwh):
-                logging.error(error_msg)
-        else:
-            logging.error(error_msg)
+    def update_charging_periods(self, kwh, soc=None, power=None, timestamp=None) -> None:
+        active_charging_period = self.get_active_charging_period(kwh, soc, power, timestamp)
+        earlier_charging_periods: QuerySet = self.chargingperiods.filter(
+            start_date_time__lt=active_charging_period.start_date_time
+        )
+        aggregation = CdrDimension.objects.filter(
+            chargingperiod__in=earlier_charging_periods, type=CdrDimensionEnum.ENERGY.value
+        ).aggregate(Sum('volume'))
+        kwh_so_far = aggregation.get('volume__sum') or 0.0
+        hours = ((timestamp or timezone.now()) - active_charging_period.start_date_time).total_seconds() / 3600
+        active_charging_period.set_dimension(
+            Decimal(kwh) - Decimal(kwh_so_far), soc, power, hours
+        )
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
@@ -236,47 +245,70 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     #         self.status = Session.ACTIVE
     #         self.save(update_fields=['status'])
 
-    def calculate_price(self, connector=None, tariffs=None) -> bool:
+    def calculate_price(self, connector=None, tariffs: Tariff = None) -> bool:
         """
         @param connector: For testing purposes
         @param tariffs: For testing purposes
         @return: If price is calculated, store price in self.total_cost_* and return True
         """
-        connector = connector or self.connector
-        if not connector and not tariffs:
-            return False
-        kwh: float = float(self.kwh)
 
-        # Calculate the session duration using either a stored end time or the current time
-        hours = self.total_time_float
-        result_incl_vat: float = 0.0
-        result_excl_vat: float = 0.0
-        tariff: Tariff
-        tariffs = tariffs or connector.get_tariffs()
-
-        if not tariffs:
-            # Cannot calculate price
-            return False
-        tariff: Tariff
-        for tariff in tariffs:
-            e: TariffElement
-            # noinspection PyUnresolvedReferences
-            for e in tariff.tariff_elements.all():
+        def _calculate_price(kwh: float, hours: float, start_date_time: DateTimeField, flat_fee: bool) -> (
+        float, float):
+            te: TariffElement = applying_tariff_element(self, start_date_time)
+            if te:
                 pc: PriceComponent
-                # noinspection PyUnresolvedReferences
-                for pc in e.price_components.all():
+                total_excl_vat: float = 0.0
+                total_incl_vat: float = 0.0
+                for pc in te.price_components.all():
                     excl_vat = dict(
                         ENERGY=lambda x: apply_step_size(kwh, pc.step_size, divisor=1000) * x,
                         TIME=lambda x: apply_step_size(hours, pc.step_size, divisor=3600) * x,
-                        FLAT=lambda x: x
+                        FLAT=lambda x: x if flat_fee else 0.0
                     ).get(pc.type, lambda x: 0.0)(pc.price)
                     incl_vat = excl_vat * (1.0 + pc.vat / 100) \
                         if pc.vat else excl_vat
-                    # ic(pc, excl_vat)
-                    result_incl_vat += incl_vat
-                    result_excl_vat += excl_vat
-            result_incl_vat = apply_min_and_max(result_incl_vat, tariff.min_price_incl_vat, tariff.max_price_incl_vat)
-            result_excl_vat = apply_min_and_max(result_excl_vat, tariff.min_price_excl_vat, tariff.max_price_excl_vat)
+                    total_incl_vat += incl_vat
+                    total_excl_vat += excl_vat
+                    # ic(pc, kwh, hours, start_date_time, flat_fee, incl_vat, excl_vat, total_incl_vat, total_excl_vat)
+                return total_incl_vat, total_excl_vat
+            return 0.0, 0.0
+
+        connector: Connector = connector or self.connector
+        tariffs = tariffs or connector.get_tariffs()
+        if not connector or not tariffs:
+            msg = f'Unable to calculate price for EVSE {connector.evse} connector {connector}.'
+            logging.error(msg)
+            raise RuntimeError(msg)
+
+        # Calculate the session duration using either a stored end time or the current time
+        result_incl_vat: float = 0.0
+        result_excl_vat: float = 0.0
+
+        from ocpi22.cpo.api import applying_tariff_element
+
+        if not self.chargingperiods.count():
+            session_hours = self.total_time_float
+            session_kwh: float = float(self.kwh)
+            cp_incl_vat, cp_excl_vat = _calculate_price(session_kwh, session_hours, self.start_date_time, flat_fee=True)
+            result_incl_vat += cp_incl_vat
+            result_excl_vat += cp_excl_vat
+        else:
+            cp: ChargingPeriod
+            apply_flat_fee = True  # Let's apply the flat fee once
+            for cp in self.chargingperiods.all():
+                cp_kwh = cp.get_dimension_sum(CdrDimensionEnum.ENERGY)
+                cp_hours = cp.get_dimension_sum(CdrDimensionEnum.TIME)
+
+                cp_incl_vat, cp_excl_vat = _calculate_price(cp_kwh, cp_hours, cp.start_date_time,
+                                                            flat_fee=apply_flat_fee)
+                apply_flat_fee = False  # Flat fee was applied once above, and not during the next for loop steps
+                result_incl_vat += cp_incl_vat
+                result_excl_vat += cp_excl_vat
+
+        # Apply the minimum and maximum price specified by the Tariff of the first ChargingPeriod
+        tariff = tariffs[0]  # Todo: Find min and max price from all applying Tariffs
+        result_incl_vat = apply_min_and_max(result_incl_vat, tariff.min_price_incl_vat, tariff.max_price_incl_vat)
+        result_excl_vat = apply_min_and_max(result_excl_vat, tariff.min_price_excl_vat, tariff.max_price_excl_vat)
 
         self.total_cost_incl_vat = round(result_incl_vat + 0.001, 2)  # Try round(5.625, 2) without the + 0.001
         self.total_cost_excl_vat = round(result_excl_vat + 0.001, 2)
@@ -303,36 +335,23 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def is_final(self) -> bool:
         return self.status in (self.INVALID, self.COMPLETED)
 
-    def set_charging_period(self, data) -> list:
-        chargingperiod = self.get_active_charging_period()
-        chargingperiod.dimensions.all().delete()
+    def get_active_charging_period(self, kwh, soc=None, power=None, timestamp=None):
+        last_period: ChargingPeriod = self.chargingperiods.order_by('start_date_time').last()
+        period: ChargingPeriod
 
-        for key, value in data.items():
-            if key not in ['session']:
-                dimension_type = dict(
-                    kwh='ENERGY',
-                    soc='STATE_OF_CHARGE',
-                    power='POWER',
-                )[key]
-                if key == 'kwh':
-                    value -= self.start_kwh
-                CdrDimension.objects.create(type=dimension_type, volume=value, chargingperiod=chargingperiod)
-        return [chargingperiod]
+        if not self.connector:
+            raise ValidationError(f'Session {self.uid} has no connector specified')
 
-    def get_active_charging_period(self):
-        if self.chargingperiods.exists():
-            period = self.chargingperiods.all().last()
+        from ocpi22.cpo.api import applying_tariff_element
+        tariff_element = applying_tariff_element(self, timestamp)
+        valid_tariff = tariff_element.tariff if tariff_element else None
+        if last_period and last_period.tariff == valid_tariff:
+            # print(f'Tariff {valid_tariff} (still) applies')
+            period = last_period
         else:
-            if not self.connector:
-                raise ValidationError(f'Session {self.uid} has no connector specified')
-            tariffs = self.connector.get_tariffs()
-            if not tariffs.exists():
-                raise ValidationError(f'Session {self.uid} for EVSE {self.evse.evse_id} '
-                                      f'connector {self.connector} has no tariffs specified')
+            # print(f'Need new Tariff, {valid_tariff} no longer applies')
             period = ChargingPeriod.objects.create(
-                start_date_time=self.start_date_time, session=self, tariff=tariffs.first(),
-                # Todo: Select a Tariff that applies
-                # Todo: Handle multiple Tariffs per Connector or limit to one Tariff
+                start_date_time=timestamp, session=self, tariff=valid_tariff,
             )
         return period
 
@@ -377,6 +396,32 @@ class ChargingPeriod(models.Model, ModelUtilMixin):
             f"{type}: {volume}" for type, volume in self.dimensions.all().values_list('type', 'volume')
         ])
         return f'{self.start_date_time} - {values}'
+
+    def set_dimension(self, kwh=None, soc=None, power=None, hours=None):
+        def _set_dimension(dimension_type, volume):
+            if not volume:
+                return
+            dimension: CdrDimension = self.dimensions.filter(type=dimension_type).last()
+            if not dimension:
+                CdrDimension.objects.create(type=dimension_type, volume=volume, chargingperiod=self)
+            else:
+                dimension.volume = volume
+                dimension.save(update_fields=['volume'])
+
+        dimensions = (
+            (CdrDimensionEnum.ENERGY.value, kwh),
+            (CdrDimensionEnum.STATE_OF_CHARGE.value, soc),
+            (CdrDimensionEnum.POWER.value, power),
+            (CdrDimensionEnum.TIME.value, hours),
+        )
+        for args in dimensions:
+            _set_dimension(*args)
+
+    def get_dimension_sum(self, dimension_type: CdrDimensionEnum) -> float:
+        q: QuerySet
+        q = self.dimensions.filter(type=dimension_type.value)
+        aggregation = q.aggregate(Sum('volume'))
+        return float(aggregation.get('volume__sum') or 0.0)
 
 
 class CdrDimension(models.Model):

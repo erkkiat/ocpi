@@ -478,21 +478,23 @@ class ApiPutTests(TestCase):
 
         )
         for filename, case_params, excl_vat, incl_vat in testcases:
-            params = session_params.copy()
-            params.update(case_params)
-            session: Session = Session.objects.create(uid=uuid.uuid4().hex, billed_to='FI*MSP',
-                                                      **params)
-            data = load_example(f'data/examples/{filename}.json')
-            serializer = TariffSerializer(data=data)
-            self.assertTrue(serializer.is_valid(),
-                            f"Tariff doesn't serialize for file {filename}: {serializer.errors}")
-            tariff = serializer.save()
-            self.assertTrue(session.calculate_price(tariffs=[tariff]), 'Cannot calculate price.')
-            # ic(filename, session.total_cost_excl_vat, session.total_cost_incl_vat)
-            self.assertEqual(session.total_cost_excl_vat, excl_vat,
-                             f"Total cost excluding VAT doesn't match in case {filename}")
-            self.assertEqual(session.total_cost_incl_vat, incl_vat,
-                             f"Total cost including VAT doesn't match in case {filename}")
+            with self.subTest(filename=filename):
+                params = session_params.copy()
+                params.update(case_params)
+                session: Session = Session.objects.create(uid=uuid.uuid4().hex, billed_to='FI*MSP',
+                                                          **params)
+                data = load_example(f'data/examples/{filename}.json')
+                serializer = TariffSerializer(data=data)
+                self.assertTrue(serializer.is_valid(),
+                                f"Tariff doesn't serialize for file {filename}: {serializer.errors}")
+                tariff = serializer.save()
+                session.connector.tariff_ids.set([tariff])
+                self.assertTrue(session.calculate_price(), 'Cannot calculate price.')
+                # ic(filename, session.total_cost_excl_vat, session.total_cost_incl_vat)
+                self.assertEqual(session.total_cost_excl_vat, excl_vat,
+                                 f"Total cost excluding VAT doesn't match in case {filename}")
+                self.assertEqual(session.total_cost_incl_vat, incl_vat,
+                                 f"Total cost including VAT doesn't match in case {filename}")
 
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {
@@ -805,7 +807,8 @@ class CdrTests(TestCase):
         # Remove Tariff from Connector, so that the DefaultTariff would be in use
         connector.tariff_ids.set([])
 
-        self.assertTrue(session.calculate_price(), 'There is sufficient information to calculate the Session price')
+        self.assertTrue(session.calculate_price(),
+                        'There should be sufficient information to calculate the Session price')
         self.assertEqual(session.total_cost_excl_vat, 2.86,
                          "Price without VAT doesn't seem right.")
         self.assertEqual(session.total_cost_incl_vat, 3.55,
@@ -1849,20 +1852,20 @@ class TestCpoApi(TestCase):
                                                       ('dimensions',
                                                        [OrderedDict([('type', 'ENERGY'),
                                                                      ('volume', '3.4500')]),
-                                                                  OrderedDict([('type', 'STATE_OF_CHARGE'),
-                                                                               ('volume', '42.0000')])])])],
-                              'connector_id': '1',
-                              'country_code': 'FI',
-                              'currency': 'EUR',
-                              'evse_uid': 'HELSINKI-3',
-                              'kwh': 3.45,
-                              'location_id': 'HELSINKI-1',
-                              'party_id': 'CPO',
-                              'start_date_time': '2022-01-01T12:00:00Z',
-                              'status': 'ACTIVE',
-                              'last_updated': '2022-01-01T12:00:00Z',
-                              'total_cost': OrderedDict([('excl_vat', 1.73), ('incl_vat', 2.14)]),
-                              'id': 'FI*CPO*S*MOCK-1'},
+                                                        OrderedDict([('type', 'STATE_OF_CHARGE'),
+                                                                     ('volume', '42.0000')])])])],
+                    'connector_id': '1',
+                    'country_code': 'FI',
+                    'currency': 'EUR',
+                    'evse_uid': 'HELSINKI-3',
+                    'kwh': 3.45,
+                    'location_id': 'HELSINKI-1',
+                    'party_id': 'CPO',
+                    'start_date_time': '2022-01-01T12:00:00Z',
+                    'status': 'ACTIVE',
+                    'last_updated': '2022-01-01T12:00:00Z',
+                    'total_cost': OrderedDict([('excl_vat', 1.73), ('incl_vat', 2.14)]),
+                    'id': 'FI*CPO*S*MOCK-1'},
                 expected_update_data={'charging_periods': [OrderedDict(
                     [('start_date_time', '2022-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
                         OrderedDict([('type', 'ENERGY'), ('volume', '3.4500')]),
@@ -1898,20 +1901,20 @@ class TestCpoApi(TestCase):
                                                       ('dimensions',
                                                        [OrderedDict([('type', 'ENERGY'),
                                                                      ('volume', '33.4500')]),
-                                                                  OrderedDict([('type', 'STATE_OF_CHARGE'),
-                                                                               ('volume', '80.0000')])])])],
-                              'connector_id': '1',
-                              'country_code': 'FI',
-                              'currency': 'EUR',
-                              'evse_uid': 'HELSINKI-3',
-                              'kwh': 33.45,
-                              'location_id': 'HELSINKI-1',
-                              'party_id': 'CPO',
-                              'start_date_time': '2022-01-01T12:00:00Z',
-                              'status': 'ACTIVE',
-                              'last_updated': '2022-01-01T12:00:00Z',
-                              'total_cost': OrderedDict([('excl_vat', 16.73), ('incl_vat', 20.74)]),
-                              'id': 'FI*CPO*S*MOCK-1'},
+                                                        OrderedDict([('type', 'STATE_OF_CHARGE'),
+                                                                     ('volume', '80.0000')])])])],
+                    'connector_id': '1',
+                    'country_code': 'FI',
+                    'currency': 'EUR',
+                    'evse_uid': 'HELSINKI-3',
+                    'kwh': 33.45,
+                    'location_id': 'HELSINKI-1',
+                    'party_id': 'CPO',
+                    'start_date_time': '2022-01-01T12:00:00Z',
+                    'status': 'ACTIVE',
+                    'last_updated': '2022-01-01T12:00:00Z',
+                    'total_cost': OrderedDict([('excl_vat', 16.73), ('incl_vat', 20.74)]),
+                    'id': 'FI*CPO*S*MOCK-1'},
                 evse_status='CHARGING'
             ),
             dict(
@@ -1975,19 +1978,19 @@ class TestCpoApi(TestCase):
         data = dict(
             internal_reference='MY-INTERNAL-REFERENCE',
             stop_kwh=155,
-            stop_timestamp=faketime + timedelta(minutes=23)  # This should apply, in case of a connection problem
+            stop_timestamp=faketime + timedelta(minutes=60)  # This should apply, in case of a connection problem
         )
-        with time_machine.travel(faketime + timedelta(minutes=60), tick=False):
+        with time_machine.travel(faketime + timedelta(minutes=90), tick=False):
             response = stop_transaction(data)
 
         # ic(recursive_sort_dict(response.data), recursive_sort_dict(StopTransactionResponses.stop1))
-        self.assertEqual(response.data, StopTransactionResponses.stop1,
+        self.assertEqual(recursive_sort_dict(response.data), recursive_sort_dict(StopTransactionResponses.stop1),
                          'stop_transaction response differs from expected')
         send_updates_mock.assert_called()
         args, kwargs = send_updates_mock.call_args
         sent_data = args[0]
         # ic(recursive_sort_dict(sent_data), recursive_sort_dict(SessionData.stop4))
-        self.assertDictEqual(sent_data, SessionData.stop4,
+        self.assertDictEqual(recursive_sort_dict(sent_data), recursive_sort_dict(SessionData.stop4),
                              'stop_transaction is sending different session data than expected to MSP')
 
     @time_machine.travel(faketime, tick=False)
@@ -2004,7 +2007,7 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.commands.commands.requests.post')
     @patch('ocpi22.webhooks.requests.post')
     def test_adhoc_token(self,
-                         webhook_post_mock: Mock,
+                         _webhook_post_mock: Mock,
                          requests_post_mock: Mock,
                          uuid4_mock: Mock,
                          _set_parameter_mock: Mock,
@@ -2197,12 +2200,17 @@ class TestCpoApi(TestCase):
         # Try updating meter values without a tariff specified
         #
 
-        with patch('ocpi22.models.location.Connector.get_tariffs') as get_tariffs:
-            Session.objects.filter(internal_reference='MY-INTERNAL-REFERENCE-2').update(status=Session.ACTIVE)
-            get_tariffs.return_value = Tariff.objects.filter(uid='DOES_NOT_EXIST')  # Let's give it an empty QuerySet
-            cpo_response = meter_values(data)
+        session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
+        session.status = Session.ACTIVE
+        session.save()
+        connector = session.connector
+        tariffs = connector.tariff_ids.all()
+        connector.tariff_ids.clear()
+
+        cpo_response = meter_values(data)
 
         self.assertEqual(cpo_response.status_code, status.HTTP_409_CONFLICT)
+        connector.tariff_ids.set(tariffs)
 
         #
         # Update meter values with a tariff
@@ -2331,7 +2339,8 @@ def meter_values(data):
     request.data = data
     request.accepted_media_type = 'text/html'  # To get the detail_url in the response
     request.version = '2.2.1'
-    return ChargePointViewSet().meter_values(request)
+    with patch('ocpi22.cpo.api.redis_store'):
+        return ChargePointViewSet().meter_values(request)
 
 
 def start_transaction(data):

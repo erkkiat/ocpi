@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, time
 
 from django.contrib.auth.decorators import login_required
@@ -5,6 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
+from rest_framework.fields import DateTimeField
 
 import ocpi22.logging as logging
 from typing import Union, Optional
@@ -20,6 +22,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
+
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -34,7 +37,7 @@ from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.tariff import TariffElement
 from ocpi22.routing import find_credentials
-from ocpi22.util import command_store
+from ocpi22.util import command_store, redis_store
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
@@ -230,8 +233,8 @@ def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]
     return time1 < time2
 
 
-def applying_tariff_element(_request, _serializer, session_instance: Session, kwh, power=None, soc=None, session=None,
-                            internal_reference=None, timestamp: datetime = None) -> Optional[TariffElement]:
+def applying_tariff_element(session_instance: Session, timestamp: Union[datetime, DateTimeField] = None,
+                            **_kwargs) -> Optional[TariffElement]:
     def matching_weekday(wd, wd_numbers):
         return not wd_numbers or wd in wd_numbers
 
@@ -240,7 +243,7 @@ def applying_tariff_element(_request, _serializer, session_instance: Session, kw
 
     timestamp = timestamp or timezone.now()
     weekday = timestamp.weekday()
-    tariffs = session_instance.connector.tariff_ids.all()
+    tariffs = session_instance.connector.get_tariffs()  # Do not use Connector.tariffs_ids directly
     for tariff in tariffs:
         element: TariffElement
         for element in tariff.tariff_elements.all():
@@ -248,21 +251,36 @@ def applying_tariff_element(_request, _serializer, session_instance: Session, kw
             if matching_weekday(weekday, weekday_numbers):
                 if crossing_day_boundary(element.start_time, element.end_time):
                     if time_lt(element.start_time, timestamp) or time_lt(timestamp, element.end_time):
-                        print('Matching weekday and time (crossing day boundary)')
+                        # print('Matching weekday and time (crossing day boundary)')
                         # ic(weekday, str(timestamp), element, [str(pc) for pc in element.price_components.all()])
                         return element
                 elif not element.start_time or time_lt(element.start_time, timestamp):
                     if not element.end_time or time_lt(timestamp, element.end_time):
                         # Matching time range
-                        print('Matching weekday and time')
+                        # print('Matching weekday and time')
                         # ic(weekday, str(timestamp), element, [str(pc) for pc in element.price_components.all()])
                         return element
     return None
 
 
+def create_charging_periods(session: Session):
+    def process(meter_value):
+        timestamp = meter_value.get('timestamp')
+        tariff_element = applying_tariff_element(session, timestamp)
+        meter_value['tariff_element'] = tariff_element
+        if tariff_element:
+            meter_value['tariff'] = tariff_element.tariff
+        return meter_value
+
+    meter_values = get_meter_values(session)
+    return [process(m) for m in meter_values]
+
+
 def process_meter_values(request, serializer, kwh, power=None, soc=None, session=None,
                          internal_reference=None, timestamp=None):
     next_url = reverse('chargepoint-stop-transaction')
+    timestamp = timestamp or timezone.now()
+
     if not session:
         session = Session.get_if_exists(
             internal_reference=internal_reference
@@ -271,21 +289,28 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
             raise ValidationError(f'Session with internal reference `{internal_reference}` not found')
         serializer.validated_data.pop('internal_reference', None)
 
+    # ic(session.connector, session.connector.tariff_ids.all(), session.connector.get_tariffs())
+
     # We found a valid Session
     if session.status == Session.ACTIVE:
+        if not session.connector.tariff_ids.count():
+            raise RuntimeError(f'EVSE {session.evse} connector {session.connector} has no tariffs')
         session.stop_kwh = kwh
         session.update_last_updated()
+
+        # with Timer() as t:
+        store_meter_values(request, session, serializer.validated_data)
+        session.update_charging_periods(kwh - session.start_kwh, soc, power, timestamp)
+        # logging.info(f'Meter values stored and fetched in {float(t):.2f} seconds', request)
+
         session.calculate_price()
         session.save(
             update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
         )
 
-        # tariff_element = applying_tariff_element(request, serializer, session, **serializer.validated_data)
-        # ic(tariff_element)
-        # assert tariff_element
+        session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
+        session.send_updates(session_charging_periods)
 
-        chargingperiods = session.set_charging_period(serializer.validated_data)
-        session.send_updates(chargingperiods)
         messages.success(request,
                          mark_safe(f"You have updated the OCPI Session <b>{session.uid}</b> "
                                    f"with {kwh} kWh."))
@@ -336,6 +361,35 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
                 soc=soc,
             ), status=status.HTTP_403_FORBIDDEN
         )
+
+
+session_key = 'session:{session.uid}'
+
+
+def store_meter_values(_request, session, data):
+    data.pop('session', None)
+    if 'timestamp' not in data:
+        data['timestamp'] = timezone.now()
+    key = session_key.format(session=session)
+    assert 'timestamp' in data
+    redis_store.rpush(key, json.dumps(data, default=str))
+
+
+class MeterValuesStorageSerializer(MeterValuesSerializer):
+    session_id = None
+    internal_reference = None
+
+    def validate(self, attrs):
+        return attrs
+
+
+def get_meter_values(session):
+    key = f'session:{session.uid}'
+    data = redis_store.lrange(key, 0, -1)
+    data = [json.loads(i) for i in data]
+    serializer = MeterValuesStorageSerializer(data=data, many=True)
+    assert serializer.is_valid(), serializer.errors
+    return serializer.validated_data
 
 
 class ChargePointViewSet(viewsets.GenericViewSet):
@@ -706,7 +760,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             return Response(
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
-        except ValidationError as e:
+        except (ValidationError, RuntimeError) as e:
             # ic(e)
             logging.error(f'Exception in meter_values(): {e}', request=request)
             return Response(
@@ -746,11 +800,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             raise ValidationError(f'Session with internal_reference `{internal_reference}` not found.')
 
                     if session.is_final():
-                        return Response(dict(status_text='Session was completed earlier, cannot stop if twice'),
+                        return Response(dict(status_text='Session was completed earlier, cannot stop it twice'),
                                         status=status.HTTP_409_CONFLICT)
                     if stop_kwh:
                         session.stop_kwh = stop_kwh
-                        session.update_latest_charging_period(session.kwh)
+                        session.update_charging_periods(kwh=session.kwh, timestamp=stop_timestamp)
                     session.status = Session.COMPLETED
                     session.end_date_time = stop_timestamp
                     session.last_updated = timezone.now()

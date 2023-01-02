@@ -32,19 +32,19 @@ class Timer:
         return bool(self.interval)
 
 
-def recursive_sort_dict(d: dict) -> OrderedDict:
-    def _sorted_subdict(d: Any) -> Union[OrderedDict, list]:
+def recursive_sort_dict(d: dict) -> dict:
+    def _sorted_subdict(d: Any) -> Union[dict, list[dict]]:
         if isinstance(d, dict):
             return recursive_sort_dict(d)
         return d
 
     result = dict()
     if isinstance(d, (list, tuple)):
-        return [recursive_sort_dict(i) for i in d]
+        return [_sorted_subdict(i) for i in d]
     for item in d.items():
         # print(f'Item: {item}')
         result[item[0]] = _sorted_subdict(item[1])
-    return OrderedDict(sorted(result.items(), key=lambda x: x[0]))
+    return dict(sorted(result.items(), key=lambda x: x[0]))
 
 
 def consecutive_ranges(numbers):
