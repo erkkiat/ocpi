@@ -488,8 +488,8 @@ class RedisStore:
         redis_store.set(namespace_key, value, self.expiration)
 
     def __getitem__(self, item):
-        ic()
-        ic(item)
+        # ic()
+        # ic(item)
         namespace_key = self._format_key(item)
         value = redis_store.get(namespace_key)
         if not value:
@@ -646,3 +646,20 @@ class OCPIListModelMixin:
 
         serializer = serializer_class(queryset, many=True, context={'version': request.version, 'request': request})
         return OCPIResponse(serializer.data)
+
+# def group_by_value(pairs):
+#     """
+#     Group adjacent elements together if they share a key
+#     This would be used for grouping ChargingPeriods according to Tariffs, but it is not needed currently
+#
+#     >>> group_by_value([(1, 2), (4, 2), (7, 2), (10, 3), (13, 3), (18, 3), (19, 2)])
+#     [(2, [1, 4, 7]), (3, [10, 13, 18]), (2, [19])]
+#     """
+#     from itertools import groupby
+#
+#     result = []
+#
+#     for key, group in groupby(pairs, lambda x: x[1]):
+#         result.append((key, [i[0] for i in group]))
+#
+#     return result
