@@ -48,16 +48,7 @@ class OcpiModuleEnum(Enum):
     HUBCLIENTINFO = 'hubclientinfo'
 
 
-IDENTIFIER_CHOICES = (
-    (OcpiModuleEnum.CREDENTIALS.value, 'Credentials'),
-    (OcpiModuleEnum.LOCATIONS.value, 'Locations'),
-    (OcpiModuleEnum.TOKENS.value, 'Tokens'),
-    (OcpiModuleEnum.COMMANDS.value, 'Commands'),
-    (OcpiModuleEnum.TARIFFS.value, 'Tariffs'),
-    (OcpiModuleEnum.CDRS.value, 'Charge Detail Records'),
-    (OcpiModuleEnum.SESSIONS.value, 'Sessions'),
-    (OcpiModuleEnum.HUBCLIENTINFO.value, 'Hubclientinfo'),
-)
+IDENTIFIER_CHOICES = ((module.value.lower(), module.value.capitalize()) for module in OcpiModuleEnum)
 
 ROLE_OPTIONS = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')
 
