@@ -34,7 +34,7 @@ class Timer:
 
 def recursive_sort_dict(d: dict) -> dict:
     def _sorted_subdict(d: Any) -> Union[dict, list[dict]]:
-        if isinstance(d, dict):
+        if isinstance(d, (dict, OrderedDict)):
             return recursive_sort_dict(d)
         return d
 

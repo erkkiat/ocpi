@@ -12,6 +12,8 @@ from django.contrib.auth.models import AnonymousUser
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
 
+from ocpi22.ocpi.serializers import SessionSerializer
+from ocpiconnector.util import recursive_sort_dict
 from util import reverse
 from rest_framework.test import APIRequestFactory
 
@@ -278,14 +280,80 @@ class TestChargingPeriods(TestCase):
                  'start_kwh': 0.0,
                  'status_text': 'Session updated',
                  'total_kwh': Decimal('2.000')
+             }, None
+             ),
+            (7, 57, datetime(2022, 12, 25, 23, 58), None, None, None),  # Weekday 6 = Sunday
+            # The ChargingPeriod should change here, and the first one should stop at the time the next one starts
+            (10, 60, datetime(2022, 12, 26, 00, 1), None, None, None),  # Weekday 0 = Monday
+            (13, 63, datetime(2022, 12, 26, 00, 3), None, None, None),
+            (15, 65, datetime(2022, 12, 26, 00, 5), None, None, None),
+            (45, 95, datetime(2022, 12, 26, 8, 0),  # This should cause a third ChargingPeriod to be created
+             None, None, None),
+            (50, 99, datetime(2022, 12, 26, 8, 30),
+             {'charging_periods':
+                 [OrderedDict(
+                     [('start_date_time', '2022-12-25T23:55:00Z'), ('tariff', 'WEEKENDS'), ('dimensions', [
+                         OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
+                         OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
+                         OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]), OrderedDict(
+                     [('start_date_time', '2022-12-26T00:01:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
+                         OrderedDict([('type', 'ENERGY'), ('volume', '8.0000')]),
+                         OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '65.0000')]),
+                         OrderedDict([('type', 'TIME'), ('volume', '7.9833')])])]), OrderedDict(
+                     [('start_date_time', '2022-12-26T08:00:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
+                         OrderedDict([('type', 'ENERGY'), ('volume', '35.0000')]),
+                         OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '99.0000')]),
+                         OrderedDict([('type', 'TIME'), ('volume', '0.5000')])])])],
+                 'kwh': Decimal('50.000'),
+                 'last_updated': '2022-12-26T08:30:00Z',
+                 'total_cost': {'excl_vat': 22.8, 'incl_vat': 28.27}},
+             {
+                 'internal_reference': None,
+                 'now_kwh': 50.0,
+                 'power': None,
+                 'price': '28,27zł',
+                 'session_id': 'FI*000*S*B58DDC4D3B304A47AD623C22147',
+                 'soc': 99.0,
+                 'start_kwh': 0.0,
+                 'status_text': 'Session updated',
+                 'total_kwh': Decimal('50.000')
+             },
+             {
+                 'country_code': 'FI', 'party_id': '000',
+                 'id': 'FI*000*S*B58DDC4D3B304A47AD623C22147',
+                 'start_date_time': '2022-12-14T17:03:19Z',
+                 'kwh': 50.0,
+                 'charging_periods': [
+                     OrderedDict(
+                         [('start_date_time', '2022-12-25T23:55:00Z'),
+                          ('tariff', 'WEEKENDS'),
+                          ('dimensions', [
+                              OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
+                              OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
+                              OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]),
+                     OrderedDict(
+                         [('start_date_time', '2022-12-26T00:01:00Z'),
+                          ('tariff', 'WEEKDAYS'),
+                          ('dimensions', [
+                              OrderedDict([('type', 'ENERGY'), ('volume', '8.0000')]),
+                              OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '65.0000')]),
+                              OrderedDict([('type', 'TIME'), ('volume', '7.9833')])])]),
+                     OrderedDict(
+                         [('start_date_time', '2022-12-26T08:00:00Z'),
+                          ('tariff', 'WEEKDAYS'),
+                          ('dimensions', [
+                              OrderedDict([('type', 'ENERGY'), ('volume', '35.0000')]),
+                              OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '99.0000')]),
+                              OrderedDict([('type', 'TIME'), ('volume', '0.5000')])])])
+                 ],
+                 'cdr_token': OrderedDict([('uid', 'EKI1'), ('type', 'RFID'), ('contract_id', 'CONTRACT2')]),
+                 'auth_method': 'AUTH_REQUEST', 'authorization_reference': 'FI*001*A*E2FA443602BD4E499C878B8BD6C',
+                 'location_id': 'EKI1', 'evse_uid': '1', 'connector_id': '1', 'currency': 'PLN',
+                 'total_cost': {'excl_vat': 22.8, 'incl_vat': 28.27},
+                 'status': 'ACTIVE',
+                 'last_updated': '2022-12-26T08:30:00Z'
              }
              ),
-            (7, 57, datetime(2022, 12, 25, 23, 58), None, None),
-            (10, 60, datetime(2022, 12, 26, 00, 1), None, None),  # Weekday 0 = Monday
-            (13, 63, datetime(2022, 12, 26, 00, 3), None, None),
-            (15, 65, datetime(2022, 12, 26, 00, 5), None, None),
-            (45, 95, datetime(2022, 12, 26, 8, 0), None, None),
-            (45, 95, datetime(2022, 12, 26, 8, 0), None, None),
         )
 
         session_id = 'FI*000*S*B58DDC4D3B304A47AD623C22147'
@@ -297,7 +365,8 @@ class TestChargingPeriods(TestCase):
             'Price formatting works differently than expected'
         )
 
-        for kwh, soc, timestamp, expected_args, expected_response in meter_values_data:
+        for kwh, soc, timestamp, expected_args, expected_response, expected_session_data in meter_values_data:
+            # ic('*' * 60, kwh, soc, timestamp)
             try:
                 with self.subTest(kwh=kwh, timestamp=timestamp):
                     with time_machine.travel(timestamp, tick=False), \
@@ -312,12 +381,21 @@ class TestChargingPeriods(TestCase):
 
                     args, kwargs = send_updates.call_args
                     if expected_args:
+                        # ic(recursive_sort_dict(args[0]), recursive_sort_dict(expected_args))
                         self.assertDictEqual(args[0], expected_args,
                                              f'send_update() got different parameters than expected: {args[0]}')
 
                     if expected_response:
+                        # ic(recursive_sort_dict(response.data), recursive_sort_dict(expected_response))
                         self.assertDictEqual(response.data, expected_response,
                                              f'Response differs from expected: {response.data}')
+                    if expected_session_data:
+                        session_id = 'FI*000*S*B58DDC4D3B304A47AD623C22147'
+                        session = Session.get_if_exists(uid=session_id)
+                        session_serializer = SessionSerializer(session)
+                        # ic(recursive_sort_dict(session_serializer.data), recursive_sort_dict(expected_session_data))
+                        self.assertDictEqual(session_serializer.data, expected_session_data,
+                                             'Session data differs from expected')
             except AssertionError:
                 ic(args[0], response.data)
                 raise

@@ -104,17 +104,26 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     def update_charging_periods(self, kwh, soc=None, power=None, timestamp=None) -> None:
         active_charging_period = self.get_active_charging_period(kwh, soc, power, timestamp)
-        earlier_charging_periods: QuerySet = self.chargingperiods.filter(
+        earlier_charging_periods: QuerySet = self.chargingperiods.order_by('start_date_time').filter(
             start_date_time__lt=active_charging_period.start_date_time
         )
-        aggregation = CdrDimension.objects.filter(
-            chargingperiod__in=earlier_charging_periods, type=CdrDimensionEnum.ENERGY.value
-        ).aggregate(Sum('volume'))
-        kwh_so_far = aggregation.get('volume__sum') or 0.0
-        hours = ((timestamp or timezone.now()) - active_charging_period.start_date_time).total_seconds() / 3600
+        first_charging_period: ChargingPeriod = earlier_charging_periods.first()
+        start_date_time = first_charging_period.start_date_time \
+            if first_charging_period else active_charging_period.start_date_time
+
+        def _sum(dimension_type: CdrDimensionEnum) -> float:
+            aggregation = CdrDimension.objects.filter(
+                chargingperiod__in=earlier_charging_periods, type=dimension_type.value
+            ).aggregate(Sum('volume'))
+            return aggregation.get('volume__sum') or 0.0
+
+        kwh_so_far = _sum(CdrDimensionEnum.ENERGY)
+        hours_so_far = _sum(CdrDimensionEnum.TIME)
+        hours = ((timestamp or timezone.now()) - start_date_time).total_seconds() / 3600
         active_charging_period.set_dimension(
-            Decimal(kwh) - Decimal(kwh_so_far), soc, power, hours
+            Decimal(kwh) - Decimal(kwh_so_far), soc, power, Decimal(hours) - Decimal(hours_so_far)
         )
+        # ic(active_charging_period, hours, hours_so_far)
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
@@ -279,6 +288,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             msg = f'Unable to calculate price for EVSE {connector.evse} connector {connector}.'
             logging.error(msg)
             raise RuntimeError(msg)
+        # ic(self.uid, [t.price() for t in tariffs])
 
         # Calculate the session duration using either a stored end time or the current time
         result_incl_vat: float = 0.0
@@ -301,6 +311,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
                 cp_incl_vat, cp_excl_vat = _calculate_price(cp_kwh, cp_hours, cp.start_date_time,
                                                             flat_fee=apply_flat_fee)
+                # ic(cp, cp.tariff.price(), cp_kwh, cp_hours, cp_incl_vat, cp_excl_vat)
+
                 apply_flat_fee = False  # Flat fee was applied once above, and not during the next for loop steps
                 result_incl_vat += cp_incl_vat
                 result_excl_vat += cp_excl_vat
@@ -344,15 +356,27 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
         from ocpi22.cpo.api import applying_tariff_element
         tariff_element = applying_tariff_element(self, timestamp)
+        previous_tariff_element = applying_tariff_element(self, last_period.start_date_time) if last_period else None
         valid_tariff = tariff_element.tariff if tariff_element else None
-        if last_period and last_period.tariff == valid_tariff:
+
+        # ic(previous_tariff_element, tariff_element)
+
+        if not tariff_element:
+            logging.error(f'No TariffElement applies for EVSE {self.evse} connector {self.connector} at {timestamp}.')
+
+        if tariff_element == previous_tariff_element:
             # print(f'Tariff {valid_tariff} (still) applies')
             period = last_period
         else:
-            # print(f'Need new Tariff, {valid_tariff} no longer applies')
             period = ChargingPeriod.objects.create(
                 start_date_time=timestamp, session=self, tariff=valid_tariff,
             )
+            if last_period:
+                last_period_hours = \
+                    ((timestamp or timezone.now()) - last_period.start_date_time).total_seconds() / 3600
+                last_period.set_dimension(hours=last_period_hours)
+                # ic(last_period, last_period_hours)
+            # ic('Created a new charging period', period)
         return period
 
     def send_updates(self, data=None, method='put', path_components=None) -> None:
