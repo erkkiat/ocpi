@@ -15913,6 +15913,42 @@
     }
   },
   {
+    "model": "ocpi22.session",
+    "pk": 999,
+    "fields": {
+      "country_code": "FI",
+      "party_id": "000",
+      "uid": "FI*000*S*PERFORMANCE*TEST",
+      "internal_reference": null,
+      "reservation_id": null,
+      "start_date_time": "2022-12-01T12:00:00",
+      "reservation_start_date_time": null,
+      "end_date_time": null,
+      "start_kwh": 0.0,
+      "stop_kwh": 0.0,
+      "cdr_token_uid": "EKI1",
+      "cdr_token_type": "RFID",
+      "cdr_token_contract_id": "CONTRACT2",
+      "auth_method": "AUTH_REQUEST",
+      "authorization_reference": "FI*001*A*E2FA443602BD4E499C878B8BD6C",
+      "location": 41,
+      "evse": 11,
+      "connector": 12,
+      "meter_id": null,
+      "currency": "PLN",
+      "total_cost_excl_vat": null,
+      "total_cost_incl_vat": null,
+      "status": "ACTIVE",
+      "credentials": null,
+      "billed_to": "FI*001",
+      "payment": null,
+      "message": null,
+      "last_updated": "2022-12-01T12:00:00",
+      "updated": "2022-12-01T12:00:00",
+      "created": "2022-12-01T12:00:00"
+    }
+  },
+  {
     "model": "ocpi22.cdr",
     "pk": 97,
     "fields": {

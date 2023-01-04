@@ -1,11 +1,12 @@
 import doctest
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
 import geopy
 import time_machine
+from django.db import connection, reset_queries
 from django.test import TestCase
 
 from django.contrib.auth.models import AnonymousUser
@@ -13,7 +14,7 @@ from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
 
 from ocpi22.ocpi.serializers import SessionSerializer
-from ocpiconnector.util import recursive_sort_dict
+from ocpiconnector.util import recursive_sort_dict, Timer
 from util import reverse
 from rest_framework.test import APIRequestFactory
 
@@ -370,14 +371,13 @@ class TestChargingPeriods(TestCase):
                 # ic('*' * 60, kwh, soc, timestamp)
                 try:
                     with self.subTest(kwh=kwh, timestamp=timestamp):
-                        with time_machine.travel(timestamp, tick=False), \
+                        with time_machine.travel(timestamp, tick=True), \
                                 patch('ocpi22.ocpi.util.OcpiModule.send_updates') as send_updates, \
                                 patch('ocpi22.util.is_our_identifier', return_value=True), \
                                 patch('ocpi22.logging.error') as logging_error_mock:
 
                             logging_error_mock.reset_mock()
                             response = meter_values(dict(session_id=sess_id, kwh=kwh, soc=soc, timestamp=timestamp))
-
                         self.assertFalse(logging_error_mock.call_count,
                                          f'There was an error logged: {logging_error_mock.call_args}')
 
@@ -408,17 +408,21 @@ class TestChargingPeriods(TestCase):
 
         _meter_values_test(meter_values_data, session_id)
 
-        # start_date_time = datetime(2022, 12, 1, 12, 0)
-        # maxloop = 300
-        # performance_test_data = [
-        #     (i, i*100/maxloop, start_date_time + timedelta(hours=i), None, None, None) for i in range(0, maxloop)
-        # ]
-        #
-        # performance_session_id = 'FI*000*S*PERFORMANCE*TEST'
-        # with Timer() as t:
-        #     _meter_values_test(performance_test_data, performance_session_id)
-        # ic(str(t))
-        # self.assertLess(float(t), 10.0, f'Meter values performance test took {float(t):02f} seconds, which is too much')
+        start_date_time = datetime(2022, 12, 1, 12, 0)
+        maxloop = 50
+        performance_test_data = [
+            (i, i * 100 / maxloop, start_date_time + timedelta(hours=i), None, None, None) for i in range(0, maxloop)
+        ]
+
+        performance_session_id = 'FI*000*S*PERFORMANCE*TEST'
+        reset_queries()
+        with Timer() as t:
+            _meter_values_test(performance_test_data, performance_session_id)
+
+        long_queries = [i for i in connection.queries if float(i.get('time')) > 0.1]
+        self.assertFalse(long_queries, f'There are SQL queries taking a long time: {long_queries}')
+
+        self.assertLess(float(t), 3, f'Meter values performance test took {float(t):02f} seconds, which is too long')
 
 
 def put(data, url, viewset):
