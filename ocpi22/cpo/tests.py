@@ -365,40 +365,60 @@ class TestChargingPeriods(TestCase):
             'Price formatting works differently than expected'
         )
 
-        for kwh, soc, timestamp, expected_args, expected_response, expected_session_data in meter_values_data:
-            # ic('*' * 60, kwh, soc, timestamp)
-            try:
-                with self.subTest(kwh=kwh, timestamp=timestamp):
-                    with time_machine.travel(timestamp, tick=False), \
-                            patch('ocpi22.ocpi.util.OcpiModule.send_updates') as send_updates, \
-                            patch('ocpi22.util.is_our_identifier', return_value=True):
+        def _meter_values_test(data, sess_id):
+            for kwh, soc, timestamp, expected_args, expected_response, expected_session_data in data:
+                # ic('*' * 60, kwh, soc, timestamp)
+                try:
+                    with self.subTest(kwh=kwh, timestamp=timestamp):
+                        with time_machine.travel(timestamp, tick=False), \
+                                patch('ocpi22.ocpi.util.OcpiModule.send_updates') as send_updates, \
+                                patch('ocpi22.util.is_our_identifier', return_value=True), \
+                                patch('ocpi22.logging.error') as logging_error_mock:
 
-                        response = meter_values(dict(session_id=session_id, kwh=kwh, soc=soc, timestamp=timestamp))
+                            logging_error_mock.reset_mock()
+                            response = meter_values(dict(session_id=sess_id, kwh=kwh, soc=soc, timestamp=timestamp))
 
-                    self.assertEqual(response.status_code, 200,
-                                     f'Unexpected response from meter_values(): {response.data}')
-                    self.assertEqual(send_updates.call_count, 1, 'send_update() should have been called once')
+                        self.assertFalse(logging_error_mock.call_count,
+                                         f'There was an error logged: {logging_error_mock.call_args}')
 
-                    args, kwargs = send_updates.call_args
-                    if expected_args:
-                        # ic(recursive_sort_dict(args[0]), recursive_sort_dict(expected_args))
-                        self.assertDictEqual(args[0], expected_args,
-                                             f'send_update() got different parameters than expected: {args[0]}')
+                        self.assertEqual(response.status_code, 200,
+                                         f'Unexpected response from meter_values(): {response.data}')
+                        self.assertEqual(send_updates.call_count, 1, 'send_update() should have been called once')
 
-                    if expected_response:
-                        # ic(recursive_sort_dict(response.data), recursive_sort_dict(expected_response))
-                        self.assertDictEqual(response.data, expected_response,
-                                             f'Response differs from expected: {response.data}')
-                    if expected_session_data:
-                        session_id = 'FI*000*S*B58DDC4D3B304A47AD623C22147'
-                        session = Session.get_if_exists(uid=session_id)
-                        session_serializer = SessionSerializer(session)
-                        # ic(recursive_sort_dict(session_serializer.data), recursive_sort_dict(expected_session_data))
-                        self.assertDictEqual(session_serializer.data, expected_session_data,
-                                             'Session data differs from expected')
-            except AssertionError:
-                ic(args[0], response.data)
-                raise
+                        args, kwargs = send_updates.call_args
+                        if expected_args:
+                            # ic(recursive_sort_dict(args[0]), recursive_sort_dict(expected_args))
+                            self.assertDictEqual(args[0], expected_args,
+                                                 f'send_update() got different parameters than expected: {args[0]}')
+
+                        if expected_response:
+                            # ic(recursive_sort_dict(response.data), recursive_sort_dict(expected_response))
+                            self.assertDictEqual(response.data, expected_response,
+                                                 f'Response differs from expected: {response.data}')
+                        if expected_session_data:
+                            session_id = 'FI*000*S*B58DDC4D3B304A47AD623C22147'
+                            session = Session.get_if_exists(uid=session_id)
+                            session_serializer = SessionSerializer(session)
+                            # ic(recursive_sort_dict(session_serializer.data), recursive_sort_dict(expected_session_data))
+                            self.assertDictEqual(session_serializer.data, expected_session_data,
+                                                 'Session data differs from expected')
+                except AssertionError:
+                    ic(args[0], response.data)
+                    raise
+
+        _meter_values_test(meter_values_data, session_id)
+
+        # start_date_time = datetime(2022, 12, 1, 12, 0)
+        # maxloop = 300
+        # performance_test_data = [
+        #     (i, i*100/maxloop, start_date_time + timedelta(hours=i), None, None, None) for i in range(0, maxloop)
+        # ]
+        #
+        # performance_session_id = 'FI*000*S*PERFORMANCE*TEST'
+        # with Timer() as t:
+        #     _meter_values_test(performance_test_data, performance_session_id)
+        # ic(str(t))
+        # self.assertLess(float(t), 10.0, f'Meter values performance test took {float(t):02f} seconds, which is too much')
 
 
 def put(data, url, viewset):

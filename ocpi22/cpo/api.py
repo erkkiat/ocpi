@@ -220,7 +220,7 @@ def url_link(href, text, target='') -> str:
     return f'<a{target} href="{href}">{text}</a>'
 
 
-def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
+def time_lte(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
     def convert(t):
         if isinstance(t, str):
             return time(*t.split(':'))
@@ -230,7 +230,7 @@ def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]
 
     time1 = convert(time1)
     time2 = convert(time2)
-    return time1 < time2
+    return time1 <= time2
 
 
 def applying_tariff_element(session_instance: Session, timestamp: Union[datetime, DateTimeField] = None,
@@ -250,12 +250,12 @@ def applying_tariff_element(session_instance: Session, timestamp: Union[datetime
             weekday_numbers = element.weekday_numbers()
             if matching_weekday(weekday, weekday_numbers):
                 if crossing_day_boundary(element.start_time, element.end_time):
-                    if time_lt(element.start_time, timestamp) or time_lt(timestamp, element.end_time):
+                    if time_lte(element.start_time, timestamp) or time_lte(timestamp, element.end_time):
                         # print('Matching weekday and time (crossing day boundary)')
                         # ic(weekday, str(timestamp), element, [str(pc) for pc in element.price_components.all()])
                         return element
-                elif not element.start_time or time_lt(element.start_time, timestamp):
-                    if not element.end_time or time_lt(timestamp, element.end_time):
+                elif not element.start_time or time_lte(element.start_time, timestamp):
+                    if not element.end_time or time_lte(timestamp, element.end_time):
                         # Matching time range
                         # print('Matching weekday and time')
                         # ic(weekday, str(timestamp), element, [str(pc) for pc in element.price_components.all()])
