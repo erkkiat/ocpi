@@ -389,7 +389,7 @@ class CommandsViewSet(GenericViewSet):
 
     @staticmethod
     def list(request, *_args, **_kwargs):
-        ic(request.version)
+        # ic(request.version)
         return Response(dict(
             start_session=request.build_absolute_uri(reverse('commands-start-session', request=request)),
             stop_session=request.build_absolute_uri(reverse('commands-stop-session', request=request)),

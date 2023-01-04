@@ -327,7 +327,7 @@ class UserViewSet(viewsets.GenericViewSet):
         try:
             user: User = request.user
 
-            ic(format)
+            # ic(format)
 
             return Response({
                 'status_message': 'Success',
