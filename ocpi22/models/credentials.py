@@ -221,7 +221,7 @@ class NewConnection(forms.Form):
 def new_connection(request):
     if not settings.PREMIUM:
         import premium
-        premium.premium_message()
+        premium.premium_message(request)
     else:
         try:
             if request.method == 'POST':
