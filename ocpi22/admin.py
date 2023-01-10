@@ -513,6 +513,12 @@ class CredentialsAdmin(admin.ModelAdmin):
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a']
     list_display_links = ['token_a_base64']
 
+    def has_add_permission(self, request, obj=None):
+        return settings.PREMIUM
+
+    def has_change_permission(self, request, obj=None):
+        return settings.PREMIUM
+
 
 @admin.register(CredentialsRole)
 class CredentialsRoleAdmin(admin.ModelAdmin):
