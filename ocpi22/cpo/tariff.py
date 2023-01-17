@@ -55,6 +55,8 @@ class TariffQuickViewSet(mixins.ListModelMixin,
                                        country_code=our_country_code,
                                        party_id=our_party_id)
 
+            assert request.data.get('uid') in (uid, None), f'Different UID in request and URL'
+
             if request.method == 'GET':
                 serializer = TariffQuickSerializer(tariff, context={'request': request})
                 return Response(serializer.data)
@@ -64,13 +66,12 @@ class TariffQuickViewSet(mixins.ListModelMixin,
                                                context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                # Todo: PUT fails if UID is different, require UID to be same
                 serializer = TariffQuickSerializer(Tariff.objects.get(uid=uid))
                 return Response(serializer.data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        except IntegrityError as e:
+        except (IntegrityError, AssertionError) as e:
             return Response({'status_message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod

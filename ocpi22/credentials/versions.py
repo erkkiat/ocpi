@@ -54,7 +54,6 @@ def get_endpoints_dict(request) -> dict:
                 role=R,
                 url=request.build_absolute_uri(reverse('clientinfo-list', args=[request.version]))
             ),
-            # Todo: Locations receiver and Tokens sender are for simulator, and should only be active when in debug
         ]
     )
 

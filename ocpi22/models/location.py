@@ -308,7 +308,7 @@ class Connector(models.Model, ModelUtilMixin):
     max_electric_power = models.IntegerField(null=True, blank=True)
 
     # If you want the default tariffs to be in use when needed use get_tariffs() instead of accessing tariff_ids
-    tariff_ids = models.ManyToManyField(Tariff, related_name='tariffs', blank=True)
+    tariff_ids = models.ManyToManyField(Tariff, related_name='connectors', blank=True)
 
     terms_and_conditions = models.URLField(blank=True, default='')
 
@@ -338,7 +338,7 @@ class Connector(models.Model, ModelUtilMixin):
         return tariffs
 
     def get_admin_url(self):
-        return build_absolute_uri(reverse('admin:ocpi22_evse_change', kwargs=dict(object_id=self.evse.pk)))
+        return build_absolute_uri(reverse('admin:ocpi22_evse_change', args=(self.evse.pk,)))
 
     @property
     def issue_parent(self):

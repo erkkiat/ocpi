@@ -107,9 +107,6 @@ class CommandsViewSet(GenericViewSet):
         # TODO: If this Token is of type RFID, the CPO SHALL NOT do a realtime authorization at the eMSP for
         #  this Token at the given EVSE/Charge Point within 15 minutes after having received this ReserveNow.
 
-        # TODO: The eMSP MAY use Tokens that have not been pushed via the Token module, especially
-        #  AD_HOC_USER or APP_USER Tokens are only used by commands send by an eMSP.
-        #  As these are never used locally at the Charge Point like RFID.
         return self.process_remote_command(request,
                                            command_serializer=ReserveNowSerializer,
                                            webhook_serializer=CPOReserveNowWebhookSerializer,
@@ -408,13 +405,12 @@ def get_our_first_token():
         raise ValueError('Please create a Token first.')
 
 
-def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_role: EndpointRoleEnum) -> Endpoint:
-    # Todo: Optimize using https://docs.djangoproject.com/en/4.1/ref/models/querysets/#in
-    for role in CredentialsRole.objects.filter(country_code=country_code, party_id=party_id):
-        for credentials in role.credentials.all():
-            endpoints = credentials.endpoints.filter(identifier=identifier.value, role=endpoint_role.value)
-            if endpoints.count():
-                return endpoints[0]
+# def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_role: EndpointRoleEnum) -> Endpoint:
+#     for role in CredentialsRole.objects.filter(country_code=country_code, party_id=party_id):
+#         for credentials in role.credentials.all():
+#             endpoints = credentials.endpoints.filter(identifier=identifier.value, role=endpoint_role.value)
+#             if endpoints.count():
+#                 return endpoints[0]
 
 
 def send_start_command(request, evse: Evse, token: Union[Token, str], connector_id=None, contract_id='',
@@ -439,7 +435,7 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
             location_id=evse.location.uid,
             evse_uid=evse.uid,
             connector_id=connector_id,
-            authorization_reference=authorization_reference,  # Todo: Store authorization for verifying CDR
+            authorization_reference=authorization_reference,
         )
         if route.version == '22':
             data.pop('connector_id', '')
@@ -479,7 +475,7 @@ def send_reserve_command(request, location: Location, evse: Evse, token: Union[T
             location_id=location.uid,
             evse_uid=evse.uid,
             connector_id=connector_id,
-            authorization_reference=authorization_reference,  # Todo: Store authorization for verifying CDR
+            authorization_reference=authorization_reference,
             expiry_date=datetime.now() + timedelta(seconds=expiration),
             reservation_id=reservation_id
         )

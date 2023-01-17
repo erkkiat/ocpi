@@ -17,9 +17,9 @@ from ocpi22.rendering import RENDERERS
 from ocpi22.util import matching_operator, OCPIVersioning, OCPIListModelMixin
 from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders
 
-# Todo: Fetch all Locations for reliable data update, but fetch Tariffs first, since Location refers to them
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
+
 from ocpi22.webhooks import send_to_webhook
 from premium import requires_premium
 
@@ -143,7 +143,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
     @transaction.atomic
     @requires_premium
-    def put(self, request, data=None, **_kwargs):
+    def put(self, request, data=None, version='2.2.1', **_kwargs):
         data = data or request.data.get('data', request.data)
         # print(data)
         uid = data.get('id')
@@ -159,7 +159,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                 return OCPIResponse(f'Location {location} is owned by us and cannot be updated from outside.',
                                     http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-            serializer = LocationSerializer221(location, data=data, context={'version': request.version})
+            serializer = LocationSerializer221(location, data=data, context={'version': version or request.version})
             if serializer.is_valid():
                 logging.info(f'Creating or updating Location {country_code}*{party_id} - {uid}.')
                 serializer.save()

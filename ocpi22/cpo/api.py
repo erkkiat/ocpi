@@ -98,8 +98,6 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
 
         """
         evse = get_object_or_404(Evse, uid=evse_id)
-        # Todo: Handle overlapping EVSE UIDs (how to refer to Evse.location.country_code...)
-        # (Not needed if MSP and CPO are separate instances, since the CPO only has their own charge points)
 
         if request.method == 'GET':
             serializer = EvseSerializer(evse, context={'version': request.version})
@@ -162,6 +160,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
             location = get_object_or_404(Location, uid=uid,
                                          country_code=our_country_code,
                                          party_id=our_party_id)
+            assert request.data.get('uid') in (uid, None), f'UID differs in request and in URL'
 
             if request.method == 'GET':
                 serializer = LocationQuickSerializer(location, context={'request': request})
@@ -172,7 +171,6 @@ class LocationQuickViewSet(mixins.ListModelMixin,
                                                  context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                # Todo: PUT fails if UID is different, require UID to be same
                 serializer = LocationQuickSerializer(Location.objects.get(uid=uid))
                 return Response(serializer.data)
             else:
@@ -398,7 +396,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
     status and other data from the charge point.
     """
 
-    queryset = Location.objects.all()  # Todo: Just in case, show only our Locations (unless we are a HUB)
+    queryset = Location.objects.all()  # A CPO instance should only have its own Locations in the database
     lookup_field = 'uid'
 
     def get_serializer_class(self):
@@ -429,16 +427,12 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
         """
 
-        # Todo: Fail if no Tariffs for any Connector in this EVSE
-
         try:
             if request.method == 'POST':
                 serializer = StatusChangeSerializer(data=request.data)
                 if serializer.is_valid():
                     ocpp_status = serializer.initial_data.get('status')
                     ocpi_status = serializer.validated_data.get('status')
-
-                    # Todo: Filter just our evses (is this needed if CPO instance has only their own charge points?)
                     evse: Evse = serializer.validated_data.get('evse')
 
                     evse.status = ocpi_status
@@ -659,8 +653,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         credentials = request.credentials if hasattr(request, 'credentials') else None
                         # Todo: Session.currency needs to match with Tariff currency
                         session = create_session(
-                            # Todo: Make sure overlapping evse.uid is not a problem for CPO + eMSP role
-                            #   Other CPO can have same ID (CPO instance should be separate from MSP)
                             uid=generate_session_uid(), internal_reference=internal_reference,
                             evse_uid=evse, location_id=evse.location, connector_id=connector_id,
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,

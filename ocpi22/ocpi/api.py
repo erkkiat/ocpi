@@ -82,7 +82,8 @@ class TokenViewSet(OCPIListModelMixin,
         return token and token.is_ours()
 
     @transaction.atomic
-    def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=False, **_kwargs):
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=False, version='2.2.1',
+            **_kwargs):
         data = data or request.data.get('data', request.data)
         uid = uid or data.get('uid')
         party_id = party_id or data.get('party_id')
@@ -97,7 +98,8 @@ class TokenViewSet(OCPIListModelMixin,
 
         if token and request and not token.is_owner(request):
             return NotOwner()
-        serializer = TokenSerializer(data=data, instance=token, partial=partial, context={'version': request.version})
+        serializer = TokenSerializer(data=data, instance=token, partial=partial,
+                                     context={'version': version or request.version})
         if serializer.is_valid():
             logging.info(f'Creating or updating Token {country_code}*{party_id} - {uid}.')
             serializer.save()
@@ -428,7 +430,8 @@ class TariffViewSet(OCPIListModelMixin,
 
     @requires_premium
     @transaction.atomic
-    def put(self, request, country_code=None, party_id=None, uid=None, data=None, **_kwargs) -> OCPIResponse:
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None, version='2.2.1', **_kwargs) \
+            -> OCPIResponse:
         # This PUT is used both for the Tariff endpoint root and the path with country_code, party_id and Tariff uid
         data = data or request.data.get('data', request.data)
         country_code = country_code or data.get('country_code')
@@ -444,7 +447,7 @@ class TariffViewSet(OCPIListModelMixin,
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        serializer = TariffSerializer(instance=tariff, data=data, context={'version': request.version})
+        serializer = TariffSerializer(instance=tariff, data=data, context={'version': version or request.version})
         if serializer.is_valid():
             logging.info(f'Creating or updating Tariff {country_code}*{party_id} - {uid}.')
             serializer.save()
@@ -452,6 +455,17 @@ class TariffViewSet(OCPIListModelMixin,
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if tariff else status.HTTP_201_CREATED)
         else:
             return OCPIResponse(errors=serializer.errors)
+
+    @transaction.atomic
+    @action(methods=['DELETE'], url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', detail=False)
+    @requires_premium
+    def delete(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
+        tariff = Tariff.get_if_exists(country_code=country_code, party_id=party_id, uid=uid, archived=False)
+        if tariff.connectors.count():
+            return OCPIResponse('Cannot delete a Tariff which is referred to by one or more Connectors.',
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+        tariff.delete()
+        return OCPIResponse('Tariff was deleted')
 
 
 def stop_session_if_money_runs_out(request, session):

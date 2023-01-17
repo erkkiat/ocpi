@@ -502,7 +502,7 @@ expected_get_responses = {
 
 expected_get_headers = {
     'http://localhost:8001/ocpi/2.2.1/tariffs?limit=3':
-        {'Allow': 'GET, PUT, HEAD, OPTIONS',
+        {'Allow': 'GET, PUT, DELETE, HEAD, OPTIONS',
          'Content-Length': '835',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
@@ -513,7 +513,7 @@ expected_get_headers = {
          'X-Limit': '100',
          'X-Total-Count': '6'},
     'http://testserver/ocpi/2.2.1/tariffs?limit=3&offset=3':
-        {'Allow': 'GET, PUT, HEAD, OPTIONS',
+        {'Allow': 'GET, PUT, DELETE, HEAD, OPTIONS',
          'Content-Length': '756',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
