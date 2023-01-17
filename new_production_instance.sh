@@ -17,23 +17,17 @@ fi
 
 export $(cat .env | xargs)
 
-if [ -z "$CRONITOR_API_KEY" ] || [ -z "$BGDA_URL" ] || [ -z "$IBEX_CREDENTIALS" ]
-  then
-    echo 'You should have CRONITOR_API_KEY, BGDA_URL and IBEX_CREDENTIALS defined in .env'
-    exit 1
-fi
-
 HOST=$1
 USERNAME=$2
 EMAIL=$3
 export HEROKU_APP=$1-ocpi
 PASSWORD=`python generate_password.py`
 
- echo "================================" \
+ echo "======================================================" \
  && echo "URL: http://$HOST.ocpiconnector.com/" \
  && echo "User: $USERNAME" \
  && echo "Password: $PASSWORD" \
- && echo "================================"
+ && echo "======================================================"
 
 sleep 4
 
@@ -52,11 +46,11 @@ heroku create --region eu $HEROKU_APP \
  && heroku pipelines:promote --app=cpo-ocpi --to=$HEROKU_APP \
  && heroku run ./manage.py loaddata ocpi22/data/initial.json \
  && heroku run ./manage.py createsuperuser --username eki --email erkki.tapola@pohdinto.com \
- && echo "================================" \
+ && echo "======================================================" /
  && echo "URL: http://$HOST.ocpiconnector.com/" \
  && echo "User: $USERNAME" \
  && echo "Password: $PASSWORD" \
- && echo "================================" \
+ && echo "======================================================" /
  && heroku run  DJANGO_SUPERUSER_USERNAME="$USERNAME" \
                 DJANGO_SUPERUSER_PASSWORD="$PASSWORD" \
                 ./manage.py createsuperuser --username $USERNAME --email $EMAIL --noinput
