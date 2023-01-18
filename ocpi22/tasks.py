@@ -40,6 +40,11 @@ app = celery.Celery('ocpi22.tasks')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 # app.conf.task_default_queue = settings.CELERY_TASK_DEFAULT_QUEUE  # This is taken care of in settings.py
 
+pull_hour = random.randint(0, 3)
+pull_minute = random.randint(0, 59)
+
+# print(f'Pulling all objects daily at {pull_hour:02d}:{pull_minute:02d}')
+
 app.conf.beat_schedule = {
     'run-me-every-minute': {
         'task': 'ocpi22.tasks.celery_heartbeat',
@@ -48,6 +53,11 @@ app.conf.beat_schedule = {
     'still-alive': {
         'task': 'ocpi22.tasks.check_still_alive',
         'schedule': STILL_ALIVE_FREQUENCY
+    },
+    'pull-all-objects': {
+        'task': 'ocpi22.tasks.pull_all_objects',
+        # 'schedule': 120  # For testing
+        'schedule': crontab(hour=pull_hour, minute=pull_minute)
     },
     # 'set-spot-prices-every-hour': {
     #     'task': 'ocpi22.tasks.set_spot_prices',
@@ -63,6 +73,17 @@ app.conf.beat_schedule = {
 @app.task
 def celery_heartbeat() -> bool:
     return True
+
+
+@shared_task(max_retries=3, retry_backoff=3600)
+def pull_all_objects() -> bool:
+    from ocpi22.models.credentials import Credentials
+    from ocpi22.pull import schedule_full_update
+
+    print('Starting a scheduled full OCPI object pull.')
+    credentials = Credentials.objects.filter(valid=True)
+    for c in credentials:
+        schedule_full_update(c)
 
 
 @shared_task(max_retries=12, retry_backoff=300)
@@ -216,7 +237,8 @@ def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
                 if next_url:
                     kwargs['url'] = next_url
         else:
-            logging.info(f'No URL found for party {obj.get("party")} object {obj}, not pulling')
+            module_name = obj.get('model').split('.')[-1]
+            logging.info(f'Party {obj.get("party")} is not a {module_name} sender, skipping')
 
         if not next_url:
             object_list.pop(0)

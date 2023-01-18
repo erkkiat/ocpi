@@ -14,7 +14,6 @@ from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 # Todo: Full object pull for Cdrs
 
 def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
-    # Don't waste effort on offline parties, let still_alive continue trying
     if not credentials.is_complete() or not credentials.valid:
         logging.warning(f'Not doing a full update for an unvalid Credentials: {credentials}')
         return
