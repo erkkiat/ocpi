@@ -1,5 +1,6 @@
 import uuid
 from copy import deepcopy
+from gettext import gettext as _
 from typing import Optional
 
 from django.conf import settings
@@ -7,6 +8,7 @@ from django.db import models
 from django.db.models import QuerySet
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from django.utils.html import format_html
 from multiselectfield import MultiSelectField
 from util import reverse
@@ -18,10 +20,6 @@ from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 from ocpiconnector.util import weekday_range_to_str, humanize_time
-
-
-# Todo: When the CPO deletes a Tariff, they will update the eMSPs systems
-#  by calling DELETE on the eMSPs Tariffs endpoint with the ID of the Tariff that was deleted.
 
 # Todo: Minimum amount to be billed. This unit will be billed in this step_size blocks.
 #  Amounts that are less then this step_size are rounded up to the given step_size.
@@ -137,7 +135,6 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
 
     def link(self):
         url = reverse('admin:ocpi22_tariff_change', args=[self.pk])
-        # noinspection PyUnresolvedReferences
         return format_html(
             f"<a href='{url}'>{self.price()}</a>"
         )
@@ -148,7 +145,6 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     def references(self):
         if settings.DEBUG:
             from ocpi22.models.cdr import Cdr
-            # noinspection PyUnresolvedReferences
             return Cdr.objects.filter(tariffs=self).count()
         return 'N/A'
 
@@ -180,7 +176,6 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
             result.append(cls.make_copy(t))
         return result
 
-    # noinspection PyUnresolvedReferences
     @classmethod
     def get_default_tariffs(cls, standard) -> QuerySet:
         try:
@@ -196,6 +191,11 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
                 if pc.type == tariff_type:
                     return pc
         return None
+
+    def save(self, *args, **kwargs):
+        if self.is_ours():
+            self.last_updated = timezone.now()
+        return super().save(*args, **kwargs)
 
 
 class TariffElement(models.Model, ModelUtilMixin):
@@ -218,13 +218,13 @@ class TariffElement(models.Model, ModelUtilMixin):
     max_duration = models.IntegerField(null=True, blank=True)
 
     DAY_OF_WEEK_CHOICES = (
-        ('MONDAY', 'Monday'),
-        ('TUESDAY', 'Tuesday'),
-        ('WEDNESDAY', 'Wednesday'),
-        ('THURSDAY', 'Thursday'),
-        ('FRIDAY', 'Friday'),
-        ('SATURDAY', 'Saturday'),
-        ('SUNDAY', 'Sunday')
+        ('MONDAY', _('Monday')),
+        ('TUESDAY', _('Tuesday')),
+        ('WEDNESDAY', _('Wednesday')),
+        ('THURSDAY', _('Thursday')),
+        ('FRIDAY', _('Friday')),
+        ('SATURDAY', _('Saturday')),
+        ('SUNDAY', _('Sunday'))
     )
 
     day_of_week = MultiSelectField(max_length=56, null=True, blank=True, choices=DAY_OF_WEEK_CHOICES)

@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.urls import NoReverseMatch
+from django.utils import timezone
 from django.utils.html import format_html
 from util import reverse
 
@@ -149,6 +150,10 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
 
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
+        if self.is_ours():
+            self.last_updated = timezone.now()
+        self.lat_partition = calculate_partition(self.latitude)
+        self.long_partition = calculate_partition(self.longitude)
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self, version=None):
@@ -161,11 +166,9 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         return f'{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}'
 
     def evse_count(self):
-        # noinspection PyUnresolvedReferences
         return self.evses.count()
 
     def evse_list(self):
-        # noinspection PyUnresolvedReferences
         return format_html(
             '<hr style="margin: 4px">'.join(
                 [
@@ -285,6 +288,13 @@ class Evse(models.Model, ModelUtilMixin):
         Location._send_updates(data, data, method=method,
                                path_components=[location.country_code, location.party_id, location.uid, self.uid])
 
+    def save(self, *args, **kwargs):
+        if self.location.is_ours():
+            self.last_updated = timezone.now()
+            self.location.last_updated = timezone.now()
+            self.location.save(update_fields=['last_updated'])
+        return super().save(*args, **kwargs)
+
 
 class Connector(models.Model, ModelUtilMixin):
     # Identifier of the Connector within the EVSE. Two Connectors may have the same id
@@ -374,34 +384,3 @@ def connector_post_save(sender, instance, *_args, **kwargs):
     location = connector.evse.location
     location.last_updated = connector.last_updated
     location.save(update_fields=['last_updated'])
-
-
-@receiver(post_save, sender=Evse)
-def evse_post_save(sender, instance, *_args, **kwargs):
-    """
-    Make sure that only Admin calls Evse.save() without the update_fields list
-    """
-    # ic()
-    # ic(kwargs)
-    update_fields = kwargs.get('update_fields', [])
-    if update_fields and 'last_updated' in update_fields:
-        # If only last_updated has been changed, Location.last_updated has been already updated by connector_post_save
-        # ic('evse_post_save was triggered by connector_post_save, no updating for Location.last_updated')
-        return
-    # ic('evse_post_save is updating Location.last_updated')
-    evse = instance
-    evse.location.last_updated = evse.last_updated
-    evse.location.save(update_fields=['last_updated'])
-    # if location.is_ours():
-    #     ic('*** This is our location, sending updates to all known parties')
-    #     # from ocpi22.location import send_evse_updates
-    #     # send_evse_updates(evse.uid)
-    #     from ocpi22.location import send_location_updates
-    #     send_location_updates(location)
-
-
-@receiver(pre_save, sender=Location)
-def location_pre_save(sender, instance, *_args, **_kwargs):
-    location: Location = instance
-    location.lat_partition = calculate_partition(location.latitude)
-    location.long_partition = calculate_partition(location.longitude)

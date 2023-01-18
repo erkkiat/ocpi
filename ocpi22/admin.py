@@ -46,7 +46,7 @@ class TokenAdmin(admin.ModelAdmin):
     else:
         list_display = ['object_owner', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
     list_display_links = ['uid']
-    readonly_fields = ['country_code', 'party_id']
+    readonly_fields = ['country_code', 'party_id', 'last_updated', 'created']
 
     def customer_name(self, obj) -> str:
         if not obj.customer:
@@ -76,6 +76,11 @@ class TokenAdmin(admin.ModelAdmin):
                 ('language', 'default_profile_type'),
             )
         )),
+        ('Dates', dict(
+            fields=(
+                ('created', 'last_updated')
+            )
+        ))
     ]
 
     def has_add_permission(self, request) -> bool:
@@ -163,7 +168,7 @@ class LocationAdmin(NestedModelAdmin):
             fields=(('operator', 'suboperator', 'owner'),)
         )),
     ]
-    list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list']
+    list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list', 'last_updated']
     list_display_links = ['uid']
     inlines = [EvseInline]
     autocomplete_fields = ['publish_allowed_to', 'facilities', 'operator', 'suboperator', 'owner']
@@ -188,7 +193,7 @@ class LocationAdmin(NestedModelAdmin):
 class EvseAdmin(NestedModelAdmin):
     model = Evse
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
-    list_display = ['object_owner', 'uid', 'location_url', 'status', 'connector_list']
+    list_display = ['object_owner', 'uid', 'location_url', 'status', 'connector_list', 'last_updated']
     list_display_links = ['uid']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
@@ -451,12 +456,14 @@ class TariffAdmin(NestedModelAdmin):
 
     model = Tariff
     list_display = [
-        'object_owner', 'uid', 'price', 'references'
+        'object_owner', 'uid', 'price', 'last_updated', 'references'
     ]
     list_display_links = ['uid']
     inlines = [ElementsInline]
     search_fields = ['uid']
     radio_fields = dict(type=admin.HORIZONTAL)
+    readonly_fields = ('last_updated',)
+
     fieldsets = [
         ('',
          dict(
@@ -465,6 +472,7 @@ class TariffAdmin(NestedModelAdmin):
                  ('uid', 'currency'),
                  ('type',),
                  ('tariff_alt_url',),
+                 ('last_updated',)
              )
          )
          ),

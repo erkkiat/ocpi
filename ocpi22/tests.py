@@ -1192,7 +1192,8 @@ class UpdatePartiesTest(TestCase):
 
     def test_get_admin_token(self):
         # Get the existing admin token
-        token = get_admin_token()
+        with time_machine.travel(faketime, tick=False):
+            token = get_admin_token()
         serializer = TokenSerializer(token)
         expected = {  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/MSP/FI*MSP*T*ADMIN*TOKEN',
             'contract_id': 'INTERNAL',
@@ -1201,12 +1202,15 @@ class UpdatePartiesTest(TestCase):
             'party_id': 'MSP',
             'type': 'OTHER',
             'uid': 'FI*MSP*T*ADMIN*TOKEN',
-            'valid': True}
+            'valid': True,
+            'last_updated': '2022-01-01T12:00:00Z'
+        }
         self.assertDictEqual(serializer.data, expected, 'Getting the admin token seems not to work')
 
         # Creating the admin token
         token.delete()
-        token = get_admin_token()
+        with time_machine.travel(faketime, tick=False):
+            token = get_admin_token()
         serializer = TokenSerializer(token)
         self.assertDictEqual(serializer.data, expected, 'Creating the admin token seems not to work')
 
