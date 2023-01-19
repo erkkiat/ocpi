@@ -166,7 +166,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
             raise ValidationError(serializer.errors)
 
     def get_admin_url(self):
-        return build_absolute_uri(reverse('admin:ocpi22_credentials_change', kwargs=dict(object_id=self.pk)))
+        return build_absolute_uri(reverse('admin:ocpi22_credentials_change', args=[self.pk]))
 
 
 class CredentialsRole(models.Model, ModelUtilMixin):
