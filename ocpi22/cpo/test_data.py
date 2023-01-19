@@ -40,11 +40,12 @@ class LocationData:
                         "max_voltage": 232,
                         "max_amperage": 32
                     }
-                ]
+                ],
+                "last_updated": "2022-06-18T11:08:03.102160"
             },
             {
                 "status_url": "http://localhost:8000/api/cpo/v2/location/quick/EKI1/",
-                "uid": "JAAU254040-1",
+                "uid": "12321",
                 "connectors": [
                     {
                         "uid": "1",
@@ -56,7 +57,8 @@ class LocationData:
                             "DC50"
                         ]
                     }
-                ]
+                ],
+                "last_updated": "2022-06-18T11:08:03.102160"
             }
         ]
     }

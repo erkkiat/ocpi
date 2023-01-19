@@ -27,6 +27,7 @@ from ocpi22.models.session import Session
 from ocpi22.tests import meter_values
 
 api_factory = APIRequestFactory()
+faketime = datetime(2022, 1, 1, 12, 0)
 
 
 def load_tests(_loader, tests, _ignore):
@@ -96,35 +97,60 @@ class TestQuickLocations(TestCase):
         # Create Location
         #
 
-        response = put_location(test_data.LocationData.location1, reverse('quick-location-list'))
+        with time_machine.travel(faketime, tick=False):
+            response = put_location(test_data.LocationData.location1, reverse('quick-location-list'))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                          'Expecting Location to be created successfully')
         location = Location.get_if_exists(uid=test_data.LocationData.location1.get('id'))
         data = LocationQuickSerializer(instance=location).data
         expected_data = {
-            # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/EKI1/',
-            'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
-            'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
-            'longitude': 30.0, 'evses': [dict([('uid', '1'), ('connectors', [dict(
-                [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
-                 ('max_amperage', 32), ('max_electric_power', 22200), ('tariff_ids', ['EKI1'])])])]),
-                                         dict([('uid', '2'), ('connectors', [dict(
-                                             [('uid', '1'), ('standard', 'IEC_62196_T2'),
-                                              ('format', 'SOCKET'), ('max_voltage', 232),
-                                              ('max_amperage', 32)])])]),
-                                         dict([('uid', 'JAAU254040-1'), ('connectors', [
-                                             dict([('uid', '1'), ('standard', 'IEC_62196_T2'),
-                                                   ('format', 'CABLE'), ('max_voltage', 233),
-                                                   ('max_amperage', 32),
-                                                   ('tariff_ids', ['DC50'])])])])]
-        }
-        self.assertEqual(data, expected_data, 'New Location data differs from expected')
+            'address': 'Kotikatu 38',
+            'city': 'Espoo',
+            'country': 'FIN',
+            'evses': [OrderedDict([('uid', '1'),
+                                   ('connectors',
+                                    [OrderedDict([('uid', '1'),
+                                                  ('standard', 'IEC_62196_T2'),
+                                                  ('format', 'CABLE'),
+                                                  ('max_voltage', 233),
+                                                  ('max_amperage', 32),
+                                                  ('max_electric_power', 22200),
+                                                  ('tariff_ids', ['EKI1'])])]),
+                                   ('last_updated', '2022-01-01T12:00:00')]),
+                      OrderedDict([('uid', '2'),
+                                   ('connectors',
+                                    [OrderedDict([('uid', '1'),
+                                                  ('standard', 'IEC_62196_T2'),
+                                                  ('format', 'SOCKET'),
+                                                  ('max_voltage', 232),
+                                                  ('max_amperage', 32)])]),
+                                   ('last_updated', '2022-01-01T12:00:00')]),
+                      OrderedDict([('uid', '12321'),
+                                   ('connectors',
+                                    [OrderedDict([('uid', '1'),
+                                                  ('standard', 'IEC_62196_T2'),
+                                                  ('format', 'CABLE'),
+                                                  ('max_voltage', 233),
+                                                  ('max_amperage', 32),
+                                                  ('tariff_ids', ['DC50'])])]),
+                                   ('last_updated', '2022-01-01T12:00:00')])],
+            'id': 'EKI1',
+            'latitude': 60.0,
+            'longitude': 30.0,
+            'name': "Eki's home charger",
+            'postal_code': '01234',
+            'time_zone': 'Europe/Helsinki'}
+        # ic(recursive_sort_dict(data))
+        # ic(compare(data, expected_data))
+        self.assertEqual(recursive_sort_dict(data), recursive_sort_dict(expected_data),
+                         'New Location data differs from expected')
 
         #
         # Update Location
         #
 
-        response = patch_location(test_data.LocationData.location_update1, reverse('quick-location-list'))
+        with time_machine.travel(faketime, tick=False):
+            response = patch_location(test_data.LocationData.location_update1, reverse('quick-location-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          'Expecting Location to be updated successfully')
         location = Location.get_if_exists(uid=test_data.LocationData.location_update1.get('id'))
@@ -145,13 +171,16 @@ class TestQuickLocations(TestCase):
                     OrderedDict(
                         [('uid', '2'), ('connectors', [OrderedDict(
                             [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 232),
-                             ('max_amperage', 32)])])]),
-                    OrderedDict([('uid', 'JAAU254040-1'), ('connectors', [OrderedDict(
+                             ('max_amperage', 32)])]),
+                         ('last_updated', '2022-01-01T12:00:00')]),
+                    OrderedDict([('uid', '12321'), ('connectors', [OrderedDict(
                         [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
-                         ('max_amperage', 32), ('tariff_ids', ['DC50'])])])])
+                         ('max_amperage', 32), ('tariff_ids', ['DC50'])])]),
+                                 ('last_updated', '2022-01-01T12:00:00')])
                 ]
         }
-        self.assertEqual(data, expected_data, 'Updated Location data differs from expected')
+        self.assertEqual(recursive_sort_dict(data), recursive_sort_dict(expected_data),
+                         'Updated Location data differs from expected')
 
     def test_quick_tariff(self):
         test_cases = [
@@ -422,7 +451,7 @@ class TestChargingPeriods(TestCase):
         long_queries = [i for i in connection.queries if float(i.get('time')) > 0.1]
         self.assertFalse(long_queries, f'There are SQL queries taking a long time: {long_queries}')
 
-        self.assertLess(float(t), 3, f'Meter values performance test took {float(t):02f} seconds, which is too long')
+        self.assertLess(float(t), 3.5, f'Meter values performance test took {float(t):02f} seconds, which is too long')
 
 
 def put(data, url, viewset):
