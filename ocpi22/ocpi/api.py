@@ -83,7 +83,7 @@ class TokenViewSet(OCPIListModelMixin,
 
     @transaction.atomic
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=False, version='2.2.1',
-            **_kwargs):
+            logentry=None, **_kwargs):
         data = data or request.data.get('data', request.data)
         uid = uid or data.get('uid')
         party_id = party_id or data.get('party_id')
@@ -101,7 +101,8 @@ class TokenViewSet(OCPIListModelMixin,
         serializer = TokenSerializer(data=data, instance=token, partial=partial,
                                      context={'version': version or request.version})
         if serializer.is_valid():
-            logging.info(f'Creating or updating Token {country_code}*{party_id} - {uid}.')
+            logging.info(f'Creating or updating Token {country_code}*{party_id} - {uid}.',
+                         log_to_admin=True, logentry=logentry)
             serializer.save()
             Token.send_hub_updates(serializer.data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
@@ -430,7 +431,8 @@ class TariffViewSet(OCPIListModelMixin,
 
     @requires_premium
     @transaction.atomic
-    def put(self, request, country_code=None, party_id=None, uid=None, data=None, version='2.2.1', **_kwargs) \
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None, version='2.2.1',
+            logentry=None, **_kwargs) \
             -> OCPIResponse:
         # This PUT is used both for the Tariff endpoint root and the path with country_code, party_id and Tariff uid
         data = data or request.data.get('data', request.data)
@@ -449,7 +451,8 @@ class TariffViewSet(OCPIListModelMixin,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         serializer = TariffSerializer(instance=tariff, data=data, context={'version': version or request.version})
         if serializer.is_valid():
-            logging.info(f'Creating or updating Tariff {country_code}*{party_id} - {uid}.')
+            logging.info(f'Creating or updating Tariff {country_code}*{party_id} - {uid}.',
+                         logentry=logentry, log_to_admin=True)
             serializer.save()
             Tariff.send_hub_updates(data)
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if tariff else status.HTTP_201_CREATED)

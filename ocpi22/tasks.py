@@ -211,7 +211,7 @@ def exchange_credentials(token, url):
 
 
 @shared_task(max_retries=2, retry_jitter=True, retry_backoff=120)
-def pull_objects(object_list, limit=10, delay=2, logentry_id=None, **kwargs) -> None:
+def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects=0, **kwargs) -> None:
     from ocpi22 import logging
 
     try:
@@ -229,10 +229,12 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, **kwargs) -> 
                 next_url, _rel = response.get('headers').get('Link', ';').strip('<>').split(';')
                 model = obj.get('model')
                 viewset = import_string(obj.get('viewset'))
-                for i in response.get('json', {}).get('data', []):
+                items = response.get('json', {}).get('data', [])
+                total_objects += len(items)
+                for i in items:
                     try:
                         # TODO: Check that party matches with Credentials, don't allow third party data
-                        response = viewset().put(request=None, data=i)
+                        response = viewset().put(request=None, data=i, logentry=logentry_id)
                         if response.status_code >= status.HTTP_400_BAD_REQUEST:
                             raise Exception(response.data.get('status_message', '<no status message provided>'))
                     except Exception as e:
@@ -247,7 +249,7 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, **kwargs) -> 
         if not next_url:
             object_list.pop(0)
             if not len(object_list):
-                logging.info('All objects pulled', logentry=logentry_id, log_to_admin=True)
+                logging.info(f'Total of {total_objects} objects pulled', logentry=logentry_id, log_to_admin=True)
                 return
 
         countdown = random.randint(delay, int(1.5 * delay))
@@ -257,11 +259,12 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, **kwargs) -> 
             # logging.info(f'My default_queue: {app.conf.task_default_queue}')
 
             # pull_objects.subtask((object_list, limit), kwargs=kwargs, countdown=countdown)
-            pull_objects.apply_async((object_list, limit, delay, logentry_id), kwargs=kwargs, countdown=countdown)
+            pull_objects.apply_async((object_list, limit, delay, logentry_id, total_objects),
+                                     kwargs=kwargs, countdown=countdown)
         else:
-            pull_objects(object_list, limit, delay, logentry_id, **kwargs)
+            pull_objects(object_list, limit, delay, logentry_id, total_objects, **kwargs)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-        logging.error(f"Unable to pull objects: {e}")
+        logging.error(f"Unable to pull objects: {e}", logentry=logentry_id)
 
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways

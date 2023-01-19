@@ -143,7 +143,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
     @transaction.atomic
     @requires_premium
-    def put(self, request, data=None, version='2.2.1', **_kwargs):
+    def put(self, request, data=None, version='2.2.1', logentry=None, **_kwargs):
         data = data or request.data.get('data', request.data)
         # print(data)
         uid = data.get('id')
@@ -161,7 +161,8 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
             serializer = LocationSerializer221(location, data=data, context={'version': version or request.version})
             if serializer.is_valid():
-                logging.info(f'Creating or updating Location {country_code}*{party_id} - {uid}.')
+                logging.info(f'Creating or updating Location {country_code}*{party_id} - {uid}.',
+                             log_to_admin=True, logentry=logentry)
                 serializer.save()
                 Location.send_hub_updates(serializer.data)
                 http_status = status.HTTP_200_OK if location else status.HTTP_201_CREATED
