@@ -81,7 +81,7 @@ urlpatterns = (
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),
     path('api/msp/v1/', include(msp_router.urls), name='msp-interface'),
     path('ocpi/', include(common_router.urls)),
-    path('simulator/', include(charger_simulator.urls)),
+    # path('simulator/', include(charger_simulator.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/ocpi22/credentials/connection/new', new_connection, name='new-connection'),
     path('admin/', admin.site.urls),
