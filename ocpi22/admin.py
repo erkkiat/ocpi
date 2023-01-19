@@ -1,4 +1,4 @@
-from gettext import gettext as _
+from django.utils.translation import gettext as _
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -9,6 +9,8 @@ import requests
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import User
+
+from ocpi22.models.logging import LogEntry, ChildEvent
 from util import reverse
 from django.utils.html import format_html
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
@@ -613,6 +615,38 @@ class AuthorizationAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(LogEntry)
+class LogEntryAdmin(NestedModelAdmin):
+    class ChildEventInline(NestedTabularInline):
+        model = ChildEvent
+        include = ['level', 'text', 'created']
+
+        def has_change_permission(self, request, obj=None):
+            return False
+
+        def has_add_permission(self, request, obj=None):
+            return False
+
+        def has_delete_permission(self, request, obj=None):
+            return True
+
+    inlines = [ChildEventInline]
+    model = LogEntry
+    exclude = []
+    list_display = ('topic', 'updated')
+    ordering = ['updated']
+    search_fields = ['events__text', 'topic']
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return True
 
 
 admin.site.register(Token, TokenAdmin)

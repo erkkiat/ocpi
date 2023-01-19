@@ -8,7 +8,6 @@ import celery
 import cronitor.celery
 import requests
 import pprint
-import logging
 
 import sentry_sdk
 from celery import shared_task
@@ -138,6 +137,7 @@ if REDIS_URL:
         # Send pings automatically to Cronitor for Celery background tasks
         cronitor.celery.initialize(app, api_key=CRONITOR_API_KEY)
 else:
+    from ocpi22 import logging
     logging.error(f'{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS')
 
 
@@ -148,6 +148,8 @@ def send_ocpi_request(data, url: str, token_base64: str,
                       credentials_id=None, title=None, **_kwargs) -> Optional[dict]:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
+    from ocpi22 import logging
+
     try:
         logging.info(f"Sending {method.upper()} {title} request {data.get('uid', data.get('id', ''))} to {url}")
         headers = make_headers(
@@ -209,7 +211,9 @@ def exchange_credentials(token, url):
 
 
 @shared_task(max_retries=2, retry_jitter=True, retry_backoff=120)
-def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
+def pull_objects(object_list, limit=10, delay=2, logentry_id=None, **kwargs) -> None:
+    from ocpi22 import logging
+
     try:
         if not object_list:
             logging.info('Empty object list, nothing to pull')
@@ -233,20 +237,17 @@ def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
                             raise Exception(response.data.get('status_message', '<no status message provided>'))
                     except Exception as e:
                         logging.error(f"Unable to update {model} using data pulled from url {url} "
-                                      f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
+                                      f"for uid {i.get('uid', i.get('id', ''))}: {e}.", logentry=logentry_id)
                 if next_url:
                     kwargs['url'] = next_url
         else:
             module_name = obj.get('model').split('.')[-1]
-            logging.info(f'Party {obj.get("party")} is not a {module_name} sender, skipping')
+            logging.warning(f'Party {obj.get("party")} is not a {module_name} sender, skipping', logentry=logentry_id)
 
         if not next_url:
             object_list.pop(0)
-            if len(object_list):
-                pass
-                # logging.info(f'Pulling the next object type {object_list[0].get("model")}')
-            else:
-                logging.info('All objects pulled')
+            if not len(object_list):
+                logging.info('All objects pulled', logentry=logentry_id, log_to_admin=True)
                 return
 
         countdown = random.randint(delay, int(1.5 * delay))
@@ -256,9 +257,9 @@ def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
             # logging.info(f'My default_queue: {app.conf.task_default_queue}')
 
             # pull_objects.subtask((object_list, limit), kwargs=kwargs, countdown=countdown)
-            pull_objects.apply_async((object_list, limit, delay), kwargs=kwargs, countdown=countdown)
+            pull_objects.apply_async((object_list, limit, delay, logentry_id), kwargs=kwargs, countdown=countdown)
         else:
-            pull_objects(object_list, limit, delay, **kwargs)
+            pull_objects(object_list, limit, delay, logentry_id, **kwargs)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
         logging.error(f"Unable to pull objects: {e}")
 
@@ -266,6 +267,8 @@ def pull_objects(object_list, limit=10, delay=2, **kwargs) -> None:
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways
 def check_still_alive(credentials_id: int = None) -> None:
     from ocpi22.models.credentials import Credentials
+    from ocpi22 import logging
+
     if credentials_id:
         credentials = None
         time_since_last_connection = None

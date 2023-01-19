@@ -5,6 +5,7 @@ from django.conf import settings
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location
 from ocpi22.choices import EndpointRoleEnum
+from ocpi22.models.logging import LogEntry, LogTopic
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.tasks import pull_objects
@@ -42,12 +43,12 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
         ),
     ]
     token = credentials.theirs_base64()
-    # noinspection PyUnrexsolvedReferences
     role: CredentialsRole = credentials.roles.first()
+    logentry = LogEntry.objects.create(topic=LogTopic.FULL_PULL)
     kwargs = dict(token_base64=token,
                   to_country_code=role.country_code, to_party_id=role.party_id,
                   from_country_code=get_our_country_code(), from_party_id=get_our_party_id(), method='get',
-                  limit=limit, credentials_id=credentials.pk)
+                  limit=limit, credentials_id=credentials.pk, logentry_id=logentry.pk)
     if settings.BACKGROUND_SEND:
         pull_objects.apply_async((object_list,), kwargs=kwargs, countdown=countdown, retry=True,
                                  retry_policy=dict(max_retries=3, interval_start=60 * 5))
