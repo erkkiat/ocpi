@@ -2,6 +2,9 @@
 {% load static %}
 
 
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+
+
 {% block content %}
 <div class="container">
     <div class="jumbotron border-grey">
@@ -11,7 +14,7 @@
         </p>
         <hr class="my-4">
         <p>
-            Here you can test your OCPI 2.2 implementation for interoperability, study the OCPI
+            Here you can test your OCPI 2.2 and 2.2.1 implementation for interoperability, study the OCPI
             data structures and quickly connect your charge points and app to OCPI protocol using the OCPI Connector.
         </p>
     </div>
@@ -25,7 +28,7 @@
         </div>
         <div class="col-9">
             This is where you can browse and interact with the OCPI modules.
-            You get access to the OCPI 2.2 endpoints with examples.
+            You get access to the OCPI 2.2 and 2.2.1 endpoints with examples.
             <p class="py-2">
                 <a class="btn btn-primary btn-lg" href="{% url 'base-versions' %}" role="button">
                     Browse the OCPI implementation
@@ -36,14 +39,14 @@
 
     <hr>
 
-    <h2>The Charge Point Operator API for quick connectivity</h2>
+    <h2>Roaming API for CPO</h2>
 
     <div class="row mt-3">
         <div class="col-sm-12 col-md-3">
             <img class="logo" src="{% static 'images/buttons/charge-point.svg' %}">
         </div>
         <div class="col-9">
-            The CPO API is your cost-effective shortcut to OCPI connectivity.
+            The Roaming API for CPO is your cost-effective shortcut to OCPI connectivity.
             Relay the data in your OCPP messages to the OCPI Connector and prepare to receive remote
             commands from MSP. It's like a bridge from OCPP to OCPI. You'll be roaming in no time.
             <p class="py-2">
@@ -62,14 +65,14 @@
 
     <hr>
 
-    <h2>The eMobility Service Provider API for quick connectivity</h2>
+    <h2>Roaming API for eMSP</h2>
 
     <div class="row mt-3">
         <div class="col-sm-12 col-md-3">
             <img class="logo" src="{% static 'images/buttons/token.svg' %}">
         </div>
         <div class="col-9">
-            The MSP API is your cost-effective shortcut to OCPI connectivity.
+            The Roaming API for eMSP is your cost-effective shortcut to OCPI connectivity.
             Access the charge point data, billing and user information, and
             start & stop charging sessions.
             {% if ocpi_platform.is_emsp %}
