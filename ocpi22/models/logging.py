@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -18,7 +19,8 @@ class LogEntry(models.Model):
     updated = models.DateTimeField(auto_now=True, verbose_name=_('updated on'))
 
     def __str__(self):
-        return self.get_topic_display()
+        date = self.updated.strftime(settings.DATE_FORMAT)
+        return f'{self.get_topic_display()} {date}'
 
 
 class LogLevel(models.TextChoices):

@@ -1,5 +1,15 @@
 {% load i18n %}
+
 <button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="{% translate 'Toggle navigation' %}"></button>
 <nav class="sticky" id="nav-sidebar">
-  {% include 'admin/app_list.html' with app_list=available_apps show_changelinks=False %}
+    <ul class="nav nav-pills flex-column">
+
+        {% for item in admin_menu %}
+        <li class="nav-item">
+            <a class="nav-link {% if item.url in request.path %} active{% endif %}" href="{{item.url}}">
+                {% if item.url == '#' %}<h2>{{item.name}}</h2>{% else %}{{item.name}} {% endif %}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
 </nav>

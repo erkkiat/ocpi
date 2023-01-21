@@ -8,10 +8,7 @@
 
 {% block bodyclass %}{{ block.super }} dashboard{% endblock %}
 
-{% block breadcrumbs %}{% endblock %}
 {% block content_title %}{% endblock %}
-
-{% block nav-sidebar %}{% endblock %}
 
 {% block content %}
 <div id="content-main">
@@ -26,6 +23,7 @@
     </div>
   </div>
   {% endif %}
+
   {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
 </div>
 {% endblock %}

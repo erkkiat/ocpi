@@ -8,10 +8,11 @@ from django.dispatch import receiver
 from django.urls import NoReverseMatch
 from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.translation import gettext as _
+
 from util import reverse
 
 from ocpi22.choices import OcpiModuleEnum
-from ocpi22.logging import log_error
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.tariff import Tariff
@@ -198,6 +199,8 @@ class Evse(models.Model, ModelUtilMixin):
         constraints = [
             models.UniqueConstraint(fields=['uid', 'location'], name='evse_party_uid'),
         ]
+        verbose_name = _('charger')
+        verbose_name_plural = _('chargers')
 
     # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
     # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.

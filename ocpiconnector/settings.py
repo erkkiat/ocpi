@@ -36,6 +36,7 @@ if not DEBUG:
     )
 
 DATETIME_FORMAT = os.environ.get('DATETIME_FORMAT', "%d.%m.%Y %H:%M")
+DATE_FORMAT = os.environ.get('DATE_FORMAT', "%d.%m.%Y")
 locale_formats.DATETIME_FORMAT = "D j.n.Y H:i"
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')

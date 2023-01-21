@@ -2,6 +2,7 @@ from django.utils.translation import gettext as _
 
 from django import forms
 from django.core.exceptions import ValidationError
+from gdpr_assist.admin import PersonalDataAdmin, PersonalData
 
 import ocpi22.logging as logging
 
@@ -199,7 +200,7 @@ class EvseAdmin(NestedModelAdmin):
     list_display_links = ['uid']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
-    actions = ['start_charging', 'stop_charging']
+    # actions = ['start_charging', 'stop_charging']
     autocomplete_fields = ['capabilities', 'location']
 
     def get_queryset(self, request):
@@ -223,43 +224,43 @@ class EvseAdmin(NestedModelAdmin):
 
     location_url.short_description = "Location"
 
-    @admin.action(description='Start charging')
-    def start_charging(self, request, queryset):
-        evse: Evse
-        for evse in queryset:
-            try:
-                response = send_start_command(request, evse, get_admin_token())
-                data = response.json()
-                level = messages.SUCCESS if data.get('status_code') == 1000 else messages.ERROR
-                data = data.get('data', data)
-                self.message_user(request, f"Response: {data.get('message')}", level=level)
-            except (APIException, requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-                logging.error(f"{settings.HOSTNAME}: admin:start_charging(), result: {e}")
-                self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
-                                  level=messages.ERROR)
-
-    @admin.action(description='Stop all active charging sessions')
-    def stop_charging(self, request, queryset):
-        evse: Evse
-        for evse in queryset:
-            active_sessions = get_active_sessions(evse)
-            if not active_sessions.count():
-                self.message_user(request, f'There are no active sessions at Evse {evse.evse_id}.',
-                                  level=messages.WARNING)
-            for session in active_sessions.all():
-                try:
-                    response: Response = send_stop_command(session)
-                    if response:
-                        self.message_user(request, f'Stopping charging at {evse.location}, '
-                                                   f'response: {response.status_code} - '
-                                                   f'{response.reason if hasattr(response, "reason") else "Ok"}')
-                    else:
-                        self.message_user(request, f'Unable to stop charging at {evse.location}.',
-                                          level=messages.ERROR)
-
-                except exceptions.APIException as e:
-                    self.message_user(request, f'Unable to stop charging at {evse.location}. {e}',
-                                      level=messages.ERROR)
+    # @admin.action(description='Start charging')
+    # def start_charging(self, request, queryset):
+    #     evse: Evse
+    #     for evse in queryset:
+    #         try:
+    #             response = send_start_command(request, evse, get_admin_token())
+    #             data = response.json()
+    #             level = messages.SUCCESS if data.get('status_code') == 1000 else messages.ERROR
+    #             data = data.get('data', data)
+    #             self.message_user(request, f"Response: {data.get('message')}", level=level)
+    #         except (APIException, requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+    #             logging.error(f"{settings.HOSTNAME}: admin:start_charging(), result: {e}")
+    #             self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
+    #                               level=messages.ERROR)
+    #
+    # @admin.action(description='Stop all active charging sessions')
+    # def stop_charging(self, request, queryset):
+    #     evse: Evse
+    #     for evse in queryset:
+    #         active_sessions = get_active_sessions(evse)
+    #         if not active_sessions.count():
+    #             self.message_user(request, f'There are no active sessions at Evse {evse.evse_id}.',
+    #                               level=messages.WARNING)
+    #         for session in active_sessions.all():
+    #             try:
+    #                 response: Response = send_stop_command(session)
+    #                 if response:
+    #                     self.message_user(request, f'Stopping charging at {evse.location}, '
+    #                                                f'response: {response.status_code} - '
+    #                                                f'{response.reason if hasattr(response, "reason") else "Ok"}')
+    #                 else:
+    #                     self.message_user(request, f'Unable to stop charging at {evse.location}.',
+    #                                       level=messages.ERROR)
+    #
+    #             except exceptions.APIException as e:
+    #                 self.message_user(request, f'Unable to stop charging at {evse.location}. {e}',
+    #                                   level=messages.ERROR)
 
 
 class BusinessDetailsAdmin(admin.ModelAdmin):
@@ -553,6 +554,16 @@ class DynamicPriceAdmin(admin.ModelAdmin):
 
 
 # admin.site.unregister(User)
+admin.site.unregister(PersonalData)
+
+
+@admin.register(PersonalData)
+class MyPersonalDataAdmin(PersonalDataAdmin):
+    change_list_template = "admin/gdpr_assist/personaldata/change_list.html"
+
+    # def changelist_view(self, *args, **kwargs):
+    #     result = super().changelist_view(*args, **kwargs)
+    #     return result
 
 
 # @admin.register(User)
@@ -636,7 +647,7 @@ class LogEntryAdmin(NestedModelAdmin):
     model = LogEntry
     exclude = []
     list_display = ('topic', 'updated')
-    ordering = ['updated']
+    ordering = ['-updated']
     search_fields = ['events__text', 'topic']
 
     def has_change_permission(self, request, obj=None):

@@ -26,10 +26,13 @@ def home(request):
 
 @staff_member_required
 def issues(request, template_name='issues.html'):
-    issues = get_issues()
+    issues_list = get_issues()
     context = dict(
         user=request.user,
-        issues=issues,
-        issue_count=issue_count(issues),
+        issues=issues_list,
+        issue_count=issue_count(issues_list),
+        is_nav_sidebar_enabled=True,
+        has_permission=request.user.is_staff,
+        site_url='/',
     )
     return render(request, template_name, context)
