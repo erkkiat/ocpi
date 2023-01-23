@@ -19,7 +19,8 @@ from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
 from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
-from ocpiconnector.util import weekday_range_to_str, humanize_time
+from ocpiconnector.util import weekday_range_to_str, humanize_time, date_to_str, humanize_date_range
+
 
 # Todo: Minimum amount to be billed. This unit will be billed in this step_size blocks.
 #  Amounts that are less then this step_size are rounded up to the given step_size.
@@ -241,7 +242,10 @@ class TariffElement(models.Model, ModelUtilMixin):
     def restrictions_str(self):
         days_of_week_str = weekday_range_to_str(self.weekday_numbers())
         times = f' {humanize_time(self.start_time)}-{humanize_time(self.end_time)}' if self.start_time else ''
-        return f' ({days_of_week_str}{times})' \
+        validity = ''
+        if self.start_date or self.end_date:
+            validity = f' ({_("valid")} {humanize_date_range(self.start_date, self.end_date)})'
+        return f' ({days_of_week_str}{times}){validity}' \
             if days_of_week_str else f' (during {times})' \
             if times else ''
 

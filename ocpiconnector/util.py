@@ -1,5 +1,6 @@
 import calendar
 import datetime
+from datetime import date
 import time
 from collections import OrderedDict
 from functools import lru_cache
@@ -7,6 +8,7 @@ from gettext import gettext
 from itertools import chain
 from typing import Any, Union
 
+from django.conf import settings
 from django.contrib.messages.storage.session import SessionStorage
 from django.db.models import TimeField
 
@@ -140,3 +142,43 @@ class DedupMessageMixin(object):
 
 class SessionDedupStorage(DedupMessageMixin, SessionStorage):
     pass
+
+
+def date_to_str(d: datetime.date) -> str:
+    return d.strftime(settings.DATE_FORMAT) if d else ''
+
+
+def humanize_date_range(d1: date, d2: date) -> str:
+    """
+    >>> humanize_date_range(date(2023, 1, 1), date(2023, 1, 10))
+    '1.-10.1.2023'
+    >>> humanize_date_range(date(2023, 1, 1), date(2023, 2, 10))
+    '1.1.-10.2.2023'
+    >>> humanize_date_range(date(2023, 1, 1), date(2024, 1, 10))
+    '1.1.2023-10.1.2024'
+    >>> humanize_date_range(date(2023, 1, 1), date(2023, 1, 1))
+    '1.1.2023'
+    >>> humanize_date_range(date(2023, 1, 1), None)
+    '1.1.2023-'
+    >>> humanize_date_range(None, date(2023, 1, 1))
+    '-1.1.2023'
+    >>> humanize_date_range(None, None)
+    ''
+    """
+
+    def format_date(d: date) -> str:
+        return f'{d.day}.{d.month}.{d.year}'
+
+    if not d1 and not d2:
+        return ''
+    if d1 == d2:
+        return format_date(d1)
+    if d1 and not d2:
+        return f'{format_date(d1)}-'
+    if not d1 and d2:
+        return f'-{format_date(d2)}'
+    if d1.year != d2.year:
+        return f'{format_date(d1)}-{format_date(d2)}'
+    if d1.month == d2.month:
+        return f'{d1.day}.-{format_date(d2)}'
+    return f'{d1.day}.{d1.month}.-{format_date(d2)}'
