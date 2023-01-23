@@ -288,13 +288,13 @@ class TestChargingPeriods(TestCase):
     def test_tariff_change(self):
         meter_values_data = (
             # (kWh, SoC, timestamp)
-            (2, 52, datetime(2022, 12, 25, 23, 55),  # Weekday 6 = Sunday
+            (2, 52, datetime(2022, 12, 25, 21, 55),  # Weekday 6 = Sunday
              {  # Check send_update() parameters for the first call
                  'kwh': Decimal('2.000'),
-                 'last_updated': '2022-12-25T23:55:00Z',
+                 'last_updated': '2022-12-25T21:55:00Z',
                  'total_cost': {'excl_vat': 0.6, 'incl_vat': 0.74},
                  'charging_periods': [
-                     OrderedDict([('start_date_time', '2022-12-25T23:55:00Z'), (
+                     OrderedDict([('start_date_time', '2022-12-25T21:55:00Z'), (
                          'tariff', 'WEEKENDS'), ('dimensions',
                                                  [OrderedDict([('type', 'ENERGY'), ('volume', '2.0000')]),
                                                   OrderedDict([('type', 'STATE_OF_CHARGE'), (
@@ -312,30 +312,30 @@ class TestChargingPeriods(TestCase):
                  'total_kwh': Decimal('2.000')
              }, None
              ),
-            (7, 57, datetime(2022, 12, 25, 23, 58), None, None, None),  # Weekday 6 = Sunday
+            (7, 57, datetime(2022, 12, 25, 21, 58), None, None, None),  # Weekday 6 = Sunday
             # The ChargingPeriod should change here, and the first one should stop at the time the next one starts
-            (10, 60, datetime(2022, 12, 26, 00, 1), None, None, None),  # Weekday 0 = Monday
-            (13, 63, datetime(2022, 12, 26, 00, 3), None, None, None),
-            (15, 65, datetime(2022, 12, 26, 00, 5), None, None, None),
-            (45, 95, datetime(2022, 12, 26, 8, 0),  # This should cause a third ChargingPeriod to be created
+            (10, 60, datetime(2022, 12, 25, 22, 1), None, None, None),  # Weekday 0 = Monday
+            (13, 63, datetime(2022, 12, 25, 22, 3), None, None, None),
+            (15, 65, datetime(2022, 12, 25, 22, 5), None, None, None),
+            (45, 95, datetime(2022, 12, 26, 6, 0),  # This should cause a third ChargingPeriod to be created
              None, None, None),
-            (50, 99, datetime(2022, 12, 26, 8, 30),
+            (50, 99, datetime(2022, 12, 26, 6, 30),
              {'charging_periods':
                  [OrderedDict(
-                     [('start_date_time', '2022-12-25T23:55:00Z'), ('tariff', 'WEEKENDS'), ('dimensions', [
+                     [('start_date_time', '2022-12-25T21:55:00Z'), ('tariff', 'WEEKENDS'), ('dimensions', [
                          OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
                          OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
                          OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]), OrderedDict(
-                     [('start_date_time', '2022-12-26T00:01:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
+                     [('start_date_time', '2022-12-25T22:01:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
                          OrderedDict([('type', 'ENERGY'), ('volume', '8.0000')]),
                          OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '65.0000')]),
                          OrderedDict([('type', 'TIME'), ('volume', '7.9833')])])]), OrderedDict(
-                     [('start_date_time', '2022-12-26T08:00:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
+                     [('start_date_time', '2022-12-26T06:00:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
                          OrderedDict([('type', 'ENERGY'), ('volume', '35.0000')]),
                          OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '99.0000')]),
                          OrderedDict([('type', 'TIME'), ('volume', '0.5000')])])])],
                  'kwh': Decimal('50.000'),
-                 'last_updated': '2022-12-26T08:30:00Z',
+                 'last_updated': '2022-12-26T06:30:00Z',
                  'total_cost': {'excl_vat': 22.8, 'incl_vat': 28.27}},
              {
                  'internal_reference': None,
@@ -355,21 +355,21 @@ class TestChargingPeriods(TestCase):
                  'kwh': 50.0,
                  'charging_periods': [
                      OrderedDict(
-                         [('start_date_time', '2022-12-25T23:55:00Z'),
+                         [('start_date_time', '2022-12-25T21:55:00Z'),
                           ('tariff', 'WEEKENDS'),
                           ('dimensions', [
                               OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
                               OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
                               OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]),
                      OrderedDict(
-                         [('start_date_time', '2022-12-26T00:01:00Z'),
+                         [('start_date_time', '2022-12-25T22:01:00Z'),
                           ('tariff', 'WEEKDAYS'),
                           ('dimensions', [
                               OrderedDict([('type', 'ENERGY'), ('volume', '8.0000')]),
                               OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '65.0000')]),
                               OrderedDict([('type', 'TIME'), ('volume', '7.9833')])])]),
                      OrderedDict(
-                         [('start_date_time', '2022-12-26T08:00:00Z'),
+                         [('start_date_time', '2022-12-26T06:00:00Z'),
                           ('tariff', 'WEEKDAYS'),
                           ('dimensions', [
                               OrderedDict([('type', 'ENERGY'), ('volume', '35.0000')]),
@@ -381,7 +381,7 @@ class TestChargingPeriods(TestCase):
                  'location_id': 'EKI1', 'evse_uid': '1', 'connector_id': '1', 'currency': 'PLN',
                  'total_cost': {'excl_vat': 22.8, 'incl_vat': 28.27},
                  'status': 'ACTIVE',
-                 'last_updated': '2022-12-26T08:30:00Z'
+                 'last_updated': '2022-12-26T06:30:00Z'
              }
              ),
         )
@@ -394,6 +394,10 @@ class TestChargingPeriods(TestCase):
             '0,50€/kWh (Weekdays 7-21), 0,40€/kWh (Weekdays 21-7)',
             'Price formatting works differently than expected'
         )
+
+        # The test data works with UTC, so let's move the chargers to London
+        # session.location.time_zone = 'Europe/London'
+        # session.location.save()
 
         def _meter_values_test(data, sess_id):
             for kwh, soc, timestamp, expected_args, expected_response, expected_session_data in data:

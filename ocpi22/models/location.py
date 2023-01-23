@@ -1,6 +1,7 @@
 import uuid
 from collections import Counter
 
+from dateutil import tz
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import pre_save, post_save
@@ -135,6 +136,9 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
     # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
     time_zone = models.CharField(max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH)
+
+    def get_timezone(self):
+        return tz.gettz(self.time_zone)
 
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times

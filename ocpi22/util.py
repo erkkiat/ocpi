@@ -594,8 +594,8 @@ def get_timezones():
 
 
 def get_time_zone(country_code_2_chars: str) -> str:
-    timezones = get_timezones()
-    return timezones.get(country_code_2_chars.upper(), '')
+    timezone_list = get_timezones()
+    return timezone_list.get(country_code_2_chars.upper(), '')
 
 
 def country_code_from_2_to_3_chars(country_code: str) -> str:

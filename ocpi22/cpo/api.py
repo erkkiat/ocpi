@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, time
+from datetime import datetime, time, date
 
 from django.contrib.auth.decorators import login_required
 from django.db.models.signals import post_save
@@ -218,17 +218,24 @@ def url_link(href, text, target='') -> str:
     return f'<a{target} href="{href}">{text}</a>'
 
 
-def time_lte(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
-    def convert(t):
-        if isinstance(t, str):
-            return time(*t.split(':'))
-        if isinstance(t, datetime):
-            return t.time()
-        return t
+def convert_to_time(t) -> time:
+    if isinstance(t, str):
+        return time(*t.split(':'))
+    if isinstance(t, datetime):
+        return t.time()
+    return t
 
-    time1 = convert(time1)
-    time2 = convert(time2)
+
+def time_lte(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
+    time1 = convert_to_time(time1)
+    time2 = convert_to_time(time2)
     return time1 <= time2
+
+
+def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
+    time1 = convert_to_time(time1)
+    time2 = convert_to_time(time2)
+    return time1 < time2
 
 
 def applying_tariff_element(session_instance: Session, timestamp: Union[datetime, DateTimeField] = None,
@@ -239,25 +246,30 @@ def applying_tariff_element(session_instance: Session, timestamp: Union[datetime
     def crossing_day_boundary(start_time: time, end_time: time) -> bool:
         return start_time is not None and end_time is not None and start_time > end_time
 
-    timestamp = timestamp or timezone.now()
+    def in_date_range(compared_timestamp: datetime, start_date: date, end_date: date) -> bool:
+        if start_date and compared_timestamp < start_date:
+            return False
+        if end_date and compared_timestamp >= end_date:
+            return False
+        return True
+
+    location_timezone = session_instance.location.get_timezone()
+    timestamp = timestamp.astimezone(location_timezone) or datetime.now(tz=location_timezone)
     weekday = timestamp.weekday()
     tariffs = session_instance.connector.get_tariffs()  # Do not use Connector.tariffs_ids directly
     for tariff in tariffs:
         element: TariffElement
         for element in tariff.tariff_elements.all():
-            weekday_numbers = element.weekday_numbers()
-            if matching_weekday(weekday, weekday_numbers):
-                if crossing_day_boundary(element.start_time, element.end_time):
-                    if time_lte(element.start_time, timestamp) or time_lte(timestamp, element.end_time):
-                        # print('Matching weekday and time (crossing day boundary)')
-                        # ic(weekday, str(timestamp), element, [str(pc) for pc in element.price_components.all()])
-                        return element
-                elif not element.start_time or time_lte(element.start_time, timestamp):
-                    if not element.end_time or time_lte(timestamp, element.end_time):
-                        # Matching time range
-                        # print('Matching weekday and time')
-                        # ic(weekday, str(timestamp), element, [str(pc) for pc in element.price_components.all()])
-                        return element
+            if in_date_range(timestamp, element.start_date, element.end_date):
+                weekday_numbers = element.weekday_numbers()
+                if matching_weekday(weekday, weekday_numbers):
+                    if crossing_day_boundary(element.start_time, element.end_time):
+                        if time_lte(element.start_time, timestamp) or time_lte(timestamp, element.end_time):
+                            return element
+                    elif not element.start_time or time_lte(element.start_time, timestamp):
+                        if not element.end_time or time_lt(timestamp, element.end_time):
+                            # Matching time range
+                            return element
     return None
 
 

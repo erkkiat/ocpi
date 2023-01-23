@@ -439,9 +439,9 @@ class TariffAdmin(NestedModelAdmin):
                 fields=(
                     ('start_date', 'end_date'),
                     ('start_time', 'end_time'),
-                    ('min_kwh', 'max_kwh'),
-                    ('min_power', 'max_power'),
-                    ('min_current', 'max_current'),
+                    # ('min_kwh', 'max_kwh'),
+                    # ('min_power', 'max_power'),
+                    # ('min_current', 'max_current'),
                     ('min_duration', 'max_duration'),
                     ('day_of_week', 'reservation'),
                 )
