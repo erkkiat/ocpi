@@ -3,6 +3,7 @@ from collections import Counter
 
 from dateutil import tz
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
@@ -21,6 +22,14 @@ from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
+
+
+def validate_timezone(t: str):
+    if not tz.gettz(t):
+        raise ValidationError(
+            _('Timezone "%(value)s" is unknown.'),
+            params={'value': t},
+        )
 
 
 class Location(models.Model, ModelUtilMixin, OcpiModule):
@@ -135,7 +144,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     # Todo: get time zone based on coordinates
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
     # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
-    time_zone = models.CharField(max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH)
+    time_zone = models.CharField(max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH, validators=[validate_timezone])
 
     def get_timezone(self):
         return tz.gettz(self.time_zone)
