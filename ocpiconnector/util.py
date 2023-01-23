@@ -4,12 +4,14 @@ from datetime import date
 import time
 from collections import OrderedDict
 from functools import lru_cache
-from gettext import gettext
+from gettext import gettext as _
 from itertools import chain
 from typing import Any, Union
 
+import pycountry
 from django.conf import settings
 from django.contrib.messages.storage.session import SessionStorage
+from django.core.exceptions import ValidationError
 from django.db.models import TimeField
 
 
@@ -107,15 +109,15 @@ def weekday_range_to_str(weekday_list: tuple[int]) -> str:
 
     for start, stop in ranges:
         if start == stop:
-            results.append(gettext(weekdays[start]))
+            results.append(_(weekdays[start]))
         elif start == 5 and stop == 6:
-            results.append(gettext('weekends'))
+            results.append(_('weekends'))
         elif start == 0 and stop == 4:
-            results.append(gettext('weekdays'))
+            results.append(_('weekdays'))
         elif start == 0 and stop == 6:
             pass
         else:
-            results.append(f'{gettext(weekdays[start])}-{gettext(weekdays[stop])}')
+            results.append(f'{_(weekdays[start])}-{_(weekdays[stop])}')
 
     if not results:
         return ''
@@ -182,3 +184,11 @@ def humanize_date_range(d1: date, d2: date) -> str:
     if d1.month == d2.month:
         return f'{d1.day}.-{format_date(d2)}'
     return f'{d1.day}.{d1.month}.-{format_date(d2)}'
+
+
+def validate_iso2_country(c: str):
+    if not pycountry.countries.get(alpha_2=c):
+        raise ValidationError(
+            _('Country code "%(value)s" is unknown.'),
+            params={'value': c},
+        )

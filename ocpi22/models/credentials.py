@@ -79,7 +79,6 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        # noinspection PyUnresolvedReferences
         return " / ".join([str(s) for s in self.roles.all()])
 
     def save(self, *args, **kwargs):
@@ -205,7 +204,6 @@ class Endpoint(models.Model, ModelUtilMixin):
     credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='endpoints')
 
     def __str__(self):
-        # noinspection PyUnresolvedReferences
         return f'{self.get_identifier_display()} {self.get_role_display()} at {self.url}'
 
     def get_token_base64(self):
