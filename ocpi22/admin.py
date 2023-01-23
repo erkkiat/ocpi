@@ -458,9 +458,14 @@ class TariffAdmin(NestedModelAdmin):
             return Tariff.ocpi_object_owner in ocpi_identities or self.has_change_permission(request, obj)
 
     model = Tariff
-    list_display = [
-        'object_owner', 'uid', 'price', 'last_updated', 'references'
-    ]
+    if ocpi_platform.is_cpo:
+        list_display = [
+            'uid', 'price', 'last_updated'
+        ]
+    else:
+        list_display = [
+            'object_owner', 'uid', 'price', 'last_updated'
+        ]
     list_display_links = ['uid']
     inlines = [ElementsInline]
     search_fields = ['uid']

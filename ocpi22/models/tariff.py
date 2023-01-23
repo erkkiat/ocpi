@@ -143,12 +143,6 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     def get_absolute_url(self, version=None):
         return reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
-    def references(self):
-        if settings.DEBUG:
-            from ocpi22.models.cdr import Cdr
-            return Cdr.objects.filter(tariffs=self).count()
-        return 'N/A'
-
     @classmethod
     def make_copy(cls, tariff):
         elements = tariff.tariff_elements.all()
