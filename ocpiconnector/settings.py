@@ -219,7 +219,8 @@ LANGUAGES = [
     ('sl', _('Slovenian')),
 
     ('fi', _('Finnish')),
-    ('no', _('Norwegian')),
+    ('nb', _('Norwegian Bokmål')),
+    ('nn', _('Nynorsk')),
     ('da', _('Danish')),
     ('sv', _('Swedish')),
     ('is', _('Icelandic')),
