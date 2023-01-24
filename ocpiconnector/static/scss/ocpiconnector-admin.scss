@@ -149,3 +149,15 @@ form .submit-row a.deletelink {
     color: #ffffff80;
     font-size: smaller;
 }
+
+.nav-link {
+    padding: .3rem 1rem;
+}
+
+#nav-sidebar {
+    flex: 0 0 210px;
+}
+
+.divider-top:not(:first-child) {
+    border-top: 1px solid lightgrey;
+}

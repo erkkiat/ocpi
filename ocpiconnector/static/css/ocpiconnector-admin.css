@@ -156,4 +156,19 @@ form .submit-row a.deletelink {
   font-size: smaller;
 }
 
+/* line 153, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+.nav-link {
+  padding: .3rem 1rem;
+}
+
+/* line 157, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+#nav-sidebar {
+  flex: 0 0 210px;
+}
+
+/* line 161, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+.divider-top:not(:first-child) {
+  border-top: 1px solid lightgrey;
+}
+
 /*# sourceMappingURL=ocpiconnector-admin.css.map */

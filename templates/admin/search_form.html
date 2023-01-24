@@ -1,17 +1,16 @@
 {% load i18n static %}
 {% if cl.search_fields %}
 <div id="toolbar">
-    <form class="row g-3 mb-3" id="changelist-search" method="get">
-        <div class="col-auto"><!-- DIV needed for valid HTML -->
-            <label for="searchbar btn-sm"><img src="{% static 'admin/img/search.svg' %}" alt="Search"></label>
-        </div>
-        <div class="col-auto"><!-- DIV needed for valid HTML -->
-            <input class="form-control form-control-sm" type="text" size="40" name="{{ search_var }}"
-                   value="{{ cl.query }}"
-                   id="searchbar">
+    <form class="form row g-3 mb-3" id="changelist-search" method="get">
+        <div class="col-auto input-group mb-3">
+            <input type="text" class="form-control" size="40" value="{{ cl.query }}" name="{{ search_var }}"
+                   id="searchbar" placeholder="{% trans 'Search terms' %}" aria-label="{% trans 'Search terms' %}"
+                   aria-describedby="">
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="button">{% translate 'Search' %}</button>
+            </div>
         </div>
         <div class="col-auto">
-            <input class="form-control btn-sm btn-secondary" type="submit" value="{% translate 'Search' %}">
             {% if show_result_count %}
             <span class="small quiet">{% blocktranslate count counter=cl.result_count %}{{ counter }} result{% plural %}{{ counter }} results{% endblocktranslate %} (<a
                     href="?{% if cl.is_popup %}_popup=1{% endif %}">{% if cl.show_full_result_count %}{% blocktranslate with full_result_count=cl.full_result_count %}{{ full_result_count }} total{% endblocktranslate %}{% else %}{% translate "Show all" %}{% endif %}</a>)</span>

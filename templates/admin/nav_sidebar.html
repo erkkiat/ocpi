@@ -5,9 +5,9 @@
     <ul class="nav nav-pills flex-column">
 
         {% for item in admin_menu %}
-        <li class="nav-item">
+        <li class="nav-item{% if item.url == '#' %} divider-top{% endif %}">
             <a class="nav-link {% if item.url in request.path %} active{% endif %}" href="{{item.url}}">
-                {% if item.url == '#' %}<h2>{{item.name}}</h2>{% else %}{{item.name}} {% endif %}
+                {% if item.url == '#' %}<h5>{{item.name}}</h5>{% else %}{{item.name}} {% endif %}
             </a>
         </li>
         {% endfor %}
