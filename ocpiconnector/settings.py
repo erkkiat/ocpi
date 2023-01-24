@@ -229,7 +229,7 @@ LANGUAGES = [
     ('lv', _('Latvian')),
 
     ('af', _('Afrikans')),
-    ('mi', _('Maori')),
+    # ('mi', _('Maori')),
 ]
 
 SITE_ID = 1
@@ -329,7 +329,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'ocpi22.context_processors.export_environment_variables',
                 'ocpi22.context_processors.export_issue_count',
-                # 'django.template.context_processors.i18n',
+                'django.template.context_processors.i18n',
             ],
         },
     },

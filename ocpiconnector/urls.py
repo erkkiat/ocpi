@@ -72,7 +72,8 @@ common_router = BaseRouter()
 common_router.register(r'', VersionsViewSet, basename='base')
 
 urlpatterns = (
-    # urlpatterns = i18n_patterns(
+# urlpatterns = i18n_patterns(
+    path('18n/', include('django.conf.urls.i18n')),
     path('', home),
     path('', include(root_router.urls), name='root-view'),
     path('reports/cpo/sessions/', ChargingSessionsReport.as_view()),
