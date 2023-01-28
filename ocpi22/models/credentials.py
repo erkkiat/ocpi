@@ -141,7 +141,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.save(update_fields=['last_connection'])
 
     def get_party_for_role(self, role: OcpiRolesEnum) -> Optional[Party]:
-        credentialsrole = self.roles.filter(role=role).first()
+        credentialsrole = self.roles.filter(role=role.value).first()
         if credentialsrole:
             return credentialsrole.party
 

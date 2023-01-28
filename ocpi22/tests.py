@@ -1646,7 +1646,7 @@ class TestSession(TestCase):
         authorization_reference = 'MOCK-AUTHORIZATION-REFERENCE'
 
         session = create_session(location.uid, evse.uid, 1, token_id="T1", credentials=credentials, uid=uid,
-                                 billed_to=credentials.get_party_for_role(OcpiRolesEnum.EMSP.value),
+                                 billed_to=credentials.get_party_for_role(OcpiRolesEnum.EMSP),
                                  authorization_reference=authorization_reference)
         self.assertTrue(bool(session))
         # ic(session)

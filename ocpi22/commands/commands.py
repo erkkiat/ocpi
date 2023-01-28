@@ -148,7 +148,7 @@ class CommandsViewSet(GenericViewSet):
                         token_type=get_token_type(token, Token.APP_USER),
                         authorization_reference=authorization_reference,
                         auth_method=Session.COMMAND,
-                        from_party=str(request.credentials.get_party_for_role(OcpiRolesEnum.EMSP.value)),
+                        from_party=str(request.credentials.get_party_for_role(OcpiRolesEnum.EMSP)),
                         evse_id=evse_uid,
                         connector_id=connector_id,
                         billed_to=billed_to,
