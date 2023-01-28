@@ -2,6 +2,7 @@ from typing import Union
 
 from django.conf import settings
 from django.db import IntegrityError
+from django.utils.translation import gettext as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -428,6 +429,16 @@ class EvseUidSerializer(serializers.Serializer):
         return Evse.get_if_exists(uid=data)
 
 
+class LocationEvseUidSerializer(serializers.Serializer):
+    def to_internal_value(self, evse_uid):
+        location_id = self.parent.parent.initial_data.get('location_id')
+        evse = Evse.get_if_exists(uid=evse_uid, location__uid=location_id)
+        ic(evse_uid, location_id)
+        if not evse:
+            raise Evse.DoesNotExist(_(f'EVSE with UID {evse_uid} at location UID {location_id} is unknown.'))
+        return evse
+
+
 class StrictEvseUidSerializer(serializers.CharField):
     def to_internal_value(self, data):
         evse = Evse.get_if_exists(uid=data)
@@ -438,7 +449,7 @@ class StrictEvseUidSerializer(serializers.CharField):
 
 class AuthorizeSerializer(serializers.Serializer):
     location_id = StrictLocationIdSerializer(source='location', required=False)
-    evse_uids = EvseUidSerializer(source='evses', many=True, required=False)
+    evse_uids = LocationEvseUidSerializer(source='evses', many=True, required=False)
 
 # class MspAuthorizationResponseSerializer(serializers.Serializer):
 #     result = serializers.ChoiceField(choices=AuthorizationEnum.choices)
