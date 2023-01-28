@@ -10,30 +10,30 @@ from ocpiconnector.ocpi_identities import ocpi_identities
 
 def get_admin_menu() -> list:
     menuitems = (
-        ('', 'Infrastructure'),
-        ('admin:ocpi22_location_changelist', 'Locations'),
-        ('admin:ocpi22_evse_changelist', 'Chargers'),
+        ('', _('Infrastructure')),
+        ('admin:ocpi22_location_changelist', _('Locations')),
+        ('admin:ocpi22_evse_changelist', _('Chargers')),
 
-        ('', 'Users'),
-        ('admin:auth_user_changelist', 'Users'),
-        ('admin:auth_group_changelist', 'Groups'),
-        ('admin:gdpr_assist_personaldata_changelist', 'GDPR Personal Data'),
+        ('', _('Users')),
+        ('admin:auth_user_changelist', _('Users')),
+        ('admin:auth_group_changelist', _('Groups')),
+        ('admin:gdpr_assist_personaldata_changelist', _('GDPR Personal Data')),
 
-        ('', 'Finance'),
-        ('admin:ocpi22_cdr_changelist', 'Billing'),
-        ('admin:payment_payment_changelist', 'Payments'),
-        ('admin:ocpi22_session_changelist', 'Sessions'),
-        ('admin:ocpi22_tariff_changelist', 'Tariffs'),
-        ('admin:ocpi22_defaulttariffs_changelist', 'Default Tariffs'),
-        ('admin:ocpi22_authorization_changelist', 'Charge Authorizations'),
+        ('', _('Finance')),
+        ('admin:ocpi22_cdr_changelist', _('Billing')),
+        ('admin:payment_payment_changelist', _('Payments')),
+        ('admin:ocpi22_session_changelist', _('Sessions')),
+        ('admin:ocpi22_tariff_changelist', _('Tariffs')),
+        ('admin:ocpi22_defaulttariffs_changelist', _('Default Tariffs')),
+        ('admin:ocpi22_authorization_changelist', _('Charge Authorizations')),
 
-        ('', 'Other'),
-        ('admin:ocpi22_token_changelist', 'Tokens'),
-        ('admin:ocpi22_credentials_changelist', 'Credentials'),
+        ('', _('Identification')),
+        ('admin:ocpi22_token_changelist', _('Tokens')),
+        ('admin:ocpi22_credentials_changelist', _('Credentials')),
 
-        ('', 'Problem Resolution'),
-        ('issues', 'Issues'),
-        ('admin:ocpi22_logentry_changelist', 'Log entries'),
+        ('', _('Problem Resolution')),
+        ('issues', _('Issues')),
+        ('admin:ocpi22_logentry_changelist', _('Log entries')),
     )
     return [dict(url=reverse(viewname) if viewname else "#", name=_(name)) for viewname, name in menuitems]
 
