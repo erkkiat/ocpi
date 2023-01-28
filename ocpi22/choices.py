@@ -224,6 +224,8 @@ def get_language(language: str, source: list) -> str:
     language = language.upper() or 'en'
     if not source or not language:
         return ''
+    if isinstance(source, str):
+        return source
     result = [l.get('text') for l in source if l.get('language').upper() == language]
     if len(result):
         return result[0]
