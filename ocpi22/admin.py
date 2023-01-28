@@ -193,7 +193,15 @@ class LocationAdmin(NestedModelAdmin):
         return []
 
 
+class EvseAdminForm(forms.ModelForm):
+    def clean_uid(self):
+        if Evse.objects.filter(uid=self.data['uid']).count():
+            raise ValidationError(_('EVSE with this UID already exists in this or another Location'),)
+        return self.cleaned_data["uid"]
+
+
 class EvseAdmin(NestedModelAdmin):
+    form = EvseAdminForm
     model = Evse
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
     list_display = ['object_owner', 'uid', 'location_url', 'status', 'connector_list', 'last_updated']
@@ -223,44 +231,6 @@ class EvseAdmin(NestedModelAdmin):
         return not obj or (hasattr(obj, 'location') and obj.location.is_ours())
 
     location_url.short_description = "Location"
-
-    # @admin.action(description='Start charging')
-    # def start_charging(self, request, queryset):
-    #     evse: Evse
-    #     for evse in queryset:
-    #         try:
-    #             response = send_start_command(request, evse, get_admin_token())
-    #             data = response.json()
-    #             level = messages.SUCCESS if data.get('status_code') == 1000 else messages.ERROR
-    #             data = data.get('data', data)
-    #             self.message_user(request, f"Response: {data.get('message')}", level=level)
-    #         except (APIException, requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-    #             logging.error(f"{settings.HOSTNAME}: admin:start_charging(), result: {e}")
-    #             self.message_user(request, f'Unable to start charging at {evse.location}. {e}',
-    #                               level=messages.ERROR)
-    #
-    # @admin.action(description='Stop all active charging sessions')
-    # def stop_charging(self, request, queryset):
-    #     evse: Evse
-    #     for evse in queryset:
-    #         active_sessions = get_active_sessions(evse)
-    #         if not active_sessions.count():
-    #             self.message_user(request, f'There are no active sessions at Evse {evse.evse_id}.',
-    #                               level=messages.WARNING)
-    #         for session in active_sessions.all():
-    #             try:
-    #                 response: Response = send_stop_command(session)
-    #                 if response:
-    #                     self.message_user(request, f'Stopping charging at {evse.location}, '
-    #                                                f'response: {response.status_code} - '
-    #                                                f'{response.reason if hasattr(response, "reason") else "Ok"}')
-    #                 else:
-    #                     self.message_user(request, f'Unable to stop charging at {evse.location}.',
-    #                                       level=messages.ERROR)
-    #
-    #             except exceptions.APIException as e:
-    #                 self.message_user(request, f'Unable to stop charging at {evse.location}. {e}',
-    #                                   level=messages.ERROR)
 
 
 class BusinessDetailsAdmin(admin.ModelAdmin):
