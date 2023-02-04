@@ -97,11 +97,14 @@
         {% endif %}
         <div class="content">
         {% block messages %}
-          {% if messages %}
-            <ul class="messagelist">{% for message in messages %}
-              <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message|capfirst }}</li>
-            {% endfor %}</ul>
-          {% endif %}
+            {% if messages or general_message %}
+                {% if general_message %}
+                    <div class="alert alert-warning mt-3 mx-4">{{ general_message }}</div>
+                {% endif %}
+                <ul class="messagelist">
+                    {% for message in messages %}<li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message|capfirst }}</li>
+                {% endfor %}</ul>
+            {% endif %}
         {% endblock messages %}
         <!-- Content -->
           <div class="container">

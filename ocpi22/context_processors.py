@@ -44,6 +44,7 @@ def _get_environment():
         header_color=os.environ.get('HEADER_COLOR'),
         roles=" / ".join([f'{key}: {value}' for key, value in ocpi_identities.items()]),
         admin_menu=get_admin_menu(),
+        general_message=os.environ.get('GENERAL_MESSAGE'),
     )
 
 

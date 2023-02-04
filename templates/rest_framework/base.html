@@ -83,6 +83,10 @@
         " %}">
         {% block content %}
 
+        {% if general_message %}
+            <div class="alert alert-warning">{{ general_message }}</div>
+        {% endif %}
+
         {% if messages %}
         {% for message in messages %}
         <div {% if message.tags %} class="alert {{ message.tags }}" {% endif %}>{{ message }}</div>
