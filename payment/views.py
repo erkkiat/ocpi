@@ -24,10 +24,6 @@ stripe.api_key = os.environ.get(
 
 options_message = f'Please see OPTIONS to learn what you can POST at this endpoint'
 
-# Are we in production?
-if not settings.DEBUG and 'test' in stripe.api_key:
-    logging.error('**** Using a Stripe payments test key in production')
-
 
 def payment_intent(amount, currency='eur', **kwargs):
     return stripe.PaymentIntent.create(
