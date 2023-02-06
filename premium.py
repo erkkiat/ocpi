@@ -1,3 +1,5 @@
+import os
+
 from django.conf import settings
 from django.utils.safestring import mark_safe
 from rest_framework import status
@@ -10,10 +12,11 @@ from ocpi22.ocpi.util import OCPIResponse
 
 
 def premium_message(request):
+    payment_link = os.environ.get('PAYMENT_LINK', 'https://buy.stripe.com/3cs8zZ6HS56048g00b')
     messages.info(request, mark_safe(
         'This is a Premium feature. You can activate all functionality by '
         '<a class="alert-link" target="subscribe" '
-        'href="https://buy.stripe.com/5kAbMbd6g7e8208fZ1">subscribing to OCPI Connector Premium</a>.'
+        f'href="{payment_link}">subscribing to OCPI Connector Premium</a>.'
     ))
 
 
