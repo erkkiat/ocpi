@@ -45,11 +45,11 @@ heroku create --region eu $HEROKU_APP \
  && heroku pipelines:promote --app=cpo-ocpi --to=$HEROKU_APP \
  && heroku run ./manage.py loaddata ocpi22/data/initial.json \
  && heroku run ./manage.py createsuperuser --username eki --email erkki.tapola@pohdinto.com \
- && echo "======================================================" /
+ && echo "======================================================" \
  && echo "URL: http://$HOST.ocpiconnector.com/" \
  && echo "User: $USERNAME" \
  && echo "Password: $PASSWORD" \
- && echo "======================================================" /
+ && echo "======================================================" \
  && heroku run  DJANGO_SUPERUSER_USERNAME="$USERNAME" \
                 DJANGO_SUPERUSER_PASSWORD="$PASSWORD" \
                 ./manage.py createsuperuser --username $USERNAME --email $EMAIL --noinput
