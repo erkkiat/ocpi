@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from ocpi22.issues import issue_count, get_issues
-from ocpiconnector.ocpi_identities import ocpi_identities
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
 
 
 def get_admin_menu() -> list:
@@ -45,6 +45,7 @@ def _get_environment():
         roles=" / ".join([f'{key}: {value}' for key, value in ocpi_identities.items()]),
         admin_menu=get_admin_menu(),
         general_message=os.environ.get('GENERAL_MESSAGE'),
+        ocpi_platform=ocpi_platform,
     )
 
 

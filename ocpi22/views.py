@@ -17,11 +17,7 @@ def home(request):
     if settings.RENDER_ONLY_JSON or (request.META and 'application/json' in request.META.get('HTTP_ACCEPT', '')):
         return OCPIResponse(get_versions_dict())
 
-    # Let's assume the client is a browser
-    context = dict(
-        ocpi_platform=ocpi_platform
-    )
-    return render(request, template_name='index.html', context=context)
+    return render(request, template_name='index.html')
 
 
 @staff_member_required
