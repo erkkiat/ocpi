@@ -3,12 +3,12 @@
     <div class="card-body p-2">
         <div class="feature-box feature-box-style-2">
             <div class="feature-box-icon">
-                <i class="fa {{ icon }} text-7"></i>
+                <i class="fa {{ section.icon }} text-7"></i>
             </div>
             <div class="feature-box-info">
                     <h4 class="font-weight-bold text-4-5 mb-2">
-                        <a href="{{ title_url }}" class="link">{{ title }}</a>
-                        {% if add_url %}<a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary" href="{{ add_url }}">
+                        <a href="{{ section.list_url }}" class="link">{{ section.title }}</a>
+                        {% if section.add_url %}<a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary" href="{{ section.add_url }}">
                             <i class="fa fa-circle-plus"></i>
                         </a>{% endif %}
                         <a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary"
@@ -16,7 +16,7 @@
                             <i class="fa fa-line-chart"></i>
                         </a>
                     </h4>
-                {% for item in items|slice:":5" %}
+                {% for item in section.items|slice:":5" %}
                 <div>
                     {% if item.status_display == 'ok' %}<i class="fa fa-circle-check text-success text-1"></i>
                     {% elif item.status_display == 'error' %}<i class="fa fa-circle-exclamation text-danger text-1"></i>
@@ -26,9 +26,9 @@
                     <a href="{{ item.get_admin_url }}" class="link">{{ item.name }}</a>
                 </div>
                 {% endfor %}
-                {% if items|length > 5 %}
+                {% if section.items|length > 5 %}
                 <div>
-                    <a href="{{ title_url }}" class="link">...</a>
+                    <a href="{{ section.list_url }}" class="link">...</a>
                 </div>
                 {% endif %}
             </div>

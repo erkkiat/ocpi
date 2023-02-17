@@ -22,7 +22,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, \
-    apply_step_size, str_to_deterministic_int
+    apply_step_size, str_to_deterministic_int, build_absolute_uri
 from ocpi22.serializers import SerializerCleanedUp
 from ocpi22.ocpi.util import OcpiModule
 
@@ -240,6 +240,17 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def last_updated_str(self):
         return self.last_updated.strftime(settings.OCPI_DATE_FORMAT)
 
+    @property
+    def name(self):
+        return f'{self.location.name} - {self.kwh:.1f} kWh'
+
+    def get_admin_url(self):
+        return build_absolute_uri(reverse('admin:ocpi22_session_change', args=(self.pk,)))
+
+    @property
+    def status_display(self):
+        return '' if self.status != self.INVALID else 'warning'
+
     # Django automatic dates
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -337,7 +348,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return reverse('session-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def total_time(self):
-        if self.status == 'INVALID':
+        if self.status == self.INVALID:
             return '-'
         return hours_minutes(self.total_time_float)
 
