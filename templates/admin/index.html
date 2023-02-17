@@ -24,7 +24,39 @@
   </div>
   {% endif %}
 
-  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+  <div class="row">
+      <div class="col-lg-8">
+          <div class="row">
+              <div class="col-sm-6">
+                  {% if perms.ocpi22.evse_add and ocpi_platform.is_cpo %}
+                  {% url 'admin:ocpi22_evse_add' as add_charger_url %}
+                  {% endif %}
+                  {% url 'admin:ocpi22_evse_changelist' as title_charger_url %}
+                  {% include "admin/includes/section_card.html" with title="Charge Points" icon="fa-charging-station" add_url=add_charger_url title_url=title_charger_url items=locations %}
+
+                  {% if perms.ocpi22.tariff_add and ocpi_platform.is_cpo %}
+                  {% url 'admin:ocpi22_tariff_add' as add_tariff_url %}
+                  {% endif %}
+                  {% url 'admin:ocpi22_tariff_changelist' as title_tariff_url %}
+                  {% include "admin/includes/section_card.html" with title="Tariffs" icon="fa-money-bill-wave" add_url=add_tariff_url title_url=title_tariff_url items=tariffs %}
+
+                  {% if perms.ocpi22.token_add and ocpi_platform.is_emsp %}
+                  {% url 'admin:ocpi22_token_add' as add_token_url %}
+                  {% endif %}
+                  {% url 'admin:ocpi22_token_changelist' as title_token_url %}
+                  {% include "admin/includes/section_card.html" with title="Tokens" icon="fa-circle" add_url=add_token_url title_url=title_token_url %}
+              </div>
+              <div class="col-sm-6">
+                  {% include "admin/includes/section_card.html" with title="Customers" icon="fa-user" %}
+                  {% include "admin/includes/section_card.html" with title="Charging Sessions" icon="fa-bolt" %}
+
+                  {% url 'admin:ocpi22_credentials_add' as add_credentials_url %}
+                  {% url 'admin:ocpi22_credentials_changelist' as title_credentials_url %}
+                  {% include "admin/includes/section_card.html" with title="Partners" icon="fa-handshake" add_url=add_credentials_url title_url=title_credentials_url items=partners %}
+              </div>
+          </div>
+      </div>
+  </div>
 </div>
 {% endblock %}
 

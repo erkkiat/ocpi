@@ -127,9 +127,9 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def connection_state(self) -> bool:
         result = bool(self.valid and self.connection_status == choices.CONNECTED)
-        if not result:
-            logging.error(f'Connecting to party {self.party()} may not be possible: '
-                          f'(Credentials {"valid" if self.valid else "NOT VALID"}, server {self.connection_status}')
+        # if not result:
+        #     logging.error(f'Connecting to party {self.party()} may not be possible: '
+        #                   f'(Credentials {"valid" if self.valid else "NOT VALID"}, server {self.connection_status}')
         return result
 
     # For admin so that there is a pretty boolean icon
@@ -166,6 +166,16 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def get_admin_url(self):
         return build_absolute_uri(reverse('admin:ocpi22_credentials_change', args=[self.pk]))
+
+    @property
+    def name(self):
+        return self.roles.first().business_details.name
+
+    @property
+    def status_display(self):
+        if not self.valid or self.connection_status in (choices.PLANNED, choices.SUSPENDED):
+            return 'muted'
+        return 'ok' if bool(self.connection_state()) else 'error'
 
 
 class CredentialsRole(models.Model, ModelUtilMixin):

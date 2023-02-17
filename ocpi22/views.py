@@ -6,8 +6,11 @@ from rest_framework.permissions import AllowAny
 
 from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.issues import issue_count, get_issues
+from ocpi22.models.credentials import Credentials
+from ocpi22.models.location import Location
+from ocpi22.models.session import Session
+from ocpi22.models.tariff import Tariff
 from ocpi22.ocpi.util import OCPIResponse
-from ocpiconnector.ocpi_identities import ocpi_platform
 
 
 @api_view(http_method_names=['GET'])
@@ -18,6 +21,17 @@ def home(request):
         return OCPIResponse(get_versions_dict())
 
     return render(request, template_name='index.html')
+
+
+def admin_index(request):
+    context = dict(
+        locations=Location.objects.all(),
+        tariffs=Tariff.objects.exclude(archived=True).order_by('uid'),
+        partners=Credentials.objects.all().order_by('valid', 'connection_status'),
+        sessions=Session.objects.all().order_by('-start_date_time'),
+    )
+    ic(context)
+    return render(request, template_name='admin/index.html', context=context)
 
 
 @staff_member_required

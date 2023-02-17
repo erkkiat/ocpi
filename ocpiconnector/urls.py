@@ -21,8 +21,7 @@ from ocpi22.models.credentials import new_connection
 from ocpi22.msp.api import MSPRouter, MspRoamingViewSet, MspTokenViewSet, MspAuthorizeWebhookViewSet, \
     MspTariffQuickViewSet, MspChargePointStatusWebhookViewSet, MspSessionWebhookViewSet
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
-from ocpi22.views import home
-from ocpiconnector import charger_simulator
+from ocpi22.views import home, admin_index
 from ocpiconnector.ocpi_identities import ocpi_platform
 from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
@@ -82,9 +81,9 @@ urlpatterns = (
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),
     path('api/msp/v1/', include(msp_router.urls), name='msp-interface'),
     path('ocpi/', include(common_router.urls)),
-    # path('simulator/', include(charger_simulator.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/ocpi22/credentials/connection/new', new_connection, name='new-connection'),
+    path('admin/', admin_index),
     path('admin/', admin.site.urls),
     path('issues/', views.issues, name='issues'),
     path('_nested_admin/', include('nested_admin.urls')),

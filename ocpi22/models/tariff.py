@@ -16,7 +16,7 @@ from util import reverse
 from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
-from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes
+from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 from ocpiconnector.util import weekday_range_to_str, humanize_time, date_to_str, humanize_date_range
@@ -141,7 +141,16 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         )
 
     def get_absolute_url(self, version=None):
-        return reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return build_absolute_uri(
+            reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        )
+
+    def get_admin_url(self):
+        return build_absolute_uri(reverse('admin:ocpi22_tariff_change', args=(self.pk,)))
+
+    @property
+    def name(self) -> str:
+        return str(self.uid)
 
     @classmethod
     def make_copy(cls, tariff):
