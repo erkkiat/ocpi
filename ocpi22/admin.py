@@ -488,12 +488,11 @@ class CredentialsAdmin(admin.ModelAdmin):
         model = Endpoint
 
     model = Credentials
-    list_display = ['valid', 'party', 'last_connection', 'connection_state', 'token_a_base64', 'ours_base64',
-                    'theirs_base64']
+    list_display = ['name', 'valid', 'connection_state', 'last_connection']
     readonly_fields = ['theirs_base64', 'last_updated', 'created', 'last_connection']
     inlines = [CredentialRolesInline, EndpointsInline]
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a']
-    list_display_links = ['token_a_base64']
+    list_display_links = ['name']
 
     def has_add_permission(self, request, obj=None):
         return settings.PREMIUM
