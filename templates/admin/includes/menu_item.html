@@ -1,0 +1,29 @@
+{% load i18n static %}
+    <li class="dropdown">
+        <a class="dropdown-item dropdown-toggle" href="{{ section.list_url }}">
+            <i class="fa {{ section.icon }} mr-2"></i>
+            {{ section.title }}
+        </a>
+        <ul class="dropdown-menu">
+            {% if section.add_url %}<li>
+                <a class="dropdown-item btn btn-circle text-1"
+                   href="{{ section.add_url }}">
+                    <i class="fa fa-circle-plus"></i>
+                    Add New...
+                </a>
+            </li>{% endif %}
+            {% for item in section.items|slice:":3" %}
+            <li>
+                <a href="{{ item.get_admin_url }}" class="dropdown-item">
+                {% if item.status_display == 'ok' %}<i class="fa fa-circle-check text-success text-1"></i>
+                {% elif item.status_display == 'error' %}<i class="fa fa-circle-exclamation text-danger text-1"></i>
+                {% elif item.status_display == 'warning' %}<i class="fa fa-triangle-exclamation text-warning text-1"></i>
+                {% elif item.status_display == 'muted' %}<i title="Currently out of use" class="fa fa-triangle-exclamation text-muted text-1"></i>
+                {% endif %}
+                    {{ item.name }}
+                </a>
+            </li>
+            {% endfor %}
+            <li><a href="{{ section.list_url }}" class="dropdown-item text-0">Show all</a></li>
+        </ul>
+    </li>

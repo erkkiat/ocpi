@@ -215,8 +215,8 @@ class Evse(models.Model, ModelUtilMixin):
         constraints = [
             models.UniqueConstraint(fields=['uid', 'location'], name='evse_party_uid'),
         ]
-        verbose_name = _('charger')
-        verbose_name_plural = _('chargers')
+        verbose_name = _('charge point')
+        verbose_name_plural = _('charge points')
 
     # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
     # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.
