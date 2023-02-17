@@ -1,5 +1,6 @@
 import os
 
+from django.contrib import admin
 from django.db.models import QuerySet, Sum
 from rest_framework.fields import DateTimeField
 
@@ -220,6 +221,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         ('RESERVATION', _('Reservation')),
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING')
+
+    @admin.display(boolean=True)
+    def success(self) -> bool:
+        return self.status not in self.INVALID
 
     # The MSP or HUB which sent us the messages resulting in this Session
     credentials = models.ForeignKey('ocpi22.Credentials', on_delete=models.PROTECT, null=True, blank=True)

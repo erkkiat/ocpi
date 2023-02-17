@@ -332,22 +332,18 @@ class SessionAdmin(NestedModelAdmin):
     ordering = ['-start_date_time']
     if ocpi_platform.is_cpo:
         list_display = [
-            'status',
-            'token_id',
+            'success',
             'start_date_time',  # Todo: Show time in local timezone
-            'evse', 'connector',
-            'billed_to',
             'total_time', 'kwh', 'cost',
-            'internal_reference',
+            'evse', 'connector',
             'uid',
         ]
     else:
         list_display = [
-            'status',
-            'token_id',
+            'success',
             'start_date_time',  # Todo: Show time in local timezone
-            'evse', 'connector',
             'total_time', 'kwh', 'cost',
+            'evse', 'connector',
             'uid',
         ]
     inlines = [ChargingPeriodInline]
