@@ -2,7 +2,7 @@
 {% if cl.search_fields %}
 <div id="toolbar">
     <form class="form row g-3 mb-3" id="changelist-search" method="get">
-        <div class="col-auto input-group mb-3">
+        <div class="col-4 input-group mb-3">
             <input type="text" class="form-control" size="40" value="{{ cl.query }}" name="{{ search_var }}"
                    id="searchbar" placeholder="{% trans 'Search terms' %}" aria-label="{% trans 'Search terms' %}"
                    aria-describedby="">
