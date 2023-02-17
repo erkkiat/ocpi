@@ -276,7 +276,7 @@ def check_still_alive(credentials_id: int = None) -> None:
         credentials = None
         time_since_last_connection = None
         try:
-            credentials = Credentials.objects.get(pk=credentials_id)
+            credentials: Credentials = Credentials.objects.get(pk=credentials_id)
             time_since_last_connection = (timezone.now() - credentials.last_connection).total_seconds()
             requests.get(credentials.url, timeout=20)
             credentials.last_connection = timezone.now()
@@ -299,7 +299,7 @@ def check_still_alive(credentials_id: int = None) -> None:
     # logging.info(f"Checking {stale_credentials.count()} parties for alive")
     c: Credentials
     for c in stale_credentials:
-        if c.is_complete():
+        if c.is_complete() and c.connection_status in (choices.CONNECTED, choices.OFFLINE):
             # since_last_time = (timezone.now() - c.last_connection).seconds
             # logging.info(f"Checking that {c} is alive and well, last successful "
             #              f"connection was {int(since_last_time / 60)} min ago")
