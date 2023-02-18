@@ -1,6 +1,7 @@
 import base64
 
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
 
 import ocpi22.logging as logging
@@ -38,7 +39,8 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     send_updates_to = None
 
     class Meta:
-        verbose_name_plural = 'credentials'
+        verbose_name = _('partner')
+        verbose_name_plural = _('partners')
 
     # The credentials token used only for the initial connection, and is communicated manually between parties
     token_a = models.CharField(max_length=64, default=secrets.token_hex(32))
