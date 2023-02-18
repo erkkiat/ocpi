@@ -67,7 +67,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     version = models.CharField(max_length=3, choices=VERSION_CHOICES, blank=True, null=True)
 
     # Connections are only accepted for valid Credentials
-    valid = models.BooleanField(default=True)
+    valid = models.BooleanField(default=True, verbose_name=_('Activated'))
 
     def soft_delete(self):
         self.valid = False
