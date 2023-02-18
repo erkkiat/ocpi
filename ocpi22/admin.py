@@ -15,11 +15,7 @@ from ocpi22.models.logging import LogEntry, ChildEvent
 from util import reverse
 from django.utils.html import format_html
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
-from requests import Response
-from rest_framework import exceptions
-from rest_framework.exceptions import APIException
 
-from ocpi22.commands.commands import send_start_command, send_stop_command
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.dynamic_price import DynamicPrice
 from ocpi22.models.models import Facility, Capability
@@ -31,8 +27,6 @@ from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultT
 from ocpi22.models.token import Token
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
-from ocpi22.sessions.util import get_active_sessions
-from ocpi22.tokens.util import get_admin_token
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
 from payment.models import Payment
 
@@ -385,6 +379,7 @@ class TariffAdmin(NestedModelAdmin):
     class ElementsInline(NestedStackedInline):
         class PriceComponentsInline(NestedTabularInline):
             model = PriceComponent
+            exclude = ['dynamic_price_source']
 
             def has_change_permission(self, request, obj=None) -> bool:
                 if not super().has_change_permission(request, obj):
@@ -409,7 +404,7 @@ class TariffAdmin(NestedModelAdmin):
                     # ('min_power', 'max_power'),
                     # ('min_current', 'max_current'),
                     ('min_duration', 'max_duration'),
-                    ('day_of_week', 'reservation'),
+                    ('day_of_week', ), # 'reservation'),
                 )
             )),
         ]
@@ -425,13 +420,9 @@ class TariffAdmin(NestedModelAdmin):
 
     model = Tariff
     if ocpi_platform.is_cpo:
-        list_display = [
-            'uid', 'price', 'last_updated'
-        ]
+        list_display = ['uid', 'price', 'last_updated']
     else:
-        list_display = [
-            'object_owner', 'uid', 'price', 'last_updated'
-        ]
+        list_display = ['object_owner', 'uid', 'price', 'last_updated']
     list_display_links = ['uid']
     inlines = [ElementsInline]
     search_fields = ['uid']
