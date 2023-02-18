@@ -79,7 +79,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return " / ".join([str(s) for s in self.roles.all()])
+        return self.name
 
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
@@ -169,7 +169,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def name(self):
-        return self.roles.first().business_details.name
+        return " / ".join([role.business_details.name for role in self.roles.all()])
 
     @property
     def status_display(self):
