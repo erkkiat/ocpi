@@ -1,8 +1,10 @@
 {% load i18n %}
-<h3>{% blocktranslate with filter_title=title %} By {{ filter_title }} {% endblocktranslate %}</h3>
-<ul>
+  <div class="label">{% blocktranslate with filter_title=title %} By {{ filter_title }} {% endblocktranslate %}</div>
+<div class="btn-group" role="group" aria-label="Admin view filters">
+
 {% for choice in choices %}
-    <li{% if choice.selected %} class="selected"{% endif %}>
-    <a href="{{ choice.query_string|iriencode }}" title="{{ choice.display }}">{{ choice.display }}</a></li>
+  <a class="btn btn-sm{% if choice.selected %} btn-primary{% else %} btn-light{% endif %}" href="{{ choice.query_string|iriencode }}" autocomplete="off">
+    {{ choice.display }}
+  </a>
 {% endfor %}
-</ul>
+</div>

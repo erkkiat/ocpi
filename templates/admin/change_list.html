@@ -3,10 +3,6 @@
 
 {% block extrastyle %}
 {{ block.super }}
-<link rel="stylesheet" type="text/css" href="{% static " css/changelists.css" %}">
-{% if cl.formset %}
-<link rel="stylesheet" type="text/css" href="{% static " admin/css/forms.css" %}">
-{% endif %}
 {% if cl.formset or action_form %}
 <script src="{% url 'admin:jsi18n' %}"></script>
 {% endif %}
@@ -40,11 +36,11 @@
 {% block content %}
   <div id="content-main">
     {% block object-tools %}
-        <ul class="object-tools">
+        <div class="object-tools">
           {% block object-tools-items %}
             {% change_list_object_tools %}
           {% endblock %}
-        </ul>
+        </div>
     {% endblock %}
     {% if cl.formset and cl.formset.errors %}
         <p class="errornote">
@@ -52,8 +48,8 @@
         </p>
         {{ cl.formset.non_form_errors }}
     {% endif %}
-    <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
-      <div class="changelist-form-container">
+    <div class="row{% if cl.has_filters %} filtered{% endif %}" id="changelist">
+      <div class="col-9 changelist-form-container">
         {% block search %}{% search_form cl %}{% endblock %}
         {% block date_hierarchy %}{% if cl.date_hierarchy %}{% date_hierarchy cl %}{% endif %}{% endblock %}
 
@@ -72,11 +68,11 @@
       </div>
       {% block filters %}
         {% if cl.has_filters %}
-          <div id="changelist-filter">
-            <h2>{% translate 'Filter' %}</h2>
-            {% if cl.has_active_filters %}<h3 id="changelist-filter-clear">
+          <div id="changelist-filter" class="col-3">
+            <h3>{% translate 'Filter' %}</h3>
+            {% if cl.has_active_filters %}<div id="changelist-filter-clear">
               <a href="{{ cl.clear_all_filters_qs }}">&#10006; {% translate "Clear all filters" %}</a>
-            </h3>{% endif %}
+            </div>{% endif %}
             {% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}
           </div>
         {% endif %}
