@@ -45,9 +45,9 @@
 
             {% if inline_admin_form.form.non_field_errors %}
             <tr><td class="djn-td" colspan="{{ inline_admin_form|cell_count }}">
-                <ul class="errorlist">
-                    <li>{{ inline_admin_form.form.non_field_errors }}</li>
-                </ul>
+                <div class="errorlist">
+                    <div class="alert alert-danger">{{ inline_admin_form.form.non_field_errors }}</div>
+                </div>
             </td></tr>
             {% endif %}
             <tr class="djn-tr {% if inline_admin_form.original or inline_admin_form.show_url %} has_original{% endif %}">
@@ -58,7 +58,7 @@
                 {{ inline_admin_form.original }}
                 {% if inline_admin_form.model_admin.show_change_link and inline_admin_form.model_admin.has_registered_model %}<a href="{% url inline_admin_form.model_admin.opts|admin_urlname:'change' inline_admin_form.original.pk|admin_urlquote %}" class="{% if inline_admin_formset.has_change_permission %}inlinechangelink{% else %}inlineviewlink{% endif %}">{% if inline_admin_formset.has_change_permission %}{% trans "Change" %}{% else %}{% trans "View" %}{% endif %}</a>{% endif %}
                 {% endif %}
-                {% if inline_admin_form.show_url %}<a href="{{ inline_admin_form.absolute_url }}">{% trans "View on site" %}</a>{% endif %}
+                {# {% if inline_admin_form.show_url %}<a href="{{ inline_admin_form.absolute_url }}">{% trans "View on site" %}</a>{% endif %} #}
                   </p>{% endif %}
                 {% if inline_admin_formset.opts.sortable_field_name %}
                 <span class="djn-drag-handler"></span>
@@ -96,7 +96,7 @@
                 {% endfor %}
                 {% if inline_admin_formset.formset.can_delete %}
                     {% if inline_admin_form.original %}
-                    <td class="delete djn-delete-handler {{ inline_admin_formset.handler_classes|join:" " }}">{{ inline_admin_form.deletion_field.field }}</td>
+                    <td class="delete float-end my-3 djn-delete-handler {{ inline_admin_formset.handler_classes|join:" " }}">{{ inline_admin_form.deletion_field.field }}</td>
                     {% else %}
                     <td class="delete">
                         <div><a class="inline-deletelink djn-remove-handler {{ inline_admin_formset.handler_classes|join:" " }}" href="javascript:void(0)">Remove</a></div>

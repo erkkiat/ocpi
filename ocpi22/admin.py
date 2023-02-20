@@ -1,12 +1,10 @@
+from django.db import models
 from django.utils.translation import gettext as _
 
 from django import forms
 from django.core.exceptions import ValidationError
 from gdpr_assist.admin import PersonalDataAdmin, PersonalData
 
-import ocpi22.logging as logging
-
-import requests
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import User
@@ -134,7 +132,7 @@ class LocationAdmin(NestedModelAdmin):
     class EvseInline(NestedStackedInline):
 
         model = Evse
-        exclude = ['evse_id']
+        exclude = ['evse_id', 'last_updated']
         inlines = [ConnectorInline]
         autocomplete_fields = ['capabilities']
         radio_fields = dict(
@@ -149,12 +147,16 @@ class LocationAdmin(NestedModelAdmin):
         def has_add_permission(self, request, obj=None) -> bool:
             return Location.ocpi_object_owner in ocpi_identities
 
+    formfield_overrides = {
+        models.TextField: {'classes': 'form-control'},
+    }
+
     model = Location
     search_fields = ['country_code', 'party_id', 'uid', 'name', 'address', 'city',
                      'postal_code', 'state', 'country', 'parking_type']
     fieldsets = [
-        (None, dict(fields=('uid', 'publish', 'publish_allowed_to'))),
         ('Address', dict(
+            # classes=('collapse',),  # Todo: Study collapsible accordions for admin
             fields=('name', 'address', ('postal_code', 'city'), ('state', 'country'),
                     ('latitude', 'longitude', 'time_zone'),)
         )),
@@ -165,7 +167,7 @@ class LocationAdmin(NestedModelAdmin):
             fields=(('operator', 'suboperator', 'owner'),)
         )),
     ]
-    list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list', 'last_updated']
+    list_display = ['party', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
     inlines = [EvseInline]
     autocomplete_fields = ['publish_allowed_to', 'facilities', 'operator', 'suboperator', 'owner']
@@ -204,6 +206,7 @@ class EvseAdmin(NestedModelAdmin):
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
     # actions = ['start_charging', 'stop_charging']
     autocomplete_fields = ['capabilities', 'location']
+    exclude = ['last_updated']
 
     def get_queryset(self, request):
         return Evse.objects.select_related('location').all().order_by('-last_updated')
@@ -296,7 +299,7 @@ class CdrAdmin(admin.ModelAdmin):
         ('Delivery', dict(fields=(
             ('total_energy', 'total_time', 'auth_method'),
             ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),))),
-        ('Time period', dict(fields=(('start_date_time', 'end_date_time'), 'last_updated'))),
+        ('Time period', dict(fields=(('start_date_time', 'end_date_time'), ))),
         ('Credited or not', dict(fields=(('credit', 'credit_reference'),))),
     )
     list_display_links = ['start_date_time']
@@ -350,7 +353,7 @@ class SessionAdmin(NestedModelAdmin):
          dict(fields=(('status', 'start_kwh', 'stop_kwh'), ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),
                       ('message',),
                       ('auth_method', 'authorization_reference')))),
-        ('Time period', dict(fields=(('start_date_time', 'end_date_time'), 'last_updated'))),
+        ('Time period', dict(fields=(('start_date_time', 'end_date_time'), ))),
     )
     # Todo: Show only connectors for the selected evse
 
@@ -358,6 +361,7 @@ class SessionAdmin(NestedModelAdmin):
     search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid',
                      'uid', 'authorization_reference']
     readonly_fields = ['uid', 'party_id', 'country_code']
+    list_filter = ['status', 'connector__standard']
 
     def has_add_permission(self, request, obj=None) -> bool:
         return False
@@ -433,11 +437,10 @@ class TariffAdmin(NestedModelAdmin):
         ('',
          dict(
              fields=(
-                 ('country_code', 'party_id'),
-                 ('uid', 'currency'),
+                 # ('country_code', 'party_id'),
+                 ('currency'),
                  ('type',),
                  ('tariff_alt_url',),
-                 ('last_updated',)
              )
          )
          ),

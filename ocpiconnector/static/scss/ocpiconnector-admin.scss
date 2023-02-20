@@ -9,10 +9,6 @@
     }
 }
 
-div.breadcrumbs {
-    margin-bottom: 12px;
-}
-
 fieldset.module {
     .form-row {
         label.required {
@@ -160,4 +156,8 @@ form .submit-row a.deletelink {
 
 .divider-top:not(:first-child) {
     border-top: 1px solid lightgrey;
+}
+
+.radiolist li {
+    list-style-type: none;
 }

@@ -12,36 +12,6 @@ from ocpi22.models.tariff import Tariff
 from ocpiconnector.ocpi_identities import ocpi_platform
 
 
-def get_admin_menu() -> list:
-    menuitems = (
-        ('', _('Infrastructure')),
-        ('admin:ocpi22_location_changelist', _('Locations')),
-        ('admin:ocpi22_evse_changelist', _('Chargers')),
-
-        ('', _('Users')),
-        ('admin:auth_user_changelist', _('Users')),
-        ('admin:auth_group_changelist', _('Groups')),
-        ('admin:gdpr_assist_personaldata_changelist', _('GDPR Personal Data')),
-
-        ('', _('Finance')),
-        ('admin:ocpi22_cdr_changelist', _('Billing')),
-        ('admin:payment_payment_changelist', _('Payments')),
-        ('admin:ocpi22_session_changelist', _('Sessions')),
-        ('admin:ocpi22_tariff_changelist', _('Tariffs')),
-        ('admin:ocpi22_defaulttariffs_changelist', _('Default Tariffs')),
-        ('admin:ocpi22_authorization_changelist', _('Charge Authorizations')),
-
-        ('', _('Identification')),
-        ('admin:ocpi22_token_changelist', _('Tokens')),
-        ('admin:ocpi22_credentials_changelist', _('Credentials')),
-
-        ('', _('Problem Resolution')),
-        ('issues', _('Issues')),
-        ('admin:ocpi22_logentry_changelist', _('Log entries')),
-    )
-    return [dict(url=reverse(viewname) if viewname else "#", name=_(name)) for viewname, name in menuitems]
-
-
 # @cachetools.cached(cache={})
 def _get_environment(request):
     is_emsp = ocpi_platform.is_emsp
@@ -81,11 +51,18 @@ def _get_environment(request):
                 add_url=get_url('ocpi22', 'token', 'add', is_emsp),
             ),
             dict(
-                title=_('Customers'),
-                items=User.objects.all().order_by('last_name', 'first_name'),
+                title=_('Users'),
+                # items=User.objects.all().order_by('last_name', 'first_name') if request.user.has_perm('auth_user_changelist') else [],
+                items=[],
                 icon='fa-user',
                 list_url=get_url('auth', 'user', 'changelist'),
                 add_url=get_url('auth', 'user', 'add'),
+                extra_items=[
+                    dict(
+                        url=reverse('admin:gdpr_assist_personaldata_changelist'),
+                        name=_('GDPR tools')
+                    ),
+                ],
             ),
             dict(
                 title=_('Sessions'),

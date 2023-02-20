@@ -83,7 +83,6 @@ urlpatterns = (
     path('ocpi/', include(common_router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/ocpi22/credentials/connection/new', new_connection, name='new-connection'),
-    path('admin/', admin_index),
     path('admin/', admin.site.urls),
     path('issues/', views.issues, name='issues'),
     path('_nested_admin/', include('nested_admin.urls')),

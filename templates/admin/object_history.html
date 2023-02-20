@@ -16,24 +16,28 @@
 <div class="module">
 
 {% if action_list %}
-    <table id="change-history">
-        <thead>
-        <tr>
-            <th scope="col">{% translate 'Date/time' %}</th>
-            <th scope="col">{% translate 'User' %}</th>
-            <th scope="col">{% translate 'Action' %}</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for action in action_list %}
-        <tr>
-            <th scope="row">{{ action.action_time|date:"DATETIME_FORMAT" }}</th>
-            <td>{{ action.user.get_username }}{% if action.user.get_full_name %} ({{ action.user.get_full_name }}){% endif %}</td>
-            <td>{{ action.get_change_message }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+    <div class="row">
+        <div class="col-lg-7 col-md-9">
+            <table id="change-history" class="table">
+                <thead>
+                <tr>
+                    <th scope="col">{% translate 'Date/time' %}</th>
+                    <th scope="col">{% translate 'User' %}</th>
+                    <th scope="col">{% translate 'Action' %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for action in action_list %}
+                <tr>
+                    <th scope="row">{{ action.action_time|date:"DATETIME_FORMAT" }}</th>
+                    <td>{{ action.user.get_username }}{% if action.user.get_full_name %} ({{ action.user.get_full_name }}){% endif %}</td>
+                    <td>{{ action.get_change_message }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 {% else %}
     <p>{% translate 'This object doesn’t have a change history. It probably wasn’t added via this admin site.' %}</p>
 {% endif %}

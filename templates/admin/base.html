@@ -60,6 +60,8 @@
 		<link href="{% static 'fontawesome6/css/brands.css' %}" rel="stylesheet">
 		<link href="{% static 'fontawesome6/css/solid.css' %}" rel="stylesheet">
 
+		<link href="{% static 'css/ocpiconnector-admin.css' %}" rel="stylesheet">
+
     {% block extrastyle %}{% endblock %}
     {% block extrahead %}{% endblock %}
     {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
@@ -84,11 +86,12 @@
 								<div class="header-row">
 									<div class="header-logo">
 										<a href="{% url 'admin:index' %}">
-											<img alt="Porto" width="80" height="80" data-sticky-width="60" data-sticky-height="60" data-sticky-top="25" src="{% static 'images/chargerhub-logo-black-square.png' %}">
+											<img alt="ChargerHub" width="80" height="80" data-sticky-width="60" data-sticky-height="60" data-sticky-top="25" src="{% static 'images/chargerhub-logo-black-square.png' %}">
 										</a>
 									</div>
 								</div>
 							</div>
+							{% if "admin/login" not in request.path %}
 							<div class="header-column justify-content-end">
 								<div class="header-row pt-3"></div>
 								<div class="header-row">
@@ -101,12 +104,30 @@
 															Home
 														</a>
 													</li>
+													{% if user.is_authenticated %}
 													{% for section in sections %}
-													{% include "admin/includes/menu_item.html" with section=section %}
+													{% include "admin/includes/menu_item.html" with section=section active_section=module_name %}
 													{% endfor %}
-													<li>
-														<a class="dropdown-item" href="/">{% trans 'Developer Central' %}</a>
+													<li class="dropdown">
+														<a class="dropdown-item dropdown-toggle" href="#">
+															<i class="fa fa-user mr-2"></i>
+															{{ user.username }}
+														</a>
+														<ul class="dropdown-menu">
+															<li><a class="dropdown-item" href="/">{% trans 'Developer Central' %}</a></li>
+															{% if user.has_usable_password %}
+															<li><a href="{% url 'admin:password_change' %}">{% translate 'Change password' %}</a></li>
+															{% endif %}
+															<li><a class="dropdown-item" href="{% url 'admin:logout' %}">{% trans 'Log out' %}</a></li>
+														</ul>
 													</li>
+													{% else %} {# user.is_authenticated #}
+													<li class="">
+														<a class="dropdown-item dropdown-toggle active" href="{% url 'admin:login' %}">
+															{% trans 'Log in' %}
+														</a>
+													</li>
+													{% endif %} {# user.is_authenticated #}
 												</ul>
 											</nav>
 										</div>
@@ -116,6 +137,7 @@
 									</div>
 								</div>
 							</div>
+							{% endif %} {# Not admin/login #}
 						</div>
 					</div>
 				</div>

@@ -33,10 +33,10 @@
                 <h3 class="{% if not inline_opts.sortable_options or not inline_opts.sortable_options.disabled %} djn-drag-handler{% endif %}">
                     <b>{{ inline_admin_form.model_admin.opts.verbose_name|capfirst }}:</b>&nbsp;<span class="inline_label">{% if inline_admin_form.original %}{{ inline_admin_form.original }}{% if inline_admin_form.model_admin.show_change_link and inline_admin_form.model_admin.has_registered_model %} <a href="{% url inline_admin_form.model_admin.opts|admin_urlname:'change' inline_admin_form.original.pk|admin_urlquote %}" class="inlinechangelink">{% trans "Change" %}</a>{% endif %}
                     {% else %}#{{ forloop.counter }}{% endif %}</span>
-                          {% if inline_admin_form.show_url %}<a href="{{ inline_admin_form.absolute_url }}">{% trans "View on site" %}</a>{% endif %}
+                          {# {% if inline_admin_form.show_url %}<a href="{{ inline_admin_form.absolute_url }}">{% trans "View on site" %}</a>{% endif %} #}
                         {% if inline_admin_form.formset.can_delete  %}
                         {% if inline_admin_form.original %}
-                            <span class="delete djn-delete-handler {{ inline_admin_formset.handler_classes|join:" " }}">{{ inline_admin_form.deletion_field.field }} {{ inline_admin_form.deletion_field.label_tag }}</span>
+                            <span class="delete d-block my-3 djn-delete-handler {{ inline_admin_formset.handler_classes|join:" " }}">{{ inline_admin_form.deletion_field.field }} {{ inline_admin_form.deletion_field.label_tag }}</span>
                         {% else %}
                             <span><a class="inline-deletelink djn-remove-handler {{ inline_admin_formset.handler_classes|join:" " }}" href="javascript:void(0)">Remove</a></span>
                         {% endif %}
@@ -44,9 +44,9 @@
                 </h3>
 
                 {% if inline_admin_form.form.non_field_errors %}
-                    <ul class="errorlist">
-                        <li>{{ inline_admin_form.form.non_field_errors }}</li>
-                    </ul>
+                    <div class="errorlist">
+                        <div class="alert alert-danger">{{ inline_admin_form.form.non_field_errors }}</div>
+                    </div>
                 {% endif %}
 
                 {% for fieldset in inline_admin_form %}

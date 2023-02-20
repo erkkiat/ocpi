@@ -24,6 +24,11 @@
                 </a>
             </li>
             {% endfor %}
+            {% for extra in section.extra_items %}
+            <li>
+                <a href="{{ extra.url }}" class="dropdown-item">{{ extra.name }}</a>
+            </li>
+            {% endfor %}
             <li><a href="{{ section.list_url }}" class="dropdown-item text-0">Show all</a></li>
         </ul>
     </li>

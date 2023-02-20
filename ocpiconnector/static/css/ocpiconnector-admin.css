@@ -6,40 +6,35 @@
   vertical-align: text-top;
 }
 
-/* line 12, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
-div.breadcrumbs {
-  margin-bottom: 12px;
-}
-
-/* line 18, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 14, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 fieldset.module .form-row label.required {
   padding: 2px 10px 0 0;
   font-weight: 900;
 }
 
-/* line 22, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 18, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 fieldset.module .form-row .readonly {
   color: darkred;
 }
 
-/* line 25, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 21, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 fieldset.module .form-row .fieldBox:not(:first-child) {
   border-left: 1px solid lightgrey;
   padding: 0 0 0 14px;
   margin-left: 6px;
 }
 
-/* line 31, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 27, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 fieldset.module .form-row .fieldBox label.vCheckboxLabel {
   padding: 9px 6px;
 }
 
-/* line 39, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 35, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .container h1 {
   margin-top: 1em;
 }
 
-/* line 44, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 40, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model {
   border: 2px solid #606060;
   border-radius: 13px;
@@ -51,54 +46,54 @@ div.model {
   transition: transform .2s;
 }
 
-/* line 52, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 48, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model a:not(.secondary) {
   display: block;
 }
 
-/* line 55, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 51, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model div {
   display: inline;
 }
 
-/* line 58, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 54, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model .secondary {
   font-size: x-small;
 }
 
-/* line 62, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 58, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model .button-image {
   display: inline;
 }
 
-/* line 65, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 61, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model .button-image img {
   height: 80px;
   padding-right: 10px;
   margin: -12px 0;
 }
 
-/* line 72, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 68, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 div.model:hover {
   transform: scale(1.05);
 }
 
-/* line 77, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 73, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .w-10 {
   width: 10%;
 }
 
-/* line 81, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 77, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 form .submit-row a.deletelink {
   height: 35px;
 }
 
-/* line 85, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 81, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .delete-confirmation form div .cancel-link {
   height: 40px;
 }
 
-/* line 89, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 85, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 :root {
   --smoky-black: #14110fff;
   --jet: #34312dff;
@@ -150,25 +145,30 @@ form .submit-row a.deletelink {
   --object-tools-hover-bg: var(--close-button-hover-bg);
 }
 
-/* line 148, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 144, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .muted {
   color: #ffffff80;
   font-size: smaller;
 }
 
-/* line 153, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 149, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .nav-link {
   padding: .3rem 1rem;
 }
 
-/* line 157, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 153, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 #nav-sidebar {
   flex: 0 0 210px;
 }
 
-/* line 161, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+/* line 157, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
 .divider-top:not(:first-child) {
   border-top: 1px solid lightgrey;
+}
+
+/* line 161, ../../../../../Users/eki1/Documents/Work/Src/ocpiconnector/ocpiconnector/static/scss/ocpiconnector-admin.scss */
+.radiolist li {
+  list-style-type: none;
 }
 
 /*# sourceMappingURL=ocpiconnector-admin.css.map */

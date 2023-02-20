@@ -1,8 +1,8 @@
 {% load i18n admin_urls %}
 {% block object-tools-items %}
-<li>
+<div class="btn-group" role="group" aria-label="Tool buttons">
     {% url opts|admin_urlname:'history' original.pk|admin_urlquote as history_url %}
-    <a href="{% add_preserved_filters history_url %}" class="historylink">{% translate "History" %}</a>
-</li>
-{% if has_absolute_url %}<li><a href="{{ absolute_url }}" class="viewsitelink">{% translate "View on site" %}</a></li>{% endif %}
+    <a href="{% add_preserved_filters history_url %}" class="btn btn-light">{% translate "History" %}</a>
+{# {% if has_absolute_url %}<a href="{{ absolute_url }}" class="btn btn-light viewsitelink">{% translate "View on site" %}</a>{% endif %} #}
+</div>
 {% endblock %}

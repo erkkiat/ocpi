@@ -1,6 +1,7 @@
 from enum import Enum
 
 import cachetools
+import pycountry
 from django.conf import settings
 from django.db import models
 from django.utils import translation
@@ -277,3 +278,6 @@ CAPABILITY_CHOICES = (
     ('TOKEN_GROUP_CAPABLE', 'This EVSE supports token groups, two or more tokens work as one'),
     ('UNLOCK_CAPABLE', 'Connectors can be unlocked remotely'),
 )
+
+COUNTRIES_ISO_3 = [(c.alpha_3, c.name) for c in pycountry.countries]
+COUNTRIES_ISO_2 = [(c.alpha_2, c.name) for c in pycountry.countries]

@@ -210,7 +210,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         ('COMPLETED', _('Completed')),
 
         # The Session object using this state is declared invalid and will not be billed.
-        ('INVALID', _('Invalid')),
+        ('INVALID', _('Failed')),
 
         # The session is pending, it has not yet started. Not all pre-conditions are met.
         # This is the initial state. The session might never become an active session.

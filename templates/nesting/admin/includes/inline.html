@@ -4,7 +4,7 @@
         <div class="description">{{ fieldset.description|safe }}</div>
     {% endif %}
     {% for line in fieldset %}
-        <div class="form-row{% if line.fields|length_is:'1' and line.errors %} errors{% endif %}{% if not line.has_visible_field %} hidden{% endif %}{% for field in line %}{% if field.field.name %} field-{{ field.field.name }}{% endif %}{% endfor %}{% if forloop.last and forloop.parentloop.last %} djn-form-row-last{% endif %}">
+        <div class="{% if line.fields|length_is:'1' and line.errors %} errors{% endif %}{% if not line.has_visible_field %} hidden{% endif %}{% for field in line %}{% if field.field.name %} field-{{ field.field.name }}{% endif %}{% endfor %}{% if forloop.last and forloop.parentloop.last %} djn-form-row-last{% endif %}">
             {% if line.fields|length_is:'1' %}{{ line.errors }}{% endif %}
             {% for field in line %}
                 <div class="{% if line.fields|length_is:'1' and field.is_checkbox %}checkbox-row{% else %}{% if not line.fields|length_is:'1' %}fieldBox{% if not field.is_readonly and field.errors %} errors{% endif %}{% if field.field.is_hidden %} hidden{% endif %} {% endif %}field-{{ field.field.name }}{% endif %}">
@@ -20,7 +20,7 @@
                         {% endif %}
                     {% endif %}
                     {% if field.field.help_text %}
-                        <div class="help"{% if field.field.id_for_label %} id="{{ field.field.id_for_label }}_helptext"{% endif %}>
+                        <div class="help text-muted text-1"{% if field.field.id_for_label %} id="{{ field.field.id_for_label }}_helptext"{% endif %}>
                             {{ field.field.help_text|safe }}
                         </div>
                     {% endif %}
