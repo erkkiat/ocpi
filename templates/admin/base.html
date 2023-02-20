@@ -97,7 +97,7 @@
 											<nav class="collapse">
 												<ul class="nav nav-pills" id="mainNav">
 													<li class="">
-														<a class="dropdown-item dropdown-toggle active" href="{% url 'admin:index' %}">
+														<a class="dropdown-item dropdown-toggle{% if not module_name %} active{% endif %}" href="{% url 'admin:index' %}">
 															Home
 														</a>
 													</li>

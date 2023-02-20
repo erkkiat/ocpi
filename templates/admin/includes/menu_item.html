@@ -1,6 +1,6 @@
 {% load i18n static %}
     <li class="dropdown">
-        <a class="dropdown-item dropdown-toggle" href="{{ section.list_url }}">
+        <a class="dropdown-item dropdown-toggle{% if active_section == section.title|lower %} active{% endif %}" href="{{ section.list_url }}">
             <i class="fa {{ section.icon }} mr-2"></i>
             {{ section.title }}
         </a>
