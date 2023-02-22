@@ -45,6 +45,9 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')
 
     class Meta:
+        verbose_name = _('location')
+        verbose_name_plural = _('locations')
+
         constraints = [
             models.UniqueConstraint(fields=['uid', 'party_id'], name='party_uid'),
             models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
@@ -76,27 +79,28 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     publish_allowed_to = models.ManyToManyField(Token, related_name='locations', blank=True)
 
     # Display name of the location
-    name = models.CharField(max_length=255, blank=True)
+    name = models.CharField(max_length=255, blank=True, verbose_name=_('Name'))
 
     # Street/block name and house number if available.
-    address = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
+    address = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, verbose_name=_('Address'))
 
     # City or town
-    city = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
+    city = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, verbose_name=_('City'))
 
     # Postal code of the location, may only be omitted when the location has no postal code:
     # in some countries charging locations at highways don’t have postal codes.
-    postal_code = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, blank=True)
+    postal_code = models.CharField(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, blank=True,
+                                   verbose_name=_('Postal code'))
 
     # State or province of the location, only to be used when relevant
-    state = models.CharField(max_length=20, blank=True)
+    state = models.CharField(max_length=20, blank=True, verbose_name=_('State'))
 
     # ISO 3166-1 alpha-3 code for the country of this location
-    country = models.CharField(max_length=3, choices=choices.COUNTRIES_ISO_3)
+    country = models.CharField(max_length=3, choices=choices.COUNTRIES_ISO_3, verbose_name=_('Country'))
 
     # This class defines the geo location of the Charge Point. The geodetic system to be used is WGS 84.
-    latitude = models.FloatField()
-    longitude = models.FloatField()
+    latitude = models.FloatField(verbose_name=_('Latitude'))
+    longitude = models.FloatField(verbose_name=_('Longitude'))
 
     def get_coordinates(self):
         """Formatting for OCPI (2.2)"""
@@ -124,7 +128,8 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         ('ON_STREET', 'Street'),
         ('UNDERGROUND_GARAGE', 'Underground garage'),
     )
-    parking_type = models.CharField(max_length=18, null=True, blank=True, choices=PARKING_CHOICES)
+    parking_type = models.CharField(max_length=18, null=True, blank=True, choices=PARKING_CHOICES,
+                                    verbose_name=_('Parking type'))
 
     # List of EVSEs that belong to this Location
     # evses (comes automatically from Evse class)
@@ -133,19 +138,21 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     # directions
 
     operator = models.ForeignKey(BusinessDetails, related_name='operator_locations',
-                                 null=True, blank=True, on_delete=models.PROTECT)
+                                 null=True, blank=True, on_delete=models.PROTECT, verbose_name=_('Operator'))
     suboperator = models.ForeignKey(BusinessDetails, related_name='suboperator_locations',
-                                    null=True, blank=True, on_delete=models.PROTECT)
+                                    null=True, blank=True, on_delete=models.PROTECT, verbose_name=_('Suboperator'))
     owner = models.ForeignKey(BusinessDetails, related_name='owner_locations',
-                              null=True, blank=True, on_delete=models.PROTECT)
+                              null=True, blank=True, on_delete=models.PROTECT, verbose_name=_('Owner'))
 
     # Optional list of facilities this charging location directly belongs to
-    facilities = models.ManyToManyField(Facility, related_name='facility_locations', blank=True)
+    facilities = models.ManyToManyField(Facility, related_name='facility_locations', blank=True,
+                                        verbose_name=_('Facilities'))
 
     # Todo: get time zone based on coordinates
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
     # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
-    time_zone = models.CharField(max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH, validators=[validate_timezone])
+    time_zone = models.CharField(max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH, validators=[validate_timezone],
+                                 verbose_name=_('Time zone'))
 
     def get_timezone(self):
         return tz.gettz(self.time_zone)
@@ -157,8 +164,8 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     last_updated = models.DateTimeField(null=True, blank=True)
 
     # Django automatic dates
-    updated = models.DateTimeField(auto_now=True)
-    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_('Created'))
 
     def __str__(self):
         return f'{self.name}, {self.address}, {self.city}' or f'[No name, UID: {self.pk}]'
@@ -218,8 +225,6 @@ class Evse(models.Model, ModelUtilMixin):
         constraints = [
             models.UniqueConstraint(fields=['uid', 'location'], name='evse_party_uid'),
         ]
-        verbose_name = _('charge point')
-        verbose_name_plural = _('charge points')
 
     # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
     # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.
@@ -233,7 +238,7 @@ class Evse(models.Model, ModelUtilMixin):
     # Optional because: if an evse_id is to be re-used in the real world,
     # the evse_id can be removed from an EVSE object if the status is set to REMOVED.
 
-    evse_id = models.CharField(max_length=48, blank=True, default='')
+    evse_id = models.CharField(max_length=48, blank=True, default='', verbose_name=_('EVSE ID'))
 
     AVAILABLE = 'AVAILABLE'
     BLOCKED = 'BLOCKED'
@@ -247,28 +252,28 @@ class Evse(models.Model, ModelUtilMixin):
 
     # Indicates the current status of the EVSE
     STATUS_CHOICES = (
-        (AVAILABLE, 'Available'),
-        (BLOCKED, 'Physically blocked'),
-        (CHARGING, 'Charging'),
-        (INOPERATIVE, 'Inoperative (not yet active or it is no longer available)'),
-        (OUTOFORDER, 'Out of order'),
-        (PLANNED, 'Planned, will be operating soon'),
-        (REMOVED, 'Discontinued/removed'),
-        (RESERVED, 'Reserved for a particular EV driver'),
-        (UNKNOWN, 'No status information available (also used when offline)'),
+        (AVAILABLE, _('Available')),
+        (BLOCKED, _('Physically blocked')),
+        (CHARGING, _('Charging')),
+        (INOPERATIVE, _('Inoperative')),
+        (OUTOFORDER, _('Out of order')),
+        (PLANNED, _('Planned, will be operating soon')),
+        (REMOVED, _('Discontinued/removed')),
+        (RESERVED, _('Reserved for a particular EV driver')),
+        (UNKNOWN, _('No status information available (also used when offline)')),
     )
-    status = models.CharField(max_length=11, choices=STATUS_CHOICES)
+    status = models.CharField(max_length=11, choices=STATUS_CHOICES, verbose_name=_('Status'))
 
-    capabilities = models.ManyToManyField(Capability, related_name='evses', blank=True)
+    capabilities = models.ManyToManyField(Capability, related_name='evses', blank=True, verbose_name=_('Capabilities'))
 
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses')
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses', verbose_name=_('Location'))
 
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 
     # Django automatic dates
-    updated = models.DateTimeField(auto_now=True)
-    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_('Created'))
 
     def __str__(self):
         return self.evse_id
@@ -323,36 +328,37 @@ class Connector(models.Model, ModelUtilMixin):
     # as long as they do not belong to the same EVSE object.
 
     class Meta:
+        verbose_name = _('connector')
+        verbose_name_plural = _('connectors')
         unique_together = [['evse', 'uid']]
 
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
 
     evse = models.ForeignKey(Evse, on_delete=models.CASCADE, related_name='connectors')
 
-    standard = models.CharField(max_length=21, choices=Ocpi.STANDARD_CHOICES)
+    standard = models.CharField(max_length=21, choices=Ocpi.STANDARD_CHOICES, verbose_name=_('Standard'))
 
-    format = models.CharField(max_length=6, choices=Ocpi.FORMAT_CHOICES)
+    format = models.CharField(max_length=6, choices=Ocpi.FORMAT_CHOICES, verbose_name=_('Format'))
 
-    power_type = models.CharField(max_length=16, choices=Ocpi.POWERTYPE_CHOICES_221)
+    power_type = models.CharField(max_length=16, choices=Ocpi.POWERTYPE_CHOICES_221, verbose_name=_('Power type'))
 
-    max_voltage = models.SmallIntegerField()
-    max_amperage = models.SmallIntegerField()
-    max_electric_power = models.IntegerField(null=True, blank=True)
+    max_voltage = models.SmallIntegerField(verbose_name=_('Maximum voltage'))
+    max_amperage = models.SmallIntegerField(verbose_name=_('Maximum amperage'))
+    max_electric_power = models.IntegerField(null=True, blank=True, verbose_name=_('Maximum electric power'))
 
     # If you want the default tariffs to be in use when needed use get_tariffs() instead of accessing tariff_ids
-    tariff_ids = models.ManyToManyField(Tariff, related_name='connectors', blank=True)
+    tariff_ids = models.ManyToManyField(Tariff, related_name='connectors', blank=True, verbose_name=_('Tariffs'))
 
-    terms_and_conditions = models.URLField(blank=True, default='')
+    terms_and_conditions = models.URLField(blank=True, default='', verbose_name=_('Terms and conditions'))
 
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 
     # Django automatic dates
-    updated = models.DateTimeField(auto_now=True)
-    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_('Created'))
 
     def __str__(self):
-        # noinspection PyUnresolvedReferences
         return f'#{self.uid} - {self.get_standard_display()} - {self.power()}'
 
     def power(self):

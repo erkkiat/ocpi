@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"POT-Creation-Date: 2023-02-22 19:14+0000\n"
 "PO-Revision-Date: 2023-02-21 17:09:29.850080\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -27,7 +27,7 @@ msgstr "Конекторот треба да има избрана тарифа,
 msgid "EVSE with this UID already exists in this or another Location"
 msgstr "EVSE со овој UID веќе постои во оваа или друга локација"
 
-#: choices.py:69
+#: choices.py:69 models/location.py:255
 msgid "Available"
 msgstr "Достапно"
 
@@ -35,7 +35,7 @@ msgstr "Достапно"
 msgid "Preparing"
 msgstr "Подготовка за полнење"
 
-#: choices.py:71
+#: choices.py:71 models/location.py:257
 msgid "Charging"
 msgstr "Полнење"
 
@@ -59,7 +59,7 @@ msgstr "Резервирано"
 msgid "Unavailable"
 msgstr "Недостапно"
 
-#: choices.py:77
+#: choices.py:77 models/location.py:259
 msgid "Out of order"
 msgstr "Вон ред"
 
@@ -165,17 +165,7 @@ msgstr "Трошоци за резервација"
 msgid "Costs for a reservation that expires"
 msgstr "Трошоци за резервација што истекува"
 
-#: context_processors.py:34
-#, fuzzy
-#| msgid "Charging"
-msgid "Charge Points"
-msgstr "Полнење"
-
-#: context_processors.py:42
-msgid "Tariffs"
-msgstr "тарифи"
-
-#: context_processors.py:65
+#: context_processors.py:62
 msgid "GDPR tools"
 msgstr "GDPR алатки"
 
@@ -202,15 +192,179 @@ msgstr "Активен"
 msgid "Timezone \"%(value)s\" is unknown."
 msgstr "Временската зона „%(value)s“ е непозната."
 
-#: models/location.py:216 models/location.py:221
+#: models/location.py:48
+#, fuzzy
+#| msgid "Information"
+msgid "location"
+msgstr "Информации"
+
+#: models/location.py:49
+#, fuzzy
+#| msgid "Information"
+msgid "locations"
+msgstr "Информации"
+
+#: models/location.py:82
+msgid "Name"
+msgstr ""
+
+#: models/location.py:85
+msgid "Address"
+msgstr ""
+
+#: models/location.py:88
+msgid "City"
+msgstr ""
+
+#: models/location.py:93
+msgid "Postal code"
+msgstr ""
+
+#: models/location.py:96
+msgid "State"
+msgstr ""
+
+#: models/location.py:99
+msgid "Country"
+msgstr ""
+
+#: models/location.py:102
+msgid "Latitude"
+msgstr ""
+
+#: models/location.py:103
+msgid "Longitude"
+msgstr ""
+
+#: models/location.py:132
+#, fuzzy
+#| msgid "Parking per hour"
+msgid "Parking type"
+msgstr "Паркирање на час"
+
+#: models/location.py:141
+msgid "Operator"
+msgstr ""
+
+#: models/location.py:143
+msgid "Suboperator"
+msgstr ""
+
+#: models/location.py:145
+msgid "Owner"
+msgstr ""
+
+#: models/location.py:149
+msgid "Facilities"
+msgstr ""
+
+#: models/location.py:155
+msgid "Time zone"
+msgstr ""
+
+#: models/location.py:167 models/location.py:275 models/location.py:358
+#, fuzzy
+#| msgid "updated"
+msgid "Updated"
+msgstr "ажурирани"
+
+#: models/location.py:168 models/location.py:276 models/location.py:359
+#, fuzzy
+#| msgid "created"
+msgid "Created"
+msgstr "создаден"
+
+#: models/location.py:223
 #, fuzzy
 #| msgid "Charging"
 msgid "charge point"
 msgstr "Полнење"
 
-#: models/location.py:217 models/location.py:222
+#: models/location.py:224
 msgid "charge points"
 msgstr "точки за полнење"
+
+#: models/location.py:241
+msgid "EVSE ID"
+msgstr ""
+
+#: models/location.py:256
+msgid "Physically blocked"
+msgstr ""
+
+#: models/location.py:258
+msgid "Inoperative"
+msgstr ""
+
+#: models/location.py:260
+msgid "Planned, will be operating soon"
+msgstr ""
+
+#: models/location.py:261
+msgid "Discontinued/removed"
+msgstr ""
+
+#: models/location.py:262
+msgid "Reserved for a particular EV driver"
+msgstr ""
+
+#: models/location.py:263
+msgid "No status information available (also used when offline)"
+msgstr ""
+
+#: models/location.py:265
+msgid "Status"
+msgstr ""
+
+#: models/location.py:267
+msgid "Capabilities"
+msgstr ""
+
+#: models/location.py:269
+#, fuzzy
+#| msgid "Information"
+msgid "Location"
+msgstr "Информации"
+
+#: models/location.py:331
+msgid "connector"
+msgstr ""
+
+#: models/location.py:332
+msgid "connectors"
+msgstr ""
+
+#: models/location.py:339
+msgid "Standard"
+msgstr ""
+
+#: models/location.py:341
+msgid "Format"
+msgstr ""
+
+#: models/location.py:343
+msgid "Power type"
+msgstr ""
+
+#: models/location.py:345
+msgid "Maximum voltage"
+msgstr ""
+
+#: models/location.py:346
+msgid "Maximum amperage"
+msgstr ""
+
+#: models/location.py:347
+msgid "Maximum electric power"
+msgstr ""
+
+#: models/location.py:350
+msgid "Tariffs"
+msgstr "тарифи"
+
+#: models/location.py:352
+msgid "Terms and conditions"
+msgstr ""
 
 #: models/logging.py:7
 msgid "Full update"
@@ -414,8 +568,7 @@ msgstr "Лозинката и потврдата се разликуваат е�
 #: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
-msgstr ""
-"Моделот на автомобилот %(car_id)s не е пронајден од базата на податоци"
+msgstr "Моделот на автомобилот %(car_id)s не е пронајден од базата на податоци"
 
 #: msp/user.py:258
 #, python-brace-format
@@ -443,6 +596,11 @@ msgstr "Моделот на автомобилот {car_id} не е пронај
 #, python-brace-format
 msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
 msgstr "EVSE со UID {evse_uid} на локација UID {location_id} е непознат."
+
+#, fuzzy
+#~| msgid "Charging"
+#~ msgid "Charge Points"
+#~ msgstr "Полнење"
 
 #~ msgid "Invalid"
 #~ msgstr "Неважечки"

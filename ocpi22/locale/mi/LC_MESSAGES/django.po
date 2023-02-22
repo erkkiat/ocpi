@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"POT-Creation-Date: 2023-02-22 19:14+0000\n"
 "PO-Revision-Date: 2023-02-21 17:07:30.714439\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -26,7 +26,7 @@ msgstr "Me whai utu te Kaihono, kia taea ai te utu nama"
 msgid "EVSE with this UID already exists in this or another Location"
 msgstr "Ko te EVSE me tenei UID kei tenei waahi ranei"
 
-#: choices.py:69
+#: choices.py:69 models/location.py:255
 msgid "Available"
 msgstr "Kei te waatea"
 
@@ -34,7 +34,7 @@ msgstr "Kei te waatea"
 msgid "Preparing"
 msgstr "Te whakarite"
 
-#: choices.py:71
+#: choices.py:71 models/location.py:257
 msgid "Charging"
 msgstr "Te utu"
 
@@ -58,7 +58,7 @@ msgstr "Kua rahuitia"
 msgid "Unavailable"
 msgstr "Kāore i te wātea"
 
-#: choices.py:77
+#: choices.py:77 models/location.py:259
 msgid "Out of order"
 msgstr "Kei te ota"
 
@@ -162,17 +162,7 @@ msgstr "Nga utu mo te rahui"
 msgid "Costs for a reservation that expires"
 msgstr "Nga utu mo te rahui ka pau"
 
-#: context_processors.py:34
-#, fuzzy
-#| msgid "Charging"
-msgid "Charge Points"
-msgstr "Te utu"
-
-#: context_processors.py:42
-msgid "Tariffs"
-msgstr "Nga utu utu"
-
-#: context_processors.py:65
+#: context_processors.py:62
 msgid "GDPR tools"
 msgstr "Nga taputapu GDPR"
 
@@ -199,15 +189,179 @@ msgstr "Hohe"
 msgid "Timezone \"%(value)s\" is unknown."
 msgstr "Rohewā \"%(value)s\" kāore i te mōhiotia."
 
-#: models/location.py:216 models/location.py:221
+#: models/location.py:48
+#, fuzzy
+#| msgid "Information"
+msgid "location"
+msgstr "Nga korero"
+
+#: models/location.py:49
+#, fuzzy
+#| msgid "Information"
+msgid "locations"
+msgstr "Nga korero"
+
+#: models/location.py:82
+msgid "Name"
+msgstr ""
+
+#: models/location.py:85
+msgid "Address"
+msgstr ""
+
+#: models/location.py:88
+msgid "City"
+msgstr ""
+
+#: models/location.py:93
+msgid "Postal code"
+msgstr ""
+
+#: models/location.py:96
+msgid "State"
+msgstr ""
+
+#: models/location.py:99
+msgid "Country"
+msgstr ""
+
+#: models/location.py:102
+msgid "Latitude"
+msgstr ""
+
+#: models/location.py:103
+msgid "Longitude"
+msgstr ""
+
+#: models/location.py:132
+#, fuzzy
+#| msgid "Parking per hour"
+msgid "Parking type"
+msgstr "Te waka waka mo ia haora"
+
+#: models/location.py:141
+msgid "Operator"
+msgstr ""
+
+#: models/location.py:143
+msgid "Suboperator"
+msgstr ""
+
+#: models/location.py:145
+msgid "Owner"
+msgstr ""
+
+#: models/location.py:149
+msgid "Facilities"
+msgstr ""
+
+#: models/location.py:155
+msgid "Time zone"
+msgstr ""
+
+#: models/location.py:167 models/location.py:275 models/location.py:358
+#, fuzzy
+#| msgid "updated"
+msgid "Updated"
+msgstr "whakahoutia"
+
+#: models/location.py:168 models/location.py:276 models/location.py:359
+#, fuzzy
+#| msgid "created"
+msgid "Created"
+msgstr "hanga"
+
+#: models/location.py:223
 #, fuzzy
 #| msgid "Charging"
 msgid "charge point"
 msgstr "Te utu"
 
-#: models/location.py:217 models/location.py:222
+#: models/location.py:224
 msgid "charge points"
 msgstr "tohu utu"
+
+#: models/location.py:241
+msgid "EVSE ID"
+msgstr ""
+
+#: models/location.py:256
+msgid "Physically blocked"
+msgstr ""
+
+#: models/location.py:258
+msgid "Inoperative"
+msgstr ""
+
+#: models/location.py:260
+msgid "Planned, will be operating soon"
+msgstr ""
+
+#: models/location.py:261
+msgid "Discontinued/removed"
+msgstr ""
+
+#: models/location.py:262
+msgid "Reserved for a particular EV driver"
+msgstr ""
+
+#: models/location.py:263
+msgid "No status information available (also used when offline)"
+msgstr ""
+
+#: models/location.py:265
+msgid "Status"
+msgstr ""
+
+#: models/location.py:267
+msgid "Capabilities"
+msgstr ""
+
+#: models/location.py:269
+#, fuzzy
+#| msgid "Information"
+msgid "Location"
+msgstr "Nga korero"
+
+#: models/location.py:331
+msgid "connector"
+msgstr ""
+
+#: models/location.py:332
+msgid "connectors"
+msgstr ""
+
+#: models/location.py:339
+msgid "Standard"
+msgstr ""
+
+#: models/location.py:341
+msgid "Format"
+msgstr ""
+
+#: models/location.py:343
+msgid "Power type"
+msgstr ""
+
+#: models/location.py:345
+msgid "Maximum voltage"
+msgstr ""
+
+#: models/location.py:346
+msgid "Maximum amperage"
+msgstr ""
+
+#: models/location.py:347
+msgid "Maximum electric power"
+msgstr ""
+
+#: models/location.py:350
+msgid "Tariffs"
+msgstr "Nga utu utu"
+
+#: models/location.py:352
+msgid "Terms and conditions"
+msgstr ""
 
 #: models/logging.py:7
 msgid "Full update"
@@ -441,8 +595,12 @@ msgstr ""
 #, python-brace-format
 msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
 msgstr ""
-"EVSE me te UID {evse_uid} kei te waahi UID {location_id} kaore i te "
-"mohiotia."
+"EVSE me te UID {evse_uid} kei te waahi UID {location_id} kaore i te mohiotia."
+
+#, fuzzy
+#~| msgid "Charging"
+#~ msgid "Charge Points"
+#~ msgstr "Te utu"
 
 #~ msgid "Invalid"
 #~ msgstr "Muhu"

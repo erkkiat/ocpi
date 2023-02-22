@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"POT-Creation-Date: 2023-02-22 19:14+0000\n"
 "PO-Revision-Date: 2023-02-21 17:11:48.719191\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,7 +16,8 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n==1) ? 0 : (n==2) ? 1 : (n != 8 && n != 11) ? 2 : 3;\n"
+"Plural-Forms: nplurals=4; plural=(n==1) ? 0 : (n==2) ? 1 : (n != 8 && n != "
+"11) ? 2 : 3;\n"
 "Translated-By: potranslator 1.1.5\n"
 
 #: admin.py:98
@@ -29,7 +30,7 @@ msgid "EVSE with this UID already exists in this or another Location"
 msgstr ""
 "Mae EVSE gyda'r UID hwn eisoes yn bodoli yn y Lleoliad hwn neu leoliad arall"
 
-#: choices.py:69
+#: choices.py:69 models/location.py:255
 msgid "Available"
 msgstr "Ar gael"
 
@@ -37,7 +38,7 @@ msgstr "Ar gael"
 msgid "Preparing"
 msgstr "Paratoi"
 
-#: choices.py:71
+#: choices.py:71 models/location.py:257
 msgid "Charging"
 msgstr "Codi tâl"
 
@@ -61,7 +62,7 @@ msgstr "Wedi'i gadw"
 msgid "Unavailable"
 msgstr "Ddim ar gael"
 
-#: choices.py:77
+#: choices.py:77 models/location.py:259
 msgid "Out of order"
 msgstr "Allan o drefn"
 
@@ -167,17 +168,7 @@ msgstr "Costau cadw lle"
 msgid "Costs for a reservation that expires"
 msgstr "Costau ar gyfer archeb sy'n dod i ben"
 
-#: context_processors.py:34
-#, fuzzy
-#| msgid "Charging"
-msgid "Charge Points"
-msgstr "Codi tâl"
-
-#: context_processors.py:42
-msgid "Tariffs"
-msgstr "Tariffau"
-
-#: context_processors.py:65
+#: context_processors.py:62
 msgid "GDPR tools"
 msgstr "Offer GDPR"
 
@@ -204,15 +195,179 @@ msgstr "Actif"
 msgid "Timezone \"%(value)s\" is unknown."
 msgstr "Cylchfa amser \"%(value)s\" yn anhysbys."
 
-#: models/location.py:216 models/location.py:221
+#: models/location.py:48
+#, fuzzy
+#| msgid "Information"
+msgid "location"
+msgstr "Gwybodaeth"
+
+#: models/location.py:49
+#, fuzzy
+#| msgid "Information"
+msgid "locations"
+msgstr "Gwybodaeth"
+
+#: models/location.py:82
+msgid "Name"
+msgstr ""
+
+#: models/location.py:85
+msgid "Address"
+msgstr ""
+
+#: models/location.py:88
+msgid "City"
+msgstr ""
+
+#: models/location.py:93
+msgid "Postal code"
+msgstr ""
+
+#: models/location.py:96
+msgid "State"
+msgstr ""
+
+#: models/location.py:99
+msgid "Country"
+msgstr ""
+
+#: models/location.py:102
+msgid "Latitude"
+msgstr ""
+
+#: models/location.py:103
+msgid "Longitude"
+msgstr ""
+
+#: models/location.py:132
+#, fuzzy
+#| msgid "Parking per hour"
+msgid "Parking type"
+msgstr "Parcio yr awr"
+
+#: models/location.py:141
+msgid "Operator"
+msgstr ""
+
+#: models/location.py:143
+msgid "Suboperator"
+msgstr ""
+
+#: models/location.py:145
+msgid "Owner"
+msgstr ""
+
+#: models/location.py:149
+msgid "Facilities"
+msgstr ""
+
+#: models/location.py:155
+msgid "Time zone"
+msgstr ""
+
+#: models/location.py:167 models/location.py:275 models/location.py:358
+#, fuzzy
+#| msgid "updated"
+msgid "Updated"
+msgstr "diweddaru"
+
+#: models/location.py:168 models/location.py:276 models/location.py:359
+#, fuzzy
+#| msgid "created"
+msgid "Created"
+msgstr "creu"
+
+#: models/location.py:223
 #, fuzzy
 #| msgid "Charging"
 msgid "charge point"
 msgstr "Codi tâl"
 
-#: models/location.py:217 models/location.py:222
+#: models/location.py:224
 msgid "charge points"
 msgstr "pwyntiau gwefru"
+
+#: models/location.py:241
+msgid "EVSE ID"
+msgstr ""
+
+#: models/location.py:256
+msgid "Physically blocked"
+msgstr ""
+
+#: models/location.py:258
+msgid "Inoperative"
+msgstr ""
+
+#: models/location.py:260
+msgid "Planned, will be operating soon"
+msgstr ""
+
+#: models/location.py:261
+msgid "Discontinued/removed"
+msgstr ""
+
+#: models/location.py:262
+msgid "Reserved for a particular EV driver"
+msgstr ""
+
+#: models/location.py:263
+msgid "No status information available (also used when offline)"
+msgstr ""
+
+#: models/location.py:265
+msgid "Status"
+msgstr ""
+
+#: models/location.py:267
+msgid "Capabilities"
+msgstr ""
+
+#: models/location.py:269
+#, fuzzy
+#| msgid "Information"
+msgid "Location"
+msgstr "Gwybodaeth"
+
+#: models/location.py:331
+msgid "connector"
+msgstr ""
+
+#: models/location.py:332
+msgid "connectors"
+msgstr ""
+
+#: models/location.py:339
+msgid "Standard"
+msgstr ""
+
+#: models/location.py:341
+msgid "Format"
+msgstr ""
+
+#: models/location.py:343
+msgid "Power type"
+msgstr ""
+
+#: models/location.py:345
+msgid "Maximum voltage"
+msgstr ""
+
+#: models/location.py:346
+msgid "Maximum amperage"
+msgstr ""
+
+#: models/location.py:347
+msgid "Maximum electric power"
+msgstr ""
+
+#: models/location.py:350
+msgid "Tariffs"
+msgstr "Tariffau"
+
+#: models/location.py:352
+msgid "Terms and conditions"
+msgstr ""
 
 #: models/logging.py:7
 msgid "Full update"
@@ -445,6 +600,11 @@ msgstr "Nid yw model car {car_id} yn ein cronfa ddata"
 msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
 msgstr ""
 "Mae EVSE gyda UID {evse_uid} yn lleoliad UID {location_id} yn anhysbys."
+
+#, fuzzy
+#~| msgid "Charging"
+#~ msgid "Charge Points"
+#~ msgstr "Codi tâl"
 
 #~ msgid "Invalid"
 #~ msgstr "Annilys"
