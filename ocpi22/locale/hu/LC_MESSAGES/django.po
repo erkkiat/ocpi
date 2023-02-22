@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:26.694268\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:10:01.198526\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: hu\n"
@@ -19,151 +19,434 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr ""
+"A csatlakozási szoftvernek ki kell választania egy tarifát, hogy a számlázás"
+" lehetséges legyen"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr ""
+"Az ezzel az UID-vel rendelkező EVSE már létezik ezen vagy egy másik helyen"
+
+#: choices.py:69
 msgid "Available"
 msgstr "Elérhető"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "Felkészülés"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Töltés"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "Jármű felfüggesztve"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "Töltővel felfüggesztve"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Végső"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Fenntartott"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Nem érhető el"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "Nem működik"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "Töltésre készül"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "A töltő az Ön számára van fenntartva"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "A töltési munkamenet leállítása"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "A töltő jelenleg használatban van"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Jelenleg nem lehet elindítani a töltést"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr "Nem lehet csatlakozni a töltésipont-kezelő rendszerhez"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "A tokennek nincs elegendő egyenlege a számlán"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "A tokent elfogadják"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "A tokenje már nem érvényes"
 
-#: choices.py:181
+#: choices.py:173
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Nem lehet csatlakozni a töltésipont-kezelő rendszerhez"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "A foglalást törölték"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "A töltő nem működik"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "Nem sikerült elindítani a töltést"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "A műveletet a töltő nem támogatja"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "A parancsot a töltő elutasította"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "Probléma lépett fel a foglalással"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "hétfő"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "kedd"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "szerda"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "csütörtök"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "péntek"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "szombat"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "vasárnap"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "A foglalás költségei"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "A lejáró foglalás költségei"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Töltés"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "Tarifák"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "GDPR eszközök"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "A válasz bármi lehet"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "partner"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "partnerek"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Aktív"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "A „%(value)s” időzóna ismeretlen."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Töltés"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "töltési pontok"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Teljes frissítés"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "Általános hibák"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "naplóbejegyzések"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "téma"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "készült ekkor"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "frissítve"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "Hibakeresés"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "Információ"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "Figyelem"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Hiba"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "Kritikai"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "szint"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "üzenet"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "válasz"
+
+#: models/session.py:41
+msgid "session"
+msgstr "ülés"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "üléseken"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Aktív"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Befejezve"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Érvénytelen"
+#: models/session.py:215
+msgid "Failed"
+msgstr "nem sikerült"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "Függőben levő"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Foglalás"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "tarifa"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "tarifák"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "valuta"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "Ad hoc fizetés"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "OLCSÓ profil"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "FAST profil"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "ZÖLD profil"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Normál profil"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "típus"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "adó nélküli minimális ár"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "minimális ár adóval"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "maximális adó nélküli ár"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "maximális ár áfával"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "frissítve"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "létre"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Ez a töltő helyi idő szerint történik"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "kWh"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Lakás"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Parkolás óránként"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Töltés"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/kWh"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "lakás"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/h"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/h parkolás"
+
+#: models/token.py:22
+msgid "token"
+msgstr "jelképes"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "zsetonok"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "A jelenlegi jelszó nem egyezik"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "A jelszó és a megerősítés eltér egymástól"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "A %(car_id)s autómodell nem szerepel adatbázisunkban"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "A(z) {email} felhasználó már létezik"
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "A jelszó sikeresen megváltozott"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "A felhasználót a GDPR követelményeinek megfelelően anonimizáltuk"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Az autómodell nincs kiválasztva"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "A(z) {car_id} autómodell nem szerepel adatbázisunkban"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr ""
+"A(z) {evse_uid} UID azonosítójú EVSE a(z) {location_id} UID helyen "
+"ismeretlen."
+
+#~ msgid "Invalid"
+#~ msgstr "Érvénytelen"

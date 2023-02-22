@@ -10,7 +10,6 @@ from django.contrib import admin, messages
 from django.contrib.auth.models import User
 
 from ocpi22.models.logging import LogEntry, ChildEvent
-from util import reverse
 from django.utils.html import format_html
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 
@@ -46,6 +45,7 @@ class TokenAdmin(admin.ModelAdmin):
     def customer_name(self, obj) -> str:
         if not obj.customer:
             return 'N/A'
+        from util import reverse
         return format_html(
             f'<a href="{reverse("admin:auth_user_change", args=[obj.customer.pk])}">'
             f'{obj.customer.first_name} {obj.customer.last_name}</a>'
@@ -139,6 +139,10 @@ class LocationAdmin(NestedModelAdmin):
             status=admin.VERTICAL
         )
 
+        formfield_overrides = {
+            models.TextField: {'classes': 'form-control'},
+        }
+
         def has_change_permission(self, request, obj=None) -> bool:
             if not super().has_change_permission(request, obj):
                 return False
@@ -213,6 +217,7 @@ class EvseAdmin(NestedModelAdmin):
 
     @staticmethod
     def location_url(evse):
+        from util import reverse
         return format_html("<a href='{url}'>{location}</a>",
                            url=reverse('admin:ocpi22_location_change', args=[evse.location.pk]),
                            location=str(evse.location))

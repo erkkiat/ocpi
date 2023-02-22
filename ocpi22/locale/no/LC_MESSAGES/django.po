@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:23.740455\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:06:42.480694\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: no\n"
@@ -19,151 +19,430 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr "Connector må ha en tariff valgt, slik at fakturering er mulig"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr ""
+"EVSE med denne UID-en eksisterer allerede på denne eller en annen plassering"
+
+#: choices.py:69
 msgid "Available"
 msgstr "Tilgjengelig"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "Forbereder lading"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Lader"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "Suspendert av kjøretøy"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "Suspendert av lader"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Etterbehandling"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Reservert"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Utilgjengelig"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "I ustand"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "Forbereder lading"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "Laderen er reservert for deg"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "Stopper ladeøkten"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "Laderen er for øyeblikket i bruk"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Kan ikke starte lading nå"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr "Kan ikke koble til administrasjonssystemet for ladepunkt"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "Tokenet har ikke nok saldo på kontoen"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "Tokenet er akseptert"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "Tokenet ditt er ikke lenger gyldig"
 
-#: choices.py:181
+#: choices.py:173
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Kan ikke koble til administrasjonssystemet for ladepunkt"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "Reservasjonen er kansellert"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "Laderen er ute av drift"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "Kunne ikke starte ladingen"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "Operasjonen støttes ikke av laderen"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "Kommandoen ble avvist av laderen"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "Det har vært et problem med reservasjonen"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "mandag"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "tirsdag"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "onsdag"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "Torsdag"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "fredag"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "lørdag"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "søndag"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "Kostnader for en reservasjon"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "Kostnader for en reservasjon som utløper"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Lader"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "Tariffer"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "GDPR-verktøy"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "Respons kan være hva som helst"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "samboer"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "partnere"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Aktiv"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "Tidssonen \"%(value)s\" er ukjent."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Lader"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "ladepunkter"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Full oppdatering"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "Generiske feil"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "loggoppføringer"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "emne"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "opprettet på"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "oppdatert på"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "Feilsøk"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "Informasjon"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "Advarsel"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Feil"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "Kritisk"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "nivå"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "beskjed"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "respons"
+
+#: models/session.py:41
+msgid "session"
+msgstr "økt"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "økter"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Aktiv"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Fullført"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Ugyldig"
+#: models/session.py:215
+msgid "Failed"
+msgstr "Mislyktes"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "Avventer"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Reservasjon"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "tariff"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "tariffer"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "valuta"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "Ad hoc betaling"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "BILLIG profil"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "RASK profil"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "GRØNN profil"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Vanlig profil"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "type"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "minstepris eksklusiv avgifter"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "minstepris inkludert avgifter"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "makspris eksklusiv avgifter"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "makspris inkludert mva"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "oppdatert"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "opprettet"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Dette er i lader lokal tid"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "kWh"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Flat"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Parkering per time"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Lader"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/kWh"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "flat"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/t"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/t parkering"
+
+#: models/token.py:22
+msgid "token"
+msgstr "token"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "tokens"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "Gjeldende passord stemmer ikke"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "Passord og bekreftelse skiller seg fra hverandre"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Bilmodell %(car_id)s ikke funnet fra databasen"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Brukeren {email} eksisterer allerede"
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "Passordet er endret"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "Brukeren er anonymisert i henhold til GDPR-kravene"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Bilmodellen er ikke valgt"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Bilmodell {car_id} ikke funnet fra databasen"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr "EVSE med UID {evse_uid} på stedet UID {location_id} er ukjent."
+
+#~ msgid "Invalid"
+#~ msgstr "Ugyldig"

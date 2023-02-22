@@ -1,4 +1,5 @@
 {% load i18n static %}
+{% trans section.name as section_name %}
 <div class="card p-0 mb-3 br-color-grey">
     <div class="card-body p-2">
         <div class="feature-box feature-box-style-2">
@@ -6,16 +7,16 @@
                 <i class="fa {{ section.icon }} text-7"></i>
             </div>
             <div class="feature-box-info">
-                    <h4 class="font-weight-bold text-4-5 mb-2">
-                        <a href="{{ section.list_url }}" class="link">{{ section.title }}</a>
-                        {% if section.add_url %}<a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary" href="{{ section.add_url }}">
-                            <i class="fa fa-circle-plus"></i>
-                        </a>{% endif %}
-                        <a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary"
-                           href="#">
-                            <i class="fa fa-line-chart"></i>
-                        </a>
-                    </h4>
+                <h4 class="font-weight-bold text-4-5 mb-2">
+                    <a href="{{ section.list_url }}" class="link">{{ section_name|title }}</a>
+                    {% if section.add_url %}<a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary" href="{{ section.add_url }}">
+                        <i class="fa fa-circle-plus"></i>
+                    </a>{% endif %}
+                    <a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary"
+                       href="#">
+                        <i class="fa fa-line-chart"></i>
+                    </a>
+                </h4>
                 {% for item in section.items|slice:":5" %}
                 <div>
                     {% if item.status_display == 'ok' %}<i class="fa fa-circle-check text-success text-1"></i>

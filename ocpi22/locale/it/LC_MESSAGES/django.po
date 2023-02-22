@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:24.753873\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:08:13.964732\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: it\n"
@@ -19,151 +19,432 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr ""
+"Il connettore deve avere una tariffa selezionata, in modo che sia possibile "
+"la fatturazione"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr "EVSE con questo UID esiste già in questa o in un'altra posizione"
+
+#: choices.py:69
 msgid "Available"
 msgstr "A disposizione"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "Prepararsi a caricare"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Ricarica"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "Sospeso dal veicolo"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "Sospeso dal caricatore"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Finitura"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Riservato"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Non disponibile"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "Fuori servizio"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "Prepararsi a caricare"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "Il caricabatterie è riservato a te"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "Interruzione della sessione di ricarica"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "Il caricatore è attualmente in uso"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Impossibile avviare la ricarica in questo momento"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr "Impossibile connettersi al sistema di gestione dei punti di ricarica"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "Il token non ha abbastanza saldo sul conto"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "Il token è accettato"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "Il tuo token non è più valido"
 
-#: choices.py:181
+#: choices.py:173
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Impossibile connettersi al sistema di gestione dei punti di ricarica"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "La prenotazione è stata cancellata"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "Il caricatore non è operativo"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "Impossibile avviare la ricarica"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "L'operazione non è supportata dal caricatore"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "Il comando è stato rifiutato dal caricatore"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "Si è verificato un problema con la prenotazione"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "Lunedi"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "Martedì"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "Mercoledì"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "Giovedì"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "Venerdì"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "Sabato"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "Domenica"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "Costi per una prenotazione"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "Costi per una prenotazione che scade"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Ricarica"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "Tariffe"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "Strumenti GDPR"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "La risposta può essere qualsiasi cosa"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "compagno"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "partner"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Attivo"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "Il fuso orario \"%(value)s\" è sconosciuto."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Ricarica"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "punti di ricarica"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Aggiornamento completo"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "Errori generici"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "voci di registro"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "argomento"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "creato"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "aggiornato il"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "Debug"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "Informazione"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "Avvertimento"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Errore"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "Critico"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "livello"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "Messaggio"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "risposta"
+
+#: models/session.py:41
+msgid "session"
+msgstr "sessione"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "sessioni"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Attivo"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Completato"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Non valido"
+#: models/session.py:215
+msgid "Failed"
+msgstr "Fallito"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "In attesa di"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Prenotazione"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "tariffa"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "tariffe"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "valuta"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "Pagamento ad hoc"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "Profilo ECONOMICO"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "Profilo VELOCE"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "Profilo VERDE"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Profilo regolare"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "tipo"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "prezzo minimo tasse escluse"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "prezzo minimo tasse incluse"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "prezzo massimo tasse escluse"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "prezzo massimo tasse incluse"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "aggiornato"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "creato"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Questo è nell'ora locale del caricabatterie"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "kWh"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Piatto"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Parcheggio all'ora"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Ricarica"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/kWh"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "Piatto"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/H"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/h parcheggio"
+
+#: models/token.py:22
+msgid "token"
+msgstr "gettone"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "gettoni"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "La password corrente non corrisponde"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "Password e conferma differiscono tra loro"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Modello di auto %(car_id)s non trovato dal database"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "L'utente {email} esiste già"
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "La password è stata modificata correttamente"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "L'utente è stato reso anonimo in base ai requisiti GDPR"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Il modello dell'auto non è stato selezionato"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Modello di auto {car_id} non trovato dal database"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr ""
+"EVSE con UID {evse_uid} nella posizione UID {location_id} sconosciuto."
+
+#~ msgid "Invalid"
+#~ msgstr "Non valido"

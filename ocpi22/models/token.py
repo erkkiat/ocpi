@@ -1,11 +1,11 @@
-from datetime import datetime
-
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 from django.utils.html import format_html
-from util import reverse
+from django.utils.translation import gettext as _
+
+import util
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.util import ModelUtilMixin
@@ -17,6 +17,14 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     """
     A Token structure with data owned by the eMSP
     """
+
+    class Meta:
+        verbose_name = _('token')
+        verbose_name_plural = _('tokens')
+        permissions = [
+            ("charge_with_any_token",
+             "Can start and stop charging with any token ID (even if it's not in the database)"),
+        ]
 
     ocpi_serializer_class = 'ocpi22.ocpi.serializers.TokenSerializer'
     ocpi_module_name = OcpiModuleEnum.TOKENS
@@ -134,7 +142,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self, version=None):
-        return reverse('token-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return util.reverse('token-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def total_balance_float(self) -> float:
         if self.customer:

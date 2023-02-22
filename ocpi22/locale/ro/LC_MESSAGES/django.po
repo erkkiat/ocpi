@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:25.287648\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:08:46.752388\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: ro\n"
@@ -19,153 +19,433 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr ""
+"Conectorul trebuie să aibă un Tarif selectat, astfel încât facturarea să fie"
+" posibilă"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr "EVSE cu acest UID există deja în această locație sau în altă locație"
+
+#: choices.py:69
 msgid "Available"
 msgstr "Disponibil"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "Se pregătește pentru încărcare"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Încărcare"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "Suspendat de vehicul"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "Suspendat de încărcător"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Finisare"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Rezervat"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Indisponibil"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "Scos din uz"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "Se pregătește pentru încărcare"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "Încărcătorul vă este rezervat"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "Oprirea sesiunii de încărcare"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "Încărcătorul este în uz momentan"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Nu se poate începe încărcarea în acest moment"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr ""
 "Nu se poate conecta la sistemul de gestionare a punctelor de încărcare"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "Tokenul nu are suficient sold în cont"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "Jetonul este acceptat"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "Jetonul dvs. nu mai este valabil"
 
-#: choices.py:181
+#: choices.py:173
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr ""
 "Nu se poate conecta la sistemul de gestionare a punctelor de încărcare"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "Rezervarea a fost anulată"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "Încărcătorul nu funcționează"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "Nu s-a pornit încărcarea"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "Funcționarea nu este acceptată de încărcător"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "Comanda a fost respinsă de încărcător"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "A apărut o problemă cu rezervarea"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "luni"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "marţi"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "miercuri"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "joi"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "vineri"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "sâmbătă"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "duminică"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "Costuri pentru o rezervare"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "Costuri pentru o rezervare care expiră"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Încărcare"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "Tarife"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "Instrumente GDPR"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "Răspunsul poate fi orice"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "partener"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "parteneri"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Activ"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "Fusul orar „%(value)s” este necunoscut."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Încărcare"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "puncte de încărcare"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Actualizare completă"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "Erori generice"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "intrări de jurnal"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "subiect"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "creat in"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "actualizat la"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "Depanați"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "informație"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "Avertizare"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Eroare"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "Critic"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "nivel"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "mesaj"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "raspuns"
+
+#: models/session.py:41
+msgid "session"
+msgstr "sesiune"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "sesiuni"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Activ"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Efectuat"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Invalid"
+#: models/session.py:215
+msgid "Failed"
+msgstr "A eșuat"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "In asteptarea"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Rezervare"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "tarifar"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "tarifele"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "valută"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "Plata ad-hoc"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "Profil IEFTIN"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "Profil FAST"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "Profil VERDE"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Profil obișnuit"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "tip"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "pret minim fara taxe"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "pret minim cu taxe incluse"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "pretul maxim fara taxe"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "pret maxim cu taxe incluse"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "actualizat"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "creată"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Acesta este la ora locală a încărcătorului"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "kWh"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Apartament"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Parcare pe oră"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Încărcare"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/kWh"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "apartament"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/h"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/h parcare"
+
+#: models/token.py:22
+msgid "token"
+msgstr "jeton"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "jetoane"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "Parola actuală nu se potrivește"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "Parola și confirmarea diferă unele de altele"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Modelul de mașină %(car_id)s nu a fost găsit din baza de date"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Utilizatorul {email} există deja"
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "Parola a fost schimbată cu succes"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "Utilizatorul a fost anonimizat conform cerințelor GDPR"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Modelul de mașină nu a fost selectat"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Modelul de mașină {car_id} nu a fost găsit din baza de date"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr "EVSE cu UID {evse_uid} la locație UID {location_id} este necunoscut."
+
+#~ msgid "Invalid"
+#~ msgstr "Invalid"

@@ -1,4 +1,4 @@
-{% load i18n static %}<!DOCTYPE html>
+{% load i18n static country_flags %}<!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
 <html lang="{{ LANGUAGE_CODE|default:"en-us" }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
 <head>
@@ -22,8 +22,6 @@
 
 		<!-- Mobile Metas -->
 		<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1.0, shrink-to-fit=no">
-
-
 
 		<!-- Web Fonts  -->
 		<link id="googleFonts" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700,800%7CShadows+Into+Light&display=swap" rel="stylesheet" type="text/css">
@@ -99,10 +97,55 @@
 										<div class="header-nav-main header-nav-main-effect-1 header-nav-main-sub-effect-1">
 											<nav class="collapse">
 												<ul class="nav nav-pills" id="mainNav">
-													<li class="">
+													<li>
 														<a class="dropdown-item dropdown-toggle{% if not module_name %} active{% endif %}" href="{% url 'admin:index' %}">
 															Home
 														</a>
+													</li>
+													<li class="dropdown dropdown-mega">
+														<a class="dropdown-item dropdown-toggle" href="{% url 'admin:index' %}">
+															<i class="fa fa-globe" style="font-size: 1rem; vertical-align: middle; padding-right: .3em"></i><span>{% trans 'Language' %}</span>
+														</a>
+														<ul class="dropdown-menu">
+															{% get_current_language as LANGUAGE_CODE %}
+															{% get_available_languages as LANGUAGES %}
+															{% get_language_info_list for LANGUAGES as languages %}
+															<div class="dropdown-mega-content">
+																<div class="row">
+																	<div class="col-3">
+																		{% for language in languages|slice:":12" %}
+																		<li>
+																			<a class="dropdown-item" href="{% url 'admin_set_language' %}?language={{ language.code }}">
+																				<img src="https://flagcdn.com/{{ language.code }}.svg" width="16" alt="{{ language.name_local }}" class="mr-1">
+																				{{ language.name_local }}
+																			</a>
+																		</li>
+																		{% endfor %}
+																	</div>
+																	<div class="col-3">
+																		{% for language in languages|slice:"12:24" %}
+																		<li>
+																			<a class="dropdown-item" href="{% url 'admin_set_language' %}?language={{ language.code }}">
+																				<img src="https://flagcdn.com/{{ language.code }}.svg" width="16" alt="{{ language.name_local }}" class="mr-1">
+																				{{ language.name_local }}
+																			</a>
+																		</li>
+																		{% endfor %}
+																	</div>
+																	<div class="col-3">
+																		{% for language in languages|slice:"24:" %}
+																		<li>
+																			<a class="dropdown-item" href="{% url 'admin_set_language' %}?language={{ language.code }}">
+																				<img src="https://flagcdn.com/{{ language.code }}.svg" width="16" alt="{{ language.name_local }}" class="mr-1">
+																				{{ language.name_local }}
+																			</a>
+																		</li>
+																		{% endfor %}
+																	</div>
+																</div>
+															</div>
+														</ul>
+
 													</li>
 													{% if user.is_authenticated %}
 													{% for section in sections %}
@@ -206,7 +249,6 @@
     <!-- END Header -->
 {% endcomment %}
     {% endif %}
-
 
     <div class="main shifted" id="main">
         <div class="content">

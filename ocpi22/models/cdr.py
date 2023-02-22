@@ -6,7 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.html import format_html
-from util import reverse
+import util
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.grafana import metrics
@@ -71,7 +71,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     def session_url(self):
         return format_html(
-            f'<a href="{reverse("session-by-id", args=[self.session_id])}">{self.session_id}</a>'
+            f'<a href="{util.reverse("session-by-id", args=[self.session_id])}">{self.session_id}</a>'
         )
 
     # Token used to start this charging session, includes all the relevant information to identify the unique token.
@@ -198,7 +198,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
                f'{hours_minutes(self.total_time)}'
 
     def get_absolute_url(self, version=None):
-        return reverse('cdr-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return util.reverse('cdr-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def total_cost(self):
         return f'{"-" if self.credit else ""}' \

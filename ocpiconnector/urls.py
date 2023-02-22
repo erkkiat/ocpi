@@ -21,7 +21,7 @@ from ocpi22.models.credentials import new_connection
 from ocpi22.msp.api import MSPRouter, MspRoamingViewSet, MspTokenViewSet, MspAuthorizeWebhookViewSet, \
     MspTariffQuickViewSet, MspChargePointStatusWebhookViewSet, MspSessionWebhookViewSet
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
-from ocpi22.views import home, admin_index
+from ocpi22.views import home, admin_index, set_language
 from ocpiconnector.ocpi_identities import ocpi_platform
 from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
@@ -70,9 +70,11 @@ root_router = RootRouter()
 common_router = BaseRouter()
 common_router.register(r'', VersionsViewSet, basename='base')
 
-urlpatterns = (
 # urlpatterns = i18n_patterns(
+
+urlpatterns = (
     path('18n/', include('django.conf.urls.i18n')),
+    path('lang/', set_language, name='admin_set_language'),
     path('', home),
     path('', include(root_router.urls), name='root-view'),
     path('reports/cpo/sessions/', ChargingSessionsReport.as_view()),

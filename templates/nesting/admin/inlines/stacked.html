@@ -9,7 +9,7 @@
     data-inline-model="{{ inline_admin_formset.inline_model_id }}">
 
     {% ifinlineclasses %}<fieldset class="djn-fieldset module {{ inline_admin_formset.classes }}">{% endifinlineclasses %}
-    <h2>
+    <h2 class="my-1 py-1">
         {% if inline_admin_formset.opts.title %}{{ inline_admin_formset.opts.title }}{% else %}{{ inline_admin_formset.opts.verbose_name_plural|capfirst }}{% endif %}
     </h2>
 
@@ -30,18 +30,18 @@
                  {% endif %}
                  id="{{ inline_admin_formset.formset.prefix }}-{% if forloop.last and inline_admin_formset.has_add_permission %}empty{% else %}{{ inline_admin_form.form|form_index }}{% endif %}">
                  
-                <h3 class="{% if not inline_opts.sortable_options or not inline_opts.sortable_options.disabled %} djn-drag-handler{% endif %}">
+                <h3 class="mt-3 mb-0 pb-0 {% if not inline_opts.sortable_options or not inline_opts.sortable_options.disabled %} djn-drag-handler{% endif %}">
                     <b>{{ inline_admin_formset.opts.verbose_name|capfirst }}:</b>&nbsp;<span class="inline_label">{% if inline_admin_form.original %}{{ inline_admin_form.original }}{% if inline_admin_form.model_admin.show_change_link and inline_admin_form.model_admin.has_registered_model %} <a href="{% url inline_admin_form.model_admin.opts|admin_urlname:'change' inline_admin_form.original.pk|admin_urlquote %}" class="{% if inline_admin_formset.has_change_permission %}inlinechangelink{% else %}inlineviewlink{% endif %}">{% if inline_admin_formset.has_change_permission %}{% trans "Change" %}{% else %}{% trans "View" %}{% endif %}</a>{% endif %}
                     {% else %}#{{ forloop.counter }}{% endif %}</span>
                           {# {% if inline_admin_form.show_url %}<a href="{{ inline_admin_form.absolute_url }}">{% trans "View on site" %}</a>{% endif %} #}
+                </h3>
                         {% if inline_admin_formset.formset.can_delete  %}
                         {% if inline_admin_form.original %}
-                            <div class="delete d-block text-0 djn-delete-handler {{ inline_admin_formset.handler_classes|join:" " }}">{{ inline_admin_form.deletion_field.field }} {{ inline_admin_form.deletion_field.label_tag }}</span>
+                            <div class="delete mb-3 text-0 djn-delete-handler {{ inline_admin_formset.handler_classes|join:" " }}">{{ inline_admin_form.deletion_field.field }} {{ inline_admin_form.deletion_field.label_tag }}</div>
                         {% else %}
-                            <span><a class="inline-deletelink text-0 d-block djn-remove-handler {{ inline_admin_formset.handler_classes|join:" " }}" href="javascript:void(0)">Remove</a></span>
+                            <a class="btn btn-sm col-1 my-3 btn-outline-primary d-block djn-remove-handler {{ inline_admin_formset.handler_classes|join:" " }}" href="javascript:void(0)">{% trans 'Remove' %}</a>
                         {% endif %}
                         {% endif %}
-                </h3>
 
                 {% if inline_admin_form.form.non_field_errors %}
                     <div class="errorlist">

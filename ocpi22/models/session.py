@@ -16,7 +16,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from util import reverse
+import util
 
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum
 from ocpi22.models.location import Location, Evse, Connector
@@ -38,6 +38,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     """
 
     class Meta:
+        verbose_name = _('session')
+        verbose_name_plural = _('sessions')
         constraints = [
             models.UniqueConstraint(fields=['uid', 'party_id', 'country_code'],
                                     name='session_party_id_uid_country_code'),
@@ -250,7 +252,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return f'{self.location.name} - {self.kwh:.1f} kWh'
 
     def get_admin_url(self):
-        return build_absolute_uri(reverse('admin:ocpi22_session_change', args=(self.pk,)))
+        return build_absolute_uri(util.reverse('admin:ocpi22_session_change', args=(self.pk,)))
 
     @property
     def status_display(self):
@@ -350,7 +352,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # f'{self.connector.get_standard_display() if self.connector else "no connector"}'
 
     def get_absolute_url(self, version=None):
-        return reverse('session-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return util.reverse('session-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def total_time(self):
         if self.status == self.INVALID:

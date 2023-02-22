@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:23.899271\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:07:30.714439\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: mi\n"
@@ -18,151 +18,431 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr "Me whai utu te Kaihono, kia taea ai te utu nama"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr "Ko te EVSE me tenei UID kei tenei waahi ranei"
+
+#: choices.py:69
 msgid "Available"
 msgstr "Kei te waatea"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "Te whakarite"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Te utu"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "I whakatarewahia e te waka"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "I whakatarewahia e te rihi"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Whakaoti"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Kua rahuitia"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Kāore i te wātea"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "Kei te ota"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "E whakarite ana ki te utu"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "Kua rahuitia te riihini mo koe"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "Whakamutua te utu i te waahi"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "Kei te whakamahia te rihi i tenei wa"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Kaore e taea te tiimata ki te utu i tenei wa"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr "Kaore e taea te hono atu ki te punaha whakahaere tohu utu"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "Ko te tohu kaore i te nui te toenga i runga i te kaute"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "Ka whakaaetia te tohu"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "Kua kore to tohu e whai mana"
 
-#: choices.py:181
+#: choices.py:173
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "He hapa kawa ki te punaha whakahaere tohu utu CPO"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "Kua whakakorehia te rahui"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "Kare e mahi ana te rihi"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "I rahua te tiimata i te utu"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "Ko te mahi kaore i te tautokohia e te rihi"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "I paopaohia te whakahau e te riihi"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "Kua raru te rahui"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "Mane"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "Turei"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "Wenerei"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "Rāpare"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "Paraire"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "Rāhoroi"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "Rātapu"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "Nga utu mo te rahui"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "Nga utu mo te rahui ka pau"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Te utu"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "Nga utu utu"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "Nga taputapu GDPR"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "Ko te whakautu ka taea te aha"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "hoa"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "hoa"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Hohe"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "Rohewā \"%(value)s\" kāore i te mōhiotia."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Te utu"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "tohu utu"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Whakahoutanga katoa"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "Nga hapa whanui"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "urunga rangitaki"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "kaupapa"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "hangaia i runga"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "whakahoutia i runga"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "Patuiro"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "Nga korero"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "Whakatupato"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Hapa"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "Arohaehae"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "taumata"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "karere"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "whakautu"
+
+#: models/session.py:41
+msgid "session"
+msgstr "hui"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "wātū"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Hohe"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Kua oti"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Muhu"
+#: models/session.py:215
+msgid "Failed"
+msgstr "I rahua"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "Tarewa ana"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Rahui"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "utu utu"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "utu"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "moni"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "Utu noa"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "kōtaha CHEAP"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "Kōtaha tere"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "kōtaha GREEN"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Kōtaha auau"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "momo"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "utu iti haunga taake"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "utu iti tae atu ki te taake"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "utu mōrahi hāunga tāke"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "utu teitei tae atu ki te taake"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "whakahoutia"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "hanga"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Kei roto tenei i te wa o te rohe"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "kWh"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Papatahi"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Te waka waka mo ia haora"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Te utu"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/kWh"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "papatahi"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/h"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/h waka waka"
+
+#: models/token.py:22
+msgid "token"
+msgstr "tohu"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "tohu"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "Karekau te kupuhipa o naianei i te taurite"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "He rereke te kupuhipa me te whakau i tetahi ki tetahi"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr ""
 "Ko te tauira waka %(car_id)s karekau i roto i ta maatau putunga raraunga"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Kei te tīariari kē te kaiwhakamahi {email}."
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "Kua huri pai te kupuhipa"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "Kua whakaingoatia te kaiwhakamahi i runga i nga whakaritenga GDPR"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Ko te tauira waka kaore ano kia tohua"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr ""
 "Ko te tauira motoka {car_id} karekau i roto i ta maatau putunga raraunga"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr ""
+"EVSE me te UID {evse_uid} kei te waahi UID {location_id} kaore i te "
+"mohiotia."
+
+#~ msgid "Invalid"
+#~ msgstr "Muhu"

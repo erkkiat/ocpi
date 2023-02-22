@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:25.630956\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:09:08.439441\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: uk\n"
@@ -19,151 +19,430 @@ msgstr ""
 "Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != 11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || (n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr ""
+"Конектор повинен мати обраний тариф, щоб можна було виставляти рахунки"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr "EVSE з цим UID вже існує в цьому чи іншому Розташуванні"
+
+#: choices.py:69
 msgid "Available"
 msgstr "Доступний"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "Підготовка"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Зарядка"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "Підвішений транспортним засобом"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "Підвішений зарядним пристроєм"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Оздоблення"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Зарезервований"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Недоступно"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "Вийшов з ладу"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "Підготовка до зарядки"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "Зарядний пристрій зарезервовано для вас"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "Припинення сеансу зарядки"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "Зараз зарядний пристрій використовується"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Наразі неможливо почати зарядку"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr "Неможливо підключитися до системи керування точками заряджання"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "Токену недостатньо балансу на рахунку"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "Токен прийнято"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "Ваш маркер більше не дійсний"
 
-#: choices.py:181
+#: choices.py:173
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Неможливо підключитися до системи керування точками заряджання"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "Бронювання скасовано"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "Зарядний пристрій не працює"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "Не вдалося розпочати зарядку"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "Операція не підтримується зарядним пристроєм"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "Команда була відхилена зарядним пристроєм"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "Виникла проблема з бронюванням"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "понеділок"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "вівторок"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "Середа"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "четвер"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "П'ятниця"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "Субота"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "неділя"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "Витрати на бронювання"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "Витрати на бронювання, термін дії якого закінчується"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Зарядка"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "Тарифи"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "інструменти GDPR"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "Відповідь може бути якою завгодно"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "партнер"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "партнери"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Активний"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "Часовий пояс \"%(value)s\" невідомий."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Зарядка"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "зарядні точки"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Повне оновлення"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "Загальні помилки"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "записи журналу"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "тема"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "створено на"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "оновлено"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "Відлагоджувати"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "Інформація"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "УВАГА"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Помилка"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "Критичний"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "рівень"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "повідомлення"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "відповідь"
+
+#: models/session.py:41
+msgid "session"
+msgstr "сесії"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "сесії"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Активний"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Завершено"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Недійсний"
+#: models/session.py:215
+msgid "Failed"
+msgstr "Не вдалося"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "Очікується"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Бронювання"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "тариф"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "тарифи"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "валюта"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "Спеціальна оплата"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "ДЕШЕВО профіль"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "Профіль FAST"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "ЗЕЛЕНИЙ профіль"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Звичайний профіль"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "типу"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "мінімальна ціна без податку"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "мінімальна ціна з податком"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "максимальна ціна без податку"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "максимальна ціна з податком"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "оновлено"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "створений"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Це за місцевим часом зарядного пристрою"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "кВт/год"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Плоский"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Стоянка за годину"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Зарядка"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/кВт-год"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "плоский"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/год"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/год паркування"
+
+#: models/token.py:22
+msgid "token"
+msgstr "жетон"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "жетони"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "Поточний пароль не збігається"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "Пароль і підтвердження відрізняються один від одного"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Модель автомобіля %(car_id)s відсутня в нашій базі даних"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Користувач {email} уже існує"
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "Пароль успішно змінено"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "Користувача було анонімно відповідно до вимог GDPR"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Модель автомобіля не обрана"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Модель автомобіля {car_id} відсутня в нашій базі даних"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr "EVSE з UID {evse_uid} у місці UID {location_id} невідомий."
+
+#~ msgid "Invalid"
+#~ msgstr "Недійсний"

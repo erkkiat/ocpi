@@ -17,7 +17,6 @@ from django.db.models import Q
 from django.db.models.signals import pre_save, pre_delete
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
-from util import reverse
 from django.utils import timezone
 
 from ocpi22 import choices
@@ -167,6 +166,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
             raise ValidationError(serializer.errors)
 
     def get_admin_url(self):
+        from util import reverse
         return build_absolute_uri(reverse('admin:ocpi22_credentials_change', args=[self.pk]))
 
     @property
@@ -251,6 +251,7 @@ def new_connection(request):
             logging.error(msg, request)
             messages.error(request, msg)
 
+    from util import reverse
     return HttpResponseRedirect(reverse('admin:ocpi22_credentials_changelist'))
 
 

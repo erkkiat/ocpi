@@ -13,7 +13,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext as _
 
 from ocpi22 import choices
-from util import reverse
+import util
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.models import Facility, Capability
@@ -172,13 +172,13 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self, version=None):
-        return reverse('location-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return util.reverse('location-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def get_admin_url(self):
-        return build_absolute_uri(reverse('admin:ocpi22_location_change', args=(self.pk,)))
+        return build_absolute_uri(util.reverse('admin:ocpi22_location_change', args=(self.pk,)))
 
     def get_quick_url(self):
-        return reverse('quick-location-by-id', args=[self.uid])
+        return util.reverse('quick-location-by-id', args=[self.uid])
 
     def street_address(self):
         return f'{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}'
@@ -190,7 +190,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
         return format_html(
             '<hr style="margin: 4px">'.join(
                 [
-                    f'<a href="{reverse("admin:ocpi22_evse_change", args=[e.pk])}">{str(e)}</a>'
+                    f'<a href="{util.reverse("admin:ocpi22_evse_change", args=[e.pk])}">{str(e)}</a>'
                     for e in self.evses.all()
                 ]
             )
@@ -213,6 +213,8 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
 
 class Evse(models.Model, ModelUtilMixin):
     class Meta:
+        verbose_name = _('charge point')
+        verbose_name_plural = _('charge points')
         constraints = [
             models.UniqueConstraint(fields=['uid', 'location'], name='evse_party_uid'),
         ]
@@ -278,7 +280,7 @@ class Evse(models.Model, ModelUtilMixin):
 
     def get_absolute_url(self, version=None):
         try:
-            return reverse('location-by-evse-id',
+            return util.reverse('location-by-evse-id',
                            args=[version or '2.2.1', self.location.country_code, self.location.party_id,
                                  self.location.uid, self.uid])
         except NoReverseMatch:
@@ -286,14 +288,14 @@ class Evse(models.Model, ModelUtilMixin):
 
     def get_cpo_url(self):
         try:
-            return reverse('cpo-evse-by-id',
+            return util.reverse('cpo-evse-by-id',
                            args=[self.uid])
         except NoReverseMatch:
             return ''
 
     def get_status_url(self):
         try:
-            return reverse('cpo-evse-by-id',
+            return util.reverse('cpo-evse-by-id',
                            args=[self.uid])
         except NoReverseMatch:
             return ''
@@ -368,7 +370,7 @@ class Connector(models.Model, ModelUtilMixin):
         return tariffs
 
     def get_admin_url(self):
-        return build_absolute_uri(reverse('admin:ocpi22_evse_change', args=(self.evse.pk,)))
+        return build_absolute_uri(util.reverse('admin:ocpi22_evse_change', args=(self.evse.pk,)))
 
     @property
     def issue_parent(self):

@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:28.887556\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:11:59.810453\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: tr\n"
@@ -19,151 +19,431 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr ""
+"Faturalamanın yapılabilmesi için bağlayıcının bir Tarife'ye sahip olması "
+"gerekir"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr "Bu UID'ye sahip EVSE bu veya başka bir Konumda zaten var"
+
+#: choices.py:69
 msgid "Available"
 msgstr "Mevcut"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "hazırlanıyor"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Doluyor"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "Araç tarafından askıya alındı"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "Şarj cihazı tarafından askıya alındı"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Bitiricilik"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Rezerve"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Kullanım dışı"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "Hizmet dışı"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "Şarj etmeye hazırlanıyor"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "Şarj cihazı sizin için ayrılmıştır"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "Şarj oturumunu durdurma"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "Şarj cihazı şu anda kullanımda"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Şu anda şarj işlemi başlatılamıyor"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr "Şarj noktası yönetim sistemine bağlanılamıyor"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "Jeton hesapta yeterli bakiyeye sahip değil"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "jeton kabul edildi"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "Simgeniz artık geçerli değil"
 
-#: choices.py:181
+#: choices.py:173
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Şarj noktası yönetim sistemine bağlanılamıyor"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "rezervasyon iptal edildi"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "şarj cihazı çalışmıyor"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "Şarj işlemi başlatılamadı"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "İşlem şarj cihazı tarafından desteklenmiyor"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "Komut, şarj cihazı tarafından reddedildi"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "Rezervasyonla ilgili bir sorun oluştu"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "Pazartesi"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "Salı"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "Çarşamba"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "Perşembe"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "Cuma"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "Cumartesi"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "Pazar"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "Rezervasyon maliyetleri"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "Süresi dolan bir rezervasyonun maliyeti"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Doluyor"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "tarifeler"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "GDPR araçları"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "Yanıt herhangi bir şey olabilir"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "ortak"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "ortaklar"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Aktif"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "\"%(value)s\" saat dilimi bilinmiyor."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Doluyor"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "şarj noktaları"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Tam güncelleme"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "genel hatalar"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "günlük girişleri"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "başlık"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "oluşturuldu"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "tarihinde güncellendi"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "hata ayıklama"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "Bilgi"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "Uyarı"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Hata"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "kritik"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "seviye"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "İleti"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "cevap"
+
+#: models/session.py:41
+msgid "session"
+msgstr "oturum"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "oturumlar"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Aktif"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Tamamlanmış"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Geçersiz"
+#: models/session.py:215
+msgid "Failed"
+msgstr "Arızalı"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "Askıda olması"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Rezervasyon"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "tarife"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "tarifeler"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "para birimi"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "geçici ödeme"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "UCUZ profil"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "HIZLI profil"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "YEŞİL profil"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Normal profil"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "tip"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "vergi hariç asgari fiyat"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "vergi dahil asgari fiyat"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "vergi hariç maksimum fiyat"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "vergi dahil maksimum fiyat"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "güncellenmiş"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "yaratıldı"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Bu, şarj cihazının yerel saatinde"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "kWh"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Düz"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Saat başına otopark"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Doluyor"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/kWh"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "düz"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/H"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/ saat park etme"
+
+#: models/token.py:22
+msgid "token"
+msgstr "jeton"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "belirteçler"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "Mevcut şifre eşleşmiyor"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "Şifre ve onay birbirinden farklı"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Araba modeli %(car_id)s veritabanımızda yok"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "{email} kullanıcısı zaten var"
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "Şifre başarıyla değiştirildi"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "Kullanıcı, GDPR gerekliliklerine göre anonimleştirildi"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Araba modeli seçilmedi"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "{car_id} araba modeli veritabanımızda yok"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr "{location_id} konumundaki UID'de {evse_uid} UID'li EVSE bilinmiyor."
+
+#~ msgid "Invalid"
+#~ msgstr "Geçersiz"

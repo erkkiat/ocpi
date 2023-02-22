@@ -11,7 +11,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.html import format_html
 from multiselectfield import MultiSelectField
-from util import reverse
+import util
 
 from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum
@@ -33,6 +33,10 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_module_name = OcpiModuleEnum.TARIFFS
     ocpi_object_owner = 'CPO'
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')
+
+    class Meta:
+        verbose_name = _('tariff')
+        verbose_name_plural = _('tariffs')
 
     # MySQL didn't support Q-conditions
     # class Meta:
@@ -60,30 +64,31 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
 
     # ISO-4217 code of the currency of this tariff
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=settings.DEFAULT_CURRENCY)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=settings.DEFAULT_CURRENCY,
+                                verbose_name=_('currency'))
 
     # Defines the type of the tariff. This allows for distinction in case of given Charging Preferences.
     # When omitted, this tariff is valid for all sessions.
     TYPE_CHOICES = (
         # Used to describe that a Tariff is valid when ad-hoc payment is used at
         # the Charge Point (for example: Debit or Credit card payment terminal).
-        ('AD_HOC_PAYMENT', 'Ad hoc payment'),
+        ('AD_HOC_PAYMENT', _('Ad hoc payment')),
 
         # Used to describe that a Tariff is valid when Charging Preference: CHEAP is set for the session.
-        ('PROFILE_CHEAP', 'CHEAP profile'),
+        ('PROFILE_CHEAP', _('CHEAP profile')),
 
         # Used to describe that a Tariff is valid when Charging Preference: FAST is set for the session.
-        ('PROFILE_FAST', 'FAST profile'),
+        ('PROFILE_FAST', _('FAST profile')),
 
         # Used to describe that a Tariff is valid when Charging Preference: GREEN is set for the session.
-        ('PROFILE_GREEN', 'GREEN profile'),
+        ('PROFILE_GREEN', _('GREEN profile')),
 
         # Used to describe that a Tariff is valid when using an RFID, without any Charging Preference,
         # or when Charging Preference: REGULAR is set for the session.
-        ('REGULAR', 'Regular profile'),
+        ('REGULAR', _('Regular profile')),
     )
 
-    type = models.CharField(max_length=14, choices=TYPE_CHOICES, blank=True, default='')
+    type = models.CharField(max_length=14, choices=TYPE_CHOICES, blank=True, default='', verbose_name=_('type'))
 
     # URL to a web page that contains an explanation of the tariff information in human readable form.
     tariff_alt_url = models.URLField(blank=True, default='')
@@ -93,18 +98,18 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     # amount that has to be paid for any Charging Session. A minimum price indicates that when
     # the cost of a Charging Session is lower than this amount, the cost of the Session will be
     # equal to this amount.
-    min_price_excl_vat = models.FloatField(null=True, blank=True)
-    min_price_incl_vat = models.FloatField(null=True, blank=True)
+    min_price_excl_vat = models.FloatField(null=True, blank=True, verbose_name=_('minimum price excluding tax'))
+    min_price_incl_vat = models.FloatField(null=True, blank=True, verbose_name=_('minimum price including tax'))
 
-    max_price_excl_vat = models.FloatField(null=True, blank=True)
-    max_price_incl_vat = models.FloatField(null=True, blank=True)
+    max_price_excl_vat = models.FloatField(null=True, blank=True, verbose_name=_('maximum price excluding tax'))
+    max_price_incl_vat = models.FloatField(null=True, blank=True, verbose_name=_('maximum price including tax'))
 
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 
     # Django automatic dates
-    updated = models.DateTimeField(auto_now=True)
-    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, verbose_name=_('updated'))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_('created'))
 
     def save(self, *args, **kwargs) -> None:
         self.change_fields_to_upper_case()
@@ -135,18 +140,18 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         return f"{', '.join(components or [f'{self.uid}'])}{self.min_and_max_price()}"
 
     def link(self):
-        url = reverse('admin:ocpi22_tariff_change', args=[self.pk])
+        url = util.reverse('admin:ocpi22_tariff_change', args=[self.pk])
         return format_html(
             f"<a href='{url}'>{self.price()}</a>"
         )
 
     def get_absolute_url(self, version=None):
         return build_absolute_uri(
-            reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+            util.reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
         )
 
     def get_admin_url(self):
-        return build_absolute_uri(reverse('admin:ocpi22_tariff_change', args=(self.pk,)))
+        return build_absolute_uri(util.reverse('admin:ocpi22_tariff_change', args=(self.pk,)))
 
     @property
     def name(self) -> str:
@@ -203,11 +208,11 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
 
 
 class TariffElement(models.Model, ModelUtilMixin):
-    start_time = models.TimeField(null=True, blank=True, help_text='This is in charger local time')
-    end_time = models.TimeField(null=True, blank=True, help_text='This is in charger local time')
+    start_time = models.TimeField(null=True, blank=True, help_text=_('This is in charger local time'))
+    end_time = models.TimeField(null=True, blank=True, help_text=_('This is in charger local time'))
 
-    start_date = models.DateField(null=True, blank=True, help_text='This is in charger local time')
-    end_date = models.DateField(null=True, blank=True, help_text='This is in charger local time')
+    start_date = models.DateField(null=True, blank=True, help_text=_('This is in charger local time'))
+    end_date = models.DateField(null=True, blank=True, help_text=_('This is in charger local time'))
 
     min_kwh = models.FloatField(null=True, blank=True)
     max_kwh = models.FloatField(null=True, blank=True)
@@ -249,7 +254,7 @@ class TariffElement(models.Model, ModelUtilMixin):
         if self.start_date or self.end_date:
             validity = f' ({_("valid")} {humanize_date_range(self.start_date, self.end_date)})'
         return f' ({days_of_week_str}{times}){validity}' \
-            if days_of_week_str else f' (during {times})' \
+            if days_of_week_str else f_(' (during {times})') \
             if times else ''
 
     def __str__(self):
@@ -262,19 +267,19 @@ class PriceComponent(models.Model, ModelUtilMixin):
 
     TYPE_CHOICES = (
         # Defined in kWh, step_size multiplier: 1 Wh
-        ('ENERGY', 'kWh'),
+        ('ENERGY', _('kWh')),
 
         # Flat fee without unit for step_size
-        ('FLAT', 'Flat'),
+        ('FLAT', _('Flat')),
 
         # Time not charging: defined in hours, step_size multiplier: 1 second
-        ('PARKING_TIME', 'Parking per hour'),
+        ('PARKING_TIME', _('Parking per hour')),
         # Todo: Implement PARKING_TIME PriceComponent
         # Todo: How to prevent people from stopping session on app without disconnecting?
 
         # Time charging: defined in hours, step_size multiplier: 1 second
         # Can also be used in combination with a RESERVATION restriction to describe the price of the reservation time.
-        ('TIME', 'Charging per hour'),
+        ('TIME', _('Charging per hour')),
     )
     type = models.CharField(max_length=12, choices=TYPE_CHOICES)
 
@@ -318,10 +323,10 @@ class PriceComponent(models.Model, ModelUtilMixin):
         t = tariff_type or self.type
         s = step_size or self.step_size
         return {
-            'ENERGY': '/kWh',
-            'FLAT': ' flat',
-            'TIME': '/h',
-            'PARKING_TIME': '/h parking',
+            'ENERGY': _('/kWh'),
+            'FLAT': _(' flat'),
+            'TIME': _('/h'),
+            'PARKING_TIME': _('/h parking'),
         }.get(t, '')
 
     def _format_duration(self):

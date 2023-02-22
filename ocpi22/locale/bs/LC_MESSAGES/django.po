@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:26.223633\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:09:41.036100\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: bs\n"
@@ -19,151 +19,429 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr "Konektor mora imati odabranu Tarifu, kako bi bila moguća naplata"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr "EVSE sa ovim UID-om već postoji na ovoj ili drugoj lokaciji"
+
+#: choices.py:69
 msgid "Available"
 msgstr "Dostupan"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "Priprema"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Punjenje"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "Ovjesno vozilom"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "Suspendiran punjačem"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Finishing"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Rezervirano"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Nedostupno"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "Ne radi"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "Priprema za punjenje"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "Punjač je rezervisan za Vas"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "Zaustavljanje sesije punjenja"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "Punjač je trenutno u upotrebi"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Trenutno nije moguće započeti punjenje"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr "Nije moguće povezati se sa sistemom za upravljanje tačkom punjenja"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "Token nema dovoljno sredstava na računu"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "Token je prihvaćen"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "Vaš token više nije važeći"
 
-#: choices.py:181
+#: choices.py:173
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Nije moguće povezati se sa sistemom za upravljanje tačkom punjenja"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "Rezervacija je otkazana"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "Punjač nije u funkciji"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "Nije uspjelo pokretanje punjenja"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "Punjač ne podržava rad"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "Naredbu je odbio punjač"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "Došlo je do problema s rezervacijom"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "ponedjeljak"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "utorak"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "srijeda"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "četvrtak"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "petak"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "Subota"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "Nedjelja"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "Troškovi rezervacije"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "Troškovi za rezervaciju koja ističe"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Punjenje"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "Tarife"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "GDPR alati"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "Odgovor može biti bilo koji"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "partner"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "partneri"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Aktivan"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "Vremenska zona \"%(value)s\" je nepoznata."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Punjenje"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "punjenja"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Potpuno ažuriranje"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "Generičke greške"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "unose u dnevnik"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "tema"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "kreirano na"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "ažurirano na"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "Otklanjanje grešaka"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "Informacije"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "Upozorenje"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Greška"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "Kritično"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "nivo"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "poruka"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "odgovor"
+
+#: models/session.py:41
+msgid "session"
+msgstr "sjednici"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "sesije"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Aktivan"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Završeno"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Nevažeći"
+#: models/session.py:215
+msgid "Failed"
+msgstr "Nije uspjelo"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "Na čekanju"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Rezervacija"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "tarifa"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "tarife"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "valuta"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "Ad hoc plaćanje"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "CHEAP profile"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "FAST profil"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "ZELENI profil"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Regularni profil"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "tip"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "minimalna cijena bez poreza"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "minimalna cijena sa porezom"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "maksimalna cijena bez poreza"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "maksimalna cijena sa PDV-om"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "ažurirano"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "kreiran"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Ovo je po lokalnom vremenu punjača"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "kWh"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Stan"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Parking po satu"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Punjenje"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/kWh"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "stan"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/h"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/h parking"
+
+#: models/token.py:22
+msgid "token"
+msgstr "token"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "tokens"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "Trenutna lozinka se ne podudara"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "Lozinka i potvrda se razlikuju jedno od drugog"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Model automobila %(car_id)s nije u našoj bazi podataka"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "Korisnik {email} već postoji"
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "Lozinka je uspješno promijenjena"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "Korisnik je anonimiziran u skladu sa zahtjevima GDPR-a"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Model automobila nije odabran"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Model automobila {car_id} nije u našoj bazi podataka"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr "EVSE sa UID-om {evse_uid} na lokaciji UID {location_id} je nepoznat."
+
+#~ msgid "Invalid"
+#~ msgstr "Nevažeći"

@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-06 16:43+0000\n"
-"PO-Revision-Date: 2022-10-06 19:46:26.876923\n"
+"POT-Creation-Date: 2023-02-21 14:05+0000\n"
+"PO-Revision-Date: 2023-02-21 17:10:12.738071\n"
 "Last-Translator: potranslator 1.1.5\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: nl\n"
@@ -19,151 +19,430 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Translated-By: potranslator 1.1.5\n"
 
-#: choices.py:77
+#: admin.py:98
+msgid "Connector needs to have a Tariff selected, so that billing is possible"
+msgstr ""
+"Connector moet een Tarief hebben geselecteerd, zodat facturering mogelijk is"
+
+#: admin.py:199
+msgid "EVSE with this UID already exists in this or another Location"
+msgstr "EVSE met deze UID bestaat al op deze of een andere locatie"
+
+#: choices.py:69
 msgid "Available"
 msgstr "Verkrijgbaar"
 
-#: choices.py:78
+#: choices.py:70
 msgid "Preparing"
 msgstr "voorbereidingen treffen"
 
-#: choices.py:79
+#: choices.py:71
 msgid "Charging"
 msgstr "Opladen"
 
-#: choices.py:80
+#: choices.py:72
 msgid "Suspended by vehicle"
 msgstr "Opgeschort door voertuig"
 
-#: choices.py:81
+#: choices.py:73
 msgid "Suspended by charger"
 msgstr "Opgeschort door oplader"
 
-#: choices.py:82
+#: choices.py:74
 msgid "Finishing"
 msgstr "Afwerking"
 
-#: choices.py:83
+#: choices.py:75
 msgid "Reserved"
 msgstr "Gereserveerd"
 
-#: choices.py:84
+#: choices.py:76
 msgid "Unavailable"
 msgstr "Niet beschikbaar"
 
-#: choices.py:85
+#: choices.py:77
 msgid "Out of order"
 msgstr "Buiten gebruik"
 
-#: choices.py:165
+#: choices.py:157
 msgid "Preparing to charge"
 msgstr "Opladen voorbereiden"
 
-#: choices.py:166
+#: choices.py:158
 msgid "Charger is reserved for you"
 msgstr "Oplader is voor u gereserveerd"
 
-#: choices.py:167
+#: choices.py:159
 msgid "Stopping charging session"
 msgstr "Oplaadsessie stoppen"
 
-#: choices.py:169
+#: choices.py:161
 msgid "The charger is currently in use"
 msgstr "De oplader is momenteel in gebruik"
 
-#: choices.py:171
+#: choices.py:163
 msgid "Unable to start charging at this time"
 msgstr "Kan momenteel niet beginnen met opladen"
 
-#: choices.py:173
+#: choices.py:165
 msgid "Unable to connect to charge point management system"
 msgstr "Kan geen verbinding maken met laadpuntbeheersysteem"
 
-#: choices.py:175
+#: choices.py:167
 msgid "The token doesn't have enough balance on the account"
 msgstr "Het token heeft niet genoeg saldo op de rekening"
 
-#: choices.py:177
+#: choices.py:169
 msgid "The token is accepted"
 msgstr "Het token wordt geaccepteerd"
 
-#: choices.py:179
+#: choices.py:171
 msgid "Your token is no longer valid"
 msgstr "Uw token is niet meer geldig"
 
-#: choices.py:181
+#: choices.py:173
 #, fuzzy
 #| msgid "Unable to connect to charge point management system"
 msgid "There is a protocol error with the CPO charge point management system"
 msgstr "Kan geen verbinding maken met laadpuntbeheersysteem"
 
-#: choices.py:196
+#: choices.py:188
 msgid "The reservation has been cancelled"
 msgstr "De reservering is geannuleerd"
 
-#: choices.py:197 choices.py:201
+#: choices.py:189 choices.py:193
 msgid "The charger is inoperative"
 msgstr "De oplader werkt niet"
 
-#: choices.py:198
+#: choices.py:190
 msgid "Failed to start the charging"
 msgstr "Kan het opladen niet starten"
 
-#: choices.py:199
+#: choices.py:191
 msgid "The operation is not supported by the charger"
 msgstr "De bediening wordt niet ondersteund door de oplader"
 
-#: choices.py:200
+#: choices.py:192
 msgid "The command was rejected by the charger"
 msgstr "De opdracht is afgewezen door de oplader"
 
-#: choices.py:202
+#: choices.py:194
 msgid "There has been a problem with the reservation"
 msgstr "Er is een probleem opgetreden met de reservering"
 
-#: models/session.py:172
+#: choices.py:246 models/tariff.py:230
+msgid "Monday"
+msgstr "Maandag"
+
+#: choices.py:247 models/tariff.py:231
+msgid "Tuesday"
+msgstr "Dinsdag"
+
+#: choices.py:248 models/tariff.py:232
+msgid "Wednesday"
+msgstr "Woensdag"
+
+#: choices.py:249 models/tariff.py:233
+msgid "Thursday"
+msgstr "Donderdag"
+
+#: choices.py:250 models/tariff.py:234
+msgid "Friday"
+msgstr "Vrijdag"
+
+#: choices.py:251 models/tariff.py:235
+msgid "Saturday"
+msgstr "Zaterdag"
+
+#: choices.py:252 models/tariff.py:236
+msgid "Sunday"
+msgstr "Zondag"
+
+#: choices.py:259
+msgid "Costs for a reservation"
+msgstr "Kosten voor een reservering"
+
+#: choices.py:260
+msgid "Costs for a reservation that expires"
+msgstr "Kosten voor een reservering die verloopt"
+
+#: context_processors.py:34
+#, fuzzy
+#| msgid "Charging"
+msgid "Charge Points"
+msgstr "Opladen"
+
+#: context_processors.py:42
+msgid "Tariffs"
+msgstr "Tarieven"
+
+#: context_processors.py:65
+msgid "GDPR tools"
+msgstr "AVG-tools"
+
+#: generic_views.py:28
+msgid "Response can be anything"
+msgstr "Reactie kan van alles zijn"
+
+#: models/credentials.py:41
+msgid "partner"
+msgstr "partner"
+
+#: models/credentials.py:42
+msgid "partners"
+msgstr "partners"
+
+#: models/credentials.py:69
+#, fuzzy
+#| msgid "Active"
+msgid "Activated"
+msgstr "Actief"
+
+#: models/location.py:31
+#, python-format
+msgid "Timezone \"%(value)s\" is unknown."
+msgstr "Tijdzone \"%(value)s\" is onbekend."
+
+#: models/location.py:216 models/location.py:221
+#, fuzzy
+#| msgid "Charging"
+msgid "charge point"
+msgstr "Opladen"
+
+#: models/location.py:217 models/location.py:222
+msgid "charge points"
+msgstr "oplaadpunten"
+
+#: models/logging.py:7
+msgid "Full update"
+msgstr "Volledige update"
+
+#: models/logging.py:8
+msgid "Generic errors"
+msgstr "Algemene fouten"
+
+#: models/logging.py:13
+msgid "log entries"
+msgstr "logboekvermeldingen"
+
+#: models/logging.py:15
+msgid "topic"
+msgstr "onderwerp"
+
+#: models/logging.py:18 models/logging.py:44
+msgid "created on"
+msgstr "gemaakt op"
+
+#: models/logging.py:19
+msgid "updated on"
+msgstr "bijgewerkt op"
+
+#: models/logging.py:27
+msgid "Debug"
+msgstr "Debuggen"
+
+#: models/logging.py:28
+msgid "Information"
+msgstr "Informatie"
+
+#: models/logging.py:29
+msgid "Warning"
+msgstr "Waarschuwing"
+
+#: models/logging.py:30
+msgid "Error"
+msgstr "Fout"
+
+#: models/logging.py:31
+msgid "Critical"
+msgstr "kritisch"
+
+#: models/logging.py:37
+msgid "level"
+msgstr "niveau"
+
+#: models/logging.py:40
+msgid "message"
+msgstr "bericht"
+
+#: models/logging.py:41
+msgid "response"
+msgstr "antwoord"
+
+#: models/session.py:41
+msgid "session"
+msgstr "sessie"
+
+#: models/session.py:42
+msgid "sessions"
+msgstr "sessies"
+
+#: models/session.py:208
 msgid "Active"
 msgstr "Actief"
 
-#: models/session.py:176
+#: models/session.py:212
 msgid "Completed"
 msgstr "Voltooid"
 
-#: models/session.py:179
-msgid "Invalid"
-msgstr "Ongeldig"
+#: models/session.py:215
+msgid "Failed"
+msgstr "Mislukt"
 
-#: models/session.py:183
+#: models/session.py:219
 msgid "Pending"
 msgstr "In afwachting"
 
-#: models/session.py:187
+#: models/session.py:223
 msgid "Reservation"
 msgstr "Reservering"
 
-#: msp/user.py:64
+#: models/tariff.py:38
+msgid "tariff"
+msgstr "tarief"
+
+#: models/tariff.py:39
+msgid "tariffs"
+msgstr "tarieven"
+
+#: models/tariff.py:68
+msgid "currency"
+msgstr "munteenheid"
+
+#: models/tariff.py:75
+msgid "Ad hoc payment"
+msgstr "Ad hoc betaling"
+
+#: models/tariff.py:78
+msgid "CHEAP profile"
+msgstr "GOEDKOOP profiel"
+
+#: models/tariff.py:81
+msgid "FAST profile"
+msgstr "SNEL profiel"
+
+#: models/tariff.py:84
+msgid "GREEN profile"
+msgstr "GROEN profiel"
+
+#: models/tariff.py:88
+msgid "Regular profile"
+msgstr "Regelmatig profiel"
+
+#: models/tariff.py:91
+msgid "type"
+msgstr "type"
+
+#: models/tariff.py:101
+msgid "minimum price excluding tax"
+msgstr "minimumprijs exclusief BTW"
+
+#: models/tariff.py:102
+msgid "minimum price including tax"
+msgstr "minimumprijs inclusief BTW"
+
+#: models/tariff.py:104
+msgid "maximum price excluding tax"
+msgstr "maximale prijs exclusief btw"
+
+#: models/tariff.py:105
+msgid "maximum price including tax"
+msgstr "maximale prijs inclusief btw"
+
+#: models/tariff.py:111
+msgid "updated"
+msgstr "bijgewerkt"
+
+#: models/tariff.py:112
+msgid "created"
+msgstr "gemaakt"
+
+#: models/tariff.py:211 models/tariff.py:212 models/tariff.py:214
+#: models/tariff.py:215
+msgid "This is in charger local time"
+msgstr "Dit is in lokale tijd van de oplader"
+
+#: models/tariff.py:270
+msgid "kWh"
+msgstr "kWh"
+
+#: models/tariff.py:273
+msgid "Flat"
+msgstr "Vlak"
+
+#: models/tariff.py:276
+msgid "Parking per hour"
+msgstr "Parkeren per uur"
+
+#: models/tariff.py:282
+#, fuzzy
+#| msgid "Charging"
+msgid "Charging per hour"
+msgstr "Opladen"
+
+#: models/tariff.py:326
+msgid "/kWh"
+msgstr "/kWh"
+
+#: models/tariff.py:327
+msgid " flat"
+msgstr "vlak"
+
+#: models/tariff.py:328
+msgid "/h"
+msgstr "/H"
+
+#: models/tariff.py:329
+msgid "/h parking"
+msgstr "/ uur parkeren"
+
+#: models/token.py:22
+msgid "token"
+msgstr "teken"
+
+#: models/token.py:23
+msgid "tokens"
+msgstr "Munten"
+
+#: msp/user.py:68
 msgid "The current password doesn't match"
 msgstr "Het huidige wachtwoord komt niet overeen"
 
-#: msp/user.py:66 msp/user.py:144
+#: msp/user.py:70 msp/user.py:148
 msgid "Password and confirm differ from each other"
 msgstr "Wachtwoord en bevestigen verschillen van elkaar"
 
-#: msp/user.py:76
+#: msp/user.py:80
 #, python-format
 msgid "Car model %(car_id)s is not in our database"
 msgstr "Automodel %(car_id)s staat niet in onze database"
 
-#: msp/user.py:253
+#: msp/user.py:258
 #, python-brace-format
 msgid "The user {email} already exists"
 msgstr "De gebruiker {email} bestaat al"
 
-#: msp/user.py:292
+#: msp/user.py:297
 msgid "Password has been changed successfully"
 msgstr "Wachtwoord is succesvol gewijzigd"
 
-#: msp/user.py:347
+#: msp/user.py:320
+msgid "User has been anonymised according to GDPR requirements"
+msgstr "De gebruiker is geanonimiseerd volgens de vereisten van de AVG"
+
+#: msp/user.py:399
+msgid "The car model has not been selected"
+msgstr "Het automodel is niet geselecteerd"
+
+#: msp/user.py:403
 #, python-brace-format
 msgid "Car model {car_id} is not in our database"
 msgstr "Automodel {car_id} staat niet in onze database"
+
+#: ocpi/serializers.py:438
+#, python-brace-format
+msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
+msgstr "EVSE met UID {evse_uid} op locatie UID {location_id} is onbekend."
+
+#~ msgid "Invalid"
+#~ msgstr "Ongeldig"

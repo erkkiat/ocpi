@@ -41,8 +41,10 @@
         {% if inline_admin_form.original %}
             {% if inline_admin_formset.formset.can_delete %}
                 <li class="delete-handler-container grp-delete-handler-container">
-                    <a href="javascript://"
-                       class="delete-handler djn-delete-handler grp-icon grp-delete-handler {{ inline_admin_formset.handler_classes|join:" " }}" title="{% trans 'Delete Item' %}"><span class="delete">{{ inline_admin_form.deletion_field.field }}</span></a></li>
+                    <a href="javascript://" class="delete-handler djn-delete-handler grp-icon grp-delete-handler {{ inline_admin_formset.handler_classes|join:" " }}" title="{% trans 'Delete Item' %}">
+                        <span class="delete">{{ inline_admin_form.deletion_field.field }}</span>
+                    </a>
+                </li>
             {% else %}
                 <li><span class="grp-icon">&nbsp;</span></li>
             {% endif %}
