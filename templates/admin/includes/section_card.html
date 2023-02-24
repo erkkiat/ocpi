@@ -1,4 +1,4 @@
-{% load i18n static %}
+{% load i18n static humanize %}
 {% trans section.name as section_name %}
 <div class="card p-0 mb-3 br-color-grey">
     <div class="card-body p-2">
@@ -40,6 +40,9 @@
                     {% elif item.status_display == 'muted' %}<i title="Currently out of use" class="fa fa-triangle-exclamation text-muted text-1"></i>
                     {% endif %}
                     <a href="{{ item.get_admin_url }}" class="link">{{ item.name }}</a>
+                    {% if item.status_display == 'error' %}
+                    <span class="text-muted text-1 ml-2">{{ item.last_connection|naturaltime }}</span>
+                    {% endif %}
                 </div>
                 {% endfor %}
                 {% if section.items|length > 4 %}

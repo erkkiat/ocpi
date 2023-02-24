@@ -76,7 +76,7 @@ def _get_environment(request):
             ),
             dict(
                 name='partners',
-                items=Credentials.objects.all().order_by('valid', 'connection_status'),
+                items=Credentials.objects.all().order_by('-valid', '-connection_status'),
                 icon='fa-handshake',
                 list_url=get_url('ocpi22', 'credentials', 'changelist'),
                 add_url=get_url('ocpi22', 'credentials', 'add'),
