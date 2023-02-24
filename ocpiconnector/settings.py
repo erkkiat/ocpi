@@ -192,12 +192,12 @@ LANGUAGE_CODE = 'en'
 
 LANGUAGES = [
     ('en', _('English')),
-    ('de', _('German')),
+    ('nl', _('Dutch, Flemish')),
     ('fr', _('French')),
+    ('de', _('German')),
     ('es', _('Spanish')),
     ('pt', _('Portuguese')),
     ('lb', _('Luxembourgish')),
-    ('nl', _('Dutch, Flemish')),
     ('cy', _('Welsh')),
     ('ga', _('Irish')),
 
