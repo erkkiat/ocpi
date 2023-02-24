@@ -42,6 +42,25 @@
               </div>
           </div>
 </div>
+
+<script>
+    var timer = null;
+
+    // Refresh the page after 2 minutes of inactivity
+    function refresh() {
+        if (timer) {
+            clearTimeout(timer);
+        }
+        timer = setTimeout(function() {
+            window.location.reload();
+        }, 120000);
+    }
+
+    window.addEventListener('mousemove', refresh, true);
+    window.addEventListener('keydown', refresh, true);
+
+    refresh();  // start the first timer off
+</script>
 {% endblock %}
 
 {% block sidebar %}
