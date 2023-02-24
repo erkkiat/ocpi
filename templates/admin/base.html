@@ -114,32 +114,17 @@
 																<div class="row">
 																	<div class="col-3">
 																		{% for language in languages|slice:":12" %}
-																		<li>
-																			<a class="dropdown-item" href="{% url 'admin_set_language' %}?language={{ language.code }}">
-																				<img src="https://flagcdn.com/{{ language.code }}.svg" width="16" alt="{{ language.name_local }}" class="mr-1">
-																				{{ language.name_local }}
-																			</a>
-																		</li>
+																			{% include "admin/includes/language_list_item.html" with language=language %}
 																		{% endfor %}
 																	</div>
 																	<div class="col-3">
 																		{% for language in languages|slice:"12:24" %}
-																		<li>
-																			<a class="dropdown-item" href="{% url 'admin_set_language' %}?language={{ language.code }}">
-																				<img src="https://flagcdn.com/{{ language.code }}.svg" width="16" alt="{{ language.name_local }}" class="mr-1">
-																				{{ language.name_local }}
-																			</a>
-																		</li>
+																			{% include "admin/includes/language_list_item.html" with language=language %}
 																		{% endfor %}
 																	</div>
 																	<div class="col-3">
 																		{% for language in languages|slice:"24:" %}
-																		<li>
-																			<a class="dropdown-item" href="{% url 'admin_set_language' %}?language={{ language.code }}">
-																				<img src="https://flagcdn.com/{{ language.code }}.svg" width="16" alt="{{ language.name_local }}" class="mr-1">
-																				{{ language.name_local }}
-																			</a>
-																		</li>
+																			{% include "admin/includes/language_list_item.html" with language=language %}
 																		{% endfor %}
 																	</div>
 																</div>
