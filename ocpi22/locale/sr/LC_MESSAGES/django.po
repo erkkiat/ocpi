@@ -596,7 +596,7 @@ msgstr "Модел аутомобила {car_id} није у нашој бази
 #: ocpi/serializers.py:438
 #, python-brace-format
 msgid "EVSE with UID {evse_uid} at location UID {location_id} is unknown."
-msgstr "ЕВСЕ са УИД-ом {евсе_уид} на локацији УИД {лоцатион_ид} је непознат."
+msgstr "ЕВСЕ са УИД-ом {evse_uid} на локацији УИД {location_id} је непознат."
 
 #, fuzzy
 #~| msgid "Charging"
