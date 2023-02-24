@@ -17,7 +17,21 @@
                         <i class="fa fa-line-chart"></i>
                     </a>
                 </h4>
-                {% for item in section.items|slice:":5" %}
+                {% if section.search_url %}
+                <form action="{{ section.search_url }}" method="get" class="mt-2">
+                    <div class="input-group mb-3 pb-1">
+                        <input class="form-control"
+                               placeholder="Search..."
+                               name="q" id="id-{{ section.name }}" type="text">
+                        <span class="input-group-append">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="fas fa-search m-1"></i>
+                            </button>
+                        </span>
+                    </div>
+                </form>
+                {% endif %}
+                {% for item in section.items|slice:":4" %}
                 <div>
                     {% if item.status_display == 'ok' %}<i class="fa fa-circle-check text-success text-1"></i>
                     {% elif item.status_display == 'error' %}<i class="fa fa-circle-exclamation text-danger text-1"></i>

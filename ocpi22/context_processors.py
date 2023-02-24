@@ -48,6 +48,7 @@ def _get_environment(request):
                 icon='fa-circle',
                 list_url=get_url('ocpi22', 'token', 'changelist'),
                 add_url=get_url('ocpi22', 'token', 'add', is_emsp),
+                search_url=get_url('ocpi22', 'token', 'changelist'),
             ),
             dict(
                 name='users',
@@ -56,6 +57,7 @@ def _get_environment(request):
                 icon='fa-user',
                 list_url=get_url('auth', 'user', 'changelist'),
                 add_url=get_url('auth', 'user', 'add'),
+                search_url=get_url('auth', 'user', 'changelist'),
                 extra_items=[
                     dict(
                         url=reverse('admin:gdpr_assist_personaldata_changelist'),
@@ -69,6 +71,7 @@ def _get_environment(request):
                 icon='fa-bolt',
                 list_url=get_url('ocpi22', 'session', 'changelist'),
                 add_url=get_url('ocpi22', 'session', 'add', criteria=False),
+                search_url=get_url('ocpi22', 'session', 'changelist'),
             ),
             dict(
                 name='partners',
