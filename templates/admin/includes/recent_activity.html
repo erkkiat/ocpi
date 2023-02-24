@@ -1,5 +1,5 @@
 {% load i18n humanize %}
-<div class="card card-default ml-3">
+<div class="card card-default">
     <div class="card-header">
         <h4 class="card-title m-0 text-primary">
             <i class="fa fa-wave-square mr-2"></i>
@@ -8,20 +8,21 @@
     </div>
     <div class="card-body text-1 p-3 text-dark">
         {% for item in recent_activity|slice:":15" %}
-        <div>
-            {% if item.status == 'ACTIVE' %}<i class="fa fa-bolt text-primary text-1"></i>
-            <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
-                Charging now
-            </a> ({{ item.kwh|floatformat:-1 }} kWh)
-            {% elif item.status == 'INVALID' %}<i class="fa fa-triangle-exclamation text-warning text-1"></i>
-            <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">Charging failed</a>
-            {% elif item.status == 'COMPLETED' %}
-            <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
-                Charged {{ item.kwh|floatformat:-1 }} kWh
-            </a>
-            {% endif %}
-            in {{ item.location.city }} <span class="text-0 text-muted ml-3">{{ item.start_date_time|naturaltime }}</span>
-        </div>
+                {% if item.status == 'ACTIVE' %}<i class="fa fa-bolt text-primary text-1"></i>
+                <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
+                    {% trans "Charging now" %}
+                </a> ({{ item.kwh|floatformat:-1 }} kWh)
+                {% elif item.status == 'INVALID' %}<i class="fa fa-triangle-exclamation text-warning text-1"></i>
+                <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
+                    {% trans "Charging failed" %}
+                </a>
+                {% elif item.status == 'COMPLETED' %}
+                <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
+                    Charged {{ item.kwh|floatformat:-1 }} kWh
+                </a>
+                {% endif %}
+                in {{ item.location.city }}
+                <div style="line-height: .8em" class="text-0 text-muted mt-0 pt-0 mb-2 mx-3">{{ item.start_date_time|naturaltime }}</div>
         {% endfor %}
 
         {% comment %}
