@@ -38,7 +38,7 @@ from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, build_callback_request, OCPIVersioning, \
-    OCPIListModelMixin
+    OCPIListModelMixin, generate_random_token
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
@@ -317,9 +317,9 @@ class CdrViewSet(OCPIListModelMixin,
         return OCPIResponse(errors=serializer.errors)
 
 
-def make_my_credentials_dict(request) -> dict:
+def make_my_credentials_dict(request, our_token) -> dict:
     return dict(
-        token=request.credentials.ours
+        token=our_token
         if hasattr(request, 'credentials') else 'not available when using basic auth',
 
         url=request.build_absolute_uri(reverse('base-versions', request=request)),
@@ -369,7 +369,8 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             credentials.theirs = data.get('token')
             credentials.url = data.get('url')
             credentials.roles.all().delete()
-
+            if not credentials.ours:
+                credentials.ours = generate_random_token()
             for role in data['roles']:
                 credentials.add_role(role)
 
@@ -380,7 +381,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             versions_url = select_version(credentials.url, token_base64)
             endpoints = get_endpoints(versions_url, token_base64)
             store_endpoints_for_party(credentials, endpoints)
-            data = make_my_credentials_dict(request)
+            data = make_my_credentials_dict(request, our_token=credentials.ours)
             serializer = CredentialsSerializer(data=data, context={'version': request.version})
             if not serializer.is_valid():
                 logging.error(f'OCPI connector has a logic error in Credentials POST: {serializer.errors}')
@@ -389,7 +390,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                         status_text='Sorry, but we have a slight problem. Support has been alerted.'
                     ),
                     status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            return OCPIResponse(serializer.data)
+            return OCPIResponse(data)
         except (ValidationError, AssertionError, KeyError) as e:
             logging.error(str(e), request)
             return OCPIBadRequestResponse(str(e))

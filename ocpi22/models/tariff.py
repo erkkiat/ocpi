@@ -254,7 +254,7 @@ class TariffElement(models.Model, ModelUtilMixin):
         if self.start_date or self.end_date:
             validity = f' ({_("valid")} {humanize_date_range(self.start_date, self.end_date)})'
         return f' ({days_of_week_str}{times}){validity}' \
-            if days_of_week_str else f_(' (during {times})') \
+            if days_of_week_str else _(f' (during {times})') \
             if times else ''
 
     def __str__(self):
