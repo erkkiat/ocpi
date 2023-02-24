@@ -33,6 +33,7 @@
                 {% endif %}
                 {% for item in section.items|slice:":4" %}
                 <div>
+                    {% if item.status == 'ACTIVE' %}<i class="fa fa-bolt text-primary text-1"></i>{% endif %}
                     {% if item.status_display == 'ok' %}<i class="fa fa-circle-check text-success text-1"></i>
                     {% elif item.status_display == 'error' %}<i class="fa fa-circle-exclamation text-danger text-1"></i>
                     {% elif item.status_display == 'warning' %}<i class="fa fa-triangle-exclamation text-warning text-1"></i>
@@ -41,7 +42,7 @@
                     <a href="{{ item.get_admin_url }}" class="link">{{ item.name }}</a>
                 </div>
                 {% endfor %}
-                {% if section.items|length > 5 %}
+                {% if section.items|length > 4 %}
                 <div>
                     <a href="{{ section.list_url }}" class="link">...</a>
                 </div>
