@@ -27,6 +27,7 @@ def _get_environment(request):
         # admin_menu=get_admin_menu(),
         general_message=os.environ.get('GENERAL_MESSAGE'),
         ocpi_platform=ocpi_platform,
+        recent_activity=Session.objects.all().order_by('-start_date_time'),
         sections=(
             dict(
                 name='charge points',

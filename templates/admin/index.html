@@ -26,22 +26,21 @@
   {% endif %}
 {% endcomment %}
 
-  <div class="row">
-      <div class="col-lg-8">
           <div class="row">
-              <div class="col-sm-6">
+              <div class="col-sm-12 col-md-6 col-lg-4">
                   {% for section in sections|slice:":3" %}
                   {% include "admin/includes/section_card.html" with section=section %}
                   {% endfor %}
               </div>
-              <div class="col-sm-6">
+              <div class="col-sm-12 col-md-6 col-lg-4">
                   {% for section in sections|slice:"3:" %}
                   {% include "admin/includes/section_card.html" with section=section %}
                   {% endfor %}
               </div>
+              <div class="col-sm-12 col-md-6 col-lg-4">
+                  {% include "admin/includes/recent_activity.html" with recent=recent_activities %}
+              </div>
           </div>
-      </div>
-  </div>
 </div>
 {% endblock %}
 
