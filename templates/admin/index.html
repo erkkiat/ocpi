@@ -19,8 +19,8 @@
       <use xlink:href="#exclamation-triangle-fill"/>
     </svg>
     <div>
-      There are {{ issue_count }} issues requiring attention.
-      <a class="alert-link" href="{% url 'issues' %}">show issues</a>
+      {% trans 'There are {{ issue_count }} issues requiring attention.' %}
+      <a class="alert-link" href="{% url 'issues' %}">{% trans 'show issues' %}</a>
     </div>
   </div>
   {% endif %}
