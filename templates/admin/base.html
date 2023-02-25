@@ -102,36 +102,6 @@
 															Home
 														</a>
 													</li>
-													<li class="dropdown dropdown-mega">
-														<a class="dropdown-item dropdown-toggle" href="{% url 'admin:index' %}">
-															<i class="fa fa-globe" style="font-size: 1rem; vertical-align: middle; padding-right: .3em"></i><span>{% trans 'Language' %}</span>
-														</a>
-														<ul class="dropdown-menu">
-															{% get_current_language as LANGUAGE_CODE %}
-															{% get_available_languages as LANGUAGES %}
-															{% get_language_info_list for LANGUAGES as languages %}
-															<div class="dropdown-mega-content">
-																<div class="row">
-																	<div class="col-3">
-																		{% for language in languages|slice:":12" %}
-																			{% include "admin/includes/language_list_item.html" with language=language %}
-																		{% endfor %}
-																	</div>
-																	<div class="col-3">
-																		{% for language in languages|slice:"12:24" %}
-																			{% include "admin/includes/language_list_item.html" with language=language %}
-																		{% endfor %}
-																	</div>
-																	<div class="col-3">
-																		{% for language in languages|slice:"24:" %}
-																			{% include "admin/includes/language_list_item.html" with language=language %}
-																		{% endfor %}
-																	</div>
-																</div>
-															</div>
-														</ul>
-
-													</li>
 													{% if user.is_authenticated %}
 													{% for section in sections %}
 													{% include "admin/includes/menu_item.html" with section=section active_section=module_name %}
@@ -156,6 +126,37 @@
 														</a>
 													</li>
 													{% endif %} {# user.is_authenticated #}
+													<li class="dropdown dropdown-mega">
+														{# Todo: Language cannot be changed on mobile or tablet #}
+														<a class="dropdown-item dropdown-toggle" href="{% url 'admin:index' %}">
+															<i class="fa fa-globe" style="font-size: 1rem; vertical-align: middle; padding-right: .3em"></i>&nbsp;
+														</a>
+														<ul class="dropdown-menu">
+															{% get_current_language as LANGUAGE_CODE %}
+															{% get_available_languages as LANGUAGES %}
+															{% get_language_info_list for LANGUAGES as languages %}
+															<div class="dropdown-mega-content">
+																<div class="row justify-content-end">
+																	<div class="col-3">
+																		{% for language in languages|slice:":12" %}
+																			{% include "admin/includes/language_list_item.html" with language=language %}
+																		{% endfor %}
+																	</div>
+																	<div class="col-3">
+																		{% for language in languages|slice:"12:24" %}
+																			{% include "admin/includes/language_list_item.html" with language=language %}
+																		{% endfor %}
+																	</div>
+																	<div class="col-3">
+																		{% for language in languages|slice:"24:" %}
+																			{% include "admin/includes/language_list_item.html" with language=language %}
+																		{% endfor %}
+																	</div>
+																</div>
+															</div>
+														</ul>
+
+													</li>
 												</ul>
 											</nav>
 										</div>
