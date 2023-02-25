@@ -2,6 +2,7 @@ import os
 
 from django.contrib import admin
 from django.db.models import QuerySet, Sum
+from humanize import naturaltime
 from rest_framework.fields import DateTimeField
 
 import ocpi22.logging as logging
@@ -346,10 +347,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return True
 
     def __str__(self):
-        start_time = self.start_date_time.strftime(settings.DATETIME_FORMAT)
-        return f'{self.cdr_token_uid} - {start_time} - {self.kwh}kWh - ' \
-               f'EVSE {self.evse.evse_id}'
-        # f'{self.connector.get_standard_display() if self.connector else "no connector"}'
+        return f'{round(self.kwh, 1)} kWh in {self.location.city}, updated {naturaltime(self.updated)}'
 
     def get_absolute_url(self, version=None):
         return util.reverse('session-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
