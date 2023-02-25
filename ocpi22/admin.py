@@ -135,9 +135,6 @@ class LocationAdmin(NestedModelAdmin):
         exclude = ['evse_id', 'last_updated']
         inlines = [ConnectorInline]
         autocomplete_fields = ['capabilities']
-        radio_fields = dict(
-            status=admin.VERTICAL
-        )
 
         formfield_overrides = {
             models.TextField: {'classes': 'form-control'},
@@ -211,6 +208,7 @@ class EvseAdmin(NestedModelAdmin):
     # actions = ['start_charging', 'stop_charging']
     autocomplete_fields = ['capabilities', 'location']
     exclude = ['last_updated']
+    list_filter = ['status']
 
     def get_queryset(self, request):
         return Evse.objects.select_related('location').all().order_by('-last_updated')
@@ -331,23 +329,13 @@ class SessionAdmin(NestedModelAdmin):
         inlines = [CdrDimensionInline]
 
     model = Session
-    ordering = ['-start_date_time']
-    if ocpi_platform.is_cpo:
-        list_display = [
-            'success',
-            'start_date_time',  # Todo: Show time in local timezone
-            'total_time', 'kwh', 'cost',
-            'evse', 'connector',
-            'uid',
-        ]
-    else:
-        list_display = [
-            'success',
-            'start_date_time',  # Todo: Show time in local timezone
-            'total_time', 'kwh', 'cost',
-            'evse', 'connector',
-            'uid',
-        ]
+    ordering = ['-updated']
+    list_display = [
+        'success',
+        'updated',  # Todo: Show time in local timezone
+        'location',
+        'kwh', 'cost',
+    ]
     inlines = [ChargingPeriodInline]
     fieldsets = (
         ('Identification', dict(fields=(('country_code', 'party_id'), ('uid', 'meter_id'),
@@ -362,7 +350,7 @@ class SessionAdmin(NestedModelAdmin):
     )
     # Todo: Show only connectors for the selected evse
 
-    list_display_links = ['start_date_time']
+    list_display_links = ['updated']
     search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid',
                      'uid', 'authorization_reference']
     readonly_fields = ['uid', 'party_id', 'country_code']
