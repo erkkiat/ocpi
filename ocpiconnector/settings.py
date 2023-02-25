@@ -196,6 +196,7 @@ LANGUAGES = [
     ('fr', _('French')),
     ('de', _('German')),
     ('es', _('Spanish')),
+    ('it', _('Italian')),
     ('pt', _('Portuguese')),
     ('lb', _('Luxembourgish')),
     ('cy', _('Welsh')),
