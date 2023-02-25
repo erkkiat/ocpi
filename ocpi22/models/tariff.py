@@ -252,9 +252,9 @@ class TariffElement(models.Model, ModelUtilMixin):
         times = f' {humanize_time(self.start_time)}-{humanize_time(self.end_time)}' if self.start_time else ''
         validity = ''
         if self.start_date or self.end_date:
-            validity = f' ({_("valid")} {humanize_date_range(self.start_date, self.end_date)})'
+            validity = _(' (valid {date_range}').format(date_range=humanize_date_range(self.start_date, self.end_date))
         return f' ({days_of_week_str}{times}){validity}' \
-            if days_of_week_str else _(f' (during {times})') \
+            if days_of_week_str else _(' (during {times})'.format(times=times)) \
             if times else ''
 
     def __str__(self):

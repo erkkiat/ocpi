@@ -435,7 +435,7 @@ class LocationEvseUidSerializer(serializers.Serializer):
         evse = Evse.get_if_exists(uid=evse_uid, location__uid=location_id)
         ic(evse_uid, location_id)
         if not evse:
-            raise Evse.DoesNotExist(_(f'EVSE with UID {evse_uid} at location UID {location_id} is unknown.'))
+            raise Evse.DoesNotExist(_('EVSE with UID {evse_uid} at location UID {location_id} is unknown.').format(evse_uid=evse_uid, location_id=location_id))
         return evse
 
 

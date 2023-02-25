@@ -396,11 +396,11 @@ class UserViewSet(viewsets.GenericViewSet):
     def car_details(self, request):
         car_id = request.user.profile.vehicle
         if not car_id:
-            return Response({'status_message': _(f'The car model has not been selected')},
+            return Response({'status_message': _('The car model has not been selected')},
                             status=status.HTTP_404_NOT_FOUND)
         car = cars.get_models().get(car_id)
         if not car:
-            return Response({'status_message': _(f'Car model {car_id} is not in our database')},
+            return Response({'status_message': _('Car model {car_id} is not in our database').format(car_id=car_id)},
                             status=status.HTTP_404_NOT_FOUND)
         return Response(car.original_json)
 
