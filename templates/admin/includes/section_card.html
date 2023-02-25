@@ -43,6 +43,9 @@
                     {% if item.status_display == 'error' %}
                     <span class="text-muted text-1 ml-2">{{ item.last_connection|naturaltime }}</span>
                     {% endif %}
+                    {% if "tariffs" in item.ocpi_module_name|lower %}
+                    <div style="line-height: 1.1em" class="text-muted text-0 ml-3 mt-0 pt-0 mb-2">{{ item.price }}</div>
+                    {% endif %}
                 </div>
                 {% endfor %}
                 {% if section.items|length > 4 %}
