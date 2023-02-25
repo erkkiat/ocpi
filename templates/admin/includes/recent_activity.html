@@ -19,7 +19,7 @@
                 {% elif item.status == 'COMPLETED' %}
                 <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
                     {% with kwh=item.kwh|floatformat:-1 %}
-                    {% trans 'Charged {{ kwh }} kWh' %}
+                    {% blocktrans %}Charged {{ kwh }} kWh{% endblocktrans %}
                     {% endwith %}
                 </a>
                 {% endif %}
