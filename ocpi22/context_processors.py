@@ -68,7 +68,7 @@ def _get_environment(request):
             ),
             dict(
                 name='sessions',
-                items=Session.objects.all().order_by('-start_date_time'),
+                items=Session.objects.all().order_by('updated'),
                 icon='fa-bolt',
                 list_url=get_url('ocpi22', 'session', 'changelist'),
                 add_url=get_url('ocpi22', 'session', 'add', criteria=False),
@@ -76,7 +76,7 @@ def _get_environment(request):
             ),
             dict(
                 name='partners',
-                items=Credentials.objects.all().order_by('-valid', '-connection_status'),
+                items=Credentials.objects.all().order_by('-connection_status', '-last_connection'),
                 icon='fa-handshake',
                 list_url=get_url('ocpi22', 'credentials', 'changelist'),
                 add_url=get_url('ocpi22', 'credentials', 'add'),
