@@ -487,7 +487,7 @@ class CredentialsAdmin(admin.ModelAdmin):
         model = Endpoint
 
     model = Credentials
-    list_display = ['name', 'valid', 'connection_state', 'last_connection']
+    list_display = ['name', 'valid', 'responding', 'last_connection']
     readonly_fields = ['theirs_base64', 'last_updated', 'created', 'last_connection']
     inlines = [CredentialRolesInline, EndpointsInline]
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a',

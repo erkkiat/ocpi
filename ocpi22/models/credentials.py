@@ -45,25 +45,26 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     token_a = models.CharField(max_length=64, default=secrets.token_hex(32))
 
     # Our credentials token used for the actual communication
-    ours = models.CharField(max_length=64, blank=True, default='')
+    ours = models.CharField(max_length=64, blank=True, default='', verbose_name=_('Our token'))
 
     # The other party's credentials token used for the actual communication
-    theirs = models.CharField(max_length=64, blank=True, default='')
+    theirs = models.CharField(max_length=64, blank=True, default='', verbose_name=_('Their token'))
 
-    # URL to the other party's versions endpoint
-    url = models.URLField(blank=True, default='')
+    # URL to the versions endpoint
+    url = models.URLField(blank=True, default='', verbose_name=_('Versions endpoint URL'))
 
     # Status of the connection to the party.
-    connection_status = models.CharField(max_length=9, choices=CONNECTION_STATUS_CHOICES, default='CONNECTED')
+    connection_status = models.CharField(max_length=9, choices=CONNECTION_STATUS_CHOICES, default='CONNECTED',
+                                         verbose_name=_('Responding'))
 
     # The timestamp for the last message received or succesfully sent to the other party
-    last_connection = models.DateTimeField(null=True, blank=True)
+    last_connection = models.DateTimeField(null=True, blank=True, verbose_name=_('Last connection'))
 
     VERSION_CHOICES = (
         ('22', '2.2'),
         ('221', '2.2.1')
     )
-    version = models.CharField(max_length=3, choices=VERSION_CHOICES, blank=True, null=True)
+    version = models.CharField(max_length=3, choices=VERSION_CHOICES, blank=True, null=True, verbose_name=_('Version'))
 
     # Connections are only accepted for valid Credentials
     valid = models.BooleanField(default=True, verbose_name=_('Activated'))
@@ -76,8 +77,8 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     last_updated = models.DateTimeField(null=True, blank=True)
 
     # Django automatic dates
-    updated = models.DateTimeField(auto_now=True)
-    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_('Created'))
 
     def __str__(self):
         return self.name
@@ -126,16 +127,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     def is_complete(self) -> bool:
         return bool(self.ours and self.theirs and self.roles.count())
 
-    def connection_state(self) -> bool:
-        result = bool(self.valid and self.connection_status == choices.CONNECTED)
-        # if not result:
-        #     logging.error(f'Connecting to party {self.party()} may not be possible: '
-        #                   f'(Credentials {"valid" if self.valid else "NOT VALID"}, server {self.connection_status}')
-        return result
+    def responding(self) -> bool:
+        return bool(self.connection_status == choices.CONNECTED)
 
-    # For admin so that there is a pretty boolean icon
-    connection_state.boolean = True
-    connection_state.admin_order_field = 'connection_status'
+    # For admin so that there is a pretty boolean icon and sorting
+    responding.boolean = True
+    responding.admin_order_field = 'connection_status'
 
     def update_last_connection(self):
         self.last_connection = timezone.now()
@@ -186,17 +183,19 @@ class CredentialsRole(models.Model, ModelUtilMixin):
             models.UniqueConstraint(fields=['country_code', 'party_id', 'role'], name='unique_credentialsroles'),
         ]
 
-    role = models.CharField(max_length=5, choices=ROLE_CHOICES)
+    role = models.CharField(max_length=5, choices=ROLE_CHOICES, verbose_name=_('Role'))
 
-    business_details = models.ForeignKey(BusinessDetails, on_delete=models.PROTECT, related_name='credentialsroles')
+    business_details = models.ForeignKey(BusinessDetails, on_delete=models.PROTECT, related_name='credentialsroles',
+                                         verbose_name=_('Business details'))
 
     # ISO-3166 alpha-2 country code
-    country_code = models.CharField(max_length=2)
+    country_code = models.CharField(max_length=2, verbose_name=_('Country code'))
 
     # ID of the party
-    party_id = models.CharField(max_length=3)
+    party_id = models.CharField(max_length=3, verbose_name=_('Party ID'))
 
-    credentials = models.ForeignKey(Credentials, related_name='roles', on_delete=models.CASCADE, null=True)
+    credentials = models.ForeignKey(Credentials, related_name='roles', on_delete=models.CASCADE, null=True,
+                                    verbose_name=_('Credentials'))
 
     def __str__(self):
         return f'{self.country_code}*{self.party_id} ({self.role})'
@@ -211,9 +210,10 @@ class Endpoint(models.Model, ModelUtilMixin):
 
     url = models.URLField()
 
-    role = models.CharField(max_length=8, choices=ENDPOINT_ROLE_CHOICES)
+    role = models.CharField(max_length=8, choices=ENDPOINT_ROLE_CHOICES, verbose_name=_('Role'))
 
-    credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='endpoints')
+    credentials = models.ForeignKey(Credentials, on_delete=models.CASCADE, related_name='endpoints',
+                                    verbose_name=_('Credentials'))
 
     def __str__(self):
         return f'{self.get_identifier_display()} {self.get_role_display()} at {self.url}'
@@ -243,7 +243,7 @@ def new_connection(request):
                     result = command.handle(token_a=form.cleaned_data.get('token_a'),
                                             versions_endpoint_url=form.cleaned_data.get('versions_url'))
                     messages.success(request,
-                                     result if isinstance(result, str) else 'A new connection has been established')
+                                     result if isinstance(result, str) else _('A new connection has been established'))
                 else:
                     messages.error(request, form.errors)
         except (SyntaxError, OCPIProtocolError, ValueError, KeyError, ImproperlyConfigured) as e:
@@ -270,14 +270,12 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
     if our_party:
         from ocpi22.tasks import send_ocpi_request
         data = dict()
-        # noinspection PyUnresolvedReferences
         e = credentials.endpoints.filter(
             identifier=OcpiModuleEnum.CREDENTIALS.value,
             role=EndpointRoleEnum.RECEIVER.value
         ).first()
         if e:
             logging.info(f'Send delete to Credentials module at {e.url}')
-            # noinspection PyUnresolvedReferences
             role: CredentialsRole = credentials.roles.first()
             if not role:
                 logging.error(
