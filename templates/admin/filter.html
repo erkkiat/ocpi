@@ -1,6 +1,6 @@
 {% load i18n %}
   <div class="label">{% blocktranslate with filter_title=title %} By {{ filter_title }} {% endblocktranslate %}</div>
-<div class="btn-group" role="group" aria-label="Admin view filters">
+<div class="btn-group-vertical mb-3" role="group" aria-label="Admin view filters">
 
 {% for choice in choices %}
   <a class="btn btn-sm{% if choice.selected %} btn-primary{% else %} btn-light{% endif %}" href="{{ choice.query_string|iriencode }}" autocomplete="off">
