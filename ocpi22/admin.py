@@ -332,6 +332,7 @@ class SessionAdmin(NestedModelAdmin):
     ordering = ['-updated']
     list_display = [
         'success',
+        'status',
         'updated',  # Todo: Show time in local timezone
         'location',
         'kwh', 'cost',

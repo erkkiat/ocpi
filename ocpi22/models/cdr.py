@@ -16,6 +16,7 @@ from ocpi22.models.token import Token
 from ocpi22.msp.account import check_balance
 from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHOICES
 from ocpi22.ocpi.util import OcpiModule, Ocpi, generate_cdr_uid
+from ocpiconnector.analytics import send_update_to_analytics
 from ocpiconnector.ocpi_identities import ocpi_platform
 from settlement.models import Invoice
 
@@ -300,3 +301,4 @@ def session_post_save(sender, instance: Session, *_args, **_kwargs):
     Cdr.session_changed(instance)
     if ocpi_platform.is_emsp:
         check_balance(instance)
+    send_update_to_analytics(instance)
