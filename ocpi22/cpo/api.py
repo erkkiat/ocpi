@@ -716,8 +716,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
         except EvseOccupied as e:
-            stop_transaction_url = reverse('charger-stop-transaction')
-            status_change_url = reverse('charger-status-change')
+            stop_transaction_url = reverse('chargepoint-stop-transaction')
+            status_change_url = reverse('chargepoint-status-change')
             messages.error(request,
                            mark_safe('There is an active Session on this EVSE. You can finish it using the '
                                      f'<a href="{stop_transaction_url}">stop_transaction</a> or by '
