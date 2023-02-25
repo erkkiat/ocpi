@@ -19,38 +19,24 @@
                 {% elif item.status == 'COMPLETED' %}
                 <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
                     {% with kwh=item.kwh|floatformat:-1 %}
-                    Charged {{ kwh }} kWh
+                    {% trans 'Charged {{ kwh }} kWh' %}
                     {% endwith %}
                 </a>
                 {% endif %}
                 in {{ item.location.city }}
-                <div style="line-height: .8em" class="text-0 text-muted mt-0 pt-0 mb-2 mx-3">{{ item.start_date_time|naturaltime }}</div>
+                <div style="line-height: .8em" class="text-0 text-muted mt-0 pt-0 mb-2 mx-3">
+                {% if item.status == 'ACTIVE' %}
+                    {% trans 'last update' %}
+                {% endif %}
+                    {{ item.updated|naturaltime }}
+                </div>
         {% endfor %}
 
         {% comment %}
         <div>
-            <a href="FIX2" class="link">Charging failed</a>
-            in Warsaw
-            <span class="ml-2 text-muted text-1">8 min ago</span>
-        </div>
-        <div>
-            <a href="FIX2" class="link">56 kWh charged</a>
-            in Kaunas
-            <span class="ml-2 text-muted text-1">12 min ago</span>
-        </div>
-        <div>
-            <a href="FIX2" class="link">23 kWh charged</a>
-            in Bialystok
-            <span class="ml-2 text-muted text-1">15 min ago</span>
-        </div>
-        <div>
             <i class="fa fa-circle-exclamation text-danger text-1"></i>
             Lost connection to
             <a href="FIX2" class="link">Virta Global</a>
-            <span class="ml-2 text-muted text-1">2 hours ago</span>
-        </div>
-        <div>
-            <a href="FIX2" class="link">51 kWh charged</a>
             <span class="ml-2 text-muted text-1">2 hours ago</span>
         </div>
         {% endcomment %}
