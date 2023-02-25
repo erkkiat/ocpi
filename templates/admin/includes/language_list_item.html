@@ -1,7 +1,5 @@
 {% load country_flags %}
-<li>
-    <a class="dropdown-item" href="{% url 'admin_set_language' %}?language={{ language.code }}">
-        <img src="https://flagcdn.com/{{ language.code|country_code }}.svg" width="30" alt="{{ language.name_local }}" class="mr-1">
-        {{ language.name_local }}
-    </a>
-</li>
+<a class="dropdown-item text-1 text-primary" href="{% url 'admin_set_language' %}?language={{ language.code }}">
+    <img src="https://flagcdn.com/{{ language.code|country_code }}.svg" width="30" alt="{{ language.name_local }}" class="mr-1 border">
+    {{ language.name_local }}
+</a>
