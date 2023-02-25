@@ -5,7 +5,7 @@ Theme Version:	8.3.0
 */
 html {
 	direction: ltr;
-	overflow-x: hidden;
+	/* overflow-x: hidden; This will prevent scrolling */
 	box-shadow: none !important;
 	-webkit-font-smoothing: antialiased;
 }
