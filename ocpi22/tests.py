@@ -31,6 +31,7 @@ from rest_framework.exceptions import ValidationError
 
 from ocpi22.locations.serializers import LocationSerializer
 from ocpiconnector.util import recursive_sort_dict
+from settlement.views import InvoiceReportViews
 from util import reverse
 from rest_framework.test import APIRequestFactory
 
@@ -2758,5 +2759,15 @@ def put_cdr(data):
     request.user = get_fake_admin()
     request.version = '2.2.1'
     return CdrViewSet().put(request)
+
+
+class TestBillingList(TestCase):
+    def test_empty_billing_list(self):
+        request = api_factory.get(reverse('billing-list'))
+        request.user = get_fake_admin()
+        response = InvoiceReportViews().session_list(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])
+
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)

@@ -353,7 +353,10 @@ options_message = f'Please see OPTIONS to learn what you can POST at this endpoi
 
 
 class OCPIPaginationAndHeaders(LimitOffsetPagination):
-    default_limit = 100
+    default_limit = 50
+    count = 0
+    offset = 0
+    limit = default_limit
 
     def get_paginated_response(self, data):
         headers = {
