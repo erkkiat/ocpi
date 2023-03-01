@@ -37,7 +37,7 @@ if not DEBUG:
 
 DATETIME_FORMAT = os.environ.get('DATETIME_FORMAT', "%d.%m.%Y %H:%M")
 DATE_FORMAT = os.environ.get('DATE_FORMAT', "%d.%m.%Y")
-locale_formats.DATETIME_FORMAT = "D j.n.Y H:i"
+locale_formats.DATETIME_FORMAT = os.environ.get('DATETIME_FORMAT_LOCALE', "D j.n.Y H:i")
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 PREMIUM = _env_bool('PREMIUM', False)
@@ -188,7 +188,7 @@ TIME_ZONE = 'UTC'  # DO NOT CHANGE THIS, or the OCPI date query parameters will 
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
-LANGUAGE_CODE = 'en'
+LANGUAGE_CODE = os.environ.get('LANGUAGE_CODE', 'en')
 
 LANGUAGES = [
     ('en', _('English')),
