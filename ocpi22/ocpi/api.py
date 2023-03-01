@@ -38,7 +38,7 @@ from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import matching_operator, OnlyRawBrowsableAPIRenderer, build_callback_request, OCPIVersioning, \
-    OCPIListModelMixin, generate_random_token
+    OCPIListModelMixin, generate_random_token, build_absolute_uri
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
@@ -319,10 +319,8 @@ class CdrViewSet(OCPIListModelMixin,
 
 def make_my_credentials_dict(request, our_token) -> dict:
     return dict(
-        token=our_token
-        if hasattr(request, 'credentials') else 'not available when using basic auth',
-
-        url=request.build_absolute_uri(reverse('base-versions', request=request)),
+        token=our_token,
+        url=build_absolute_uri(reverse('base-versions', request=request)),
 
         # Todo: Check this, should be "Retrieves the credentials object to access the server’s platform"
         roles=get_our_roles(),
@@ -345,7 +343,11 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
 
     @requires_premium
     def list(self, request, *_args, **_kwargs):
-        return OCPIResponse(make_my_credentials_dict(request))
+        if not hasattr(request, 'credentials'):
+            return OCPIResponse("There seem to be no credentials in use for this request.",
+                                http_status=status.HTTP_405_METHOD_NOT_ALLOWED,
+                                status_code=Ocpi.ClientError.UNKNOWN_TOKEN)
+        return OCPIResponse(make_my_credentials_dict(request, request.credentials.ours))
 
     @requires_premium
     def delete(self, request: Request, *_args, **_kwargs):
