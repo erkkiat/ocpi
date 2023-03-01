@@ -168,7 +168,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def name(self):
-        return " / ".join([role.business_details.name for role in self.roles.all()])
+        return " / ".join([role.business_details.name for role in self.roles.all()]) or 'N/A'
 
     @property
     def status_display(self):
