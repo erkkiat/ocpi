@@ -220,7 +220,6 @@ LANGUAGES = [
     ('sl', _('Slovenian')),
 
     ('fi', _('Finnish')),
-    ('nb', _('Norwegian Bokmål')),
     ('nn', _('Nynorsk')),
     ('da', _('Danish')),
     ('sv', _('Swedish')),
