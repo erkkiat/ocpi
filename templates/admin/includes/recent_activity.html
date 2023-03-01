@@ -28,7 +28,11 @@
                 {% if item.status == 'ACTIVE' %}
                     {% trans 'last update' %}
                 {% endif %}
-                    {{ item.updated|naturaltime }}
+                    {% if item.end_date_time %}
+                        {{ item.end_date_time|naturaltime }}
+                    {% else %}
+                        {{ item.start_date_time|naturaltime }}
+                    {% endif %}
                 </div>
         {% endfor %}
 
