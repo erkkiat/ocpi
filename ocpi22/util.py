@@ -157,6 +157,7 @@ CURRENCY_CHOICES = (
     ('HUF', 'Hungarian forint'),
     ('MDL', 'Moldovan leu'),
     ('NOK', 'Norwegian krone'),
+    ('PHP', 'Philippine peso'),
     ('PLN', 'Polish złoty'),
     ('GBP', 'Pound sterling'),
     ('RON', 'Romanian leu'),
@@ -224,7 +225,7 @@ def pretty_currency(c):
     >>> pretty_currency('PLN')
     'zł'
     """
-    return dict(EUR='€', GBP='£', USD='$', PLN='zł', ALL='L').get(c, c)
+    return dict(EUR='€', GBP='£', USD='$', PLN='zł', ALL='L', PHP='₱').get(c, c)
 
 
 def format_currency(number: Optional[float], currency: Optional[str]) -> str:
@@ -237,6 +238,8 @@ def format_currency(number: Optional[float], currency: Optional[str]) -> str:
     '1,12€'
     >>> format_currency(1.0, 'EUR')
     '1€'
+    >>> format_currency(1.0, 'PHP')
+    '₱1'
     >>> format_currency(None, 'EUR')
     '-'
     >>> format_currency(1.0, None)
@@ -247,9 +250,13 @@ def format_currency(number: Optional[float], currency: Optional[str]) -> str:
         return '-'
     currency = pretty_currency(currency or '')
     if float(int(number)) == number:
-        result = f"{number:.0f}{currency or ''}"
+        number_str = str(int(number))
     else:
-        result = f"{number:.2f}{currency or ''}"
+        number_str = f"{number:.2f}"
+    if currency in ('$', '₱'):
+        result = f"{currency}{number_str}"
+    else:
+        result = f"{number_str}{currency}"
     return result.replace(".", settings.DECIMAL_SEPARATOR)
 
 
