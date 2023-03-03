@@ -38,8 +38,8 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     send_updates_to = None
 
     class Meta:
-        verbose_name = _('partner')
-        verbose_name_plural = _('partners')
+        verbose_name = _('roaming partner')
+        verbose_name_plural = _('roaming partners')
 
     # The credentials token used only for the initial connection, and is communicated manually between parties
     token_a = models.CharField(max_length=64, default=secrets.token_hex(32))
