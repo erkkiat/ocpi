@@ -75,7 +75,7 @@ def _get_environment(request):
                 search_url=get_url('ocpi22', 'session', 'changelist'),
             ),
             dict(
-                name='partners',
+                name='roaming partners',
                 items=Credentials.objects.all().order_by('-connection_status', '-last_connection'),
                 icon='fa-handshake',
                 list_url=get_url('ocpi22', 'credentials', 'changelist'),
