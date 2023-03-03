@@ -42,6 +42,13 @@ DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 PREMIUM = _env_bool('PREMIUM', False)
 
+# Philippines
+# DATE_FORMAT = '%m/%d/%Y'
+# DATETIME_FORMAT = '%m/%d/%Y, %I:%M %p'
+# DECIMAL_SEPARATOR = '.'
+# DEFAULT_CURRENCY = 'PHP'
+# DATETIME_FORMAT_LOCALE = 'n/j/Y h:i a'
+
 APPEND_SLASH = False  # Accept requests with no trailing slash
 TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
