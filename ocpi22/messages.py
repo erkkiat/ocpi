@@ -4,6 +4,7 @@ from rest_framework.renderers import BrowsableAPIRenderer
 default_error_messages = dict(
     object_missing='There is no {name} with UID `{uid}` in our database',
     no_connector_in_evse='There is no connector with UID `{uid}` in EVSE `{evse}`.',
+    location_evse_missing='There is no EVSE with UID `{evse}` in location `{location}`.',
 )
 
 

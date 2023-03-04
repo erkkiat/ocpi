@@ -280,7 +280,23 @@ class LocationIdDictSerializer(serializers.CharField):
         return dict(location=location)
 
 
-class EvseUidDictSerializer(serializers.Serializer):
+class LocationEvseUidSerializer(serializers.Serializer):
+    def get_location_id(self):
+        if hasattr(self.parent, 'parent') and self.parent.parent:
+            return self.parent.parent.initial_data.get('location_id')
+        elif hasattr(self, 'parent') and self.parent:
+            return self.parent.initial_data.get('location_id')
+        return None
+
+    def to_internal_value(self, evse_uid):
+        location_id = self.get_location_id()
+        evse = Evse.get_if_exists(uid=evse_uid, location__uid=location_id)
+        if not evse:
+            self.fail('object_missing', evse=evse_uid, location=location_id)
+        return evse
+
+
+class EvseUidDictSerializer(LocationEvseUidSerializer):
     evse_uid = serializers.CharField(required=True)
     default_error_messages = default_error_messages
 
@@ -288,9 +304,7 @@ class EvseUidDictSerializer(serializers.Serializer):
         return instance.evse.uid
 
     def to_internal_value(self, data: str):
-        evse = Evse.get_if_exists(uid=data)
-        if not evse:
-            self.fail('object_missing', name='Evse', uid=data)
+        evse = super().to_internal_value(data)
         return dict(evse=evse)
 
 
@@ -300,11 +314,13 @@ class ConnectorIdSerializer(serializers.Serializer):
     def to_representation(self, instance: Session):
         return instance.connector.uid if hasattr(instance, 'connector') and instance.connector else None
 
-    def to_internal_value(self, data: str):
-        evse = Evse.get_if_exists(uid=self.parent.initial_data.get('evse_uid'))
-        connector = Connector.get_if_exists(uid=data, evse=evse)
+    def to_internal_value(self, connector_id: str):
+        evse_uid = self.parent.initial_data.get('evse_uid')
+        location_id = self.parent.initial_data.get('location_id')
+        evse = Evse.get_if_exists(uid=evse_uid, location__uid=location_id)
+        connector = Connector.get_if_exists(uid=connector_id, evse=evse)
         if not connector:
-            self.fail('object_missing', name='Connector', uid=data)
+            self.fail('object_missing', name='Connector', uid=connector_id)
         return dict(connector=connector)
 
 
@@ -427,16 +443,6 @@ class StrictLocationIdSerializer(serializers.CharField):
 class EvseUidSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         return Evse.get_if_exists(uid=data)
-
-
-class LocationEvseUidSerializer(serializers.Serializer):
-    def to_internal_value(self, evse_uid):
-        location_id = self.parent.parent.initial_data.get('location_id')
-        evse = Evse.get_if_exists(uid=evse_uid, location__uid=location_id)
-        ic(evse_uid, location_id)
-        if not evse:
-            raise Evse.DoesNotExist(_('EVSE with UID {evse_uid} at location UID {location_id} is unknown.').format(evse_uid=evse_uid, location_id=location_id))
-        return evse
 
 
 class StrictEvseUidSerializer(serializers.CharField):
