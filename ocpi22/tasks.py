@@ -2,7 +2,7 @@ import os
 import random
 from datetime import timedelta
 from json import JSONDecodeError
-from typing import Optional
+from typing import Optional, Union
 
 import celery
 import cronitor.celery
@@ -25,12 +25,15 @@ from ocpiconnector.settings import STILL_ALIVE_FREQUENCY
 from ocpiconnector.util import Timer
 
 pp = pprint.PrettyPrinter(indent=4).pprint
+zoined_token = os.environ.get('ZOINED_TOKEN')
 
 # Set the default Django settings module for the 'celery' program.
 if 'DJANGO_SETTINGS_MODULE' not in os.environ:
     os.environ['DJANGO_SETTINGS_MODULE'] = 'ocpiconnector.settings'
 
-app = celery.Celery('ocpi22.tasks')
+RESULT_EXPIRE_TIME = 3600  # 1 hour
+
+app = celery.Celery('ocpi22.tasks', result_expires=RESULT_EXPIRE_TIME)
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.
@@ -57,15 +60,7 @@ app.conf.beat_schedule = {
         'task': 'ocpi22.tasks.pull_all_objects',
         # 'schedule': 120  # For testing
         'schedule': crontab(hour=pull_hour, minute=pull_minute)
-    },
-    # 'set-spot-prices-every-hour': {
-    #     'task': 'ocpi22.tasks.set_spot_prices',
-    #     'schedule': crontab(minute=0)
-    # },
-    # 'update-spot-prices-daily': {
-    #     'task': 'ocpi22.tasks.update_spot_prices',
-    #     'schedule': crontab(minute=59)
-    # },
+    }
 }
 
 
@@ -83,40 +78,7 @@ def pull_all_objects() -> bool:
     credentials = Credentials.objects.filter(valid=True)
     for c in credentials:
         schedule_full_update(c)
-
-
-@shared_task(max_retries=12, retry_backoff=300)
-def update_spot_prices() -> bool:
-    from ocpi22.models.dynamic_price import dynamic_price_sources
-    for source in dynamic_price_sources:
-        try:
-            source.update()
-        except Exception as e:
-            logging.warning(f'Unable to fetch prices for {source.__class__}: {e}.')
     return True
-
-
-@app.task
-def set_spot_prices() -> bool:
-    from ocpi22.models.dynamic_price import dynamic_price_sources, get_price
-    for source in dynamic_price_sources:
-        price = get_price(source.key, timezone.now())
-        logging.info(f'Spot price at {source.key}: {price}')
-        if not price:
-            logging.warning(f"No price for {source.key}")
-            continue
-        from ocpi22.models.tariff import PriceComponent
-        pcs = PriceComponent.objects.filter(dynamic_price_source=source.key).select_related('tariff_element__tariff')
-        pcs.update(price=round(price, 3), type='ENERGY')
-        for pc in pcs:
-            logging.info(str(pc))
-            tariff = pc.tariff_element.tariff
-            logging.info(str(tariff))
-            tariff.currency = source.currency
-            tariff.save()
-            tariff.send_updates()
-            logging.info(f'Spot price {price} {source.currency} set')
-        return True
 
 
 # For Heroku Redis and Redis Enterprise Cloud
@@ -184,7 +146,9 @@ def send_ocpi_request(data, url: str, token_base64: str,
                 credentials.update_last_connection()
 
         # Log the response to Sentry
-        sentry_sdk.set_context('result', result.json())
+        if hasattr(result, 'data') and result.data:
+            # ic(result.data, result.json())
+            sentry_sdk.set_context('result', result.json())
 
         return dict(
             status_code=result.status_code,
@@ -304,3 +268,20 @@ def check_still_alive(credentials_id: int = None) -> None:
             # logging.info(f"Checking that {c} is alive and well, last successful "
             #              f"connection was {int(since_last_time / 60)} min ago")
             check_still_alive.apply_async((c.pk,), countdown=random.randint(0, stale_credentials.count()))
+
+
+@app.task(max_retries=5, default_retry_delay=120)
+def send_data_to_analytics(data: Union[dict, list], url):
+    from ocpi22 import logging
+    if not zoined_token:
+        logging.info(f'No Zoined token set => no update to analytics')
+        return
+    headers = {'content-type': 'application/json', 'Authorization': f'Bearer {zoined_token}'}
+    # Todo: Async send
+    if isinstance(data, dict):
+        data = [data]
+    response = requests.post(url=url, json=data, headers=headers, timeout=5)
+    if response.status_code != 200:
+        logging.error(f'Unable to send update to analytics: {response.text}')
+    else:
+        logging.info(f'Update sent to analytics: {response.text}')

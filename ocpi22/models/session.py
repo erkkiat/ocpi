@@ -6,7 +6,7 @@ from humanize import naturaltime
 from rest_framework.fields import DateTimeField
 
 import ocpi22.logging as logging
-from decimal import Decimal
+from decimal import Decimal, getcontext
 from typing import Union, Optional
 
 from django.conf import settings
@@ -99,7 +99,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def kwh(self):
-        return round(Decimal(self.stop_kwh) - Decimal(self.start_kwh), 3)
+        getcontext().prec = 3
+        return Decimal(self.stop_kwh) - Decimal(self.start_kwh)
 
     @kwh.setter
     def kwh(self, value: Union[float, Decimal]):

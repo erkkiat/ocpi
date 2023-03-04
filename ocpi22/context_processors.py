@@ -68,11 +68,12 @@ def _get_environment(request):
             ),
             dict(
                 name='sessions',
-                items=Session.objects.all().order_by('updated'),
+                items=Session.objects.all().order_by('-updated'),
                 icon='fa-bolt',
                 list_url=get_url('ocpi22', 'session', 'changelist'),
                 add_url=get_url('ocpi22', 'session', 'add', criteria=False),
                 search_url=get_url('ocpi22', 'session', 'changelist'),
+                reporting_url='https://app.zoined.com/dashboards/6477',
             ),
             dict(
                 name='roaming partners',

@@ -12,10 +12,10 @@
                     {% if section.add_url %}<a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary" href="{{ section.add_url }}">
                         <i class="fa fa-circle-plus"></i>
                     </a>{% endif %}
-                    <a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary"
-                       href="#">
+                    {% if section.reporting_url %}<a class="btn btn-circle btn-sm m-0 p-1 text-3 text-primary"
+                       href="{{ section.reporting_url }}" target="zoined-reporting">
                         <i class="fa fa-line-chart"></i>
-                    </a>
+                    </a>{% endif %}
                 </h4>
                 {% if section.search_url %}
                 <form action="{{ section.search_url }}" method="get" class="mt-2">
