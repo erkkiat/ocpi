@@ -6,20 +6,22 @@ from typing import Optional
 from django.conf import settings
 from django.db import models
 from django.db.models import QuerySet
-from django.db.models.signals import pre_save, post_save
+from django.db.models.signals import pre_save, post_save, pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.html import format_html
 from multiselectfield import MultiSelectField
 import util
 
-from ocpi22 import choices
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22 import choices, logging
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
+from ocpi22.models.credentials import find_endpoints_by_roles
 from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
+from ocpi22.tasks import send_ocpi_request
 from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
-from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
-from ocpiconnector.util import weekday_range_to_str, humanize_time, date_to_str, humanize_date_range
+from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id, get_our_party
+from ocpiconnector.util import weekday_range_to_str, humanize_time, humanize_date_range, build_item_url
 
 
 # Todo: Minimum amount to be billed. This unit will be billed in this step_size blocks.
@@ -146,9 +148,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         )
 
     def get_absolute_url(self, version=None):
-        return build_absolute_uri(
-            util.reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
-        )
+        return util.reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def get_admin_url(self):
         return build_absolute_uri(util.reverse('admin:ocpi22_tariff_change', args=(self.pk,)))
@@ -370,3 +370,17 @@ def price_component_post_save(sender, instance: PriceComponent, *_args, **_kwarg
     tariff = instance.tariff
     # Do not update last_updated here, only owner does that
     tariff.save()
+
+
+@receiver(pre_delete, sender=Tariff)
+def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
+    if instance.is_ours():
+        logging.info(f'Sending DELETE for tariff {instance} to all parties')
+        our_party = get_our_party(OcpiRolesEnum.CPO)
+        # Loop through all the parties which are interested in receiving Tariff updates
+        for base_url, token_base64, country_code, party_id, credentials \
+                in find_endpoints_by_roles(instance.send_updates_to, OcpiModuleEnum.TARIFFS):
+            send_ocpi_request.delay({},
+                                    build_item_url(base_url, our_party.country_code, our_party.party_id, instance.uid),
+                                    token_base64, country_code, party_id, our_party.country_code, our_party.party_id,
+                                    method='delete', credentials_id=credentials.id, title='Tariff', )

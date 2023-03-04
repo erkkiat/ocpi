@@ -418,13 +418,18 @@ class TariffViewSet(OCPIListModelMixin,
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
+    @requires_premium
+    def get(self, request: Request, country_code, party_id, uid, version, *_args, **_kwargs):
+        tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
+        serializer = self.get_serializer(tariff, many=False, context={'request': request, 'version': request.version})
+        return OCPIResponse(serializer.data)
+
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', url_name='by-id')
     @requires_premium
-    def tariff_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
-        tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
-        serializer = TariffSerializer(tariff, many=False, context={'request': request, 'version': request.version})
-        return OCPIResponse(serializer.data)
+    def tariff_by_id(self, request, *args, **kwargs) -> OCPIResponse:
+        # This function exists just to create the route (url_path) for the above get function
+        return self.get(request, *args, **kwargs)
 
     @staticmethod
     def get_object(uid=None) -> Tariff:
@@ -465,9 +470,12 @@ class TariffViewSet(OCPIListModelMixin,
     @transaction.atomic
     @action(methods=['DELETE'], url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', detail=False)
     @requires_premium
-    def delete(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
+    def delete(self, _request, country_code, party_id, uid, *_args, **_kwargs) -> OCPIResponse:
         tariff = Tariff.get_if_exists(country_code=country_code, party_id=party_id, uid=uid, archived=False)
-        if tariff.connectors.count():
+        if not tariff:
+            return OCPIResponse(f'No Tariff found with country_code={country_code}, party_id={party_id} and uid={uid}.',
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+        if hasattr(tariff, 'connectors') and tariff.connectors and tariff.connectors.count():
             return OCPIResponse('Cannot delete a Tariff which is referred to by one or more Connectors.',
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         tariff.delete()

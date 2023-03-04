@@ -7,6 +7,7 @@ from functools import lru_cache
 from gettext import gettext as _
 from itertools import chain
 from typing import Any, Union
+from urllib.parse import urljoin
 
 import pycountry
 from django.conf import settings
@@ -192,3 +193,16 @@ def validate_iso2_country(c: str):
             _('Country code "%(value)s" is unknown.'),
             params={'value': c},
         )
+
+
+def build_item_url(base_url, country_code, party_id, uid):
+    """
+    Build the URL for a single item
+    >>> build_item_url('http://example.com/tariffs', 'NL', '123', '456')
+    'http://example.com/tariffs/NL/123/456'
+    >>> build_item_url('http://example.com/tariffs/', 'NL', '123', '456')
+    'http://example.com/tariffs/NL/123/456'
+    >>> build_item_url('http://example.com/tariffs//', 'NL', '123', '456')
+    'http://example.com/tariffs/NL/123/456'
+    """
+    return urljoin(f'{base_url}/', f'{country_code}/{party_id}/{uid}', allow_fragments=True)
