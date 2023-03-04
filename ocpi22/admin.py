@@ -432,6 +432,7 @@ class TariffAdmin(NestedModelAdmin):
          dict(
              fields=(
                  # ('country_code', 'party_id'),
+                 ('uid'),
                  ('currency'),
                  ('type',),
                  ('tariff_alt_url',),
