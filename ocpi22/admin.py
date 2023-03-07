@@ -158,7 +158,7 @@ class LocationAdmin(NestedModelAdmin):
     fieldsets = [
         ('Address', dict(
             # classes=('collapse',),  # Todo: Study collapsible accordions for admin
-            fields=('name', 'address', ('postal_code', 'city'), ('state', 'country'),
+            fields=('uid', 'name', 'address', ('postal_code', 'city'), ('state', 'country'),
                     ('latitude', 'longitude', 'time_zone'),)
         )),
         ('Features', dict(
@@ -192,8 +192,9 @@ class LocationAdmin(NestedModelAdmin):
 
 class EvseAdminForm(forms.ModelForm):
     def clean_uid(self):
-        if Evse.objects.filter(uid=self.data['uid']).count():
-            raise ValidationError(_('EVSE with this UID already exists in this or another Location'),)
+        # if Evse.objects.filter(uid=self.data['uid']).count():
+        #     # Todo: Recognize if it's the same object, and allow it
+        #     raise ValidationError(_('EVSE with this UID already exists in this or another Location'),)
         return self.cleaned_data["uid"]
 
 
@@ -222,7 +223,7 @@ class EvseAdmin(NestedModelAdmin):
 
     def get_readonly_fields(self, request, obj=None) -> list:
         if obj:
-            return ['uid', 'last_updated']
+            return ['last_updated']
         return []
 
     def has_change_permission(self, request, obj=None) -> bool:
