@@ -10,7 +10,7 @@ from rest_framework_csv.renderers import CSVRenderer
 
 from ocpi22.models.cdr import Cdr
 from ocpi22.ocpi.serializers import CdrSerializer
-from ocpi22.ocpi.util import OCPIPaginationAndHeaders
+from ocpi22.util import StandardResultsSetPagination
 from premium import requires_premium
 from settlement.serializers import CsvCdrSerializer
 
@@ -36,8 +36,7 @@ class InvoiceReportViews(viewsets.GenericViewSet):
     lookup_field = 'uid'
     serializer_class = CdrSerializer
     csv_serializer_class = CsvCdrSerializer
-    pagination_class = OCPIPaginationAndHeaders
-    # pagination_class = StandardResultsSetPagination
+    pagination_class = StandardResultsSetPagination
     renderer_classes = (renderers.JSONRenderer, renderers.BrowsableAPIRenderer, CSVRenderer)
 
     def get_cdrs_in_date_range(self, request) -> QuerySet:
@@ -110,9 +109,9 @@ class InvoiceReportViews(viewsets.GenericViewSet):
         # ic(str(result.query))
 
         paginator = self.pagination_class()
-        result = paginator.paginate_queryset(result, request)
         if request.GET.get('format', '').lower() == 'csv':
             serializer = self.csv_serializer_class(instance=result, many=True)
             return Response(serializer.data)
+        result = paginator.paginate_queryset(result, request)
         serializer = self.serializer_class(instance=result, many=True)
         return paginator.get_paginated_response(serializer.data)

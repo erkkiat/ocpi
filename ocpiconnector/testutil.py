@@ -1,0 +1,49 @@
+from collections import OrderedDict
+
+from django.conf import settings  # Do not remove if ic() is in use in this file
+
+
+def compare_lists_recursively(expected, received, path='') -> bool:
+    result = True
+    for i, v in enumerate(expected):
+        if i >= len(received):
+            print(f'{expected[i]} not present in received')
+            result = False
+        if isinstance(v, (dict, OrderedDict)):
+            if not compare_dicts_recursively(dict(v), dict(received[i]), path=f'{path}[{i}]'):
+                # print(f'Dict {i} not equal in received')
+                result = False
+        elif isinstance(v, list):
+            if not compare_lists_recursively(v, received[i], path=f'{path}[{i}]'):
+                # print(f'List {i} not equal in received')
+                result = False
+        elif v not in received:
+            print(f'{expected[i]} not equal in received')
+            result = False
+    # if not result:
+    #     ic(f'Expected: {expected}')
+    #     ic(f'Received: {received}')
+    return result
+
+
+def compare_dicts_recursively(received, expected, path='') -> bool:
+    result = True
+    for k, v in expected.items():
+        if k not in received:
+            print(f'Key {k} not present in received')
+            result = False
+        if isinstance(v, (dict, OrderedDict)):
+            if not compare_dicts_recursively(v, received[k], path=f'{path}.{k}'):
+                # print(f'Dict {k} not equal in received')
+                result = False
+        elif isinstance(v, list):
+            if not compare_lists_recursively(v, received[k], path=f'{path}.{k}'):
+                # print(f'List {k} not equal in received')
+                result = False
+        elif v != received[k]:
+            ic('Not equal', k, v, received[k])
+            result = False
+    # if not result:
+    #     ic(f'Expected: {expected}')
+    #     ic(f'Received: {received}')
+    return result

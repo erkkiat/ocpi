@@ -30,6 +30,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
 from ocpi22.locations.serializers import LocationSerializer
+from ocpiconnector.testutil import compare_dicts_recursively
 from ocpiconnector.util import recursive_sort_dict
 from settlement.views import InvoiceReportViews
 from util import reverse
@@ -70,6 +71,7 @@ from ocpi22.test_data import expected_get_responses
 from ocpiconnector.ocpi_identities import Party
 from settlement.calculate import create_invoice
 
+global ic
 faketime = datetime(2022, 1, 1, 12, 0)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
@@ -169,7 +171,6 @@ class ApiPutTests(TestCase):
                                          )
         return location
 
-    # noinspection PyUnresolvedReferences
     def setUp(self):
         logging.disable(logging.CRITICAL)
         self.location = self.create_location()
@@ -472,7 +473,7 @@ class ApiPutTests(TestCase):
             # Parking
             # ('tariff_13_simple_3hour_5parking', dict(stop_kwh=20)),
             ('tariff_2_alt_text', dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)), 4.75, 5),
-            ('tariff_3_alt_url', dict(stop_kwh=20.45), 5.63, 6.24),
+            ('tariff_3_alt_url', dict(stop_kwh=Decimal(20.45)), 5.63, 6.24),
 
             # Parking, weekdays, times
             # ('tariff_4_complex', dict(stop_kwh=20.45), 5.63, 6.24),
@@ -679,7 +680,6 @@ class ApiPutTests(TestCase):
         self.assertTrue(result.status_code in [401, 403], 'A Location request should require OCPI authentication.')
 
     def _create_credentials(self, country_code, party_id):
-        # noinspection PyUnresolvedReferences
         roles, _created = CredentialsRole.objects.get_or_create(
             role='CPO', country_code=country_code,
             party_id=party_id, defaults=dict(business_details=self.business_details)
@@ -688,14 +688,13 @@ class ApiPutTests(TestCase):
 
 
 def dump_tariffs():
-    # noinspection PyUnresolvedReferences
     for t in Tariff.objects.all():
         serializer = TariffSerializer(t)
         ic(t.pk, serializer.data)
 
 
 class TariffTests(TestCase):
-    fixtures = ['ocpi22/data/defaulttariffs.json']
+    fixtures = ['ocpi22/data/defaulttariffs.json', 'ocpi22/data/initial.json']
 
     def setUp(self) -> None:
         logging.disable(logging.CRITICAL)
@@ -707,7 +706,6 @@ class TariffTests(TestCase):
             self.assertEqual(e.price_components.count(), price_components,
                              f"TariffElement #{e.pk} `{e}` doesn't have {price_components} PriceComponents")
 
-    # noinspection PyUnresolvedReferences
     def test_tariff_copying(self):
         Tariff.objects.all().delete()
         # Create some Tariffs
@@ -723,8 +721,45 @@ class TariffTests(TestCase):
         self.assertEqual(tariffs.count(), 1)
         self.assertIsInstance(tariffs[0], Tariff)
         tariff: Tariff = tariffs[0]
-        # noinspection PyUnresolvedReferences
         self.assertEqual(tariff.tariff_elements.all()[0].price_components.all()[0].price, 0.22)
+
+    @patch('ocpi22.tasks.send_ocpi_request.delay')
+    @patch('ocpi22.models.tariff.find_endpoints_by_roles')
+    def test_delete_tariff(self, mock_find_endpoints_by_roles, mock_send_ocpi_request):
+        previous_count = Tariff.objects.count()
+        country_code, party_id = 'FI', 'MSP'
+        t1 = create_tariff(uid='T1', country_code=country_code, party_id=party_id)
+        # Try the HTTP DELETE for this tariff
+        url = reverse('tariff-delete', args=[country_code, party_id, t1.uid], version='2.2.1')
+        request = api_factory.delete(url)
+        request.version = '2.2.1'
+        viewset = TariffViewSet()
+        viewset.request = request
+        credentials = self._create_credentials(country_code, party_id, OcpiRolesEnum.CPO)
+        mock_find_endpoints_by_roles.return_value = [('http://fakeserver', 'THEIR_TOKEN',
+                                                      country_code, party_id, credentials)]
+
+        response = viewset.delete(request, country_code, party_id, t1.uid)
+        self.assertEqual(response.status_code, 200, 'Tariff should be deleted')
+        self.assertEqual(Tariff.objects.count(), previous_count,
+                         'There should be the same amount of Tariffs as when we started this test')
+        self.assertTrue(mock_send_ocpi_request.called, 'send_ocpi_request should be called')
+        args, kwargs = mock_send_ocpi_request.call_args
+        self.assertEqual(args, ({}, 'http://fakeserver/FI/CPO/T1', 'THEIR_TOKEN', 'FI', 'MSP', 'FI', 'CPO'),
+                         'send_ocpi_request arguments differ from expected')
+        self.assertEqual(kwargs, {'credentials_id': 35, 'method': 'delete', 'title': 'Tariff'},
+                         'send_ocpi_request keyword arguments differ from expected')
+
+    def _create_credentials(self, country_code: str, party_id: str, role: OcpiRolesEnum) -> Credentials:
+        credentials = Credentials.objects.create(version=221)
+        business_details = BusinessDetails.objects.create(
+            name='Test MSP', website='https://test.com', logo='https://test.com/logo.png')
+        roles, _created = CredentialsRole.objects.get_or_create(
+            role=role.value, country_code=country_code,
+            party_id=party_id, defaults=dict(business_details=business_details)
+        )
+        credentials.roles.add(roles)
+        return credentials
 
 
 class CdrTests(TestCase):
@@ -898,7 +933,8 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
-        self.assertDictEqual(response.data, evse_inoperative_response)
+        self.assertTrue(compare_dicts_recursively(response.data, evse_inoperative_response),
+                        'Expecting different response for start_session')
 
         # Let's pretend to be the CPO and all is good
         requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
@@ -958,46 +994,49 @@ class CommandTests(TestCase):
         data = dict(session_id=session.uid, response_url='http://localhost.local/response/')
         response = stop_session(data, AnonymousUser)
         self.assertEqual(response.status_code, status.HTTP_200_OK, 'Stop session was expected to succeed')
-        self.assertDictEqual(
-            response.data,
-            {'data': {'result': 'ACCEPTED', 'timeout': 60,
-                      'message': [{'language': 'EN', 'text': 'Stopping charging session'},
-                                  {'language': 'DE', 'text': 'Beenden der Ladesitzung'},
-                                  {'language': 'FR', 'text': 'Arrêt de la session de charge'},
-                                  {'language': 'ES', 'text': 'Deteniendo la sesión de carga'},
-                                  {'language': 'PT', 'text': 'Parando a sessão de carregamento'},
-                                  {'language': 'LB', 'text': 'Opluedsession stoppen'},
-                                  {'language': 'NL', 'text': 'Oplaadsessie stoppen'},
-                                  {'language': 'CY', 'text': "Rhoi'r gorau i sesiwn codi tâl"},
-                                  {'language': 'GA', 'text': 'Seisiún luchtaithe a stopadh'},
-                                  {'language': 'BE', 'text': 'Спыненне сеансу зарадкі'},
-                                  {'language': 'BG', 'text': 'Спиране на сесията на зареждане'},
-                                  {'language': 'RO', 'text': 'Oprirea sesiunii de încărcare'},
-                                  {'language': 'BS', 'text': 'Zaustavljanje sesije punjenja'},
-                                  {'language': 'MK', 'text': 'Запирање на сесијата за полнење'},
-                                  {'language': 'SQ', 'text': 'Ndalimi i seancës së karikimit'},
-                                  {'language': 'SR', 'text': 'Заустављање сесије пуњења'},
-                                  {'language': 'TR', 'text': 'Şarj oturumunu durdurma'},
-                                  {'language': 'UK', 'text': 'Припинення сеансу зарядки'},
-                                  {'language': 'EL', 'text': 'Διακοπή περιόδου λειτουργίας φόρτισης'},
-                                  {'language': 'PL', 'text': 'Zatrzymywanie sesji ładowania'},
-                                  {'language': 'HU', 'text': 'A töltési munkamenet leállítása'},
-                                  {'language': 'CS', 'text': 'Zastavení nabíjecí relace'},
-                                  {'language': 'SK', 'text': 'Zastavuje sa relácia nabíjania'},
-                                  {'language': 'SL', 'text': 'Ustavitev seje polnjenja'},
-                                  {'language': 'FI', 'text': 'Latausistuntoa lopetellaan'},
-                                  {'language': 'NO', 'text': 'Stopper ladeøkten'},
-                                  {'language': 'DA', 'text': 'Stopper opladningssession'},
-                                  {'language': 'SV', 'text': 'Stoppar laddningssessionen'},
-                                  {'language': 'IS', 'text': 'Stöðvar hleðslulotu'},
-                                  {'language': 'ET', 'text': 'Laadimisseansi peatamine'},
-                                  {'language': 'LT', 'text': 'Sustabdoma įkrovimo sesija'},
-                                  {'language': 'LV', 'text': 'Uzlādes sesijas pārtraukšana'},
-                                  {'language': 'AF', 'text': 'Stop laaisessie'},
-                                  {'language': 'MI', 'text': 'Whakamutua te utu i te waahi'}]},
-             'status_code': 1000,
-             'status_message': 'Success',
-             'timestamp': '2022-01-01T12:00:00Z'}
+        self.assertTrue(
+            compare_dicts_recursively(
+                response.data,
+                {'data': {'result': 'ACCEPTED', 'timeout': 60,
+                          'message': [{'language': 'EN', 'text': 'Stopping charging session'},
+                                      {'language': 'NL', 'text': 'Oplaadsessie stoppen'},
+                                      {'language': 'FR', 'text': 'Arrêt de la session de charge'},
+                                      {'language': 'DE', 'text': 'Beenden der Ladesitzung'},
+                                      {'language': 'ES', 'text': 'Deteniendo la sesión de carga'},
+                                      {'language': 'IT', 'text': 'Interruzione della sessione di ricarica'},
+                                      {'language': 'PT', 'text': 'Parando a sessão de carregamento'},
+                                      {'language': 'LB', 'text': 'Opluedsession stoppen'},
+                                      {'language': 'CY', 'text': "Rhoi'r gorau i sesiwn codi tâl"},
+                                      {'language': 'GA', 'text': 'Seisiún luchtaithe a stopadh'},
+                                      {'language': 'BE', 'text': 'Спыненне сеансу зарадкі'},
+                                      {'language': 'BG', 'text': 'Спиране на сесията на зареждане'},
+                                      {'language': 'RO', 'text': 'Oprirea sesiunii de încărcare'},
+                                      {'language': 'BS', 'text': 'Zaustavljanje sesije punjenja'},
+                                      {'language': 'MK', 'text': 'Запирање на сесијата за полнење'},
+                                      {'language': 'SQ', 'text': 'Ndalimi i seancës së karikimit'},
+                                      {'language': 'SR', 'text': 'Заустављање сесије пуњења'},
+                                      {'language': 'TR', 'text': 'Şarj oturumunu durdurma'},
+                                      {'language': 'UK', 'text': 'Припинення сеансу зарядки'},
+                                      {'language': 'EL', 'text': 'Διακοπή περιόδου λειτουργίας φόρτισης'},
+                                      {'language': 'PL', 'text': 'Zatrzymywanie sesji ładowania'},
+                                      {'language': 'HU', 'text': 'A töltési munkamenet leállítása'},
+                                      {'language': 'CS', 'text': 'Zastavení nabíjecí relace'},
+                                      {'language': 'SK', 'text': 'Zastavuje sa relácia nabíjania'},
+                                      {'language': 'SL', 'text': 'Ustavitev seje polnjenja'},
+                                      {'language': 'FI', 'text': 'Latausistuntoa lopetellaan'},
+                                      {'language': 'NN', 'text': 'Stopper ladeøkten'},
+                                      {'language': 'DA', 'text': 'Stopper opladningssession'},
+                                      {'language': 'SV', 'text': 'Stoppar laddningssessionen'},
+                                      {'language': 'IS', 'text': 'Stöðvar hleðslulotu'},
+                                      {'language': 'ET', 'text': 'Laadimisseansi peatamine'},
+                                      {'language': 'LT', 'text': 'Sustabdoma įkrovimo sesija'},
+                                      {'language': 'LV', 'text': 'Uzlādes sesijas pārtraukšana'},
+                                      {'language': 'AF', 'text': 'Stop laaisessie'},
+                                      {'language': 'MI', 'text': 'Whakamutua te utu i te waahi'}]},
+                 'status_code': 1000,
+                 'status_message': 'Success',
+                 'timestamp': '2022-01-01T12:00:00Z'}
+            )
         )
 
     @time_machine.travel(faketime, tick=False)
@@ -1057,7 +1096,8 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
-        self.assertDictEqual(response.data, evse_inoperative_response)
+        self.assertTrue(compare_dicts_recursively(response.data, evse_inoperative_response),
+                        'Expecting a different response for a reservation')
 
         # Let's pretend to be the CPO and all is good
         requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
@@ -1405,13 +1445,13 @@ class TestObjectPull(TestCase):
             response_headers.pop('Content-Length', None)
             expected_headers = expected_get_headers[url]
             expected_headers.pop('Content-Length', None)
-            assert response_headers == expected_headers, \
+            assert compare_dicts_recursively(expected_headers, response_headers), \
                 f"Expecting different headers for {url}: {response_headers}"
 
             return result
         except (AssertionError, KeyError):
-            ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_headers))
-            ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
+            # ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_headers))
+            # ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
             raise
 
     @time_machine.travel(faketime, tick=False)
@@ -2556,36 +2596,31 @@ class TestMspMap(TestCase):
     fixtures = ['ocpi22/data/test-database-msp-api.json']
     maxDiff = None
 
-    expected_map_result = {'geometries': [{'geometry': {"coordinates": [60.0, 30.0], "type": "Point"},
-                                           'properties': {'evses': [{'connectors': [{'power': None,
-                                                                                     'price': '0,50€/kWh',
-                                                                                     'standard': 'TESLA_S',
-                                                                                     'uid': '3050'}],
-                                                                     'evse_id': 'FI*TSL*EHELSINKI1',
-                                                                     'status': 'AVAILABLE',
-                                                                     'uid': 'HELSINKI-1'},
-                                                                    {'connectors': [{'power': None,
-                                                                                     'price': '',
-                                                                                     'standard': 'TESLA_S',
-                                                                                     'uid': '1'}],
-                                                                     'evse_id': 'FI*TSL*EHELSINKI2',
-                                                                     'status': 'AVAILABLE',
-                                                                     'uid': 'HELSINKI-2'},
-                                                                    {'connectors': [{'power': None,
-                                                                                     'price': '0,50€/kWh',
-                                                                                     'standard': 'TESLA_S',
-                                                                                     'uid': '1'}],
-                                                                     'evse_id': 'FI*TSL*EHELSINKI3',
-                                                                     'status': 'AVAILABLE',
-                                                                     'uid': 'HELSINKI-3'}],
-                                                          'location': {'address': 'Helsinki 12',
-                                                                       'city': 'Helsinki',
-                                                                       'connectors_available': Counter({'TESLA_S': 3}),
-                                                                       'country': 'FIN',
-                                                                       'name': 'Helsinki Supercharger',
-                                                                       'uid': 'HELSINKI-1'}},
-                                           'type': 'Feature'}],
-                           'type': 'GeometryCollection'}
+    expected_map_result = {"features": [{"geometry": {"coordinates": [30.0, 60.0], "type": "Point"},
+                                         "properties": {"evses:0:connectors:0:power": None,
+                                                        "evses:0:connectors:0:price": "0,50\u20ac/kWh",
+                                                        "evses:0:connectors:0:standard": "TESLA_S",
+                                                        "evses:0:connectors:0:uid": "3050",
+                                                        "evses:0:evse_id": "FI*TSL*EHELSINKI1",
+                                                        "evses:0:status": "AVAILABLE", "evses:0:uid": "HELSINKI-1",
+                                                        "evses:1:connectors:0:power": None,
+                                                        "evses:1:connectors:0:price": "",
+                                                        "evses:1:connectors:0:standard": "TESLA_S",
+                                                        "evses:1:connectors:0:uid": "1",
+                                                        "evses:1:evse_id": "FI*TSL*EHELSINKI2",
+                                                        "evses:1:status": "AVAILABLE", "evses:1:uid": "HELSINKI-2",
+                                                        "evses:2:connectors:0:power": None,
+                                                        "evses:2:connectors:0:price": "0,50\u20ac/kWh",
+                                                        "evses:2:connectors:0:standard": "TESLA_S",
+                                                        "evses:2:connectors:0:uid": "1",
+                                                        "evses:2:evse_id": "FI*TSL*EHELSINKI3",
+                                                        "evses:2:status": "AVAILABLE", "evses:2:uid": "HELSINKI-3",
+                                                        "location:address": "Helsinki 12", "location:city": "Helsinki",
+                                                        "location:connectors_available:TESLA_S": 3,
+                                                        "location:country": "FIN",
+                                                        "location:name": "Helsinki Supercharger",
+                                                        "location:uid": "HELSINKI-1"}, "type": "Feature"}],
+                           "type": "FeatureCollection"}
 
     def test_map(self):
         response = self.client.get(reverse('map-locations'))
@@ -2765,9 +2800,11 @@ class TestBillingList(TestCase):
     def test_empty_billing_list(self):
         request = api_factory.get(reverse('billing-list'))
         request.user = get_fake_admin()
+        request.query_params = {}
         response = InvoiceReportViews().session_list(request)
+        ic(response.data)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data, [])
-
+        self.assertEqual(response.data,
+                         OrderedDict([('count', 0), ('next', None), ('previous', None), ('results', [])]))
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)

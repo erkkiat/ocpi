@@ -99,11 +99,12 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def kwh(self):
-        getcontext().prec = 3
-        return Decimal(self.stop_kwh) - Decimal(self.start_kwh)
+        # getcontext().prec = 3
+        return round(Decimal(self.stop_kwh) - Decimal(self.start_kwh), 3)
 
     @kwh.setter
     def kwh(self, value: Union[float, Decimal]):
+        # getcontext().prec = 3
         self.stop_kwh = Decimal(self.start_kwh) + Decimal(value)
         return self.kwh
 
@@ -266,6 +267,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     def save(self, *args, **kwargs):
         # Needed for running self.clean() when doing a save() or create()
+        self.stop_kwh = Decimal(round(self.stop_kwh, 3))
+        self.start_kwh = Decimal(round(self.start_kwh, 3))
         self.full_clean()
         return super().save(*args, **kwargs)
 

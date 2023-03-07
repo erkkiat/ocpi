@@ -274,7 +274,7 @@ def check_still_alive(credentials_id: int = None) -> None:
 def send_data_to_analytics(data: Union[dict, list], url):
     from ocpi22 import logging
     if not zoined_token:
-        logging.info(f'No Zoined token set => no update to analytics')
+        # logging.info(f'No Zoined token set => no update to analytics')
         return
     headers = {'content-type': 'application/json', 'Authorization': f'Bearer {zoined_token}'}
     # Todo: Async send
@@ -283,5 +283,5 @@ def send_data_to_analytics(data: Union[dict, list], url):
     response = requests.post(url=url, json=data, headers=headers, timeout=5)
     if response.status_code != 200:
         logging.error(f'Unable to send update to analytics: {response.text}')
-    else:
-        logging.info(f'Update sent to analytics: {response.text}')
+    # else:
+    #     logging.info(f'Update sent to analytics: {response.text}')

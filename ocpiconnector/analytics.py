@@ -12,9 +12,12 @@ def send_session_update_to_analytics(session: Session):
     if not session.total_cost_incl_vat:
         logging.info(f'No total cost for session {session.uid} => no update to analytics')
         return
+    if not session.connector.tariff_ids.exists():
+        logging.info(f'No tariff for session {session.uid} => no update to analytics')
+        return
     session_date = session.start_date_time.strftime('%Y-%m-%d')
     session_time = session.start_date_time.strftime('%H:%M:%S')
-    getcontext().prec = 3
+    # getcontext().prec = 3  # Maybe better not to touch the precision
     data = {
             "transaction_id": session.uid,
             "line_item_id": "1",

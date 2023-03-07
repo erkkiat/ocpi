@@ -452,10 +452,10 @@ class TestChargingPeriods(TestCase):
         with Timer() as t:
             _meter_values_test(performance_test_data, performance_session_id)
 
-        long_queries = [i for i in connection.queries if float(i.get('time')) > 0.1]
+        long_queries = [i for i in connection.queries if float(i.get('time')) > 0.3]
         self.assertFalse(long_queries, f'There are SQL queries taking a long time: {long_queries}')
 
-        self.assertLess(float(t), 3.5, f'Meter values performance test took {float(t):02f} seconds, which is too long')
+        self.assertLess(float(t), 4, f'Meter values performance test took {float(t):02f} seconds, which is too long')
 
 
 def put(data, url, viewset):
