@@ -18,6 +18,7 @@ api_factory = APIRequestFactory()
 
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.msp.util'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.msp.map'))
     return tests
 
 

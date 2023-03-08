@@ -2802,7 +2802,6 @@ class TestBillingList(TestCase):
         request.user = get_fake_admin()
         request.query_params = {}
         response = InvoiceReportViews().session_list(request)
-        ic(response.data)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data,
                          OrderedDict([('count', 0), ('next', None), ('previous', None), ('results', [])]))
