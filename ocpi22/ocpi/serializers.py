@@ -292,7 +292,7 @@ class LocationEvseUidSerializer(serializers.Serializer):
         location_id = self.get_location_id()
         evse = Evse.get_if_exists(uid=evse_uid, location__uid=location_id)
         if not evse:
-            self.fail('object_missing', evse=evse_uid, location=location_id)
+            self.fail('location_evse_missing', evse=evse_uid, location=location_id)
         return evse
 
 

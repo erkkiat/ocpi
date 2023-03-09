@@ -1026,6 +1026,24 @@ class StopTransactionResponses:
                          ('status_text', 'Session finished')])
 
 class SessionData:
+    wrong_evse = {
+        "status": "ACTIVE",
+        "auth_method": "WHITELIST",
+        "party_id": "MSP",
+        "currency": "PHP",
+        "id": "123",
+        "cdr_token": {
+            "contract_id": "789",
+            "type": "APP_USER",
+            "uid": "456"
+        },
+        "country_code": "PH",
+        "location_id": "12",
+        "evse_uid": {
+            "evse_uid": "87da"
+        }
+    }
+
     meter_values_1 = {  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
         'auth_method': 'COMMAND',
         'authorization_reference': 'FI*001-AUTH-REFERENCE',

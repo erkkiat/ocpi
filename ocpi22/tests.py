@@ -2342,7 +2342,7 @@ def put_session_data(data, create_authorization=True):
     request.accepted_media_type = 'text/html'  # To get the detail_url in the response
     request.version = '2.2.1'
     if create_authorization:
-        authorization_reference = data.get('authorization_reference')
+        authorization_reference = data.get('authorization_reference', '')
         Authorization.objects.create(authorization_reference=authorization_reference)
     return SessionViewSet.put(request)
 
@@ -2377,6 +2377,24 @@ class TestPutSession(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                          'Creating a session with ChargingPeriods should succeed')
         webhook_post_mock.assert_called_once()
+
+    @patch('ocpi22.util.redis_store.get',
+           side_effect=lambda x: {
+               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
+               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
+               'callback-session_url': 'http://localhost/session/{uid}/',
+               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
+           }.get(x))
+    @patch('ocpi22.webhooks.requests.post')
+    def test_put_session_to_wrong_evse(
+            self,
+            webhook_post_mock: Mock,
+            _redis_store_mock: Mock,
+    ):
+        response = put_session_data(SessionData.wrong_evse)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                         'Creating a session with wrong EVSE should fail gracefully')
+        webhook_post_mock.assert_not_called()
 
 
 def meter_values(data):
