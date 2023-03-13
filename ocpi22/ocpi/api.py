@@ -297,10 +297,10 @@ class CdrViewSet(OCPIListModelMixin,
 
     @transaction.atomic
     @requires_premium
-    def put(self, request, **_kwargs) -> OCPIResponse:
+    def post(self, request, **_kwargs) -> OCPIResponse:
         data = request.data.get('data', request.data)
-        country_code = data.get('country_code')
-        party_id = data.get('party_id')
+        country_code = data.get('country_code').upper()
+        party_id = data.get('party_id').upper()
 
         if not matching_operator(request, country_code, party_id):
             return NotOwner()
@@ -313,7 +313,8 @@ class CdrViewSet(OCPIListModelMixin,
             if ocpi_platform.is_emsp:
                 update_balance(cdr)
                 # capture_reservation(cdr)
-            return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED)
+            url = build_absolute_uri(cdr.get_absolute_url())
+            return OCPIResponse(serializer.data, headers=dict(Location=url), http_status=status.HTTP_201_CREATED)
         return OCPIResponse(errors=serializer.errors)
 
 

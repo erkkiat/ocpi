@@ -1179,8 +1179,8 @@ class CPORouter(routers.DefaultRouter):
 @receiver(post_save, sender=Cdr)
 def cdr_post_save(sender, instance: Cdr, created, *_args, **_kwargs):
     try:
-        cdr_serializer = CdrSerializer(instance)
         if not settings.TEST:
+            cdr_serializer = CdrSerializer(instance)
             send_to_webhook(serialized_data=cdr_serializer.data, serializer=InvoicingCallbackSerializer)
     except Exception as e:
         logging.error(f'Unable to send the new CDR to CpoInvoiceWebhook: {e}')

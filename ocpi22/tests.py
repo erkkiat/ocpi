@@ -243,6 +243,15 @@ class ApiPutTests(TestCase):
         request.version = '2.2.1'
         return viewset().put(request)
 
+    def post(self, url, data, token, viewset) -> OCPIResponse:
+        request = api_factory.post(url, data, content_type="application/json",
+                                  Authorization=f'Token {token}')
+        request.data = data
+        request.user = AnonymousUser
+        request.credentials = self.credentials
+        request.version = '2.2.1'
+        return viewset().post(request)
+
     def test_put_location(self):
         url = reverse('location-list')
         token_base64 = self.credentials.ours_base64()
@@ -505,14 +514,14 @@ class ApiPutTests(TestCase):
                'callback-session_url': 'http://localhost/session/{uid}/',
                'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
            }.get(x))
-    def test_put_cdr(self, redis_store_mock: Mock):
+    def test_post_cdr(self, _redis_store_mock: Mock):
         url = reverse('cdr-list')
         token_base64 = self.credentials.ours_base64()
         viewset = CdrViewSet
 
         invalid_data = dict(country_code=self.country_code, party_id=self.party_id, id=123)
 
-        response = self.put(url, invalid_data, 'FALSETOKEN', viewset)
+        response = self.post(url, invalid_data, 'FALSETOKEN', viewset)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          f'A {viewset} request should require OCPI authentication. '
                          f'{response.data}')
@@ -521,79 +530,82 @@ class ApiPutTests(TestCase):
                          f'{response.data}')
 
         testcases = (
-            ('cdr_example', status.HTTP_201_CREATED, 1000, 1),
-            ('cdr_example2', status.HTTP_201_CREATED, 1000, 1),
+            ('cdr_example', status.HTTP_201_CREATED, 1000, 1,
+             'http://testserver.test/ocpi/2.2.1/cdrs/BE/BEC/12345'),
+            ('cdr_example2', status.HTTP_201_CREATED, 1000, 1,
+             'http://testserver.test/ocpi/2.2.1/cdrs/FI/000/8297d92ff7d047c68727750b3b8ca559'),
         )
 
-        for filename, http_status, ocpi_status, price_component_count \
+        for filename, http_status, ocpi_status, price_component_count, cdr_url \
                 in testcases:
+            with self.subTest(filename=filename):
+                data = load_example(f'data/examples/{filename}.json')
 
-            data = load_example(f'data/examples/{filename}.json')
+                country_code = data.get('country_code')
+                party_id = data.get('party_id')
 
-            country_code = data.get('country_code')
-            party_id = data.get('party_id')
-
-            # Create CretentialsRoles
-            # noinspection PyUnresolvedReferences
-            roles, _created = CredentialsRole.objects.get_or_create(
-                role='CPO', country_code=country_code,
-                party_id=party_id, defaults=dict(
-                    business_details=self.business_details)
-            )
-            self.credentials.roles.add(roles)
-
-            # Send the request
-            response = self.put(url, data, token_base64, viewset)
-            if response.status_code >= 300:
-                print(f'status_text: "{response.status_text}" for {filename} case.')
-                # ic(response.data)
-            self.assertEqual(response.status_code, http_status,
-                             f'Expected a HTTP status code {http_status} for {filename} case.')
-            self.assertEqual(response.data['status_code'], ocpi_status,
-                             f'Expected an OCPI status code {ocpi_status} for {filename} case.')
-
-            # Verify the saved data
-            uid = data.get('id')
-            saved_cdr = Cdr.objects.get(uid=uid)
-            saved_data = CdrSerializer(saved_cdr, context={'version': '2.2.1'}).data
-            # ic(saved_data)
-
-            # Check that all Tariffs are archived, so that they won't be modified
-            for t in saved_cdr.tariffs.all():
-                self.assertTrue(
-                    t.archived,
-                    'All Tariffs referred to by CDRs must be archived so that they are not modified anymore'
+                # Create CretentialsRoles
+                roles, _created = CredentialsRole.objects.get_or_create(
+                    role='CPO', country_code=country_code,
+                    party_id=party_id, defaults=dict(
+                        business_details=self.business_details)
                 )
+                self.credentials.roles.add(roles)
 
-            # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
-            self.assertEqual(saved_data.get('last_updated'), data.get('last_updated'),
-                             'Last_updated is not stored from the incoming data')
+                # Send the request
+                response = self.post(url, data, token_base64, viewset)
+                if response.status_code >= 300:
+                    print(f'status_text: "{response.status_text}" for {filename} case.')
+                    # ic(response.data)
+                self.assertEqual(response.headers.get('Location'), cdr_url,
+                                 f'Expected a Location header with different content for {filename} case.')
+                self.assertEqual(response.status_code, http_status,
+                                 f'Expected a HTTP status code {http_status} for {filename} case.')
+                self.assertEqual(response.data['status_code'], ocpi_status,
+                                 f'Expected an OCPI status code {ocpi_status} for {filename} case.')
 
-            # Check that Tariffs are created and are serialized correctly
-            tariffs = saved_data.get('tariffs')
-            elements = tariffs[0].get('elements')
-            price_components = elements[0].get('price_components')
+                # Verify the saved data
+                uid = data.get('id')
+                saved_cdr = Cdr.objects.get(uid=uid)
+                saved_data = CdrSerializer(saved_cdr, context={'version': '2.2.1'}).data
+                # ic(saved_data)
 
-            self.assertTrue(tariffs, 'Tariffs are not stored from the incoming data')
-            self.assertTrue(elements, 'TariffElements are not stored from the incoming data')
-            self.assertTrue(price_components, 'PriceComponents are not stored from the incoming data')
+                # Check that all Tariffs are archived, so that they won't be modified
+                for t in saved_cdr.tariffs.all():
+                    self.assertTrue(
+                        t.archived,
+                        'All Tariffs referred to by CDRs must be archived so that they are not modified anymore'
+                    )
 
-            # Compare first PriceComponent from JSON data and the saved data
-            first_json_price_component = data.get('tariffs')[0].get('elements')[0].get('price_components')[0]
-            first_price_component = dict(price_components[0])
-            self.assertDictEqual(first_price_component, first_json_price_component,
-                                 f'PriceComponent is not stored accurately')
+                # Make sure that the received last_updated timestamp will be stored and not overwritten by timezone.now()
+                self.assertEqual(saved_data.get('last_updated'), data.get('last_updated'),
+                                 'Last_updated is not stored from the incoming data')
 
-            saved_data = json.loads(json.dumps(saved_data))
-            # Remove non-OCPI and unsupported fields
-            ignored_fields = ('credit', 'total_time_cost', 'charging_periods', 'tariff_alt_text', 'detail_url')
-            for i in ignored_fields:
-                saved_data.pop(i, None)
-                data.pop(i, None)
-            # saved_data['tariffs'][0].pop('detail_url')
-            for t in range(0, len(saved_data['tariffs'])):
-                del saved_data['tariffs'][t]['tariff_alt_text']
-            self.assertEqual(saved_data, data)
+                # Check that Tariffs are created and are serialized correctly
+                tariffs = saved_data.get('tariffs')
+                elements = tariffs[0].get('elements')
+                price_components = elements[0].get('price_components')
+
+                self.assertTrue(tariffs, 'Tariffs are not stored from the incoming data')
+                self.assertTrue(elements, 'TariffElements are not stored from the incoming data')
+                self.assertTrue(price_components, 'PriceComponents are not stored from the incoming data')
+
+                # Compare first PriceComponent from JSON data and the saved data
+                first_json_price_component = data.get('tariffs')[0].get('elements')[0].get('price_components')[0]
+                first_price_component = dict(price_components[0])
+                self.assertDictEqual(first_price_component, first_json_price_component,
+                                     f'PriceComponent is not stored accurately')
+
+                saved_data = json.loads(json.dumps(saved_data))
+                # Remove non-OCPI and unsupported fields
+                ignored_fields = ('credit', 'total_time_cost', 'charging_periods', 'tariff_alt_text', 'detail_url')
+                for i in ignored_fields:
+                    saved_data.pop(i, None)
+                    data.pop(i, None)
+                # saved_data['tariffs'][0].pop('detail_url')
+                for t in range(0, len(saved_data['tariffs'])):
+                    del saved_data['tariffs'][t]['tariff_alt_text']
+                self.assertEqual(saved_data, data)
 
     def test_put_token(self):
         url = reverse('token-list')
@@ -2762,7 +2774,7 @@ class TestMspUserApi(TestCase):
             # Cleanup for next test
             cdr.delete()
 
-            response = put_cdr(CdrMessages.test_transactions_rfid)
+            response = post_cdr(CdrMessages.test_transactions_rfid)
             self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
             self.assertEqual(account.balance, initial_balance - cdr.total_cost_incl_vat,
                              'Account balance differs from expected after a charging session')
@@ -2770,7 +2782,7 @@ class TestMspUserApi(TestCase):
         # Try to put a duplicate CDR
 
         with self.assertRaises(ValidationError):
-            response = put_cdr(CdrMessages.test_transactions_rfid)
+            response = post_cdr(CdrMessages.test_transactions_rfid)
 
         #
         # Charge using the mobile app and an APP_TOKEN
@@ -2782,7 +2794,7 @@ class TestMspUserApi(TestCase):
             account.save()
             previous_balance = account.balance
 
-            response = put_cdr(CdrMessages.test_transactions_app_id)
+            response = post_cdr(CdrMessages.test_transactions_app_id)
             cost = Decimal("6.20")
             self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
             self.assertEqual(account.balance, previous_balance - cost,
@@ -2806,12 +2818,12 @@ def get_fake_admin():
     return FakeUser('admin', True, True)
 
 
-def put_cdr(data):
+def post_cdr(data):
     request = api_factory.post(reverse('cdr-list'))
     request.data = data
     request.user = get_fake_admin()
     request.version = '2.2.1'
-    return CdrViewSet().put(request)
+    return CdrViewSet().post(request)
 
 
 class TestBillingList(TestCase):
