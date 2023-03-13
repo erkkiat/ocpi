@@ -68,6 +68,14 @@
 <body class="{% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
   data-admin-utc-offset="{% now "Z" %}">
 
+{% comment %}
+<div style="">
+	<p class="watermark" style="position:fixed; top: 25%; left: 25%; text-align: center; z-index: 0; color:#eeeeee; font-size:120px; transform:rotate(-35deg); -webkit-transform:rotate(-35deg); line-height: 1.1em">
+		{% if ocpiplatform.is_emsp %}eMobility Platform{% else %}CMS{% endif %}
+	</p>
+</div>
+{% endcomment %}
+
 <!-- Container -->
 <div id="container">
 
