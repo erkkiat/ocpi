@@ -35,6 +35,13 @@ def _get_environment(request):
                 icon='fa-charging-station',
                 list_url=get_url('ocpi22', 'evse', 'changelist'),
                 add_url=get_url('ocpi22', 'evse', 'add', is_cpo),
+                extra_items=[
+                    dict(
+                        url=reverse('admin:ocpi22_location_changelist'),
+                        name=_('Locations list'),
+                        icon='fa-map-marker-alt',
+                    ),
+                ],
             ),
             dict(
                 name='tariffs',

@@ -9,8 +9,8 @@
             {% if section.add_url %}<li>
                 <a class="dropdown-item btn btn-circle text-1"
                    href="{{ section.add_url }}">
-                    <i class="fa fa-circle-plus"></i>
-                    Add New...
+                    <i class="fa fa-circle-plus mr-1"></i>
+                    {% trans 'Add New...' %}
                 </a>
             </li>{% endif %}
             {% for item in section.items|slice:":3" %}
@@ -27,9 +27,15 @@
             {% endfor %}
             {% for extra in section.extra_items %}
             <li>
-                <a href="{{ extra.url }}" class="dropdown-item">{{ extra.name }}</a>
+                <a href="{{ extra.url }}" class="dropdown-item">
+                    {% if extra.icon %}<i class="fa {{ extra.icon }} mr-1"></i>{% endif %}
+                    {{ extra.name }}
+                </a>
             </li>
             {% endfor %}
-            <li><a href="{{ section.list_url }}" class="dropdown-item text-0">Show all</a></li>
+            <li><a href="{{ section.list_url }}" class="dropdown-item text-1">
+                <i class="fa fa-list-ul mr-1"></i>
+                {{ section_name|capfirst }} list
+            </a></li>
         </ul>
     </li>
