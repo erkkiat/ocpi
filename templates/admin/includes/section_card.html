@@ -48,6 +48,15 @@
                     {% endif %}
                 </div>
                 {% endfor %}
+                {% for extra in section.extra_items %}
+                <li>
+                    <a href="{{ extra.url }}" class="link">
+                        {% if extra.icon %}<i class="fa {{ extra.icon }} mr-1"></i>{% endif %}
+                        {{ extra.name }}
+                    </a>
+                </li>
+                {% endfor %}
+
                 {% if section.items|length > 4 %}
                 <div>
                     <a href="{{ section.list_url }}" class="link">...</a>

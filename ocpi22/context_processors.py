@@ -69,18 +69,28 @@ def _get_environment(request):
                 extra_items=[
                     dict(
                         url=reverse('admin:gdpr_assist_personaldata_changelist'),
-                        name=_('GDPR tools')
+                        name=_('GDPR tools'),
+                        icon='fa-user-secret',
                     ),
                 ],
             ),
             dict(
                 name='sessions',
-                items=Session.objects.all().order_by('-updated'),
+                items=Session.objects.none(),
                 icon='fa-bolt',
                 list_url=get_url('ocpi22', 'session', 'changelist'),
                 add_url=get_url('ocpi22', 'session', 'add', criteria=False),
                 search_url=get_url('ocpi22', 'session', 'changelist'),
                 reporting_url='https://app.zoined.com/dashboards/6477',
+                extra_items=[
+                    dict(
+                        url=f"{reverse('admin:ocpi22_session_changelist')}?status__exact=ACTIVE",
+                        name=_('{number} active sessions').format(
+                            number=Session.objects.filter(status=Session.ACTIVE).count()
+                        ),
+                        icon='fa-bolt',
+                    ),
+                ],
             ),
             dict(
                 name='roaming partners',
