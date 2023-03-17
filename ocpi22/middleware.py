@@ -1,6 +1,9 @@
 import json
+from datetime import datetime
 
 import redis
+from django.conf import settings
+from django.shortcuts import render
 
 import ocpi22.logging as logging
 from json import JSONDecodeError
@@ -128,3 +131,15 @@ class ErrorLoggingMiddleware:
         except Exception as e:
             logging.error(f'An exception occured: {e}', request)
             raise
+
+
+class EnabledUntilMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        now = datetime.now()
+        if now > settings.EXPIRES_ON:
+            return render(request, 'expired.html', {'expires_on': settings.EXPIRES_ON})
+        response = self.get_response(request)
+        return response

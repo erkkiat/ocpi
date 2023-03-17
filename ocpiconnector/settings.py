@@ -1,5 +1,6 @@
 # Django settings for ocpiconnector project.
 import os
+from datetime import datetime
 
 import sentry_sdk
 from django.conf.locale.en import formats as locale_formats
@@ -41,6 +42,10 @@ locale_formats.DATETIME_FORMAT = os.environ.get('DATETIME_FORMAT_LOCALE', "D j.n
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 PREMIUM = _env_bool('PREMIUM', False)
+
+# Complete expiration of access at 00:00 on the specified date
+expires_on_str = os.environ.get('EXPIRES_ON')
+EXPIRES_ON = datetime.strptime(expires_on_str, '%Y-%m-%d') if expires_on_str else None
 
 # Philippines
 # DATE_FORMAT = '%m/%d/%Y'
@@ -311,6 +316,9 @@ MIDDLEWARE = [
 
 if 'MOESIF_APPLICATION_ID' in os.environ:
     MIDDLEWARE.append('moesifdjango.middleware.moesif_middleware')
+
+if EXPIRES_ON:
+    MIDDLEWARE.append('ocpi22.middleware.EnabledUntilMiddleware')
 
 if os.environ.get('DEBUG_MIDDLEWARE') in TRUE_OPTIONS:
     MIDDLEWARE.append('ocpi22.middleware.DebugMiddleware')
