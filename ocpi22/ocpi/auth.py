@@ -8,6 +8,8 @@ from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 
+from ocpi22 import logging
+from ocpi22.ocpi.util_party import get_sender_party
 from util import reverse
 
 from ocpi22.models.credentials import Credentials
@@ -56,7 +58,6 @@ def check_auth_token(request, token: str) -> bool:
             return True
         else:
             # Or are we already friends?
-            # noinspection PyUnresolvedReferences
             credentials_matches = Credentials.objects.filter(ours=token_ascii, valid=True)
             if credentials_matches.count():
                 credentials = credentials_matches[0]
@@ -70,6 +71,18 @@ def check_auth_token(request, token: str) -> bool:
         raise NotAuthenticated(
             f'The token "{token}" (ascii {token_ascii}) doesn\'t match any of our current credentials')
     # If no token, give other permission mechanisms a chance
+    return False
+
+
+# @cache
+def request_matches_credentials(credentials: Credentials, party) -> bool:
+    if credentials.is_hub():
+        return True
+    # ic(party, credentials.get_parties())
+    if party in credentials.get_parties():
+        print('Request matches credentials')
+        return True
+    logging.error(f'*** Request headers from {credentials} do not match Party in Credentials')
     return False
 
 
@@ -107,7 +120,8 @@ class OCPIPermission(DjangoModelPermissions):
 
         token = self.get_token(request)
         # Check for token authentication, secondarily basic auth
-        if token and check_auth_token(request, token):
+        if token and check_auth_token(request, token) and \
+                request_matches_credentials(request.credentials, get_sender_party(request.headers)):
             return True
 
         if view and (hasattr(view, 'publicly_visible') or

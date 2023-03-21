@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 import ocpi22.logging as logging
 import secrets
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, List
 
 from django import forms
 from django.conf import settings
@@ -121,7 +121,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         count = credentials.count()
         assert count <= 1, f"There are overlapping tokens in credentials {', '.join([str(a.pk) for a in credentials])}."
         if credentials.count() == 1:
-            return credentials[0]
+            return credentials.first()
         return Credentials.objects.create(token_a=token) if create else None
 
     def is_complete(self) -> bool:
@@ -142,6 +142,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         credentialsrole = self.roles.filter(role=role.value).first()
         if credentialsrole:
             return credentialsrole.party
+
+    def get_parties(self) -> List[Party]:
+        return [r.party for r in self.roles.all()]
+
+    def is_hub(self) -> bool:
+        return bool(self.get_party_for_role(OcpiRolesEnum.HUB))
 
     def add_role(self, role: dict) -> "CredentialsRole":
         assert isinstance(role, dict), f'Role should be a dict, not "{role}"'
