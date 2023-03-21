@@ -479,7 +479,7 @@ class CredentialsAdmin(admin.ModelAdmin):
 
     model = Credentials
     list_display = ['name', 'valid', 'responding', 'last_connection']
-    readonly_fields = ['theirs_base64', 'last_updated', 'created', 'last_connection']
+    readonly_fields = ['theirs_base64', 'ours_base64', 'last_updated', 'created', 'last_connection']
     inlines = [CredentialRolesInline, EndpointsInline]
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a',
                      'roles__business_details__name']
