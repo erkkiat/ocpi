@@ -87,7 +87,7 @@ class CommandsViewSet(GenericViewSet):
         billed_to = get_sender_party(request.META)
         assert isinstance(billed_to, Party) and len(str(billed_to)) == 6, \
             f'Billed_to needs to be set with party ID: {billed_to}.' \
-            f' (You need to be using Credentials for the connection.)'
+            f' (You need to be using Credentials and OCPI routing headers for the connection.)'
         return billed_to
 
     error_response = ResponseData(ocpi_status=2000, result=CommandResponse.REJECTED,
@@ -219,12 +219,12 @@ class CommandsViewSet(GenericViewSet):
                     status_message = str(e)
                 except (Evse.DoesNotExist, Location.DoesNotExist, Connector.DoesNotExist) as e:
                     log_error(request, e)
-                    return OCPIResponse(None, status_message=f'Unable to make reservation: {e}',
+                    return OCPIResponse(None, status_message=f'Unable to complete remote command: {e}',
                                         http_status=status.HTTP_400_BAD_REQUEST,
                                         status_code=Ocpi.ClientError.UNKNOWN_LOCATION)
                 except Token.DoesNotExist as e:
                     log_error(request, e)
-                    return OCPIResponse(None, status_message=f'Unable to make reservation: {e}',
+                    return OCPIResponse(None, status_message=f'Unable to complete remote command: {e}',
                                         http_status=status.HTTP_400_BAD_REQUEST,
                                         status_code=Ocpi.ClientError.UNKNOWN_TOKEN)
                 except Exception as e:
