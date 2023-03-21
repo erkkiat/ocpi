@@ -1,4 +1,4 @@
-{% load i18n static %}<!DOCTYPE html>
+{% load i18n static humanize %}<!DOCTYPE html>
 {% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
 <html lang="{{ LANGUAGE_CODE|default:"en-us" }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
 <head>
@@ -68,6 +68,12 @@
 <body class="{% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
   data-admin-utc-offset="{% now "Z" %}">
 
+{% if expiration_alert %}
+<div class="alert alert-warning alert-sm text-center mb-0">
+	{% blocktranslate with expiration=expiration_alert|naturaltime %}This service will expire {{ expiration }}{% endblocktranslate %}
+</div>
+{% endif %}
+
 {% comment %}
 <div style="">
 	<p class="watermark" style="position:fixed; top: 25%; left: 25%; text-align: center; z-index: 0; color:#eeeeee; font-size:120px; transform:rotate(-35deg); -webkit-transform:rotate(-35deg); line-height: 1.1em">
@@ -99,9 +105,8 @@
 							</div>
 							{% if "admin/login" not in request.path %}
 							<div class="header-column justify-content-end">
-								<div class="header-row pt-3"></div>
 								<div class="header-row">
-									<div class="header-nav pt-1">
+									<div class="header-nav pt-1 pb-0 mb-0">
 										<div class="header-nav-main header-nav-main-effect-1 header-nav-main-sub-effect-1">
 											<nav class="collapse">
 												<ul class="nav nav-pills" id="mainNav">
@@ -120,16 +125,31 @@
 															{{ user.username }}
 														</a>
 														<ul class="dropdown-menu">
-															<li><a class="dropdown-item" href="/">{% trans 'Developer Central' %}</a></li>
+															<li><a class="dropdown-item" href="/">
+																<i class="fa fa-code mr-2"></i>
+																{% trans 'Developer Central' %}
+															</a></li>
 															{% if user.has_usable_password %}
-															<li><a href="{% url 'admin:password_change' %}">{% translate 'Change password' %}</a></li>
+															<li><a class="dropdown-item" href="{% url 'admin:password_change' %}">
+																<i class="fa fa-lock mr-2"></i>
+																{% translate 'Change password' %}
+															</a></li>
 															{% endif %}
-															<li><a class="dropdown-item" href="{% url 'admin:logout' %}">{% trans 'Log out' %}</a></li>
+															{% if expires_on %}
+															<li><a class="dropdown-item disabled text-warning" href="#">
+																<i class="fa fa-clock mr-2"></i>
+																{% blocktranslate with expiration=expires_on|naturaltime %}Instance expires<br>{{ expiration }}{% endblocktranslate %}
+															</a></li>
+															{% endif %}
+															<li><a class="dropdown-item" href="{% url 'admin:logout' %}">
+																<i class="fa fa-sign-out mr-2"></i>
+																{% trans 'Log out' %}
+															</a></li>
 														</ul>
 													</li>
 													{% else %} {# user.is_authenticated #}
-													<li class="">
-														<a class="dropdown-item dropdown-toggle active" href="{% url 'admin:login' %}">
+													<li>
+														<a class="dropdown-item dropdown-toggle" href="{% url 'admin:login' %}">
 															{% trans 'Log in' %}
 														</a>
 													</li>
@@ -269,7 +289,7 @@
           </div>
           <!-- END Content -->
           {% block footer %}
-          <div id="footer"></div>
+          {# <div id="footer"></div> #}
           {% endblock %}
       </div>
     </div>

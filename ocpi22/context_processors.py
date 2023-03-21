@@ -1,5 +1,7 @@
 import os
+from datetime import datetime
 
+from django.conf import settings
 from django.urls import reverse
 from django.utils.translation import gettext as _
 
@@ -28,6 +30,9 @@ def _get_environment(request):
         general_message=os.environ.get('GENERAL_MESSAGE'),
         ocpi_platform=ocpi_platform,
         recent_activity=Session.objects.all().order_by('-start_date_time'),
+        expiration_alert=settings.EXPIRES_ON
+        if settings.EXPIRES_ON and (settings.EXPIRES_ON - datetime.now()).days <= settings.WARN_BEFORE_DAYS else None,
+        expires_on=settings.EXPIRES_ON,
         sections=(
             dict(
                 name='charge points',

@@ -46,6 +46,7 @@ PREMIUM = _env_bool('PREMIUM', False)
 # Complete expiration of access at 00:00 on the specified date
 expires_on_str = os.environ.get('EXPIRES_ON')
 EXPIRES_ON = datetime.strptime(expires_on_str, '%Y-%m-%d') if expires_on_str else None
+WARN_BEFORE_DAYS = 3
 
 # Philippines
 # DATE_FORMAT = '%m/%d/%Y'
