@@ -1,14 +1,15 @@
 #!/bin/bash
 
 PORT=$1
-FILENAME=".env-$PORT"
-QUEUE=localhost$PORT
 
 if [ -z "$PORT" ]
   then
-    echo 'Please supply the web server port as parameter.'
-    exit 1
+    echo 'Defaulting to port 8000. You can supply the web server port as parameter.'
+    export PORT=8000
 fi
+
+FILENAME=".env-$PORT"
+QUEUE=localhost$PORT
 
 brew services restart redis || exit 1
 
@@ -25,4 +26,4 @@ celery --app ocpi22.tasks purge -f
 watchmedo auto-restart --directory="./" --pattern="*.py" --recursive -- celery --app ocpi22.tasks \
   worker -n celery-node-$QUEUE -Q $QUEUE -l INFO --beat
 
-brew services stop redis
+# brew services stop redis
