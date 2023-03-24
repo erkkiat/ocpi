@@ -362,7 +362,8 @@ class Connector(models.Model, ModelUtilMixin):
         return f'#{self.uid} - {self.get_standard_display()} - {self.power()}'
 
     def power(self):
-        return f'{int((self.max_electric_power or int(self.max_voltage) * int(self.max_amperage)) / 1000)} kW'
+        phases = Ocpi.POWERTYPE_PHASES.get(self.power_type, 1)
+        return f'{int((self.max_electric_power or int(self.max_voltage) * int(self.max_amperage) * phases) / 1000)} kW'
 
     def tariff(self):
         return ','.join([t.price() for t in self.tariff_ids.all()])
@@ -396,7 +397,7 @@ def connector_pre_save(sender, instance, *_args, **_kwargs):
     if not connector.uid:
         connector.uid = uuid.uuid4().hex
     if not connector.power_type:
-        connector.power_type = Ocpi.POWERTYPES[connector.standard]
+        connector.power_type = Ocpi.POWERTYPES.get(connector.standard, 'AC_3_PHASE')
 
 
 @receiver(post_save, sender=Connector)
