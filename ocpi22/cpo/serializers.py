@@ -106,7 +106,7 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = [
             'quick_url', 'id',
             'name', 'language', 'address', 'city', 'postal_code', 'state', 'country', 'time_zone',
-            'latitude', 'longitude', 'evses',
+            'latitude', 'longitude', 'evses'
         ]
 
     id = serializers.CharField(source='uid', validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
@@ -127,6 +127,8 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         required=False, max_length=3,
         help_text='If omitted, country will be determined automatically based on coordinates'
     )
+    latitude = serializers.FloatField(required=False)
+    longitude = serializers.FloatField(required=False)
     time_zone = serializers.CharField(
         required=False, max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
         help_text='If omitted, time zone will be determined automatically based on coordinates'

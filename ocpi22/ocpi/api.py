@@ -547,9 +547,9 @@ class SessionViewSet(OCPIListModelMixin,
             created = False
             if not session.is_owner(request):
                 return NotOwner()
-            if session.is_final():
-                return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_401_UNAUTHORIZED,
-                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+            # if session.is_final():
+            #     return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_401_UNAUTHORIZED,
+            #                         status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         else:
             logging.info(f'Creating new session {uid} received from {country_code}*{party_id}')
         serializer = SessionSerializer(

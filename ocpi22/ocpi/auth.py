@@ -80,7 +80,6 @@ def request_matches_credentials(credentials: Credentials, party) -> bool:
         return True
     # ic(party, credentials.get_parties())
     if party in credentials.get_parties():
-        print('Request matches credentials')
         return True
     logging.error(f'*** Request headers from {credentials} do not match Party in Credentials')
     return False

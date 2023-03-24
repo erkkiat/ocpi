@@ -37,6 +37,8 @@ class WebhookViewSet(viewsets.GenericViewSet):
         return serializer.data
 
     def webhook(self, request):
+        if settings.PERFORMANCE_TEST:
+            return Response(dict(status_text='OK'), status=status.HTTP_200_OK)
         try:
             if request.method == 'GET':
                 result = self._get_callbacks()

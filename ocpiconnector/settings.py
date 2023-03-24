@@ -42,6 +42,7 @@ locale_formats.DATETIME_FORMAT = os.environ.get('DATETIME_FORMAT_LOCALE', "D j.n
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 PREMIUM = _env_bool('PREMIUM', False)
+PERFORMANCE_TEST = _env_bool('PERFORMANCE_TEST', False)
 
 # Complete expiration of access at 00:00 on the specified date
 expires_on_str = os.environ.get('EXPIRES_ON')
@@ -368,7 +369,7 @@ INSTALLED_APPS = (
     'cars',
     'settlement',
     'django.contrib.admin',
-    'whitenoise',
+    # 'whitenoise',
     'rest_framework',
     'django_filters',
     'nested_admin',

@@ -7,13 +7,13 @@ from ocpi22.tasks import send_data_to_analytics
 
 def send_session_update_to_analytics(session: Session):
     if hasattr(session, 'analytics_sent'):
-        logging.info(f'Session {session.uid} already sent to analytics => no update')
+        # logging.info(f'Session {session.uid} already sent to analytics => no update')
         return
     if not session.total_cost_incl_vat:
-        logging.info(f'No total cost for session {session.uid} => no update to analytics')
+        # logging.info(f'No total cost for session {session.uid} => no update to analytics')
         return
     if not session.connector.tariff_ids.exists():
-        logging.info(f'No tariff for session {session.uid} => no update to analytics')
+        # logging.info(f'No tariff for session {session.uid} => no update to analytics')
         return
     session_date = session.start_date_time.strftime('%Y-%m-%d')
     session_time = session.start_date_time.strftime('%H:%M:%S')

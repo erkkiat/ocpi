@@ -2,6 +2,7 @@ import json
 from datetime import datetime, time, date
 
 from django.contrib.auth.decorators import login_required
+from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.decorators import method_decorator
@@ -133,7 +134,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     pagination_class = LimitOffsetPagination
     lookup_field = 'uid'
 
-    def put(self, request, uid=None, partial=None):
+    def _put(self, request, uid=None, partial=False):
         try:
             uid = uid or request.data.get('id')
             location = Location.get_if_exists(uid=uid)
@@ -147,6 +148,9 @@ class LocationQuickViewSet(mixins.ListModelMixin,
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError as e:
             return Response({'status_message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, uid=None, partial=False):
+        return self._put(request, uid, partial)
 
     def patch(self, request, uid=None):
         return self.put(request, uid, partial=True)
@@ -166,15 +170,7 @@ class LocationQuickViewSet(mixins.ListModelMixin,
                 serializer = LocationQuickSerializer(location, context={'request': request})
                 return Response(serializer.data)
 
-            partial = bool(request.method == 'PATCH')
-            serializer = LocationQuickSerializer(location, data=request.data, partial=partial,
-                                                 context={'request': request})
-            if serializer.is_valid():
-                serializer.save()
-                serializer = LocationQuickSerializer(Location.objects.get(uid=uid))
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return self._put(request, uid, partial=bool(request.method == 'PATCH'))
 
         except IntegrityError as e:
             return Response({'status_message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -196,19 +192,12 @@ def get_evse_object(evse: Union[Evse, str]) -> Evse:
     return Evse.get_if_exists(uid=evse)
 
 
-def close_active_sessions_for_evse(evse: Union[Evse, str]):
-    evse = get_evse_object(evse)
-    active_sessions = Session.objects.filter(
-        evse=evse,
-        status__in=(Session.ACTIVE, Session.PENDING)
-    )
+def close_active_sessions_for_evse(evse_uid: str):
+    # evse = get_evse_object(evse)
+    active_sessions = Session.objects.filter(evse__uid=evse_uid, status__in=(Session.ACTIVE, Session.PENDING))
+    active_sessions.update(last_updated=timezone.now(), status=Session.COMPLETED, end_date_time=F('last_updated'))
+
     for session in active_sessions:
-        logging.error(f'Closing the hanging session {session.uid}.')
-        last_updated = session.last_updated
-        session.status = Session.COMPLETED
-        session.end_date_time = last_updated if last_updated else timezone.now()
-        session.last_updated = session.end_date_time
-        session.save(update_fields=['status', 'end_date_time', 'last_updated'])
         session.send_updates()
         logging.error(f'Completed active Session {session.uid} which has been left hanging')
 
@@ -454,7 +443,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     if ocpi_status == Evse.AVAILABLE:
                         # Let's free up the charger for the OCPI network, in case we are out of sync
-                        close_active_sessions_for_evse(evse)
+                        close_active_sessions_for_evse(evse.uid)
 
                     evse.send_status_updates()
 

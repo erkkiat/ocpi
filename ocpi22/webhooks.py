@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
 import requests
+from django.conf import settings
 from rest_framework.exceptions import ValidationError
 
 from ocpi22 import logging as logging
@@ -11,6 +12,8 @@ from ocpiconnector.util import Timer
 
 def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
                     outbound_serializer=None, timeout=10) -> dict:
+    if settings.PERFORMANCE_TEST:
+        return {}
     assert issubclass(serializer, CallbacksSerializer), \
         'The serializer needs to be inherited from CallbacksSerializer'
     assert not data or isinstance(data, (dict, OrderedDict))

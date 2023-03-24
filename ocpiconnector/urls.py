@@ -1,5 +1,9 @@
+import os
+
+from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path, re_path
 from rest_framework.schemas import get_schema_view
 
@@ -72,7 +76,7 @@ common_router.register(r'', VersionsViewSet, basename='base')
 
 # urlpatterns = i18n_patterns(
 
-urlpatterns = (
+urlpatterns = [
     path('18n/', include('django.conf.urls.i18n')),
     path('lang/', set_language, name='admin_set_language'),
     path('', home),
@@ -94,4 +98,9 @@ urlpatterns = (
         version="1.0.0"
     ), name='openapi-schema'),
     # path('admin/doc/', include('django.contrib.admindocs.urls')),
-)
+]
+
+if os.environ.get('SERVE_STATIC_FILES') or settings.DEBUG:
+    urlpatterns += staticfiles_urlpatterns()
+    # urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # ic(urlpatterns)

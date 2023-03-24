@@ -93,7 +93,6 @@ class CommandsViewSet(GenericViewSet):
     error_response = ResponseData(ocpi_status=2000, result=CommandResponse.REJECTED,
                                   http_status=status.HTTP_503_SERVICE_UNAVAILABLE, message=[], timeout=60)
 
-    @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='start-session', url_path='START_SESSION')
     def start_session(self, request, **_kwargs):
         return self.process_remote_command(request,
@@ -101,7 +100,6 @@ class CommandsViewSet(GenericViewSet):
                                            webhook_serializer=CPOStartWebhookSerializer,
                                            command_prefix='START')
 
-    @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_name='reserve-now', url_path='RESERVE_NOW')
     def reserve_now(self, request, **_kwargs):
         # TODO: If this Token is of type RFID, the CPO SHALL NOT do a realtime authorization at the eMSP for
@@ -114,6 +112,7 @@ class CommandsViewSet(GenericViewSet):
 
     def process_remote_command(self, request, command_serializer, webhook_serializer, command_prefix,
                                create_session_if_not_exists=True):
+
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -155,7 +154,10 @@ class CommandsViewSet(GenericViewSet):
                     )
                     initial_data.update(**serializer.validated_data)
 
-                    data = send_to_webhook(initial_data, webhook_serializer)
+                    if settings.PERFORMANCE_TEST:
+                        data = dict(timeout=90, result='ACCEPTED')
+                    else:
+                        data = send_to_webhook(initial_data, webhook_serializer)
                     if not data:
                         logging.error(f'Unable to connect to CPMS webhook at {webhook_serializer.URL}.')
                         return OCPIResponse(None,
@@ -173,7 +175,6 @@ class CommandsViewSet(GenericViewSet):
                             result,  # Then just for <result>
                             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
                     if result == CommandResponse.ACCEPTED:
-                        close_active_sessions_for_evse(evse_uid)
                         if not session:
                             if create_session_if_not_exists:
                                 params = serializer.validated_data
@@ -188,7 +189,9 @@ class CommandsViewSet(GenericViewSet):
                                 )
                                 params.pop('token')
 
+                                close_active_sessions_for_evse(evse_uid)
                                 session: Session = create_session(**params)
+
                                 logging.info(f'Created session {session.uid} based on remote command from MSP')
                             else:
                                 msg = f'Session for authorization reference {authorization_reference} not found.'
