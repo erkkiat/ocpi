@@ -57,6 +57,7 @@ WARN_BEFORE_DAYS = 3
 # DATETIME_FORMAT_LOCALE = 'n/j/Y h:i a'
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Allow more than 1000 fields in POST requests
 TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get('SECRET_KEY')
