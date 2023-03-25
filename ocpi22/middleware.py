@@ -140,6 +140,8 @@ class EnabledUntilMiddleware:
     def __call__(self, request):
         now = datetime.now()
         if now > settings.EXPIRES_ON:
+            logging.error(f'Someone is trying to access an expired instance, expired since {settings.EXPIRES_ON}',
+                          request)
             return render(request, 'expired.html', {'expires_on': settings.EXPIRES_ON})
         response = self.get_response(request)
         return response
