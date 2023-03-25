@@ -262,7 +262,7 @@ class Evse(models.Model, ModelUtilMixin):
         (RESERVED, _('Reserved for a particular EV driver')),
         (UNKNOWN, _('No status information available (also used when offline)')),
     )
-    status = models.CharField(max_length=11, choices=STATUS_CHOICES, verbose_name=_('Status'))
+    status = models.CharField(max_length=11, choices=STATUS_CHOICES, verbose_name=_('Status'), default=PLANNED)
 
     capabilities = models.ManyToManyField(Capability, related_name='evses', blank=True, verbose_name=_('Capabilities'))
 
