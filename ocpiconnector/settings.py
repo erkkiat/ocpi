@@ -71,6 +71,7 @@ TWILIO_API_KEY = os.environ.get('TWILIO_API_KEY')
 # Send updates to partners who we have Credentials for
 SEND_UPDATES = _env_bool('SEND_UPDATES', True)
 UPDATES_DISABLED = 'Updates have been disabled using one of the environment variables SEND_UPDATES or PREMIUM.'
+SERVE_STATIC_FILES = _env_bool('SERVE_STATIC_FILES', True)
 
 REMOTE_COMMAND_EXPIRATION = os.environ.get('REMOTE_COMMAND_EXPIRATION', 2 * 60)
 

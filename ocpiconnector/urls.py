@@ -100,7 +100,7 @@ urlpatterns = [
     # path('admin/doc/', include('django.contrib.admindocs.urls')),
 ]
 
-if os.environ.get('SERVE_STATIC_FILES') or settings.DEBUG:
+if settings.SERVE_STATIC_FILES or settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()
     # urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     # ic(urlpatterns)
