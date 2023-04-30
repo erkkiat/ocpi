@@ -27,9 +27,6 @@ from ocpi22.msp.models import Authorization
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
 from payment.models import Payment
 
-ALLOW_ADMIN_DELETE_AND_CHANGE = False
-
-
 class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type',
@@ -79,12 +76,12 @@ class TokenAdmin(admin.ModelAdmin):
     ]
 
     def has_add_permission(self, request) -> bool:
-        return Token.ocpi_object_owner in ocpi_identities or ALLOW_ADMIN_DELETE_AND_CHANGE
+        return Token.ocpi_object_owner in ocpi_identities or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_change_permission(self, request, obj: Token = None) -> bool:
         if not super().has_change_permission(request, obj):
             return False
-        return (obj and obj.is_ours()) or ALLOW_ADMIN_DELETE_AND_CHANGE
+        return (obj and obj.is_ours()) or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
 # Todo: Prevent Connector editing if not owner, get_readonly_fields() doesn't do it
@@ -313,11 +310,11 @@ class CdrAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request) -> bool:
         # Disable add
-        return ALLOW_ADMIN_DELETE_AND_CHANGE
+        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_change_permission(self, request, obj=None) -> bool:
         # Disable change
-        return ALLOW_ADMIN_DELETE_AND_CHANGE
+        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
 
 class SessionAdmin(NestedModelAdmin):
@@ -386,7 +383,7 @@ class TariffAdmin(NestedModelAdmin):
                 if obj and hasattr(obj, 'tariff'):
                     obj = obj.tariff
                 return (not obj or obj.is_ours()) \
-                       or ALLOW_ADMIN_DELETE_AND_CHANGE
+                       or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
             def has_add_permission(self, request, obj=None) -> bool:
                 return Tariff.ocpi_object_owner in ocpi_identities or self.has_change_permission(request, obj)
@@ -412,7 +409,7 @@ class TariffAdmin(NestedModelAdmin):
             if not super().has_change_permission(request, obj):
                 return False
             return (not obj or obj.is_ours()) \
-                   or ALLOW_ADMIN_DELETE_AND_CHANGE
+                   or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
         def has_add_permission(self, request, obj=None) -> bool:
             return Tariff.ocpi_object_owner in ocpi_identities or self.has_change_permission(request, obj)
@@ -464,7 +461,7 @@ class TariffAdmin(NestedModelAdmin):
         if not super().has_change_permission(request, obj):
             return False
         return (obj and obj.is_ours()) \
-               or ALLOW_ADMIN_DELETE_AND_CHANGE
+               or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
     def has_add_permission(self, request) -> bool:
         return Tariff.ocpi_object_owner in ocpi_identities
