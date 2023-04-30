@@ -43,6 +43,7 @@ DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 PREMIUM = _env_bool('PREMIUM', False)
 PERFORMANCE_TEST = _env_bool('PERFORMANCE_TEST', False)
+ALLOW_ADMIN_DELETE_AND_CHANGE = _env_bool('ALLOW_ADMIN_DELETE_AND_CHANGE', False)
 
 # Complete expiration of access at 00:00 on the specified date
 expires_on_str = os.environ.get('EXPIRES_ON')
