@@ -120,7 +120,8 @@ class OCPIPermission(DjangoModelPermissions):
         token = self.get_token(request)
         # Check for token authentication, secondarily basic auth
         if token and check_auth_token(request, token) and \
-                request_matches_credentials(request.credentials, get_sender_party(request.headers)):
+                (request.ocpi_auth == OcpiAuthTypes.TOKEN_A or
+                 request_matches_credentials(request.credentials, get_sender_party(request.headers))):
             return True
 
         if view and (hasattr(view, 'publicly_visible') or
