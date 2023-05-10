@@ -447,9 +447,16 @@ class EvseUidSerializer(serializers.Serializer):
 
 class StrictEvseUidSerializer(serializers.CharField):
     def to_internal_value(self, data):
-        evse = Evse.get_if_exists(uid=data)
+        evse = None
+        if hasattr(self, 'parent'):
+            location_id = self.parent.initial_data.get('location_id')
+            if not location_id and hasattr(self.parent, 'parent'):
+                location_id = self.parent.parent.initial_data.get('location_id')
+                if not location_id:
+                    raise TypeError('Unable to read location_id')
+            evse = Evse.get_if_exists(uid=data, location__uid=location_id)
         if not evse:
-            raise ValidationError(f'Evse with UID {data} is unknown')
+            raise ValidationError(f'Evse with UID {data} at location {location_id} is unknown')
         return evse
 
 
