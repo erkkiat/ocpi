@@ -699,7 +699,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             # method == GET
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
-        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+        except (Evse.DoesNotExist, Token.DoesNotExist, Connector.DoesNotExist) as e:
             logging.error(f'Exception in start_transaction(): {e}', request=request)
             return Response(
                 dict(status=str(e)),
