@@ -308,6 +308,7 @@ TEMPLATE_LOADERS = (
 
 MIDDLEWARE = [
     'ocpi22.middleware.ErrorLoggingMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',  # Make sure this stays above OCPIHubMiddleware
@@ -333,6 +334,8 @@ if os.environ.get('HUB'):
     MIDDLEWARE.append('ocpi22.middleware.OCPIHubMiddleware')
 
 ROOT_URLCONF = 'ocpiconnector.urls'
+
+CORS_ALLOWED_ORIGINS = [x for x in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if x]
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'ocpiconnector.wsgi.application'
@@ -381,6 +384,7 @@ INSTALLED_APPS = (
     'crispy_forms',
     'gdpr_assist',
     'payment',
+    'corsheaders',
 )
 
 MESSAGE_STORAGE = 'ocpiconnector.util.SessionDedupStorage'  # Removes duplicate messages, like the OCPI 2.2 explanations
