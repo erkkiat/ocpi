@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 import sentry_sdk
+from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
 from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
@@ -338,6 +339,10 @@ ROOT_URLCONF = 'ocpiconnector.urls'
 # CORS_ALLOWED_ORIGINS = [x for x in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if x]
 
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_HEADERS = (
+    *default_headers,
+    "access-control-allow-origin",
+)
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'ocpiconnector.wsgi.application'
