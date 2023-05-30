@@ -49,7 +49,7 @@ class StartChargingSerializer(serializers.Serializer):
         source='location',
         help_text='The UID of the location for charging'
     )
-    evse_id = StrictEvseUidSerializer(
+    evse_uid = StrictEvseUidSerializer(
         source='evse',
         help_text='The identifier of the device which provides electricity to one or more connectors'
     )
