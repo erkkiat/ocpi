@@ -3,6 +3,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.models.location import Location
 
 
@@ -32,15 +33,26 @@ def flatten_for_geojson(elements: dict, name=None) -> dict:
 
 class MapViewSet(viewsets.GenericViewSet):
     publicly_visible = True
+    queryset = Location.objects.all()
+    serializer_class = LocationSerializer
 
-    def options(self, _request):
+    def options(self, _request, **kwargs):
         return Response(dict(
             status='Please see https://tools.ietf.org/html/rfc7946.')
         )
 
     @action(methods=['GET'], detail=False)
-    def locations(self, _request):
+    def ocpi(self, _request, queryset=None):
+        queryset = queryset or Location.objects.all()
+        serializer = LocationSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(methods=['GET'], detail=False)
+    def locations(self, _request, queryset=None):
         # You can paste the geojson output in https://geojson.io/ to visualize it.
+
+        if not queryset:
+            queryset = Location.objects.all()
 
         geometry = FeatureCollection(
             [Feature(
@@ -68,6 +80,6 @@ class MapViewSet(viewsets.GenericViewSet):
                         ) for evse in location.evses.all()
                     ],
                 )
-            )) for location in Location.objects.all()]
+            )) for location in queryset]
         )
         return Response(geometry, headers={'content-type': 'application/json; charset=UTF-8'})

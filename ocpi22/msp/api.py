@@ -556,8 +556,11 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                 ),
             ),
             navigation=dict(
-                charge_points=request.build_absolute_uri(
+                charge_points_geojson=request.build_absolute_uri(
                     reverse('map-locations')
+                ),
+                charge_points_ocpi=request.build_absolute_uri(
+                    reverse('map-ocpi')
                 ),
                 car_models=request.build_absolute_uri(
                     reverse('msp-cars-list')
