@@ -17,6 +17,8 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from ocpi22.cpo.api import InvoiceWebhookViewSet
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -427,6 +429,27 @@ class MspSessionWebhookViewSet(WebhookViewSet):
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='session')
     def session_webhook(self, request):
         return self.webhook(request)
+
+
+class MspInvoiceWebhookViewSet(InvoiceWebhookViewSet):
+    """
+    You need to tell the OCPI Connector where to send the invoicing lines (Charge Detail Records).
+
+    Using this endpoint you can set and get your callback URL and
+    user credentials needed for accessing the endpoint.
+
+    Example URL: `https://your.emsp.backend.server/session/{session_id}/`. The session_id will be substituted with
+    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+
+    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
+    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+
+    ## Status codes
+
+    * `HTTP_200_OK` when the webhook was set successfully
+    * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
+    """
+    pass
 
 
 class MobilityServiceProviderAPIView(routers.APIRootView):
