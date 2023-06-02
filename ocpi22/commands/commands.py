@@ -276,7 +276,7 @@ class CommandsViewSet(GenericViewSet):
                     # Prepare the stop command for CPO management system
                     initial_data = dict(
                         response_url=build_absolute_uri(reverse('chargepoint-remote-command-result',
-                                                                args=(session.authorization_reference,))),
+                                                                args=(session.uid,))),
                         token_id=session.cdr_token_uid,
                         token_type=session.cdr_token_type,
                         authorization_reference=session.authorization_reference,
