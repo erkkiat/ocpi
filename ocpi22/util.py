@@ -620,11 +620,11 @@ def fill_out_location_address(data: dict, lat: Union[float, str], lng: Union[flo
     coordinates = f"{lat},{lng}"
     location = locator.reverse(coordinates, language=language)
     address = location.raw.get('address')
-    data['address'] = f"{address.get('road') or '-'} {address.get('house_number')}"
+    data['address'] = f"{address.get('road') or '-'} {address.get('house_number') or ''}".strip()
     data['city'] = address.get('city') or '-'
     data['postal_code'] = address.get('postcode') or '-'
-    country_code_2_chars = address.get('country_code')
-    data['country'] = country_code_from_2_to_3_chars(country_code_2_chars)
+    country_code_2_chars = address.get('country_code', '')
+    data['country'] = country_code_from_2_to_3_chars(country_code_2_chars).upper()
 
     # Todo: Fill out the time zone based on country code
     data['time_zone'] = get_time_zone(country_code_2_chars)
