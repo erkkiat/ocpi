@@ -3,6 +3,7 @@ import random
 from datetime import timedelta
 from json import JSONDecodeError
 from typing import Optional, Union
+from unittest.mock import MagicMock
 
 import celery
 import cronitor.celery
@@ -285,3 +286,7 @@ def send_data_to_analytics(data: Union[dict, list], url):
         logging.error(f'Unable to send update to analytics: {response.text}')
     # else:
     #     logging.info(f'Update sent to analytics: {response.text}')
+
+
+if settings.TEST:
+    send_data_to_analytics = MagicMock()
