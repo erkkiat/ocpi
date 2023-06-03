@@ -1,5 +1,7 @@
 from decimal import Decimal, getcontext
 
+from django.conf import settings
+
 from ocpi22 import logging as logging
 from ocpi22.models.session import Session
 from ocpi22.tasks import send_data_to_analytics
@@ -26,7 +28,7 @@ def send_session_update_to_analytics(session: Session):
             "sales_time": session_time,
             "product_id": f'{session.connector.power()} {session.connector.get_standard_display()}',
             "product_quantity": session.kwh,
-            "product_unit_price": Decimal(session.total_cost_incl_vat) / session.kwh,
+            "product_unit_price": Decimal(session.total_cost_incl_vat) / Decimal(max(session.kwh, 0.001)),
             "sales_value": session.total_cost_incl_vat,
             "sales_value_wo_vat": session.total_cost_excl_vat,
             "organisation_id": session.evse.uid,
@@ -48,6 +50,7 @@ def send_session_update_to_analytics(session: Session):
 
     # ic(data)
 
-    # Send data to analytics
-    send_data_to_analytics.delay(data, 'https://api.zoined.com/sales')
-    session.analytics_sent = True
+    if settings.SEND_UPDATES:
+        # Send data to analytics
+        send_data_to_analytics.delay(data, 'https://api.zoined.com/sales')
+        session.analytics_sent = True
