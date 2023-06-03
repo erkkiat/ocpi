@@ -202,11 +202,6 @@ def close_active_sessions_for_evse(evse_uid: str):
         logging.error(f'Completed active Session {session.uid} which has been left hanging')
 
 
-def url_link(href, text, target='') -> str:
-    target = f' target="{target}" ' if target else ''
-    return f'<a{target} href="{href}">{text}</a>'
-
-
 def convert_to_time(t) -> time:
     if isinstance(t, str):
         return time(*t.split(':'))

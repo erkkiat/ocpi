@@ -16,7 +16,6 @@ import redis
 from django.conf import settings
 from django.core.validators import RegexValidator
 from geopy import Nominatim
-from icecream import ic
 from requests import Response
 from rest_framework import serializers, versioning
 from rest_framework.exceptions import ValidationError
@@ -26,9 +25,9 @@ from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
 from ocpi22 import logging
-from ocpi22.ocpi.util import format_url, OCPIResponse
-# from ocpiconnector import slack_logging
+from ocpi22.ocpi.util import OCPIResponse
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
+from util import format_url
 
 
 # slack_logging.init()

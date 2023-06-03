@@ -9,3 +9,23 @@ def reverse(s, args=[], request=None, version=None) -> str:
         return django_reverse(s, args=version_args, request=request)
     except NoReverseMatch:
         return django_reverse(s, args=args, request=request)
+
+
+def url_link(href, text, target='') -> str:
+    target = f' target="{target}" ' if target else ''
+    return f'<a{target} href="{href}">{text}</a>'
+
+
+def format_url(url, **kwargs) -> str:
+    """
+    >>> format_url("https://fakehost/start/{evse_id}/", evse_id=1)
+    'https://fakehost/start/1/'
+    """
+    try:
+        if isinstance(url, bytes):
+            url = url.decode("utf-8")
+        return url.format(**kwargs)
+    except KeyError as e:
+        from ocpi22 import logging
+        logging.error(f'Unknown URL variable in format_url: {e}')
+        return url
