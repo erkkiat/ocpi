@@ -12,6 +12,10 @@
                 <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
                     {% trans "Charging" %}
                 </a> ({{ item.kwh|floatformat:-1 }} kWh)
+                {% elif item.status == 'PENDING' %}<i class="fa fa-bolt text-primary text-1"></i>
+                <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
+                    {% trans "Preparing to charge" %}
+                </a>
                 {% elif item.status == 'INVALID' %}<i class="fa fa-triangle-exclamation text-warning text-1"></i>
                 <a href="{{ item.get_admin_url }}" class="link" title="{{ item.location }}">
                     {% trans "Charging failed" %}
