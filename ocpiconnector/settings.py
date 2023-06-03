@@ -3,7 +3,6 @@ import os
 from datetime import datetime
 
 import sentry_sdk
-from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
 from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
@@ -308,7 +307,6 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
     'ocpi22.middleware.ErrorLoggingMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -336,13 +334,53 @@ if os.environ.get('HUB'):
 
 ROOT_URLCONF = 'ocpiconnector.urls'
 
-# CORS_ALLOWED_ORIGINS = [x for x in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if x]
-
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_HEADERS = (
-    *default_headers,
-    "access-control-allow-origin",
+INSTALLED_APPS = (
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.sites',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'django.contrib.humanize',
+    # 'django.contrib.admindocs',
+    'ocpi22',
+    'ocpiconnector',
+    'cars',
+    'settlement',
+    'django.contrib.admin',
+    # 'whitenoise',
+    'rest_framework',
+    'django_filters',
+    'nested_admin',
+    'oauth2_provider',
+    'slick_reporting',
+    'crispy_forms',
+    'gdpr_assist',
+    'payment',
 )
+
+#
+# CORS
+#
+
+try:
+    CORS_ALLOW_ALL_ORIGINS = _env_bool('CORS_ALLOW_ALL_ORIGINS', False)
+    if not CORS_ALLOW_ALL_ORIGINS:
+        CORS_ALLOWED_ORIGINS = [x for x in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if x]
+
+    from corsheaders.defaults import default_headers
+
+    CORS_ALLOW_HEADERS = (
+        *default_headers,
+        "access-control-allow-origin",
+    )
+
+    MIDDLEWARE = ['corsheaders.middleware.CorsMiddleware'] + MIDDLEWARE
+    INSTALLED_APPS = ['corsheaders'] + INSTALLED_APPS
+
+except ModuleNotFoundError:
+    print('Unable to load CORS settings, CORS will be disabled')
+    CORS_ALLOW_ALL_ORIGINS = False
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'ocpiconnector.wsgi.application'
@@ -367,32 +405,6 @@ TEMPLATES = [
 ]
 
 # Todo: Use Redis as Messages backend
-
-INSTALLED_APPS = (
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.sites',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django.contrib.humanize',
-    # 'django.contrib.admindocs',
-    'ocpi22',
-    'ocpiconnector',
-    'cars',
-    'settlement',
-    'django.contrib.admin',
-    # 'whitenoise',
-    'rest_framework',
-    'django_filters',
-    'nested_admin',
-    'oauth2_provider',
-    'slick_reporting',
-    'crispy_forms',
-    'gdpr_assist',
-    'payment',
-    'corsheaders',
-)
 
 MESSAGE_STORAGE = 'ocpiconnector.util.SessionDedupStorage'  # Removes duplicate messages, like the OCPI 2.2 explanations
 SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
