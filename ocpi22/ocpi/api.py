@@ -534,7 +534,6 @@ class SessionViewSet(OCPIListModelMixin,
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod
-    @transaction.atomic
     def put(request, country_code=None, party_id=None, uid=None, partial=False, **_kwargs) -> OCPIResponse:
         data = request.data.get('data', request.data)
         uid = uid or data.get('uid')

@@ -96,7 +96,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         if uid:
             return get_object_or_404(Location, uid=uid)
 
-    @transaction.atomic
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False, url_name='by-evse-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
     @requires_premium
@@ -141,7 +140,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    @transaction.atomic
     @requires_premium
     def put(self, request, data=None, version='2.2.1', logentry=None, **_kwargs):
         data = data or request.data.get('data', request.data)
@@ -176,7 +174,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                 http_status=status.HTTP_400_BAD_REQUEST,
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    @transaction.atomic
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     @requires_premium
