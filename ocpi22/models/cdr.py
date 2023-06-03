@@ -270,7 +270,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         cdr.tariffs.set(cdr_tariffs)
 
         try:
-            cdr.send_updates()
+            cdr.send_updates(method='POST')  # CDR needs to be posted, not PUT
         except Exception as e:
             logging.error(f'Unable to send updates: {e}')
 
