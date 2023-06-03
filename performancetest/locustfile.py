@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from random import randint
 from time import sleep
-from typing import Optional
+from typing import Optional, Union
 
 import requests
 from locust import HttpUser, task, events, between
@@ -85,6 +85,8 @@ def get_available_evse() -> Optional[int]:
 
 
 def free_up_evse(uid) -> bool:
+    if uid > EVSE_COUNT:
+        return False
     evses_available[uid] = True
     print(f"Freeing up EVSE #{uid}")
 
@@ -92,16 +94,27 @@ def free_up_evse(uid) -> bool:
 class OCPIPartner(HttpUser):
     wait_time = between(2, 3)
     user_id = None
+    session_id = None
+    evse_id = None
 
     def on_start(self):
         self.user_id = uuid.uuid4().hex[:4]
+
+    def on_stop(self):
+        sleep(randint(10, 70)/10)  # All users should not stop at the same time
+        if self.session_id:
+            self.stop_cpo_session(self.session_id)
+        sleep(randint(10, 70)/10)
+        if self.evse_id:
+            free_up_evse(self.evse_id)
+            self.set_charger_status(self.evse_id, 'AVAILABLE')
 
     # @task
     # def get_versions(self):
     #     self.client.get("/ocpi/versions/")
     #     self.client.get("/ocpi/2.2.1/")
 
-    def set_charger_status(self, evse_id: str|int, status: str):
+    def set_charger_status(self, evse_id: Union[str, int], status: str):
         response = self.client.post(
             "/api/cpo/v2/chargepoint/status_change/",
             json=dict(evse_id=str(evse_id), status=status),
@@ -114,7 +127,7 @@ class OCPIPartner(HttpUser):
     def update_kwh(self, session_id: str, kwh: float):
         response = self.client.post(
             "/api/cpo/v2/chargepoint/meter_values/",
-            json=dict(session_id=session_id, kwh=kwh),
+            json=dict(session_id=session_id, kwh=kwh, soc=kwh + 40, power=randint(40, 60)),
             auth=basic_auth
         )
         assert response.status_code in (200, 201), \
@@ -136,7 +149,7 @@ class OCPIPartner(HttpUser):
                 "party_id": "001",
                 "country_code": "FI"
             },
-            "response_url": f"http://localhost:8000/ocpi/2.2.1/commands/COMMAND_RESULT/start/{authorization}"
+            "response_url": f"{self.environment.host}/ocpi/2.2.1/commands/COMMAND_RESULT/start/{authorization}"
         }
         response = self.client.post(
             "/ocpi/2.2.1/commands/START_SESSION",
@@ -175,34 +188,34 @@ class OCPIPartner(HttpUser):
 
     @task
     def test_session(self):
-        evse_uid = get_available_evse()
-        print(f"Starting session with EVSE UID: {evse_uid}")
-        if not evse_uid:
+        self.evse_id = get_available_evse()
+        print(f"Starting session with EVSE UID: {self.evse_id}")
+        if not self.evse_id:
             return
 
-        create_evse(self.environment, LOCATION_ID, evse_uid)
+        create_evse(self.environment, LOCATION_ID, self.evse_id)
 
-        token_id = self.start_msp_session(evse_uid)
+        token_id = self.start_msp_session(self.evse_id)
         print(f'Remote started session with token {token_id}')
 
         sleep(randint(2, 4))
 
-        session_id = self.start_cpo_session(evse_uid, token_id)
-        print(f'Started CPO session with ID {session_id}')
+        self.session_id = self.start_cpo_session(self.evse_id, token_id)
+        print(f'Started CPO session with ID {self.session_id}')
 
-        # Charger status to charging
-        self.set_charger_status(evse_uid, 'CHARGING')
+        # Set charger status to charging
+        self.set_charger_status(self.evse_id, 'CHARGING')
 
         # Meter values
         for i in range(1, randint(30, 60)):
-            self.update_kwh(session_id, i)
+            self.update_kwh(self.session_id, i)
             sleep(randint(50, 100)/10)
 
         # Stop session
-        self.stop_cpo_session(session_id)
+        self.stop_cpo_session(self.session_id)
+        self.session_id = None
 
-        # Charger status to available
-        self.set_charger_status(evse_uid, 'AVAILABLE')
+        # Set charger status to available
+        self.set_charger_status(self.evse_id, 'AVAILABLE')
 
-
-        free_up_evse(evse_uid)
+        free_up_evse(self.evse_id)
