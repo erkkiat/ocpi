@@ -6,7 +6,7 @@ from humanize import naturaltime
 from rest_framework.fields import DateTimeField
 
 import ocpi22.logging as logging
-from decimal import Decimal, getcontext
+from decimal import Decimal
 from typing import Union, Optional
 
 from django.conf import settings
@@ -100,7 +100,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     @property
     def kwh(self):
         # getcontext().prec = 3
-        return round(Decimal(self.stop_kwh) - Decimal(self.start_kwh), 3)
+        return max(round(Decimal(self.stop_kwh) - Decimal(self.start_kwh), 3), 0)
 
     @kwh.setter
     def kwh(self, value: Union[float, Decimal]):
@@ -302,7 +302,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                     total_incl_vat += incl_vat
                     total_excl_vat += excl_vat
                     # ic(pc, kwh, hours, start_date_time, flat_fee, incl_vat, excl_vat, total_incl_vat, total_excl_vat)
-                return total_incl_vat, total_excl_vat
+                return max(total_incl_vat, 0.0), max(total_excl_vat, 0.0)
             return 0.0, 0.0
 
         connector: Connector = connector or self.connector
@@ -322,6 +322,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if not self.chargingperiods.count():
             session_hours = self.total_time_float
             session_kwh: float = float(self.kwh)
+            assert session_kwh >= 0.0, f'Invalid session kwh {session_kwh}'
             cp_incl_vat, cp_excl_vat = _calculate_price(session_kwh, session_hours, self.start_date_time, flat_fee=True)
             result_incl_vat += cp_incl_vat
             result_excl_vat += cp_excl_vat
