@@ -26,13 +26,16 @@ def compare_lists_recursively(expected, received, path='') -> bool:
     return result
 
 
-def compare_dicts_recursively(received, expected, path='') -> bool:
+def compare_dicts_recursively(received, expected, path='', label='') -> bool:
     result = True
+    if not expected:
+        print(f'Expected is empty (label={label})')
+        return False
     for k, v in expected.items():
         if k not in received:
-            print(f'Key {k} not present in received')
+            ic(f'Key {k} not present in received')
             result = False
-        if isinstance(v, (dict, OrderedDict)):
+        elif isinstance(v, (dict, OrderedDict)):
             if not compare_dicts_recursively(v, received[k], path=f'{path}.{k}'):
                 # print(f'Dict {k} not equal in received')
                 result = False
@@ -46,4 +49,7 @@ def compare_dicts_recursively(received, expected, path='') -> bool:
     # if not result:
     #     ic(f'Expected: {expected}')
     #     ic(f'Received: {received}')
+    if not result:
+        ic(received, expected)
+        print(f"The result doesn't match expected (label={label})")
     return result
