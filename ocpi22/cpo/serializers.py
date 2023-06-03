@@ -162,20 +162,20 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             validated_data.get('latitude'),
             validated_data.get('longitude')
         )
-        Location.objects.filter(uid=location.uid).update(**validated_data)
+        Location.objects.filter(uid__iexact=location.uid).update(**validated_data)
         for evse_dict in evses:
             connectors = evse_dict.pop('connectors', [])
-            evse, created = Evse.objects.get_or_create(location=location, uid=evse_dict.pop('uid'),
+            evse, created = Evse.objects.get_or_create(location=location, uid__iexact=evse_dict.get('uid'),
                                                        defaults=evse_dict)
             if not created:
-                Evse.objects.filter(uid=evse.uid).update(**evse_dict)
+                Evse.objects.filter(uid__iexact=evse.uid).update(**evse_dict)
             for connector_dict in connectors:
                 tariff_ids = connector_dict.pop('tariff_ids', None)
                 connector, created = Connector.objects.get_or_create(evse=evse,
                                                                      uid=connector_dict.pop('uid'),
                                                                      defaults=connector_dict)
                 if not created:
-                    Connector.objects.filter(uid=connector.uid, evse=evse).update(**connector_dict)
+                    Connector.objects.filter(uid__iexact=connector.uid, evse=evse).update(**connector_dict)
                 if tariff_ids:
                     connector.tariff_ids.set(tariff_ids)
         return location
