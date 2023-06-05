@@ -336,7 +336,7 @@ if os.environ.get('HUB'):
 
 ROOT_URLCONF = 'ocpiconnector.urls'
 
-INSTALLED_APPS = (
+INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -359,7 +359,7 @@ INSTALLED_APPS = (
     'crispy_forms',
     'gdpr_assist',
     'payment',
-)
+]
 
 #
 # CORS
