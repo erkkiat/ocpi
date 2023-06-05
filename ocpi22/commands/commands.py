@@ -16,6 +16,8 @@ from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, APIException, ValidationError
 from rest_framework.response import Response
+
+from ocpi22.tasks import simulate_meter_values
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -52,6 +54,16 @@ class ResponseData:
     http_status: int
     message: list
     timeout: int
+
+
+def start_simulated_session(session, token_uid, connector_id, billed_to, evse_uid):
+    print('Starting session')
+    session.status = Session.ACTIVE
+    session.save()
+    session.send_updates()
+
+    print('Starting session simulator')
+    simulate_meter_values.delay(session.pk, token_uid, connector_id, billed_to, evse_uid)
 
 
 class CommandsViewSet(GenericViewSet):
@@ -235,6 +247,9 @@ class CommandsViewSet(GenericViewSet):
                     http_status = status.HTTP_503_SERVICE_UNAVAILABLE
                     logging.error(f'Unable to relay Command to CPO: {e}', request)
                     status_message = str(e)
+
+                if settings.CPO_SIMULATOR:
+                    start_simulated_session(session, token.get('uid'), connector_id, billed_to, evse_uid)
 
                 response_serializer = CommandResponse(
                     data=dict(result=ocpi_result, timeout=timeout, message=message)

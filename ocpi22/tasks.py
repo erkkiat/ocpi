@@ -290,3 +290,37 @@ def send_data_to_analytics(data: Union[dict, list], url):
 
 if settings.TEST:
     send_data_to_analytics = MagicMock()
+
+
+@app.task(max_retries=1, default_retry_delay=5)
+def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_uid, run_number=1):
+    kwh = run_number * 0.21
+    print(f"Simulating meter value {kwh} kWh for session {session_pk} with token {token_uid} "
+          f"on connector {connector_id} #{run_number}.")
+
+    from ocpi22.models.session import Session
+    session = Session.objects.get(pk=session_pk)
+
+    assert session.status == session.ACTIVE, 'Session is not active, stopping simulation'
+
+    session.stop_kwh = kwh
+    session.update_last_updated()
+
+    # session.update_charging_periods(kwh - session.start_kwh, soc, power, timestamp)
+
+    session.calculate_price()
+    session.save(
+        update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
+    )
+
+    session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
+    session.send_updates(session_charging_periods)
+
+    # meter_values.process_meter_values(request=None, serializer=None, kwh=run_number, session=session)
+    if run_number <= 100:
+        simulate_meter_values.apply_async(
+            (session_pk, token_uid, connector_id, billed_to, evse_uid, run_number+1),
+            countdown=3
+        )
+        return
+    print('Done simulating meter values for session {session_pk} with token {token_uid}.')
