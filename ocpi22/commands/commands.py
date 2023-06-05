@@ -62,8 +62,15 @@ def start_simulated_session(session, token_uid, connector_id, billed_to, evse_ui
     session.save()
     session.send_updates()
 
-    print('Starting session simulator')
+    print(f'Starting session simulator for session {session.uid}')
     simulate_meter_values.delay(session.pk, token_uid, connector_id, billed_to, evse_uid)
+
+
+def stop_simulated_session(session):
+    print(f'Stopping session simulator for session {session.uid}')
+    session.status = Session.COMPLETED
+    session.save()
+    session.send_updates()
 
 
 class CommandsViewSet(GenericViewSet):
@@ -288,21 +295,25 @@ class CommandsViewSet(GenericViewSet):
                     if hasattr(request, 'credentials'):
                         from_party = request.credentials.party()
 
-                    # Prepare the stop command for CPO management system
-                    initial_data = dict(
-                        response_url=build_absolute_uri(reverse('chargepoint-remote-command-result',
-                                                                args=(session.uid,))),
-                        token_id=session.cdr_token_uid,
-                        token_type=session.cdr_token_type,
-                        authorization_reference=session.authorization_reference,
-                        auth_method=session.auth_method,
-                        from_party=from_party,
-                        evse_id=session.evse.uid,
-                        connector_id=session.connector.uid if session.connector else None,
-                        billed_to=session.billed_to,
-                    )
+                    if not settings.CPO_SIMULATOR:
+                        # Prepare the stop command for CPO management system
+                        initial_data = dict(
+                            response_url=build_absolute_uri(reverse('chargepoint-remote-command-result',
+                                                                    args=(session.uid,))),
+                            token_id=session.cdr_token_uid,
+                            token_type=session.cdr_token_type,
+                            authorization_reference=session.authorization_reference,
+                            auth_method=session.auth_method,
+                            from_party=from_party,
+                            evse_id=session.evse.uid,
+                            connector_id=session.connector.uid if session.connector else None,
+                            billed_to=session.billed_to,
+                        )
 
-                    data = send_to_webhook(initial_data, CPOStopWebhookSerializer)
+                        data = send_to_webhook(initial_data, CPOStopWebhookSerializer)
+                    else:
+                        data = dict(result='ACCEPTED', timeout=timeout)
+                        stop_simulated_session(session)
 
                     timeout = data.get('timeout', timeout)
                     result = data.get('result', '').upper()
@@ -345,10 +356,6 @@ class CommandsViewSet(GenericViewSet):
             serializer = UnlockConnectorSerializer(data=request.data)
             if serializer.is_valid():
                 result = 'ACCEPTED'
-                # if not CHARGER.unlock_connector(**serializer.data):
-                #     return OCPIResponse(status_message=f'Unable to unlock connector at this time',
-                #                         http_status=status.HTTP_404_NOT_FOUND,
-                #                         status_code=Ocpi.ClientError.UNKNOWN_LOCATION)
 
                 response_serializer = CommandResponse(
                     instance=dict(
