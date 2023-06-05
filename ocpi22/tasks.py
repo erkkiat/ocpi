@@ -313,8 +313,9 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
         update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
     )
 
-    session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
-    session.send_updates(session_charging_periods)
+    # session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
+    # session.send_updates(session_charging_periods)
+    session.send_updates()
 
     # meter_values.process_meter_values(request=None, serializer=None, kwh=run_number, session=session)
     if run_number <= 100:
