@@ -1,6 +1,7 @@
 import json
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 
@@ -69,15 +70,31 @@ def _language_response(response):
     return Response(data, status=response.status_code)
 
 
-def process_start_charging(request, serializer, location, evse, connector_id: str = None, contract_id: str = None,
-                           internal_reference: str = None, max_price: Decimal = None):
-    account = request.user.accounts.first() or Account.create(request.user)
-    if not max_price and settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
-        return Response(dict(
-            status_message='There is not enough balance in the account to start charging'),
-            status=status.HTTP_402_PAYMENT_REQUIRED
-        )
-    token = construct_adhoc_token(account.app_token_id, contract_id)
+def process_start_charging(request, serializer, location, evse, connector_id: str = None, contract_id: str = '',
+                           internal_reference: str = None, max_price: Decimal = None, token_id: str = None):
+    if token_id:
+        # Using an external user database
+        permission_required = 'ocpi22.charge_with_any_token'
+        user: User = request.user
+        ic(user.username, user.is_superuser, user.is_staff, user.get_all_permissions(), user.user_permissions.all())
+        if user.has_perm(permission_required) and not user.is_superuser:
+            return Response(
+                data=dict(
+                    error_message=f'It seems that you are attempting to use an external user database. '
+                                  f'To specify a token_id, the user account you use in your API calls needs to have '
+                                  f'the {permission_required} permission set'
+                ), status=status.HTTP_403_FORBIDDEN
+            )
+        token = construct_adhoc_token(token_id, contract_id)
+    else:
+        # Using the user database we provide
+        account = request.user.accounts.first() or Account.create(request.user)
+        if not max_price and settings.REQUIRE_WALLET_BALANCE and account.balance <= Decimal("2.0"):
+            return Response(dict(
+                status_message='There is not enough balance in the account to start charging'),
+                status=status.HTTP_402_PAYMENT_REQUIRED
+            )
+        token = construct_adhoc_token(account.app_token_id, contract_id)
     authorization_reference = internal_reference or generate_auth_reference()
 
     response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id,
@@ -90,13 +107,19 @@ def process_start_charging(request, serializer, location, evse, connector_id: st
                          'can actually start a charging session. If everything is ok, '
                          'you will receive a Session object followed by Session updates '
                          'with an updated kWh measurement.')
-        session_status_url = reverse('roaming-session-status')
+        if token_id:
+            session_status_url = reverse('roaming-session-status')
+            notes = ' Using the token_id field means that you are using your own user database. ' \
+                    'Therefore, when checking session status using ' \
+                    f'<a class="alert-link" href="{session_status_url}">the Session status URL</a>, ' \
+                    f'you need to use the <b>token_id ({token_id})</b> parameter instead of a session_id.'
         webhook_url = reverse('msp-session-webhook')
         messages.info(request, mark_safe('Next, you can go and '
-                                         f'<a class="alert-link" href="{session_status_url}">pull the Session</a>, '
+                                         f'<a class="alert-link" href="{session_status_url}">check the Session status</a>, '
                                          'if it is already available. A more efficient solution is to '
-                                         f'<a class="alert-link" href="{webhook_url}">define a webhook URL</a> '
-                                         'where the Session object will be pushed when an update is received from the CPO.'))
+                                         f'<a class="alert-link" href="{webhook_url}">define a webhook URL</a> where '
+                                         f'the Session object will be pushed when an update is received from the CPO.{notes}'))
+
     return _language_response(response)
 
 
@@ -226,10 +249,14 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
             serializer = SessionStatusSerializer(data=request.data)
             if serializer.is_valid():
                 session = serializer.validated_data.get('session')
+                token_id = serializer.validated_data.get('token_id')
+                if session and token_id:
+                    return Response(dict(status='You should specify either Session or Token ID, but not both'),
+                                    status=status.HTTP_400_BAD_REQUEST)
                 if not session:
                     # Let's see if we can find a Session started with an app token
-                    token = request.user.accounts.first().app_token_id
-                    session = get_session(token, (Session.PENDING, Session.ACTIVE, Session.COMPLETED, Session.INVALID))
+                    token_id = token_id or request.user.accounts.first().app_token_id
+                    session = get_session(token_id, (Session.PENDING, Session.ACTIVE, Session.COMPLETED, Session.INVALID))
                     if not session:
                         # Ok, maybe there's a Session started with an RFID
                         tokens = Token.objects.filter(customer=request.user).values_list('uid', flat=True)
@@ -240,7 +267,7 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                     if not session:
                         messages.info(request, 'Seems that there is no Session update yet. The CPO needs to start '
                                                'the Session first and then it will be sent over OCPI to you.')
-                        return Response(dict(status=f'No session found for token `{token}`. '
+                        return Response(dict(status=f'No session found for token `{token_id}`. '
                                                     f'There may not have been a Session update from CPO.'),
                                         status=status.HTTP_404_NOT_FOUND)
                 data = MspSessionSerializer(instance=session).data

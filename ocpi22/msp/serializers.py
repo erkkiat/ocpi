@@ -53,6 +53,11 @@ class StartChargingSerializer(serializers.Serializer):
         source='evse',
         help_text='The identifier of the device which provides electricity to one or more connectors'
     )
+    token_id = serializers.CharField(
+        required=False, max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        help_text='The optional identifier of the token that is used for this session. '
+                  'NOTE: You need to have the "ocpi22.charge_with_any_token" permission to use this field.',
+    )
     connector_id = serializers.CharField(
         required=False, allow_blank=True, allow_null=True,  # Not supported in OCPI 2.2
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
@@ -103,6 +108,10 @@ class SessionStatusSerializer(serializers.Serializer):
         required=False,
         source='session',
         help_text='The optional session_id provided by CPO'
+    )
+    token_id = serializers.CharField(
+        required=False, max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        help_text='The optional identifier of the token that is used for this session'
     )
 
 
