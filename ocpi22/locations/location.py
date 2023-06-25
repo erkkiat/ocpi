@@ -152,18 +152,18 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             return NotOwner()
 
         if uid:
-            location: Location = Location.get_if_exists(uid=uid, country_code=country_code, party_id=party_id)
-            if location and location.is_ours():
-                return OCPIResponse(f'Location {location} is owned by us and cannot be updated from outside.',
+            existing_location: Location = Location.get_if_exists(uid=uid, country_code=country_code, party_id=party_id)
+            if existing_location and existing_location.is_ours():
+                return OCPIResponse(f'Location {existing_location} is owned by us and cannot be updated from outside.',
                                     http_status=status.HTTP_401_UNAUTHORIZED,
                                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-            serializer = LocationSerializer221(location, data=data, context={'version': version or request.version})
+            serializer = LocationSerializer221(existing_location, data=data, context={'version': version or request.version})
             if serializer.is_valid():
                 logging.info(f'Creating or updating Location {country_code}*{party_id} - {uid}.',
                              log_to_admin=True, logentry=logentry)
-                serializer.save()
-                Location.send_hub_updates(serializer.data)
-                http_status = status.HTTP_200_OK if location else status.HTTP_201_CREATED
+                created_location = serializer.save()
+                created_location.send_hub_updates(serializer.data)  # Todo: Change this to send 2.2 and 2.2.1 data
+                http_status = status.HTTP_200_OK if existing_location else status.HTTP_201_CREATED
                 return OCPIResponse(serializer.data, http_status=http_status)
             else:
                 return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
