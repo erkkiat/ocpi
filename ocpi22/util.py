@@ -594,7 +594,6 @@ def get_timezones():
         data = csv.reader(file, delimiter=';')
         for code, name, timezone in data:
             result[code] = timezone
-    logging.info(f'Read {len(result)} timezones from file')
     return result
 
 
