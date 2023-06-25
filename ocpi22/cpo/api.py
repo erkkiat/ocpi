@@ -474,7 +474,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                                     f'and <a target="tokenadmin" href="{token_admin}">the list of known Tokens</a> '
                                     'using the admin tools. You should use the value from the UID field below.'))
             return Response(
-                dict(status=str(e)),
+                dict(status_text=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=('GET', 'POST'), detail=False)
