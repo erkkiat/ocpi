@@ -17,7 +17,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, AuthorizationEnum
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, AuthorizationEnum, TokenType
 from ocpi22.messages import messages
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location
@@ -162,7 +162,7 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
                 return TokenAuthorization(
                     allowed='ALLOWED',
                     info=MessageTexts.get('TOKEN_ACCEPTED'),
-                    token=AdhocToken(True, session.get_party(), token, Token.AD_HOC_USER),
+                    token=AdhocToken(True, session.get_party(), token, TokenType.AD_HOC_USER),
                     party=session.get_party(),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
