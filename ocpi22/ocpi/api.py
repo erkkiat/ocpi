@@ -295,7 +295,6 @@ class CdrViewSet(OCPIListModelMixin,
         serializer = CdrSerializer(cdr, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 
-    @transaction.atomic
     @requires_premium
     def post(self, request, **_kwargs) -> OCPIResponse:
         data = request.data.get('data', request.data)
