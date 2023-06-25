@@ -26,7 +26,7 @@ from ocpi22.cpo.api import close_active_sessions_for_evse
 from ocpi22.webhooks import send_to_webhook
 from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
-from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, OcpiRolesEnum, MessageTexts
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, TokenType
 from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer, \
     CommandResponse, CommandResultSerializer, ReserveNowSerializer
 from ocpi22.cpo.serializers import CPOStartWebhookSerializer, CPOStopWebhookSerializer, \
@@ -163,7 +163,7 @@ class CommandsViewSet(GenericViewSet):
                         response_url=build_absolute_uri(reverse('chargepoint-remote-command-result',
                                                                 args=(authorization_reference,))),
                         token_id=get_token_id(token),
-                        token_type=get_token_type(token, Token.APP_USER),
+                        token_type=get_token_type(token, TokenType.APP_USER),
                         authorization_reference=authorization_reference,
                         auth_method=Session.COMMAND,
                         from_party=str(request.credentials.get_party_for_role(OcpiRolesEnum.EMSP)),

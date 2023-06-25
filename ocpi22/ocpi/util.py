@@ -1,4 +1,3 @@
-import ocpi22.logging as logging
 import uuid
 from collections import OrderedDict
 from datetime import datetime
@@ -11,6 +10,8 @@ from django.utils.module_loading import import_string
 from requests import Response
 from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
+
+from ocpi22 import logging
 from ocpi22.choices import OcpiRolesEnum
 from rest_framework.response import Response
 
@@ -116,12 +117,12 @@ class OcpiModule:
 
             # if hasattr(self, 'send_extra_updates'):
             #     self.send_extra_updates(data, method, path_components, serializer_class)
-        else:
-            logging.warning(settings.UPDATES_DISABLED)
+        # else:
+        #     logging.warning(settings.UPDATES_DISABLED)
 
     @classmethod
     def _send_updates(cls, data_22, data_221, method='put', path_components=None) -> bool:
-        from ocpi22.models.credentials import find_endpoints_by_roles
+        from ocpi22.credentials.util import find_endpoints_by_roles
         our_country_code, our_party_id = cls.get_owner_identity().split('*')
         uid = data_221.get('uid', data_221.get('id', 'N/A'))
         logging.info(

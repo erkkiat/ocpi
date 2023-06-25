@@ -24,7 +24,6 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
-from ocpi22 import logging
 from ocpi22.ocpi.util import OCPIResponse
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 from util import format_url

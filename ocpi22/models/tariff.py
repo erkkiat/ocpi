@@ -14,10 +14,9 @@ from multiselectfield import MultiSelectField
 import util
 
 from ocpi22 import choices, logging
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
-from ocpi22.models.credentials import find_endpoints_by_roles
-from ocpi22.models.dynamic_price import DYNAMIC_PRICE_SOURCE_CHOICES
-from ocpi22.tasks import send_ocpi_request
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, DYNAMIC_PRICE_SOURCE_CHOICES
+from ocpi22.credentials.util import find_endpoints_by_roles
+import ocpi22.tasks as tasks
 from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id, get_our_party
@@ -380,7 +379,7 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
         # Loop through all the parties which are interested in receiving Tariff updates
         for base_url, token_base64, country_code, party_id, credentials \
                 in find_endpoints_by_roles(instance.send_updates_to, OcpiModuleEnum.TARIFFS):
-            send_ocpi_request.delay({},
+            tasks.send_ocpi_request.delay({},
                                     build_item_url(base_url, our_party.country_code, our_party.party_id, instance.uid),
                                     token_base64, country_code, party_id, our_party.country_code, our_party.party_id,
                                     method='delete', credentials_id=credentials.id, title='Tariff', )

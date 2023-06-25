@@ -1,11 +1,10 @@
 import pprint
-from collections import OrderedDict
 
 from django.conf import settings
 from rest_framework import serializers
 
+from ocpi22 import choices
 from ocpi22.ocpi.serializers import LocationIdDictSerializer, StrictEvseUidSerializer
-from ocpi22.models.token import Token
 from ocpi22.serializers import SerializerCleanedUp
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -25,7 +24,7 @@ class CommandTokenSerializer(SerializerCleanedUp):
     country_code = serializers.CharField(required=True)
     party_id = serializers.CharField(required=True)
     uid = serializers.CharField(required=True)
-    type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True)
+    type = serializers.ChoiceField(choices=choices.TOKEN_TYPE_CHOICES, required=True)
     contract_id = serializers.CharField(required=True)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 

@@ -22,6 +22,7 @@ from django.utils import timezone
 from ocpi22 import choices
 from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
+from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi.util import OcpiModule, OCPIProtocolError
 from ocpi22.util import ModelUtilMixin, generate_random_token, build_absolute_uri
@@ -296,27 +297,6 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
                 send_ocpi_request(*args)
             return
     logging.error(f'{settings.HOSTNAME}: Cannot find our party ID to send a Credentials DELETE for {credentials}')
-
-
-@lru_cache(maxsize=None)
-def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: OcpiModuleEnum) -> list:
-    logging.info(f'Reading module {ocpi_module.value} endpoints for {roles} from database.')
-    result = []
-    role: CredentialsRole
-    for role in CredentialsRole.objects.filter(role__in=roles). \
-            select_related('credentials'):
-        credentials = role.credentials
-        country_code = role.country_code
-        party_id = role.party_id
-        result += [
-            (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
-            for endpoint in Endpoint.objects.filter(
-                identifier=ocpi_module.value.capitalize(),
-                role=EndpointRoleEnum.RECEIVER.value,
-                credentials=credentials,
-            ) if credentials.valid
-        ]
-    return result
 
 
 def store_endpoints_for_party(credentials, endpoints):

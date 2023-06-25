@@ -49,7 +49,8 @@ from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet
 from ocpi22.middleware import OCPIHubMiddleware
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import Credentials, CredentialsRole, find_endpoints_by_roles
+from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent

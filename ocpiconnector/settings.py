@@ -41,7 +41,9 @@ DATE_FORMAT = os.environ.get('DATE_FORMAT', "%d.%m.%Y")
 locale_formats.DATETIME_FORMAT = os.environ.get('DATETIME_FORMAT_LOCALE', "D j.n.Y H:i")
 DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
+
 PREMIUM = _env_bool('PREMIUM', False)
+
 PERFORMANCE_TEST = _env_bool('PERFORMANCE_TEST', False)
 CPO_SIMULATOR = _env_bool('CPO_SIMULATOR', False)
 
@@ -176,6 +178,7 @@ if os.environ.get('_system_arch') == 'arm64':  # This is an M1 or M2 chip, need 
     # https://adamj.eu/tech/2020/02/04/how-to-use-pymysql-with-django/
     pymysql.version_info = (1, 4, 2, "final", 0)
     pymysql.install_as_MySQLdb()
+
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
@@ -488,6 +491,7 @@ CELERY_TASK_DEFAULT_QUEUE = os.environ.get('CELERY_QUEUE', 'default')
 if TEST:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
+
 
 # Moesif API analytics
 

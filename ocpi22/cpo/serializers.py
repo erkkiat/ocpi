@@ -5,7 +5,7 @@ from django.conf import settings
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OcppStatusChoices
+from ocpi22.choices import OcppStatusChoices, TOKEN_TYPE_CHOICES
 from ocpi22.commands.serializers import CommandResultBaseSerializer
 from ocpi22.cpo.util import _find_our_evse
 from ocpi22.models.location import Evse, Connector, Location
@@ -367,7 +367,7 @@ class StopTransactionSerializer(serializers.Serializer):
 class CpoOutboundWebhookSerializer(serializers.Serializer):
     response_url = serializers.URLField()
     token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
-    token_type = serializers.ChoiceField(choices=Token.TYPE_CHOICES)
+    token_type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES)
     authorization_reference = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
                                                     allow_null=True)
     auth_method = serializers.ChoiceField(choices=Session.AUTH_METHOD_CHOICES)
@@ -382,7 +382,7 @@ class CPOStartWebhookSerializer(CallbacksSerializer):
     start_transaction_url = serializers.URLField()
 
     class OutboundSerializer(CpoOutboundWebhookSerializer):
-        token_type = serializers.ChoiceField(choices=Token.TYPE_CHOICES)
+        token_type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES)
         connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
                                              allow_null=True)
 
@@ -396,7 +396,7 @@ class CPOStopWebhookSerializer(CallbacksSerializer):
     stop_transaction_url = serializers.URLField()
 
     class OutboundSerializer(CpoOutboundWebhookSerializer):
-        token_type = serializers.ChoiceField(choices=Token.TYPE_CHOICES)
+        token_type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES)
         connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
                                              allow_null=True)
 

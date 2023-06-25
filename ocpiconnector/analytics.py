@@ -4,7 +4,7 @@ from django.conf import settings
 
 from ocpi22 import logging as logging
 from ocpi22.models.session import Session
-from ocpi22.tasks import send_data_to_analytics
+import ocpi22.tasks as tasks
 
 
 def send_session_update_to_analytics(session: Session):
@@ -52,5 +52,5 @@ def send_session_update_to_analytics(session: Session):
 
     if settings.SEND_UPDATES:
         # Send data to analytics
-        send_data_to_analytics.delay(data, 'https://api.zoined.com/sales')
+        tasks.send_data_to_analytics.delay(data, 'https://api.zoined.com/sales')
         session.analytics_sent = True

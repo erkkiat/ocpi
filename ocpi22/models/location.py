@@ -76,7 +76,7 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
     # At least one of the following fields SHALL be set: uid, visual_number, or group_id.
     #
     # When uid is set, type SHALL also be set.
-    publish_allowed_to = models.ManyToManyField(Token, related_name='locations', blank=True)
+    publish_allowed_to = models.ManyToManyField("Token", related_name='locations', blank=True)
 
     # Display name of the location
     name = models.CharField(max_length=255, blank=True, verbose_name=_('Name'))
@@ -347,7 +347,7 @@ class Connector(models.Model, ModelUtilMixin):
     max_electric_power = models.IntegerField(null=True, blank=True, verbose_name=_('Maximum electric power'))
 
     # If you want the default tariffs to be in use when needed use get_tariffs() instead of accessing tariff_ids
-    tariff_ids = models.ManyToManyField(Tariff, related_name='connectors', blank=True, verbose_name=_('Tariffs'))
+    tariff_ids = models.ManyToManyField('Tariff', related_name='connectors', blank=True, verbose_name=_('Tariffs'))
 
     terms_and_conditions = models.URLField(blank=True, default='', verbose_name=_('Terms and conditions'))
 
@@ -373,6 +373,7 @@ class Connector(models.Model, ModelUtilMixin):
 
     def get_tariffs(self):
         # Fetch the Tariffs specified for this Connector or find a DefaultTariff in case no specific Tariffs
+        from ocpi22.models.tariff import Tariff
         tariffs = self.tariff_ids.all() or Tariff.get_default_tariffs(self.standard)
         return tariffs
 

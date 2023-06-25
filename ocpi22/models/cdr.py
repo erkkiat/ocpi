@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 import util
 
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
 from ocpi22.grafana import metrics
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
@@ -83,7 +83,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         return self.cdr_token_uid
 
     # Type of the token
-    cdr_token_type = models.CharField(max_length=11, choices=Token.TYPE_CHOICES)
+    cdr_token_type = models.CharField(max_length=11, choices=TOKEN_TYPE_CHOICES)
 
     # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
@@ -159,7 +159,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     # List of relevant Tariff Elements, see: Tariff. When relevant, a Free of Charge tariff
     # should also be in this list, and point to a defined Free of Charge Tariff.
-    tariffs = models.ManyToManyField(Tariff, blank=True)
+    tariffs = models.ManyToManyField("Tariff", blank=True)
 
     # Total sum of all the costs of this transaction in the specified currency.
     total_cost_excl_vat = models.FloatField()

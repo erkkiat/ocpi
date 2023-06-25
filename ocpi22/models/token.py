@@ -6,6 +6,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext as _
 
 import util
+from ocpi22 import choices
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.util import ModelUtilMixin
@@ -48,18 +49,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     # This field is named uid instead of id to prevent confusion with: contract_id.
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, unique=True, db_index=True)
 
-    AD_HOC_USER = 'AD_HOC_USER'
-    APP_USER = 'APP_USER'
-    OTHER = 'OTHER'
-    RFID = 'RFID'
-
-    TYPE_CHOICES = (
-        (AD_HOC_USER, 'Ad hoc'),
-        (APP_USER, 'App'),
-        (OTHER, 'Other'),
-        (RFID, 'RFID'),
-    )
-    type = models.CharField(max_length=11, choices=TYPE_CHOICES)
+    type = models.CharField(max_length=11, choices=choices.TOKEN_TYPE_CHOICES)
 
     # Uniquely identifies the EV Driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from

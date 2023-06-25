@@ -1,6 +1,6 @@
 from typing import Union, OrderedDict
 
-from ocpi22.choices import OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum, TokenType
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpiconnector.ocpi_identities import get_our_party
@@ -20,7 +20,7 @@ def get_admin_token() -> Token:
     return token
 
 
-def construct_adhoc_token(token_uid, contract_id, token_type=Token.APP_USER):
+def construct_adhoc_token(token_uid, contract_id, token_type=TokenType.APP_USER):
     our_party = get_our_party(OcpiRolesEnum.EMSP)
     return Token(
         country_code=our_party.country_code,

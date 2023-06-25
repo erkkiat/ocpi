@@ -19,7 +19,7 @@ from rest_framework.exceptions import ValidationError
 
 import util
 
-from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum
+from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum, TOKEN_TYPE_CHOICES
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.models.token import Token
@@ -144,7 +144,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return self.cdr_token_uid
 
     # Type of the token
-    cdr_token_type = models.CharField(max_length=11, choices=Token.TYPE_CHOICES)
+    cdr_token_type = models.CharField(max_length=11, choices=TOKEN_TYPE_CHOICES)
 
     # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
@@ -197,11 +197,11 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     total_cost_excl_vat = models.FloatField(blank=True, null=True)
     total_cost_incl_vat = models.FloatField(blank=True, null=True)
 
-    ACTIVE='ACTIVE'
-    COMPLETED='COMPLETED'
-    INVALID='INVALID'
-    PENDING='PENDING'
-    RESERVATION='RESERVATION'
+    ACTIVE = 'ACTIVE'
+    COMPLETED = 'COMPLETED'
+    INVALID = 'INVALID'
+    PENDING = 'PENDING'
+    RESERVATION = 'RESERVATION'
 
     # The status of this session
     STATUS_CHOICES = (

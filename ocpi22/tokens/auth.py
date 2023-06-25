@@ -19,7 +19,7 @@ from django.utils import timezone
 
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, AuthorizationEnum
 from ocpi22.messages import messages
-from ocpi22.models.credentials import find_endpoints_by_roles
+from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token

@@ -6,7 +6,8 @@ from django.utils.translation import gettext as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22 import logging, choices
+from ocpi22 import choices
+from ocpi22.choices import TOKEN_TYPE_CHOICES
 from ocpi22.messages import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
@@ -22,7 +23,7 @@ from ocpi22.util import base64_to_ascii
 
 class CdrTokenSerializer(SerializerCleanedUp):
     uid = serializers.CharField(required=True, source='cdr_token_uid')
-    type = serializers.ChoiceField(choices=Token.TYPE_CHOICES, required=True, source='cdr_token_type')
+    type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES, required=True, source='cdr_token_type')
     contract_id = serializers.CharField(required=True, source='cdr_token_contract_id')
 
 
@@ -406,6 +407,7 @@ class ConnectionStatusSerializer(serializers.Serializer):
     def to_representation(self, instance: CredentialsRole):
         if instance and instance.credentials:
             return instance.credentials.connection_status
+        from ocpi22 import logging
         logging.error(f'No connection status for {instance}')
         return False
 
@@ -414,6 +416,7 @@ class LastConnectionSerializer(serializers.Serializer):
     def to_representation(self, instance: CredentialsRole):
         if instance and instance.credentials:
             return instance.credentials.last_connection
+        from ocpi22 import logging
         logging.error(f'No last_connection for {instance}')
         return False
 

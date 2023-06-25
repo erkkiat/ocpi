@@ -18,11 +18,9 @@ class BusinessDetails(models.Model, ModelUtilMixin):
         return self.name
 
     def referenced_locations(self):
-        # noinspection PyUnresolvedReferences
         return self.owner_locations.all().count() + \
                self.operator_locations.all().count() + \
                self.owner_locations.all().count()
 
     def referenced_credentials(self):
-        # noinspection PyUnresolvedReferences
         return self.credentialsroles.all().count()

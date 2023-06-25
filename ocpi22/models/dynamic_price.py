@@ -9,29 +9,7 @@ from dateutil.parser import isoparse
 from django.db import models
 from requests.auth import HTTPBasicAuth
 
-DYNAMIC_PRICE_SOURCE_CHOICES = (
-    ('BGDA', 'Bulgaria day ahead'),
-    ('BGID', 'Bulgaria intraday'),
-    ('IBEXBGIDM', 'IBEX.bg Intraday'),
-    ('IBEXBGDAM', 'IBEX.bg Day ahead'),
-    ('NPFI', 'Nordpool Finland'),
-    ('NPEE', 'Nordpool Estonia'),
-    ('NPLV', 'Nordpool Latvia'),
-    ('NPLT', 'Nordpool Lithuania'),
-    ('NPOslo', 'Nordpool Oslo'),
-    ('NPBergen', 'Nordpool Bergen'),
-    ('NPMolde', 'Nordpool Molde'),
-    ('NPSE1', 'Nordpool Sweden 1'),
-    ('NPSE2', 'Nordpool Sweden 2'),
-    ('NPSE3', 'Nordpool Sweden 3'),
-    ('NPSE4', 'Nordpool Sweden 4'),
-    ('NPDK1', 'Nordpool Denmark 1'),
-    ('NPDK2', 'Nordpool Denmark 2'),
-    ('NPAT', 'Nordpool Austria'),
-    ('NPBE', 'Nordpool Belgium'),
-    ('NPFR', 'Nordpool France'),
-    ('NPNL', 'Nordpool Netherlands'),
-)
+from ocpi22.choices import DYNAMIC_PRICE_SOURCE_CHOICES
 
 
 class DynamicPrice(models.Model):

@@ -38,6 +38,27 @@ CONNECTION_STATUS_CHOICES = [
 ]
 
 
+class SessionStatus:
+    ACTIVE = 'ACTIVE'
+    COMPLETED = 'COMPLETED'
+    INVALID = 'INVALID'
+    PENDING = 'PENDING'
+    RESERVATION = 'RESERVATION'
+
+
+class TokenType:
+    AD_HOC_USER = 'AD_HOC_USER'
+    RFID = 'RFID'
+    APP_USER = 'APP_USER'
+    OTHER = 'OTHER'
+
+
+TOKEN_TYPE_CHOICES = [
+    (x, x.capitalize())
+    for x in (TokenType.AD_HOC_USER, TokenType.RFID, TokenType.APP_USER, TokenType.OTHER)
+]
+
+
 class OcpiModuleEnum(Enum):
     CREDENTIALS = 'credentials'
     LOCATIONS = 'locations'
@@ -281,3 +302,26 @@ CAPABILITY_CHOICES = (
 
 COUNTRIES_ISO_3 = [(c.alpha_3, c.name) for c in pycountry.countries]
 COUNTRIES_ISO_2 = [(c.alpha_2, c.name) for c in pycountry.countries]
+DYNAMIC_PRICE_SOURCE_CHOICES = (
+    ('BGDA', 'Bulgaria day ahead'),
+    ('BGID', 'Bulgaria intraday'),
+    ('IBEXBGIDM', 'IBEX.bg Intraday'),
+    ('IBEXBGDAM', 'IBEX.bg Day ahead'),
+    ('NPFI', 'Nordpool Finland'),
+    ('NPEE', 'Nordpool Estonia'),
+    ('NPLV', 'Nordpool Latvia'),
+    ('NPLT', 'Nordpool Lithuania'),
+    ('NPOslo', 'Nordpool Oslo'),
+    ('NPBergen', 'Nordpool Bergen'),
+    ('NPMolde', 'Nordpool Molde'),
+    ('NPSE1', 'Nordpool Sweden 1'),
+    ('NPSE2', 'Nordpool Sweden 2'),
+    ('NPSE3', 'Nordpool Sweden 3'),
+    ('NPSE4', 'Nordpool Sweden 4'),
+    ('NPDK1', 'Nordpool Denmark 1'),
+    ('NPDK2', 'Nordpool Denmark 2'),
+    ('NPAT', 'Nordpool Austria'),
+    ('NPBE', 'Nordpool Belgium'),
+    ('NPFR', 'Nordpool France'),
+    ('NPNL', 'Nordpool Netherlands'),
+)
