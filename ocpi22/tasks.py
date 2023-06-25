@@ -301,7 +301,9 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
     from ocpi22.models.session import Session
     session = Session.objects.get(pk=session_pk)
 
-    assert session.status == session.ACTIVE, 'Session is not active, stopping simulation'
+    if session.status != session.ACTIVE:
+        print('Session is not active, stopping simulation')
+        return
 
     session.stop_kwh = kwh
     session.update_last_updated()

@@ -173,7 +173,7 @@ class CommandsViewSet(GenericViewSet):
                     )
                     initial_data.update(**serializer.validated_data)
 
-                    if settings.PERFORMANCE_TEST:
+                    if settings.PERFORMANCE_TEST or settings.CPO_SIMULATOR:
                         data = dict(timeout=90, result='ACCEPTED')
                     else:
                         data = send_to_webhook(initial_data, webhook_serializer)
