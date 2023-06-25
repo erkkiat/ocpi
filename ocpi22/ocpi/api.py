@@ -231,7 +231,7 @@ class TokenViewSet(OCPIListModelMixin,
     @action(methods=['PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def token_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
-        token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
+        token = get_object_or_404(Token, country_code__iexact=country_code, party_id__iexact=party_id, uid__iexact=uid)
 
         # Method is PUT or PATCH
         if not token.is_owner(request):
