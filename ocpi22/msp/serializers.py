@@ -56,7 +56,9 @@ class StartChargingSerializer(serializers.Serializer):
     token_id = serializers.CharField(
         required=False, max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='The optional identifier of the token that is used for this session. '
-                  'NOTE: You need to have the "ocpi22.charge_with_any_token" permission to use this field.',
+                  'NOTE: Use this field if you have your own user database. '
+                  'Make sure the account you use for authentication has '
+                  'the "ocpi22.charge_with_any_token" permission set or is an admin account.',
     )
     connector_id = serializers.CharField(
         required=False, allow_blank=True, allow_null=True,  # Not supported in OCPI 2.2
@@ -100,6 +102,11 @@ class StopChargingSerializer(serializers.Serializer):
         required=False,
         source='session',
         help_text='The optional session_id provided by CPO'
+    )
+    token_id = serializers.CharField(
+        required=False, max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        help_text='The optional identifier of the token that was used for this session. '
+                  'Specify this if you are using your own user database.'
     )
 
 

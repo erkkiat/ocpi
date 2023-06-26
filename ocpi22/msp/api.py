@@ -108,6 +108,7 @@ def process_start_charging(request, serializer, location, evse, connector_id: st
                          'you will receive a Session object followed by Session updates '
                          'with an updated kWh measurement.')
         if token_id:
+            # Instructions for using an external user database
             session_status_url = reverse('roaming-session-status')
             notes = ' Using the token_id field means that you are using your own user database. ' \
                     'Therefore, when checking session status using ' \
@@ -301,11 +302,15 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 serializer = StopChargingSerializer(data=request.data)
                 if serializer.is_valid():
                     session = serializer.validated_data.get('session')
+                    token_id = serializer.validated_data.get('token_id')
+                    if session and token_id:
+                        return Response(dict(status='You should specify either Session or Token ID, but not both'),
+                                        status=status.HTTP_400_BAD_REQUEST)
                     if not session:
-                        token = request.user.accounts.first().app_token_id
-                        session = get_session(token)
+                        token_id = token_id or request.user.accounts.first().app_token_id
+                        session = get_session(token_id)
                         if not session:
-                            return Response(dict(status=f'No active session found for token `{token}`. '
+                            return Response(dict(status=f'No active session found for token `{token_id}`. '
                                                         f'There may not have been a Session update from CPO.'),
                                             status=status.HTTP_404_NOT_FOUND)
                     response: requests.Response = send_stop_command(session)
@@ -484,7 +489,7 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
     This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for MSPs,
     a shortcut to roaming across OCPI networks.
 
-    > You can use these eMSP API interfaces intearactively
+    > You can use these eMSP API interfaces interactively
     > to support your development and integration work.
     > These streamlined interfaces provide the necessary tools for quickly but comprehensively connecting
     > an eMSP backend to CPOs and roaming hubs.
