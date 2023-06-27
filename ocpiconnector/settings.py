@@ -362,6 +362,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'gdpr_assist',
     'payment',
+    'drf_yasg',
 ]
 
 #
@@ -459,6 +460,7 @@ OAUTH2_PROVIDER = {
 }
 
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
     'DEFAULT_PERMISSION_CLASSES': [
         'ocpi22.ocpi.auth.OCPIPermission'
     ],
@@ -517,3 +519,4 @@ MESSAGE_TAGS = {
     messages.WARNING: 'alert-warning',
     messages.ERROR: 'alert-danger',
 }
+

@@ -5,7 +5,10 @@ from django.conf.urls import include
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path, re_path
-from rest_framework.schemas import get_schema_view
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
+from rest_framework import permissions
+from rest_framework.documentation import include_docs_urls
 
 from cars.views import CarsViewSet
 from ocpi22 import msp, views
@@ -76,6 +79,19 @@ common_router.register(r'', VersionsViewSet, basename='base')
 
 # urlpatterns = i18n_patterns(
 
+schema_view = get_schema_view(
+   openapi.Info(
+      title="ChargerHub Roaming API",
+      default_version='v2',
+      description="This is the expressway to roaming",
+      # terms_of_service="https://www.google.com/policies/terms/",
+      contact=openapi.Contact(email="erkki.tapola@chargerhub.eu"),
+      # license=openapi.License(name="BSD License"),
+   ),
+   public=True,
+   permission_classes=[permissions.DjangoObjectPermissions],
+)
+
 urlpatterns = [
     path('18n/', include('django.conf.urls.i18n')),
     path('lang/', set_language, name='admin_set_language'),
@@ -92,12 +108,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('issues/', views.issues, name='issues'),
     path('_nested_admin/', include('nested_admin.urls')),
-    path('openapi', get_schema_view(
-        title="OCPI Connector",
-        description="OpenAPI schemas for ChargerHub.EU OCPI Connector",
-        version="1.0.0"
-    ), name='openapi-schema'),
-    # path('admin/doc/', include('django.contrib.admindocs.urls')),
+    path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
 
 if settings.SERVE_STATIC_FILES or settings.DEBUG:
