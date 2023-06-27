@@ -256,7 +256,9 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                                     status=status.HTTP_400_BAD_REQUEST)
                 if not session:
                     # Let's see if we can find a Session started with an app token
-                    token_id = token_id or request.user.accounts.first().app_token_id
+                    account = request.user.accounts.first()
+                    if account and not token_id:
+                        token_id = account.app_token_id
                     session = get_session(token_id, (Session.PENDING, Session.ACTIVE, Session.COMPLETED, Session.INVALID))
                     if not session:
                         # Ok, maybe there's a Session started with an RFID
