@@ -81,7 +81,6 @@ class TokenViewSet(OCPIListModelMixin,
     def check_ownership(self, token) -> bool:
         return token and token.is_ours()
 
-    @transaction.atomic
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=False, version='2.2.1',
             logentry=None, **_kwargs):
         data = data or request.data.get('data', request.data)
