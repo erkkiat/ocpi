@@ -143,13 +143,14 @@ class OcpiModule:
 
     @classmethod
     def _send_update(cls, data: dict, url, token_base64, to: Party, sender: Party, method='put'):
-        # ic()
-        # ic(e, country_code, party_id, our_country_code, our_party_id)
+        if not settings.SEND_UPDATES:
+            return
+
         if url and token_base64 and to and sender:
             logging.info(f'Send {cls.ocpi_module_name.value} update to {str(to)}, url {url}')
             from ocpi22.tasks import send_ocpi_request
             args = data, url, token_base64, to.country_code, to.party_id, \
-                   sender.country_code, sender.party_id, method
+                sender.country_code, sender.party_id, method
             if settings.BACKGROUND_SEND:
                 send_ocpi_request.apply_async(args, retry=False, title=f'{cls.ocpi_module_name.value} update')
             else:
