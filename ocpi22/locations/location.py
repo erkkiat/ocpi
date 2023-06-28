@@ -207,7 +207,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_serializer_class(self, *args, **kwargs):
         request = self.request
-        if request.version == '2.2':
+        if hasattr(request, 'version') and request.version == '2.2':
             messages.info(request,
                           'Please note that 2-phase connectors are missing in OCPI 2.2, so they are mapped to 1-phase. '
                           'Also, the state is missing from the OCPI 2.2 postal address and the '
