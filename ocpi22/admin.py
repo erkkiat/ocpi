@@ -27,6 +27,9 @@ from ocpi22.msp.models import Authorization
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
 from payment.models import Payment
 
+admin.site.site_header = 'Roaming Admin'
+
+
 class TokenAdmin(admin.ModelAdmin):
     model = Token
     search_fields = ['party_id', 'uid', 'contract_id', 'visual_number', 'issuer', 'default_profile_type', 'type',
