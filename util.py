@@ -1,3 +1,5 @@
+from typing import List
+
 from django.urls import NoReverseMatch
 from rest_framework.reverse import reverse as django_reverse
 
@@ -29,3 +31,21 @@ def format_url(url, **kwargs) -> str:
         from ocpi22 import logging
         logging.error(f'Unknown URL variable in format_url: {e}')
         return url
+
+
+def numbers_are_consequtive(numbers: List[int]) -> bool:
+    """
+    >>> numbers_are_consequtive([1, 2, 3, 4, 5])
+    True
+    >>> numbers_are_consequtive([2, 3, 4, 5])
+    False
+    >>> numbers_are_consequtive([1, 2, 3, 5])
+    False
+    >>> numbers_are_consequtive([1, 2, 3, 5, 6])
+    False
+    >>> numbers_are_consequtive([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    True
+    """
+    if not numbers or min(numbers) != 1:
+        return False
+    return numbers == list(range(min(numbers), max(numbers) + 1))
