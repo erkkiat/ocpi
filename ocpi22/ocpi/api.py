@@ -91,8 +91,8 @@ class TokenViewSet(OCPIListModelMixin,
 
         token: Token = Token.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
 
-        if self.check_ownership(token) is True:
-            return OCPIResponse(f'Object {token} is owned by us and cannot be updated from outside.',
+        if token and self.check_ownership(token):
+            return OCPIResponse(f'Token {token} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
