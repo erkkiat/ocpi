@@ -162,7 +162,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                 logging.info(f'Creating or updating Location {country_code}*{party_id} - {uid}.',
                              log_to_admin=True, logentry=logentry)
                 created_location = serializer.save()
-                created_location.send_hub_updates(serializer.data)  # Todo: Change this to send 2.2 and 2.2.1 data
+                created_location.send_hub_updates()
                 http_status = status.HTTP_200_OK if existing_location else status.HTTP_201_CREATED
                 return OCPIResponse(serializer.data, http_status=http_status)
             else:

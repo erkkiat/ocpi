@@ -416,7 +416,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 )
                 method = 'patch'
         super().send_updates(
-            data, method=method,
+            method=method,
             path_components=path_components or [self.country_code, self.party_id, self.uid]
         )
 

@@ -30,6 +30,7 @@ def get_serializer(ocpi_serializer_class):
 class OcpiModule:
     # The serializer class to use when sending updates to other OCPI parties
     ocpi_serializer_class = None
+    ocpi_serializer_classes = {}
 
     # The module name to be used when looking for endpoints to send updates to
     ocpi_module_name = None
@@ -81,7 +82,7 @@ class OcpiModule:
                 # Send update only once
                 setattr(self, 'update_sent', True)
 
-    def send_updates(self, data=None, method='put', path_components=None) -> None:
+    def send_updates(self, method='put', path_components=None) -> None:
         """
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
@@ -92,53 +93,35 @@ class OcpiModule:
                 logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
                 return
 
-            if data:
-                data_22 = data
-                data_221 = data
-            else:
-                serializer_class = get_serializer(self.ocpi_serializer_class)
-                serializer = serializer_class(self)
-                data_22 = serializer.data
-
-                if hasattr(self, 'ocpi_serializer_class_221'):
-                    serializer_class_221 = get_serializer(self.ocpi_serializer_class_221)
-                    serializer_221 = serializer_class_221(self)
-                    data_221 = serializer_221.data
-                else:
-                    data_221 = data_22
-
             if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
                 logging.info('Sending updates to INTERESTED PARTIES')
-                self.send_update_to_interested_parties(data_22, data_221, method=method,
+                self.send_update_to_interested_parties(method=method,
                                                        path_components=path_components)
             else:
                 logging.info('Sending updates to ALL connected parties')
-                self._send_updates(data_22, data_221, method=method)
+                self._send_updates(method=method)
 
-            # if hasattr(self, 'send_extra_updates'):
-            #     self.send_extra_updates(data, method, path_components, serializer_class)
-        # else:
-        #     logging.warning(settings.UPDATES_DISABLED)
 
-    @classmethod
-    def _send_updates(cls, data_22, data_221, method='put', path_components=None) -> bool:
+    def _send_updates(self, method='put', path_components=None) -> bool:
         from ocpi22.credentials.util import find_endpoints_by_roles
-        our_country_code, our_party_id = cls.get_owner_identity().split('*')
-        uid = data_221.get('uid', data_221.get('id', 'N/A'))
+        our_country_code, our_party_id = self.get_owner_identity().split('*')
         logging.info(
-            f'Sending updates for {cls} {uid} from {our_country_code}*{our_party_id} to {cls.send_updates_to}'
+            f'Sending updates for {self} from {our_country_code}*{our_party_id} to {self.send_updates_to}'
         )
 
-        if isinstance(cls.send_updates_to, tuple):
+        if isinstance(self.send_updates_to, tuple):
             for url, token_base64, country_code, party_id, credentials in find_endpoints_by_roles(
-                    cls.send_updates_to, cls.ocpi_module_name):
-                if path_components:
-                    url = f'{url}/{"/".join(path_components)}'
-                data = data_22 if credentials.version == '22' else data_221
-                cls._send_update(data, url, token_base64, to=Party(country_code, party_id),
-                                 sender=Party(our_country_code, our_party_id), method=method)
+                    self.send_updates_to, self.ocpi_module_name):
+                try:
+                    if path_components:
+                        url = f'{url}/{"/".join(path_components)}'
+                    data = self.serialize(credentials.version)
+                    self._send_update(data, url, token_base64, to=Party(country_code, party_id),
+                                     sender=Party(our_country_code, our_party_id), method=method)
+                except Exception as e:
+                    logging.error(f'Unable to send update to {url}: {e}')
             return True
-        logging.error(f"{settings.HOSTNAME}: Unable to send updates for {cls}, don't know where to send.")
+        logging.error(f"{settings.HOSTNAME}: Unable to send updates for {self}, don't know where to send.")
         return False
 
     @classmethod
@@ -158,20 +141,27 @@ class OcpiModule:
         else:
             logging.warning(f"Skipping send for {cls}")
 
-    @classmethod
-    def send_hub_updates(cls, data) -> None:
+    def send_hub_updates(self) -> None:
         if ocpi_platform.is_hub and settings.SEND_UPDATES:
-            logging.info(f'Sending HUB updates for {cls}.')
-            # ic(data)
-            cls._send_updates(data)
+            logging.info(f'Sending HUB updates for {self}.')
+            self._send_updates()
 
-    def send_update(self, data_22, data_221, method, to, path_components=None) -> None:
+    # Todo: cache the serializers, consider changes in object and version
+    def serialize(self, version):
+        serializer_class = self.ocpi_serializer_classes.get(version)
+        if not serializer_class:
+            serializer_class = self.ocpi_serializer_class
+        assert serializer_class, f'No serializer class found for {self} for version {version}'
+        serializer = get_serializer(serializer_class)(self)
+        return serializer.data
+
+    def send_update(self, method, to, path_components=None) -> None:
         sender = Party(*(self.get_owner_identity().split('*')))
         route = find_route(to, self.ocpi_module_name,
                            add_path="/".join(path_components) if path_components else None)
         # ic(sender, to, route)
         if route:
-            data = {"22": data_22, "221": data_221}.get(route.version)
+            data = self.serialize(route.version)
             self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
         else:
             logging.error(f'Unable to find route to {str(to)}')

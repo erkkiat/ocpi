@@ -102,8 +102,8 @@ class TokenViewSet(OCPIListModelMixin,
         if serializer.is_valid():
             logging.info(f'Creating or updating Token {country_code}*{party_id} - {uid}.',
                          log_to_admin=True, logentry=logentry)
-            serializer.save()
-            Token.send_hub_updates(serializer.data)
+            created_token = serializer.save()
+            created_token.send_hub_updates()
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
         else:
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
@@ -307,7 +307,7 @@ class CdrViewSet(OCPIListModelMixin,
         if serializer.is_valid():
             cdr = serializer.save()
             # cdr.tariffs.set(tariff_list)
-            Cdr.send_hub_updates(serializer.data)
+            cdr.send_hub_updates()
             if ocpi_platform.is_emsp:
                 update_balance(cdr)
                 # capture_reservation(cdr)
@@ -460,8 +460,8 @@ class TariffViewSet(OCPIListModelMixin,
         if serializer.is_valid():
             logging.info(f'Creating or updating Tariff {country_code}*{party_id} - {uid}.',
                          logentry=logentry, log_to_admin=True)
-            serializer.save()
-            Tariff.send_hub_updates(data)
+            created_tariff = serializer.save()
+            created_tariff.send_hub_updates()
             return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if tariff else status.HTTP_201_CREATED)
         else:
             return OCPIResponse(errors=serializer.errors)
@@ -564,7 +564,7 @@ class SessionViewSet(OCPIListModelMixin,
 
             if 'last_updated' not in request.data:
                 session.update_last_updated()
-            Session.send_hub_updates(serializer.data)
+            session.send_hub_updates()
             outbound_data = MSPSessionCallbackSerializer.OutboundSerializer(instance=session).data
             send_to_webhook(data, MSPSessionCallbackSerializer, serialized_data=outbound_data)
             stop_session_if_money_runs_out(request, session)
