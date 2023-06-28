@@ -33,7 +33,7 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
         return False
     for k, v in expected.items():
         if k not in received:
-            ic(f'Key {k} not present in received')
+            print(f'Key {k} not present in received')
             result = False
         elif isinstance(v, (dict, OrderedDict)):
             if not compare_dicts_recursively(v, received[k], path=f'{path}.{k}'):
@@ -44,12 +44,12 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
                 # print(f'List {k} not equal in received')
                 result = False
         elif v != received[k]:
-            ic('Not equal', k, v, received[k])
+            print('Not equal', k, v, received[k])
             result = False
     # if not result:
     #     ic(f'Expected: {expected}')
     #     ic(f'Received: {received}')
     if not result:
-        ic(received, expected)
+        print(received, expected)
         print(f"The result doesn't match expected (label={label})")
     return result
