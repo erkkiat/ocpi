@@ -108,6 +108,7 @@ def process_start_charging(request, serializer, location, evse, connector_id: st
                          'you will receive a Session object followed by Session updates '
                          'with an updated kWh measurement.')
         session_status_url = reverse('roaming-session-status')
+        notes = ''
         if token_id:
             # Instructions for using an external user database
             notes = ' Using the token_id field means that you are using your own user database. ' \
