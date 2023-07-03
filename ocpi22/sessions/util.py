@@ -62,7 +62,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     if not authorization_method:
         from ocpi22.tokens.auth import authorize_token
         authorization: TokenAuthorization = authorize_token(token.uid, location)
-        if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED.value:
+        if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
             msg = f'Token {token} is not authorized for use by MSP at this time: ' \
                   f'{authorization.info if authorization else ""}'
             logging.error(msg)

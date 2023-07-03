@@ -111,7 +111,7 @@ def authorize_with_all_msps(token: str, location: Location, request=None) -> Opt
                 )
             else:
                 authorization = do_authorization(token, location, route, to=to)
-                if authorization and authorization.allowed == AuthorizationEnum.ALLOWED.value:
+                if authorization and authorization.allowed == AuthorizationEnum.ALLOWED:
                     return authorization
         except requests.exceptions.ConnectionError as e:
             logging.error(f'Unable to send Token authorization request to {to}: {e}', request=request)
@@ -249,9 +249,9 @@ def process_authorization_response(result, token, location, to, request=None) ->
     else:
         data = {}
         authorization = {}
-        allowed = AuthorizationEnum.NOT_ALLOWED.value
+        allowed = AuthorizationEnum.NOT_ALLOWED
 
-    if allowed != AuthorizationEnum.ALLOWED.value:
+    if allowed != AuthorizationEnum.ALLOWED:
         logging.warning(f'Result for authorizing token {token} at {location or "<not known>"} '
                         f'from {to} (HTTP {result.status_code}), '
                         f'response: {allowed}. ', request=request)

@@ -17,6 +17,23 @@ class OcpiRolesEnum(Enum):
     OTHER = 'OTHER'
     SCSP = 'SCSP'
 
+    def __eq__(self, other):
+        if isinstance(other, OcpiRolesEnum):
+            return self.value == other.value
+        elif isinstance(other, str):
+            return self.value == other
+        else:
+            return False
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return self.value
+
+    def __hash__(self):
+        return hash(self.value)
+
 
 ROLE_CHOICES = (
     ('CPO', 'Charge Point operator'),
@@ -45,12 +62,40 @@ class SessionStatus:
     PENDING = 'PENDING'
     RESERVATION = 'RESERVATION'
 
+    # def __eq__(self, other):
+    #     if isinstance(other, SessionStatusEnum):
+    #         return self.value == other.value
+    #     elif isinstance(other, str):
+    #         return self.value == other
+    #     else:
+    #         return False
+    #
+    # def __str__(self):
+    #     return self.value
+    #
+    # def __repr__(self):
+    #     return self.value
+
 
 class TokenType:
     AD_HOC_USER = 'AD_HOC_USER'
     RFID = 'RFID'
     APP_USER = 'APP_USER'
     OTHER = 'OTHER'
+
+    # def __eq__(self, other):
+    #     if isinstance(other, TokenTypeEnum):
+    #         return self.value == other.value
+    #     elif isinstance(other, str):
+    #         return self.value == other
+    #     else:
+    #         return False
+    #
+    # def __str__(self):
+    #     return self.value
+    #
+    # def __repr__(self):
+    #     return self.value
 
 
 TOKEN_TYPE_CHOICES = [
@@ -261,6 +306,20 @@ class AuthorizationEnum(models.TextChoices):
     EXPIRED = 'EXPIRED'
     NO_CREDIT = 'NO_CREDIT'
     NOT_ALLOWED = 'NOT_ALLOWED'
+
+    def __eq__(self, other):
+        if isinstance(other, AuthorizationEnum):
+            return self.value == other.value
+        elif isinstance(other, str):
+            return self.value == other
+        else:
+            return False
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return self.value
 
 
 DAY_OF_WEEK_CHOICES = (

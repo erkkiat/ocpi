@@ -115,7 +115,7 @@ class TokenViewSet(OCPIListModelMixin,
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid, **_kwargs) -> OCPIResponse:
-        allowed = AuthorizationEnum.ALLOWED.value
+        allowed = AuthorizationEnum.ALLOWED
         ocpi_status = Ocpi.OK
         http_status = 200
         info = None
@@ -147,7 +147,7 @@ class TokenViewSet(OCPIListModelMixin,
                 user_language = token.language.lower()
 
             if not token.valid:
-                allowed = AuthorizationEnum.EXPIRED.value
+                allowed = AuthorizationEnum.EXPIRED
                 info = MessageTexts.get('TOKEN_NOT_VALID')
                 ocpi_status = 2000
                 http_status = status.HTTP_401_UNAUTHORIZED
@@ -190,14 +190,14 @@ class TokenViewSet(OCPIListModelMixin,
             else:
                 if settings.REQUIRE_WALLET_BALANCE and token.total_balance_float() < 1.0:
                     log_error(request, f'Token {token} has no balance')
-                    allowed = AuthorizationEnum.NO_CREDIT.value
+                    allowed = AuthorizationEnum.NO_CREDIT
                     info = MessageTexts.get('NO_BALANCE')
                     ocpi_status = Ocpi.ClientError.GENERIC_CLIENT_ERROR
                     http_status = status.HTTP_401_UNAUTHORIZED
                     status_message = get_language(user_language, info)
                     # message_user(status_message, '+358405480238')
 
-            # if allowed == AuthorizationEnum.ALLOWED.value:
+            # if allowed == AuthorizationEnum.ALLOWED:
             #     message = UserMessages.approve_charging.get(user_language)
             #     ic(message)
             #     message_user(message, '+358405480238', location=location_name,
@@ -209,7 +209,7 @@ class TokenViewSet(OCPIListModelMixin,
                     allowed=allowed,
                     token=serializer.data,
                     # Todo: Store authorization in billing system
-                    authorization_reference=generate_auth_reference() if allowed == AuthorizationEnum.ALLOWED.value else '',
+                    authorization_reference=generate_auth_reference() if allowed == AuthorizationEnum.ALLOWED else '',
                 ), status_code=ocpi_status, status=http_status, status_message=status_message
             )
         except ValueError as e:

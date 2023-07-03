@@ -524,7 +524,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             ),
                             status=status.HTTP_401_UNAUTHORIZED
                         )
-                    elif authorization.allowed == AuthorizationEnum.ALLOWED.value:
+                    elif authorization.allowed == AuthorizationEnum.ALLOWED:
                         messages.success(request,
                                          mark_safe('Next, you can '
                                                    f'<a href="{next_url}">start the charging session</a>. '
@@ -543,7 +543,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             billed_to=token.party(),
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
-                        ), status=status.HTTP_200_OK if authorization.allowed == AuthorizationEnum.ALLOWED.value
+                        ), status=status.HTTP_200_OK if authorization.allowed == AuthorizationEnum.ALLOWED
                         else status.HTTP_401_UNAUTHORIZED
                     )
                 else:
@@ -1074,7 +1074,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
     This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for CPOs,
     a shortcut to roaming across OCPI networks.
 
-    > You can use these CPO API interfaces intearactively
+    > You can use these CPO API interfaces interactively
     > to support your development and integration work.
     > These streamlined interfaces provide the necessary tools for quickly but comprehensively connecting
     > a CPO backend to eMSPs and roaming hubs.
