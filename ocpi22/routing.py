@@ -95,6 +95,9 @@ CredentialsType: TypeAlias = 'Credentials'
 def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, add_path=None) -> Optional[Route]:
     if not to:
         return None
+    from ocpi22.models.credentials import Credentials
+    assert isinstance(to, (Party, Credentials)), f'find_route() expected Party or Credentials, got {type(to)}'
+    assert isinstance(ocpi_module, OcpiModuleEnum), f'find_route() expected OcpiModuleEnum, got {type(ocpi_module)}'
     if isinstance(to, Party):
         credentials: CredentialsType = find_credentials(to)
     else:

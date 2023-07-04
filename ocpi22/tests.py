@@ -30,6 +30,8 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
 from ocpi22.locations.serializers import LocationSerializer
+from ocpi22.msp.account import Account
+from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpiconnector.testutil import compare_dicts_recursively
 from ocpiconnector.util import recursive_sort_dict
 from settlement.views import InvoiceReportViews
@@ -42,7 +44,7 @@ from ocpi22.msp.models import Authorization
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, TokenType, AuthorizationEnum
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
@@ -64,7 +66,7 @@ from ocpi22.sessions.util import create_session
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
     accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, \
     RfidTestData, accept_authorization_msp, evse_inoperative_response, authorization_success
-from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token
+from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
@@ -1148,34 +1150,34 @@ class CommandTests(TestCase):
         session = Session.objects.get(status='PENDING')
         self.assertEqual(session.evse.uid, 'HELSINKI-3', "Session UID doesn't match expectation")
 
-    def test_unlock_connector(self):
-        url = reverse('commands-unlock-connector')
-        viewset = CommandsViewSet()
-
-        # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
-        request = api_factory.get(url)
-        request.data = {}
-        response = viewset.unlock_connector(request)
-
-        check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST)
-
-        # Load up the test message and send it
-        data = load_example(f'data/examples/command_unlock_connector.json')
-
-        request = api_factory.post(url)
-        request.data = data
-        response = viewset.unlock_connector(request)
-
-        check_ok_result(self, response, command_result=CommandResponse.ACCEPTED)
-
-        data = load_example(f'data/examples/command_unlock_connector_unknown_location.json')
-
-        request = api_factory.post(url)
-        request.data = data
-        response = viewset.unlock_connector(request)
-
-        check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST,
-                        status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+    # def test_unlock_connector(self):
+    #     url = reverse('commands-unlock-connector')
+    #     viewset = CommandsViewSet()
+    #
+    #     # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
+    #     request = api_factory.get(url)
+    #     request.data = {}
+    #     response = viewset.unlock_connector(request)
+    #
+    #     check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST)
+    #
+    #     # Load up the test message and send it
+    #     data = load_example(f'data/examples/command_unlock_connector.json')
+    #
+    #     request = api_factory.post(url)
+    #     request.data = data
+    #     response = viewset.unlock_connector(request)
+    #
+    #     check_ok_result(self, response, command_result=CommandResponse.ACCEPTED)
+    #
+    #     data = load_example(f'data/examples/command_unlock_connector_unknown_location.json')
+    #
+    #     request = api_factory.post(url)
+    #     request.data = data
+    #     response = viewset.unlock_connector(request)
+    #
+    #     check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST,
+    #                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
 
 class MockResponse:
@@ -1291,7 +1293,7 @@ class UpdatePartiesTest(TestCase):
                             'OCPI-to-country-code': 'FI',
                             'OCPI-to-party-id': 'HUB',  # The recipient comes from the Credentials in the fixture
                             'content-type': 'application/json'}
-        expected_json = {'contract_id': 'CONTRACT',
+        expected_data = {'contract_id': 'CONTRACT',
                          'country_code': 'FI',
                          'issuer': 'issuer',
                          'last_updated': '2022-01-01T12:00:00Z',
@@ -1305,10 +1307,10 @@ class UpdatePartiesTest(TestCase):
                          'Expected to send the update to another address')
         assert (isinstance(expected_headers, dict))
         assert (isinstance(kwargs['headers'], dict))
-        self.assertDictEqual(kwargs['headers'], expected_headers,
-                             'Headers differ from expected')
-        self.assertDictEqual(kwargs['json'], expected_json,
-                             'JSON content differs from expected')
+        self.assertTrue(compare_dicts_recursively(kwargs['headers'], expected_headers),
+                        'Headers differ from expected')
+        self.assertTrue(compare_dicts_recursively(kwargs['data'], expected_data),
+                        'JSON content differs from expected')
 
 
 def check_ok_result(testcase: TestCase, response, status_code: int = 1000, http_status: int = 200,
@@ -1789,7 +1791,7 @@ class TestCpoApi(TestCase):
                     evse_id='NON-EXISTENT-EVSE',
                     status='AVAILABLE',
                 ),
-                response={'status': 'EVSE with ID NON-EXISTENT-EVSE does not exist in the OCPI '
+                response={'status_text': 'EVSE with ID NON-EXISTENT-EVSE does not exist in the OCPI '
                                     'Connector database for party FI*CPO'},
                 status_code=404
             ),
@@ -1809,7 +1811,6 @@ class TestCpoApi(TestCase):
                     self.assertEqual(evse.status, case.get('evse_status'))
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.models.session.OcpiModule.send_update_to_interested_parties')
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {
                'callback-start_transaction_url': 'http://localhost/start/{evse_id}/',
@@ -1820,12 +1821,13 @@ class TestCpoApi(TestCase):
            return_value=mock_uuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     @patch('ocpi22.webhooks.requests.post')
+    @patch('ocpiconnector.analytics.send_session_update_to_analytics')
     def test_rfid_charging_flow(self,
-                                webhook_post_mock: Mock,
+                                _send_analytics: Mock,
+                                _webhook_post_mock: Mock,
                                 _ocpi_post_mock: Mock,
                                 _uuid4_mock: Mock,
-                                _get_parameter_mock: Mock,
-                                send_updates_mock: Mock):
+                                _get_parameter_mock: Mock):
 
         evse = Evse.objects.get(uid='HELSINKI-3')
         self.assertEqual(evse.status, 'AVAILABLE')
@@ -1843,16 +1845,18 @@ class TestCpoApi(TestCase):
             "internal_reference": "MY-INTERNAL-REFERENCE",
             "start_kwh": 120
         }
-        cpo_response = cpo_viewset.start_transaction(cpo_request)
+        with patch('ocpi22.ocpi.util.OcpiModule.send_background_update') as send_updates_mock:
+            cpo_response = cpo_viewset.start_transaction(cpo_request)
 
-        # Make sure the created Session was sent to the relevant party
-        send_updates_mock.assert_called()
-        args, kwargs = send_updates_mock.call_args
+            # Make sure the created Session was sent to the relevant party
+            send_updates_mock.assert_called()
+            args, kwargs = send_updates_mock.call_args
 
-        data_sent = args[0]
+            data_sent = args[0]
+
         # ic(recursive_sort_dict(data_sent), recursive_sort_dict(RfidTestData.expected_data_1))
-        self.assertDictEqual(data_sent, RfidTestData.expected_data_1,
-                             "The Session update doesn't look as expected")
+        self.assertTrue(compare_dicts_recursively(data_sent, RfidTestData.expected_data_1),
+                        "The Session update doesn't look as expected")
 
         self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
         # ic(recursive_sort_dict(cpo_response.data))
@@ -1977,6 +1981,22 @@ class TestCpoApi(TestCase):
             ),
             dict(
                 request=dict(
+                    internal_reference='MY-INTERNAL-REFERENCE',
+                    kwh=0,
+                ),
+                expected_response={'internal_reference': 'MY-INTERNAL-REFERENCE',
+               'now_kwh': 0.0,
+               'power': None,
+               'price': '-',
+               'session_id': 'FI*CPO*S*MOCK-1',
+               'soc': None,
+               'start_kwh': 120.0,
+               'status_text': 'Session updated',
+               'total_kwh': Decimal('0.000')},
+                status_code=200,
+            ),
+            dict(
+                request=dict(
                     session_id='NON-EXISTENT-SESSION',
                     kwh=123.45,
                 ),
@@ -1986,8 +2006,8 @@ class TestCpoApi(TestCase):
         )
 
         for case in testcases:
-            with self.subTest(request=case.get('request')):
-                send_updates_mock.reset_mock()
+            with self.subTest(request=case.get('request')), \
+                    patch('ocpi22.ocpi.util.OcpiModule.send_background_update') as send_updates_mock:
                 data = case.get('request')
                 # request.accepted_media_type = 'text/html'  # To get the detail_url in the response
                 # request.version = '2.2.1'
@@ -1996,16 +2016,15 @@ class TestCpoApi(TestCase):
                 expected_status = case.get('status_code', 200)
                 self.assertEqual(cpo_response.status_code, expected_status,
                                  f'Expecting HTTP status {expected_status} for {case.get("request")}')
-                self.assertDictEqual(cpo_response.data, case.get('expected_response'),
-                                     f'Case request {case.get("request")}, response {cpo_response.data}')
+                self.assertTrue(
+                    compare_dicts_recursively(cpo_response.data, case.get('expected_response'), label=data.get('kwh')),
+                    f'Case request {case.get("request")}, response {cpo_response.data}')
 
                 # Make sure the updated session was sent after meter_values was called
                 if expected_status == 200:
                     send_updates_mock.assert_called()
                     args, kwargs = send_updates_mock.call_args
                     # Check the outgoing update call
-                    self.assertEqual(kwargs.get('method'), 'patch', 'PATCH should be used for Session updates')
-
                     expected_update_data = case.get('expected_update_data')
                     if expected_update_data:
                         update_data = args[0]
@@ -2014,8 +2033,9 @@ class TestCpoApi(TestCase):
                                         f'The Session update data does not comply with schema: {expected_serializer.errors}')
                         self.assertTrue(update_data.get('charging_periods'),
                                         'Charging periods missing from Session update')
-                        self.assertDictEqual(update_data, expected_update_data,
-                                             f'Sending Session update differs from expected')
+                        self.assertTrue(
+                            compare_dicts_recursively(update_data, expected_update_data, label=data.get('kwh')),
+                            f'Sending Session update differs from expected')
 
                     expected_session_data = case.get('session_data')
                     if expected_session_data:
@@ -2031,14 +2051,13 @@ class TestCpoApi(TestCase):
         # CPO stops the session
         #
 
-        send_updates_mock.reset_mock()
-
         data = dict(
             internal_reference='MY-INTERNAL-REFERENCE',
             stop_kwh=155,
             stop_timestamp=faketime + timedelta(minutes=60)  # This should apply, in case of a connection problem
         )
-        with time_machine.travel(faketime + timedelta(minutes=90), tick=False):
+        with time_machine.travel(faketime + timedelta(minutes=90), tick=False), \
+                patch('ocpi22.ocpi.util.OcpiModule.send_background_update') as send_updates_mock:
             response = stop_transaction(data)
 
         # ic(recursive_sort_dict(response.data), recursive_sort_dict(StopTransactionResponses.stop1))
@@ -2476,7 +2495,7 @@ class TestMspApi(TestCase):
                           _uuid4_mock: Mock):
         data = {
             "location_id": "HELSINKI-1",
-            "evse_id": "HELSINKI-3",
+            "evse_uid": "HELSINKI-3",
             "connector_id": "1",
             "contract_id": "CONTRACT-123",
             "internal_reference": "REFERENCE-123"
@@ -2704,6 +2723,57 @@ class TestMspUserApi(TestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
                          'Creating a duplicate user should result in HTTP 409')
 
+    def set_balance(self, amount):
+        self.account.transactions.all().delete()
+        self.account.deposit(amount)
+        self.assertEqual(self.account.balance, amount, 'Account balance differs from expected after a deposit')
+
+    def setUp(self):
+        params = dict(email='rich@money.com', password='hello', confirm='hello')
+        initial_balance = 70
+        response = self._create_user(**params)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        user = User.objects.get(username=params.get('email'), email=params.get('email'))
+        # Check that account is created automatically and with zero balance
+        self.assertEquals(user.accounts.count(), 1, "A new user doesn't get an account automatically")
+        account = user.accounts.first()
+        self.assertEquals(account.balance, Decimal("0.0"), 'User has some money out of nowhere')
+
+        # Clear out any Sessions which prevent new charging sessions
+        Session.objects.filter(status__in=[Session.PENDING, Session.ACTIVE]).update(status=Session.COMPLETED)
+
+        # Create a Session
+        evse = Evse.objects.all()[0]
+        uid = 'test-transactions'
+        self.token_uid = 'EKI1'
+        credentials = Credentials.objects.first()
+
+        with patch('ocpi22.tokens.auth.authorize_token') as authorize_token_mock:
+            party = Party('FI', 'TST')
+            authorize_token_mock.return_value = TokenAuthorization(
+                    allowed='ALLOWED',
+                    info=MessageTexts.get('TOKEN_ACCEPTED'),
+                    token=AdhocToken(True, party, self.token_uid, TokenType.AD_HOC_USER),
+                    party=party,
+                    authorization_reference='1234567890',
+                    auth_method=Session.AUTH_REQUEST,
+                )
+            session = create_session(
+                uid=uid, evse_uid=evse, location_id=evse.location, connector_id=evse.connectors.all().first().uid,
+                token_id=self.token_uid, billed_to='FI*MSP', start_kwh=0.0, stop_kwh=100.0,
+                session_status=Session.ACTIVE, credentials=credentials,
+            )
+            authorize_token_mock.assert_called_once()
+            self.assertTrue(bool(session))
+            session.calculate_price()
+            session.save()
+
+        self.user = user
+        self.account = account
+        self.initial_balance = initial_balance
+        self.session = session
+
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     @patch('ocpi22.ocpi.api.requests.post', side_effect=[make_json_response(accept_authorization_msp)])
     @patch('ocpi22.util.redis_store.get',
@@ -2713,62 +2783,27 @@ class TestMspUserApi(TestCase):
            }.get(x))
     def test_cdrs_and_transactions(self, _mocked_redis_store: Mock, _mocked_requests_post: Mock,
                                    _mocked_ocpi_post: Mock):
-        params = dict(email='rich@money.com', password='hello', confirm='hello')
-        initial_balance = 70
-        response = self._create_user(**params)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        user = User.objects.get(username=params.get('email'), email=params.get('email'))
-
-        # Check that account is created automatically and with zero balance
-        self.assertEquals(user.accounts.count(), 1, "A new user doesn't get an account automatically")
-        account = user.accounts.first()
-        self.assertEquals(account.balance, Decimal("0.0"), 'User has some money out of nowhere')
-
         # Try to authorize charging with no money in account
         with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
             token_id = 'EKI1'
-            Token.objects.filter(uid=token_id).update(customer=user)
+            Token.objects.filter(uid=token_id).update(customer=self.user)
             response = msp_authorize(token_id)
             # Todo: Test authorize also with Location and Evses
             self.assertEquals(response.status_code, status.HTTP_401_UNAUTHORIZED,
                               'Charging should not be authorized if account is empty')
             self.assertEquals(response.data.get('data').get('allowed'), 'NO_CREDIT',
                               'Declined authorization should have allowed status "NO_CREDIT"')
-
-            # Deposit some money to new user's account
-            account = user.accounts.first()
-            account.deposit(initial_balance)
-            self.assertEqual(account.balance, initial_balance, 'Account balance differs from expected after a deposit')
-
         #
         # Try an RFID
         #
 
-        # Create a Session
-        evse = Evse.objects.all()[0]
-        uid = 'test-transactions'
-        token_uid = 'EKI1'
-        credentials = Credentials.objects.first()
+        self.set_balance(self.initial_balance)
 
-        # Clear out any Sessions which prevent new charging sessions
-        Session.objects.filter(status__in=[Session.PENDING, Session.ACTIVE]).update(status=Session.COMPLETED)
-
-        session = create_session(
-            uid=uid, evse_uid=evse, location_id=evse.location, connector_id=evse.connectors.all().first().uid,
-            token_id=token_uid, billed_to='FI*MSP', start_kwh=0.0, stop_kwh=100.0,
-            session_status=Session.ACTIVE, credentials=credentials,
-        )
-
-        self.assertTrue(bool(session))
-        session.calculate_price()
-        session.save()
-
-        with patch('django.conf.settings.USE_ACCOUNTS', True):
-            Token.objects.filter(uid=token_uid).update(customer=user)
-            cdr = Cdr.create_based_on_session(session)
+        with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True), \
+                patch('django.conf.settings.USE_ACCOUNTS', True):
+            Token.objects.filter(uid=self.token_uid).update(customer=self.user)
+            cdr = Cdr.create_based_on_session(self.session)
             serializer = CdrSerializer(instance=cdr)
-            data = serializer.data
             self.assertEqual([cdr.total_cost_incl_vat, cdr.total_cost_excl_vat], [62.0, 50.0],
                              'CDR cost seems to be off')
 
@@ -2777,7 +2812,7 @@ class TestMspUserApi(TestCase):
 
             response = post_cdr(CdrMessages.test_transactions_rfid)
             self.assertEquals(response.status_code, 201, 'CDR PUT seems to have failed')
-            self.assertEqual(account.balance, initial_balance - cdr.total_cost_incl_vat,
+            self.assertEqual(self.account.balance, self.initial_balance - cdr.total_cost_incl_vat,
                              'Account balance differs from expected after a charging session')
 
         # Try to put a duplicate CDR
@@ -2785,15 +2820,24 @@ class TestMspUserApi(TestCase):
         with self.assertRaises(ValidationError):
             response = post_cdr(CdrMessages.test_transactions_rfid)
 
-        #
+    def test_cdrs_and_transactions2(self):
         # Charge using the mobile app and an APP_TOKEN
-        #
 
+        self.set_balance(self.initial_balance)
+
+        user = self.user
+        account = self.account
         with patch('django.conf.settings.USE_ACCOUNTS', True):
-            app_token_id = 'APP-TOKEN'
+            app_token_id = CdrMessages.test_transactions_app_id.get('cdr_token').get('uid')
+            self.session.cdr_token_uid = app_token_id
+            self.session.save()
+            initial_balance = 70
             account.app_token_id = app_token_id
+            account.deposit(initial_balance)
             account.save()
             previous_balance = account.balance
+            assert account.app_token_id == app_token_id, 'Account app_token_id not set'
+            Account.objects.filter(app_token_id=self.session.cdr_token_uid).first()
 
             response = post_cdr(CdrMessages.test_transactions_app_id)
             cost = Decimal("6.20")

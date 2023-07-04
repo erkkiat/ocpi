@@ -274,7 +274,6 @@ class CommandsViewSet(GenericViewSet):
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_path='STOP_SESSION')
     def stop_session(self, request, **_kwargs):
         if not request.data:
@@ -347,7 +346,6 @@ class CommandsViewSet(GenericViewSet):
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_path='UNLOCK_CONNECTOR')
     def unlock_connector(self, request, **_kwargs):
         if not request.data:
@@ -375,7 +373,6 @@ class CommandsViewSet(GenericViewSet):
                             http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-    @transaction.atomic
     @action(methods=['GET', 'POST'], detail=False, url_path='COMMAND_RESULT/(?P<command>[^/.]+)/(?P<command_id>[^/.]+)')
     def command_result(self, request, command=None, command_id=None):
         """

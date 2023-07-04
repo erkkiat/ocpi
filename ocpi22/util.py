@@ -314,6 +314,7 @@ def is_our_identifier(party: Party, identities=None) -> bool:
     False
 
     """
+    assert isinstance(party, Party), f'is_our_identifier() requires a Party object, not {type(party)}'
     if not party.country_code or not party.party_id:
         return False
     if identities is None:

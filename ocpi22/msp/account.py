@@ -52,8 +52,9 @@ class Transaction(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transactions')
     cdr = models.ForeignKey("ocpi22.Cdr", blank=True, null=True, on_delete=models.DO_NOTHING)
 
-    # Todo: add field for VAT?
+    # vat = models.DecimalField(max_digits=5, decimal_places=2)
 
+    # authorization_reference = None
     delta = models.DecimalField(max_digits=6, decimal_places=2)
     balance_after = models.DecimalField(max_digits=6, decimal_places=2)
     discount = models.IntegerField(default=0)
@@ -106,6 +107,7 @@ def check_balance(session: Session):
 def update_balance(cdr) -> None:
     if settings.USE_ACCOUNTS:
         account = get_user_account(cdr.session)
+        assert account
         if account:
             # Todo: do the payment callback
             account.withdraw(Decimal(-cdr.total_cost_incl_vat), cdr=cdr, pos_reference='N/A')

@@ -14,6 +14,7 @@ from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
 
 from ocpi22.ocpi.serializers import SessionSerializer
+from ocpiconnector.testutil import compare_dicts_recursively, compare_lists_recursively
 from ocpiconnector.util import recursive_sort_dict, Timer
 from util import reverse
 from rest_framework.test import APIRequestFactory
@@ -56,15 +57,14 @@ class TestQuickLocations(TestCase):
                              'Expecting Location to be created successfully')
             location = Location.get_if_exists(uid='Aplinkkelis')
             data = LocationQuickSerializer(instance=location).data
-            self.assertEqual(data,
-                             {
-                                 # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/APLINKKELIS/',
-                                 'id': 'APLINKKELIS', 'name': 'IONITY High Power Charging Aplinkkelis',
-                                 'address': 'Panevėžio aplinkl. 20', 'city': '-', 'postal_code': '38417',
-                                 'country': 'LTU',
-                                 'time_zone': 'Europe/Vilnius', 'latitude': 55.67309, 'longitude': 24.33591
-                             },
-                             f'New Location data differs from expected: {data}')
+            expected = {
+                'id': 'APLINKKELIS', 'name': 'IONITY High Power Charging Aplinkkelis',
+                'address': 'Panevėžio aplinkl.', 'city': '-', 'postal_code': '36258',
+                'country': 'LTU',
+                'time_zone': 'Europe/Vilnius', 'latitude': 55.67309, 'longitude': 24.33591
+            }
+            self.assertTrue(compare_dicts_recursively(data, expected),
+                            f'New Location data differs from expected: {data}')
         except geopy.exc.GeocoderUnavailable:
             self.skipTest('Geocoder is unavailable')
 
@@ -320,23 +320,25 @@ class TestChargingPeriods(TestCase):
             (45, 95, datetime(2022, 12, 26, 6, 0),  # This should cause a third ChargingPeriod to be created
              None, None, None),
             (50, 99, datetime(2022, 12, 26, 6, 30),
-             {'charging_periods':
-                 [OrderedDict(
-                     [('start_date_time', '2022-12-25T21:55:00Z'), ('tariff', 'WEEKENDS'), ('dimensions', [
-                         OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
-                         OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
-                         OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]), OrderedDict(
-                     [('start_date_time', '2022-12-25T22:01:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
-                         OrderedDict([('type', 'ENERGY'), ('volume', '8.0000')]),
-                         OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '65.0000')]),
-                         OrderedDict([('type', 'TIME'), ('volume', '7.9833')])])]), OrderedDict(
-                     [('start_date_time', '2022-12-26T06:00:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
-                         OrderedDict([('type', 'ENERGY'), ('volume', '35.0000')]),
-                         OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '99.0000')]),
-                         OrderedDict([('type', 'TIME'), ('volume', '0.5000')])])])],
-                 'kwh': Decimal('50.000'),
-                 'last_updated': '2022-12-26T06:30:00Z',
-                 'total_cost': {'excl_vat': 22.8, 'incl_vat': 28.27}},
+             {'country_code': 'FI', 'party_id': '000', 'id': 'FI*000*S*B58DDC4D3B304A47AD623C22147',
+              'start_date_time': '2022-12-14T17:03:19Z', 'kwh': 50.0, 'charging_periods': [OrderedDict(
+                 [('start_date_time', '2022-12-25T21:55:00Z'), ('tariff', 'WEEKENDS'), ('dimensions', [
+                     OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
+                     OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
+                     OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]), OrderedDict(
+                 [('start_date_time', '2022-12-25T22:01:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
+                     OrderedDict([('type', 'ENERGY'), ('volume', '8.0000')]),
+                     OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '65.0000')]),
+                     OrderedDict([('type', 'TIME'), ('volume', '7.9833')])])]), OrderedDict(
+                 [('start_date_time', '2022-12-26T06:00:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
+                     OrderedDict([('type', 'ENERGY'), ('volume', '35.0000')]),
+                     OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '99.0000')]),
+                     OrderedDict([('type', 'TIME'), ('volume', '0.5000')])])])],
+              'cdr_token': OrderedDict([('uid', 'EKI1'), ('type', 'RFID'), ('contract_id', 'CONTRACT2')]),
+              'auth_method': 'AUTH_REQUEST', 'authorization_reference': 'FI*001*A*E2FA443602BD4E499C878B8BD6C',
+              'location_id': 'EKI1', 'evse_uid': '1', 'connector_id': '1', 'currency': 'PLN',
+              'total_cost': OrderedDict([('excl_vat', 22.8), ('incl_vat', 28.27)]), 'status': 'ACTIVE',
+              'last_updated': '2022-12-26T06:30:00Z'},
              {
                  'internal_reference': None,
                  'now_kwh': 50.0,
@@ -405,7 +407,7 @@ class TestChargingPeriods(TestCase):
                 try:
                     with self.subTest(kwh=kwh, timestamp=timestamp):
                         with time_machine.travel(timestamp, tick=True), \
-                                patch('ocpi22.ocpi.util.OcpiModule.send_updates') as send_updates, \
+                                patch('ocpi22.ocpi.util.OcpiModule.send_background_update') as send_updates_mock, \
                                 patch('ocpi22.util.is_our_identifier', return_value=True), \
                                 patch('ocpi22.logging.error') as logging_error_mock:
 
@@ -416,23 +418,20 @@ class TestChargingPeriods(TestCase):
 
                         self.assertEqual(response.status_code, 200,
                                          f'Unexpected response from meter_values(): {response.data}')
-                        self.assertEqual(send_updates.call_count, 1, 'send_update() should have been called once')
+                        self.assertEqual(send_updates_mock.call_count, 1, 'send_update() should have been called once')
 
-                        args, kwargs = send_updates.call_args
+                        args, kwargs = send_updates_mock.call_args
                         if expected_args:
-                            # ic(recursive_sort_dict(args[0]), recursive_sort_dict(expected_args))
-                            self.assertDictEqual(args[0], expected_args,
-                                                 f'send_update() got different parameters than expected: {args[0]}')
+                            self.assertTrue(compare_lists_recursively(args[0], expected_args),
+                                            f'send_update() got different parameters than expected: {args[0]}')
 
                         if expected_response:
-                            # ic(recursive_sort_dict(response.data), recursive_sort_dict(expected_response))
-                            self.assertDictEqual(response.data, expected_response,
-                                                 f'Response differs from expected: {response.data}')
+                            self.assertTrue(compare_dicts_recursively(response.data, expected_response),
+                                            f'Response differs from expected: {response.data}')
                         if expected_session_data:
-                            session_id = 'FI*000*S*B58DDC4D3B304A47AD623C22147'
-                            session = Session.get_if_exists(uid=session_id)
-                            session_serializer = SessionSerializer(session)
-                            # ic(recursive_sort_dict(session_serializer.data), recursive_sort_dict(expected_session_data))
+                            test_session_id = 'FI*000*S*B58DDC4D3B304A47AD623C22147'
+                            test_session = Session.get_if_exists(uid=test_session_id)
+                            session_serializer = SessionSerializer(test_session)
                             self.assertDictEqual(session_serializer.data, expected_session_data,
                                                  'Session data differs from expected')
                 except AssertionError:

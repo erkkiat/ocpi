@@ -33,7 +33,7 @@ def validate_timezone(t: str):
         )
 
 
-class Location(models.Model, ModelUtilMixin, OcpiModule):
+class Location(OcpiModule, models.Model, ModelUtilMixin):
     """
     A physical location with one or more EVSEs
     """
@@ -194,6 +194,16 @@ class Location(models.Model, ModelUtilMixin, OcpiModule):
 
     def evse_count(self):
         return self.evses.count()
+    #
+    # def __hash__(self):
+    #     # Get a dictionary of the object's attributes
+    #     attr_dict = copy(vars(self))
+    #     attr_dict.pop('_state', None)
+    #     # Convert the dictionary to a string and hash it
+    #     attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
+    #     thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
+    #     ic(thehash, attr_str)
+    #     return thehash
 
     def evse_list(self):
         return format_html(
@@ -313,9 +323,8 @@ class Evse(models.Model, ModelUtilMixin):
             last_updated=self.last_updated
         )
         location = self.location
-        method = 'patch'
-        Location._send_updates(data, data, method=method,
-                               path_components=[location.country_code, location.party_id, location.uid, self.uid])
+        location.send_all_updates(data=data, method='patch',
+                                  path_components=[location.country_code, location.party_id, location.uid, self.uid])
 
     def save(self, *args, **kwargs):
         if self.location.is_ours():

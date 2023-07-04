@@ -114,7 +114,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
     from ocpi22 import logging
 
     try:
-        logging.info(f"Sending {method.upper()} {title} request {data.get('uid', data.get('id', ''))} to {url}")
+        logging.info(f"Sending {method.upper()} {title} request to {url}")
         headers = make_headers(
             token_base64, to=to, sender=sender
         )
@@ -124,7 +124,10 @@ def send_ocpi_request(data, url: str, token_base64: str,
             sentry_sdk.set_context('data', data)
         logging.info(f'Logged the message to Sentry in {float(t):.2f} seconds')
 
-        kwargs = dict(url=url, json=data, headers=headers)
+        if isinstance(data, dict):
+            kwargs = dict(url=url, json=data, headers=headers)
+        else:
+            kwargs = dict(url=url, data=data, headers=headers)
 
         # Call the specified method in requests, for example, if method == 'put', call requests.put
         function = getattr(requests, method.lower())
@@ -315,6 +318,10 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
         update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
     )
 
+    # The Session hashing doesn't seem to work for Celery worker tasks,
+    # so let's make sure the update uses the most recent information
+    session.serialize.cache_clear()
+
     # session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
     # session.send_updates(session_charging_periods)
     session.send_updates()
@@ -326,4 +333,9 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
             countdown=3
         )
         return
+
+    session.status = session.COMPLETED
+    session.save(update_fields=['status'])
+    session.send_updates()
+
     print('Done simulating meter values for session {session_pk} with token {token_uid}.')

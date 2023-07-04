@@ -24,7 +24,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
-from util import reverse
+from util import reverse, url_link
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts, AuthorizationEnum
@@ -303,7 +303,7 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
         )
 
         session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
-        session.send_updates(session_charging_periods)
+        session.send_updates(session_charging_periods, method='patch')
 
         messages.success(request,
                          mark_safe(f"You have updated the OCPI Session <b>{session.uid}</b> "

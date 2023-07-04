@@ -437,7 +437,6 @@ class TariffViewSet(OCPIListModelMixin,
             return get_object_or_404(Tariff, uid=uid)
 
     @requires_premium
-    @transaction.atomic
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, version='2.2.1',
             logentry=None, **_kwargs) \
             -> OCPIResponse:
@@ -466,7 +465,6 @@ class TariffViewSet(OCPIListModelMixin,
         else:
             return OCPIResponse(errors=serializer.errors)
 
-    @transaction.atomic
     @action(methods=['DELETE'], url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', detail=False)
     @requires_premium
     def delete(self, _request, country_code, party_id, uid, *_args, **_kwargs) -> OCPIResponse:
@@ -519,7 +517,6 @@ class SessionViewSet(OCPIListModelMixin,
         if uid:
             return get_object_or_404(Session, uid=uid)
 
-    @transaction.atomic
     @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def session_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:

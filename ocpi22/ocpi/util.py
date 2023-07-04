@@ -1,5 +1,9 @@
+import functools
+import hashlib
+import json
 import uuid
 from collections import OrderedDict
+from copy import copy
 from datetime import datetime
 
 import requests
@@ -46,11 +50,6 @@ class OcpiModule:
     send_updates_to = []
 
     INTERESTED_PARTIES = -1
-
-    def get_party(self) -> (str, str):
-        country_code = self.country_code if hasattr(self, 'country_code') else None
-        party_id = self.party_id if hasattr(self, 'party_id') else None
-        return country_code, party_id
 
     @classmethod
     def get_owner_identity(cls) -> str:
@@ -99,10 +98,10 @@ class OcpiModule:
                                                        path_components=path_components)
             else:
                 logging.info('Sending updates to ALL connected parties')
-                self._send_updates(method=method)
+                self.send_all_updates(method=method)
 
-
-    def _send_updates(self, method='put', path_components=None) -> bool:
+    def send_all_updates(self, data=None, method='put', path_components=None) -> bool:
+        # Todo: Use sender identity, not our HUB identity
         from ocpi22.credentials.util import find_endpoints_by_roles
         our_country_code, our_party_id = self.get_owner_identity().split('*')
         logging.info(
@@ -115,9 +114,10 @@ class OcpiModule:
                 try:
                     if path_components:
                         url = f'{url}/{"/".join(path_components)}'
-                    data = self.serialize(credentials.version)
-                    self._send_update(data, url, token_base64, to=Party(country_code, party_id),
-                                     sender=Party(our_country_code, our_party_id), method=method)
+
+                    data = data or self.serialize(credentials.version)
+                    self.send_background_update(data, url, token_base64, to=Party(country_code, party_id),
+                                                sender=Party(our_country_code, our_party_id), method=method)
                 except Exception as e:
                     logging.error(f'Unable to send update to {url}: {e}')
             return True
@@ -125,28 +125,34 @@ class OcpiModule:
         return False
 
     @classmethod
-    def _send_update(cls, data: dict, url, token_base64, to: Party, sender: Party, method='put'):
+    def send_background_update(cls, data: dict, url, token_base64, to: Party, sender: Party, method='put'):
         if not settings.SEND_UPDATES:
             return
 
         if url and token_base64 and to and sender:
             logging.info(f'Send {cls.ocpi_module_name.value} update to {str(to)}, url {url}')
             from ocpi22.tasks import send_ocpi_request
-            args = data, url, token_base64, to.country_code, to.party_id, \
+            args = json.dumps(data, default=str), url, token_base64, to.country_code, to.party_id, \
                 sender.country_code, sender.party_id, method
-            if settings.BACKGROUND_SEND:
-                send_ocpi_request.apply_async(args, retry=False, title=f'{cls.ocpi_module_name.value} update')
-            else:
-                send_ocpi_request(*args)
+            send_ocpi_request.apply_async(args, retry=False, title=f'{cls.ocpi_module_name.value} update')
         else:
             logging.warning(f"Skipping send for {cls}")
 
     def send_hub_updates(self) -> None:
         if ocpi_platform.is_hub and settings.SEND_UPDATES:
             logging.info(f'Sending HUB updates for {self}.')
-            self._send_updates()
+            self.send_all_updates()  # Todo: Use sender identity, not our HUB identity
 
-    # Todo: cache the serializers, consider changes in object and version
+    def __hash__(self):
+        # Get a dictionary of the object's attributes
+        attr_dict = copy(vars(self))
+        attr_dict.pop('_state', None)
+        # Convert the dictionary to a string and hash it
+        attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
+        thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
+        return thehash
+
+    @functools.lru_cache(maxsize=None)
     def serialize(self, version):
         serializer_class = self.ocpi_serializer_classes.get(version)
         if not serializer_class:
@@ -155,14 +161,14 @@ class OcpiModule:
         serializer = get_serializer(serializer_class)(self)
         return serializer.data
 
-    def send_update(self, method, to, path_components=None) -> None:
+    def route_single_update_message(self, method, to, data=None, path_components=None) -> None:
         sender = Party(*(self.get_owner_identity().split('*')))
         route = find_route(to, self.ocpi_module_name,
                            add_path="/".join(path_components) if path_components else None)
         # ic(sender, to, route)
         if route:
-            data = self.serialize(route.version)
-            self._send_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
+            data = data or self.serialize(route.version)
+            self.send_background_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
         else:
             logging.error(f'Unable to find route to {str(to)}')
 
@@ -174,7 +180,10 @@ class OcpiModule:
                 return
             self.send_subscriber_updates(*args, **kwargs)
             to = Party(*(self.billed_to.split('*')))
-            return self.send_update(*args, to=to, **kwargs)
+            return self.route_single_update_message(to=to, **kwargs)
+        else:
+            logging.error(f'Object #{self.uid} - {self} has no credentials, cannot send updates to interested parties')
+            # Todo: Stop charging session, cannot bill
 
     # @cachedmethod(cachetools.cache)
     def _get_subscriber_parties(self, partylist=None) -> list:
@@ -186,7 +195,7 @@ class OcpiModule:
         Some business models rely on receiving all objects of type X, for example for statistics purposes
         """
         for party in self._get_subscriber_parties():
-            self.send_update(*args, to=party, **kwargs)
+            self.route_single_update_message(to=party, **kwargs)
 
 
 def ocpi_post(url, token_base64,

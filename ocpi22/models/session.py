@@ -1,4 +1,7 @@
+import hashlib
+import json
 import os
+from copy import copy
 
 from django.contrib import admin
 from django.db.models import QuerySet, Sum
@@ -231,6 +234,15 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def success(self) -> bool:
         return self.status not in self.INVALID
 
+    def __hash__(self):
+        # Get a dictionary of the object's attributes
+        attr_dict = copy(vars(self))
+        attr_dict.pop('_state', None)
+        # Convert the dictionary to a string and hash it
+        attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
+        thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
+        return thehash
+
     # The MSP or HUB which sent us the messages resulting in this Session
     credentials = models.ForeignKey('ocpi22.Credentials', on_delete=models.PROTECT, null=True, blank=True)
 
@@ -293,6 +305,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 total_incl_vat: float = 0.0
                 for pc in te.price_components.all():
                     excl_vat = dict(
+                        # Todo: Must calculate in Wh, not just when kWh is incremented
                         ENERGY=lambda x: apply_step_size(kwh, pc.step_size, divisor=1000) * x,
                         TIME=lambda x: apply_step_size(hours, pc.step_size, divisor=3600) * x,
                         FLAT=lambda x: x if flat_fee else 0.0
@@ -415,8 +428,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                     charging_periods=chargingperiod_data,
                 )
                 method = 'patch'
-        super().send_updates(
-            method=method,
+        assert data is None or isinstance(data, dict), f'Expected dict, got {type(data)}'
+        super().send_update_to_interested_parties(
+            data=data, method=method,
             path_components=path_components or [self.country_code, self.party_id, self.uid]
         )
 
