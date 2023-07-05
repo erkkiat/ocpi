@@ -50,7 +50,6 @@ PAYMENT_CHOICES = [(x.value, x.name.capitalize().replace('_', ' ')) for x in Pay
 class Payment(models.Model):
     session_id = models.CharField(max_length=64, db_index=True)
     payment_method = models.ForeignKey(PaymentMethod, related_name='payments', on_delete=models.PROTECT)
-    # payment_intent = models.CharField(max_length=64, db_index=True, blank=True, null=True)  # Use session_id for this
     status = models.CharField(choices=PAYMENT_CHOICES, max_length=2)
     amount = models.DecimalField(max_digits=6, decimal_places=2, blank=True, null=True)
     currency = models.CharField(choices=CURRENCY_CHOICES, max_length=3)

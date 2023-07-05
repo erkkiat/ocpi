@@ -14,6 +14,7 @@ from rest_framework.response import Response
 import stripe
 from util import reverse
 
+from ocpi22.models.cdr import Cdr
 from ocpi22.util import CURRENCY_CHOICES
 from payment.models import Customer, Payment, PaymentStatusEnum, PaymentMethod
 
@@ -266,7 +267,7 @@ class PaymentViewSet(viewsets.ViewSet):
 
             serializer = ReservePaymentSerializer(data=request.data)
             if serializer.is_valid():
-                payment_method = request.user.payment_customer.payment_methods.first()
+                payment_method: PaymentMethod = request.user.payment_customer.payment_methods.first()
                 amount = float(serializer.validated_data.get("amount"))
                 result = payments.reserve(user=request.user, payment_method=payment_method,
                                           amount=amount,
@@ -277,6 +278,7 @@ class PaymentViewSet(viewsets.ViewSet):
                         status_text=_('Reservation has been made successfully'),
                         amount=amount,
                         msp_user_id=request.user.pk,
+                        payment_method_id=payment_method.payment_method_id,
                     )
                 )
             else:
@@ -290,3 +292,20 @@ class PaymentViewSet(viewsets.ViewSet):
     def get_object(uid=None) -> None:
         # Needed for OPTIONS to work in list view
         return None
+
+
+def capture_reservation(cdr: Cdr) -> bool:
+    # Lisää Paymentiin authorization_reference
+    session = cdr.session
+    amount = cdr.total_cost_incl_vat
+    payment = cdr.session.payment
+    if session and payment and amount:
+        payments.capture(payment, amount)
+        return True
+    else:
+        logging.error(f'No session in the CDR, cannot capture amount {amount} for payment {payment}')
+    return False
+
+# Todo: Step by step guidance with actual links and current data
+# Todo: Cover reservations and transactions made outside of the OCPI Connector
+# Todo: Admin log for transactions, connection issues, pulls, pushes
