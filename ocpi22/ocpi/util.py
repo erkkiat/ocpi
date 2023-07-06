@@ -143,15 +143,6 @@ class OcpiModule:
             logging.info(f'Sending HUB updates for {self}.')
             self.send_all_updates()  # Todo: Use sender identity, not our HUB identity
 
-    def __hash__(self):
-        # Get a dictionary of the object's attributes
-        attr_dict = copy(vars(self))
-        attr_dict.pop('_state', None)
-        # Convert the dictionary to a string and hash it
-        attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
-        thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
-        return thehash
-
     @functools.lru_cache(maxsize=None)
     def serialize(self, version):
         serializer_class = self.ocpi_serializer_classes.get(version)

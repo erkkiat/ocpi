@@ -125,6 +125,9 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     def __str__(self):
         return f'{self.party()}: {self.type} {self.uid}'
 
+    def __hash__(self):
+        return util.member_hash(self)
+
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
         if self.is_ours():

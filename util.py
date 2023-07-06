@@ -1,4 +1,6 @@
-from typing import List
+import hashlib
+import json
+from typing import List, Any
 
 from django.urls import NoReverseMatch
 from rest_framework.reverse import reverse as django_reverse
@@ -49,3 +51,14 @@ def numbers_are_consequtive(numbers: List[int]) -> bool:
     if not numbers or min(numbers) != 1:
         return False
     return numbers == list(range(min(numbers), max(numbers) + 1))
+
+
+def member_hash(object: Any) -> int:
+    attr_dict = vars(object)
+    attr_dict = attr_dict.copy()
+    attr_dict.pop('_state', None)
+    # Convert the dictionary to a string and hash it
+    attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
+    thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
+    return thehash
+

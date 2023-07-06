@@ -119,6 +119,9 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     def __str__(self):
         return self.uid
 
+    def __hash__(self):
+        return util.member_hash(self)
+
     def min_and_max_price(self) -> str:
         result = ''
         if self.min_price_incl_vat or self.min_price_excl_vat:

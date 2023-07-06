@@ -235,13 +235,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return self.status not in self.INVALID
 
     def __hash__(self):
-        # Get a dictionary of the object's attributes
-        attr_dict = copy(vars(self))
-        attr_dict.pop('_state', None)
-        # Convert the dictionary to a string and hash it
-        attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
-        thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
-        return thehash
+        return util.member_hash(self)
 
     # The MSP or HUB which sent us the messages resulting in this Session
     credentials = models.ForeignKey('ocpi22.Credentials', on_delete=models.PROTECT, null=True, blank=True)
