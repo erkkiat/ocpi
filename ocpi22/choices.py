@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 import cachetools
 import pycountry
@@ -279,7 +280,7 @@ class UserMessages:
     )
 
 
-def get_language(language: str, source: list) -> str:
+def get_language(language: str, source: Optional[list]) -> str:
     """
     >>> get_language('en', [dict(language='EN', text='The token is accepted')])
     'The token is accepted'
@@ -293,7 +294,7 @@ def get_language(language: str, source: list) -> str:
         return ''
     if isinstance(source, str):
         return source
-    result = [l.get('text') for l in source if l.get('language').upper() == language]
+    result = [item.get('text') for item in source if item.get('language').upper() == language]
     if len(result):
         return result[0]
     else:

@@ -156,14 +156,15 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
 
 
 @lru_cache(maxsize=None)
-def get_our_party(role: str = None, identities=ocpi_identities) -> Party:
+def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Party:
     """
-    >>> get_our_party(OcpiRolesEnum.CPO.value)
+    >>> get_our_party(OcpiRolesEnum.CPO)
     Party(country_code='FI', party_id='CPO')
-    >>> get_our_party(OcpiRolesEnum.EMSP.value)
+    >>> get_our_party(OcpiRolesEnum.EMSP)
     Party(country_code='FI', party_id='MSP')
     >>> get_our_party(None)  # Return the first one (for Credentials DELETE)
     Party(country_code='FI', party_id='CPO')
     """
+    role = role.value if role else None
     country_code, party_id = get_identity(role if role else '', identities).split('*')
     return Party(country_code, party_id)

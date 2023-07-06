@@ -365,7 +365,8 @@ class MspTokenViewSet(TokenViewSet):
         # The MSP can always update, and we force the country_code and party_id to match
         return True
 
-    def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=None):
+    def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=None, version='2.2.1',
+            logentry=None, **_kwargs):
         party = get_our_party(OcpiRolesEnum.EMSP)
         data = request.data
         data['country_code'] = party.country_code
@@ -374,14 +375,14 @@ class MspTokenViewSet(TokenViewSet):
         result: OCPIResponse = super().put(request, party.country_code, party.party_id, uid, data)
         return Response(result.data.get('data'))
 
-    def patch(self, request):
+    def patch(self, request, **_kwargs):
         return self.put(request, partial=True)
 
     def list(self, request, *args, **kwargs):
         result: OCPIResponse = super().list(request, *args, **kwargs)
         return Response({'data': result.data.get('data')})
 
-    def authorize(self, request, token_uid):
+    def authorize(self, request, token_uid, **_kwargs):
         pass
 
 
