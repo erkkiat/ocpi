@@ -152,7 +152,9 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             return NotOwner()
 
         if uid:
-            existing_location: Location = Location.get_if_exists(uid=uid, country_code=country_code, party_id=party_id)
+            existing_location: Location = Location.get_if_exists(
+                uid__iexact=uid, country_code__iexact=country_code, party_id__iexact=party_id
+            )
             if existing_location and existing_location.is_ours():
                 return OCPIResponse(f'Location {existing_location} is owned by us and cannot be updated from outside.',
                                     http_status=status.HTTP_401_UNAUTHORIZED,

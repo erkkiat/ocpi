@@ -31,7 +31,7 @@ class TariffQuickViewSet(mixins.ListModelMixin,
     def put(self, request, uid=None, partial=None):
         try:
             uid = uid or request.data.get('id')
-            tariff = Tariff.get_if_exists(uid=uid)
+            tariff = Tariff.get_if_exists(uid__iexact=uid)
             serializer = TariffQuickSerializer(data=request.data, instance=tariff, partial=partial)
             if serializer.is_valid():
                 serializer.save()

@@ -76,7 +76,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
     def put(request, evse_id=None):
         if not evse_id:
             evse_id = request.data['uid']
-        evse = Evse.objects.get(uid=evse_id)
+        evse = Evse.objects.get(uid__iexact=evse_id)
         serializer = EvseSerializer(evse, data=request.data, context={'version': request.version})
         if serializer.is_valid():
             location = serializer.save()

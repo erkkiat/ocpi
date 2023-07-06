@@ -88,7 +88,7 @@ class TokenViewSet(OCPIListModelMixin,
         party_id = party_id or data.get('party_id')
         country_code = country_code or data.get('country_code')
 
-        token: Token = Token.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
+        token: Token = Token.get_if_exists(uid__iexact=uid, party_id__iexact=party_id, country_code__iexact=country_code)
 
         if token and self.check_ownership(token):
             return OCPIResponse(f'Token {token} is owned by us and cannot be updated from outside.',
@@ -449,8 +449,9 @@ class TariffViewSet(OCPIListModelMixin,
         if request and not matching_operator(request, country_code, party_id):
             return NotOwner()
 
-        tariff: Tariff = Tariff.get_if_exists(country_code=country_code, party_id=party_id, uid=uid,
-                                              archived=False)
+        tariff: Tariff = Tariff.get_if_exists(
+            country_code__iexact=country_code, party_id__iexact=party_id, uid__iexact=uid, archived=False
+        )
         if tariff and tariff.is_ours():
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
@@ -535,7 +536,9 @@ class SessionViewSet(OCPIListModelMixin,
         country_code = country_code or data.get('country_code')
         party_id = party_id or data.get('party_id')
         created = True
-        session: Session = Session.get_if_exists(uid=uid, party_id=party_id, country_code=country_code)
+        session: Session = Session.get_if_exists(
+            uid__iexact=uid, party_id__iexact=party_id, country_code__iexact=country_code
+        )
         if session:
             logging.info(f'Received an update for session {uid} from {country_code}*{party_id}')
             created = False
