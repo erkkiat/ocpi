@@ -43,7 +43,7 @@ def get_hub_credentials() -> QuerySet:
     return Credentials.objects.filter(roles__role='HUB')
 
 
-def find_credentials(party: Party):
+def find_credentials(party: Party) -> Optional['Credentials']:
     from ocpi22.models.credentials import CredentialsRole
     roles = CredentialsRole.objects.filter(
         country_code=party.country_code.upper(),
@@ -55,6 +55,9 @@ def find_credentials(party: Party):
         if roles_count > 1:
             logging.error(f'{settings.HOSTNAME}: Multiple Credentials for {str(party)} in the database')
         role = roles.first()
+        if not role.credentials.valid:
+            # We found Credentials for a direct route, but they are not active
+            return None
         return role.credentials
 
 
@@ -66,7 +69,7 @@ def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum, role: 
         if endpoint_count > 1:
             logging.error(f'Multiple Endpoints for {credentials.party()} in the database')
         endpoint = endpoints.first()
-        return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
+        return Route(url=endpoint.url, identifier=ocpi_module, credentials_id=credentials.pk,
                      token_base64=credentials.theirs_base64(), direct=True, alive=credentials.responding(),
                      version=credentials.version)
     error_text = f'Endpoint `{ocpi_module.value}` not found for party {credentials}'
@@ -82,7 +85,7 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
         if not endpoints.exists():
             return None
         endpoint = endpoints.first()
-        return Route(url=endpoint.url, identifier=ocpi_module.value, credentials_id=credentials.pk,
+        return Route(url=endpoint.url, identifier=ocpi_module, credentials_id=credentials.pk,
                      token_base64=credentials.theirs_base64(), direct=False, alive=credentials.responding(),
                      version=credentials.version)
     return None
@@ -105,11 +108,12 @@ def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, a
 
     # Todo: Consider using urllib.parse.urlparse, maybe faster
 
-    if credentials:
+    if credentials and credentials.valid:
         # Direct route found
         route = find_route_from_credentials(credentials, ocpi_module)
     else:
         # Need a hub to route
+        logging.info(f'Routing message through hub {str(to)}')
         route = find_first_hub_route(ocpi_module)  # Nothing too fancy at this point
     if route and add_path:
         # Todo: This is suboptimal for caching, do this a level before

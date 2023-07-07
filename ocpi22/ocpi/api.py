@@ -532,7 +532,7 @@ class SessionViewSet(OCPIListModelMixin,
     @staticmethod
     def put(request, country_code=None, party_id=None, uid=None, partial=False, **_kwargs) -> OCPIResponse:
         data = request.data.get('data', request.data)
-        uid = uid or data.get('uid')
+        uid = uid or data.get('id')
         country_code = country_code or data.get('country_code')
         party_id = party_id or data.get('party_id')
         created = True
