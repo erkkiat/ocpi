@@ -1565,16 +1565,17 @@ class TestRouting(TestCase):
             find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)  # These should be acceptable in lower case
             self.assertEqual(find_route.cache_info().hits, 1, "find_route() should be cached")
 
-            self.assertDictEqual(
+            self.assertTrue(compare_dicts_recursively(
                 asdict(route),
                 {'alive': True,
                  'credentials_id': 2,
                  'direct': True,
-                 'identifier': OcpiModuleEnum.LOCATIONS.value,
+                 'identifier': OcpiModuleEnum.LOCATIONS,
                  'token_base64': 'dGhlaXJzLTI=',
                  'url': 'http://localhost:8001/ocpi/nap/2.2/locations',
                  'version': '22'},
                 'Expected route not found')
+            )
         except AttributeError as e:
             self.fail(f"find_route() is probably not cached: {e}")
 
@@ -1582,16 +1583,17 @@ class TestRouting(TestCase):
         # Route to an unknown party
         route: Route = find_route(Party('no', 'exi'), OcpiModuleEnum.LOCATIONS)
         self.assertTrue(route.through_hub, 'Seems that a hub route is not found')
-        self.assertDictEqual(
+        self.assertTrue(compare_dicts_recursively(
             asdict(route),
             {'alive': True,
              'credentials_id': 3,
              'direct': False,
-             'identifier': 'locations',
+             'identifier': OcpiModuleEnum.LOCATIONS,
              'token_base64': 'dGhlaXJzLTM=',
              'url': 'http://localhost:8001/ocpi/hub/2.2/locations',
              'version': '22'},
             'Expecting a different route through hub')
+        )
 
     def mocked_request(*_args, **kwargs):
         # ic()
