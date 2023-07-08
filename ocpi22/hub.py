@@ -15,7 +15,6 @@ from ocpi22.util import OnlyRawBrowsableAPIRenderer
 
 class CommandsHubViewSet(GenericViewSet):
     # root_view_name = 'commands'
-    # noinspection PyUnresolvedReferences
     queryset = Session.objects.none()  # Users who can access Sessions can issue Commands also
     permission_classes = [OCPIPermission]
     renderer_classes = RENDERERS

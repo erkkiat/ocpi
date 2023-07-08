@@ -10,6 +10,11 @@ class Party:
     country_code: str
     party_id: str
 
+    def __post_init__(self):
+        assert self.country_code and self.party_id, 'Country code and party ID must be set'
+        assert len(self.country_code) == 2, 'Country code must be 2 characters'
+        assert len(self.party_id) == 3, 'Party ID must be 3 characters'
+
     def __str__(self):
         return f'{self.country_code}*{self.party_id}'
 
