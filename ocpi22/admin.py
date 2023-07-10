@@ -40,7 +40,7 @@ class TokenAdmin(admin.ModelAdmin):
     else:
         list_display = ['object_owner', 'valid', 'uid', 'type', 'visual_number', 'last_updated']
     list_display_links = ['uid']
-    readonly_fields = ['country_code', 'party_id', 'last_updated', 'created']
+    readonly_fields = ['country_code', 'party_id', 'last_updated', 'created', 'type']
 
     def customer_name(self, obj) -> str:
         if not obj.customer:
@@ -425,14 +425,13 @@ class TariffAdmin(NestedModelAdmin):
     list_display_links = ['uid']
     inlines = [ElementsInline]
     search_fields = ['uid']
-    radio_fields = dict(type=admin.HORIZONTAL)
     readonly_fields = ('last_updated',)
 
     fieldsets = [
         ('',
          dict(
              fields=(
-                 # ('country_code', 'party_id'),
+                 ('country_code', 'party_id'),
                  ('uid'),
                  ('currency'),
                  ('type',),
