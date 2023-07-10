@@ -37,39 +37,45 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     upper_case_fields = ('country_code', 'party_id', 'uid', 'contract_id', 'language')
 
     # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
-    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner))
+    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner),
+                                    choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
 
     # CPO ID of the MSP that 'owns' this Token (following the ISO-15118)
-    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner))
+    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner),
+                                verbose_name=_('Party ID'))
 
     # Unique ID by which this Token can be identified.
     # This is the field used by CPO system (RFID reader on the Charge Point) to identify this token.
     # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
     # If this is a APP_USER or AD_HOC_USER Token, it will be a uniquely, by the eMSP, generated ID.
     # This field is named uid instead of id to prevent confusion with: contract_id.
-    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, unique=True, db_index=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, unique=True, db_index=True,
+                           verbose_name=_('UID'))
 
-    type = models.CharField(max_length=11, choices=choices.TOKEN_TYPE_CHOICES)
+    type = models.CharField(max_length=11, choices=choices.TOKEN_TYPE_CHOICES, default='RFID',
+                            verbose_name=_('Type'))
 
     # Uniquely identifies the EV Driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from
     # "eMI3 standard version V1.0" (http://emi3group.com/documents-links/) "Part 2: business objects."
-    contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH,
+                                   verbose_name=_('Contract ID'))
 
     # Visual readable number/identification as printed on the Token (RFID card), might be equal to the contract_id.
-    visual_number = models.CharField(max_length=64, null=True, blank=True)
+    visual_number = models.CharField(max_length=64, null=True, blank=True, verbose_name=_('Visual number'))
 
     # Issuing company, most of the times the name of the company printed on the token (RFID card),
     # not necessarily the eMSP.
-    issuer = models.CharField(max_length=64)
+    issuer = models.CharField(max_length=64, verbose_name=_('Issuer'))
 
     # This ID groups a couple of tokens. This can be used to make two or more tokens work as one,
     # so that a session can be started with one token and stopped with another, handy when a card and key-fob
     # are given to the EV-driver. Beware that OCPP 1.5/1.6 only support group_ids
     # (it is called parentId in OCPP 1.5/1.6) with a maximum length of 20.
-    group_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, null=True, blank=True)
+    group_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, null=True, blank=True,
+                                verbose_name=_('Group ID'))
 
-    valid = models.BooleanField(default=True)
+    valid = models.BooleanField(default=True, verbose_name=_('Valid'))
 
     ALWAYS = 'ALWAYS'
     ALLOWED = 'ALLOWED'
@@ -93,11 +99,12 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         # a realtime authorization for any use of this Token to the eMSP.
         (NEVER, 'Never, only real time'),
     )
-    whitelist = models.CharField(max_length=15, choices=WHITELIST_CHOICES)
+    whitelist = models.CharField(max_length=15, choices=WHITELIST_CHOICES, verbose_name=_('Whitelist'))
 
     # Language Code ISO 639-1. This optional field indicates the Token owner’s preferred interface language.
     # If the language is not provided or not supported then the CPO is free to choose its own language.
-    language = models.CharField(max_length=2, null=True, blank=True)
+    language = models.CharField(max_length=2, null=True, choices=choices.LANGUAGE_CHOICES,
+                                verbose_name=_('Language'))
 
     # The default Charging Preference. When this is provided, and a charging session is started on
     # an Charge Point that support Preference base Smart Charging and support this ProfileType,
@@ -108,19 +115,21 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         ('GREEN', 'Green energy'),  # Driver wants his EV charged with as much regenerative (green) energy as possible.
         ('REGULAR', 'Regular, no preference'),  # Driver does not have special preferences.
     )
-    default_profile_type = models.CharField(max_length=7, null=True, blank=True, choices=PROFILE_TYPE_CHOICES)
+    default_profile_type = models.CharField(max_length=7, null=True, blank=True, choices=PROFILE_TYPE_CHOICES,
+                                            verbose_name=_('Default profile type'))
 
     # energy_contract = models.CharField(max_length=80)  # No type documentation available
 
     # The OCPI field writable and maintained by object owner
-    last_updated = models.DateTimeField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, blank=True, verbose_name=_('Last updated'))
 
     # Django automatic dates
-    updated = models.DateTimeField(auto_now=True)
-    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_('Created'))
 
     # The customer who owns this token and pays for its use
-    customer = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE, related_name='tokens')
+    customer = models.ForeignKey(User, blank=True, null=True, on_delete=models.CASCADE, related_name='tokens',
+                                 verbose_name=_('Customer'))
 
     def __str__(self):
         return f'{self.party()}: {self.type} {self.uid}'

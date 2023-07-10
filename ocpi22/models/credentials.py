@@ -43,7 +43,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name_plural = _('roaming partners')
 
     # The credentials token used only for the initial connection, and is communicated manually between parties
-    token_a = models.CharField(max_length=64, default=secrets.token_hex(32))
+    token_a = models.CharField(max_length=64, default=secrets.token_hex(32), verbose_name=_('Token A'))
 
     # Our credentials token used for the actual communication
     ours = models.CharField(max_length=64, blank=True, default='', verbose_name=_('Our token'))
@@ -75,7 +75,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.save(update_fields=['valid'])
 
     # The OCPI field writable and maintained by object owner
-    last_updated = models.DateTimeField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, blank=True, verbose_name=_('Last updated'))
 
     # Django automatic dates
     updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))
@@ -196,7 +196,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
                                          verbose_name=_('Business details'))
 
     # ISO-3166 alpha-2 country code
-    country_code = models.CharField(max_length=2, verbose_name=_('Country code'))
+    country_code = models.CharField(max_length=2, choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
 
     # ID of the party
     party_id = models.CharField(max_length=3, verbose_name=_('Party ID'))
@@ -213,9 +213,9 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
 
 class Endpoint(models.Model, ModelUtilMixin):
-    identifier = models.CharField(max_length=13, choices=IDENTIFIER_CHOICES)
+    identifier = models.CharField(max_length=13, choices=IDENTIFIER_CHOICES, verbose_name=_('Identifier'))
 
-    url = models.URLField()
+    url = models.URLField(verbose_name=_('URL'))
 
     role = models.CharField(max_length=8, choices=ENDPOINT_ROLE_CHOICES, verbose_name=_('Role'))
 

@@ -24,6 +24,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
+from ocpi22 import choices
 from ocpi22.ocpi.util import OCPIResponse
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 from util import format_url
@@ -305,12 +306,12 @@ def calculate_partition(coordinate):
 def is_our_identifier(party: Party, identities=None) -> bool:
     """
     Check if the given country_code and party_id match one of our identities
-    >>> identities = OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP'))
-    >>> is_our_identifier(Party('FI', 'MSP'), identities=identities)
+    >>> test_identities = OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP'))
+    >>> is_our_identifier(Party('FI', 'MSP'), identities=test_identities)
     True
-    >>> is_our_identifier(Party('', 'MSP'), identities=identities)
+    >>> is_our_identifier(Party('', 'MSP'), identities=test_identities)
     False
-    >>> is_our_identifier(Party('', ''), identities=identities)
+    >>> is_our_identifier(Party('', ''), identities=test_identities)
     False
 
     """
@@ -668,3 +669,35 @@ class OCPIListModelMixin:
 #         result.append((key, [i[0] for i in group]))
 #
 #     return result
+
+
+class CiStringField(serializers.CharField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_internal_value(self, data):
+        return data.upper()
+
+
+class CiStringChoiceField(serializers.ChoiceField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_internal_value(self, data):
+        return super().to_internal_value(data.upper())
+
+
+class MultipleChoiceFieldList(serializers.MultipleChoiceField):
+    def to_representation(self, value):
+        # The output needs to be JSON serializable, type "set" is not
+        return list(super().to_representation(value))
+
+
+class CountryCodeField(CiStringChoiceField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(choices=choices.COUNTRY_CHOICES, required=True, *args, **kwargs)
+
+
+class PartyIdField(CiStringField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(required=True, max_length=3, *args, **kwargs)

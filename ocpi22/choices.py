@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Optional
 
 import cachetools
+import langcodes
 import pycountry
 from django.conf import settings
 from django.db import models
@@ -100,8 +101,10 @@ class TokenType:
 
 
 TOKEN_TYPE_CHOICES = [
-    (x, x.capitalize())
-    for x in (TokenType.AD_HOC_USER, TokenType.RFID, TokenType.APP_USER, TokenType.OTHER)
+    (TokenType.AD_HOC_USER, 'Ad-hoc user'),
+    (TokenType.RFID, 'RFID'),
+    (TokenType.APP_USER, 'Application user'),
+    (TokenType.OTHER, 'Other')
 ]
 
 
@@ -360,8 +363,15 @@ CAPABILITY_CHOICES = (
     ('UNLOCK_CAPABLE', 'Connectors can be unlocked remotely'),
 )
 
-COUNTRIES_ISO_3 = [(c.alpha_3, c.name) for c in pycountry.countries]
-COUNTRIES_ISO_2 = [(c.alpha_2, c.name) for c in pycountry.countries]
+COUNTRIES_ISO_3 = [(c.alpha_3.upper(), _(c.name)) for c in pycountry.countries]
+COUNTRIES_ISO_2 = [(c.alpha_2.upper(), _(c.name)) for c in pycountry.countries]
+
+COUNTRY_CHOICES = COUNTRIES_ISO_2
+
+LANGUAGES_ISO_2 = {iso2[:2].upper() for iso2, iso3 in langcodes.data_dicts.LANGUAGE_ALPHA3.items()}
+LANGUAGE_CHOICES = [(iso2, _(langcodes.Language.get(iso2).display_name('en'))) for iso2 in LANGUAGES_ISO_2]
+LANGUAGE_CHOICES.sort(key=lambda x: x[1])
+
 DYNAMIC_PRICE_SOURCE_CHOICES = (
     ('BGDA', 'Bulgaria day ahead'),
     ('BGID', 'Bulgaria intraday'),

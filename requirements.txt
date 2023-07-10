@@ -5,7 +5,7 @@ httplib2==0.22.0
 oauthlib==3.2.2
 pip==23.1.2
 mysqlclient==2.2.0
-pymysql==1.0.3
+pymysql==1.1.0
 requests-oauthlib==1.3.1
 requests==2.31.0
 tzlocal==5.0.1
@@ -21,7 +21,7 @@ python-dateutil==2.8.2
 pyyaml==6.0
 uritemplate==4.1.1
 celery==5.3.1
-redis==4.5.5
+redis==4.6.0
 gunicorn==20.1.0
 slack-logger>=0.3.1,<1.0
 colorama==0.4.6
@@ -29,17 +29,19 @@ django-nested-admin==4.0.2
 cronitor==4.6.0
 time_machine==2.10.0
 django-multiselectfield==0.1.12
-moesifdjango==2.3.1
+moesifdjango==2.3.2
 geojson==3.0.1
-twilio==8.3.0
+twilio==8.4.0
 django-oauth-toolkit==2.3.0
 python-dotenv==1.0.0
-sentry-sdk==1.26.0
+sentry-sdk==1.27.1
 googletrans==3.1.0a0
 geopy==2.3.0
 pycountry==22.3.5
+langcodes==3.3.0
+language_data==1.1
 djangorestframework-csv==2.1.1
-django-slick-reporting==0.8.0
+django-slickeporting==0.8.0
 django-crispy-forms==2.0
 django-gdpr-assist==1.4.2   # Before upgrading, read the instructions
                             # at https://django-gdpr-assist.readthedocs.io/en/latest/upgrading.html

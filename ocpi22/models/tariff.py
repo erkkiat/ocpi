@@ -53,20 +53,23 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     upper_case_fields = ('country_code', 'party_id', 'currency', 'uid')
 
     # This object has been archived, but there may be references to it
-    archived = models.BooleanField(default=False)
+    archived = models.BooleanField(default=False, verbose_name=_('Archived'))
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner))
+    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner),
+                                    choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
 
     # CPO ID of the CPO that 'owns' this Tariff (following the ISO-15118 standard)
-    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner))
+    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner),
+                                verbose_name=_('Party ID'))
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
-    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True,
+                           verbose_name=_('UID'))
 
     # ISO-4217 code of the currency of this tariff
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=settings.DEFAULT_CURRENCY,
-                                verbose_name=_('currency'))
+                                verbose_name=_('Currency'))
 
     # Defines the type of the tariff. This allows for distinction in case of given Charging Preferences.
     # When omitted, this tariff is valid for all sessions.
@@ -92,7 +95,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     type = models.CharField(max_length=14, choices=TYPE_CHOICES, blank=True, default='', verbose_name=_('type'))
 
     # URL to a web page that contains an explanation of the tariff information in human readable form.
-    tariff_alt_url = models.URLField(blank=True, default='')
+    tariff_alt_url = models.URLField(blank=True, default='', verbose_name=_('Tariff alternative URL'))
 
     # When this field is set, a Charging Session with this tariff will at least cost this amount.
     # This is different from a FLAT fee (Start Tariff, Transaction Fee), as a FLAT fee is a fixed
@@ -102,15 +105,15 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     min_price_excl_vat = models.FloatField(null=True, blank=True, verbose_name=_('minimum price excluding tax'))
     min_price_incl_vat = models.FloatField(null=True, blank=True, verbose_name=_('minimum price including tax'))
 
-    max_price_excl_vat = models.FloatField(null=True, blank=True, verbose_name=_('maximum price excluding tax'))
-    max_price_incl_vat = models.FloatField(null=True, blank=True, verbose_name=_('maximum price including tax'))
+    max_price_excl_vat = models.FloatField(null=True, blank=True, verbose_name=_('Maximum price excluding tax'))
+    max_price_incl_vat = models.FloatField(null=True, blank=True, verbose_name=_('Maximum price including tax'))
 
     # The OCPI field writable and maintained by object owner
-    last_updated = models.DateTimeField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, blank=True, verbose_name=_('Last updated'))
 
     # Django automatic dates
-    updated = models.DateTimeField(auto_now=True, verbose_name=_('updated'))
-    created = models.DateTimeField(auto_now_add=True, verbose_name=_('created'))
+    updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_('Created'))
 
     def save(self, *args, **kwargs) -> None:
         self.change_fields_to_upper_case()

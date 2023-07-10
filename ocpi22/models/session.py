@@ -21,6 +21,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 import util
+from ocpi22 import choices
 
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum, TOKEN_TYPE_CHOICES
 from ocpi22.models.location import Location, Evse, Connector
@@ -59,19 +60,21 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # send_updates_to = ('EMSP', 'HUB')
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Session
-    country_code = models.CharField(max_length=2)
+    country_code = models.CharField(max_length=2, choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
 
     # CPO ID of the CPO that 'owns' this Session (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3)
+    party_id = models.CharField(max_length=3, verbose_name=_('Party ID'))
 
     # The unique id that identifies the charging session in the CPO platform.
-    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_('UID'))
 
     # The internal order number or other identifier from the CPO billing system, not part of OCPI
-    internal_reference = models.CharField(max_length=36, blank=True, null=True, db_index=True)
+    internal_reference = models.CharField(max_length=36, blank=True, null=True, db_index=True,
+                                          verbose_name=_('Internal reference'))
 
     # The optional ID of the reservation, if this session is based on one
-    reservation_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, null=True)
+    reservation_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, null=True,
+                                      verbose_name=_('Reservation ID'))
     # Todo: Add expiry_date for reservation
 
     @cached_property
@@ -139,7 +142,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # This is the field used by the CPO’s system (RFID reader on the Charge Point) to identify this token.
     # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
     # If this is a type=APP_USER Token, it will be a unique, by the eMSP, generated ID.
-    cdr_token_uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    cdr_token_uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_('Token UID'))
 
     @property
     def token_id(self):
@@ -147,12 +150,13 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return self.cdr_token_uid
 
     # Type of the token
-    cdr_token_type = models.CharField(max_length=11, choices=TOKEN_TYPE_CHOICES)
+    cdr_token_type = models.CharField(max_length=11, choices=TOKEN_TYPE_CHOICES, verbose_name=_('Token type'))
 
     # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
-    cdr_token_contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    cdr_token_contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH,
+                                             verbose_name=_('Token contract ID'))
 
     AUTH_REQUEST = 'AUTH_REQUEST'
     COMMAND = 'COMMAND'
@@ -171,34 +175,36 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     )
 
     # Method used for authentication.
-    auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES)
+    auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES, verbose_name='Authentication method')
 
     # Reference to the authorization given by the eMSP. Todo: When the eMSP provided an authorization_reference in either:
     # Todo: real-time authorization or StartSession, this field SHALL contain the same value.
     # When different authorization_reference values have been given by the eMSP that are relevant to this Session,
     # the last given value SHALL be used here.
-    authorization_reference = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, default='')
+    authorization_reference = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, default='',
+                                               verbose_name='Authorization reference')
 
     # Location.id of the Location object of this CPO, on which the charging session is/was happening.
-    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='sessions')
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='sessions', verbose_name=_('Location'))
 
     # EVSE.uid of the EVSE of this Location on which the charging session is/was happening.
-    evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='sessions')
+    evse = models.ForeignKey(Evse, on_delete=models.PROTECT, related_name='sessions', verbose_name=_('EVSE'))
 
     # Connector.id of the Connector of this Location the charging session is/was happening.
-    connector = models.ForeignKey(Connector, on_delete=models.PROTECT, related_name='sessions', blank=True, null=True)
+    connector = models.ForeignKey(Connector, on_delete=models.PROTECT, related_name='sessions', blank=True, null=True,
+                                  verbose_name=_('Connector'))
 
     # Optional identification of the kWh meter.
-    meter_id = models.CharField(max_length=255, blank=True, null=True)
+    meter_id = models.CharField(max_length=255, blank=True, null=True, verbose_name=_('Meter ID'))
 
     # ISO-4217 code of the currency of this tariff
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, verbose_name=_('Currency'))
 
     # The total cost of the session in the specified currency. This is the price that the eMSP will
     # have to pay to the CPO. A total_cost of 0.00 means free of charge. When omitted, i.e. no price
     # information is given in the Session object, it does not imply the session is/was free of charge.
-    total_cost_excl_vat = models.FloatField(blank=True, null=True)
-    total_cost_incl_vat = models.FloatField(blank=True, null=True)
+    total_cost_excl_vat = models.FloatField(blank=True, null=True, verbose_name=_('Total cost excl. VAT'))
+    total_cost_incl_vat = models.FloatField(blank=True, null=True, verbose_name=_('Total cost incl. VAT'))
 
     ACTIVE = 'ACTIVE'
     COMPLETED = 'COMPLETED'
@@ -228,7 +234,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # The session might never become an active session.
         ('RESERVATION', _('Reservation')),
     )
-    status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING')
+    status = models.CharField(max_length=11, choices=STATUS_CHOICES, default='PENDING', verbose_name=_('Status'))
 
     @admin.display(boolean=True)
     def success(self) -> bool:
@@ -238,19 +244,21 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return util.member_hash(self)
 
     # The MSP or HUB which sent us the messages resulting in this Session
-    credentials = models.ForeignKey('ocpi22.Credentials', on_delete=models.PROTECT, null=True, blank=True)
+    credentials = models.ForeignKey('ocpi22.Credentials', on_delete=models.PROTECT, null=True, blank=True,
+                                    verbose_name=_('Credentials'))
 
     # The party who will be billed for this Session
-    billed_to = models.CharField(max_length=6, null=True)
+    billed_to = models.CharField(max_length=6, null=True, verbose_name=_('Billed to'))
 
     # The payment for this session (only on MSP platform)
-    payment = models.ForeignKey('payment.Payment', on_delete=models.PROTECT, null=True, blank=True)
+    payment = models.ForeignKey('payment.Payment', on_delete=models.PROTECT, null=True, blank=True,
+                                verbose_name=_('Payment'))
 
     # Store the (error) message from CPO
-    message = models.JSONField(null=True, blank=True)
+    message = models.JSONField(null=True, blank=True, verbose_name=_('Message'))
 
     # The OCPI field writable and maintained by object owner
-    last_updated = models.DateTimeField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, blank=True, verbose_name=_('Last updated'))
 
     @property
     def last_updated_str(self):
@@ -268,8 +276,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return '' if self.status != self.INVALID else 'warning'
 
     # Django automatic dates
-    updated = models.DateTimeField(auto_now=True)
-    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_('Created'))
 
     def save(self, *args, **kwargs):
         # Needed for running self.clean() when doing a save() or create()

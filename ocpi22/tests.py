@@ -1261,14 +1261,16 @@ class UpdatePartiesTest(TestCase):
             'valid': True,
             'last_updated': '2022-01-01T12:00:00Z'
         }
-        self.assertDictEqual(serializer.data, expected, 'Getting the admin token seems not to work')
+        self.assertTrue(compare_dicts_recursively(serializer.data, expected),
+                        'Getting the admin token seems not to work')
 
         # Creating the admin token
         token.delete()
         with time_machine.travel(faketime, tick=False):
             token = get_admin_token()
         serializer = TokenSerializer(token)
-        self.assertDictEqual(serializer.data, expected, 'Creating the admin token seems not to work')
+        self.assertTrue(compare_dicts_recursively(serializer.data, expected),
+                        'Creating the admin token seems not to work')
 
     @time_machine.travel(datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc), tick=False)
     @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
@@ -2337,8 +2339,8 @@ class TestCpoApi(TestCase):
 
         # ic(recursive_sort_dict(response.data.get('session')), recursive_sort_dict(StopTransactionResponses.stop3.get('session')))
         # ic(recursive_sort_dict(response.data.get('charge_detail_record')), recursive_sort_dict(StopTransactionResponses.stop3.get('charge_detail_record')))
-        self.assertEqual(recursive_sort_dict(response.data), recursive_sort_dict(StopTransactionResponses.stop3),
-                         'stop_transaction response differs from expected')
+        self.assertTrue(compare_dicts_recursively(response.data, StopTransactionResponses.stop3),
+                        'stop_transaction response differs from expected')
 
         # Check that the Session looks correct
 

@@ -2,7 +2,6 @@ from typing import Union
 
 from django.conf import settings
 from django.db import IntegrityError
-from django.utils.translation import gettext as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -18,7 +17,8 @@ from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
-from ocpi22.util import base64_to_ascii
+from ocpi22.util import base64_to_ascii, CiStringField, CiStringChoiceField, MultipleChoiceFieldList, CountryCodeField, \
+    PartyIdField
 
 
 class CdrTokenSerializer(SerializerCleanedUp):
@@ -36,6 +36,12 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
+    country_code = CountryCodeField()
+    party_id = PartyIdField()
+    whitelist = CiStringChoiceField(required=False, choices=Token.WHITELIST_CHOICES)
+    default_profile_type = CiStringChoiceField(required=False, choices=Token.PROFILE_TYPE_CHOICES)
+    language = CiStringChoiceField(required=False, default='EN', choices=choices.LANGUAGE_CHOICES)
+    type = CiStringChoiceField(required=False, choices=choices.TOKEN_TYPE_CHOICES)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
 
 
@@ -45,12 +51,6 @@ class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ('type', 'price', 'vat', 'step_size')
 
     step_size = serializers.IntegerField(min_value=0)
-
-
-class MultipleChoiceFieldList(serializers.MultipleChoiceField):
-    def to_representation(self, value):
-        # The output needs to be JSON serializable, type "set" is not
-        return list(super().to_representation(value))
 
 
 class RestrictionSerializer(SerializerCleanedUp):
@@ -103,6 +103,9 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
         exclude = ['updated', 'created', 'uid', 'archived']
+
+    country_code = CountryCodeField()
+    party_id = PartyIdField()
 
     id = serializers.CharField(source='uid', required=False,
                                help_text='Preferably a human readable, unique identifier')
@@ -186,6 +189,9 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                   'session_id', 'cdr_token', 'auth_method', 'authorization_reference',
                   'cdr_location', 'tariffs', 'total_cost', 'total_energy', 'currency',
                   'total_time', 'credit', 'credit_reference_id', 'last_updated']
+
+    country_code = CountryCodeField()
+    party_id = PartyIdField()
 
     id = serializers.CharField(source='uid')
     cdr_token = CdrTokenSerializer(source='*')

@@ -58,27 +58,30 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id', 'uid']
 
     # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner))
+    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner),
+                                    choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
 
     # CPO ID of the CPO that 'owns' this Location (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner))
+    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner),
+                                verbose_name=_('Party id'))
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_('UID'))
 
     # Defines if a Location may be published on an website or app etc.
     # When this is set to false, only tokens identified in the field:
     # publish_allowed_to are allowed to be shown this Location.
     # When the same location has EVSEs that may be published and may not be published,
     # two 'Locations' should be created.
-    publish = models.BooleanField(default=True)
+    publish = models.BooleanField(default=True, verbose_name=_('Publish'))
 
     # Defines the set of values that identify a token to which a Location might be published.
     # At least one of the following fields SHALL be set: uid, visual_number, or group_id.
     #
     # When uid is set, type SHALL also be set.
-    publish_allowed_to = models.ManyToManyField("Token", related_name='locations', blank=True)
+    publish_allowed_to = models.ManyToManyField("Token", related_name='locations', blank=True,
+                                                verbose_name=_('Publish allowed to'))
 
     # Display name of the location
     name = models.CharField(max_length=255, blank=True, verbose_name=_('Name'))
