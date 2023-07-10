@@ -363,7 +363,7 @@ class SessionAdmin(NestedModelAdmin):
 
     def response_post_save_change(self, request, obj: Session):
         if obj.kwh:
-            if obj.calculate_price() == True:
+            if obj.calculate_price():
                 obj.save(update_fields=['total_cost_excl_vat', 'total_cost_incl_vat'])
             else:
                 self.message_user(request, 'Cannot calculate cost for the session, because there are no Tariffs '

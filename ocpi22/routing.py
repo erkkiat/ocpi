@@ -141,14 +141,21 @@ def route_ocpi_request(request: HttpRequest, party: Party):
             )
 
             logging.info(f'Forwarding message to {str(party)}')
+            data = getattr(request, 'body') or getattr(request, 'data')
+            if data:
+                if type(data) == bytes:
+                    data = data.decode('utf-8')
+                method = request.method
+                url = urljoin(f'{route.url}/', ocpi_url.parameters)
+                response: requests.Response = requests.request(
+                    method=method, url=url,
+                    data=data, timeout=25,
+                    headers=out_headers)
 
-            response: requests.Response = requests.request(
-                method=request.method, url=urljoin(f'{route.url}/', ocpi_url.parameters),
-                data=getattr(request, 'body') or getattr(request, 'data'), timeout=25,
-                headers=out_headers)
-
-            return HttpResponse(response.text, status=response.status_code, content_type='application/json')
-
+                return HttpResponse(response.text, status=response.status_code, content_type='application/json')
+            else:
+                return HttpResponse(dict(message_text='No data in request'), status=status.HTTP_400_BAD_REQUEST,
+                                    content_type='application/json')
         if route:
             return JsonResponse({'error': f'Party {str(party)} is unreachable'},
                                 status=status.HTTP_406_NOT_ACCEPTABLE)

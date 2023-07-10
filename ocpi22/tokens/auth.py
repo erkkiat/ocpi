@@ -205,7 +205,7 @@ def _authorize_token(token: Union[Token, str], location=None, request=None) -> O
     if token.whitelist == Token.ALWAYS:
         logging.info(f'Token {token} is whitelisted, no authorization request sent', request=request)
         return TokenAuthorization(
-            allowed='ALLOWED',
+            allowed=Token.ALLOWED,
             info=MessageTexts.get('TOKEN_ACCEPTED'),
             token=token,
             party=token.get_party(),

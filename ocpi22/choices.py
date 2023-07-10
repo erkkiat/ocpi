@@ -325,6 +325,9 @@ class AuthorizationEnum(models.TextChoices):
     def __repr__(self):
         return self.value
 
+    def __hash__(self):
+        return hash(self.value)
+
 
 DAY_OF_WEEK_CHOICES = (
     ('MONDAY', _('Monday')),

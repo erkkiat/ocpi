@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
 
@@ -6,7 +8,6 @@ from typing import Optional
 
 import requests
 from django.core.handlers.wsgi import WSGIRequest
-from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
@@ -17,10 +18,12 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from ocpi22.routing import find_route
+from ocpi22.tasks import send_ocpi_request
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum
+from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum, OcpiModuleEnum, OcpiRolesEnum
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
 from ocpi22.webhooks import send_to_webhook
@@ -43,7 +46,7 @@ from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocp
     generate_auth_reference
 from ocpi22.credentials.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles, select_version, get_endpoints
-from ocpiconnector.ocpi_identities import ocpi_platform
+from ocpiconnector.ocpi_identities import ocpi_platform, Party, get_our_party
 from premium import requires_premium
 
 
@@ -494,6 +497,22 @@ def stop_session_if_money_runs_out(request, session):
                         request)
 
 
+def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
+    party = Party(country_code, party_id)
+    route = find_route(to=party, ocpi_module=OcpiModuleEnum.LOCATIONS)
+    if not route:
+        return None
+    url = urljoin(route.url, f'{country_code}/{party_id}/{location_id}')
+    we = get_our_party(OcpiRolesEnum.EMSP) or get_our_party(OcpiRolesEnum.HUB)
+    print(f'Fetching unknown location from {party=}, {route=}, {url=}, {we=}')
+    response = send_ocpi_request(data=dict(), url=route.url, token_base64=route.token_base64,
+                                 to_country_code=country_code, to_party_id=party_id,
+                                 from_country_code=we.country_code, from_party_id=we.party_id,
+                                 method='GET')
+    ic(response)
+    return response.status_code == status.HTTP_200_OK
+
+
 class SessionViewSet(OCPIListModelMixin,
                      GenericViewSet):
     filter_backends = [DjangoFilterBackend]
@@ -529,8 +548,11 @@ class SessionViewSet(OCPIListModelMixin,
 
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
-    @staticmethod
-    def put(request, country_code=None, party_id=None, uid=None, partial=False, **_kwargs) -> OCPIResponse:
+    @classmethod
+    def put(cls, request, country_code=None, party_id=None, uid=None, partial=False, tryagain=False,
+            **kwargs) -> OCPIResponse:
+        # Nouda tarvittaessa Location jos uupuu
+        # Nouda myös Tariff jos Connectorissa mainittu uupuu (put(Location))
         data = request.data.get('data', request.data)
         uid = uid or data.get('id')
         country_code = country_code or data.get('country_code')
@@ -544,9 +566,6 @@ class SessionViewSet(OCPIListModelMixin,
             created = False
             if not session.is_owner(request):
                 return NotOwner()
-            # if session.is_final():
-            #     return OCPIResponse('Cannot update a completed Session.', http_status=status.HTTP_401_UNAUTHORIZED,
-            #                         status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         else:
             logging.info(f'Creating new session {uid} received from {country_code}*{party_id}')
         serializer = SessionSerializer(
@@ -570,6 +589,14 @@ class SessionViewSet(OCPIListModelMixin,
             stop_session_if_money_runs_out(request, session)
             return OCPIResponse(serializer.data,
                                 http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+        # Input data doesn't validate
+        # Is the Location or EVSE missing?
+        if not tryagain and ('evse_uid' in serializer.errors or 'location_id' in serializer.errors):
+            fetch_location(country_code, party_id, serializer.initial_data.get('location_id'),
+                           serializer.initial_data.get('evse_uid'))
+            # Try again, but avoid a loop
+            return cls.put(request, country_code, party_id, uid, partial=partial, tryagain=True, **kwargs)
         logging.error('Problem with PUT Session from '
                       f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}')
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)

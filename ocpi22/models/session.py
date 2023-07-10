@@ -299,7 +299,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         """
 
         def _calculate_price(kwh: float, hours: float, start_date_time: DateTimeField, flat_fee: bool) -> (
-        float, float):
+                float, float):
             te: TariffElement = applying_tariff_element(self, start_date_time)
             if te:
                 pc: PriceComponent
