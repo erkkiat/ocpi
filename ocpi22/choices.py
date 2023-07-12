@@ -4,6 +4,7 @@ from typing import Optional
 import cachetools
 import langcodes
 import pycountry
+import pytz
 from django.conf import settings
 from django.db import models
 from django.utils import translation
@@ -374,6 +375,8 @@ COUNTRY_CHOICES = COUNTRIES_ISO_2
 LANGUAGES_ISO_2 = {iso2[:2].upper() for iso2, iso3 in langcodes.data_dicts.LANGUAGE_ALPHA3.items()}
 LANGUAGE_CHOICES = [(iso2, _(langcodes.Language.get(iso2).display_name('en'))) for iso2 in LANGUAGES_ISO_2]
 LANGUAGE_CHOICES.sort(key=lambda x: x[1])
+
+TIMEZONE_CHOICES = [(tz, tz) for tz in pytz.all_timezones]
 
 DYNAMIC_PRICE_SOURCE_CHOICES = (
     ('BGDA', 'Bulgaria day ahead'),
