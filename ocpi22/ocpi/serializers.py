@@ -288,6 +288,8 @@ class LocationIdDictSerializer(serializers.CharField):
 
 
 class LocationEvseUidSerializer(serializers.Serializer):
+    default_error_messages = default_error_messages
+
     def get_location_id(self):
         if hasattr(self.parent, 'parent') and self.parent.parent:
             return self.parent.parent.initial_data.get('location_id')
