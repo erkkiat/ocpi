@@ -153,6 +153,8 @@ class MSPAuthorizeCallbackSerializer(CallbacksSerializer):
 
     class ResponseSerializer(serializers.Serializer):
         result = serializers.ChoiceField(choices=AuthorizationEnum.choices)
+        max_price = serializers.DecimalField(max_digits=6, decimal_places=2, required=False,
+                                             help_text='Optional maximum price for the Session')
 
 
 class MSPChargePointStatusCallbackSerializer(CallbacksSerializer):

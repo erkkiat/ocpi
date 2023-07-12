@@ -124,6 +124,7 @@ class TokenViewSet(OCPIListModelMixin,
         info = None
         status_message = 'Success'
         user_language = 'en'
+        max_price = None
 
         try:
             token: Token = Token.get_if_exists(uid=token_uid)
@@ -182,6 +183,7 @@ class TokenViewSet(OCPIListModelMixin,
                 serializer = MSPAuthorizeCallbackSerializer.ResponseSerializer(data=data)
                 if serializer.is_valid():
                     allowed = data.get('result', 'NOT_ALLOWED').upper()
+                    max_price = data.get('max_price')
                 else:
                     allowed = 'NOT_ALLOWED'
                 http_status = dict(
@@ -207,12 +209,16 @@ class TokenViewSet(OCPIListModelMixin,
             #                  price=prices, url="http://secureautocharge.com/132244/")
 
             serializer = TokenSerializer(instance=token, context={'version': request.version})
+            authorization_reference = generate_auth_reference() if allowed == AuthorizationEnum.ALLOWED else ''
+            if authorization_reference:
+                # Todo: Figure out the balance for the token's owner and set the max_price accordingly
+                Authorization.objects.create(authorization_reference=authorization_reference, max_price=max_price)
+                logging.info(f'Created authorization reference {authorization_reference} with max price {max_price}')
             return OCPIResponse(
                 dict(
                     allowed=allowed,
                     token=serializer.data,
-                    # Todo: Store authorization in billing system
-                    authorization_reference=generate_auth_reference() if allowed == AuthorizationEnum.ALLOWED else '',
+                    authorization_reference=authorization_reference,
                 ), status_code=ocpi_status, status=http_status, status_message=status_message
             )
         except ValueError as e:
@@ -576,8 +582,12 @@ class SessionViewSet(OCPIListModelMixin,
             session = serializer.save()
             try:
                 authorization = Authorization.objects.get(authorization_reference=session.authorization_reference)
-                authorization.session = session
-                authorization.save(update_fields=['session'])
+                if not authorization.session:
+                    authorization.session = session
+                    authorization.save(update_fields=['session'])
+                    logging.info(
+                        f'Authorization {session.authorization_reference} is now linked to Session {session.uid}'
+                    )
             except Authorization.DoesNotExist:
                 logging.error(f'Authorization {session.authorization_reference} is not known by MSP.', request)
 
