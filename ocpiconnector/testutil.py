@@ -48,9 +48,9 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
                 # print(f'List {k} not equal in received')
                 result = False
         elif v != k and v != received[k]:
-            print('Not equal', k, v, received[k])
+            print(f'Not equal: {k} should be "{v}", but is "{received[k]}" instead')
             result = False
     if not result:
         print(received, expected)
-        print(f"The result doesn't match expected (label={label})")
+        print(f"The result doesn't match expected ({label=})")
     return result
