@@ -851,11 +851,11 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=('GET', 'POST'), detail=False,
-            url_path='remote_command_result(?:/(?P<authorization_reference>[^/.]+))?')
-    def remote_command_result(self, request, authorization_reference=None):
+            url_path='remote_command_result(?:/(?P<command_id>[^/.]+))?')
+    def remote_command_result(self, request, command_id=None):
         """
         Using this endpoint you tell OCPI Connector if the requested remote command has been successful.
-        You'll need the authorization reference in the URL, so you must use the exact response_url you get when
+        You'll need the command_id in the URL, so you must use the exact response_url you get when
         the OCPI Connector calls your start_transaction callback.
 
 
@@ -869,7 +869,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             if request.method == 'GET':
                 return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
-            command = command_store[authorization_reference]
+            command = command_store[command_id]
 
             if request.method == 'POST':
                 serializer = CpoCommandResultSerializer(data=request.data,

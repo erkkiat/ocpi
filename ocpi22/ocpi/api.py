@@ -557,8 +557,6 @@ class SessionViewSet(OCPIListModelMixin,
     @classmethod
     def put(cls, request, country_code=None, party_id=None, uid=None, partial=False, tryagain=False,
             **kwargs) -> OCPIResponse:
-        # Nouda tarvittaessa Location jos uupuu
-        # Nouda myös Tariff jos Connectorissa mainittu uupuu (put(Location))
         data = request.data.get('data', request.data)
         uid = uid or data.get('id')
         country_code = country_code or data.get('country_code')
@@ -567,6 +565,9 @@ class SessionViewSet(OCPIListModelMixin,
         session: Session = Session.get_if_exists(
             uid__iexact=uid, party_id__iexact=party_id, country_code__iexact=country_code
         )
+        # Todo: If PATCH fails, we have missed the Session PUT, so we need to fetch the full Session from CPO
+        # Todo: Fetch Location if missing
+        # Todo: Fetch Tariff if missing
         if session:
             logging.info(f'Received an update for session {uid} from {country_code}*{party_id}')
             created = False

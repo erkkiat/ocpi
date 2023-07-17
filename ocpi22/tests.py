@@ -2486,6 +2486,9 @@ class TestMspApi(TestCase):
         }
     }
 
+    def setUp(self) -> None:
+        self.user = User.objects.create_user('eki')
+
     @time_machine.travel(faketime, tick=True)
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
@@ -2505,21 +2508,19 @@ class TestMspApi(TestCase):
             "internal_reference": "REFERENCE-123"
         }
 
-        user = User.objects.create_user('eki')
-
         # See that Account is created automatically
-        response = start_charging(data, user)
+        response = start_charging(data, self.user)
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          f'Expecting charging to start without specifically creating an account {response.data}')
 
         # Create an account with insufficient balance
-        account = user.accounts.first()  # There should be an automatically created Account
+        account = self.user.accounts.first()  # There should be an automatically created Account
         new_balance = Decimal("0.80")
         account.deposit(new_balance)
         settings.REQUIRE_WALLET_BALANCE = True
 
         # Try charging without enough money
-        response = start_charging(data, user)
+        response = start_charging(data, self.user)
         # ic(response, response.data)
         self.assertEqual(response.status_code, status.HTTP_402_PAYMENT_REQUIRED,
                          'Charging should fail due to insufficient account balance')
@@ -2531,7 +2532,7 @@ class TestMspApi(TestCase):
         self.assertEqual(account.transactions.count(), 2, 'There should be two Transactions on Account')
         self.assertEqual(account.balance, Decimal("50"), "Second account deposit not working as expected")
 
-        response = start_charging(data, user)
+        response = start_charging(data, self.user)
 
         # ic(recursive_sort_dict(response.data), recursive_sort_dict(self.accepted_result.get('data')))
         self.assertEqual(response.data, self.accepted_result.get('data'),
@@ -2566,7 +2567,7 @@ class TestMspApi(TestCase):
         data["max_price"] = Decimal(30)
         requests_post_mock.reset_mock()
 
-        response = start_charging(data, user)
+        response = start_charging(data, self.user)
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          'Expecting charging to start succesfully')
         args, kwargs = requests_post_mock.call_args
@@ -2610,6 +2611,60 @@ class TestMspApi(TestCase):
                          'Call is expected to succeed')
         self.assertEqual(response.data, self.accepted_result.get('data'),
                          'Response from CPO for STOP_SESSION differs from expected')
+
+    #
+    # This was a bad idea, since there doesn't seem to be a way to sync charging sessions between parties without using
+    # the authorization_reference
+    #
+    # @time_machine.travel(faketime, tick=True)
+    # @patch('ocpi22.ocpi.util.uuid.uuid4',
+    #        return_value=mock_uuid4())
+    # @patch('ocpi22.commands.commands.requests.post',
+    #        return_value=FakeResponse(200, accepted_result)
+    #        )
+    # @patch('ocpi22.webhooks.requests.post')
+    # def test_without_authorization_reference(self,
+    #                       _webhook_post_mock: Mock,
+    #                       requests_post_mock: Mock,
+    #                       _uuid4_mock: Mock):
+    #     data = {
+    #         "location_id": "HELSINKI-1",
+    #         "evse_uid": "HELSINKI-3",
+    #         "connector_id": "1",
+    #         "contract_id": "CONTRACT-123"
+    #     }
+    #
+    #     with patch('ocpi22.msp.api.generate_auth_reference') as generate_auth_reference_mock:
+    #         # Let's leave the authorization_reference empty, since that is allowed in OCPI 2.2
+    #         generate_auth_reference_mock.return_value = None
+    #         response = start_charging(data, self.user)
+    #         generate_auth_reference_mock.assert_called_once()
+    #
+    #     self.assertTrue(compare_dicts_recursively(response.data, self.accepted_result.get('data')),
+    #                     'Response from CPO for START_SESSION differs from expected')
+    #     args, kwargs = requests_post_mock.call_args
+    #     self.assertEqual(args, ('http://fakehost/command/START_SESSION',),
+    #                      'URL for CPO Command START_SESSION differs from expected')
+    #     expected_data_sent = {'headers': {'Authorization': 'Token VEhFSVJT',
+    #                                       'OCPI-from-country-code': 'FI',
+    #                                       'OCPI-from-party-id': 'MSP',
+    #                                       'OCPI-to-country-code': 'FI',
+    #                                       'OCPI-to-party-id': 'CPO',
+    #                                       'content-type': 'application/json'},
+    #                           'json': {'authorization_reference': None,
+    #                                    # 'connector_id': '1', # OCPI 2.2 should exclude the connector_id from remote command
+    #                                    'evse_uid': 'HELSINKI-3',
+    #                                    'location_id': 'HELSINKI-1',
+    #                                    'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/None',
+    #                                    'token': dict([('country_code', 'FI'),
+    #                                                   ('party_id', 'MSP'),
+    #                                                   ('uid', 'FI*MSP*T*APP*MOCK-1'),
+    #                                                   ('type', 'APP_USER'),
+    #                                                   ('contract_id', 'CONTRACT-123')])},
+    #                           'timeout': 25
+    #                           }
+    #     self.assertTrue(compare_dicts_recursively(kwargs, expected_data_sent),
+    #                     'START_SESSION Command sent to CPO differs from expected')
 
 
 def start_charging(data, user):

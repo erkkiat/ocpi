@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.utils import timezone
 
 import ocpi22.logging as logging
@@ -21,7 +22,7 @@ from ocpi22.tasks import simulate_meter_values
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.util import OCPIVersioning
+from ocpi22.util import OCPIVersioning, generate_random_token
 from ocpi22.cpo.api import close_active_sessions_for_evse
 from ocpi22.webhooks import send_to_webhook
 from ocpi22.ocpi.serializers import TokenSerializer
@@ -31,7 +32,6 @@ from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSeria
     CommandResponse, CommandResultSerializer, ReserveNowSerializer
 from ocpi22.cpo.serializers import CPOStartWebhookSerializer, CPOStopWebhookSerializer, \
     CPOReserveNowWebhookSerializer
-from ocpi22.models.credentials import CredentialsRole, Endpoint
 from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
@@ -59,6 +59,7 @@ class ResponseData:
 def start_simulated_session(session, token_uid, connector_id, billed_to, evse_uid):
     print('Starting session')
     session.status = Session.ACTIVE
+    session.start_date_time = session.start_date_time or timezone.now()
     session.save()
     session.send_updates()
 
@@ -145,10 +146,12 @@ class CommandsViewSet(GenericViewSet):
                 connector_id = serializer.validated_data.get('connector_id')
                 _ocpi_response_url = serializer.validated_data.pop('response_url')
 
-                session: Session = Session.get_if_exists(authorization_reference=authorization_reference)
-
+                session: Session = Session.get_if_exists(
+                    Q(authorization_reference=authorization_reference) | Q(cdr_token_uid=token)
+                )
                 # Store the command for use during the next {settings.REMOTE_COMMAND_EXPIRATION} seconds
-                command_store[authorization_reference] = serializer.validated_data
+                command_id = authorization_reference or generate_random_token()
+                command_store[command_id] = serializer.validated_data
 
                 # The worst scenario is this
                 ocpi_status = 2000
@@ -161,7 +164,7 @@ class CommandsViewSet(GenericViewSet):
                     # Prepare the command for CPO management system
                     initial_data = dict(
                         response_url=build_absolute_uri(reverse('chargepoint-remote-command-result',
-                                                                args=(authorization_reference,))),
+                                                                args=(command_id,))),
                         token_id=get_token_id(token),
                         token_type=get_token_type(token, TokenType.APP_USER),
                         authorization_reference=authorization_reference,

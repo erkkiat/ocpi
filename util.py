@@ -53,8 +53,8 @@ def numbers_are_consequtive(numbers: List[int]) -> bool:
     return numbers == list(range(min(numbers), max(numbers) + 1))
 
 
-def member_hash(object: Any) -> int:
-    attr_dict = vars(object)
+def member_hash(obj: Any) -> int:
+    attr_dict = vars(obj)
     attr_dict = attr_dict.copy()
     attr_dict.pop('_state', None)
     # Convert the dictionary to a string and hash it
