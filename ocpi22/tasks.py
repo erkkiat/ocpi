@@ -32,7 +32,7 @@ zoined_token = os.environ.get('ZOINED_TOKEN')
 if 'DJANGO_SETTINGS_MODULE' not in os.environ:
     os.environ['DJANGO_SETTINGS_MODULE'] = 'ocpiconnector.settings'
 
-RESULT_EXPIRE_TIME = 3600  # 1 hour
+RESULT_EXPIRE_TIME = os.environ.get('RESULT_EXPIRE_TIME', 1)  # 1 second, we don't need the results of the tasks
 
 app = celery.Celery('ocpi22.tasks', result_expires=RESULT_EXPIRE_TIME)
 
