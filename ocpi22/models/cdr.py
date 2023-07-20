@@ -213,6 +213,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
                f'{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)} - ' \
                f'{hours_minutes(self.total_time)}'
 
+    def __hash__(self):
+        return util.member_hash(self)
+
     def get_absolute_url(self, version=None):
         return util.reverse('cdr-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 

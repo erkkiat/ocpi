@@ -18,8 +18,6 @@ import util
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.tariff import Tariff
-from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
@@ -197,16 +195,9 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     def evse_count(self):
         return self.evses.count()
-    #
-    # def __hash__(self):
-    #     # Get a dictionary of the object's attributes
-    #     attr_dict = copy(vars(self))
-    #     attr_dict.pop('_state', None)
-    #     # Convert the dictionary to a string and hash it
-    #     attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
-    #     thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
-    #     ic(thehash, attr_str)
-    #     return thehash
+
+    def __hash__(self):
+        return util.member_hash(self)
 
     def evse_list(self):
         return format_html(
