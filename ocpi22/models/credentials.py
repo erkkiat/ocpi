@@ -61,11 +61,8 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     # The timestamp for the last message received or succesfully sent to the other party
     last_connection = models.DateTimeField(null=True, blank=True, verbose_name=_('Last connection'))
 
-    VERSION_CHOICES = (
-        ('22', '2.2'),
-        ('221', '2.2.1')
-    )
-    version = models.CharField(max_length=3, choices=VERSION_CHOICES, blank=True, null=True, verbose_name=_('Version'))
+    version = models.CharField(max_length=3, choices=choices.VERSION_CHOICES, blank=True, null=True,
+                               verbose_name=_('Version'))
 
     # Connections are only accepted for valid Credentials
     valid = models.BooleanField(default=True, verbose_name=_('Activated'))

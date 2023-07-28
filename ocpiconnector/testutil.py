@@ -4,53 +4,59 @@ from collections import OrderedDict
 from django.conf import settings  # Do not remove if ic() is in use in this file
 
 
-def compare_lists_recursively(expected, received, path='') -> bool:
+def compare_lists_recursively(received, expected, path='', label1='received', label2='expected') -> bool:
+    assert isinstance(received, list) and isinstance(expected, list), \
+        f'Not expecting {type(received)=} {type(expected)=}'
     result = True
-    for i, v in enumerate(expected):
-        if i >= len(received):
-            print(f'{expected[i]} not present in received')
+    for i, v in enumerate(received):
+        if i >= len(expected):
+            print(f'{i=} {len(received)=} {len(expected)=} {type(received)=} {type(expected)=}')
+            print(f'{received[3]=}')
+            print(f'{received[4]=}')
+            print(f'{received[5]=}')
+            print(f'{path}.{received[i]} not present in {label2}'.strip('.'))
             result = False
-        if isinstance(v, (dict, OrderedDict)):
-            if not compare_dicts_recursively(dict(v), dict(received[i]), path=f'{path}[{i}]'):
-                # print(f'Dict {i} not equal in received')
+        elif isinstance(v, (dict, OrderedDict)):
+            if not compare_dicts_recursively(dict(v), dict(expected[i]), path=f'{path}.{i}'):
                 result = False
         elif isinstance(v, list):
-            if not compare_lists_recursively(v, received[i], path=f'{path}[{i}]'):
-                # print(f'List {i} not equal in received')
+            if not compare_lists_recursively(v, expected[i], path=f'{path}.{i}'):
                 result = False
         elif v not in received:
-            print(f'{expected[i]} not equal in received')
+            print(f'{path}.{received[i]} not equal in {label2}'.strip('.'))
             result = False
+    if label1 != 'expected':
+        result = compare_lists_recursively(expected, received, path=path, label1='expected', label2='received')
     return result
 
 
 def compare_dicts_recursively(received, expected, path='', label='') -> bool:
+    # ic(path, label, received, expected)
     if not isinstance(received, (dict, OrderedDict)):
-        received = json.loads(received)
-        return compare_dicts_recursively(received, expected, path=path, label=label)
+        return compare_dicts_recursively(json.loads(received), expected, path=path, label=label)
     if not isinstance(expected, (dict, OrderedDict)):
-        expected = json.loads(expected)
-        return compare_dicts_recursively(received, expected, path=path, label=label)
+        return compare_dicts_recursively(received, json.loads(expected), path=path, label=label)
     result = True
-    if not expected:
-        print(f'Expected is empty (label={label})')
-        return False
-    for k, v in expected.items():
-        if k not in received:
-            print(f'Key {k} not present in received')
+    keys = list(expected.keys())
+    keys += list(received.keys())
+    for key in set(keys):
+        received_value = received[key] if key in received else None
+        expected_value = expected[key] if key in expected else None
+        if key not in received:
+            print(f'{path}.{key} not present in received'.strip('.'))
             result = False
-        elif isinstance(v, (dict, OrderedDict)):
-            if not compare_dicts_recursively(v, received[k], path=f'{path}.{k}'):
-                # print(f'Dict {k} not equal in received')
-                result = False
-        elif isinstance(v, list):
-            if not compare_lists_recursively(v, received[k], path=f'{path}.{k}'):
-                # print(f'List {k} not equal in received')
-                result = False
-        elif v != k and v != received[k]:
-            print(f'Not equal: {k} should be "{v}", but is "{received[k]}" instead')
+        elif key not in expected:
+            print(f'{path}.{key} not present in expected'.strip('.'))
             result = False
-    if not result:
-        print(received, expected)
-        print(f"The result doesn't match expected ({label=})")
+        elif isinstance(received_value, (dict, OrderedDict)) and isinstance(expected_value, (dict, OrderedDict)):
+            result = result and compare_dicts_recursively(received_value, expected_value, path=f'{path}.{key}')
+        elif isinstance(received_value, list) and isinstance(expected_value, list):
+            result = result and compare_lists_recursively(received_value, expected_value, path=f'{path}.{key}')
+        elif expected_value != received_value:
+            print(f'{path}.{key} is not equal, should be "{expected_value}", but is "{received_value}" instead'.strip('.'))
+            result = False
+    # if label != 'expected':
+    #     result = compare_dicts_recursively(expected, received, path=path, label='expected')
+    # if not result:
+    #     ic(received, expected)
     return result

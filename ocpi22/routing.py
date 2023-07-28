@@ -18,6 +18,7 @@ from ocpi22.ocpi.headers import make_headers
 from ocpi22.ocpi.parse import parse_ocpi_url
 
 from ocpiconnector.ocpi_identities import Party
+from util import OCPIVersion
 
 
 @dataclass
@@ -28,7 +29,7 @@ class Route:
     token_base64: str
     alive: bool
     direct: bool
-    version: str  # "22" or "221", etc.
+    version: OCPIVersion
 
     @property
     def through_hub(self) -> bool:
@@ -71,7 +72,7 @@ def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum, role: 
         endpoint = endpoints.first()
         return Route(url=endpoint.url, identifier=ocpi_module, credentials_id=credentials.pk,
                      token_base64=credentials.theirs_base64(), direct=True, alive=credentials.responding(),
-                     version=credentials.version)
+                     version=OCPIVersion(credentials.version))
     error_text = f'Endpoint `{ocpi_module.value}` not found for party {credentials}'
     logging.error(error_text)
     raise ValueError(error_text)

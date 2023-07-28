@@ -48,6 +48,12 @@ ROLE_CHOICES = (
     ('SCSP', 'Smart Charging Service Provider'),
 )
 
+VERSION_CHOICES = (
+    ('22', '2.2'),
+    ('221', '2.2.1')
+)
+VERSION_CHOICES_DICT = dict(VERSION_CHOICES)
+
 CONNECTED = 'CONNECTED'
 OFFLINE = 'OFFLINE'
 PLANNED = 'PLANNED'

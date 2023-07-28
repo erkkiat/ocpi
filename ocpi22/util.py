@@ -25,7 +25,9 @@ from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 
 from ocpi22 import choices
+from ocpi22.choices import OcpiModuleEnum
 from ocpi22.ocpi.util import OCPIResponse
+from ocpi22.routing import find_route
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party
 from util import format_url
 
@@ -382,6 +384,16 @@ class ModelUtilMixin:
                 if f and isinstance(f, str):
                     upper_value = f.upper()
                     self.__setattr__(field, upper_value)
+
+    def get_serializer(self, request=None, version=None):
+        assert request or version, 'get_serializer() requires either request or version'
+        version = version or request.version
+        serializer_class = self.get_serializer_class(version)
+        return serializer_class(self, context={'request': request, 'version': version})
+
+    # @abc.abstractmethod
+    # def get_serializer_class(self, version):
+    #     ...
 
 
 class ParseUrl:

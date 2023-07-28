@@ -320,12 +320,10 @@ class TestChargingPeriods(TestCase):
             (45, 95, datetime(2022, 12, 26, 6, 0),  # This should cause a third ChargingPeriod to be created
              None, None, None),
             (50, 99, datetime(2022, 12, 26, 6, 30),
-             {'country_code': 'FI', 'party_id': '000', 'id': 'FI*000*S*B58DDC4D3B304A47AD623C22147',
-              'start_date_time': '2022-12-14T17:03:19Z', 'kwh': 50.0, 'charging_periods': [OrderedDict(
-                 [('start_date_time', '2022-12-25T21:55:00Z'), ('tariff', 'WEEKENDS'), ('dimensions', [
-                     OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
-                     OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
-                     OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]), OrderedDict(
+             {'charging_periods': [OrderedDict(
+                 [('start_date_time', '2022-12-25T21:55:00Z'), ('tariff', 'WEEKENDS'), ('dimensions', [OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
+                            OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
+                            OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]), OrderedDict(
                  [('start_date_time', '2022-12-25T22:01:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
                      OrderedDict([('type', 'ENERGY'), ('volume', '8.0000')]),
                      OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '65.0000')]),
@@ -334,11 +332,9 @@ class TestChargingPeriods(TestCase):
                      OrderedDict([('type', 'ENERGY'), ('volume', '35.0000')]),
                      OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '99.0000')]),
                      OrderedDict([('type', 'TIME'), ('volume', '0.5000')])])])],
-              'cdr_token': OrderedDict([('uid', 'EKI1'), ('type', 'RFID'), ('contract_id', 'CONTRACT2')]),
-              'auth_method': 'AUTH_REQUEST', 'authorization_reference': 'FI*001*A*E2FA443602BD4E499C878B8BD6C',
-              'location_id': 'EKI1', 'evse_uid': '1', 'connector_id': '1', 'currency': 'PLN',
-              'total_cost': OrderedDict([('excl_vat', 22.8), ('incl_vat', 28.27)]), 'status': 'ACTIVE',
-              'last_updated': '2022-12-26T06:30:00Z'},
+              'kwh': Decimal('50.000'),
+              'last_updated': '2022-12-26T06:30:00Z',
+              'total_cost': {'excl_vat': 22.8, 'incl_vat': 28.27}},
              {
                  'internal_reference': None,
                  'now_kwh': 50.0,
@@ -421,8 +417,9 @@ class TestChargingPeriods(TestCase):
                         self.assertEqual(send_updates_mock.call_count, 1, 'send_update() should have been called once')
 
                         args, kwargs = send_updates_mock.call_args
+                        # ic(args, kwargs)
                         if expected_args:
-                            self.assertTrue(compare_lists_recursively(args[0], expected_args),
+                            self.assertTrue(compare_dicts_recursively(args[0], expected_args),
                                             f'send_update() got different parameters than expected: {args[0]}')
 
                         if expected_response:

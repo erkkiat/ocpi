@@ -1,10 +1,9 @@
 import functools
-import hashlib
 import json
 import uuid
 from collections import OrderedDict
-from copy import copy
 from datetime import datetime
+from typing import Union
 
 import requests
 from django.conf import settings
@@ -23,6 +22,7 @@ from ocpi22.ocpi.headers import make_headers
 from ocpi22.routing import find_route
 from ocpi22.logging import log_error
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party, get_our_party
+from util import OCPIVersion
 
 
 def get_serializer(ocpi_serializer_class):
@@ -143,13 +143,32 @@ class OcpiModule:
             logging.info(f'Sending HUB updates for {self}.')
             self.send_all_updates()  # Todo: Use sender identity, not our HUB identity
 
-    @functools.lru_cache(maxsize=None)
-    def serialize(self, version):
-        serializer_class = self.ocpi_serializer_classes.get(version)
+    @classmethod
+    def get_serializer_class(cls, version: Union[OCPIVersion, str]):
+        """
+        >>> from ocpi22.models.location import Location
+        >>> Location.get_serializer_class('2.2.1')
+        <class 'ocpi22.locations.serializers.LocationSerializer221'>
+        >>> Location.get_serializer_class('2.2')
+        <class 'ocpi22.locations.serializers.LocationSerializer'>
+        """
+        version = OCPIVersion(version)
+        serializer_class = None
+        if hasattr(cls, 'ocpi_serializer_classes'):
+            serializer_class = cls.ocpi_serializer_classes.get(version.pure_number)
         if not serializer_class:
-            serializer_class = self.ocpi_serializer_class
-        assert serializer_class, f'No serializer class found for {self} for version {version}'
-        serializer = get_serializer(serializer_class)(self)
+            serializer_class = cls.ocpi_serializer_class
+        if isinstance(serializer_class, str):
+            serializer_class = import_string(serializer_class)
+        assert serializer_class, f'No serializer class found for {cls} for version {version}'
+        return serializer_class
+
+    @functools.lru_cache(maxsize=None)
+    def serialize(self, version: Union[OCPIVersion, str]) -> dict:
+        version = OCPIVersion(version)
+        # ic(version)
+        serializer_class = self.__class__.get_serializer_class(version.pure_number)
+        serializer = serializer_class(self)
         return serializer.data
 
     def route_single_update_message(self, method, to, data=None, path_components=None) -> None:
@@ -158,7 +177,7 @@ class OcpiModule:
                            add_path="/".join(path_components) if path_components else None)
         # ic(sender, to, route)
         if route:
-            data = data or self.serialize(route.version)
+            data = data or self.serialize(version=route.version.pure_number)
             self.send_background_update(data, route.url, route.token_base64, to=to, sender=sender, method=method)
         else:
             logging.error(f'Unable to find route to {str(to)}')

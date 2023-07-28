@@ -462,7 +462,7 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
             connector_id=connector_id,
             authorization_reference=authorization_reference,
         )
-        if route.version == '22':
+        if route.version == '2.2':
             data.pop('connector_id', '')
         serializer = StartSessionSerializer(instance=data)
         return ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,

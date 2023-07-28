@@ -5,9 +5,77 @@ from typing import List, Any
 from django.urls import NoReverseMatch
 from rest_framework.reverse import reverse as django_reverse
 
+from ocpi22 import choices
+
+
+class OCPIVersion:
+    def __init__(self, version):
+        """
+        >>> OCPIVersion('2.1.1')
+        Traceback (most recent call last):
+        ValueError: Invalid version number 211, options are ['22', '221']
+        >>> OCPIVersion('2')
+        Traceback (most recent call last):
+        ValueError: Invalid version number 2, options are ['22', '221']
+        >>> OCPIVersion('2.2.1')
+        2.2.1
+        >>> OCPIVersion('2.2.3')
+        Traceback (most recent call last):
+        ValueError: Invalid version number 223, options are ['22', '221']
+        >>> OCPIVersion('221')  # doctest: +IGNORE_EXCEPTION_DETAIL
+        2.2.1
+        >>> OCPIVersion('223')  # doctest: +IGNORE_EXCEPTION_DETAIL
+        Traceback (most recent call last):
+        ValueError: Invalid version number 223, options are ['22', '221']
+        """
+        if isinstance(version, OCPIVersion):
+            version = str(version.version)
+        else:
+            version = self.remove_dots(version)
+        if version in choices.VERSION_CHOICES_DICT:
+            version = choices.VERSION_CHOICES_DICT[version]
+        else:
+            options = [str(x) for x in choices.VERSION_CHOICES_DICT.keys()]
+            raise ValueError(f'Invalid version number {version}, options are {options}')
+        self.version = str(version)
+        self.pure_number = self.remove_dots(version)
+
+    @staticmethod
+    def remove_dots(s: str) -> str:
+        return s.replace('.', '')
+
+    def __str__(self):
+        return self.version
+
+    def __repr__(self):
+        return self.version
+
+    def __eq__(self, other):
+        """
+        >>> OCPIVersion('221') == "2.2.1"
+        True
+        >>> OCPIVersion('221') == "221"
+        True
+        >>> OCPIVersion('22') == "221"
+        False
+        >>> OCPIVersion('22') == OCPIVersion('2.2')
+        True
+        >>> OCPIVersion('22') == OCPIVersion('2.2.1')
+        False
+        """
+        if isinstance(other, str):
+            return self.pure_number == self.remove_dots(other)
+        elif isinstance(other, OCPIVersion):
+            return self.pure_number == other.pure_number
+        else:
+            raise ValueError(f'Cannot compare OCPIVersion with {type(other)}')
+
+    def __hash__(self):
+        return hash(self.pure_number)
+
 
 def reverse(s, args=[], request=None, version=None) -> str:
-    version = version or request.version if request else '2.2.1'
+    version = OCPIVersion(version or request.version if request else '2.2.1')
     version_args = [version, *args]
     try:
         return django_reverse(s, args=version_args, request=request)
@@ -61,4 +129,3 @@ def member_hash(obj: Any) -> int:
     attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
     thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
     return thehash
-

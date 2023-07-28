@@ -1157,8 +1157,8 @@ evse_inoperative_response = {'data': {'result': 'REJECTED',
                                                   {'language': 'ET', 'text': 'Laadija ei tööta'},
                                                   {'language': 'LT', 'text': 'Įkroviklis neveikia'},
                                                   {'language': 'LV', 'text': 'Lādētājs nedarbojas'},
-                                                  {'language': 'AF', 'text': 'Die laaier werk nie'},
-                                                  {'language': 'MI', 'text': 'Kare e mahi ana te rihi'}]},
+                                                  {'language': 'AF', 'text': 'Die laaier werk nie'}]
+                                      },
                              'status_code': 2000,
                              'status_message': '',
                              'timestamp': '2022-01-01T12:00:00Z'}

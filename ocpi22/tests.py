@@ -3,7 +3,7 @@ import json
 import os
 import ocpi22.logging as logging
 import uuid
-from collections import OrderedDict, Counter
+from collections import OrderedDict
 from dataclasses import asdict, dataclass, field
 
 from datetime import timedelta, datetime
@@ -96,6 +96,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.settings'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.util'))
+    tests.addTests(doctest.DocTestSuite('util'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.ocpi_identities'))
     return tests
 
@@ -1010,48 +1011,79 @@ class CommandTests(TestCase):
         response = stop_session(data, AnonymousUser)
         self.assertEqual(response.status_code, status.HTTP_200_OK, 'Stop session was expected to succeed')
         self.assertTrue(
-            compare_dicts_recursively(
-                response.data,
-                {'data': {'result': 'ACCEPTED', 'timeout': 60,
-                          'message': [{'language': 'EN', 'text': 'Stopping charging session'},
-                                      {'language': 'NL', 'text': 'Oplaadsessie stoppen'},
-                                      {'language': 'FR', 'text': 'Arrêt de la session de charge'},
-                                      {'language': 'DE', 'text': 'Beenden der Ladesitzung'},
-                                      {'language': 'ES', 'text': 'Deteniendo la sesión de carga'},
-                                      {'language': 'IT', 'text': 'Interruzione della sessione di ricarica'},
-                                      {'language': 'PT', 'text': 'Parando a sessão de carregamento'},
-                                      {'language': 'LB', 'text': 'Opluedsession stoppen'},
-                                      {'language': 'CY', 'text': "Rhoi'r gorau i sesiwn codi tâl"},
-                                      {'language': 'GA', 'text': 'Seisiún luchtaithe a stopadh'},
-                                      {'language': 'BE', 'text': 'Спыненне сеансу зарадкі'},
-                                      {'language': 'BG', 'text': 'Спиране на сесията на зареждане'},
-                                      {'language': 'RO', 'text': 'Oprirea sesiunii de încărcare'},
-                                      {'language': 'BS', 'text': 'Zaustavljanje sesije punjenja'},
-                                      {'language': 'MK', 'text': 'Запирање на сесијата за полнење'},
-                                      {'language': 'SQ', 'text': 'Ndalimi i seancës së karikimit'},
-                                      {'language': 'SR', 'text': 'Заустављање сесије пуњења'},
-                                      {'language': 'TR', 'text': 'Şarj oturumunu durdurma'},
-                                      {'language': 'UK', 'text': 'Припинення сеансу зарядки'},
-                                      {'language': 'EL', 'text': 'Διακοπή περιόδου λειτουργίας φόρτισης'},
-                                      {'language': 'PL', 'text': 'Zatrzymywanie sesji ładowania'},
-                                      {'language': 'HU', 'text': 'A töltési munkamenet leállítása'},
-                                      {'language': 'CS', 'text': 'Zastavení nabíjecí relace'},
-                                      {'language': 'SK', 'text': 'Zastavuje sa relácia nabíjania'},
-                                      {'language': 'SL', 'text': 'Ustavitev seje polnjenja'},
-                                      {'language': 'FI', 'text': 'Latausistuntoa lopetellaan'},
-                                      {'language': 'NN', 'text': 'Stopper ladeøkten'},
-                                      {'language': 'DA', 'text': 'Stopper opladningssession'},
-                                      {'language': 'SV', 'text': 'Stoppar laddningssessionen'},
-                                      {'language': 'IS', 'text': 'Stöðvar hleðslulotu'},
-                                      {'language': 'ET', 'text': 'Laadimisseansi peatamine'},
-                                      {'language': 'LT', 'text': 'Sustabdoma įkrovimo sesija'},
-                                      {'language': 'LV', 'text': 'Uzlādes sesijas pārtraukšana'},
-                                      {'language': 'AF', 'text': 'Stop laaisessie'},
-                                      {'language': 'MI', 'text': 'Whakamutua te utu i te waahi'}]},
-                 'status_code': 1000,
-                 'status_message': 'Success',
-                 'timestamp': '2022-01-01T12:00:00Z'}
-            )
+            compare_dicts_recursively(response.data, {'data': {'result': 'ACCEPTED', 'timeout': 60,
+                                                               'message': [{'language': 'EN',
+                                                                            'text': 'Stopping charging session'},
+                                                                           {'language': 'NL',
+                                                                            'text': 'Oplaadsessie stoppen'},
+                                                                           {'language': 'FR',
+                                                                            'text': 'Arrêt de la session de charge'},
+                                                                           {'language': 'DE',
+                                                                            'text': 'Beenden der Ladesitzung'},
+                                                                           {'language': 'ES',
+                                                                            'text': 'Deteniendo la sesión de carga'},
+                                                                           {'language': 'IT',
+                                                                            'text': 'Interruzione della sessione di ricarica'},
+                                                                           {'language': 'PT',
+                                                                            'text': 'Parando a sessão de carregamento'},
+                                                                           {'language': 'LB',
+                                                                            'text': 'Opluedsession stoppen'},
+                                                                           {'language': 'CY',
+                                                                            'text': "Rhoi'r gorau i sesiwn codi tâl"},
+                                                                           {'language': 'GA',
+                                                                            'text': 'Seisiún luchtaithe a stopadh'},
+                                                                           {'language': 'BE',
+                                                                            'text': 'Спыненне сеансу зарадкі'},
+                                                                           {'language': 'BG',
+                                                                            'text': 'Спиране на сесията на зареждане'},
+                                                                           {'language': 'RO',
+                                                                            'text': 'Oprirea sesiunii de încărcare'},
+                                                                           {'language': 'BS',
+                                                                            'text': 'Zaustavljanje sesije punjenja'},
+                                                                           {'language': 'MK',
+                                                                            'text': 'Запирање на сесијата за полнење'},
+                                                                           {'language': 'SQ',
+                                                                            'text': 'Ndalimi i seancës së karikimit'},
+                                                                           {'language': 'SR',
+                                                                            'text': 'Заустављање сесије пуњења'},
+                                                                           {'language': 'TR',
+                                                                            'text': 'Şarj oturumunu durdurma'},
+                                                                           {'language': 'UK',
+                                                                            'text': 'Припинення сеансу зарядки'},
+                                                                           {'language': 'EL',
+                                                                            'text': 'Διακοπή περιόδου λειτουργίας φόρτισης'},
+                                                                           {'language': 'PL',
+                                                                            'text': 'Zatrzymywanie sesji ładowania'},
+                                                                           {'language': 'HU',
+                                                                            'text': 'A töltési munkamenet leállítása'},
+                                                                           {'language': 'CS',
+                                                                            'text': 'Zastavení nabíjecí relace'},
+                                                                           {'language': 'SK',
+                                                                            'text': 'Zastavuje sa relácia nabíjania'},
+                                                                           {'language': 'SL',
+                                                                            'text': 'Ustavitev seje polnjenja'},
+                                                                           {'language': 'FI',
+                                                                            'text': 'Latausistuntoa lopetellaan'},
+                                                                           {'language': 'NN',
+                                                                            'text': 'Stopper ladeøkten'},
+                                                                           {'language': 'DA',
+                                                                            'text': 'Stopper opladningssession'},
+                                                                           {'language': 'SV',
+                                                                            'text': 'Stoppar laddningssessionen'},
+                                                                           {'language': 'IS',
+                                                                            'text': 'Stöðvar hleðslulotu'},
+                                                                           {'language': 'ET',
+                                                                            'text': 'Laadimisseansi peatamine'},
+                                                                           {'language': 'LT',
+                                                                            'text': 'Sustabdoma įkrovimo sesija'},
+                                                                           {'language': 'LV',
+                                                                            'text': 'Uzlādes sesijas pārtraukšana'},
+                                                                           {'language': 'AF',
+                                                                            'text': 'Stop laaisessie'}]
+                                                               },
+                                                      'status_code': 1000,
+                                                      'status_message': 'Success',
+                                                      'timestamp': '2022-01-01T12:00:00Z'})
         )
 
     @time_machine.travel(faketime, tick=False)
@@ -1567,17 +1599,14 @@ class TestRouting(TestCase):
             find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)  # These should be acceptable in lower case
             self.assertEqual(find_route.cache_info().hits, 1, "find_route() should be cached")
 
-            self.assertTrue(compare_dicts_recursively(
-                asdict(route),
-                {'alive': True,
-                 'credentials_id': 2,
-                 'direct': True,
-                 'identifier': OcpiModuleEnum.LOCATIONS,
-                 'token_base64': 'dGhlaXJzLTI=',
-                 'url': 'http://localhost:8001/ocpi/nap/2.2/locations',
-                 'version': '22'},
-                'Expected route not found')
-            )
+            self.assertTrue(compare_dicts_recursively(asdict(route), {'alive': True,
+                                                                      'credentials_id': 2,
+                                                                      'direct': True,
+                                                                      'identifier': OcpiModuleEnum.LOCATIONS,
+                                                                      'token_base64': 'dGhlaXJzLTI=',
+                                                                      'url': 'http://localhost:8001/ocpi/nap/2.2/locations',
+                                                                      'version': '2.2'}, 'Expected route not found')
+                            )
         except AttributeError as e:
             self.fail(f"find_route() is probably not cached: {e}")
 
@@ -1585,17 +1614,15 @@ class TestRouting(TestCase):
         # Route to an unknown party
         route: Route = find_route(Party('no', 'exi'), OcpiModuleEnum.LOCATIONS)
         self.assertTrue(route.through_hub, 'Seems that a hub route is not found')
-        self.assertTrue(compare_dicts_recursively(
-            asdict(route),
-            {'alive': True,
-             'credentials_id': 3,
-             'direct': False,
-             'identifier': OcpiModuleEnum.LOCATIONS,
-             'token_base64': 'dGhlaXJzLTM=',
-             'url': 'http://localhost:8001/ocpi/hub/2.2/locations',
-             'version': '22'},
-            'Expecting a different route through hub')
-        )
+        self.assertTrue(compare_dicts_recursively(asdict(route), {'alive': True,
+                                                                  'credentials_id': 3,
+                                                                  'direct': False,
+                                                                  'identifier': OcpiModuleEnum.LOCATIONS,
+                                                                  'token_base64': 'dGhlaXJzLTM=',
+                                                                  'url': 'http://localhost:8001/ocpi/hub/2.2/locations',
+                                                                  'version': '22'},
+                                                  'Expecting a different route through hub')
+                        )
 
     def mocked_request(*_args, **kwargs):
         # ic()
@@ -2520,7 +2547,7 @@ class TestMspApi(TestCase):
         settings.REQUIRE_WALLET_BALANCE = True
 
         # Try charging without enough money
-        response = start_charging(data, self.user)
+        response = start_charging(data, self.user, version='2.2')
         # ic(response, response.data)
         self.assertEqual(response.status_code, status.HTTP_402_PAYMENT_REQUIRED,
                          'Charging should fail due to insufficient account balance')
@@ -2547,7 +2574,6 @@ class TestMspApi(TestCase):
                                           'OCPI-to-party-id': 'CPO',
                                           'content-type': 'application/json'},
                               'json': {'authorization_reference': 'REFERENCE-123',
-                                       # 'connector_id': '1', # OCPI 2.2 should exclude the connector_id from remote command
                                        'evse_uid': 'HELSINKI-3',
                                        'location_id': 'HELSINKI-1',
                                        'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/REFERENCE-123',
@@ -2559,8 +2585,8 @@ class TestMspApi(TestCase):
                               'timeout': 25
                               }
         # ic(recursive_sort_dict(kwargs), recursive_sort_dict(expected_data_sent))
-        self.assertEqual(recursive_sort_dict(kwargs), recursive_sort_dict(expected_data_sent),
-                         'START_SESSION Command sent to CPO differs from expected')
+        self.assertTrue(compare_dicts_recursively(kwargs, expected_data_sent),
+                        'START_SESSION Command sent to CPO differs from expected')
 
         settings.REQUIRE_WALLET_BALANCE = False
 
@@ -2573,27 +2599,28 @@ class TestMspApi(TestCase):
         args, kwargs = requests_post_mock.call_args
         self.assertEqual(args, ('http://fakehost/command/START_SESSION',),
                          'URL for CPO Command START_SESSION differs from expected')
-        self.assertEqual(kwargs,
-                         {'headers': {'Authorization': 'Token VEhFSVJT',
-                                      'OCPI-from-country-code': 'FI',
-                                      'OCPI-from-party-id': 'MSP',
-                                      'OCPI-to-country-code': 'FI',
-                                      'OCPI-to-party-id': 'CPO',
-                                      'content-type': 'application/json'},
-                          'json': {'authorization_reference': 'REFERENCE-123',
-                                   # 'connector_id': '1',  # OCPI 2.2 doesn't support this in the remote start command
-                                   'evse_uid': 'HELSINKI-3',
-                                   'location_id': 'HELSINKI-1',
-                                   'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/REFERENCE-123',
-                                   'token': OrderedDict([('country_code', 'FI'),
-                                                         ('party_id', 'MSP'),
-                                                         ('uid', 'FI*MSP*T*APP*MOCK-1'),
-                                                         ('type', 'APP_USER'),
-                                                         ('contract_id', 'CONTRACT-123')])},
-                          'timeout': 25
-                          },
-                         'START_SESSION Command sent to CPO differs from expected'
-                         )
+        self.assertTrue(compare_dicts_recursively(kwargs, {'headers': {'Authorization': 'Token VEhFSVJT',
+                                                                       'OCPI-from-country-code': 'FI',
+                                                                       'OCPI-from-party-id': 'MSP',
+                                                                       'OCPI-to-country-code': 'FI',
+                                                                       'OCPI-to-party-id': 'CPO',
+                                                                       'content-type': 'application/json'},
+                                                           'json': {'authorization_reference': 'REFERENCE-123',
+                                                                    # 'connector_id': '1',  # OCPI 2.2 doesn't support this in the remote start command
+                                                                    'evse_uid': 'HELSINKI-3',
+                                                                    'location_id': 'HELSINKI-1',
+                                                                    'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/REFERENCE-123',
+                                                                    'token': OrderedDict([('country_code', 'FI'),
+                                                                                          ('party_id', 'MSP'),
+                                                                                          (
+                                                                                              'uid',
+                                                                                              'FI*MSP*T*APP*MOCK-1'),
+                                                                                          ('type', 'APP_USER'),
+                                                                                          ('contract_id',
+                                                                                           'CONTRACT-123')])},
+                                                           'timeout': 25
+                                                           },
+                                                  'START_SESSION Command sent to CPO differs from expected'))
 
         #
         # Try bad values for stop_charging()
@@ -2609,8 +2636,8 @@ class TestMspApi(TestCase):
         response = stop_charging(dict(session_id=12345))
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          'Call is expected to succeed')
-        self.assertEqual(response.data, self.accepted_result.get('data'),
-                         'Response from CPO for STOP_SESSION differs from expected')
+        self.assertTrue(compare_dicts_recursively(response.data, self.accepted_result.get('data')),
+                        'Response from CPO for STOP_SESSION differs from expected')
 
     #
     # This was a bad idea, since there doesn't seem to be a way to sync charging sessions between parties without using
@@ -2667,10 +2694,11 @@ class TestMspApi(TestCase):
     #                     'START_SESSION Command sent to CPO differs from expected')
 
 
-def start_charging(data, user):
+def start_charging(data, user, version='2.2.1'):
     request = api_factory.post(reverse('roaming-start-charging'))
     request.data = data
     request.user = user
+    request.version = version
     return MspRoamingViewSet().start_charging(request)
 
 
