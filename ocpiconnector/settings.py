@@ -185,16 +185,17 @@ if os.environ.get('_system_arch') == 'arm64':  # This is an M1 or M2 chip, need 
 def hostname_variants(hostname):
     """
     >>> hostname_variants('testi10-ocpi.herokuapp.com')
-    ['testi10-ocpi.herokuapp.com', 'testi10-ocpi.ocpiconnector.com', 'testi10-ocpi.roamingconnector.com', 'testi10-ocpi.ocpiguide.com', 'testi10-ocpi.chargerhub.eu']
+    ['testi10-ocpi.herokuapp.com', 'testi10-ocpi.ocpiconnector.com', 'testi10-ocpi.roamingconnector.com', 'testi10-ocpi.ocpiguide.com', 'testi10-ocpi.chargerhub.eu', 'testi10-ocpi.solidroam.com']
     >>> hostname_variants('cpo-ocpi.ocpiconnector.com')
-    ['cpo-ocpi.herokuapp.com', 'cpo-ocpi.ocpiconnector.com', 'cpo-ocpi.roamingconnector.com', 'cpo-ocpi.ocpiguide.com', 'cpo-ocpi.chargerhub.eu']
+    ['cpo-ocpi.herokuapp.com', 'cpo-ocpi.ocpiconnector.com', 'cpo-ocpi.roamingconnector.com', 'cpo-ocpi.ocpiguide.com', 'cpo-ocpi.chargerhub.eu', 'cpo-ocpi.solidroam.com']
     >>> hostname_variants('cpo')
-    ['cpo.herokuapp.com', 'cpo.ocpiconnector.com', 'cpo.roamingconnector.com', 'cpo.ocpiguide.com', 'cpo.chargerhub.eu']
+    ['cpo.herokuapp.com', 'cpo.ocpiconnector.com', 'cpo.roamingconnector.com', 'cpo.ocpiguide.com', 'cpo.chargerhub.eu', 'cpo.solidroam.com']
     """
     components = hostname.split('.')
     return [
         f'{components[0]}.{x}'
-        for x in ['herokuapp.com', 'ocpiconnector.com', 'roamingconnector.com', 'ocpiguide.com', 'chargerhub.eu']
+        for x in ['herokuapp.com', 'ocpiconnector.com', 'roamingconnector.com', 'ocpiguide.com', 'chargerhub.eu',
+                  'solidroam.com']
     ]
 
 
