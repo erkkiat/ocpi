@@ -12,7 +12,7 @@ from rest_framework.documentation import include_docs_urls
 
 from cars.views import CarsViewSet
 from ocpi22 import msp, views
-from ocpi22.cpo.reports import ChargingSessionsReport
+# from ocpi22.cpo.reports import ChargingSessionsReport
 from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.msp.map import MapViewSet
 from ocpi22.msp.user import UserViewSet
@@ -98,7 +98,7 @@ urlpatterns = [
     path('lang/', set_language, name='admin_set_language'),
     path('', home),
     path('', include(root_router.urls), name='root-view'),
-    path('reports/cpo/sessions/', ChargingSessionsReport.as_view()),
+    # path('reports/cpo/sessions/', ChargingSessionsReport.as_view()),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     re_path(r'^ocpi/(?P<version>[1-2\.]+?)/', include(ocpi_router.urls), name='ocpi-22-root'),
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),
