@@ -359,7 +359,6 @@ INSTALLED_APPS = [
     'django_filters',
     'nested_admin',
     'oauth2_provider',
-    'slick_reporting',
     'crispy_forms',
     'gdpr_assist',
     'payment',
