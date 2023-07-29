@@ -62,9 +62,10 @@ def find_credentials(party: Party) -> Optional['Credentials']:
         return role.credentials
 
 
-def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum, role: str = 'RECEIVER') -> Route:
+def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum,
+                                role: Union[str, EndpointRoleEnum] = 'RECEIVER') -> Route:
     from ocpi22.models.credentials import Endpoint
-    endpoints = Endpoint.objects.filter(credentials=credentials, identifier=ocpi_module.value, role=role)
+    endpoints = Endpoint.objects.filter(credentials=credentials, identifier=ocpi_module.value, role=str(role))
     endpoint_count = endpoints.count()
     if endpoint_count:
         if endpoint_count > 1:
@@ -96,7 +97,8 @@ CredentialsType: TypeAlias = 'Credentials'
 
 
 @ttl_cache(ttl=60 * 2)
-def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, add_path=None) -> Optional[Route]:
+def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, add_path=None,
+               role: EndpointRoleEnum = EndpointRoleEnum.RECEIVER) -> Optional[Route]:
     if not to:
         return None
     from ocpi22.models.credentials import Credentials
@@ -111,7 +113,7 @@ def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, a
 
     if credentials and credentials.valid:
         # Direct route found
-        route = find_route_from_credentials(credentials, ocpi_module)
+        route = find_route_from_credentials(credentials, ocpi_module, role=role)
     else:
         # Need a hub to route
         logging.info(f'Routing message through hub {str(to)}')

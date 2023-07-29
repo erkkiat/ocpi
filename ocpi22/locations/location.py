@@ -1,7 +1,6 @@
 import ocpi22.logging as logging
 
 from django.core.validators import RegexValidator
-from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status
 from rest_framework.decorators import action
@@ -12,6 +11,7 @@ from rest_framework.generics import get_object_or_404
 from ocpi22.locations.serializers import EvseSerializer, LocationSerializer, LocationSerializer221
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse
+from ocpi22.models.tariff import Tariff
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import matching_operator, OCPIVersioning, OCPIListModelMixin
@@ -22,6 +22,7 @@ from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHead
 
 from ocpi22.webhooks import send_to_webhook
 from premium import requires_premium
+from util import OCPIVersion
 
 evse_validator = RegexValidator(r'[A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}$',
                                 message='OCPI evse_id has to contain a valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)')
@@ -147,39 +148,48 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         uid = data.get('id')
         country_code = data.get('country_code')
         party_id = data.get('party_id')
+        version = version or request.version
 
         if request and not matching_operator(request, country_code, party_id):
             return NotOwner()
 
-        if uid:
-            existing_location: Location = Location.get_if_exists(
-                uid__iexact=uid, country_code__iexact=country_code, party_id__iexact=party_id
-            )
-            if existing_location and existing_location.is_ours():
-                return OCPIResponse(f'Location {existing_location} is owned by us and cannot be updated from outside.',
-                                    http_status=status.HTTP_401_UNAUTHORIZED,
-                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-            serializer = LocationSerializer221(existing_location, data=data, context={'version': version or request.version})
-            if serializer.is_valid():
-                logging.info(f'Creating or updating Location {country_code}*{party_id} - {uid}.',
-                             log_to_admin=True, logentry=logentry)
-                created_location = serializer.save()
-                created_location.send_hub_updates()
-                http_status = status.HTTP_200_OK if existing_location else status.HTTP_201_CREATED
-                return OCPIResponse(serializer.data, http_status=http_status)
-            else:
-                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
-                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        else:
+        if not uid:
             return OCPIResponse(
                 status_message=f'Country code, party_id and id are required when doing a PUT for a Location.',
                 http_status=status.HTTP_400_BAD_REQUEST,
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
+        existing_location: Location = Location.get_if_exists(
+            uid__iexact=uid, country_code__iexact=country_code, party_id__iexact=party_id
+        )
+        if existing_location and existing_location.is_ours():
+            return OCPIResponse(f'Location {existing_location} is owned by us and cannot be updated from outside.',
+                                http_status=status.HTTP_401_UNAUTHORIZED,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+
+        try:
+            serializer_class = Location.get_serializer_class(version)
+            serializer = serializer_class(instance=existing_location, data=data,
+                                          context={'version': version, 'credentials': request.credentials})
+            if serializer.is_valid():
+                created = bool(not existing_location)
+                logging.info(f'{"Creating" if created else "Updating"}'
+                             f' Location {country_code}*{party_id} - {uid}.', log_to_admin=True, logentry=logentry)
+                created_location = serializer.save()
+                created_location.send_hub_updates()
+                http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+                return OCPIResponse(serializer.data, http_status=http_status)
+            else:
+                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
+                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+        except Tariff.DoesNotExist as e:
+            logging.error('Need to fetch a missing Tariff from the remote party. We should not end up here, '
+                          f'because we should have fetched the Tariff before we got here: {e}')
+
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     @requires_premium
-    def location_by_id(self, request: Request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
+    def location_by_id(self, request: Request, country_code, party_id, uid, version=None, **_kwargs) -> OCPIResponse:
         location = get_object_or_404(Location,
                                      country_code=country_code,
                                      party_id=party_id,
@@ -216,5 +226,4 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                           'Please note that 2-phase connectors are missing in OCPI 2.2, so they are mapped to 1-phase. '
                           'Also, the state is missing from the OCPI 2.2 postal address and the '
                           'START_SESSION_CONNECTOR_REQUIRED capability is filtered out.')
-            return LocationSerializer
-        return LocationSerializer221
+        return Location.get_serializer_class(version.pure_number)

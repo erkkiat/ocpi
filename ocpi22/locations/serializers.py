@@ -3,13 +3,14 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
-from ocpi22.util import uid_validator
+from ocpi22.util import uid_validator, fetch_object
 from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp
 
 
@@ -48,12 +49,15 @@ class PowerTypeSerializer(serializers.CharField):
 
 
 class TariffField(serializers.StringRelatedField):
-    # noinspection PyUnresolvedReferences
     def to_internal_value(self, data):
         try:
             tariff = Tariff.objects.get(uid=data, archived=False)
             return tariff
-        except (Tariff.DoesNotExist, Tariff.MultipleObjectsReturned) as e:
+        except Tariff.DoesNotExist as e:
+            if fetch_object(uid=data, ocpi_module=OcpiModuleEnum.TARIFFS, credentials=self.context.get('credentials')):
+                return self.to_internal_value(data)
+            raise ValidationError(f'Tariff with UID `{data}` cannot be fetched: {e}')
+        except Tariff.MultipleObjectsReturned as e:
             raise ValidationError(f'Tariff with UID `{data}` cannot be fetched: {e}')
 
     def to_representation(self, value: Tariff):

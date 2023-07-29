@@ -92,22 +92,22 @@ class TokenViewSet(OCPIListModelMixin,
         country_code = country_code or data.get('country_code')
 
         token: Token = Token.get_if_exists(uid__iexact=uid, party_id__iexact=party_id, country_code__iexact=country_code)
+        created = bool(not token)
 
         if token and self.check_ownership(token):
             return OCPIResponse(f'Token {token} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-
         if token and request and not token.is_owner(request):
             return NotOwner()
         serializer = TokenSerializer(data=data, instance=token, partial=partial,
                                      context={'version': version or request.version})
         if serializer.is_valid():
-            logging.info(f'Creating or updating Token {country_code}*{party_id} - {uid}.',
+            logging.info(f'{"Creating" if created else "Updating"} Token {country_code}*{party_id} - {uid}.',
                          log_to_admin=True, logentry=logentry)
             created_token = serializer.save()
             created_token.send_hub_updates()
-            return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if token else status.HTTP_201_CREATED)
+            return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
         else:
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
@@ -461,17 +461,18 @@ class TariffViewSet(OCPIListModelMixin,
         tariff: Tariff = Tariff.get_if_exists(
             country_code__iexact=country_code, party_id__iexact=party_id, uid__iexact=uid, archived=False
         )
+        created = bool(not tariff)
         if tariff and tariff.is_ours():
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         serializer = TariffSerializer(instance=tariff, data=data, context={'version': version or request.version})
         if serializer.is_valid():
-            logging.info(f'Creating or updating Tariff {country_code}*{party_id} - {uid}.',
+            logging.info(f'{"Creating" if created else "Updating"} Tariff {country_code}*{party_id} - {uid}.',
                          logentry=logentry, log_to_admin=True)
             created_tariff = serializer.save()
             created_tariff.send_hub_updates()
-            return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK if tariff else status.HTTP_201_CREATED)
+            return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
         else:
             return OCPIResponse(errors=serializer.errors)
 

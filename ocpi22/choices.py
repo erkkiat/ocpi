@@ -125,6 +125,23 @@ class OcpiModuleEnum(Enum):
     SESSIONS = 'sessions'
     HUBCLIENTINFO = 'hubclientinfo'
 
+    def get_owner(self):
+        return {
+            self.LOCATIONS.value: OcpiRolesEnum.CPO,
+            self.TOKENS.value: OcpiRolesEnum.EMSP,
+            self.TARIFFS.value: OcpiRolesEnum.CPO,
+            self.CDRS.value: OcpiRolesEnum.CPO,
+            self.SESSIONS.value: OcpiRolesEnum.CPO,
+        }[self.value]
+
+    def get_viewset(self):
+        return {
+            self.LOCATIONS.value: 'ocpi22.locations.location.LocationViewSet',
+            self.TOKENS.value: 'ocpi22.ocpi.api.TokenViewSet',
+            self.TARIFFS.value: 'ocpi22.ocpi.api.TariffViewSet',
+            self.CDRS.value: 'ocpi22.ocpi.api.CdrViewSet',
+            self.SESSIONS.value: 'ocpi22.ocpi.api.SessionViewSet',
+        }[self.value]
 
 IDENTIFIER_CHOICES = ((module.value.lower(), module.value.capitalize()) for module in OcpiModuleEnum)
 
@@ -134,6 +151,9 @@ ROLE_OPTIONS = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')
 class EndpointRoleEnum(Enum):
     SENDER = 'SENDER'
     RECEIVER = 'RECEIVER'
+
+    def __str__(self):
+        return self.value
 
 
 ENDPOINT_ROLE_CHOICES = (
