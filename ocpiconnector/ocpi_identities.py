@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from ocpi22.choices import ROLE_OPTIONS, OcpiRolesEnum
+from ocpiconnector import settings
 
 
 @dataclass(eq=True, frozen=True)
@@ -59,6 +60,9 @@ class OCPIIdentities(metaclass=Singleton):
             if item:
                 self._identities_dict[n] = item
 
+    def __len__(self):
+        return len(self._identities_list)
+
     def __iter__(self):
         for i in self._identities_list:
             yield i
@@ -107,6 +111,9 @@ class OCPIPlatform(metaclass=Singleton):
 
 
 ocpi_platform = OCPIPlatform()
+if len(ocpi_identities) > 1 and not settings.TEST:
+    raise ValueError('This platform cannot handle multiple roles, '
+                     'since the object IDs can overlap when receiving objects from other platforms')
 
 
 @lru_cache(maxsize=None)
