@@ -479,7 +479,8 @@ class TariffViewSet(OCPIListModelMixin,
     @action(methods=['DELETE'], url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', detail=False)
     @requires_premium
     def delete(self, _request, country_code, party_id, uid, *_args, **_kwargs) -> OCPIResponse:
-        tariff = Tariff.get_if_exists(country_code=country_code, party_id=party_id, uid=uid, archived=False)
+        tariff = Tariff.get_if_exists(country_code__iexact=country_code, party_id__iexact=party_id, uid__iexact=uid,
+                                      archived=False)
         if not tariff:
             return OCPIResponse(f'No Tariff found with country_code={country_code}, party_id={party_id} and uid={uid}.',
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)

@@ -51,7 +51,9 @@ class PowerTypeSerializer(serializers.CharField):
 class TariffField(serializers.StringRelatedField):
     def to_internal_value(self, data):
         try:
-            tariff = Tariff.objects.get(uid=data, archived=False)
+            party = self.context.get('party')
+            tariff = Tariff.objects.get(uid__iexact=data, archived=False,
+                                        country_code__iexact=party.country_code, party_id__iexact=party.party_id)
             return tariff
         except Tariff.DoesNotExist as e:
             if fetch_object(uid=data, ocpi_module=OcpiModuleEnum.TARIFFS, credentials=self.context.get('credentials')):

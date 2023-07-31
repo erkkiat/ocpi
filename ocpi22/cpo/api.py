@@ -134,10 +134,14 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     pagination_class = LimitOffsetPagination
     lookup_field = 'uid'
 
-    def _put(self, request, uid=None, partial=False):
+    @staticmethod
+    def _put(request, uid=None, partial=False):
         try:
             uid = uid or request.data.get('id')
-            location = Location.get_if_exists(uid=uid)
+            party = get_our_party(OcpiRolesEnum.CPO)
+            location = Location.get_if_exists(
+                uid__iexact=uid, country_code__iexact=party.country_code, party_id__iexact=party.party_id
+            )
             serializer = LocationQuickSerializer(data=request.data, instance=location, partial=partial)
 
             if serializer.is_valid():
@@ -149,11 +153,11 @@ class LocationQuickViewSet(mixins.ListModelMixin,
         except IntegrityError as e:
             return Response({'status_message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, uid=None, partial=False):
-        return self._put(request, uid, partial)
+    def put(self, request, *args, **kwargs):
+        return self._put(request, *args, **kwargs)
 
-    def patch(self, request, uid=None):
-        return self.put(request, uid, partial=True)
+    def patch(self, request, *args, **kwargs):
+        return self.put(request, *args, partial=True, **kwargs)
 
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False,
             url_path='(?P<uid>[^/.]+)')

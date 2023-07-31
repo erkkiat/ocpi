@@ -6,8 +6,10 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo.serializers import TariffQuickSerializer
 from ocpi22.models.tariff import Tariff
+from ocpiconnector.ocpi_identities import Party, get_our_party
 
 
 class TariffQuickViewSet(mixins.ListModelMixin,
@@ -28,11 +30,19 @@ class TariffQuickViewSet(mixins.ListModelMixin,
     pagination_class = LimitOffsetPagination
     lookup_field = 'uid'
 
-    def put(self, request, uid=None, partial=None):
+    def put(self, request, uid=None, partial=None, country_code=None, party_id=None) -> Response:
         try:
+            data = request.data
+            data = data.get('data', data)  # Is the actual data on the top level or one level lower?
             uid = uid or request.data.get('id')
-            tariff = Tariff.get_if_exists(uid__iexact=uid)
-            serializer = TariffQuickSerializer(data=request.data, instance=tariff, partial=partial)
+            party = get_our_party(OcpiRolesEnum.CPO)
+
+            tariff = Tariff.get_if_exists(
+                uid__iexact=uid, country_code__iexact=party.country_code, party_id__iexact=party.party_id, archived=False
+            )
+            serializer = TariffQuickSerializer(data=data, instance=tariff, partial=partial,
+                                               context={'request': request,
+                                                        'party': Party(country_code, party_id)})
             if serializer.is_valid():
                 serializer.save()
                 http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
@@ -51,9 +61,9 @@ class TariffQuickViewSet(mixins.ListModelMixin,
         try:
             our_country_code, our_party_id = Tariff.get_owner_identity().split('*')
 
-            tariff = get_object_or_404(Tariff, uid=uid,
-                                       country_code=our_country_code,
-                                       party_id=our_party_id)
+            tariff = Tariff.objects.get(uid__iexact=uid, archived=False,
+                                       country_code__iexact=our_country_code,
+                                       party_id__iexact=our_party_id)
 
             assert request.data.get('uid') in (uid, None), f'Different UID in request and URL'
 
@@ -71,7 +81,7 @@ class TariffQuickViewSet(mixins.ListModelMixin,
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        except (IntegrityError, AssertionError) as e:
+        except (IntegrityError, AssertionError, Tariff.DoesNotExist) as e:
             return Response({'status_message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod

@@ -10,7 +10,6 @@ from urllib.parse import urljoin
 
 import requests
 from django.conf import settings
-from django.db import transaction
 from django.http import Http404
 from django.utils.datetime_safe import datetime
 from rest_framework import serializers, status
@@ -284,7 +283,11 @@ class CommandsViewSet(GenericViewSet):
         try:
             serializer = StopSessionSerializer(data=request.data)
             if serializer.is_valid():
-                session: Session = Session.get_if_exists(uid=serializer.validated_data.get('session_id'))
+                uid = serializer.validated_data.get('session_id')
+                party = get_our_party(OcpiRolesEnum.CPO)
+                session: Session = Session.objects.get(
+                    uid__iexact=uid, country_code__iexact=party.country_code, party_id__iexact=party.party_id
+                )
 
                 # The worst scenario is this
                 ocpi_status = 2000
@@ -339,10 +342,10 @@ class CommandsViewSet(GenericViewSet):
                     instance=dict(result=result, timeout=timeout, message=message)
                 )
                 return OCPIResponse(response_serializer.data, status_code=ocpi_status, http_status=http_status)
-        except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist,
+        except (NotFound, KeyError, Evse.DoesNotExist, Location.DoesNotExist, Session.DoesNotExist,
                 Connector.DoesNotExist, Token.DoesNotExist, AssertionError) as e:
             log_error(request, e)
-            return OCPIResponse(None, status_message=f'Unable to start session: {e}',
+            return OCPIResponse(None, status_message=f'Unable to stop session: {e}',
                                 http_status=status.HTTP_400_BAD_REQUEST,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         return OCPIResponse(serializer.errors, status_message='Please check your request parameters',

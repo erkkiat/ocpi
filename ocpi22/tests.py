@@ -787,7 +787,10 @@ class CdrTests(TestCase):
 
     def load_location(self, filename):
         data = load_example(f'data/examples/{filename}.json')
-        serializer = LocationSerializer(data=data)
+        country_code = data['country_code']
+        party_id = data['party_id']
+        serializer = LocationSerializer(data=data,
+                                        context=dict(request=api_factory.get('/'), party=Party(country_code, party_id)))
         if not serializer.is_valid():
             self.fail(serializer.errors)
         return serializer.save()

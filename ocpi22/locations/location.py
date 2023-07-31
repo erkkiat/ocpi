@@ -21,6 +21,7 @@ from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHead
 # Todo: DELETE Tariff
 
 from ocpi22.webhooks import send_to_webhook
+from ocpiconnector.ocpi_identities import Party
 from premium import requires_premium
 from util import OCPIVersion
 
@@ -153,7 +154,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         if request and not matching_operator(request, country_code, party_id):
             return NotOwner()
 
-        if not uid:
+        if not uid or not country_code or not party_id:
             return OCPIResponse(
                 status_message=f'Country code, party_id and id are required when doing a PUT for a Location.',
                 http_status=status.HTTP_400_BAD_REQUEST,
@@ -170,7 +171,8 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         try:
             serializer_class = Location.get_serializer_class(version)
             serializer = serializer_class(instance=existing_location, data=data,
-                                          context={'version': version, 'credentials': request.credentials})
+                                          context={'version': version, 'credentials': request.credentials,
+                                                   'party': Party(country_code, party_id)})
             if serializer.is_valid():
                 created = bool(not existing_location)
                 logging.info(f'{"Creating" if created else "Updating"}'
