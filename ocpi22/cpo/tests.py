@@ -12,6 +12,7 @@ from django.test import TestCase
 from django.contrib.auth.models import AnonymousUser
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
+from urllib3.exceptions import ConnectTimeoutError
 
 from ocpi22.ocpi.serializers import SessionSerializer
 from ocpiconnector.testutil import compare_dicts_recursively, compare_lists_recursively
@@ -65,32 +66,32 @@ class TestQuickLocations(TestCase):
             }
             self.assertTrue(compare_dicts_recursively(data, expected),
                             f'New Location data differs from expected: {data}')
-        except geopy.exc.GeocoderUnavailable:
+
+            #
+            # Try updating Location data with new coordinates, address should be updated automatically
+            #
+
+            data = {
+                "id": "Aplinkkelis",
+                "latitude": 42.6975216,
+                "longitude": 23.3191493
+            }
+            response = patch_location(data, reverse('quick-location-list'))
+            self.assertEqual(response.status_code, status.HTTP_200_OK,
+                             'Expecting Location to be updated successfully')
+            location = Location.get_if_exists(uid='Aplinkkelis')
+            data = LocationQuickSerializer(instance=location).data
+            self.assertEqual(data,
+                             # Todo: Maybe we should have English addresses available in parallel?
+                             {
+                                 # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/Aplinkkelis/',
+                                 'id': 'Aplinkkelis', 'name': 'IONITY High Power Charging Aplinkkelis',
+                                 'address': 'Княз Борис Ⅰ 134', 'city': 'София', 'postal_code': '1000', 'country': 'BGR',
+                                 'time_zone': 'Europe/Sofia', 'latitude': 42.6975216, 'longitude': 23.3191493
+                             },
+                             'Updated Location data differs from expected')
+        except (geopy.exc.GeocoderUnavailable, ConnectTimeoutError):
             self.skipTest('Geocoder is unavailable')
-
-        #
-        # Try updating Location data with new coordinates, address should be updated automatically
-        #
-
-        data = {
-            "id": "Aplinkkelis",
-            "latitude": 42.6975216,
-            "longitude": 23.3191493
-        }
-        response = patch_location(data, reverse('quick-location-list'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK,
-                         'Expecting Location to be updated successfully')
-        location = Location.get_if_exists(uid='Aplinkkelis')
-        data = LocationQuickSerializer(instance=location).data
-        self.assertEqual(data,
-                         # Todo: Maybe we should have English addresses available in parallel?
-                         {
-                             # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/Aplinkkelis/',
-                             'id': 'Aplinkkelis', 'name': 'IONITY High Power Charging Aplinkkelis',
-                             'address': 'Княз Борис Ⅰ 134', 'city': 'София', 'postal_code': '1000', 'country': 'BGR',
-                             'time_zone': 'Europe/Sofia', 'latitude': 42.6975216, 'longitude': 23.3191493
-                         },
-                         'Updated Location data differs from expected')
 
     def test_quick_location_with_evses_and_connectors(self):
         #

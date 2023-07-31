@@ -629,7 +629,7 @@ def fill_out_location_address(data: dict, lat: Union[float, str], lng: Union[flo
         return data
     if not lat or not lng:
         return data
-    locator = Nominatim(user_agent="ChargerHub.EU")
+    locator = Nominatim(user_agent="solidroam.com")
     coordinates = f"{lat},{lng}"
     location = locator.reverse(coordinates, language=language)
     address = location.raw.get('address')
