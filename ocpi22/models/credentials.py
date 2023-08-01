@@ -19,6 +19,7 @@ from django.dispatch import receiver
 from django.http import HttpResponseRedirect
 from django.utils import timezone
 
+import util
 from ocpi22 import choices
 from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
@@ -179,6 +180,9 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         if not self.valid or self.connection_status in (choices.PLANNED, choices.SUSPENDED):
             return 'muted'
         return 'ok' if bool(self.responding()) else 'error'
+
+    def __hash__(self):
+        return util.member_hash(self)
 
 
 class CredentialsRole(models.Model, ModelUtilMixin):
