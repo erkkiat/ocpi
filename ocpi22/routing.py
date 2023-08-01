@@ -35,6 +35,10 @@ class Route:
     def through_hub(self) -> bool:
         return bool(not self.direct)
 
+    def __post_init__(self):
+        if self.version and isinstance(self.version, str):
+            self.version = OCPIVersion(self.version)
+
     def __bool__(self):
         return bool(self.url and self.credentials_id)
 
