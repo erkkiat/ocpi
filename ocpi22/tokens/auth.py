@@ -41,6 +41,13 @@ def token_post_save(sender, instance: Token, *_args, **_kwargs):
 
 def get_session_by_adhoc_token(token_uid: str, max_age_minutes,
                                statuses=(Session.PENDING, Session.ACTIVE)) -> Optional[Session]:
+    """
+    Get the most recent session for a given token within the last max_age_minutes
+    @param token_uid: Token UID, not Token.pk
+    @param max_age_minutes: How old the session can be
+    @param statuses: Which Token statuses to look for
+    @return: Session or if not found, None
+    """
     time_start = timezone.now() - timedelta(minutes=max_age_minutes)
     sessions = Session.objects.filter(
         Q(cdr_token_uid=token_uid) & Q(status__in=statuses) & Q(created__gte=time_start)

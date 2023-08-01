@@ -412,6 +412,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return period
 
     def send_updates(self, data=None, method='put', path_components=None) -> None:
+        if self.status == Session.PENDING:
+            return  # Don't send updates for pending sessions per OCPI 2.2.1 specifications
         if isinstance(data, list):
             # We have a list of stuff, is it by any chance ChargingPeriods?
             if isinstance(data[0], ChargingPeriod):

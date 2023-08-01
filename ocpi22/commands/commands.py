@@ -57,13 +57,14 @@ class ResponseData:
 
 def start_simulated_session(session, token_uid, connector_id, billed_to, evse_uid):
     print('Starting session')
-    session.status = Session.ACTIVE
     session.start_date_time = session.start_date_time or timezone.now()
+    # Don't actually start the session yet, it will be started in simulate_meter_values after a delay
     session.save()
     session.send_updates()
 
     print(f'Starting session simulator for session {session.uid}')
-    simulate_meter_values.delay(session.pk, token_uid, connector_id, billed_to, evse_uid)
+    args = (session.pk, token_uid, connector_id, billed_to, evse_uid)
+    simulate_meter_values.apply_async(args=args, countdown=5)
 
 
 def stop_simulated_session(session):

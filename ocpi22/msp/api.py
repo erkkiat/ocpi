@@ -95,11 +95,14 @@ def process_start_charging(request, serializer, location, evse, connector_id: st
                 status=status.HTTP_402_PAYMENT_REQUIRED
             )
         token = construct_adhoc_token(account.app_token_id, contract_id)
+
     authorization_reference = internal_reference or generate_auth_reference()
 
     response: requests.Response = send_start_command(request, evse, token, connector_id, contract_id,
                                                      authorization_reference)
-    Authorization.objects.create(authorization_reference=authorization_reference, max_price=max_price)
+    Authorization.objects.create(
+        authorization_reference=authorization_reference, max_price=max_price, token_uid=token.uid
+    )
     if response.status_code == status.HTTP_200_OK:
         messages.success(request,
                          'You have gotten a positive response from the CPO. '
@@ -255,25 +258,24 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                 if session and token_id:
                     return Response(dict(status='You should specify either Session or Token ID, but not both'),
                                     status=status.HTTP_400_BAD_REQUEST)
+                if not session and not token_id:
+                    return Response(dict(status='Please specify either Session or Token ID to get the Session status'),
+                                    status=status.HTTP_400_BAD_REQUEST)
                 if not session:
-                    # Let's see if we can find a Session started with an app token
-                    account = request.user.accounts.first()
-                    if account and not token_id:
-                        token_id = account.app_token_id
-                    session = get_session(token_id, (Session.PENDING, Session.ACTIVE, Session.COMPLETED, Session.INVALID))
-                    if not session:
-                        # Ok, maybe there's a Session started with an RFID
-                        tokens = Token.objects.filter(customer=request.user).values_list('uid', flat=True)
-                        sessions = Session.objects.filter(cdr_token_uid__in=tokens).order_by('-created')
-                        # ic(tokens, sessions)
-                        # Let's get the most recent Session, if multiple
-                        session = sessions.first()
-                    if not session:
-                        messages.info(request, 'Seems that there is no Session update yet. The CPO needs to start '
-                                               'the Session first and then it will be sent over OCPI to you.')
-                        return Response(dict(status=f'No session found for token `{token_id}`. '
-                                                    f'There may not have been a Session update from CPO.'),
-                                        status=status.HTTP_404_NOT_FOUND)
+                    # Can we find the session by token? Check if we have authorized a Session
+                    authorization = Authorization.objects.filter(token_uid=token_id).order_by('-created').first()
+                    if authorization:
+                        session = authorization.session
+                        if not session:
+                            return Response(dict(status_text='Session starting',
+                                                 session=dict(
+                                                     status=Session.PENDING,
+                                                     session_id='N/A',
+                                                     token=dict(token_id=token_id, type='APP_USER', contract_id='N/A')
+                                                 )),
+                                            status=status.HTTP_200_OK)
+                    else:
+                        return Response(dict(status_text='Session not found'), status=status.HTTP_404_NOT_FOUND)
                 data = MspSessionSerializer(instance=session).data
                 ocpi_messages = data.get('message')
                 if ocpi_messages:
