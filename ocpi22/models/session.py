@@ -1,7 +1,4 @@
-import hashlib
-import json
 import os
-from copy import copy
 
 from django.contrib import admin
 from django.db.models import QuerySet, Sum
@@ -26,7 +23,6 @@ from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum, TOKEN_TYPE_CHOICES
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
-from ocpi22.models.token import Token
 from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, \
     apply_step_size, str_to_deterministic_int, build_absolute_uri
 from ocpi22.serializers import SerializerCleanedUp
@@ -105,14 +101,12 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def kwh(self):
-        # getcontext().prec = 3
-        return max(round(Decimal(self.stop_kwh) - Decimal(self.start_kwh), 3), 0)
+        kwh_charged = max(Decimal(self.stop_kwh) - Decimal(self.start_kwh), Decimal(0))
+        return round(kwh_charged, 3)
 
     @kwh.setter
-    def kwh(self, value: Union[float, Decimal]):
-        # getcontext().prec = 3
+    def kwh(self, value: Union[float, Decimal]) -> None:
         self.stop_kwh = Decimal(self.start_kwh) + Decimal(value)
-        return self.kwh
 
     def update_charging_periods(self, kwh, soc=None, power=None, timestamp=None) -> None:
         active_charging_period = self.get_active_charging_period(kwh, soc, power, timestamp)
