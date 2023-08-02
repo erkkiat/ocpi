@@ -309,8 +309,12 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
         return
 
     if session.status == Session.PENDING:
+        print('Starting session')
+        session.start_date_time = timezone.now()
+        # Don't actually start the session yet, it will be started in simulate_meter_values after a delay
         session.status = Session.ACTIVE
-        session.save(update_fields=['status'])
+        session.save(update_fields=['status', 'start_date_time'])
+        # session.send_updates()
 
     session.stop_kwh = kwh
     session.update_last_updated()

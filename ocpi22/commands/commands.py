@@ -56,12 +56,6 @@ class ResponseData:
 
 
 def start_simulated_session(session, token_uid, connector_id, billed_to, evse_uid):
-    print('Starting session')
-    session.start_date_time = session.start_date_time or timezone.now()
-    # Don't actually start the session yet, it will be started in simulate_meter_values after a delay
-    session.save()
-    session.send_updates()
-
     print(f'Starting session simulator for session {session.uid}')
     args = (session.pk, token_uid, connector_id, billed_to, evse_uid)
     simulate_meter_values.apply_async(args=args, countdown=5)
@@ -432,14 +426,6 @@ def get_our_first_token():
         return Token.objects.filter(country_code=our_country_code, party_id=our_party_id).first()
     except IndexError:
         raise ValueError('Please create a Token first.')
-
-
-# def find_endpoint(country_code, party_id, identifier: OcpiModuleEnum, endpoint_role: EndpointRoleEnum) -> Endpoint:
-#     for role in CredentialsRole.objects.filter(country_code=country_code, party_id=party_id):
-#         for credentials in role.credentials.all():
-#             endpoints = credentials.endpoints.filter(identifier=identifier.value, role=endpoint_role.value)
-#             if endpoints.count():
-#                 return endpoints[0]
 
 
 def send_start_command(request, evse: Evse, token: Union[Token, str], connector_id=None, contract_id='',
