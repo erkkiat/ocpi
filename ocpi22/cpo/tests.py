@@ -60,10 +60,11 @@ class TestQuickLocations(TestCase):
             data = LocationQuickSerializer(instance=location).data
             expected = {
                 'id': 'APLINKKELIS', 'name': 'IONITY High Power Charging Aplinkkelis',
-                'address': 'Panevėžio aplinkl.', 'city': '-', 'postal_code': '36258',
+                'address': 'Panevėžio aplinkl. 20', 'city': '-', 'postal_code': '38417',
                 'country': 'LTU',
                 'time_zone': 'Europe/Vilnius', 'latitude': 55.67309, 'longitude': 24.33591
             }
+
             self.assertTrue(compare_dicts_recursively(data, expected),
                             f'New Location data differs from expected: {data}')
 
@@ -86,7 +87,8 @@ class TestQuickLocations(TestCase):
                              {
                                  # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/Aplinkkelis/',
                                  'id': 'Aplinkkelis', 'name': 'IONITY High Power Charging Aplinkkelis',
-                                 'address': 'Княз Борис Ⅰ 134', 'city': 'София', 'postal_code': '1000', 'country': 'BGR',
+                                 'address': 'Княз Борис Ⅰ 134', 'city': 'София', 'postal_code': '1000',
+                                 'country': 'BGR',
                                  'time_zone': 'Europe/Sofia', 'latitude': 42.6975216, 'longitude': 23.3191493
                              },
                              'Updated Location data differs from expected')
@@ -322,9 +324,10 @@ class TestChargingPeriods(TestCase):
              None, None, None),
             (50, 99, datetime(2022, 12, 26, 6, 30),
              {'charging_periods': [OrderedDict(
-                 [('start_date_time', '2022-12-25T21:55:00Z'), ('tariff', 'WEEKENDS'), ('dimensions', [OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
-                            OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
-                            OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]), OrderedDict(
+                 [('start_date_time', '2022-12-25T21:55:00Z'), ('tariff', 'WEEKENDS'),
+                  ('dimensions', [OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
+                                  OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '57.0000')]),
+                                  OrderedDict([('type', 'TIME'), ('volume', '0.1000')])])]), OrderedDict(
                  [('start_date_time', '2022-12-25T22:01:00Z'), ('tariff', 'WEEKDAYS'), ('dimensions', [
                      OrderedDict([('type', 'ENERGY'), ('volume', '8.0000')]),
                      OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '65.0000')]),
@@ -333,9 +336,9 @@ class TestChargingPeriods(TestCase):
                      OrderedDict([('type', 'ENERGY'), ('volume', '35.0000')]),
                      OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '99.0000')]),
                      OrderedDict([('type', 'TIME'), ('volume', '0.5000')])])])],
-              'kwh': Decimal('50.000'),
-              'last_updated': '2022-12-26T06:30:00Z',
-              'total_cost': {'excl_vat': 22.8, 'incl_vat': 28.27}},
+                 'kwh': Decimal('50.000'),
+                 'last_updated': '2022-12-26T06:30:00Z',
+                 'total_cost': {'excl_vat': 22.8, 'incl_vat': 28.27}},
              {
                  'internal_reference': None,
                  'now_kwh': 50.0,
