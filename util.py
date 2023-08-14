@@ -42,7 +42,7 @@ class OCPIVersion:
 
     @staticmethod
     def remove_dots(s: str) -> str:
-        return s.replace('.', '')
+        return s.replace('.', '') if s else ''
 
     def __str__(self):
         return self.version
