@@ -907,9 +907,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
                     # Send CommandResponse to MSP
                     response = send_ocpi_request(
-                        ocpi_serializer.data,
-                        response_url,
-                        session.credentials.theirs_base64(),
+                        data=ocpi_serializer.data,
+                        url=response_url,
+                        token_base64=session.credentials.theirs_base64(),
                         to_country_code=to.country_code,
                         to_party_id=to.party_id,
                         from_country_code=sender.country_code,
