@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from functools import lru_cache
+from cachetools import cached
 
 from ocpi22.choices import ROLE_OPTIONS, OcpiRolesEnum
 from ocpiconnector import settings
@@ -116,7 +116,7 @@ if len(ocpi_identities) > 1 and not settings.TEST:
                      'since the object IDs can overlap when receiving objects from other platforms')
 
 
-@lru_cache(maxsize=None)
+@cached(cache=dict())
 def get_identity(role: str = None, identities=ocpi_identities) -> str:
     """
     >>> get_identity('EMSP')
@@ -135,7 +135,7 @@ def get_identity(role: str = None, identities=ocpi_identities) -> str:
     return identities.get(role)
 
 
-@lru_cache(maxsize=None)
+@cached(cache=dict())
 def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     """
     >>> get_our_country_code('CPO')
@@ -149,7 +149,7 @@ def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     return country_code
 
 
-@lru_cache(maxsize=None)
+@cached(cache=dict())
 def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
     """
     >>> get_our_party_id('CPO')
@@ -166,7 +166,7 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
 # ic(ocpi_platform.is_hub, ocpi_platform.is_cpo, ocpi_platform.is_emsp)
 
 
-@lru_cache(maxsize=None)
+@cached(cache=dict())
 def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Party:
     """
     >>> get_our_party(OcpiRolesEnum.CPO)
