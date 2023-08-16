@@ -157,7 +157,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
         return evse
 
     def update(self, evse: Evse, validated_data: dict) -> Evse:
-        skip_fields = ('evse_id', 'uid')
+        skip_fields = {'evse_id', 'uid'}
 
         connectors = validated_data.pop('connectors', [])
         self.process_connectors(evse, connectors)
@@ -278,7 +278,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             return location
 
     def update(self, location: Location, validated_data: dict) -> Location:
-        readonly_fields = ('country_code', 'party_id', 'uid')
+        readonly_fields = {'country_code', 'party_id', 'uid'}  # Lookups in set are faster
 
         # Pop out all elements which are not directly understood by Location, and process them separately
         validated_data = self.process_coordinates(validated_data)
@@ -301,7 +301,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             try:
                 evse = Evse.objects.get(uid=e.get('uid'), location=location)
                 for key, value in e.items():
-                    if key not in ('uid', 'evse_id'):
+                    if key not in {'uid', 'evse_id'}:
                         setattr(evse, key, value)
                 evse.save()
             except Evse.DoesNotExist:
@@ -313,7 +313,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 try:
                     connector = Connector.objects.get(uid=c.get('uid'), evse=evse)
                     for key, value in c.items():
-                        if key not in ['uid']:
+                        if key != 'uid':
                             setattr(connector, key, value)
                     connector.save()
                 except Connector.DoesNotExist:

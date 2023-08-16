@@ -43,7 +43,7 @@ class WebhookViewSet(viewsets.GenericViewSet):
             if request.method == 'GET':
                 result = self._get_callbacks()
                 return Response(result)
-            if request.method in ('POST', 'PATCH'):
+            if request.method in {'POST', 'PATCH'}:
                 partial = bool(request.method == 'PATCH')
                 serializer = self.serializer_class(data=request.data, partial=partial)
                 if serializer.is_valid():

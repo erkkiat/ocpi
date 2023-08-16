@@ -177,7 +177,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def status_display(self):
-        if not self.valid or self.connection_status in (choices.PLANNED, choices.SUSPENDED):
+        if not self.valid or self.connection_status in {choices.PLANNED, choices.SUSPENDED}:
             return 'muted'
         return 'ok' if bool(self.responding()) else 'error'
 

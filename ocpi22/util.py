@@ -256,7 +256,7 @@ def format_currency(number: Optional[float], currency: Optional[str]) -> str:
         number_str = str(int(number))
     else:
         number_str = f"{number:.2f}"
-    if currency in ('$', '₱'):
+    if currency in {'$', '₱'}:
         result = f"{currency}{number_str}"
     else:
         result = f"{number_str}{currency}"
@@ -754,7 +754,7 @@ def fetch_object(uid: str, party: Party = None, credentials=None, ocpi_module: O
     if data:
         viewset = import_string(ocpi_module.get_viewset())
         response = viewset().put(request=None, data=data, version=version)
-        if response.status_code in (200, 201):
+        if response.status_code in {200, 201}:
             logging.info(f'Fetched missing {ocpi_module.value} with id: "{uid}"')
             return True
     logging.warning(f'Unable to fetch {ocpi_module.value} with id: "{uid}"')

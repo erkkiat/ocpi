@@ -111,7 +111,7 @@ class OCPIPermission(DjangoModelPermissions):
 
     @cached_property
     def public_views(self):
-        return [reverse(i) for i in PUBLIC_VIEWS]
+        return {reverse(i) for i in PUBLIC_VIEWS}
 
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param

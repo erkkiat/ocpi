@@ -269,7 +269,7 @@ class UserViewSet(viewsets.GenericViewSet):
             if request.method == 'GET':
                 serializer = ProfileSerializer(instance=user)
                 return Response(serializer.data)
-            if request.method in ('POST', 'PATCH'):
+            if request.method in {'POST', 'PATCH'}:
                 partial = bool(request.method == 'PATCH')
                 serializer = ProfileSerializer(data=request.data, instance=user, partial=partial)
                 if serializer.is_valid():
