@@ -92,6 +92,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.commands.serializers'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.routing'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.tariff'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.management.commands.exchange_credentials'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.settings'))
@@ -1163,7 +1164,7 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
-        self.assertDictEqual(
+        self.assertTrue(compare_dicts_recursively(
             kwargs.get('json'),
             {
                 'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/AUTH-REFERENCE/',
@@ -1171,7 +1172,7 @@ class CommandTests(TestCase):
                 'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
                 'location_id': 'HELSINKI-1', 'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*EON',
                 'expiry_date': '2022-01-12T19:44:39.298178', 'reservation_id': 'RESERVATION-ID'
-            }
+            }, 'Expecting a different response for a reservation')
         )
 
         # Let's guess the new Session
@@ -1606,9 +1607,11 @@ class TestRouting(TestCase):
                                                                       'credentials_id': 2,
                                                                       'direct': True,
                                                                       'identifier': OcpiModuleEnum.LOCATIONS,
+                                                                      'to': {'country_code': 'FI', 'party_id': 'MSP'},
                                                                       'token_base64': 'dGhlaXJzLTI=',
                                                                       'url': 'http://localhost:8001/ocpi/nap/2.2/locations',
-                                                                      'version': '2.2'}, 'Expected route not found')
+                                                                      'version': '2.2'}),
+                            'Expected route not found'
                             )
         except AttributeError as e:
             self.fail(f"find_route() is probably not cached: {e}")
@@ -1621,10 +1624,11 @@ class TestRouting(TestCase):
                                                                   'credentials_id': 3,
                                                                   'direct': False,
                                                                   'identifier': OcpiModuleEnum.LOCATIONS,
+                                                                  'to': {'country_code': 'FI', 'party_id': 'HUB'},
                                                                   'token_base64': 'dGhlaXJzLTM=',
                                                                   'url': 'http://localhost:8001/ocpi/hub/2.2/locations',
-                                                                  'version': '22'},
-                                                  'Expecting a different route through hub')
+                                                                  'version': '22'}),
+                        'Expecting a different route through hub'
                         )
 
     def mocked_request(*_args, **kwargs):
@@ -1646,8 +1650,10 @@ class TestRouting(TestCase):
 
         url = reverse('commands-start-session')
 
-        data = {'message': 'This is a message routing test'}
-        # noinspection PyUnresolvedReferences
+        data = {
+            'message': 'This is a message routing test',
+            'response_url': 'http://localhost/ocpi/hub/2.2/commands/1234'
+        }
         credentials = Credentials.objects.get(pk=2)
         sender = Party('FI', 'NAP')
 

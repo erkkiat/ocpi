@@ -41,10 +41,7 @@ ocpi_router.register(r'locations', LocationViewSet, basename='location')
 ocpi_router.register(r'tariffs', TariffViewSet, basename='tariff')
 ocpi_router.register(r'sessions', SessionViewSet)
 ocpi_router.register(r'cdrs', CdrViewSet, basename='cdr')
-if ocpi_platform.is_hub:
-    ocpi_router.register(r'commands', CommandsHubViewSet, basename='commands')
-else:
-    ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
+ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
 
 cpo_router = CPORouter()
 # cpo_router.register(r'evses', CpoEvseViewSet, basename='cpo-evse')

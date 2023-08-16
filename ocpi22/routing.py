@@ -1,9 +1,10 @@
 import json
 
+from cachetools import cached
 from cachetools.func import ttl_cache
 
 import ocpi22.logging as logging
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Optional, TypeAlias, Union
 from urllib.parse import urljoin
 
@@ -13,12 +14,13 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from rest_framework import status
 
-from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
+from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
+from ocpi22.ocpi.dataclasses import OCPIUrlComponents
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ocpi.parse import parse_ocpi_url
 
 from ocpiconnector.ocpi_identities import Party
-from util import OCPIVersion
+from util import OCPIVersion, reverse
 
 
 @dataclass
@@ -30,6 +32,7 @@ class Route:
     alive: bool
     direct: bool
     version: OCPIVersion
+    to: Party
 
     @property
     def through_hub(self) -> bool:
@@ -77,7 +80,7 @@ def find_route_from_credentials(credentials, ocpi_module: OcpiModuleEnum,
         endpoint = endpoints.first()
         return Route(url=endpoint.url, identifier=ocpi_module, credentials_id=credentials.pk,
                      token_base64=credentials.theirs_base64(), direct=True, alive=credentials.responding(),
-                     version=OCPIVersion(credentials.version))
+                     version=OCPIVersion(credentials.version), to=credentials.get_party_for_role(OcpiRolesEnum.EMSP))  # Todo: How to figure out the role, or is it relevant?
     error_text = f'Endpoint `{ocpi_module.value}` not found for party {credentials}'
     logging.error(error_text)
     raise ValueError(error_text)
@@ -93,7 +96,7 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
         endpoint = endpoints.first()
         return Route(url=endpoint.url, identifier=ocpi_module, credentials_id=credentials.pk,
                      token_base64=credentials.theirs_base64(), direct=False, alive=credentials.responding(),
-                     version=credentials.version)
+                     version=credentials.version, to=credentials.get_party_for_role(OcpiRolesEnum.HUB))
     return None
 
 
@@ -128,6 +131,59 @@ def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, a
     return route
 
 
+@cached(cache={})
+def get_all_command_urls() -> set:
+    return {
+        reverse('commands-start-session'),
+        reverse('commands-stop-session'),
+        reverse('commands-unlock-connector'),
+        # build_absolute_uri(reverse('commands-reserve-now')),
+    }
+
+
+def is_a_command_url(url: str) -> bool:
+    """
+    Check if the provided URL contains any of the Command URLs as segments
+
+    >>> is_a_command_url('https://example.com/ocpi/2.2.1/commands/START_SESSION/123')
+    True
+    >>> is_a_command_url('https://example.com/ocpi/2.2.1/commands/NOT_A_COMMAND/123')
+    False
+    """
+    return any(map(lambda u: u in url, get_all_command_urls()))
+
+
+def substitute_outgoing_response_url(request: HttpRequest, data: str) -> str:
+    """
+    Replace any remote Command response URLs with the hub's own URLs, so that we can route the response to the MSP
+    @param request: THe request received from MSP
+    @param data: The data received from MSP
+    @return: The modified data to be relayed to the CPO
+    """
+    from ocpi22.util import generate_random_token, command_store, build_absolute_uri
+    if is_a_command_url(request.path):
+        # We are dealing with a Command response, so we need to replace the URL
+        command_id = generate_random_token(24)  # Long enough to be unique, short enough to be usable
+        json_data = json.loads(data)
+        old_path = json_data.get('response_url', '')
+        if old_path:
+            command_response_path = reverse('commands-hubresponse', args=[command_id])
+            new_path = build_absolute_uri(urljoin(command_response_path, command_id))
+            assert hasattr(request, 'credentials'), 'Unable to find credentials from request'
+            credentials = request.credentials
+            route_back = Route(url=old_path, identifier=OcpiModuleEnum.COMMANDS, credentials_id=credentials.pk,
+                               token_base64=credentials.theirs_base64(), direct=True, alive=credentials.responding(),
+                               to=credentials.get_party_for_role(OcpiRolesEnum.EMSP), version=credentials.version)
+            command_store[command_id] = dict(route_back=asdict(route_back))
+            new_data = data.replace(old_path, new_path)
+            return new_data
+    return data
+
+
+def route_command_response_to_msp(ocpi_url: OCPIUrlComponents) -> Route:
+    pass
+
+
 def route_ocpi_request(request: HttpRequest, party: Party):
     """
     This is OCPI HUB functionality. It authorizes the incoming message and relayes it forward if it can find the
@@ -135,8 +191,15 @@ def route_ocpi_request(request: HttpRequest, party: Party):
     """
     try:
         ocpi_url = parse_ocpi_url(request.path)
-        logging.info(f'Routing to {party}, module {ocpi_url}')
-        route = find_route(party, ocpi_url.module)
+        command_response_path = '/commands/hubresponse/'  # Todo: Try to get this by using reverse()
+        if command_response_path in ocpi_url.path:
+            route = route_command_response_to_msp(ocpi_url)
+            logging.info(f'Routing command response back to MSP party {route.to}')
+            return HttpResponse(dict(status_text='ok'), status=status.HTTP_200_OK, content_type='application/json')
+        else:
+            logging.info(f'Routing to {party}, module {ocpi_url}')
+            route = find_route(party, ocpi_url.module)
+
         if route and hasattr(request, 'body') and hasattr(request, 'headers'):
             # Pick the OCPI related incoming headers
             ocpi_keys = dict((key, value) for key, value in request.META.items() if 'ocpi' in key.lower())
@@ -150,15 +213,15 @@ def route_ocpi_request(request: HttpRequest, party: Party):
             logging.info(f'Forwarding message to {str(party)}')
             data = getattr(request, 'body') or getattr(request, 'data')
             if data:
-                if type(data) == bytes:
+                if isinstance(data, bytes):
                     data = data.decode('utf-8')
+                data = substitute_outgoing_response_url(request, data)
                 method = request.method
                 url = urljoin(f'{route.url}/', ocpi_url.parameters)
                 response: requests.Response = requests.request(
                     method=method, url=url,
                     data=data, timeout=25,
                     headers=out_headers)
-
                 return HttpResponse(response.text, status=response.status_code, content_type='application/json')
             else:
                 return HttpResponse(dict(message_text='No data in request'), status=status.HTTP_400_BAD_REQUEST,

@@ -4,6 +4,7 @@ from datetime import timedelta
 from json import JSONDecodeError
 from typing import Optional, Union
 from unittest.mock import MagicMock
+from urllib.parse import urlparse
 
 import celery
 import cronitor.celery
@@ -16,6 +17,7 @@ from celery.schedules import crontab
 from django.conf import settings
 from django.utils import timezone
 from django.utils.module_loading import import_string
+from requests.auth import HTTPBasicAuth
 from rest_framework import status
 from sentry_sdk import capture_exception
 
@@ -267,7 +269,7 @@ def check_still_alive(credentials_id: int = None) -> None:
     # logging.info(f"Checking {stale_credentials.count()} parties for alive")
     c: Credentials
     for c in stale_credentials:
-        if c.is_complete() and c.connection_status in (choices.CONNECTED, choices.OFFLINE):
+        if c.is_complete() and c.connection_status in {choices.CONNECTED, choices.OFFLINE}:
             # since_last_time = (timezone.now() - c.last_connection).seconds
             # logging.info(f"Checking that {c} is alive and well, last successful "
             #              f"connection was {int(since_last_time / 60)} min ago")
@@ -295,12 +297,42 @@ if settings.TEST:
     send_data_to_analytics = MagicMock()
 
 
-@app.task(max_retries=1, default_retry_delay=5)
-def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_uid, run_number=1):
-    kwh = run_number * 0.21
-    print(f"Simulating meter value {kwh} kWh for session {session_pk} with token {token_uid} "
-          f"on connector {connector_id} #{run_number}.")
+def send_simulated_cpo_response(session, response_url):
+    from ocpi22.models.credentials import Credentials
+    from ocpi22.choices import OcpiRolesEnum
 
+    # # Abuse the OCPI headers to get access to the CPO instance
+    # credentials = Credentials.objects.first()
+    # token = credentials.theirs_base64()
+    # headers = make_headers(token_base64=token, to=credentials.get_party_for_role(OcpiRolesEnum.CPO))
+    # print(f'{headers=}')
+
+    # Make sure we (the Celery process) have access to our corresponding CPO web process
+    username = 'simulator'
+    password = 'simulator'
+    from django.contrib.auth.models import User
+    user = User.objects.get(username=username)
+    if user:
+        print(f'{user.pk=}, {user.username=}')
+    else:
+        print(f'Creating user {username}...')
+        user = User.objects.create_superuser(username=username)
+    user.set_password(password)
+    user.save()
+
+    data = dict(result='ACCEPTED')
+    print('Sending response to ', response_url)
+
+    # Validate URL
+    result = urlparse(response_url)
+    assert all([result.scheme, result.netloc]), f'response_url is not in the correct format: {response_url}'
+
+    response = requests.post(url=response_url, json=data, timeout=5, auth=HTTPBasicAuth(username, password))
+    print("*** Response from CPO to simulator", response.status_code, response.text, session.evse)
+
+
+@app.task(max_retries=1, default_retry_delay=5)
+def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_uid, response_url='', run_number=1):
     from ocpi22.models.session import Session
     session = Session.objects.get(pk=session_pk)
 
@@ -314,36 +346,40 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
         # Don't actually start the session yet, it will be started in simulate_meter_values after a delay
         session.status = Session.ACTIVE
         session.save(update_fields=['status', 'start_date_time'])
-        # session.send_updates()
+        send_simulated_cpo_response(session, response_url)
+    else:
+        kwh = run_number * 0.21
+        print(f"Simulating meter value {kwh} kWh for session {session_pk} with token {token_uid} "
+              f"on connector {connector_id} #{run_number}.")
 
-    session.stop_kwh = kwh
-    session.update_last_updated()
+        session.stop_kwh = kwh
+        session.update_last_updated()
 
-    # session.update_charging_periods(kwh - session.start_kwh, soc, power, timestamp)
+        # session.update_charging_periods(kwh - session.start_kwh, soc, power, timestamp)
 
-    session.calculate_price()
-    session.save(
-        update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
-    )
+        session.calculate_price()
+        session.save(
+            update_fields=['stop_kwh', 'total_cost_incl_vat', 'total_cost_excl_vat', 'last_updated']
+        )
 
-    # The Session hashing doesn't seem to work for Celery worker tasks,
-    # so let's make sure the update uses the most recent information
-    session.serialize.cache_clear()
+        # The Session hashing doesn't seem to work for Celery worker tasks,
+        # so let's make sure the update uses the most recent information
+        session.serialize.cache_clear()
 
-    # session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
-    # session.send_updates(session_charging_periods)
-    session.send_updates()
+        # session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
+        # session.send_updates(session_charging_periods)
+        session.send_updates()
 
     # meter_values.process_meter_values(request=None, serializer=None, kwh=run_number, session=session)
     if run_number <= 100:
         simulate_meter_values.apply_async(
-            (session_pk, token_uid, connector_id, billed_to, evse_uid, run_number+1),
+            (session_pk, token_uid, connector_id, billed_to, evse_uid, response_url, run_number+1),
             countdown=3
         )
-        return
+    else:
+        # Ok, we've reached the end of the simulation
+        session.status = session.COMPLETED
+        session.save(update_fields=['status'])
+        session.send_updates()
 
-    session.status = session.COMPLETED
-    session.save(update_fields=['status'])
-    session.send_updates()
-
-    print('Done simulating meter values for session {session_pk} with token {token_uid}.')
+        print('Done simulating meter values for session {session_pk} with token {token_uid}.')

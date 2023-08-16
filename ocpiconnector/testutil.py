@@ -57,6 +57,6 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
             result = False
     # if label != 'expected':
     #     result = compare_dicts_recursively(expected, received, path=path, label='expected')
-    # if not result:
-    #     ic(received, expected)
+    if not result:
+        ic(received, expected)
     return result

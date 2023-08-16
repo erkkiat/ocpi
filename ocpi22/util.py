@@ -5,7 +5,7 @@ import json
 import secrets
 import urllib.parse
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict, is_dataclass
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Any, Union
@@ -93,14 +93,14 @@ def hours_minutes(hours_float: float) -> str:
         return f'{minutes} min'
 
 
-def generate_random_token() -> str:
+def generate_random_token(length: int = 32) -> str:
     """
     >>> len(generate_random_token())
-    64
+    32
     >>> generate_random_token() != generate_random_token()
     True
     """
-    return secrets.token_hex(32)
+    return secrets.token_hex(int(length/2))
 
 
 class UpperCaseSerializerField(serializers.CharField):
@@ -348,14 +348,14 @@ class ModelUtilMixin:
             raise cls.DoesNotExist(error_message)
         return None
 
-    def party(self) -> str:
+    def party(self) -> str:  # Todo: rename to party_str, but be careful
         if hasattr(self, 'location'):
             return f'{self.location.country_code}*{self.location.party_id}'
         if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
             return f'{self.country_code}*{self.party_id}'
         return ''
 
-    def get_party(self):
+    def get_party(self) -> Party:
         if hasattr(self, 'location'):
             return Party(self.location.country_code, self.location.party_id)
         if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
@@ -506,6 +506,8 @@ class RedisStore:
         # ic(key, namespace_key, value, self.expiration)
         if isinstance(value, dict):
             value = json.dumps(value, default=str)  # serializes also dates
+        elif is_dataclass(value):
+            value = json.dumps(asdict(value), default=str)
         redis_store.set(namespace_key, value, self.expiration)
 
     def __getitem__(self, item):

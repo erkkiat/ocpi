@@ -1,5 +1,6 @@
 from django.db.models import Q
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 import ocpi22.logging as logging
 
@@ -17,7 +18,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, APIException, ValidationError
 from rest_framework.response import Response
 
-from ocpi22.tasks import simulate_meter_values
+from ocpi22.msp.models import Authorization
+from ocpi22.tasks import simulate_meter_values, send_ocpi_request
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -41,7 +43,7 @@ from ocpi22.ocpi.util import ocpi_post, OCPIResponse, Ocpi, generate_auth_refere
 from ocpi22.ocpi.util_party import get_sender_party
 
 from ocpi22.tokens.util import construct_adhoc_token, get_token_id, get_token_type
-from ocpiconnector.ocpi_identities import get_our_party, Party
+from ocpiconnector.ocpi_identities import get_our_party, Party, ocpi_platform
 from ocpi22.util import build_absolute_uri, command_store
 from ocpi22.logging import log_error
 
@@ -55,9 +57,9 @@ class ResponseData:
     timeout: int
 
 
-def start_simulated_session(session, token_uid, connector_id, billed_to, evse_uid):
+def start_simulated_session(session, token_uid, connector_id, billed_to, evse_uid, response_url=''):
     print(f'Starting session simulator for session {session.uid}')
-    args = (session.pk, token_uid, connector_id, billed_to, evse_uid)
+    args = (session.pk, token_uid, connector_id, billed_to, evse_uid, response_url)
     simulate_meter_values.apply_async(args=args, countdown=5)
 
 
@@ -66,6 +68,60 @@ def stop_simulated_session(session):
     session.status = Session.COMPLETED
     session.save()
     session.send_updates()
+
+
+# def send_command_to_cpo(billed_to: Party, from_party: Party,
+#                         command_prefix: str, webhook_serializer: serializers.Serializer, token: Union[Token, str],
+#                         evse_uid: str, connector_id: int, authorization_reference: str, response_url: str):
+#     @dataclass(frozen=True)
+#     class Result:
+#         timeout: int
+#         result: str
+#         message: list
+#         http_status: int
+#         command_id: str
+#
+#     _ocpi_response_url = validated_data.pop('response_url')
+#     timeout = 60
+#
+#     cpo_response_url = build_absolute_uri(reverse('chargepoint-remote-command-result',
+#                                                   args=(command_id,)))
+#
+#     # Prepare the command for CPO management system
+#     initial_data = dict(
+#         response_url=cpo_response_url,
+#         token_id=get_token_id(token),
+#         token_type=get_token_type(token, TokenType.APP_USER),
+#         authorization_reference=authorization_reference,
+#         auth_method=Session.COMMAND,
+#         from_party=str(from_party),
+#         evse_id=evse_uid,
+#         connector_id=connector_id,
+#         billed_to=billed_to,
+#     )
+#     initial_data.update(**validated_data)
+#
+#     if settings.PERFORMANCE_TEST or settings.CPO_SIMULATOR:
+#         data = dict(timeout=90, result='ACCEPTED')
+#     else:
+#         data = send_to_webhook(initial_data, webhook_serializer)
+#     if not data:
+#         logging.error(f'Unable to connect to CPMS webhook at {webhook_serializer.URL}.')
+#         return OCPIResponse(None,
+#                             status_message=f'Unable to complete {command_prefix} '
+#                                            'due to a communication error.',
+#                             http_status=status.HTTP_503_SERVICE_UNAVAILABLE,
+#                             status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR)
+#
+#     timeout = int(data.get('timeout', timeout))
+#     result = data.get('result', CommandResponse.REJECTED).upper()
+#     logging.info(f'Result from charger for command {command_prefix}: {result}')
+#     message = MessageTexts.get(
+#         f'{command_prefix}_{result}',  # E.g. try to get response message for START_<result>
+#         MessageTexts.get(
+#             result,  # Then just for <result>
+#             MessageTexts.get('DEFAULT_CHARGER_ERROR_TEXT')))  # Or just use the default
+#     return Result(timeout, result, message, data.get('http_status', status.HTTP_400_BAD_REQUEST))
 
 
 class CommandsViewSet(GenericViewSet):
@@ -124,6 +180,34 @@ class CommandsViewSet(GenericViewSet):
                                            webhook_serializer=CPOReserveNowWebhookSerializer,
                                            command_prefix='RESERVE')
 
+    @csrf_exempt
+    @action(methods=['POST'], detail=False, url_path='hubresponse/(?P<command_id>[^/.]+)')
+    def hubresponse(self, request, command_id, version='2.2.1'):
+        if not ocpi_platform.is_hub:
+            return OCPIResponse(status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                                http_status=status.HTTP_404_NOT_FOUND)
+        command_data = command_store[command_id]
+        ic(version, command_data)
+        if command_data:
+            route_dict = command_data.get('route_back')
+            print(f'{route_dict=}')
+            route: Route = Route(**route_dict)
+            our_hub_party: Party = get_our_party(OcpiRolesEnum.HUB)
+
+            if route:
+                response = send_ocpi_request(  # Todo: How about just data, route as parameters?
+                    request.data, url=route.url, token_base64=route.token_base64,
+                    to_country_code=route.to.get('country_code'), to_party_id=route.to.get('party_id'),
+                    from_country_code=our_hub_party.country_code, from_party_id=our_hub_party.party_id,
+                    method='post', credentials_id=route.credentials_id, title='Hub response to CPO'
+                )
+                ic(response)
+                status_code = {
+                    200: Ocpi.OK,
+                }.get(response.get('status_code', 400), Ocpi.ServerError.GENERIC_SERVER_ERROR)
+                return OCPIResponse(status_code=status_code, http_status=response.get('status_code'))
+        return OCPIResponse(status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR, http_status=status.HTTP_404_NOT_FOUND)
+
     def process_remote_command(self, request, command_serializer, webhook_serializer, command_prefix,
                                create_session_if_not_exists=True):
 
@@ -138,7 +222,7 @@ class CommandsViewSet(GenericViewSet):
                 authorization_reference = serializer.validated_data.get('authorization_reference')
                 evse_uid = serializer.validated_data.get('evse_uid')
                 connector_id = serializer.validated_data.get('connector_id')
-                _ocpi_response_url = serializer.validated_data.pop('response_url')
+                ocpi_response_url = serializer.validated_data.pop('response_url')
 
                 session: Session = Session.get_if_exists(
                     Q(authorization_reference=authorization_reference) | Q(cdr_token_uid=token)
@@ -253,7 +337,8 @@ class CommandsViewSet(GenericViewSet):
                     status_message = str(e)
 
                 if settings.CPO_SIMULATOR:
-                    start_simulated_session(session, token.get('uid'), connector_id, billed_to, evse_uid)
+                    start_simulated_session(session, token.get('uid'), connector_id, billed_to, evse_uid,
+                                            response_url=ocpi_response_url)
 
                 response_serializer = CommandResponse(
                     data=dict(result=ocpi_result, timeout=timeout, message=message)
@@ -375,7 +460,7 @@ class CommandsViewSet(GenericViewSet):
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @action(methods=['GET', 'POST'], detail=False, url_path='COMMAND_RESULT/(?P<command>[^/.]+)/(?P<command_id>[^/.]+)')
-    def command_result(self, request, command=None, command_id=None):
+    def command_result(self, request, command=None, command_id=None, version='2.2.1'):
         """
         This is only used by eMSP for receiving the final result for remote command
         """
@@ -383,7 +468,8 @@ class CommandsViewSet(GenericViewSet):
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         try:
             session = Session.objects.filter(authorization_reference=command_id)
-            if not session.exists():
+            authorization = Authorization.objects.filter(authorization_reference=command_id)
+            if not session.exists() and not authorization:
                 return OCPIResponse('Session not found', status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                                     http_status=status.HTTP_400_BAD_REQUEST)
             if session.count() > 1:
@@ -396,6 +482,7 @@ class CommandsViewSet(GenericViewSet):
                 session.update(message=message)
                 logging.info(f'Received CommandResult {result} and '
                              f'message {message or "N/A"} for command {command} ID {command_id}')
+                # Todo: Embed any error or success text to the Session status response
                 return OCPIResponse(
                     status_message='Command result received, thank you!',
                     data=dict(command_id=command_id))
