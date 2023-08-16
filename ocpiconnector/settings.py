@@ -97,7 +97,7 @@ MAXIMUM_RESERVATION = os.environ.get('MAXIMUM_RESERVATION', 60 * 30)
 # Send updates asynchronously using Celery
 BACKGROUND_SEND = _env_bool('BACKGROUND_SEND', True)
 
-ADMINS = [('Erkki Tapola', 'erkki.tapola@chargerhub.eu')]
+ADMINS = [('Erkki Tapola', 'erkki.tapola@solidroam.com')]
 MANAGERS = ADMINS
 
 TIMEOUT_FOR_COMMANDS = 2 * 60
