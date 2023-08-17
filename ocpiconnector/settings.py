@@ -117,7 +117,8 @@ PUBLIC_VIEWS = ['user-register']
 
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split('://')
-    assert (protocol == 'mysql')
+    assert protocol == 'mysql' and '"' not in protocol and "'" not in protocol, \
+        'Only mysql:// is supported, check that you don\'t have quotes in the JAWSDB_MARIA_URL'
     credentials, connection = url.split('@')
     userid, password = credentials.split(':')
     connection, database = connection.split('/')
@@ -139,7 +140,7 @@ JAWSDB_MARIA_URL = os.environ.get('JAWSDB_MARIA_URL',
                                   os.environ.get('JAWSDB_URL', None))
 if JAWSDB_MARIA_URL:
     # We're running on Heroku
-    DATABASES = (parse_jawsdb_maria_url(JAWSDB_MARIA_URL))
+    DATABASES = parse_jawsdb_maria_url(JAWSDB_MARIA_URL)
 else:
     DATABASES = {
         'default': {

@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 {% load static %}
 
-{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | ChargerHub{% endblock %}
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | SolidRoam{% endblock %}
 
 {% block extrastyle %}
     <link rel="stylesheet" type="text/css" href="{% static "css/ocpiconnector-admin.css" %}">
@@ -10,8 +10,8 @@
 {% block branding %}
 <h1 id="site-name">
     <a href="{% url 'admin:index' %}">
-        <img alt="ChargerHub logo" src="{% static 'images/chargerhub-logo-black.svg' %}">
-        {{ roles }} - <span class="muted">OCPI Connector Admin</span>
+        <img alt="SolidRoam logo" src="{% static 'images/SolidRoam-logo-black.svg' %}">
+        {{ roles }} - <span class="muted">Roaming Module Admin</span>
     </a>
 </h1>
 {% endblock %}
