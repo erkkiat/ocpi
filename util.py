@@ -75,7 +75,7 @@ class OCPIVersion:
 
 
 def reverse(s, args=[], request=None, version=None) -> str:
-    version = OCPIVersion(version or request.version if request else '2.2.1')
+    version = OCPIVersion(version or request.version or '2.2.1' if request else '2.2.1')
     version_args = [version, *args]
     try:
         return django_reverse(s, args=version_args, request=request)
