@@ -16,4 +16,4 @@ export HOSTNAME="localhost:$PORT"
 export JAWSDB_MARIA_URL="mysql://ocpi$PORT:$PASSWORD@localhost:3306/ocpi$PORT"
 ./manage.py migrate
 ./manage.py loaddata ocpi22/data/initial.json
-./manage.py createsuperuser --username eki --email erkki.tapola@pohdinto.com
+./manage.py createsuperuser --username eki --email erkki.tapola@solidroam.com
