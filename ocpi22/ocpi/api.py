@@ -18,6 +18,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from ocpi22.ocpi.partners import get_partners
 from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
 from util import reverse
@@ -620,11 +621,13 @@ class SessionViewSet(OCPIListModelMixin,
 
 class ClientInfoViewSet(mixins.ListModelMixin,
                         GenericViewSet):
+    """
+    The OCPI Hub Client Info endpoint is used for providing information on connection status between roaming parties.
+    This view shows as empty when accessing it in the Developer Central, but when using OCPI credentials,
+    it will show the actual statuses.
+    """
     filterset_fields = ['country_code', 'party_id']
     pagination_class = OCPIPaginationAndHeaders
-    # lookup_field = 'pk'
-    # noinspection PyUnresolvedReferences
-    queryset = CredentialsRole.objects.all().order_by('country_code', 'party_id')
     serializer_class = ClientInfoSerializer
 
     def get_view_name(self):
@@ -633,6 +636,12 @@ class ClientInfoViewSet(mixins.ListModelMixin,
         # if self.name:
         #     return f'{self.name.capitalize()}'
         return f'HubClientInfo'
+
+    def get_queryset(self):
+        credentialsrole_ids: set = get_partners(self.request)
+        if not credentialsrole_ids:
+            return CredentialsRole.objects.none()
+        return CredentialsRole.objects.filter(pk__in=credentialsrole_ids).order_by('country_code', 'party_id')
 
     @staticmethod
     def get_object(id=None):

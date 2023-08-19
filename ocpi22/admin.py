@@ -24,7 +24,8 @@ from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultT
 from ocpi22.models.token import Token
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
-from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform
+from ocpi22.ocpi.partners import invalidate_partner_cache
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, Party
 from payment.models import Payment
 
 admin.site.site_header = 'Roaming Admin'
@@ -495,6 +496,17 @@ class CredentialsAdmin(admin.ModelAdmin):
 class CredentialsRoleAdmin(admin.ModelAdmin):
     model = CredentialsRole
     list_display = ['party', 'role', 'business_details']
+    fields = ['business_details', 'agreed_parties']
+    list_filter = ['role']
+    autocomplete_fields = ['agreed_parties']
+    search_fields = ['business_details__name', 'business_details__website',
+                     'agreed_parties__country_code', 'agreed_parties__party_id']
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if obj and change:
+            party = Party(obj.country_code, obj.party_id)
+            invalidate_partner_cache(party)
 
 
 @admin.register(DefaultTariffs)

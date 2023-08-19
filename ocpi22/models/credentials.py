@@ -190,6 +190,8 @@ class CredentialsRole(models.Model, ModelUtilMixin):
         constraints = [
             models.UniqueConstraint(fields=['country_code', 'party_id', 'role'], name='unique_credentialsroles'),
         ]
+        verbose_name = _('party')
+        verbose_name_plural = _('parties')
 
     role = models.CharField(max_length=5, choices=ROLE_CHOICES, verbose_name=_('Role'))
 
@@ -205,12 +207,18 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     credentials = models.ForeignKey(Credentials, related_name='roles', on_delete=models.CASCADE, null=True,
                                     verbose_name=_('Credentials'))
 
+    agreed_parties = models.ManyToManyField('ocpi22.CredentialsRole', blank=True,
+                                            verbose_name=_('Parties with agreements'))
+
     def __str__(self):
         return f'{self.country_code}*{self.party_id} ({self.role})'
 
     @property
     def party(self):
         return Party(self.country_code, self.party_id)
+
+    def __hash__(self):
+        return hash(f'{self.country_code}{self.party_id}{self.role}')
 
 
 class Endpoint(models.Model, ModelUtilMixin):
