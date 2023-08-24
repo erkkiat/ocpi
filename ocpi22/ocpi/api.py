@@ -519,7 +519,7 @@ def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
                                  from_country_code=we.country_code, from_party_id=we.party_id,
                                  method='GET')
     ic(response)
-    return response.status_code == status.HTTP_200_OK
+    return bool(response.get('status_code') == status.HTTP_200_OK)
 
 
 class SessionViewSet(OCPIListModelMixin,
@@ -566,8 +566,10 @@ class SessionViewSet(OCPIListModelMixin,
         party_id = party_id or data.get('party_id')
         created = True
         session: Session = Session.get_if_exists(
-            uid__iexact=uid, party_id__iexact=party_id, country_code__iexact=country_code
+            uid__iexact=uid
         )
+        if session and session.ocpi_master != request.ocpi_party:
+            return NotOwner()
         # Todo: If PATCH fails, we have missed the Session PUT, so we need to fetch the full Session from CPO
         # Todo: Fetch Location if missing
         # Todo: Fetch Tariff if missing
@@ -616,6 +618,9 @@ class SessionViewSet(OCPIListModelMixin,
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, country_code=None, party_id=None, uid=None, **_kwargs):
+        data = request.data.get('data', request.data)
+        if not data.get('last_updated'):  # Required for Session PATCH in OCPI 2.2.1
+            return ValidationError('PATCH requires last_updated to be set')
         return self.put(request, country_code, party_id, uid, partial=True)
 
 

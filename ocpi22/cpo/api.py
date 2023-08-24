@@ -657,6 +657,8 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             evse_uid=evse, location_id=evse.location, connector_id=connector_id,
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
                             session_status=Session.ACTIVE, credentials=credentials,
+                            ocpi_master=credentials.roles.first()
+                            # Todo: Try to get the exact role used for the request
                         )
                         logging.info(f'Created session {session.uid} based on start_transaction from CPO')
                     session.send_updates()

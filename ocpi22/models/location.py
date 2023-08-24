@@ -96,6 +96,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner),
                                 verbose_name=_('Party id'))
 
+    # The party responsible for the master data for this object
+    # The country_code and party_id can be found through the CredentialsRole
+    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='locations', null=True, on_delete=models.PROTECT)
+
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_('UID'))
@@ -308,7 +312,7 @@ class Evse(models.Model, ModelUtilMixin):
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses', verbose_name=_('Location'))
 
     # The OCPI field writable and maintained by object owner
-    last_updated = models.DateTimeField(null=True, blank=True)
+    last_updated = models.DateTimeField(null=True, blank=True, verbose_name=_('Last updated'))
 
     # Django automatic dates
     updated = models.DateTimeField(auto_now=True, verbose_name=_('Updated'))

@@ -267,6 +267,28 @@
     }
   },
   {
+    "model": "ocpi22.credentialsrole",
+    "pk": 99,
+    "fields": {
+      "role": "CPO",
+      "business_details": 1,
+      "country_code": "FI",
+      "party_id": "CPO",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.credentialsrole",
+    "pk": 999,
+    "fields": {
+      "role": "CPO",
+      "business_details": 1,
+      "country_code": "FI",
+      "party_id": "000",
+      "credentials": 24
+    }
+  },
+  {
     "model": "ocpi22.endpoint",
     "pk": 218,
     "fields": {
@@ -15882,6 +15904,7 @@
     "fields": {
       "country_code": "FI",
       "party_id": "000",
+      "ocpi_master": 999,
       "uid": "FI*000*S*B58DDC4D3B304A47AD623C22147",
       "internal_reference": null,
       "reservation_id": null,
@@ -15918,6 +15941,7 @@
     "fields": {
       "country_code": "FI",
       "party_id": "000",
+      "ocpi_master": 999,
       "uid": "FI*000*S*PERFORMANCE*TEST",
       "internal_reference": null,
       "reservation_id": null,

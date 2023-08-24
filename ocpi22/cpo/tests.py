@@ -15,7 +15,7 @@ from rest_framework.exceptions import ErrorDetail
 from urllib3.exceptions import ConnectTimeoutError
 
 from ocpi22.ocpi.serializers import SessionSerializer
-from ocpiconnector.testutil import compare_dicts_recursively, compare_lists_recursively
+from ocpiconnector.testutil import compare_dicts_recursively
 from ocpiconnector.util import recursive_sort_dict, Timer
 from util import reverse
 from rest_framework.test import APIRequestFactory
@@ -266,15 +266,16 @@ class TestQuickLocations(TestCase):
             ),
         ]
         for case in test_cases:
-            data = case['data']
-            if case.get('method') == 'PATCH':
-                response = send_patch(data, reverse('quick-tariff-list'), TariffQuickViewSet)
-            else:
-                response = put(data, reverse('quick-tariff-list'), TariffQuickViewSet)
-            self.assertEqual(response.status_code, case.get('status', status.HTTP_200_OK),
-                             'Quick Tariff creation/update response status differs from expected')
-            self.assertDictEqual(response.data, case.get('expected_result', data),
-                                 'Quick Tariff creation/update response data differs from expected')
+            with self.subTest(case=case):
+                data = case['data']
+                if case.get('method') == 'PATCH':
+                    response = send_patch(data, reverse('quick-tariff-list'), TariffQuickViewSet)
+                else:
+                    response = put(data, reverse('quick-tariff-list'), TariffQuickViewSet)
+                self.assertEqual(response.status_code, case.get('status', status.HTTP_200_OK),
+                                 'Quick Tariff creation/update response status differs from expected')
+                self.assertDictEqual(response.data, case.get('expected_result', data),
+                                     'Quick Tariff creation/update response data differs from expected')
 
         # The below needs some work
         # response = get(reverse('quick-tariff-list'), TariffQuickViewSet)
@@ -406,7 +407,7 @@ class TestChargingPeriods(TestCase):
                 # ic('*' * 60, kwh, soc, timestamp)
                 try:
                     with self.subTest(kwh=kwh, timestamp=timestamp):
-                        with time_machine.travel(timestamp, tick=True), \
+                        with time_machine.travel(timestamp, tick=False), \
                                 patch('ocpi22.ocpi.util.OcpiModule.send_background_update') as send_updates_mock, \
                                 patch('ocpi22.util.is_our_identifier', return_value=True), \
                                 patch('ocpi22.logging.error') as logging_error_mock:

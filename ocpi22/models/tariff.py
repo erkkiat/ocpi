@@ -63,6 +63,10 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner),
                                 verbose_name=_('Party ID'))
 
+    # The party responsible for the master data for this object
+    # The country_code and party_id can be found through the CredentialsRole
+    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='tariffs', null=True, on_delete=models.PROTECT)
+
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True,
                            verbose_name=_('UID'))

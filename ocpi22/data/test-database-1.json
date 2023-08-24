@@ -316,6 +316,17 @@
       }
    },
    {
+      "pk" : 99,
+      "model" : "ocpi22.credentialsrole",
+      "fields" : {
+         "business_details": 1,
+         "role": "CPO",
+         "credentials": 2,
+         "party_id": "000",
+         "country_code": "FI"
+      }
+   },
+   {
       "pk": 4,
       "model": "ocpi22.credentialsrole",
       "fields": {
@@ -1008,6 +1019,7 @@
          "publish": true,
          "postal_code": "",
          "publish_allowed_to": [],
+         "ocpi_master": 99,
          "time_zone": "Europe/Warsaw",
          "created": "2022-01-08T14:01:58.803",
          "party_id": "000",
@@ -1040,7 +1052,6 @@
       "fields" : {
          "country" : "FIN",
          "city" : "Lahti",
-         "party_id" : "000",
          "created" : "2022-01-08T14:12:36.913",
          "suboperator" : null,
          "time_zone" : "Europe/Helsinki",
@@ -1057,14 +1068,16 @@
             2,
             6
          ],
-         "country_code" : "FI",
          "address" : "Vierumäki 2",
          "parking_type" : "PARKING_LOT",
          "operator" : 2,
          "state" : "",
          "lat_partition" : 6100,
          "uid" : "VM-1",
-         "long_partition" : 3100
+         "long_partition" : 3100,
+         "country_code" : "FI",
+         "party_id" : "000",
+         "ocpi_master": 99
       },
       "model" : "ocpi22.location",
       "pk" : 2
@@ -1098,7 +1111,8 @@
          "country" : "FIN",
          "suboperator" : null,
          "created" : "2022-01-08T14:37:27.713",
-         "party_id" : "001"
+         "party_id" : "000",
+         "ocpi_master": 99
       },
       "model" : "ocpi22.location",
       "pk" : 3
@@ -1111,6 +1125,8 @@
             2
          ],
          "country_code" : "FI",
+         "party_id" : "000",
+         "ocpi_master": 99,
          "updated" : "2022-01-15T09:06:31.139",
          "last_updated" : "2022-01-08T14:55:22.541",
          "owner" : null,
@@ -1125,7 +1141,6 @@
          "parking_type" : "PARKING_GARAGE",
          "address" : "Vaasa 1",
          "created" : "2022-01-08T14:54:41.193",
-         "party_id" : "000",
          "suboperator" : null,
          "country" : "FIN",
          "city" : "Vaasa",
@@ -1142,6 +1157,9 @@
          "address" : "Paimio 2",
          "parking_type" : "ALONG_MOTORWAY",
          "long_partition" : 2900,
+         "country_code" : "FI",
+         "party_id" : "000",
+         "ocpi_master": 99,
          "operator" : 2,
          "state" : "",
          "lat_partition" : 6000,
@@ -1152,7 +1170,6 @@
          "owner" : null,
          "longitude" : 29,
          "latitude" : 60,
-         "country_code" : "FI",
          "facilities" : [
             2,
             3,
@@ -1165,8 +1182,7 @@
          "city" : "Salo",
          "country" : "FIN",
          "suboperator" : null,
-         "created" : "2022-01-08T15:05:18.427",
-         "party_id" : "000"
+         "created" : "2022-01-08T15:05:18.427"
       }
    },
    {
@@ -1178,7 +1194,9 @@
          "country" : "FIN",
          "city" : "Helsinki",
          "suboperator" : 1,
+         "country_code" : "FI",
          "party_id" : "000",
+         "ocpi_master": 99,
          "created" : "2022-01-09T06:25:25.023",
          "address" : "Helsinki 12",
          "parking_type" : "PARKING_LOT",
@@ -1193,7 +1211,6 @@
          "owner" : 2,
          "latitude" : 60,
          "longitude" : 30,
-         "country_code" : "FI",
          "facilities" : [
             1
          ]
@@ -1207,7 +1224,9 @@
       "fields" : {
          "country" : "SWE",
          "city" : "Stockholm",
+         "country_code" : "FI",
          "party_id" : "000",
+         "ocpi_master": 99,
          "created" : "2022-01-09T08:56:12.056",
          "suboperator" : null,
          "publish_allowed_to" : [],
@@ -1217,7 +1236,6 @@
          "facilities" : [
             2
          ],
-         "country_code" : "FI",
          "name" : "Stockholm Supercharger",
          "updated" : "2022-01-15T09:06:31.139",
          "last_updated" : "2022-01-09T08:56:12.056",

@@ -72,6 +72,9 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.valid = False
         self.save(update_fields=['valid'])
 
+    def delete(self, using=None, keep_parents=False):
+        self.soft_delete()
+
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True, verbose_name=_('Last updated'))
 
@@ -90,7 +93,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         # This should trigger when Credentials is modified in Admin UI
         find_endpoints_by_roles.cache_clear()
         from ocpi22.pull import schedule_full_update
-        schedule_full_update(self, countdown=10)
+        schedule_full_update(self, countdown=1)
 
     def party(self) -> str:
         return ", ".join([
@@ -115,7 +118,13 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return self.base64(self.theirs)
 
     @staticmethod
-    def find(token, create=False):
+    def find(token: str, create=False):
+        """
+        Find a Credentials object by OCPI token
+        @param token: token string raw, not base64
+        @param create: should the Credentials be created if not found
+        @return: Credentials object or None
+        """
         credentials = Credentials.objects.filter(Q(token_a=token) | Q(ours=token) | Q(theirs=token))
         count = credentials.count()
         assert count <= 1, f"There are overlapping tokens in credentials {', '.join([str(a.pk) for a in credentials])}."
@@ -141,6 +150,17 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         credentialsrole = self.roles.filter(role=role.value).first()
         if credentialsrole:
             return credentialsrole.party
+
+    def get_role(self, party: Party):
+        """
+        Get the CredentialsRole for a party
+        @param party: The party, usually from request headers
+        @return: CredentialsRole or None
+        """
+        roles = self.roles.filter(country_code__iexact=party.country_code, party_id__iexact=party.party_id)
+        if roles.count() == 1:
+            return roles.first()
+        return None
 
     def get_parties(self) -> List[Party]:
         return [r.party for r in self.roles.all()]
@@ -189,6 +209,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['country_code', 'party_id', 'role'], name='unique_credentialsroles'),
+            # Todo: Should we really allow multiple roles for a single country_code+party_id?
         ]
         verbose_name = _('party')
         verbose_name_plural = _('parties')
@@ -211,14 +232,25 @@ class CredentialsRole(models.Model, ModelUtilMixin):
                                             verbose_name=_('Parties with agreements'))
 
     def __str__(self):
-        return f'{self.country_code}*{self.party_id} ({self.role})'
+        if self.role:
+            return f'{self.country_code}*{self.party_id} ({self.role})'
+        return f'{self.country_code}*{self.party_id}'
 
     @property
     def party(self):
         return Party(self.country_code, self.party_id)
 
+    def party_str(self):
+        return f'{self.country_code}*{self.party_id}'
+    party_str.short_description = _('Party')  # For admin UI
+
     def __hash__(self):
         return hash(f'{self.country_code}{self.party_id}{self.role}')
+
+    @classmethod
+    def find_by_party(cls, party: Party) -> Optional['CredentialsRole']:
+        return cls.objects.filter(country_code__iexact=party.country_code,
+                                  party_id__iexact=party.party_id).first()
 
 
 class Endpoint(models.Model, ModelUtilMixin):
@@ -237,6 +269,9 @@ class Endpoint(models.Model, ModelUtilMixin):
     def get_token_base64(self):
         token = self.credentials.theirs
         return base64.b64encode(str(token).encode('ascii')).decode('ascii')
+
+    def __hash__(self):
+        return util.member_hash(self)
 
 
 class NewConnection(forms.Form):

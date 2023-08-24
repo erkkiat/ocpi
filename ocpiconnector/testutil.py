@@ -11,9 +11,9 @@ def compare_lists_recursively(received, expected, path='', label1='received', la
     for i, v in enumerate(received):
         if i >= len(expected):
             print(f'{i=} {len(received)=} {len(expected)=} {type(received)=} {type(expected)=}')
-            print(f'{received[3]=}')
-            print(f'{received[4]=}')
-            print(f'{received[5]=}')
+            # print(f'{received[3]=}')
+            # print(f'{received[4]=}')
+            # print(f'{received[5]=}')
             print(f'{path}.{received[i]} not present in {label2}'.strip('.'))
             result = False
         elif isinstance(v, (dict, OrderedDict)):

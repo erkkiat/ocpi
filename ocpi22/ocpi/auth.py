@@ -8,11 +8,11 @@ from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 
-from ocpi22 import logging
 from ocpi22.ocpi.util_party import get_sender_party
+from ocpiconnector.ocpi_identities import Party
 from util import reverse
 
-from ocpi22.models.credentials import Credentials
+from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpiconnector.settings import PUBLIC_VIEWS
 
 
@@ -38,8 +38,12 @@ def check_auth_token(request, token: str) -> bool:
 
     # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
     try:
-        token_ascii = base64.b64decode(token).decode('ascii')
         request.ocpi_auth = OcpiAuthTypes.NONE
+        request.ocpi_party = None
+
+        if not token:
+            return False
+        token_ascii = base64.b64decode(token).decode('ascii')
 
         # First check for TOKEN_A, are we still getting to know each other?
         credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
@@ -55,34 +59,31 @@ def check_auth_token(request, token: str) -> bool:
             credentials = credentials_matches.first()
             request.ocpi_auth = OcpiAuthTypes.TOKEN_A
             request.credentials = credentials
-            return True
         else:
-            # Or are we already friends?
+            # Or are we already best friends?
             credentials_matches = Credentials.objects.filter(ours=token_ascii, valid=True)
             if credentials_matches.count():
-                credentials = credentials_matches[0]
+                credentials = credentials_matches.first()
                 request.ocpi_auth = OcpiAuthTypes.FINAL
                 request.credentials = credentials
-                return True
+            else:
+                raise exceptions.NotAuthenticated(  # HTTP 401
+                    f'The token "{token}" (ascii {token_ascii}) doesn\'t match any of our current credentials'
+                )
+
+        if credentials:
+            request.ocpi_party = get_credentialsrole(request.credentials, get_sender_party(request.headers))
+        return True
+
     except (binascii.Error, UnicodeDecodeError) as e:
         raise NotAuthenticated(f'Authentication token: {e}')
-    if token:
-        # This token is no good
-        raise NotAuthenticated(
-            f'The token "{token}" (ascii {token_ascii}) doesn\'t match any of our current credentials')
-    # If no token, give other permission mechanisms a chance
-    return False
 
 
-# @cache
-def request_matches_credentials(credentials: Credentials, party) -> bool:
-    if credentials.is_hub():
-        return True
-    # ic(party, credentials.get_parties())
-    if party in credentials.get_parties():
-        return True
-    logging.error(f'*** Request headers from {credentials} do not match Party in Credentials')
-    return False
+def get_credentialsrole(credentials: Credentials, party: Party) -> CredentialsRole:
+    try:
+        return credentials.roles.get(country_code__iexact=party.country_code, party_id__iexact=party.party_id)
+    except CredentialsRole.DoesNotExist:
+        return None
 
 
 class OCPIPermission(DjangoModelPermissions):
@@ -116,16 +117,13 @@ class OCPIPermission(DjangoModelPermissions):
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
         # Remove the "Token" keyword if present to get just the token value
-
         token = self.get_token(request)
+
         # Check for token authentication, secondarily basic auth
-        if token and check_auth_token(request, token) and \
-                (request.ocpi_auth == OcpiAuthTypes.TOKEN_A or
-                 request_matches_credentials(request.credentials, get_sender_party(request.headers))):
+        if check_auth_token(request, token) and (request.ocpi_auth == OcpiAuthTypes.TOKEN_A or request.ocpi_party):
             return True
 
-        if view and (hasattr(view, 'publicly_visible') or
-                     super().has_permission(request, view)):
+        if view and (hasattr(view, 'publicly_visible') or super().has_permission(request, view)):
             return True
 
         if request.path in self.public_views:

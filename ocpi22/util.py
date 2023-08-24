@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Any, Union
 
+from django.utils.translation import gettext as _
+
 import cachetools
 import pycountry
 import redis
@@ -349,11 +351,26 @@ class ModelUtilMixin:
         return None
 
     def party(self) -> str:  # Todo: rename to party_str, but be careful
-        if hasattr(self, 'location'):
+        """
+        >>> from ocpi22.models.location import Location
+        >>> Location(country_code='FI', party_id='CPO').party()
+        'FI*CPO'
+        """
+        if hasattr(self, 'ocpi_master') and self.ocpi_master:
+            return f'{self.ocpi_master.country_code}*{self.ocpi_master.party_id}'
+        if hasattr(self, 'location') and self.location:
             return f'{self.location.country_code}*{self.location.party_id}'
         if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
             return f'{self.country_code}*{self.party_id}'
         return ''
+    party.short_description = _('Data Owner')
+
+    def party_long(self) -> str:
+        if hasattr(self, 'ocpi_master'):
+            return f'{self.ocpi_master.business_details.name}' \
+                f' ({self.ocpi_master.country_code}*{self.ocpi_master.party_id})'
+        return self.party()
+    party_long.short_description = _('Data Owner')
 
     def get_party(self) -> Party:
         if hasattr(self, 'location'):

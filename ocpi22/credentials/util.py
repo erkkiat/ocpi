@@ -6,6 +6,11 @@ from ocpi22 import choices
 
 @lru_cache(maxsize=None)
 def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: choices.OcpiModuleEnum) -> list:
+    """
+    Find all endpoints for specified roles for sending updates to other parties.
+    We don't know how the receiving party handles multiple roles, so we can't really omit sending the same update
+    to the same endpoint for the different roles they possess.
+    """
     from ocpi22.models.credentials import CredentialsRole, Endpoint
     result = []
     role: CredentialsRole

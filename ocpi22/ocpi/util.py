@@ -356,7 +356,7 @@ class NotOwner(OCPIResponse):
     def __init__(self):
         super().__init__(
             status_message="Country ID and Party ID need to match your credentials.",
-            status_code=2002,
+            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
             http_status=status.HTTP_401_UNAUTHORIZED)
 
 

@@ -51,6 +51,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # CPO ID of the CPO that 'owns' this CDR (following the ISO-15118 standard).
     party_id = models.CharField(max_length=3, verbose_name=_('Party ID'))
 
+    # The party responsible for the master data for this object
+    # The country_code and party_id can be found through the CredentialsRole
+    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='cdrs', null=True, on_delete=models.PROTECT)
+
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
     uid = models.CharField(max_length=39, db_index=True, verbose_name=_('UID'))

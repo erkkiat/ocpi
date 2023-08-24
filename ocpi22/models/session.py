@@ -61,6 +61,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     # CPO ID of the CPO that 'owns' this Session (following the ISO-15118 standard).
     party_id = models.CharField(max_length=3, verbose_name=_('Party ID'))
 
+    # The party responsible for the master data for this object
+    # The country_code and party_id can be found through the CredentialsRole
+    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='sessions', null=True, on_delete=models.PROTECT)
+
     # The unique id that identifies the charging session in the CPO platform.
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_('UID'))
 
@@ -242,7 +246,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                                     verbose_name=_('Credentials'))
 
     # The party who will be billed for this Session
-    billed_to = models.CharField(max_length=6, null=True, verbose_name=_('Billed to'))
+    billed_to = models.CharField(max_length=6, null=True, blank=True, verbose_name=_('Billed to'))
 
     # The payment for this session (only on MSP platform)
     payment = models.ForeignKey('payment.Payment', on_delete=models.PROTECT, null=True, blank=True,

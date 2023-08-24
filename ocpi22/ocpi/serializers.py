@@ -19,6 +19,7 @@ from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
 from ocpi22.util import base64_to_ascii, CiStringField, CiStringChoiceField, MultipleChoiceFieldList, CountryCodeField, \
     PartyIdField
+from ocpiconnector.ocpi_identities import ocpi_platform
 
 
 class CdrTokenSerializer(SerializerCleanedUp):
@@ -379,10 +380,12 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def create(self, validated_data):
         request = self.context.get("request")
-        billed_to = get_sender_party(request.META)
         chargingperiods = validated_data.pop('chargingperiods', [])
         session = Session.objects.create(
-            credentials=request.credentials, billed_to=billed_to, **validated_data
+            credentials=request.credentials,
+            billed_to=None,  # If we are CPO, we fill the billed_to elsewhere and MSP doesn't use it
+            ocpi_master=request.ocpi_party,
+            **validated_data
         )
         for chargingperiod in chargingperiods:
             dimensions = chargingperiod.pop('dimensions', None)

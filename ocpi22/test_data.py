@@ -336,7 +336,7 @@ expected_get_responses = {
                  'operator': {'name': 'Tesla',
                               'website': 'http://www.tesla.com'},
                  'parking_type': 'UNDERGROUND_GARAGE',
-                 'party_id': '001',
+                 'party_id': '000',
                  'publish': True,
                  'time_zone': 'Europe/Helsinki'}]),
               ('status_code', 1000),
@@ -1025,11 +1025,13 @@ class StopTransactionResponses:
                          ('session_id', 'FI*CPO*S*MOCK-1'),
                          ('status_text', 'Session finished')])
 
+
 class SessionData:
     wrong_evse = {
         "status": "ACTIVE",
         "auth_method": "WHITELIST",
-        "party_id": "MSP",
+        "country_code": "FI",
+        "party_id": "CPO",
         "currency": "PHP",
         "id": "123",
         "cdr_token": {
@@ -1037,7 +1039,6 @@ class SessionData:
             "type": "APP_USER",
             "uid": "456"
         },
-        "country_code": "PH",
         "location_id": "12",
         "evse_uid": {
             "evse_uid": "87da"

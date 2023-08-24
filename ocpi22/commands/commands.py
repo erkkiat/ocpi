@@ -18,6 +18,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, APIException, ValidationError
 from rest_framework.response import Response
 
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.msp.models import Authorization
 from ocpi22.tasks import simulate_meter_values, send_ocpi_request
 from util import reverse
@@ -253,6 +254,14 @@ class CommandsViewSet(GenericViewSet):
                         billed_to=billed_to,
                     )
                     initial_data.update(**serializer.validated_data)
+                    try:
+                        sender_role = request.credentials.roles.get(role=OcpiRolesEnum.EMSP)
+                    except CredentialsRole.DoesNotExist:
+                        return OCPIResponse(
+                            None, status_message='Only parties with an EMSP role can send remote commands',
+                            http_status=status.HTTP_403_FORBIDDEN, status_code=Ocpi.ClientError.NOT_ALLOWED
+                        )
+                    # initial_data.update(ocpi_master=sender_role)
 
                     if settings.PERFORMANCE_TEST or settings.CPO_SIMULATOR:
                         data = dict(timeout=90, result='ACCEPTED')
@@ -284,7 +293,8 @@ class CommandsViewSet(GenericViewSet):
                                         billed_to=billed_to,
                                         authorization_method=Session.COMMAND,
                                         credentials=request.credentials,
-                                        connector_id=connector_id
+                                        connector_id=connector_id,
+                                        ocpi_master=sender_role
                                     )
                                 )
                                 params.pop('token')
