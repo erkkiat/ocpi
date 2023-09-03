@@ -64,8 +64,8 @@ def log_error(request=None, s: str = None, logentry=None, admin_log={}, **kwargs
     logging.error(error_message)
 
 
-def error(s: str = None, request=None, *args, **kwargs) -> None:
-    return log_error(request, s, *args, **kwargs)
+def error(msg: str = None, request=None, *args, **kwargs) -> None:
+    return log_error(request, msg, *args, **kwargs)
 
 
 def info(s: str, *args, request=None, logentry=None, log_to_admin=False, admin_log={}, **kwargs):

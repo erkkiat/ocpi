@@ -21,6 +21,7 @@ from ocpi22.ocpi.util import NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHead
 # Todo: DELETE Tariff
 
 from ocpi22.webhooks import send_to_webhook
+from ocpiconnector.exception_handler import ocpi_exception_handler
 from ocpiconnector.ocpi_identities import Party
 from premium import requires_premium
 from util import OCPIVersion
@@ -142,6 +143,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST,
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
+    @ocpi_exception_handler
     @requires_premium
     def put(self, request, data=None, version='2.2.1', logentry=None, **_kwargs):
         data = data or request.data.get('data', request.data)
@@ -168,25 +170,21 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
-        try:
-            serializer_class = Location.get_serializer_class(version)
-            serializer = serializer_class(instance=existing_location, data=data,
-                                          context={'version': version, 'credentials': request.credentials,
-                                                   'party': Party(country_code, party_id)})
-            if serializer.is_valid():
-                created = bool(not existing_location)
-                logging.info(f'{"Creating" if created else "Updating"}'
-                             f' Location {country_code}*{party_id} - {uid}.', log_to_admin=True, logentry=logentry)
-                created_location = serializer.save()
-                created_location.send_hub_updates()
-                http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-                return OCPIResponse(serializer.data, http_status=http_status)
-            else:
-                return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
-                                    status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        except Tariff.DoesNotExist as e:
-            logging.error('Need to fetch a missing Tariff from the remote party. We should not end up here, '
-                          f'because we should have fetched the Tariff before we got here: {e}')
+        serializer_class = Location.get_serializer_class(version)
+        serializer = serializer_class(instance=existing_location, data=data,
+                                      context={'version': version, 'credentials': request.credentials,
+                                               'party': Party(country_code, party_id)})
+        if serializer.is_valid():
+            created = bool(not existing_location)
+            logging.info(f'{"Creating" if created else "Updating"}'
+                         f' Location {country_code}*{party_id} - {uid}.', log_to_admin=True, logentry=logentry)
+            created_location = serializer.save()
+            created_location.send_hub_updates()
+            http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            return OCPIResponse(serializer.data, http_status=http_status)
+        else:
+            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')

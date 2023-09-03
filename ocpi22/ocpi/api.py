@@ -21,6 +21,7 @@ from rest_framework.response import Response
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
+from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -85,6 +86,7 @@ class TokenViewSet(OCPIListModelMixin,
     def check_ownership(self, token) -> bool:
         return token and token.is_ours()
 
+    @ocpi_exception_handler
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=False, version='2.2.1',
             logentry=None, **_kwargs):
         data = data or request.data.get('data', request.data)
@@ -115,6 +117,7 @@ class TokenViewSet(OCPIListModelMixin,
     def patch(self, request, **_kwargs):
         return self.put(request, partial=True)
 
+    @ocpi_exception_handler
     @csrf_exempt
     @action(methods=['POST', 'GET'], detail=False,
             url_path='(?P<token_uid>[^/.]+)/authorize')
@@ -237,6 +240,7 @@ class TokenViewSet(OCPIListModelMixin,
             return OCPIResponse(serializer.data)
         return OCPIBadRequestResponse()
 
+    @ocpi_exception_handler
     @action(methods=['PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def token_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
@@ -296,6 +300,7 @@ class CdrViewSet(OCPIListModelMixin,
         # Needed for OPTIONS to work in list view
         return None
 
+    @ocpi_exception_handler
     @action(methods=['GET'], detail=False,
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     @requires_premium
@@ -304,6 +309,7 @@ class CdrViewSet(OCPIListModelMixin,
         serializer = CdrSerializer(cdr, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 
+    @ocpi_exception_handler
     @requires_premium
     def post(self, request, **_kwargs) -> OCPIResponse:
         data = request.data.get('data', request.data)
@@ -350,6 +356,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     def get_view_name(self):
         return 'Credentials'
 
+    @ocpi_exception_handler
     @requires_premium
     def list(self, request, *_args, **_kwargs):
         if not hasattr(request, 'credentials'):
@@ -358,6 +365,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                                 status_code=Ocpi.ClientError.UNKNOWN_TOKEN)
         return OCPIResponse(make_my_credentials_dict(request, request.credentials.ours))
 
+    @ocpi_exception_handler
     @requires_premium
     def delete(self, request: Request, *_args, **_kwargs):
         # Todo: Make sure deletition is not possible for others than owner
@@ -369,42 +377,39 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         request.credentials.soft_delete()
         return OCPIResponse(status_message='Your credentials have been deleted, as requested.')
 
+    @ocpi_exception_handler
     @requires_premium
     @csrf_exempt
     def post(self, request: Request, *_args, **_kwargs):
-        try:
-            assert hasattr(request, 'credentials'), f'Posting to this endpoint requires OCPI Credentials'
-            data = request.data
-            data = data.get('data', data)
-            credentials: Credentials = request.credentials
-            credentials.theirs = data.get('token')
-            credentials.url = data.get('url')
-            credentials.roles.all().delete()
-            if not credentials.ours:
-                credentials.ours = generate_random_token()
-            for role in data['roles']:
-                credentials.add_role(role)
+        assert hasattr(request, 'credentials'), f'Posting to this endpoint requires OCPI Credentials'
+        data = request.data
+        data = data.get('data', data)
+        credentials: Credentials = request.credentials
+        credentials.theirs = data.get('token')
+        credentials.url = data.get('url')
+        credentials.roles.all().delete()
+        if not credentials.ours:
+            credentials.ours = generate_random_token()
+        for role in data['roles']:
+            credentials.add_role(role)
 
-            # Delay storing tokens until now, in case the roles have some issue
-            credentials.save()
+        # Delay storing tokens until now, in case the roles have some issue
+        credentials.save()
 
-            token_base64 = credentials.theirs_base64()  # CREDENTIALS_TOKEN_B
-            versions_url = select_version(credentials.url, token_base64)
-            endpoints = get_endpoints(versions_url, token_base64)
-            store_endpoints_for_party(credentials, endpoints)
-            data = make_my_credentials_dict(request, our_token=credentials.ours)
-            serializer = CredentialsSerializer(data=data, context={'version': request.version})
-            if not serializer.is_valid():
-                logging.error(f'Our software has a logic error in Credentials POST: {serializer.errors}')
-                return Response(
-                    dict(
-                        status_text='Sorry, but we have a slight problem. Support has been alerted.'
-                    ),
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            return OCPIResponse(data)
-        except (ValidationError, AssertionError, KeyError) as e:
-            logging.error(str(e), request)
-            return OCPIBadRequestResponse(str(e))
+        token_base64 = credentials.theirs_base64()  # CREDENTIALS_TOKEN_B
+        versions_url = select_version(credentials.url, token_base64)
+        endpoints = get_endpoints(versions_url, token_base64)
+        store_endpoints_for_party(credentials, endpoints)
+        data = make_my_credentials_dict(request, our_token=credentials.ours)
+        serializer = CredentialsSerializer(data=data, context={'version': request.version})
+        if not serializer.is_valid():
+            logging.error(f'Our software has a logic error in Credentials POST: {serializer.errors}')
+            return Response(
+                dict(
+                    status_text='Sorry, but we have a slight problem. Support has been alerted.'
+                ),
+                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return OCPIResponse(data)
 
 
 class TariffViewSet(OCPIListModelMixin,
@@ -423,16 +428,19 @@ class TariffViewSet(OCPIListModelMixin,
             return f'{self.name.capitalize()}'
         return 'Tariffs'
 
+    @ocpi_exception_handler
     @requires_premium
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
+    @ocpi_exception_handler
     @requires_premium
     def get(self, request: Request, country_code, party_id, uid, version, *_args, **_kwargs):
         tariff = get_object_or_404(Tariff, country_code=country_code, party_id=party_id, uid=uid, archived=False)
         serializer = self.get_serializer(tariff, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 
+    @ocpi_exception_handler
     @action(methods=['GET'], detail=False, description='Get a single Tariff by country, party and uid',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', url_name='by-id')
     @requires_premium
@@ -446,6 +454,7 @@ class TariffViewSet(OCPIListModelMixin,
         if uid:
             return get_object_or_404(Tariff, uid=uid)
 
+    @ocpi_exception_handler
     @requires_premium
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, version='2.2.1',
             logentry=None, **_kwargs) \
@@ -477,6 +486,7 @@ class TariffViewSet(OCPIListModelMixin,
         else:
             return OCPIResponse(errors=serializer.errors)
 
+    @ocpi_exception_handler
     @action(methods=['DELETE'], url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)', detail=False)
     @requires_premium
     def delete(self, _request, country_code, party_id, uid, *_args, **_kwargs) -> OCPIResponse:
@@ -546,6 +556,7 @@ class SessionViewSet(OCPIListModelMixin,
         if uid:
             return get_object_or_404(Session, uid=uid)
 
+    @ocpi_exception_handler
     @action(methods=['GET'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     def session_by_id(self, request, country_code, party_id, uid, **_kwargs) -> OCPIResponse:
@@ -558,6 +569,7 @@ class SessionViewSet(OCPIListModelMixin,
         return OCPIResponse(http_status=status.HTTP_400_BAD_REQUEST)
 
     @classmethod
+    @ocpi_exception_handler
     def put(cls, request, country_code=None, party_id=None, uid=None, partial=False, tryagain=False,
             **kwargs) -> OCPIResponse:
         data = request.data.get('data', request.data)
@@ -617,6 +629,7 @@ class SessionViewSet(OCPIListModelMixin,
                       f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}')
         return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
+    @ocpi_exception_handler
     def patch(self, request, country_code=None, party_id=None, uid=None, **_kwargs):
         data = request.data.get('data', request.data)
         if not data.get('last_updated'):  # Required for Session PATCH in OCPI 2.2.1

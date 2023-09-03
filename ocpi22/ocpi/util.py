@@ -346,9 +346,9 @@ class OCPIBadRequestResponse(OCPIResponse):
     def __init__(self, *args, **kwargs):
         super().__init__(
             *args,
-            status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            http_status=status.HTTP_400_BAD_REQUEST,
-            status_message='Bad request',
+            status_code=kwargs.pop('status_code', Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS),
+            http_status=kwargs.pop('http_status', status.HTTP_400_BAD_REQUEST),
+            status_message=kwargs.pop('status_message', 'Bad request'),
             **kwargs)
 
 
