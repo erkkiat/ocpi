@@ -662,10 +662,10 @@ class ClientInfoViewSet(mixins.ListModelMixin,
         return CredentialsRole.objects.filter(pk__in=credentialsrole_ids).order_by('country_code', 'party_id')
 
     @staticmethod
-    def get_object(id=None):
+    def get_object(object_id=None):
         # Needed for OPTIONS to work in list view, could just return None
-        if id:
-            return get_object_or_404(CredentialsRole, pk=id)
+        if object_id:
+            return get_object_or_404(CredentialsRole, pk=object_id)
 
 
 class RootView(routers.APIRootView):
