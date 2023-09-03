@@ -8,10 +8,9 @@ from rest_framework.request import Request
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
-from ocpi22.locations.serializers import EvseSerializer, LocationSerializer, LocationSerializer221
+from ocpi22.locations.serializers import EvseSerializer, LocationSerializer
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse
-from ocpi22.models.tariff import Tariff
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import matching_operator, OCPIVersioning, OCPIListModelMixin
@@ -37,6 +36,7 @@ class EvseViewSet(mixins.RetrieveModelMixin,
     serializer_class = EvseSerializer
     pagination_class = OCPIPaginationAndHeaders
 
+    @ocpi_exception_handler
     @action(methods=['GET', 'PATCH', 'PUT'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)/(?P<evse_id>[^/.]+)')
     def evse_by_id(self, request, country_code, party_id, uid, evse_id) -> OCPIResponse:
@@ -186,6 +186,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
+    @ocpi_exception_handler
     @action(methods=['GET', 'PUT', 'PATCH'], detail=False, url_name='by-id',
             url_path='(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<uid>[^/.]+)')
     @requires_premium
