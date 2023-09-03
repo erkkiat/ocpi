@@ -75,7 +75,7 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     }
     ocpi_module_name = OcpiModuleEnum.LOCATIONS
     ocpi_object_owner = 'CPO'
-    send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB')
+    send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB', 'OTHER')
 
     class Meta:
         verbose_name = _('location')
