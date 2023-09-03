@@ -2,7 +2,7 @@
 
 clear
 
-USAGE='[OCPI connector instance name] [username] [email] [one or more OCPI roles, e.g. CPO=`FI*AAA`]'
+USAGE='[instance name] [username] [email] [one or more OCPI roles, e.g. CPO=`FI*AAA`]'
 if [ -z "$3" ]
   then
     echo $USAGE

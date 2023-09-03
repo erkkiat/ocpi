@@ -16,7 +16,7 @@ def premium_message(request):
     messages.info(request, mark_safe(
         'This is a Premium feature. You can activate all functionality by '
         '<a class="alert-link" target="subscribe" '
-        f'href="{payment_link}">subscribing to OCPI Connector Premium</a>.'
+        f'href="{payment_link}">subscribing to Premium</a>.'
     ))
 
 
@@ -54,7 +54,7 @@ class NoPremiumViewSet(ViewSet):
         return OCPIResponse(PREMIUM_RESPONSE, status=status.HTTP_426_UPGRADE_REQUIRED)
 
 
-PREMIUM_MESSAGE = 'This feature is available in the OCPI Connector Premium. ' \
+PREMIUM_MESSAGE = 'This feature is available in the Premium subscription. ' \
                   'You can upgrade at http://ocpi.guide/compare/'
 PREMIUM_RESPONSE = dict(
     status_message=PREMIUM_MESSAGE,

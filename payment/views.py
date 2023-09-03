@@ -307,5 +307,5 @@ def capture_reservation(cdr: Cdr) -> bool:
     return False
 
 # Todo: Step by step guidance with actual links and current data
-# Todo: Cover reservations and transactions made outside of the OCPI Connector
+# Todo: Cover reservations and transactions made outside of the system
 # Todo: Admin log for transactions, connection issues, pulls, pushes

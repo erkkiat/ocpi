@@ -390,7 +390,7 @@ class MspTokenViewSet(TokenViewSet):
 
 class MspAuthorizeWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the OCPI Connector where to check for authorization of a specific RFID.
+    You need to tell the system where to check for authorization of a specific RFID.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
 
@@ -416,8 +416,8 @@ class MspAuthorizeWebhookViewSet(WebhookViewSet):
 
 class MspChargePointStatusWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the OCPI Connector where to send charge point status updates.
-    For example, when a charge point is reserved, the OCPI Connector pushes the new charge point status
+    You need to tell the system where to send charge point status updates.
+    For example, when a charge point is reserved, the system pushes the new charge point status
     to your webhook URL.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
@@ -444,7 +444,7 @@ class MspChargePointStatusWebhookViewSet(WebhookViewSet):
 
 class MspSessionWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the OCPI Connector where to send Session updates.
+    You need to tell the system where to send Session updates.
 
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
@@ -471,7 +471,7 @@ class MspSessionWebhookViewSet(WebhookViewSet):
 
 class MspInvoiceWebhookViewSet(InvoiceWebhookViewSet):
     """
-    You need to tell the OCPI Connector where to send the invoicing lines (Charge Detail Records).
+    You need to tell the system where to send the invoicing lines (Charge Detail Records).
 
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
@@ -500,9 +500,9 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
     > These streamlined interfaces provide the necessary tools for quickly but comprehensively connecting
     > an eMSP backend to CPOs and roaming hubs.
 
-    **ADMIN UI**: All the objects in the OCPI Connector are available for browsing
+    **ADMIN UI**: All the objects in the system are available for browsing
     and selective modification in the admin tools.
-    It also provides tools for maintaining users, groups and their access to the OCPI Connector.
+    It also provides tools for maintaining users, groups and their access to the system.
 
     For more details, click the links below and you will find the step-by-step technical documentation.
 

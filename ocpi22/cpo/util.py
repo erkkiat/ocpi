@@ -10,8 +10,8 @@ def _find_our_evse(evse_uid) -> Evse:
     evse_count = evses.count()
     if not evse_count:
         raise Evse.DoesNotExist(f'EVSE with ID {evse_uid} '
-                                f'does not exist in the OCPI Connector database for party {str(party)}')
+                                f'does not exist in the system database for party {str(party)}')
     if evse_count > 1:
         raise Evse.DoesNotExist(f'There are more than one EVSE with ID {evse_uid} '
-                                f'in the OCPI Connector database for party {str(party)}')
+                                f'in the system database for party {str(party)}')
     return evses.first()

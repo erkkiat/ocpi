@@ -395,7 +395,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             data = make_my_credentials_dict(request, our_token=credentials.ours)
             serializer = CredentialsSerializer(data=data, context={'version': request.version})
             if not serializer.is_valid():
-                logging.error(f'OCPI connector has a logic error in Credentials POST: {serializer.errors}')
+                logging.error(f'Our software has a logic error in Credentials POST: {serializer.errors}')
                 return Response(
                     dict(
                         status_text='Sorry, but we have a slight problem. Support has been alerted.'
@@ -657,7 +657,7 @@ class ClientInfoViewSet(mixins.ListModelMixin,
 
 class RootView(routers.APIRootView):
     """
-    Welcome to the OCPI Connector Developer Central.
+    Welcome to the Developer Central.
     Here you have interactive access to the OCPI 2.2 and 2.2.1 endpoints with examples.
 
     > **OCPI** is the starting point for the OCPI hierarchy, where the OCPI modules reside.
@@ -682,7 +682,7 @@ class RootView(routers.APIRootView):
         return Response(result)
 
     def get_view_name(self):
-        return 'OCPI Connector Developer Central'
+        return 'Developer Central'
 
 
 class RootRouter(routers.DefaultRouter):

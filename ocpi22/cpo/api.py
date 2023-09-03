@@ -66,7 +66,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
                      mixins.ListModelMixin,
                      GenericViewSet):
     """
-    This is an optimised subset of the EVSE information available in the OCPI Connector.
+    This is an optimised subset of the EVSE information available in the system.
     """
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status']
@@ -860,9 +860,9 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             url_path='remote_command_result(?:/(?P<command_id>[^/.]+))?')
     def remote_command_result(self, request, command_id=None):
         """
-        Using this endpoint you tell OCPI Connector if the requested remote command has been successful.
+        Using this endpoint you tell system if the requested remote command has been successful.
         You'll need the command_id in the URL, so you must use the exact response_url you get when
-        the OCPI Connector calls your start_transaction callback.
+        the system calls your start_transaction callback.
 
 
         ## Status codes
@@ -972,7 +972,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
 class CpoReserveNowWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the OCPI Connector where to send remote ReserveNow commands.
+    You need to tell the system where to send remote ReserveNow commands.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
 
@@ -998,7 +998,7 @@ class CpoReserveNowWebhookViewSet(WebhookViewSet):
 
 class CpoStartWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the OCPI Connector where to send remote start commands.
+    You need to tell the system where to send remote start commands.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
 
@@ -1024,7 +1024,7 @@ class CpoStartWebhookViewSet(WebhookViewSet):
 
 class CpoStopWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the OCPI Connector where to send remote stop commands.
+    You need to tell the system where to send remote stop commands.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
 
@@ -1050,7 +1050,7 @@ class CpoStopWebhookViewSet(WebhookViewSet):
 
 class InvoiceWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the OCPI Connector where to send the invoicing lines (Charge Detail Records).
+    You need to tell the system where to send the invoicing lines (Charge Detail Records).
 
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
@@ -1085,9 +1085,9 @@ class ChargePointOperatorAPIView(routers.APIRootView):
     > These streamlined interfaces provide the necessary tools for quickly but comprehensively connecting
     > a CPO backend to eMSPs and roaming hubs.
 
-    **ADMIN UI**: All the objects in the OCPI Connector are available for browsing
+    **ADMIN UI**: All the objects in the system are available for browsing
     and selective modification in the admin tools.
-    It also provides tools for maintaining users, groups and their access to the OCPI Connector.
+    It also provides tools for maintaining users, groups and their access to the system.
 
     For more details, click the links below and you will find the step-by-step technical documentation.
 

@@ -1,4 +1,4 @@
-Installing a new OCPI Connector instance on Heroku
+Installing a new instance on Heroku
 
 - Add staging app
 - Set HOSTNAME environment variable to full domain name (etc. "abc.ocpiconnector.com")

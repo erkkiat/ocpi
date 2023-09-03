@@ -163,7 +163,7 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
                              f'with authorization {session.authorization_reference}', request=request)
                 messages.success(request, mark_safe(f'This Token, <b>{token}</b> has been authorized '
                                                     f'earlier by MSP {session.billed_to} and the '
-                                                    f'authorization was cached in the OCPI Connector.'))
+                                                    f'authorization was cached in the system.'))
                 if not session.authorization_reference:
                     raise ValueError(f'Session {session.uid} is missing authorization_reference')
                 return TokenAuthorization(

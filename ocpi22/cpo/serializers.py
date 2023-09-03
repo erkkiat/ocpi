@@ -242,7 +242,7 @@ class AuthorizationSerializer(serializers.Serializer):
 
 class MeterValuesSerializer(serializers.Serializer):
     """
-    The session start and end time are recorded by the OCPI Connector
+    The session start and end time are recorded by the system
     """
     session_id = SessionIdSerializer(
         source='session', required=False,

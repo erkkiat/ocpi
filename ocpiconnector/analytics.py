@@ -45,7 +45,7 @@ def send_session_update_to_analytics(session: Session):
             # "purchase_price": 6.00,
             # "purchase_price_wo_vat": 5.00,
             # "purchase_currency": "EUR",
-            "source_system": "ChargerHub OCPI Connector"
+            "source_system": "SolidRoam Roaming Module"
     }
 
     # ic(data)

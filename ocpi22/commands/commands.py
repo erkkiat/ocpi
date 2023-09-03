@@ -593,9 +593,9 @@ def send_reserve_command(request, location: Location, evse: Evse, token: Union[T
         )
         serializer = ReserveNowSerializer(data=data)
         if not serializer.is_valid():
-            logging.error('Malformed outbound data in send_reserve_command() (OCPI Connector bug)')
+            logging.error('Malformed outbound data in send_reserve_command() (system bug)')
             logging.error(serializer.errors)
-            raise ValidationError('Malformed outbound data (OCPI Connector bug)')
+            raise ValidationError('Malformed outbound data (system bug)')
         return ocpi_post(urljoin(f'{route.url}/', 'RESERVE_NOW'), route.token_base64,
                          to=Party(country_code, party_id),
                          sender=get_our_party(OcpiRolesEnum.EMSP),

@@ -38,6 +38,7 @@ class Singleton(type):
 class OCPIIdentities(metaclass=Singleton):
     """
     Store the identities of this OCPI Platform in list and dict form for convenient access
+    These tests rely on data in environment variables
 
     >>> ocpi_identities['CPO']
     'FI*CPO'
@@ -123,6 +124,8 @@ if len(ocpi_identities) > 1 and not settings.TEST:
 @cached(cache=dict())
 def get_identity(role: str = None, identities=ocpi_identities) -> str:
     """
+    These tests rely on data in environment variables
+
     >>> get_identity('EMSP')
     'FI*MSP'
     >>> get_identity('CPO')
@@ -142,6 +145,8 @@ def get_identity(role: str = None, identities=ocpi_identities) -> str:
 @cached(cache=dict())
 def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     """
+    These tests rely on data in environment variables
+
     >>> get_our_country_code('CPO')
     'FI'
     >>> get_our_country_code('EMSP')
@@ -156,6 +161,8 @@ def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
 @cached(cache=dict())
 def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
     """
+    These tests rely on data in environment variables
+
     >>> get_our_party_id('CPO')
     'CPO'
     >>> get_our_party_id('EMSP')
@@ -173,6 +180,8 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
 @cached(cache=dict())
 def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Party:
     """
+    These tests rely on data in environment variables
+
     >>> get_our_party(OcpiRolesEnum.CPO)
     Party(country_code='FI', party_id='CPO')
     >>> get_our_party(OcpiRolesEnum.EMSP)
@@ -201,6 +210,8 @@ def create_credentialsrole(party: Party, business_name, website, role, credentia
 @cached(cache=dict())
 def get_our_credentialsrole(role: OcpiRolesEnum):
     """
+    These tests rely on data in environment variables
+
     >>> get_our_credentialsrole(OcpiRolesEnum.CPO)
     <CredentialsRole: FI*CPO (CPO)>
     >>> get_our_credentialsrole(OcpiRolesEnum.EMSP)
