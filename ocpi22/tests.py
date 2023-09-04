@@ -1677,7 +1677,7 @@ class TestRouting(TestCase):
             'response_url': 'http://localhost/ocpi/hub/2.2/commands/1234'
         }
         credentials = Credentials.objects.get(pk=2)
-        sender = Party('FI', 'NAP')
+        sender = Party('FI', 'MSP')
 
         def fake_get_response(_request):
             # We want to know when this gets called
@@ -1693,49 +1693,55 @@ class TestRouting(TestCase):
         )
 
         for testcase in test_cases:
+            with self.subTest(testcase.get('label')):
 
-            # Todo: with self.subTest(testcase)
-            mock_request.reset_mock()
-            routing = testcase.get('routing', True)
-            mock_is_our_identifier.return_value = testcase.get('this_is_us')
-            to = testcase.get('party')
-            if to is None:  # Let empty Party through
-                to = Party('FI', 'CPO')
-            headers = make_headers(testcase.get('token', credentials.ours_base64()), to, sender)
-            request = api_factory.post(url, **headers)
-            request.data = json.dumps(data)
-            request.credentials = credentials
+                # Todo: with self.subTest(testcase)
+                mock_request.reset_mock()
+                routing = testcase.get('routing', True)
+                mock_is_our_identifier.return_value = testcase.get('this_is_us')
+                to = testcase.get('party')
+                if to is None:  # Let empty Party through
+                    to = Party('FI', 'CPO')
+                headers = make_headers(testcase.get('token', credentials.ours_base64()), to, sender)
+                request = api_factory.post(url, **headers)
 
-            middleware = OCPIHubMiddleware(fake_get_response)
-            response = middleware(request)
-            self.assertEqual(response.status_code, testcase.get('result'),
-                             f'Unexpected result for case "{testcase.get("label")}"')
+                # Combine META with headers, since both might be used in tests
+                request.headers = request.META | headers
+                request.META = request.headers
 
-            if response.status_code < 300:
-                # Check that hub middleware passes the request forward only when routing has not been requested
-                self.assertTrue(routing or self.get_response_called,
-                                'Seems that routing does not happen when it should, or happens when it should not')
-                self.get_response_called = False
+                request.data = json.dumps(data)
+                request.credentials = credentials
 
-                if testcase.get('routing'):
-                    # Let's check that routing has been done
-                    args, kwargs = mock_request.call_args
-                    # ic(args, kwargs)
-                    self.assertDictEqual(
-                        kwargs,
-                        {'data': '{"message": "This is a message routing test"}',
-                         'headers': {'Authorization': 'Token dGhlaXJzLTk=',
-                                     'OCPI-from-country-code': sender.country_code,
-                                     'OCPI-from-party-id': sender.party_id,
-                                     'OCPI-to-country-code': to.country_code,
-                                     'OCPI-to-party-id': to.party_id,
-                                     'content-type': 'application/json'},
-                         'method': 'POST',
-                         'url': 'http://localhost:9002/ocpi/cpo-fi/2.2/commands/START_SESSION'},
-                        f'The routed hub message is not as expected'
-                    )
-                    self.assertJSONEqual(response.content, {'message': 'Hello from the other side'},
-                                         'Hub routed message response is not as expected')
+                middleware = OCPIHubMiddleware(fake_get_response)
+                response = middleware(request)
+                self.assertEqual(response.status_code, testcase.get('result'),
+                                 f'Unexpected result for case "{testcase.get("label")}"')
+
+                if response.status_code < 300:
+                    # Check that hub middleware passes the request forward only when routing has not been requested
+                    self.assertTrue(routing or self.get_response_called,
+                                    'Seems that routing does not happen when it should, or happens when it should not')
+                    self.get_response_called = False
+
+                    if testcase.get('routing'):
+                        # Let's check that routing has been done
+                        args, kwargs = mock_request.call_args
+                        # ic(args, kwargs)
+                        self.assertDictEqual(
+                            kwargs,
+                            {'data': '{"message": "This is a message routing test"}',
+                             'headers': {'Authorization': 'Token dGhlaXJzLTk=',
+                                         'OCPI-from-country-code': sender.country_code,
+                                         'OCPI-from-party-id': sender.party_id,
+                                         'OCPI-to-country-code': to.country_code,
+                                         'OCPI-to-party-id': to.party_id,
+                                         'content-type': 'application/json'},
+                             'method': 'POST',
+                             'url': 'http://localhost:9002/ocpi/cpo-fi/2.2/commands/START_SESSION'},
+                            f'The routed hub message is not as expected'
+                        )
+                        self.assertJSONEqual(response.content, {'message': 'Hello from the other side'},
+                                             'Hub routed message response is not as expected')
 
 
 class TestSession(TestCase):
@@ -1861,8 +1867,8 @@ class TestCpoApi(TestCase):
                     evse_id='NON-EXISTENT-EVSE',
                     status='AVAILABLE',
                 ),
-                response={'status_text': 'EVSE with ID NON-EXISTENT-EVSE does not exist in the OCPI '
-                                    'Connector database for party FI*CPO'},
+                response={'status_text': 'EVSE with ID NON-EXISTENT-EVSE does not exist in the system '
+                                         'database for party FI*CPO'},
                 status_code=404
             ),
         )
@@ -2956,8 +2962,12 @@ class TestMspUserApi(TestCase):
 
         # Try to put a duplicate CDR
 
-        with self.assertRaises(ValidationError):
-            response = post_cdr(CdrMessages.test_transactions_rfid)
+        response = post_cdr(CdrMessages.test_transactions_rfid)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                         'A duplicate CDR PUT is expected to fail')
+        msg = response.data.get('status_message')
+        self.assertTrue('already exists' in msg,
+                        f'A duplicate CDR PUT is expected to fail: {msg}')
 
     def test_cdrs_and_transactions2(self):
         # Charge using the mobile app and an APP_TOKEN

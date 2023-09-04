@@ -1,7 +1,9 @@
 import doctest
+import sys
 from collections import OrderedDict
 from datetime import datetime, timedelta
 from decimal import Decimal
+from functools import wraps
 from unittest.mock import patch
 
 import geopy
@@ -92,7 +94,7 @@ class TestQuickLocations(TestCase):
                                  'time_zone': 'Europe/Sofia', 'latitude': 42.6975216, 'longitude': 23.3191493
                              },
                              'Updated Location data differs from expected')
-        except (geopy.exc.GeocoderUnavailable, ConnectTimeoutError):
+        except (geopy.exc.GeocoderUnavailable, geopy.exc.GeocoderServiceError, ConnectTimeoutError):
             self.skipTest('Geocoder is unavailable')
 
     def test_quick_location_with_evses_and_connectors(self):
