@@ -864,7 +864,6 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         You'll need the command_id in the URL, so you must use the exact response_url you get when
         the system calls your start_transaction callback.
 
-
         ## Status codes
 
         * `HTTP_200_OK` when the call was succesful

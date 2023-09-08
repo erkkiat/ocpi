@@ -14,7 +14,6 @@ from ocpi22.msp.map import MapViewSet
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import OCPIRouter, \
     CredentialsViewSet, RootRouter, ClientInfoViewSet
-from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.cpo.api import CPORouter, ChargePointViewSet, LocationQuickViewSet, CpoStartWebhookViewSet, \
     CpoStopWebhookViewSet, CpoReserveNowWebhookViewSet, InvoiceWebhookViewSet
 
@@ -29,7 +28,6 @@ from settlement.views import InvoiceReportViews
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
 ocpi_router.register(r'hubclientinfo', ClientInfoViewSet, basename='clientinfo')
-ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
 
 cpo_router = CPORouter()
 cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
@@ -81,9 +79,10 @@ urlpatterns = [
     path('', home),
     path('', include(root_router.urls), name='root-view'),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
-    path('ocpi/<str:version>/locations/', include('ocpi22.locations.urls')),
+    path('ocpi/<str:version>/', include('ocpi22.locations.urls')),
     path('ocpi/<str:version>/', include('ocpi22.ocpi.urls')),
-    re_path(r'^ocpi/(?P<version>[1-2\.]+?)/', include(ocpi_router.urls), name='ocpi-22-root'),
+    path('ocpi/<str:version>/', include('ocpi22.commands.urls')),
+    path('ocpi/<str:version>/', include(ocpi_router.urls), name='ocpi-22-root'),
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),
     path('api/msp/v1/', include(msp_router.urls), name='msp-interface'),
     path('ocpi/', include(common_router.urls)),

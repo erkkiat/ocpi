@@ -46,7 +46,7 @@ from ocpi22.msp.models import Authorization
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, TokenType, AuthorizationEnum
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, TokenType
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
@@ -67,7 +67,7 @@ from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
     accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, \
-    RfidTestData, accept_authorization_msp, evse_inoperative_response, authorization_success
+    RfidTestData, accept_authorization_msp, SessionCommandsData
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -911,7 +911,7 @@ class CommandTests(TestCase):
                'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
                'callback-session_url': 'http://localhost/session/{uid}/',
            }.get(x))
-    @patch('ocpi22.commands.commands.requests.post')
+    @patch('ocpi22.webhooks.requests.post')
     def test_start_stop_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
@@ -953,7 +953,7 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
-        self.assertTrue(compare_dicts_recursively(response.data, evse_inoperative_response),
+        self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.evse_inoperative_response),
                         'Expecting different response for start_session')
 
         # Let's pretend to be the CPO and all is good
@@ -967,23 +967,7 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
-        self.assertDictEqual(
-            kwargs,
-            {'auth': ('john', 'his-password'),
-             'headers': {'content-type': 'application/json'},
-             'json': {'auth_method': 'COMMAND',
-                      'authorization_reference': 'e86baa82cee14ac5bfd00b85371aa798',
-                      'from_party': 'FI*MSP',
-                      'billed_to': 'FI*EON',
-                      'connector_id': None,
-                      'evse_id': 'HELSINKI-3',
-                      'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result.e86baa82cee14ac5bfd00b85371aa798',
-                      'token_id': 'FI*001*T*ADMIN*TOKEN',
-                      'token_type': 'OTHER'},
-             'timeout': 10,
-             'url': 'http://fakehost/start/HELSINKI-3/',
-             'verify': False}
-        )
+        self.assertDictEqual(kwargs, SessionCommandsData.start_webhook)
 
         # Let's guess the new Session
         session = Session.objects.all().first()
@@ -1012,83 +996,17 @@ class CommandTests(TestCase):
         uuid4_mock.return_value = mock_uuid4(99)
 
         data = dict(session_id=session.uid, response_url='http://localhost.local/response/')
-        response = stop_session(data, AnonymousUser)
-        self.assertEqual(response.status_code, status.HTTP_200_OK, 'Stop session was expected to succeed')
-        self.assertTrue(
-            compare_dicts_recursively(response.data, {'data': {'result': 'ACCEPTED', 'timeout': 60,
-                                                               'message': [{'language': 'EN',
-                                                                            'text': 'Stopping charging session'},
-                                                                           {'language': 'NL',
-                                                                            'text': 'Oplaadsessie stoppen'},
-                                                                           {'language': 'FR',
-                                                                            'text': 'Arrêt de la session de charge'},
-                                                                           {'language': 'DE',
-                                                                            'text': 'Beenden der Ladesitzung'},
-                                                                           {'language': 'ES',
-                                                                            'text': 'Deteniendo la sesión de carga'},
-                                                                           {'language': 'IT',
-                                                                            'text': 'Interruzione della sessione di ricarica'},
-                                                                           {'language': 'PT',
-                                                                            'text': 'Parando a sessão de carregamento'},
-                                                                           {'language': 'LB',
-                                                                            'text': 'Opluedsession stoppen'},
-                                                                           {'language': 'CY',
-                                                                            'text': "Rhoi'r gorau i sesiwn codi tâl"},
-                                                                           {'language': 'GA',
-                                                                            'text': 'Seisiún luchtaithe a stopadh'},
-                                                                           {'language': 'BE',
-                                                                            'text': 'Спыненне сеансу зарадкі'},
-                                                                           {'language': 'BG',
-                                                                            'text': 'Спиране на сесията на зареждане'},
-                                                                           {'language': 'RO',
-                                                                            'text': 'Oprirea sesiunii de încărcare'},
-                                                                           {'language': 'BS',
-                                                                            'text': 'Zaustavljanje sesije punjenja'},
-                                                                           {'language': 'MK',
-                                                                            'text': 'Запирање на сесијата за полнење'},
-                                                                           {'language': 'SQ',
-                                                                            'text': 'Ndalimi i seancës së karikimit'},
-                                                                           {'language': 'SR',
-                                                                            'text': 'Заустављање сесије пуњења'},
-                                                                           {'language': 'TR',
-                                                                            'text': 'Şarj oturumunu durdurma'},
-                                                                           {'language': 'UK',
-                                                                            'text': 'Припинення сеансу зарядки'},
-                                                                           {'language': 'EL',
-                                                                            'text': 'Διακοπή περιόδου λειτουργίας φόρτισης'},
-                                                                           {'language': 'PL',
-                                                                            'text': 'Zatrzymywanie sesji ładowania'},
-                                                                           {'language': 'HU',
-                                                                            'text': 'A töltési munkamenet leállítása'},
-                                                                           {'language': 'CS',
-                                                                            'text': 'Zastavení nabíjecí relace'},
-                                                                           {'language': 'SK',
-                                                                            'text': 'Zastavuje sa relácia nabíjania'},
-                                                                           {'language': 'SL',
-                                                                            'text': 'Ustavitev seje polnjenja'},
-                                                                           {'language': 'FI',
-                                                                            'text': 'Latausistuntoa lopetellaan'},
-                                                                           {'language': 'NN',
-                                                                            'text': 'Stopper ladeøkten'},
-                                                                           {'language': 'DA',
-                                                                            'text': 'Stopper opladningssession'},
-                                                                           {'language': 'SV',
-                                                                            'text': 'Stoppar laddningssessionen'},
-                                                                           {'language': 'IS',
-                                                                            'text': 'Stöðvar hleðslulotu'},
-                                                                           {'language': 'ET',
-                                                                            'text': 'Laadimisseansi peatamine'},
-                                                                           {'language': 'LT',
-                                                                            'text': 'Sustabdoma įkrovimo sesija'},
-                                                                           {'language': 'LV',
-                                                                            'text': 'Uzlādes sesijas pārtraukšana'},
-                                                                           {'language': 'AF',
-                                                                            'text': 'Stop laaisessie'}]
-                                                               },
-                                                      'status_code': 1000,
-                                                      'status_message': 'Success',
-                                                      'timestamp': '2022-01-01T12:00:00Z'})
-        )
+
+        with patch('ocpi22.commands.commands.generate_random_token') as mock_generate_random_token:
+            mock_generate_random_token.return_value = 'COMMAND_ID'
+            response = stop_session(data, AnonymousUser)
+
+        calls = requests_post_mock.call_args_list
+        requests_post_mock.assert_called_once()
+        self.assertTrue(compare_dicts_recursively(calls[0].kwargs, SessionCommandsData.stop_webhook))
+        self.assertEqual(response.status_code, status.HTTP_200_OK,
+                         f'Stop session was expected to succeed: response.data')
+        self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.stop_success))
 
     @time_machine.travel(faketime, tick=False)
     # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
@@ -1101,7 +1019,7 @@ class CommandTests(TestCase):
                'callback-reserve_now_url': 'http://john:his-password@fakehost/reserve/{location_id}/{evse_id}/',
                'callback-session_url': 'http://localhost/session/{uid}/',
            }.get(x, 'http://localhost/fallback/'))
-    # @patch('ocpi22.commands.commands.requests.post')
+    # @patch('ocpi22.webhooks.requests.post')
     @patch('ocpi22.webhooks.requests.post')
     def test_reserve_now(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-reserve-now')
@@ -1147,7 +1065,7 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
-        self.assertTrue(compare_dicts_recursively(response.data, evse_inoperative_response),
+        self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.evse_inoperative_response),
                         'Expecting a different response for a reservation')
 
         # Let's pretend to be the CPO and all is good
@@ -2164,7 +2082,7 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.util.redis_store.set', return_value=True)
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
-    @patch('ocpi22.commands.commands.requests.post')
+    @patch('ocpi22.webhooks.requests.post')
     @patch('ocpi22.webhooks.requests.post')
     def test_adhoc_token(self,
                          _webhook_post_mock: Mock,
@@ -2253,7 +2171,8 @@ class TestCpoApi(TestCase):
 
         self.assertEqual(cpo_response.status_code, 200,
                          'Token should be authorized')
-        self.assertDictEqual(cpo_response.data, authorization_success, 'Expecting authorization to succeed')
+        self.assertTrue(compare_dicts_recursively(cpo_response.data, SessionCommandsData.authorization_success),
+                        'Expecting authorization to succeed')
 
         #
         # Start session based on authorization from eMSP Command
@@ -2588,7 +2507,7 @@ class TestMspApi(TestCase):
     @time_machine.travel(faketime, tick=True)
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=mock_uuid4())
-    @patch('ocpi22.commands.commands.requests.post',
+    @patch('ocpi22.webhooks.requests.post',
            return_value=FakeResponse(200, accepted_result)
            )
     @patch('ocpi22.webhooks.requests.post')
@@ -2715,7 +2634,7 @@ class TestMspApi(TestCase):
     # @time_machine.travel(faketime, tick=True)
     # @patch('ocpi22.ocpi.util.uuid.uuid4',
     #        return_value=mock_uuid4())
-    # @patch('ocpi22.commands.commands.requests.post',
+    # @patch('ocpi22.webhooks.requests.post',
     #        return_value=FakeResponse(200, accepted_result)
     #        )
     # @patch('ocpi22.webhooks.requests.post')
@@ -2785,7 +2704,8 @@ def start_session(data, user):
 
 
 def stop_session(data, user):
-    request = api_factory.post(reverse('commands-stop-session'))
+    request = api_factory.post(reverse('commands-stop-session'),
+                               **{'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'EON'})
     request.data = data
     request.user = user
     request.credentials = Credentials.objects.first()
