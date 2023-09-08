@@ -209,7 +209,7 @@ class ApiPutTests(TestCase):
         self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
 
     def test_location_by_id(self):
-        url = reverse('location',
+        url = reverse('location-by-id',
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
 
         request = api_factory.get(url)
@@ -666,7 +666,7 @@ class ApiPutTests(TestCase):
         })
 
     def test_ocpi(self):
-        url = reverse('location',
+        url = reverse('location-by-id',
                       args=[self.location.country_code, self.location.party_id, self.location.uid])
 
         request = api_factory.get(url)

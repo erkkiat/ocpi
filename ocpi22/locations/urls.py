@@ -8,7 +8,7 @@ urlpatterns = [
          name='location-list'),
     path('<str:country_code>/<str:party_id>/<str:uid>',
          LocationViewSet.as_view({'get': 'get', 'put': 'put', 'patch': 'patch'}),
-         name='location'),
+         name='location-by-id'),
     path('<str:country_code>/<str:party_id>/<str:uid>/<str:evse_uid>',
          EvseViewSet.as_view({'get': 'get', 'put': 'put', 'patch': 'patch'}),
          name='location-by-evse-id'),

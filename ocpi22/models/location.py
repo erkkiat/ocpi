@@ -219,7 +219,7 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self, version=None):
-        return util.reverse('location', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return util.reverse('location-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
 
     def get_admin_url(self):
         return build_absolute_uri(util.reverse('admin:ocpi22_location_change', args=(self.pk,)))
