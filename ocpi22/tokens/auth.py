@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 import celery
 import requests
 from celery.result import GroupResult
@@ -235,8 +237,9 @@ def do_authorization(token: Union[Token, str], location: Location, route: Route,
     if isinstance(token, Token):
         to = to or token.get_party()
         token = token.uid
+    url = urljoin(route.url, f'{token}/authorize')
     result = ocpi_post(
-        f'{route.url}/{token}/authorize',
+        url=url,
         token_base64=route.token_base64,
         to=to,
         sender=get_our_party(OcpiRolesEnum.CPO),

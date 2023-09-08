@@ -1,5 +1,3 @@
-import os
-
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
@@ -8,45 +6,32 @@ from django.urls import path, re_path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
-from rest_framework.documentation import include_docs_urls
 
 from cars.views import CarsViewSet
 from ocpi22 import msp, views
-# from ocpi22.cpo.reports import ChargingSessionsReport
 from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.msp.map import MapViewSet
 from ocpi22.msp.user import UserViewSet
-from ocpi22.ocpi.api import OCPIRouter, TokenViewSet, TariffViewSet, SessionViewSet, CdrViewSet, \
+from ocpi22.ocpi.api import OCPIRouter, \
     CredentialsViewSet, RootRouter, ClientInfoViewSet
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.cpo.api import CPORouter, ChargePointViewSet, LocationQuickViewSet, CpoStartWebhookViewSet, \
     CpoStopWebhookViewSet, CpoReserveNowWebhookViewSet, InvoiceWebhookViewSet
-from ocpi22.hub import CommandsHubViewSet
 
-from ocpi22.locations.location import LocationViewSet
 from ocpi22.models.credentials import new_connection
 from ocpi22.msp.api import MSPRouter, MspRoamingViewSet, MspTokenViewSet, MspAuthorizeWebhookViewSet, \
     MspTariffQuickViewSet, MspChargePointStatusWebhookViewSet, MspSessionWebhookViewSet, MspInvoiceWebhookViewSet
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
-from ocpi22.views import home, admin_index, set_language
-from ocpiconnector.ocpi_identities import ocpi_platform
+from ocpi22.views import home, set_language
 from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
 ocpi_router.register(r'hubclientinfo', ClientInfoViewSet, basename='clientinfo')
-ocpi_router.register(r'tokens', TokenViewSet)
-ocpi_router.register(r'locations', LocationViewSet, basename='location')
-ocpi_router.register(r'tariffs', TariffViewSet, basename='tariff')
-ocpi_router.register(r'sessions', SessionViewSet)
-ocpi_router.register(r'cdrs', CdrViewSet, basename='cdr')
 ocpi_router.register(r'commands', CommandsViewSet, basename='commands')
 
 cpo_router = CPORouter()
-# cpo_router.register(r'evses', CpoEvseViewSet, basename='cpo-evse')
-# cpo_router.register(r'cdrs', CpoCdrViewSet)
-# cpo_router.register(r'session', CpoSessionViewSet, basename='session')
 cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
 cpo_router.register(r'tariff/quick', TariffQuickViewSet, basename='quick-tariff')
 cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
@@ -75,7 +60,6 @@ root_router = RootRouter()
 common_router = BaseRouter()
 common_router.register(r'', VersionsViewSet, basename='base')
 
-# urlpatterns = i18n_patterns(
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -90,13 +74,15 @@ schema_view = get_schema_view(
    permission_classes=[permissions.DjangoObjectPermissions],
 )
 
+# urlpatterns = i18n_patterns(
 urlpatterns = [
     path('18n/', include('django.conf.urls.i18n')),
     path('lang/', set_language, name='admin_set_language'),
     path('', home),
     path('', include(root_router.urls), name='root-view'),
-    # path('reports/cpo/sessions/', ChargingSessionsReport.as_view()),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
+    path('ocpi/<str:version>/locations/', include('ocpi22.locations.urls')),
+    path('ocpi/<str:version>/', include('ocpi22.ocpi.urls')),
     re_path(r'^ocpi/(?P<version>[1-2\.]+?)/', include(ocpi_router.urls), name='ocpi-22-root'),
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),
     path('api/msp/v1/', include(msp_router.urls), name='msp-interface'),
@@ -113,5 +99,3 @@ urlpatterns = [
 
 if settings.SERVE_STATIC_FILES or settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()
-    # urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    # ic(urlpatterns)

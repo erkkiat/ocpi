@@ -156,9 +156,14 @@ def send_ocpi_request(data, url: str, token_base64: str,
             # ic(result.data, result.json())
             sentry_sdk.set_context('result', result.json())
 
+        try:
+            result_json = result.json()
+        except requests.exceptions.JSONDecodeError as e:
+            ic(result.text)
+            result_json = dict()
         return dict(
             status_code=result.status_code,
-            json=result.json() if result.status_code < 300 else '',
+            json=result_json,
             headers=dict(result.headers) if result.headers else {},
             sender=dict(country_code=to_country_code, party_id=to_party_id),
         )

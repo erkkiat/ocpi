@@ -19,6 +19,7 @@ class OcpiRolesEnum(Enum):
     NSP = 'NSP'
     OTHER = 'OTHER'
     SCSP = 'SCSP'
+    UNKNO = 'UNKNO'
 
     def __eq__(self, other):
         if isinstance(other, OcpiRolesEnum):
@@ -46,6 +47,7 @@ ROLE_CHOICES = (
     ('NSP', 'Navigation Service Provider'),
     ('OTHER', 'Other'),
     ('SCSP', 'Smart Charging Service Provider'),
+    ('UNKNO', 'Unknown'),  # This applies to parties behind a hub (NOT an OCPI specified role, just internal for us)
 )
 
 VERSION_CHOICES = (

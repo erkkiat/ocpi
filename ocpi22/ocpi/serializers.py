@@ -103,7 +103,7 @@ class MaxPriceSerializer(SerializerCleanedUp):
 class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Tariff
-        exclude = ['updated', 'created', 'uid', 'archived']
+        exclude = ['updated', 'created', 'uid', 'archived', 'ocpi_master']
 
     country_code = CountryCodeField()
     party_id = PartyIdField()
@@ -384,7 +384,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         session = Session.objects.create(
             credentials=request.credentials,
             billed_to=None,  # If we are CPO, we fill the billed_to elsewhere and MSP doesn't use it
-            ocpi_master=request.ocpi_party,
+            # ocpi_master=request.ocpi_party,
             **validated_data
         )
         for chargingperiod in chargingperiods:

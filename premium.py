@@ -1,4 +1,5 @@
 import os
+from functools import wraps
 
 from django.conf import settings
 from django.utils.safestring import mark_safe
@@ -21,6 +22,7 @@ def premium_message(request):
 
 
 def requires_premium(func):
+    @wraps(func)
     def check_premium(self, request, *args, **kwargs):
         if not settings.PREMIUM:
             premium_message(request)

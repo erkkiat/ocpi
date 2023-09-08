@@ -73,7 +73,7 @@ ocpi_endpoints_response = {
 }
 
 expected_get_responses = {
-    'http://localhost:8001/ocpi/2.2.1/tariffs?limit=3':
+    'http://localhost:8001/ocpi/2.2.1/tariffs/?limit=3':
         {'data': [{'country_code': 'FI',
                    'currency': 'EUR',
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tariffs/FI/000/T2',
@@ -110,7 +110,7 @@ expected_get_responses = {
          'status_code': 1000,
          'timestamp': '2022-01-01T12:00:00'},
 
-    'http://testserver/ocpi/2.2.1/tariffs?limit=3&offset=3':
+    'http://testserver/ocpi/2.2.1/tariffs/?limit=3&offset=3':
         {'data': [{'country_code': 'FI',
                    'currency': 'EUR',
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tariffs/FI/000/TTYPE2',
@@ -145,7 +145,7 @@ expected_get_responses = {
          'status_code': 1000,
          'timestamp': '2022-01-01T12:00:00'},
 
-    'http://localhost:8001/ocpi/2.2.1/tokens?limit=3':
+    'http://localhost:8001/ocpi/2.2.1/tokens/?limit=3':
         {'data': [{'contract_id': 'CONTRACT3',
                    'country_code': 'FI',
                    'default_profile_type': 'FAST',
@@ -183,7 +183,7 @@ expected_get_responses = {
          'status_code': 1000,
          'timestamp': '2022-01-01T12:00:00'},
 
-    'http://testserver/ocpi/2.2.1/tokens?limit=3&offset=3':
+    'http://testserver/ocpi/2.2.1/tokens/?limit=3&offset=3':
         {'data': [{'contract_id': 'INTERNAL 1',
                    'country_code': 'FI',
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/001/FI*001*T*ADMIN*TOKEN',
@@ -224,7 +224,7 @@ expected_get_responses = {
          'status_code': 1000,
          'timestamp': '2022-01-01T12:00:00'},
 
-    'http://localhost:8001/ocpi/2.2.1/locations?limit=3':
+    'http://localhost:8001/ocpi/2.2.1/locations/?limit=3':
         dict([('data',
                [{'address': 'Warsawskaya 1',
                  'city': 'Warsaw',
@@ -342,7 +342,7 @@ expected_get_responses = {
               ('status_code', 1000),
               ('timestamp', '2022-01-01T12:00:00')]),
 
-    'http://testserver/ocpi/2.2.1/locations?limit=3&offset=3':
+    'http://testserver/ocpi/2.2.1/locations/?limit=3&offset=3':
         dict([('data',
                [{'address': 'Vaasa 1',
                  'city': 'Vaasa',
@@ -477,7 +477,7 @@ expected_get_responses = {
               ('status_code', 1000),
               ('timestamp', '2022-01-01T12:00:00')]),
 
-    'http://testserver/ocpi/2.2.1/locations?limit=3&offset=6':
+    'http://testserver/ocpi/2.2.1/locations/?limit=3&offset=6':
         dict([('data',
                [{'address': 'Stockholm 1',
                  'city': 'Stockholm',
@@ -501,18 +501,18 @@ expected_get_responses = {
 }
 
 expected_get_headers = {
-    'http://localhost:8001/ocpi/2.2.1/tariffs?limit=3':
+    'http://localhost:8001/ocpi/2.2.1/tariffs/?limit=3':
         {'Allow': 'GET, PUT, DELETE, HEAD, OPTIONS',
          'Content-Length': '835',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
-         'Link': '<http://testserver/ocpi/2.2.1/tariffs?limit=3&offset=3; '
+         'Link': '<http://testserver/ocpi/2.2.1/tariffs/?limit=3&offset=3; '
                  'rel="next">',
          'Vary': 'Accept, Accept-Language, Cookie, origin',
          'X-Frame-Options': 'DENY',
          'X-Limit': '50',
          'X-Total-Count': '6'},
-    'http://testserver/ocpi/2.2.1/tariffs?limit=3&offset=3':
+    'http://testserver/ocpi/2.2.1/tariffs/?limit=3&offset=3':
         {'Allow': 'GET, PUT, DELETE, HEAD, OPTIONS',
          'Content-Length': '756',
          'Content-Language': 'en',
@@ -521,17 +521,17 @@ expected_get_headers = {
          'X-Frame-Options': 'DENY',
          'X-Limit': '50',
          'X-Total-Count': '6'},
-    'http://localhost:8001/ocpi/2.2.1/tokens?limit=3':
+    'http://localhost:8001/ocpi/2.2.1/tokens/?limit=3':
         {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '894',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
-         'Link': '<http://testserver/ocpi/2.2.1/tokens?limit=3&offset=3; rel="next">',
+         'Link': '<http://testserver/ocpi/2.2.1/tokens/?limit=3&offset=3; rel="next">',
          'Vary': 'Accept, Accept-Language, Cookie, origin',
          'X-Frame-Options': 'DENY',
          'X-Limit': '50',
          'X-Total-Count': '6'},
-    'http://testserver/ocpi/2.2.1/tokens?limit=3&offset=3':
+    'http://testserver/ocpi/2.2.1/tokens/?limit=3&offset=3':
         {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '1100',
          'Content-Language': 'en',
@@ -540,30 +540,30 @@ expected_get_headers = {
          'X-Frame-Options': 'DENY',
          'X-Limit': '50',
          'X-Total-Count': '6'},
-    'http://localhost:8001/ocpi/2.2.1/locations?limit=3':
-        {'Allow': 'GET, PUT, HEAD, OPTIONS',
+    'http://localhost:8001/ocpi/2.2.1/locations/?limit=3':
+        {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '3309',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
-         'Link': '<http://testserver/ocpi/2.2.1/locations?limit=3&offset=3; '
+         'Link': '<http://testserver/ocpi/2.2.1/locations/?limit=3&offset=3; '
                  'rel="next">',
          'Vary': 'Accept, Accept-Language, Cookie, origin',
          'X-Frame-Options': 'DENY',
          'X-Limit': '50',
          'X-Total-Count': '7'},
-    'http://testserver/ocpi/2.2.1/locations?limit=3&offset=3':
-        {'Allow': 'GET, PUT, HEAD, OPTIONS',
+    'http://testserver/ocpi/2.2.1/locations/?limit=3&offset=3':
+        {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '3885',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
-         'Link': '<http://testserver/ocpi/2.2.1/locations?limit=3&offset=6; '
+         'Link': '<http://testserver/ocpi/2.2.1/locations/?limit=3&offset=6; '
                  'rel="next">',
          'Vary': 'Accept, Accept-Language, Cookie, origin',
          'X-Frame-Options': 'DENY',
          'X-Limit': '50',
          'X-Total-Count': '7'},
-    'http://testserver/ocpi/2.2.1/locations?limit=3&offset=6':
-        {'Allow': 'GET, PUT, HEAD, OPTIONS',
+    'http://testserver/ocpi/2.2.1/locations/?limit=3&offset=6':
+        {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '558',
          'Content-Language': 'en',
          'Content-Type': 'application/json',
@@ -601,6 +601,21 @@ class ExpectedSessionUpdateResults:
                'total_cost': OrderedDict([('excl_vat', 1.0), ('incl_vat', 1.2)]),
                'id': '12345'}
 
+    webhook1 = {
+        'country_code': 'FI', 'party_id': 'CPO', 'uid': '12345', 'start_date_time': '2022-01-01T12:00:00Z',
+        'display_start_date': '1.1.2022', 'display_start_time': '12:00', 'kwh': 18.0, 'charging_periods': [OrderedDict(
+            [('start_date_time', '2019-06-23T08:16:02Z'), ('tariff', None), ('dimensions', [
+                OrderedDict([('type', 'ENERGY'), ('volume', '3000.0000')]),
+                OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '80.0000')])])])], 'total_time': '0.00',
+        'display_total_time': '0 s',
+        'cdr_token': OrderedDict([('uid', 'T1'), ('type', 'RFID'), ('contract_id', 'CONTRACT3')]),
+        'auth_method': 'AUTH_REQUEST', 'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
+        'location_id': 'WARSAW-1', 'evse_uid': '1', 'connector_id': '1', 'currency': 'EUR',
+        'total_cost': OrderedDict([('excl_vat', 1.0), ('incl_vat', 1.2)]), 'status': 'PENDING',
+        'display_status': 'Pending', 'last_updated': '2019-06-23T08:22:22Z'
+    }
+
+
     update2 = {  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/12345',
         'auth_method': 'AUTH_REQUEST',
         'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
@@ -633,6 +648,24 @@ class ExpectedSessionUpdateResults:
                'status': 'PENDING',
                'total_cost': OrderedDict([('excl_vat', 1.1), ('incl_vat', 1.3)]),
                'id': '12345'}
+
+    webhook2 = {
+        'country_code': 'FI', 'party_id': 'CPO', 'uid': '12345', 'start_date_time': '2022-01-01T12:00:00Z',
+        'display_start_date': '1.1.2022', 'display_start_time': '12:00', 'kwh': 20.0, 'charging_periods': [OrderedDict(
+            [('start_date_time', '2019-06-23T08:16:02Z'), ('tariff', None), ('dimensions', [
+                OrderedDict([('type', 'ENERGY'), ('volume', '3000.0000')]),
+                OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '80.0000')])])]), OrderedDict(
+            [('start_date_time', '2019-06-23T08:35:35Z'), ('tariff', None), ('dimensions', [
+                OrderedDict([('type', 'ENERGY'), ('volume', '4000.0000')]),
+                OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '90.0000')])])])], 'total_time': '0.00',
+        'display_total_time': '0 s',
+        'cdr_token': OrderedDict([('uid', 'T1'), ('type', 'RFID'), ('contract_id', 'CONTRACT3')]),
+        'auth_method': 'AUTH_REQUEST', 'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
+        'location_id': 'WARSAW-1', 'evse_uid': '1', 'connector_id': '1', 'currency': 'EUR',
+        'total_cost': OrderedDict([('excl_vat', 1.1), ('incl_vat', 1.3)]), 'status': 'PENDING',
+        'display_status': 'Pending', 'last_updated': '2019-06-23T08:35:34Z'
+    }
+
 
 
 class CdrMessages:
@@ -1056,22 +1089,37 @@ class SessionData:
                                           ('dimensions',
                                            [OrderedDict([('type', 'ENERGY'),
                                                          ('volume', '123.4500')]),
-                                                          OrderedDict([('type', 'STATE_OF_CHARGE'),
-                                                                       ('volume', '42.0000')]),
-                                                          OrderedDict([('type', 'POWER'),
-                                                                       ('volume', '150.0000')])])])],
-                      'connector_id': '1',
-                      'country_code': 'FI',
-                      'currency': 'EUR',
-                      'evse_uid': 'HELSINKI-3',
-                      'kwh': 123.45,
-                      'location_id': 'HELSINKI-1',
-                      'party_id': 'CPO',
-                      'start_date_time': '2022-01-01T12:00:00Z',
-                      'last_updated': '2022-01-01T12:00:00Z',
-                      'status': 'ACTIVE',
-                      'total_cost': OrderedDict([('excl_vat', 61.73), ('incl_vat', 76.54)]),
-                      'id': 'FI*CPO*S*MOCK-1'}
+                                            OrderedDict([('type', 'STATE_OF_CHARGE'),
+                                                         ('volume', '42.0000')]),
+                                            OrderedDict([('type', 'POWER'),
+                                                         ('volume', '150.0000')])])])],
+        'connector_id': '1',
+        'country_code': 'FI',
+        'currency': 'EUR',
+        'evse_uid': 'HELSINKI-3',
+        'kwh': 123.45,
+        'location_id': 'HELSINKI-1',
+        'party_id': 'CPO',
+        'start_date_time': '2022-01-01T12:00:00Z',
+        'last_updated': '2022-01-01T12:00:00Z',
+        'status': 'ACTIVE',
+        'total_cost': OrderedDict([('excl_vat', 61.73), ('incl_vat', 76.54)]),
+        'id': 'FI*CPO*S*MOCK-1'}
+
+    meter_values_1_webhook = {'country_code': 'FI', 'party_id': 'CPO', 'uid': 'FI*CPO*S*MOCK-1',
+                              'start_date_time': '2022-01-01T12:00:00Z', 'display_start_date': '1.1.2022',
+                              'display_start_time': '12:00', 'kwh': 123.45, 'charging_periods': [OrderedDict(
+            [('start_date_time', '2022-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
+                OrderedDict([('type', 'ENERGY'), ('volume', '123.4500')]),
+                OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '42.0000')]),
+                OrderedDict([('type', 'POWER'), ('volume', '150.0000')])])])], 'total_time': '0.00',
+                              'display_total_time': '0 s', 'cdr_token': OrderedDict(
+            [('uid', 'SOME-ADHOC-TOKEN'), ('type', 'AD_HOC_USER'), ('contract_id', 'INTERNAL')]),
+                              'auth_method': 'COMMAND', 'authorization_reference': 'FI*001-AUTH-REFERENCE',
+                              'location_id': 'HELSINKI-1', 'evse_uid': 'HELSINKI-3', 'connector_id': '1',
+                              'currency': 'EUR',
+                              'total_cost': OrderedDict([('excl_vat', 61.73), ('incl_vat', 76.54)]), 'status': 'ACTIVE',
+                              'display_status': 'Active', 'last_updated': '2022-01-01T12:00:00Z'}
 
     stop4 = {  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
         'auth_method': 'AUTH_REQUEST',

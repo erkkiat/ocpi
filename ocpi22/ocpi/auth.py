@@ -1,6 +1,7 @@
 import base64
 import binascii
 from functools import cache
+from typing import Optional
 
 from django.conf import settings
 from django.utils.functional import cached_property
@@ -8,8 +9,9 @@ from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.ocpi.util_party import get_sender_party
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.ocpi_identities import Party, create_credentialsrole
 from util import reverse
 
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -72,17 +74,33 @@ def check_auth_token(request, token: str) -> bool:
                 )
 
         if credentials:
-            request.ocpi_party = get_credentialsrole(request.credentials, get_sender_party(request.headers))
+            request.ocpi_party = get_credentialsrole(request.credentials, get_sender_party(request.headers), create=True)
+
         return True
 
     except (binascii.Error, UnicodeDecodeError) as e:
         raise NotAuthenticated(f'Authentication token: {e}')
 
 
-def get_credentialsrole(credentials: Credentials, party: Party) -> CredentialsRole:
+def get_credentialsrole(credentials: Optional[Credentials], party: Party, create=False) -> Optional[CredentialsRole]:
+    """
+    Find the CredentialsRole for the given party and credentials
+    If we received a message through a hub, we may not know the sender yet, so we need to create a CredentialsRole to
+    be able to process the message.
+
+    @param credentials: The sender's credentials, so we know which CredentialsRoles are allowed for them
+    @param party: Sender's party ID for choosing the CredentialsRole
+    @param create: Should we create the CredentialsRole if it doesn't exist yet?
+    @return: The selected or created CredentialsRole
+    """
     try:
-        return credentials.roles.get(country_code__iexact=party.country_code, party_id__iexact=party.party_id)
+        query = credentials.roles.all() if credentials else CredentialsRole.objects.all()
+        return query.filter(country_code__iexact=party.country_code, party_id__iexact=party.party_id).first()
     except CredentialsRole.DoesNotExist:
+        if create:
+            credentialsrole = create_credentialsrole(Party(country_code=party.country_code, party_id=party.party_id),
+                                                     business_name='N/A', website='', role=OcpiRolesEnum.OTHER)
+            return credentialsrole
         return None
 
 

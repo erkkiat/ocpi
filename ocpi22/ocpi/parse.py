@@ -8,16 +8,16 @@ from ocpi22.ocpi.dataclasses import OCPIUrlComponents
 @lru_cache(maxsize=100)
 def parse_ocpi_url(url: str) -> OCPIUrlComponents:
     """
-    >>> parse_ocpi_url('/ocpi//2.2.1/commands/START_SESSION?a=1')
-    OCPIUrlComponents(path='/ocpi//2.2.1/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION?a=1')
-    >>> parse_ocpi_url('/ocpi//2.2.1/commands/START_SESSION/')
-    OCPIUrlComponents(path='/ocpi//2.2.1/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION')
-    >>> parse_ocpi_url('/ocpi//2.2.1/tokens/EKI1/authorize')
-    OCPIUrlComponents(path='/ocpi//2.2.1/tokens', module=<OcpiModuleEnum.TOKENS: 'tokens'>, parameters='EKI1/authorize')
-    >>> parse_ocpi_url('/ocpi//2.2.1/locations?limit=5')
-    OCPIUrlComponents(path='/ocpi//2.2.1/locations', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
+    >>> parse_ocpi_url('/ocpi/2.2.1/commands/START_SESSION?a=1')
+    OCPIUrlComponents(path='/ocpi/2.2.1/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION?a=1')
+    >>> parse_ocpi_url('/ocpi/2.2.1/commands/START_SESSION/')
+    OCPIUrlComponents(path='/ocpi/2.2.1/commands', module=<OcpiModuleEnum.COMMANDS: 'commands'>, parameters='START_SESSION')
+    >>> parse_ocpi_url('/ocpi/2.2.1/tokens/EKI1/authorize')
+    OCPIUrlComponents(path='/ocpi/2.2.1/tokens/', module=<OcpiModuleEnum.TOKENS: 'tokens'>, parameters='EKI1/authorize')
+    >>> parse_ocpi_url('/ocpi/2.2.1/locations/?limit=5')
+    OCPIUrlComponents(path='/ocpi/2.2.1/locations/', module=<OcpiModuleEnum.LOCATIONS: 'locations'>, parameters='?limit=5')
     >>> parse_ocpi_url('/ocpi/2.2.1/sessions/FI/000/FI*000*S*54FED8A974E942A4BC82165D867')
-    OCPIUrlComponents(path='/ocpi/2.2.1/sessions', module=<OcpiModuleEnum.SESSIONS: 'sessions'>, parameters='')
+    OCPIUrlComponents(path='/ocpi/2.2.1/sessions/', module=<OcpiModuleEnum.SESSIONS: 'sessions'>, parameters='FI/000/FI*000*S*54FED8A974E942A4BC82165D867')
     """
     url = url.rstrip('/')
     path = ''

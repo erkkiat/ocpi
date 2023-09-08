@@ -1,7 +1,12 @@
 import json
 from collections import OrderedDict
 
+from django.contrib.auth.models import AnonymousUser
+from rest_framework.test import APIRequestFactory
+
 from django.conf import settings  # Do not remove if ic() is in use in this file
+
+from ocpi22.models.credentials import Credentials
 
 
 def compare_lists_recursively(received, expected, path='', label1='received', label2='expected') -> bool:
@@ -60,3 +65,22 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
     if not result:
         ic(received, expected)
     return result
+
+
+class OCPIAPIRequestFactory(APIRequestFactory):
+    def __init__(self, *args, credentials=None, credentialsrole=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.credentials = credentials
+        self.credentialsrole = credentialsrole
+
+    def request(self, **kwargs):
+        request = super().request(**kwargs)
+        request.version = '2.2.1'
+        request.user = AnonymousUser()
+        request.credentials = self.credentials or Credentials.objects.first()
+        assert request.credentials, 'No credentials found'
+        request.credentialsrole = self.credentialsrole or request.credentials.roles.first()
+        request.versioning_scheme = 'query_parameter'
+        request.versioning_namespace = None
+        request.versioning_query_param = 'version'
+        return request

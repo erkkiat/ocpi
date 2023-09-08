@@ -74,11 +74,16 @@ class OCPIVersion:
         return hash(self.pure_number)
 
 
-def reverse(s, args=[], request=None, version=None) -> str:
+def reverse(s, args=[], request=None, version=None, kwargs=None) -> str:
     version = OCPIVersion(version or request.version or '2.2.1' if request else '2.2.1')
-    version_args = [version, *args]
+    version_args = None
+    # Handle versioning wether args or kwargs is used (can't use both with reverse())
+    if kwargs:
+        kwargs['version'] = version
+    else:
+        version_args = [version, *args]
     try:
-        return django_reverse(s, args=version_args, request=request)
+        return django_reverse(s, args=version_args, request=request, kwargs=kwargs)
     except NoReverseMatch:
         return django_reverse(s, args=args, request=request)
 

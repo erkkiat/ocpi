@@ -143,10 +143,7 @@ def matching_operator(request, country_code, party_id) -> bool:
     if request.credentials.roles.filter(role='HUB').count():
         # We trust hubs
         return True
-    for r in request.credentials.roles.all():
-        if r.country_code == country_code and r.party_id == party_id:
-            return True
-    return False
+    return bool(request.credentials.roles.filter(country_code__iexact=country_code, party_id__iexact=party_id))
 
 
 CURRENCY_CHOICES = (

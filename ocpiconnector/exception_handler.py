@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError, NotFound
 
 from ocpi22.ocpi.util import OCPIBadRequestResponse, Ocpi
+from ocpiconnector.exceptions import WrongRole
 
 
 def find_request_from_args(*args, **kwargs):
@@ -63,8 +64,12 @@ def ocpi_exception_handler(func):
                      status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                      http_status=status.HTTP_400_BAD_REQUEST),
             ValueError:
-                dict(msg='Error connecting to management backend: {}',
+                dict(msg='ValueError: {}',
                      status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                     http_status=status.HTTP_400_BAD_REQUEST),
+            WrongRole:
+                dict(msg='You need a specific role in order to do that: {}',
+                     status_code=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
                      http_status=status.HTTP_400_BAD_REQUEST),
         }
 
@@ -72,10 +77,8 @@ def ocpi_exception_handler(func):
             return func(*args, **kwargs)
 
         except tuple(EXCEPTION_MAPPINGS.keys()) as e:
-            request = find_request_from_args(*args, **kwargs)
             result = EXCEPTION_MAPPINGS[type(e)]
             error_message = result.get('msg', 'Error: {}').format(e)
-            logging.error(msg=error_message, request=request)
             return OCPIBadRequestResponse(
                 status_message=error_message,
                 status_code=result.get('status_code', Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS),

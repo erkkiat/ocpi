@@ -18,6 +18,7 @@ from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
 from ocpi22.ocpi.dataclasses import OCPIUrlComponents
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ocpi.parse import parse_ocpi_url
+from ocpiconnector.exceptions import WrongRole
 
 from ocpiconnector.ocpi_identities import Party
 from util import OCPIVersion, reverse
@@ -153,15 +154,21 @@ def is_a_command_url(url: str) -> bool:
     return any(map(lambda u: u in url, get_all_command_urls()))
 
 
-def substitute_outgoing_response_url(request: HttpRequest, data: str) -> str:
+def process_incoming_remote_command_at_hub(request: HttpRequest, data: str) -> str:
     """
     Replace any remote Command response URLs with the hub's own URLs, so that we can route the response to the MSP
+    You can call this function without knowing if the request is in fact a remote command
+
     @param request: THe request received from MSP
     @param data: The data received from MSP
     @return: The modified data to be relayed to the CPO
     """
     from ocpi22.util import generate_random_token, command_store, build_absolute_uri
     if is_a_command_url(request.path):
+        # Make sure the sender has an MSP role
+        credentialsrole = request.ocpi_party
+        if not credentialsrole or credentialsrole.role not in (OcpiRolesEnum.EMSP, OcpiRolesEnum.HUB):
+            raise WrongRole("You need the EMSP role to be able to send remote commands.")
         # We are dealing with a Command response, so we need to replace the URL
         command_id = generate_random_token(24)  # Long enough to be unique, short enough to be usable
         json_data = json.loads(data)
@@ -210,14 +217,14 @@ def route_ocpi_request(request: HttpRequest, party: Party):
                 extra=ocpi_keys
             )
 
-            logging.info(f'Forwarding message to {str(party)}')
             data = getattr(request, 'body') or getattr(request, 'data')
             if data:
                 if isinstance(data, bytes):
                     data = data.decode('utf-8')
-                data = substitute_outgoing_response_url(request, data)
+                data = process_incoming_remote_command_at_hub(request, data)
                 method = request.method
                 url = urljoin(f'{route.url}/', ocpi_url.parameters)
+                logging.info(f'Forwarding message to {str(party)} at {url}')
                 response: requests.Response = requests.request(
                     method=method, url=url,
                     data=data, timeout=25,

@@ -1,0 +1,4 @@
+
+- If method is PUT, PATCH, POST or DELETE, country_code and party_id have to match the sender's Credentials
+- If method is GET, sender must have Credentials or is_staff
+- If URL contains country_code and party_id, they are allowed to be anything

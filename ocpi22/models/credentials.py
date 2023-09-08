@@ -165,6 +165,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     def get_parties(self) -> List[Party]:
         return [r.party for r in self.roles.all()]
 
+    @property
     def is_hub(self) -> bool:
         return bool(self.get_party_for_role(OcpiRolesEnum.HUB))
 
