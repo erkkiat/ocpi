@@ -132,6 +132,7 @@ def parse_jawsdb_maria_url(url):
         'PORT': port,
         'OPTIONS': {
             'sql_mode': 'traditional',
+            # "init_command": "SET GLOBAL max_connections = 100000",  # Activate for performance testing if needed
         }
     })
 
