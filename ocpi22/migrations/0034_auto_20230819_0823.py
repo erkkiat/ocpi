@@ -59,6 +59,14 @@ def populate_roles(apps, schema_editor):
     # print(all(map(lambda x: migrate_objects(apps, x), (Location, Token, Tariff, Session, Cdr))))
 
 
+def append_slash_to_endpoint_urls(apps, schema_editor):
+    Endpoint = apps.get_model("ocpi22", "Endpoint")
+    for endpoint in Endpoint.objects.all():
+        if not endpoint.url.endswith('/'):
+            endpoint.url += '/'
+            endpoint.save()
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -94,5 +102,9 @@ class Migration(migrations.Migration):
         migrations.RunPython(
             code=populate_roles,
             reverse_code=lambda x, y: print('Nothing to reverse with populate_roles')
+        ),
+        migrations.RunPython(
+            code=append_slash_to_endpoint_urls,
+            reverse_code=lambda x, y: print('Not reversing append_slash_to_endpoint_urls, do it manually if needed')
         ),
     ]

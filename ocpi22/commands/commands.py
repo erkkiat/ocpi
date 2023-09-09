@@ -12,7 +12,6 @@ from urllib.parse import urljoin
 from django.conf import settings
 from django.utils.datetime_safe import datetime
 from rest_framework import serializers, status
-from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 
@@ -105,7 +104,7 @@ class CommandsViewSet(GenericViewSet):
                                            command_prefix='START',
                                            set_session_start_time=True)
 
-    @action(methods=['GET', 'POST'], detail=False, url_name='reserve-now', url_path='RESERVE_NOW')
+    @ocpi_exception_handler
     def reserve_now(self, request, **_kwargs):
         # TODO: If this Token is of type RFID, the CPO SHALL NOT do a realtime authorization at the eMSP for
         #  this Token at the given EVSE/Charge Point within 15 minutes after having received this ReserveNow.
@@ -115,6 +114,7 @@ class CommandsViewSet(GenericViewSet):
                                            webhook_serializer=CPOReserveNowWebhookSerializer,
                                            command_prefix='RESERVE')
 
+    @ocpi_exception_handler
     @csrf_exempt
     def hubresponse(self, request, command_id, version='2.2.1'):
         if not ocpi_platform.is_hub:
@@ -142,6 +142,7 @@ class CommandsViewSet(GenericViewSet):
                 return OCPIResponse(status_code=status_code, http_status=response.get('status_code'))
         return OCPIResponse(status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR, http_status=status.HTTP_404_NOT_FOUND)
 
+    # Exception handling is done in the calling method, no need for it here
     def process_remote_command(self, request, command_serializer, webhook_serializer, command_prefix,
                                create_session_if_not_exists=True, set_session_start_time=False):
 
@@ -335,6 +336,7 @@ class CommandsViewSet(GenericViewSet):
                             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @staticmethod
+    @ocpi_exception_handler
     def list(request, *_args, **_kwargs):
         # ic(request.version)
         return Response(dict(

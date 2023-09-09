@@ -26,8 +26,8 @@ from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
 
 ocpi_router = OCPIRouter()
-ocpi_router.register(r'credentials', CredentialsViewSet, basename='credentials')
-ocpi_router.register(r'hubclientinfo', ClientInfoViewSet, basename='clientinfo')
+ocpi_router.register(r'credentials/', CredentialsViewSet, basename='credentials')
+ocpi_router.register(r'hubclientinfo/', ClientInfoViewSet, basename='clientinfo')
 
 cpo_router = CPORouter()
 cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
