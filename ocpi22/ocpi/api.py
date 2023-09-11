@@ -538,6 +538,14 @@ class SessionViewSet(OCPIListModelMixin,
         if uid:
             return get_object_or_404(Session, uid=uid)
 
+    @ocpi_exception_handler
+    def get(self, request, country_code=None, party_id=None, uid=None, **_kwargs):
+        if country_code and party_id and uid:
+            session = Session.objects.get(country_code__iexact=country_code, party_id__iexact=party_id, uid=uid)
+            serializer = SessionSerializer(session, many=False, context={'request': request, 'version': request.version})
+            return OCPIResponse(serializer.data)
+        return OCPIBadRequestResponse('Country_code, party_id and uid are required.')
+
     @classmethod
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)

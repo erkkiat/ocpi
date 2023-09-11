@@ -35,6 +35,6 @@ urlpatterns = [
          SessionViewSet.as_view({'get': 'list', 'put': 'put', 'patch': 'patch'}),
          name='session-list'),
     path('sessions/<str:country_code>/<str:party_id>/<str:uid>',
-         SessionViewSet.as_view({'get': 'get', 'put': 'put'}),
+         SessionViewSet.as_view({'get': 'get', 'put': 'put', 'patch': 'patch'}),
          name='session-by-id'),
 ]
