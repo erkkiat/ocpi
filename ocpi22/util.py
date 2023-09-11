@@ -363,7 +363,7 @@ class ModelUtilMixin:
     party.short_description = _('Data Owner')
 
     def party_long(self) -> str:
-        if hasattr(self, 'ocpi_master'):
+        if hasattr(self, 'ocpi_master') and self.ocpi_master:
             return f'{self.ocpi_master.business_details.name}' \
                 f' ({self.ocpi_master.country_code}*{self.ocpi_master.party_id})'
         return self.party()
