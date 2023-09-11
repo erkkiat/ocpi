@@ -1,7 +1,10 @@
 import doctest
 import json
 import os
+from typing import Optional
 from urllib.parse import urljoin
+
+from rest_framework.exceptions import NotAuthenticated
 
 import ocpi22.logging as logging
 import uuid
@@ -32,7 +35,7 @@ from rest_framework import status
 
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.msp.account import Account
-from ocpi22.ocpi.auth import get_credentialsrole
+from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpiconnector.testutil import compare_dicts_recursively, OCPIAPIRequestFactory
@@ -2857,7 +2860,8 @@ class TestMspUserApi(TestCase):
                'callback-authorize_url': '',
                'callback-session_url': 'http://localhost/session/{uid}/',
            }.get(x))
-    def test_cdrs_and_transactions(self, _mocked_redis_store: Mock, _mocked_requests_post: Mock,
+    @patch('ocpi22.ocpi.util.logging')  # There are some conflicts with atomic transactions when logging to mysql
+    def test_cdrs_and_transactions(self, _mocked_logging: Mock, _mocked_redis_store: Mock, _mocked_requests_post: Mock,
                                    _mocked_ocpi_post: Mock):
         # Try to authorize charging with no money in account
         with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
@@ -2962,5 +2966,54 @@ class TestBillingList(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data,
                          OrderedDict([('count', 0), ('next', None), ('previous', None), ('results', [])]))
+
+
+class TestOCPIAuthentication(TestCase):
+    fixtures = ['ocpi22/data/credentials-auth-test.json']
+
+    @staticmethod
+    def _make_test_request(sender: Party, to: Party, hub: Optional[Party] = None):
+        request = api_factory.post('http://localhost:8101/anyurl/')
+        from ocpi22.routing import find_credentials
+        credentials = find_credentials(hub) if hub else find_credentials(sender)
+        request.headers = make_headers(credentials.ours_base64(), to=to, sender=sender)
+        return request, credentials.ours_base64()
+
+    def test_hub_routed_message(self):
+        hub_party = Party('FI', 'HBB')
+        msp_party = Party('FI', 'MSP')
+        our_party = get_our_party(OcpiRolesEnum.CPO)
+
+        # Message routed trough a hub
+        request, token_base64 = self._make_test_request(sender=msp_party, to=our_party, hub=hub_party)
+        self.assertTrue(check_auth_token(request, token_base64))
+        self.assertEqual(
+            request.credentials,
+            Credentials.objects.get(roles__country_code=hub_party.country_code, roles__party_id=hub_party.party_id)
+        )
+        self.assertEqual(request.ocpi_party, get_credentialsrole(None, msp_party))
+
+        # Message directly from sender to us
+        request, token_base64 = self._make_test_request(sender=msp_party, to=our_party)
+        self.assertTrue(check_auth_token(request, token_base64))
+        self.assertEqual(
+            request.credentials,
+            Credentials.objects.get(roles__country_code=msp_party.country_code, roles__party_id=msp_party.party_id)
+        )
+        self.assertEqual(request.ocpi_party, get_credentialsrole(request.credentials, msp_party))
+
+        # Message from hub to us through msp, this should definitely fail
+        request, token_base64 = self._make_test_request(sender=hub_party, to=our_party, hub=msp_party)
+        with self.assertRaises(NotAuthenticated):
+            check_auth_token(request, token_base64)
+        self.assertFalse(request.credentials)
+        self.assertFalse(request.ocpi_party)
+
+        # Wrongly formatted and wrong tokens
+        with self.assertRaises(NotAuthenticated):
+            check_auth_token(request, 'WRONGTOKEN')
+        with self.assertRaises(NotAuthenticated):
+            check_auth_token(request, 'AB==')
+
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)

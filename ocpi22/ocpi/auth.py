@@ -36,16 +36,13 @@ def check_auth_token(request, token: str) -> bool:
             '/',  # The front page, which serves as HTML page and versions endpoint
         )
 
-    token_ascii = ''
-
     # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
     try:
-        request.ocpi_auth = OcpiAuthTypes.NONE
-        request.ocpi_party = None
-
         if not token:
             return False
         token_ascii = base64.b64decode(token).decode('ascii')
+        request.ocpi_auth = OcpiAuthTypes.NONE
+        request.ocpi_party = None
 
         # First check for TOKEN_A, are we still getting to know each other?
         credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
@@ -73,8 +70,18 @@ def check_auth_token(request, token: str) -> bool:
                     f'The token "{token}" (ascii {token_ascii}) doesn\'t match any of our current credentials'
                 )
 
-        if credentials:
-            request.ocpi_party = get_credentialsrole(request.credentials, get_sender_party(request.headers), create=True)
+        sender_party = get_sender_party(request.headers)
+
+        if credentials.is_hub:
+            # Implicit trust for hubs, since there is no hub authentication in OCPI 2.x
+            request.ocpi_party = get_credentialsrole(
+                credentials=None, party=sender_party, create=True
+            )
+        else:
+            request.ocpi_party = get_credentialsrole(request.credentials, party=sender_party)
+            if not request.ocpi_party:
+                request.credentials = None
+                raise NotAuthenticated(f'Sender party {sender_party} is not allowed for these credentials')
 
         return True
 

@@ -65,6 +65,7 @@ def log_error(request=None, s: str = None, logentry=None, admin_log={}, **kwargs
 
 
 def error(msg: str = None, request=None, *args, **kwargs) -> None:
+    # Todo: Log to redis, since mysql atomic operations get in the way often
     return log_error(request, msg, *args, **kwargs)
 
 

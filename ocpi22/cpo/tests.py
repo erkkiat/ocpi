@@ -482,6 +482,18 @@ def get(url, viewset):
     return viewset().list(request)
 
 
+def test_exception_handler(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except (geopy.exc.GeocoderUnavailable, geopy.exc.GeocoderServiceError) as e:
+            sys.stderr.write(f'Geocoder error during test: {e}')
+            return None
+    return wrapper
+
+
+# @test_exception_handler
 def put_location(data, url):
     request = api_factory.put(url)
     request.data = data
@@ -489,6 +501,7 @@ def put_location(data, url):
     return LocationQuickViewSet().put(request)
 
 
+# @test_exception_handler
 def patch_location(data, url):
     request = api_factory.patch(url)
     request.data = data
