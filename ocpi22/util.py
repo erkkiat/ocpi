@@ -19,6 +19,7 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.utils.module_loading import import_string
 from geopy import Nominatim
+from pytz import timezone
 from requests import Response
 from rest_framework import serializers, versioning
 from rest_framework.exceptions import ValidationError
@@ -402,6 +403,14 @@ class ModelUtilMixin:
         version = version or request.version
         serializer_class = self.get_serializer_class(version)
         return serializer_class(self, context={'request': request, 'version': version})
+
+    def start_date_time_local(self) -> str:
+        start_date_time = self.start_date_time.replace(tzinfo=timezone('UTC'))
+        local_timezone = timezone(settings.TIMEZONE)
+        start_date_time = start_date_time.astimezone(local_timezone)
+        return start_date_time.strftime(settings.DATETIME_FORMAT)
+
+    start_date_time_local.short_description = _('Start time')
 
     # @abc.abstractmethod
     # def get_serializer_class(self, version):

@@ -95,6 +95,11 @@ def _get_environment(request):
                         ),
                         icon='fa-bolt',
                     ),
+                    dict(
+                        url=reverse('admin:ocpi22_cdr_changelist'),
+                        name=_('Billing records'),
+                        icon='fa-money-bill-wave',
+                    ),
                 ],
             ),
             dict(

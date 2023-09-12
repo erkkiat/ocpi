@@ -44,6 +44,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             # Todo: models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
         ordering = ('created',)
+        verbose_name = _('Billing record')
+        verbose_name_plural = _('Billing records')
 
     # ISO-3166 alpha-2 country code of the CPO that owns this CDR
     country_code = models.CharField(max_length=2, choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))

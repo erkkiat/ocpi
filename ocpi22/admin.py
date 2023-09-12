@@ -282,19 +282,15 @@ class CdrAdmin(admin.ModelAdmin):
     ordering = ('-start_date_time',)
     if ocpi_platform.is_cpo:
         list_display = [
-            'token_id',
-            'start_date_time',  # Todo: Show time in local timezone
-            'billed_to', 'evse_id', 'auth_method',
+            'start_date_time_local',  # Todo: Show time everywhere in local timezone
+            'billed_to', 'evse_id',
             'total_session_time', 'total_energy', 'total_cost',
-            'uid',
         ]
     else:
         list_display = [
-            'token_id',
-            'start_date_time',  # Todo: Show time in local timezone
-            'evse_id', 'auth_method',
+            'start_date_time_local',  # Todo: Show time everywhere in local timezone
+            'evse_id',
             'total_session_time', 'total_energy', 'total_cost',
-            'uid',
         ]
     fieldsets = (
         ('Identification', dict(fields=(('country_code', 'party_id', 'uid'),
@@ -302,14 +298,14 @@ class CdrAdmin(admin.ModelAdmin):
         ('Location', dict(fields=(('cdr_location_name', 'cdr_location_city', 'cdr_location_country'),
                                   ('cdr_location_evse_uid', 'cdr_location_connector_id'),))),
         ('Delivery', dict(fields=(
-            ('total_energy', 'total_time', 'auth_method'),
+            ('total_energy', 'auth_method'),
             ('total_cost_incl_vat', 'total_cost_excl_vat', 'currency'),))),
         ('Time period', dict(fields=(('start_date_time', 'end_date_time'), ))),
         ('Credited or not', dict(fields=(('credit', 'credit_reference'),))),
     )
-    list_display_links = ['start_date_time']
-    search_fields = ['party_id', 'country_code', 'session_id', 'uid', 'cdr_location_evse_id', 'cdr_location_name',
-                     'billed_to']
+    list_display_links = ['start_date_time_local']
+    search_fields = ['session_id', 'uid', 'cdr_location_evse_id', 'cdr_location_name', 'cdr_location_city',
+                     'cdr_location_country', 'cdr_token_uid', 'cdr_token_contract_id', 'billed_to']
     autocomplete_fields = ['tariffs']
 
     def has_add_permission(self, request) -> bool:
