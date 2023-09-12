@@ -36,7 +36,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.ocpi.serializers.CdrSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
-    # send_updates_to = ('EMSP', 'HUB')
+    update_method = 'POST'
 
     class Meta:
         constraints = [
@@ -290,11 +290,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         else:
             cdr_tariffs = Tariff.make_copies(Tariff.get_default_tariffs(session.connector.standard))
         cdr.tariffs.set(cdr_tariffs)
-
-        try:
-            cdr.send_updates(method='POST')  # CDR needs to be posted, not PUT
-        except Exception as e:
-            logging.error(f'Unable to send updates: {e}')
 
         try:
             metrics('charging.total_power', session.kwh)

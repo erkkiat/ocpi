@@ -79,7 +79,7 @@ def ocpi_exception_handler(func):
         except tuple(EXCEPTION_MAPPINGS.keys()) as e:
             result = EXCEPTION_MAPPINGS[type(e)]
             error_message = result.get('msg', 'Error: {}').format(e)
-            return OCPIBadRequestResponse(
+            return OCPIBadRequestResponse(str(e),
                 status_message=error_message,
                 status_code=result.get('status_code', Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS),
                 http_status=result.get('http_status', status.HTTP_404_NOT_FOUND),

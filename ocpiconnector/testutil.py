@@ -7,6 +7,9 @@ from rest_framework.test import APIRequestFactory
 from django.conf import settings  # Do not remove if ic() is in use in this file
 
 from ocpi22.models.credentials import Credentials
+from ocpi22.ocpi.auth import get_credentialsrole
+from ocpi22.ocpi.headers import make_headers
+from ocpiconnector.ocpi_identities import Party
 
 
 def compare_lists_recursively(received, expected, path='', label1='received', label2='expected') -> bool:
@@ -68,19 +71,24 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
 
 
 class OCPIAPIRequestFactory(APIRequestFactory):
-    def __init__(self, *args, credentials=None, credentialsrole=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.credentials = credentials
-        self.credentialsrole = credentialsrole
 
-    def request(self, **kwargs):
-        request = super().request(**kwargs)
+    def request(self, sender: Party = None, **kwargs):
+        ocpi_party = get_credentialsrole(None, sender) \
+            if sender else None
+        credentials = ocpi_party.credentials if ocpi_party else Credentials.objects.first()
+        headers = make_headers(
+            credentials.ours_base64(), to=Party('FI', 'CPO'), sender=sender
+        )
+        headers.update(kwargs)
+        request = super().request(**headers)
+        request.credentials = credentials
+        request.ocpi_party = ocpi_party
         request.version = '2.2.1'
         request.user = AnonymousUser()
-        request.credentials = self.credentials or Credentials.objects.first()
-        assert request.credentials, 'No credentials found'
-        request.credentialsrole = self.credentialsrole or request.credentials.roles.first()
         request.versioning_scheme = 'query_parameter'
         request.versioning_namespace = None
         request.versioning_query_param = 'version'
+        request.headers = request.META
         return request

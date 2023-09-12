@@ -920,7 +920,7 @@ class CommandTests(TestCase):
         viewset = CommandsViewSet()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
-        request = api_factory.get(url)
+        request = api_factory.get(url, sender=Party('FI', 'MSP'))
         request.data = {}
         response = viewset.start_session(request)
 
@@ -929,14 +929,9 @@ class CommandTests(TestCase):
         # Load up the test message and send it
         data = load_example(f'data/examples/command_start_session.json')
 
-        billed_party = Party('FI', 'EON')
-        headers = {
-            'Ocpi-From-Country-Code': billed_party.country_code,
-            'Ocpi-From-Party-Id': billed_party.party_id
-        }
-        request = api_factory.post(url, **headers)
+        billed_party = Party('FI', 'MSP')
+        request = api_factory.post(url, sender=Party('FI', 'MSP'))
         request.data = data
-        request.credentials = Credentials.objects.first()
 
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
@@ -970,7 +965,7 @@ class CommandTests(TestCase):
         requests_post_mock.assert_called_once()
         args, kwargs = requests_post_mock.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
-        self.assertDictEqual(kwargs, SessionCommandsData.start_webhook)
+        self.assertTrue(compare_dicts_recursively(kwargs, SessionCommandsData.start_webhook))
 
         # Let's guess the new Session
         session = Session.objects.all().first()
@@ -1023,40 +1018,34 @@ class CommandTests(TestCase):
                'callback-session_url': 'http://localhost/session/{uid}/',
            }.get(x, 'http://localhost/fallback/'))
     # @patch('ocpi22.webhooks.requests.post')
-    @patch('ocpi22.webhooks.requests.post')
-    def test_reserve_now(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
+    def test_reserve_now(self, _redis_get_mock: Mock, uuid4_mock: Mock):
         url = reverse('commands-reserve-now')
         viewset = CommandsViewSet()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
-        request = api_factory.get(url)
+        request = api_factory.get(url, sender=Party('FI', 'MSP'))
         request.data = {}
-        response = viewset.reserve_now(request)
+
+        with patch('ocpi22.webhooks.requests.post') as _mock_requests_post:
+            response = viewset.reserve_now(request)
 
         check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST)
 
         # Load up the test message and send it
         data = load_example(f'data/examples/command_reserve_now.json')
 
-        billed_party = Party('FI', 'EON')
-        headers = {
-            'Ocpi-From-Country-Code': billed_party.country_code,
-            'Ocpi-From-Party-Id': billed_party.party_id
-        }
-        request = api_factory.post(url, **headers)
+        request = api_factory.post(url, sender=Party('FI', 'MSP'))
         request.data = data
-        request.credentials = Credentials.objects.first()
 
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
 
-        # Let's pretend to be the CPO and get an error from charger
-        requests_post_mock.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
-        requests_post_mock.reset_mock()
-        uuid4_mock.return_value = mock_uuid4(42)
-
         try:
-            response = viewset.reserve_now(request)
+            with patch('ocpi22.webhooks.requests.post') as mock_requests_post:
+                # Let's pretend to be the CPO and get an error from charger
+                mock_requests_post.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
+                uuid4_mock.return_value = mock_uuid4(42)
+                response = viewset.reserve_now(request)
         except redis.exceptions.ConnectionError as e:
             print(f'This test requires a local Redis instance to be running: {e}')
             self.fail()
@@ -1065,28 +1054,27 @@ class CommandTests(TestCase):
                          'Expecting the reservation to fail')
 
         # Check the request sent to the CPO
-        requests_post_mock.assert_called_once()
-        args, kwargs = requests_post_mock.call_args
+        mock_requests_post.assert_called_once()
+        args, kwargs = mock_requests_post.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
         self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.evse_inoperative_response),
                         'Expecting a different response for a reservation')
 
-        # Let's pretend to be the CPO and all is good
-        requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
-        requests_post_mock.reset_mock()
-        uuid4_mock.return_value = mock_uuid4(99)
-        credentials = Credentials.objects.first()
-        credentialsrole = credentials.roles.first()
+        cpo_credentialsrole = get_credentialsrole(None, Party('FI', 'CPO'))
 
         # Clear out any Sessions which prevent new charging sessions and reservations
         Session.objects.filter(status__in=[Session.PENDING, Session.ACTIVE]).update(status=Session.COMPLETED)
-        Session.objects.all().update(ocpi_master=credentialsrole)
+        Session.objects.all().update(ocpi_master=cpo_credentialsrole)
 
-        response = viewset.reserve_now(request)
+        with patch('ocpi22.webhooks.requests.post') as mock_requests_post:
+            # Let's simulate the CPO backend
+            mock_requests_post.return_value = make_json_response(dict(result='ACCEPTED'))
+            uuid4_mock.return_value = mock_uuid4(99)
+            response = viewset.reserve_now(request)
 
         # Check the request sent to the CPO
-        requests_post_mock.assert_called_once()
-        args, kwargs = requests_post_mock.call_args
+        mock_requests_post.assert_called_once()
+        args, kwargs = mock_requests_post.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
         self.assertTrue(compare_dicts_recursively(
             kwargs.get('json'),
@@ -1094,7 +1082,7 @@ class CommandTests(TestCase):
                 'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/AUTH-REFERENCE/',
                 'token_id': 'FI*001*T*ADMIN*TOKEN', 'token_type': 'OTHER', 'authorization_reference': 'AUTH-REFERENCE',
                 'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
-                'location_id': 'HELSINKI-1', 'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*EON',
+                'location_id': 'HELSINKI-1', 'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*MSP',
                 'expiry_date': '2022-01-12T19:44:39.298178', 'reservation_id': 'RESERVATION-ID'
             }, 'Expecting a different response for a reservation')
         )
@@ -2099,11 +2087,9 @@ class TestCpoApi(TestCase):
         # Load up the test message and send it
         data = load_example(f'data/examples/command_start_session_adhoc.json')
 
-        billed_party = Party('FI', 'EON')
-        headers = make_headers('', Party('FI', 'CPO'), billed_party)
-        request = api_factory.post(url, **headers)
+        billed_party = Party('FI', 'MSP')
+        request = api_factory.post(url, sender=billed_party)
         request.data = data
-        request.credentials = Credentials.objects.first()
         self.assertFalse(Session.objects.all().exists(),
                          'Please make sure there are no Sessions at the start of this test')
 
@@ -2129,7 +2115,7 @@ class TestCpoApi(TestCase):
             {'auth_method': 'COMMAND',
              'authorization_reference': authorization_reference,
              'from_party': 'FI*MSP',
-             'billed_to': 'FI*EON',
+             'billed_to': 'FI*MSP',
              'connector_id': None,
              'evse_id': 'HELSINKI-3',
              'response_url': url,
@@ -2195,7 +2181,7 @@ class TestCpoApi(TestCase):
             {'session': {'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
                          'auth_method': 'COMMAND',
                          'authorization_reference': 'FI*001-AUTH-REFERENCE',
-                         'billed_to': 'FI*EON',
+                         'billed_to': 'FI*MSP',
                          'currency': 'EUR',
                          'evse_uid': 'HELSINKI-3',
                          'location_id': 'HELSINKI-1',
@@ -2700,18 +2686,16 @@ def stop_charging(data):
 
 
 def start_session(data, user):
-    request = api_factory.post(reverse('commands-start-session'))
+    request = api_factory.post(reverse('commands-start-session'), sender=Party('FI', 'MSP'))
     request.data = data
     request.user = user
     return CommandsViewSet.start_session(request)
 
 
 def stop_session(data, user):
-    request = api_factory.post(reverse('commands-stop-session'),
-                               **{'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'EON'})
+    request = api_factory.post(reverse('commands-stop-session'), sender=Party('FI', 'MSP'))
     request.data = data
     request.user = user
-    request.credentials = Credentials.objects.first()
     return CommandsViewSet().stop_session(request)
 
 

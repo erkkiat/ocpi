@@ -6,6 +6,7 @@ from django.db.models import Q
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner
+from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.util import matching_operator
 from ocpiconnector.ocpi_identities import Party
 
@@ -33,10 +34,13 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
             # if require_data and (not data or not isinstance(data, dict)):
             #     return OCPIBadRequestResponse('Data is required in the request body.')
             data = data.get('data', data) or {}
-            country_code = kwargs.get('country_code', data.get('country_code'))
-            party_id = kwargs.get('party_id', data.get('party_id'))
+            sender_party = get_sender_party(request.headers or request.META)
+            country_code = kwargs.get('country_code', data.get('country_code', sender_party.country_code))
+            party_id = kwargs.get('party_id', data.get('party_id', sender_party.party_id))
             if not country_code or not party_id:
                 return OCPIBadRequestResponse('Country code and party ID are required.')
+            if not matching_operator(request, country_code, party_id):
+                return NotOwner()
             if request.user.is_superuser or \
                     (hasattr(request, 'credentials') and request.credentials.is_hub):
                 # Pick the right credentialsrole for the almighty
@@ -51,9 +55,9 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
                     criteria &= Q(role__in=roles)
                 request.credentialsrole = request.credentials.roles.filter(criteria).first()
             if not hasattr(request, 'credentialsrole') or not request.credentialsrole:
-                return OCPIBadRequestResponse(f'You need to have credentials with the role {roles} for write access.')
-            if not matching_operator(request, country_code, party_id):
-                return NotOwner()
+                return OCPIBadRequestResponse(
+                    f'To do this, you need to have credentials with one of these roles: {roles}.'
+                )
             kwargs.update(dict(data=data, country_code=country_code, party_id=party_id))
             return func(self, request, *args, **kwargs)
 

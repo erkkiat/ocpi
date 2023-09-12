@@ -496,9 +496,9 @@ if TEST:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
 
-# Moesif API analytics
 
 def identifyUser(req, res):
+    # For Moesif API analytics
     if req.user and req.user.is_authenticated:
         return req.user.username
     else:
@@ -520,4 +520,3 @@ MESSAGE_TAGS = {
     messages.WARNING: 'alert-warning',
     messages.ERROR: 'alert-danger',
 }
-

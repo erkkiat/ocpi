@@ -135,15 +135,11 @@ def check_ownership(request, country_code, party_id, check_operator_id_from_requ
 
 
 def matching_operator(request, country_code, party_id) -> bool:
-    if request.user.is_staff:
-        return True
     if not hasattr(request, 'credentials'):
         return False
-    # ic(request.credentials.roles.filter(role='HUB'))
-    if request.credentials.roles.filter(role='HUB').count():
-        # We trust hubs
-        return True
-    return bool(request.credentials.roles.filter(country_code__iexact=country_code, party_id__iexact=party_id))
+    # We trust staff and hubs implicitly
+    return request.user.is_staff or request.credentials.is_hub \
+        or bool(request.credentials.roles.filter(country_code__iexact=country_code, party_id__iexact=party_id))
 
 
 CURRENCY_CHOICES = (

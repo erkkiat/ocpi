@@ -77,7 +77,7 @@ class OcpiModule:
 
         if not hasattr(self, 'update_sent') and self.is_ours():
             if not hasattr(self, 'archived') or not self.archived:
-                self.send_updates()
+                self.send_updates(getattr(self, 'update_method', 'PUT'))
                 # Send update only once
                 setattr(self, 'update_sent', True)
 
@@ -343,12 +343,12 @@ class OCPIResponse(Response):
 
 
 class OCPIBadRequestResponse(OCPIResponse):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, message='no message supplied', *args, **kwargs):
         super().__init__(
             *args,
             status_code=kwargs.pop('status_code', Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS),
             http_status=kwargs.pop('http_status', status.HTTP_400_BAD_REQUEST),
-            status_message=kwargs.pop('status_message', 'Bad request'),
+            status_message=kwargs.pop('status_message', f'Bad request: {message}'),
             **kwargs)
 
 

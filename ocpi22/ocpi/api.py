@@ -503,6 +503,9 @@ def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
 
 def update_authorization(request, session: Session) -> None:
     try:
+        if not session.authorization_reference:
+            logging.warning(f'Session {session.uid} has no authorization_reference, cannot link to Authorization.')
+            return
         authorization = Authorization.objects.get(authorization_reference=session.authorization_reference)
         if not authorization.session:
             authorization.session = session
@@ -567,8 +570,7 @@ class SessionViewSet(OCPIListModelMixin,
             logging.info(f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.',
                          log_to_admin=True, logentry=logentry)
             session = serializer.save(ocpi_master=request.credentialsrole)
-            if not session.authorization_reference:
-                update_authorization(request, session)
+            update_authorization(request, session)
 
             if 'last_updated' not in request.data:
                 session.update_last_updated()

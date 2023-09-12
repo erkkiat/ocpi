@@ -223,7 +223,7 @@ def route_ocpi_request(request: HttpRequest, party: Party):
                     data = data.decode('utf-8')
                 data = process_incoming_remote_command_at_hub(request, data)
                 method = request.method
-                url = urljoin(f'{route.url}/', ocpi_url.parameters)
+                url = urljoin(route.url, ocpi_url.parameters)
                 logging.info(f'Forwarding message to {str(party)} at {url}')
                 response: requests.Response = requests.request(
                     method=method, url=url,
