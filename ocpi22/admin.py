@@ -8,6 +8,7 @@ from gdpr_assist.admin import PersonalDataAdmin, PersonalData
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import User
+from humanize import naturaltime
 
 from ocpi22.models.logging import LogEntry, ChildEvent
 from django.utils.html import format_html
@@ -203,7 +204,7 @@ class EvseAdmin(NestedModelAdmin):
     form = EvseAdminForm
     model = Evse
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
-    list_display = ['object_owner', 'uid', 'location_url', 'status', 'connector_list', 'last_updated']
+    list_display = ['party_long', 'uid', 'location_link', 'status', 'connector_list', 'last_update']
     list_display_links = ['uid']
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name']
@@ -216,11 +217,18 @@ class EvseAdmin(NestedModelAdmin):
         return Evse.objects.select_related('location').all().order_by('-last_updated')
 
     @staticmethod
-    def location_url(evse):
+    def location_link(evse):
         from util import reverse
         return format_html("<a href='{url}'>{location}</a>",
                            url=reverse('admin:ocpi22_location_change', args=[evse.location.pk]),
                            location=str(evse.location))
+    location_link.short_description = "Location"
+
+    def last_update(self, obj):
+        return naturaltime(obj.last_updated)
+
+    last_update.admin_order_field = 'last_updated'
+    last_update.short_description = 'Last update'
 
     def get_readonly_fields(self, request, obj=None) -> list:
         if obj:
@@ -231,8 +239,6 @@ class EvseAdmin(NestedModelAdmin):
         if not super().has_change_permission(request, obj):
             return False
         return not obj or (hasattr(obj, 'location') and obj.location.is_ours())
-
-    location_url.short_description = "Location"
 
 
 class BusinessDetailsAdmin(admin.ModelAdmin):
