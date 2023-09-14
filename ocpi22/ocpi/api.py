@@ -583,7 +583,8 @@ class SessionViewSet(OCPIListModelMixin,
 
         # Input data doesn't validate
         # Is the Location or EVSE missing?
-        if not tryagain and ('evse_uid' in serializer.errors or 'location_id' in serializer.errors):
+        if not tryagain and 'evse_uid' in data and 'location_id' in data \
+                and ('evse_uid' in serializer.errors or 'location_id' in serializer.errors):
             fetch_location(country_code, party_id, serializer.initial_data.get('location_id'),
                            serializer.initial_data.get('evse_uid'))
             # Try again, but avoid a loop
@@ -598,7 +599,7 @@ class SessionViewSet(OCPIListModelMixin,
     @requires_sender_role(OcpiRolesEnum.CPO)
     def patch(self, request, data, *args, version='2.2.1', **kwargs):
         if not data.get('last_updated'):  # Required for Session PATCH in OCPI 2.2.1
-            return ValidationError(f'In OCPI {version} PATCHing Sessions requires last_updated to be set')
+            raise ValidationError(f'In OCPI {version} PATCHing Sessions requires last_updated to be set')
         return self.put(request, *args, partial=True, **kwargs)
 
 
