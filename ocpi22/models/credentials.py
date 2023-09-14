@@ -310,6 +310,8 @@ def new_connection(request):
 @receiver(pre_save, sender=Credentials)
 def credentials_pre_save(sender, instance, *_args, **_kwargs):
     credentials: Credentials = instance
+    if not credentials.valid:
+        credentials.connection_status = choices.SUSPENDED
     if not credentials.token_a:
         credentials.token_a = generate_random_token()
 
