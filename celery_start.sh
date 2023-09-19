@@ -25,5 +25,3 @@ celery --app ocpi22.tasks purge -f
 # Let's restart every time a python file changes in any subdirectory
 watchmedo auto-restart --directory="./" --pattern="*.py" --recursive -- celery --app ocpi22.tasks \
   worker -n celery-node-$QUEUE -Q $QUEUE -l INFO --beat
-
-# brew services stop redis

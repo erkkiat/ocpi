@@ -1,4 +1,359 @@
 [
+ {
+    "model": "ocpi22.businessdetails",
+    "pk": 1,
+    "fields": {
+      "name": "ChargerHub.EU",
+      "website": "",
+      "logo": ""
+    }
+  },
+  {
+    "model": "ocpi22.businessdetails",
+    "pk": 2,
+    "fields": {
+      "name": "Lidl",
+      "website": "http://www.lidl.fi/",
+      "logo": ""
+    }
+  },
+  {
+    "model": "ocpi22.businessdetails",
+    "pk": 3,
+    "fields": {
+      "name": "GP Operator",
+      "website": "",
+      "logo": ""
+    }
+  },
+  {
+    "model": "ocpi22.credentials",
+    "pk": 17,
+    "fields": {
+      "token_a": "HUBCPO",
+      "ours": "3B7864C30217E859A70119FD5A20C24D82F9F089E642423402490987EC2B7CCB",
+      "theirs": "C325D653270B77A35CBDE379B8EA3980795B909AFF7C2AB14A79DEC11E0D556D",
+      "url": "http://localhost:8001/ocpi/versions/",
+      "connection_status": "OFFLINE",
+      "last_connection": "2022-10-22T09:23:43.126",
+      "version": "22",
+      "valid": true,
+      "last_updated": null,
+      "updated": "2022-12-11T06:54:16.654",
+      "created": "2022-10-22T08:09:32.096"
+    }
+  },
+  {
+    "model": "ocpi22.credentials",
+    "pk": 24,
+    "fields": {
+      "token_a": "MSP",
+      "ours": "7119ed87d7e87794a0f6ae81efa6b0ed7266240aafef40eb0b5f88631d788e23",
+      "theirs": "adbb07f634a791f529ec388774cd24c8e1eb8043dbb008e930ee7e1edeb5a0b8",
+      "url": "http://localhost:8002/ocpi/versions/",
+      "connection_status": "CONNECTED",
+      "last_connection": "2022-12-17T11:30:44.231",
+      "version": "22",
+      "valid": true,
+      "last_updated": null,
+      "updated": "2022-12-03T12:04:17.425",
+      "created": "2022-11-04T06:42:01.623"
+    }
+  },
+  {
+    "model": "ocpi22.credentialsrole",
+    "pk": 21,
+    "fields": {
+      "role": "HUB",
+      "business_details": 1,
+      "country_code": "FI",
+      "party_id": "HB2",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.credentialsrole",
+    "pk": 61,
+    "fields": {
+      "role": "EMSP",
+      "business_details": 1,
+      "country_code": "FI",
+      "party_id": "001",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.credentialsrole",
+    "pk": 99,
+    "fields": {
+      "role": "CPO",
+      "business_details": 1,
+      "country_code": "FI",
+      "party_id": "CPO",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.credentialsrole",
+    "pk": 999,
+    "fields": {
+      "role": "CPO",
+      "business_details": 1,
+      "country_code": "FI",
+      "party_id": "000",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 218,
+    "fields": {
+      "identifier": "credentials",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/credentials",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 219,
+    "fields": {
+      "identifier": "credentials",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/credentials",
+      "role": "SENDER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 220,
+    "fields": {
+      "identifier": "hubclientinfo",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/hubclientinfo",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 221,
+    "fields": {
+      "identifier": "hubclientinfo",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/hubclientinfo",
+      "role": "SENDER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 222,
+    "fields": {
+      "identifier": "locations",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/locations",
+      "role": "SENDER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 223,
+    "fields": {
+      "identifier": "commands",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/commands",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 224,
+    "fields": {
+      "identifier": "tariffs",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/tariffs",
+      "role": "SENDER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 225,
+    "fields": {
+      "identifier": "sessions",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/sessions",
+      "role": "SENDER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 226,
+    "fields": {
+      "identifier": "cdrs",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/cdrs",
+      "role": "SENDER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 227,
+    "fields": {
+      "identifier": "tokens",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/tokens",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 228,
+    "fields": {
+      "identifier": "tokens",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/tokens",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 229,
+    "fields": {
+      "identifier": "locations",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/locations",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 230,
+    "fields": {
+      "identifier": "cdrs",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/cdrs",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 231,
+    "fields": {
+      "identifier": "tokens",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/tokens",
+      "role": "SENDER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 232,
+    "fields": {
+      "identifier": "tariffs",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/tariffs",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 233,
+    "fields": {
+      "identifier": "sessions",
+      "url": "http://localhost:8001/ocpi/cpo/2.2/sessions",
+      "role": "RECEIVER",
+      "credentials": 17
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 575,
+    "fields": {
+      "identifier": "credentials",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/credentials",
+      "role": "RECEIVER",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 576,
+    "fields": {
+      "identifier": "credentials",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/credentials",
+      "role": "SENDER",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 577,
+    "fields": {
+      "identifier": "hubclientinfo",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/hubclientinfo",
+      "role": "RECEIVER",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 578,
+    "fields": {
+      "identifier": "tokens",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/tokens",
+      "role": "RECEIVER",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 579,
+    "fields": {
+      "identifier": "locations",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/locations",
+      "role": "RECEIVER",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 580,
+    "fields": {
+      "identifier": "cdrs",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/cdrs",
+      "role": "RECEIVER",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 581,
+    "fields": {
+      "identifier": "tokens",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/tokens",
+      "role": "SENDER",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 582,
+    "fields": {
+      "identifier": "tariffs",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/tariffs",
+      "role": "RECEIVER",
+      "credentials": 24
+    }
+  },
+  {
+    "model": "ocpi22.endpoint",
+    "pk": 583,
+    "fields": {
+      "identifier": "sessions",
+      "url": "http://localhost:8002/ocpi/cpo/2.2/sessions",
+      "role": "RECEIVER",
+      "credentials": 24
+    }
+  },
    {
       "pk" : 2,
       "model" : "ocpi22.defaulttariffs",
@@ -38,9 +393,8 @@
          "currency" : "EUR",
          "uid" : "T1",
          "last_updated" : "2022-01-14T15:52:22",
-         "country_code" : "FI",
          "updated" : "2022-01-16T17:50:31.687",
-         "party_id" : "000",
+         "ocpi_master" : 99,
          "archived" : true
       },
       "model" : "ocpi22.tariff"
@@ -50,9 +404,8 @@
       "model" : "ocpi22.tariff",
       "fields" : {
          "archived" : false,
-         "party_id" : "000",
+         "ocpi_master" : 99,
          "updated" : "2022-01-18T18:55:07.589",
-         "country_code" : "FI",
          "last_updated" : "2022-01-08T07:52:37.772",
          "uid" : "T2",
          "created" : "2022-01-08T07:52:37.768",
@@ -65,8 +418,7 @@
       "model" : "ocpi22.tariff",
       "fields" : {
          "updated" : "2022-01-16T18:35:19.918",
-         "country_code" : "FI",
-         "party_id" : "000",
+         "ocpi_master" : 99,
          "archived" : true,
          "uid" : "T6",
          "created" : "2022-01-09T14:16:46.932",
@@ -88,8 +440,7 @@
          "currency" : "EUR",
          "uid" : "T1",
          "archived" : true,
-         "party_id" : "000",
-         "country_code" : "FI",
+         "ocpi_master" : 99,
          "updated" : "2022-01-16T17:58:16.079"
       }
    },
@@ -104,9 +455,8 @@
          "type" : "REGULAR",
          "currency" : "EUR",
          "archived" : true,
-         "party_id" : "000",
-         "updated" : "2022-01-16T18:34:02.706",
-         "country_code" : "FI"
+         "ocpi_master": 99,
+         "updated" : "2022-01-16T18:34:02.706"
       }
    },
    {
@@ -114,9 +464,8 @@
       "model" : "ocpi22.tariff",
       "fields" : {
          "updated" : "2022-01-17T05:45:59.285",
-         "country_code" : "FI",
          "archived" : false,
-         "party_id" : "000",
+         "ocpi_master": 99,
          "uid" : "T3",
          "created" : "2022-01-17T05:45:59.278",
          "tariff_alt_url" : "",
@@ -136,18 +485,16 @@
          "currency" : "EUR",
          "last_updated" : "2022-01-08T07:52:37.772",
          "updated" : "2022-01-17T05:46:58.898",
-         "country_code" : "FI",
-         "party_id" : "000",
+         "ocpi_master": 99,
          "archived" : false
       }
    },
    {
       "pk" : 18,
       "fields" : {
-         "country_code" : "FI",
          "updated" : "2022-01-19T18:23:33.600",
          "archived" : false,
-         "party_id" : "000",
+         "ocpi_master": 99,
          "created" : "2022-01-19T18:23:33.593",
          "type" : "REGULAR",
          "tariff_alt_url" : "",
@@ -167,9 +514,8 @@
          "currency" : "EUR",
          "type" : "REGULAR",
          "uid" : "TCCS",
-         "party_id" : "000",
+         "ocpi_master": 99,
          "archived" : false,
-         "country_code" : "FI",
          "updated" : "2022-01-19T18:23:56.514"
       }
    },
@@ -182,9 +528,8 @@
          "type" : "REGULAR",
          "currency" : "EUR",
          "uid" : "TCHADEMO",
-         "party_id" : "000",
+         "ocpi_master": 99,
          "archived" : false,
-         "country_code" : "FI",
          "updated" : "2022-01-19T18:24:14.256"
       },
       "pk" : 20

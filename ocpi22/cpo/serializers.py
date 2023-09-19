@@ -492,7 +492,7 @@ class TariffQuickSerializer(SerializerCleanedUp):
     )
 
     def create(self, validated_data):
-        tariff = Tariff.objects.create(uid=validated_data.get('uid'))
+        tariff = Tariff.objects.create(uid=validated_data.get('uid'), ocpi_master=validated_data.get('ocpi_master'))
         te = TariffElement.objects.create(tariff=tariff)
         per_kwh = validated_data.get(PriceKwhSerializer.key)
         per_min = validated_data.get(PriceMinSerializer.key)

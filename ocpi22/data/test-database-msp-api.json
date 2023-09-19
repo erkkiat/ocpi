@@ -280,7 +280,7 @@
       "publish": true,
       "country": "FIN",
       "city": "Helsinki",
-      "party_id": "CPO",
+      "ocpi_master": 99,
       "created": "2022-01-09T06:25:25.023",
       "address": "Helsinki 12",
       "parking_type": "PARKING_LOT",
@@ -296,7 +296,6 @@
       "suboperator": 1,
       "latitude": 60,
       "longitude": 30,
-      "country_code": "FI",
       "facilities": [
         1
       ]
@@ -419,10 +418,9 @@
     "pk": 7,
     "model": "ocpi22.token",
     "fields": {
-      "party_id": "MSP",
+      "ocpi_master": 111,
       "created": "2022-01-17T11:06:05.458",
       "issuer": "TheNewMotion",
-      "country_code": "FI",
       "last_updated": "2018-12-10T17:25:10",
       "updated": "2022-01-17T11:06:05.458",
       "visual_number": "DF000-2001-8999-1",
@@ -440,10 +438,9 @@
     "pk": 8,
     "model": "ocpi22.token",
     "fields": {
-      "party_id": "MSP",
+      "ocpi_master": 111,
       "created": "2022-01-17T11:06:05.458",
       "issuer": "TheNewMotion",
-      "country_code": "FI",
       "last_updated": "2018-12-10T17:25:10",
       "updated": "2022-01-17T11:06:05.458",
       "visual_number": "DF000-2001-8999-1",
@@ -458,67 +455,11 @@
     }
   },
   {
-    "fields": {
-      "url": "http://fakehost/ocpi/versions/",
-      "theirs": "THEIRS",
-      "version": "22",
-      "last_updated": "2022-01-13T18:57:11.301",
-      "updated": "2022-01-17T04:49:23.253",
-      "ours": "OURS",
-      "created": "2022-01-08T07:56:40.267",
-      "token_a": "TOKEN_A"
-    },
-    "model": "ocpi22.credentials",
-    "pk": 2
-  },
-  {
-    "pk": 3,
-    "model": "ocpi22.credentialsrole",
-    "fields": {
-      "business_details": 1,
-      "role": "CPO",
-      "credentials": 2,
-      "party_id": "CPO",
-      "country_code": "FI"
-    }
-  },
-  {
-    "pk": 916,
-    "model": "ocpi22.endpoint",
-    "fields": {
-      "role": "RECEIVER",
-      "credentials": 2,
-      "identifier": "commands",
-      "url": "http://fakehost/command"
-    }
-  },
-  {
-    "pk": 16,
-    "model": "ocpi22.endpoint",
-    "fields": {
-      "role": "RECEIVER",
-      "credentials": 2,
-      "identifier": "tokens",
-      "url": "http://localhost:80/ocpi/cpo/2.2/tokens"
-    }
-  },
-  {
-    "fields": {
-      "role": "SENDER",
-      "credentials": 2,
-      "identifier": "tokens",
-      "url": "http://localhost:80/ocpi/cpo/2.2/tokens"
-    },
-    "pk": 17,
-    "model": "ocpi22.endpoint"
-  },
-  {
     "model": "ocpi22.tariff",
     "pk": 5,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "DC50",
       "currency": "PLN",
       "type": "REGULAR",
@@ -537,8 +478,7 @@
     "pk": 6,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "DC150",
       "currency": "PLN",
       "type": "",
@@ -557,8 +497,7 @@
     "pk": 7,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "AC",
       "currency": "PLN",
       "type": "",
@@ -577,8 +516,7 @@
     "pk": 8,
     "fields": {
       "archived": false,
-      "country_code": "DE",
-      "party_id": "ALL",
+      "ocpi_master": 99,
       "uid": "52",
       "currency": "EUR",
       "type": "",
@@ -597,8 +535,7 @@
     "pk": 9,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -617,8 +554,7 @@
     "pk": 10,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -637,8 +573,7 @@
     "pk": 11,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -657,8 +592,7 @@
     "pk": 12,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "AC",
       "currency": "PLN",
       "type": "",
@@ -677,8 +611,7 @@
     "pk": 13,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -697,8 +630,7 @@
     "pk": 14,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -717,8 +649,7 @@
     "pk": 16,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 99,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1363,8 +1294,7 @@
     "model": "ocpi22.session",
     "pk": 204,
     "fields": {
-      "country_code": "FI",
-      "party_id": "CPO",
+      "ocpi_master": 99,
       "uid": "12345",
       "start_date_time": "2022-05-05T15:58:39.826",
       "end_date_time": null,

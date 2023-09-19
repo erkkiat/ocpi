@@ -54,7 +54,7 @@ from ocpi22.logging import log_error
 from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
-from ocpiconnector.ocpi_identities import Party, get_our_party
+from ocpiconnector.ocpi_identities import Party, get_our_party, get_our_credentialsrole
 from premium import requires_premium
 
 pp = PrettyPrinter(indent=4).pprint
@@ -138,14 +138,12 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     def _put(request, uid=None, partial=False):
         try:
             uid = uid or request.data.get('id')
-            party = get_our_party(OcpiRolesEnum.CPO)
-            location = Location.get_if_exists(
-                uid__iexact=uid, country_code__iexact=party.country_code, party_id__iexact=party.party_id
-            )
+            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+            location = Location.get_if_exists(uid__iexact=uid, ocpi_master=our_role)
             serializer = LocationQuickSerializer(data=request.data, instance=location, partial=partial)
 
             if serializer.is_valid():
-                serializer.save()
+                serializer.save(ocpi_master=our_role)
                 http_status = status.HTTP_200_OK if location else status.HTTP_201_CREATED
                 return Response(serializer.data, status=http_status)
             else:
@@ -163,11 +161,9 @@ class LocationQuickViewSet(mixins.ListModelMixin,
             url_path='(?P<uid>[^/.]+)')
     def by_id(self, request, uid) -> Response:
         try:
-            our_country_code, our_party_id = Location.get_owner_identity().split('*')
+            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
 
-            location = get_object_or_404(Location, uid=uid,
-                                         country_code=our_country_code,
-                                         party_id=our_party_id)
+            location = get_object_or_404(Location, uid=uid, ocpi_master=our_role)
             assert request.data.get('uid') in (uid, None), f'UID differs in request and in URL'
 
             if request.method == 'GET':
@@ -657,8 +653,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                             evse_uid=evse, location_id=evse.location, connector_id=connector_id,
                             token_id=get_token_id(token), billed_to=party, start_kwh=start_kwh, stop_kwh=start_kwh,
                             session_status=Session.ACTIVE, credentials=credentials,
-                            ocpi_master=credentials.roles.first()
-                            # Todo: Try to get the exact role used for the request
+                            ocpi_master=get_our_credentialsrole(OcpiRolesEnum.CPO)
                         )
                         logging.info(f'Created session {session.uid} based on start_transaction from CPO')
                     session.send_updates()

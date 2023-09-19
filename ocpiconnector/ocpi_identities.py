@@ -122,15 +122,15 @@ if len(ocpi_identities) > 1 and not settings.TEST:
 
 
 @cached(cache=dict())
-def get_identity(role: str = None, identities=ocpi_identities) -> str:
+def get_our_identity(role: str = None, identities=ocpi_identities) -> str:
     """
     These tests rely on data in environment variables
 
-    >>> get_identity('EMSP')
+    >>> get_our_identity('EMSP')
     'FI*MSP'
-    >>> get_identity('CPO')
+    >>> get_our_identity('CPO')
     'FI*CPO'
-    >>> get_identity()
+    >>> get_our_identity()
     'FI*CPO'
 
     @param role:
@@ -154,7 +154,7 @@ def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     >>> get_our_country_code(None)  # Return the first one (for Credentials DELETE)
     'FI'
     """
-    country_code, _party_id = get_identity(role, identities).split('*')
+    country_code, _party_id = get_our_identity(role, identities).split('*')
     return country_code
 
 
@@ -170,7 +170,7 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
     >>> get_our_party_id(None)  # Return the first one (for Credentials DELETE)
     'CPO'
     """
-    _country_code, party_id = get_identity(role, identities).split('*')
+    _country_code, party_id = get_our_identity(role, identities).split('*')
     return party_id
 
 
@@ -190,34 +190,29 @@ def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Par
     Party(country_code='FI', party_id='CPO')
     """
     role = role.value if role else None
-    country_code, party_id = get_identity(role if role else '', identities).split('*')
+    country_code, party_id = get_our_identity(role if role else '', identities).split('*')
     return Party(country_code, party_id)
 
 
-def create_credentialsrole(party: Party, business_name, website, role, credentials=None) -> Optional['CredentialsRole']:
+def create_credentialsrole(party: Party, business_name, website='', role=OcpiRolesEnum.UNKNO,
+                           credentials=None) -> Optional['CredentialsRole']:
     from ocpi22.models.business_details import BusinessDetails
     from ocpi22.models.credentials import CredentialsRole
     bt, _created = BusinessDetails.objects.get_or_create(name__iexact=business_name,
                                                          defaults=dict(name=business_name, website=website))
     credentialsrole, _created = CredentialsRole.objects.get_or_create(
-        country_code__iexact=party.country_code, party_id__iexact=party.party_id,
+        country_code__iexact=party.country_code, party_id__iexact=party.party_id, credentials=credentials,
         defaults=dict(country_code=party.country_code, party_id=party.party_id,
-                      business_details=bt, role=role, credentials=credentials)
+                      business_details=bt, role=role)
     )
     return credentialsrole
 
 
 @cached(cache=dict())
-def get_our_credentialsrole(role: OcpiRolesEnum):
+def get_our_credentialsrole(role: OcpiRolesEnum) -> "CredentialsRole":
     """
-    These tests rely on data in environment variables
-
-    >>> get_our_credentialsrole(OcpiRolesEnum.CPO)
-    <CredentialsRole: FI*CPO (CPO)>
-    >>> get_our_credentialsrole(OcpiRolesEnum.EMSP)
-    <CredentialsRole: FI*MSP (EMSP)>
-    >>> get_our_credentialsrole(None)
-    <CredentialsRole: FI*CPO (CPO)>
+    Get the CredentialsRole object which corresponds to our OCPI roles set in environment variables,
+    creating it if necessary
     """
     from ocpi22.models.credentials import CredentialsRole
     our_party = get_our_party(role)

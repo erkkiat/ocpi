@@ -40,7 +40,7 @@ def load_tests(_loader, tests, _ignore):
 
 
 class TestQuickLocations(TestCase):
-    fixtures = ['ocpi22/cpo/database-dumps/tariffs.json']
+    fixtures = ['ocpi22/data/credentials-2.json', 'ocpi22/cpo/database-dumps/tariffs.json']
     maxDiff = 99999
 
     def test_quick_location(self):
@@ -286,6 +286,7 @@ class TestQuickLocations(TestCase):
 
 class TestChargingPeriods(TestCase):
     fixtures = [
+        'ocpi22/data/credentials-2.json',
         'ocpi22/cpo/database-dumps/complex-tariffs-1.json',
         'ocpi22/cpo/database-dumps/tariffs-time-weekday.json'
     ]
@@ -435,9 +436,9 @@ class TestChargingPeriods(TestCase):
                         if expected_session_data:
                             test_session_id = 'FI*000*S*B58DDC4D3B304A47AD623C22147'
                             test_session = Session.get_if_exists(uid=test_session_id)
-                            session_serializer = SessionSerializer(test_session)
-                            self.assertDictEqual(session_serializer.data, expected_session_data,
-                                                 'Session data differs from expected')
+                            session_serializer = SessionSerializer(test_session, context={'request': None})
+                            self.assertTrue(compare_dicts_recursively(session_serializer.data, expected_session_data),
+                                            'Session data differs from expected')
                 except AssertionError:
                     ic(args[0], response.data)
                     raise

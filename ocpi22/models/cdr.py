@@ -7,7 +7,6 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.html import format_html
 import util
-from ocpi22 import choices
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
 from ocpi22.grafana import metrics
@@ -39,23 +38,16 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     update_method = 'POST'
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['uid', 'party_id'], name='cdr_party_uid'),
-            # Todo: models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
-        ]
+        # constraints = [
+        # Todo: models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
+        # ]
         ordering = ('created',)
         verbose_name = _('Billing record')
         verbose_name_plural = _('Billing records')
 
-    # ISO-3166 alpha-2 country code of the CPO that owns this CDR
-    country_code = models.CharField(max_length=2, choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
-
-    # CPO ID of the CPO that 'owns' this CDR (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, verbose_name=_('Party ID'))
-
     # The party responsible for the master data for this object
     # The country_code and party_id can be found through the CredentialsRole
-    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='cdrs', null=True, on_delete=models.PROTECT)
+    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='cdrs', on_delete=models.PROTECT)
 
     # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
@@ -223,7 +215,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         return util.member_hash(self)
 
     def get_absolute_url(self, version=None):
-        return util.reverse('cdr-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return util.reverse(
+            'cdr-by-id',
+            args=[version or '2.2.1', self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
+        )
 
     def total_cost(self):
         return f'{"-" if self.credit else ""}' \
@@ -249,8 +244,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
         cdr = cls.objects.create(
             uid=generate_cdr_uid(),
-            country_code=session.country_code,
-            party_id=session.party_id,
             start_date_time=session.start_date_time,
             end_date_time=session.end_date_time,
             session_id=session.uid,
@@ -282,6 +275,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             total_cost_incl_vat=session.total_cost_incl_vat or 0.0,
             total_energy=session.kwh,
             credentials=session.credentials,
+            ocpi_master=session.ocpi_master,
             billed_to=session.billed_to,
             last_updated=timezone.now(),
         )
@@ -292,6 +286,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         else:
             cdr_tariffs = Tariff.make_copies(Tariff.get_default_tariffs(session.connector.standard))
         cdr.tariffs.set(cdr_tariffs)
+
+        cdr.send_update_to_interested_parties(method='POST')
 
         try:
             metrics('charging.total_power', session.kwh)

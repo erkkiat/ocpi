@@ -53,7 +53,8 @@ class TariffField(serializers.StringRelatedField):
         try:
             party = self.context.get('party')
             tariff = Tariff.objects.get(uid__iexact=data, archived=False,
-                                        country_code__iexact=party.country_code, party_id__iexact=party.party_id)
+                                        ocpi_master__country_code__iexact=party.country_code,
+                                        ocpi_master__party_id__iexact=party.party_id)
             return tariff
         except Tariff.DoesNotExist as e:
             if fetch_object(uid=data, ocpi_module=OcpiModuleEnum.TARIFFS, credentials=self.context.get('credentials')):
@@ -215,6 +216,9 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     lookup_field = 'uid'
 
     id = serializers.CharField(source='uid')
+    country_code = serializers.CharField(source='ocpi_master.country_code')
+    party_id = serializers.CharField(source='ocpi_master.party_id')
+
     evses = EvseSerializer(many=True, required=False)
     coordinates = CoordinatesSerializer()
     name = serializers.CharField(required=False)
@@ -264,14 +268,15 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                     for t in tariff_ids:
                         try:
                             tariff = Tariff.objects.get(uid=t,
-                                                        country_code=location.country_code,
-                                                        party_id=location.party_id,
+                                                        ocpi_master__country_code=location.ocpi_master.country_code,
+                                                        ocpi_master__party_id=location.ocpi_master.party_id,
                                                         archived=False)
                             tariffs.append(tariff)
                         except Tariff.DoesNotExist:
                             # Todo: Fetch Tariffs from other party
-                            raise ValidationError(f"Tariff `{t}` for {location.country_code}*{location.party_id} "
-                                                  "does not exist in our database")
+                            raise ValidationError(
+                                f"Tariff `{t}` for {location.ocpi_master.country_code}*"
+                                f"{location.ocpi_master.party_id} does not exist in our database")
                     connector.tariff_ids.set(tariffs)
             if facilities:
                 location.facilities.set(facilities)

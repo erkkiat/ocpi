@@ -13,7 +13,7 @@ from ocpiconnector.ocpi_identities import Party
 
 
 def compare_lists_recursively(received, expected, path='', label1='received', label2='expected') -> bool:
-    assert isinstance(received, list) and isinstance(expected, list), \
+    assert isinstance(received, (list, tuple)) and isinstance(expected, (list, tuple)), \
         f'Not expecting {type(received)=} {type(expected)=}'
     result = True
     for i, v in enumerate(received):
@@ -75,7 +75,7 @@ class OCPIAPIRequestFactory(APIRequestFactory):
         super().__init__(*args, **kwargs)
 
     def request(self, sender: Party = None, **kwargs):
-        ocpi_party = get_credentialsrole(None, sender) \
+        ocpi_party = get_credentialsrole(None, sender, create=True) \
             if sender else None
         credentials = ocpi_party.credentials if ocpi_party else Credentials.objects.first()
         headers = make_headers(

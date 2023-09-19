@@ -18,7 +18,6 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 import util
-from ocpi22 import choices
 
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum, TOKEN_TYPE_CHOICES
 from ocpi22.models.location import Location, Evse, Connector
@@ -41,11 +40,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     class Meta:
         verbose_name = _('session')
         verbose_name_plural = _('sessions')
-        constraints = [
-            models.UniqueConstraint(fields=['uid', 'party_id', 'country_code'],
-                                    name='session_party_id_uid_country_code'),
-            # models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
-        ]
 
     ocpi_module_name = OcpiModuleEnum.SESSIONS
     ocpi_serializer_class = 'ocpi22.ocpi.serializers.SessionSerializer'
@@ -53,17 +47,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     send_updates_to = OcpiModule.INTERESTED_PARTIES
     subscribers = os.environ.get('SESSION_SUBSCRIBERS', '').upper().split(',')
 
-    # send_updates_to = ('EMSP', 'HUB')
-
-    # ISO-3166 alpha-2 country code of the CPO that owns this Session
-    country_code = models.CharField(max_length=2, choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
-
-    # CPO ID of the CPO that 'owns' this Session (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, verbose_name=_('Party ID'))
-
     # The party responsible for the master data for this object
     # The country_code and party_id can be found through the CredentialsRole
-    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='sessions', null=True, on_delete=models.PROTECT)
+    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='sessions', on_delete=models.PROTECT)
 
     # The unique id that identifies the charging session in the CPO platform.
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_('UID'))
@@ -79,7 +65,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @cached_property
     def ocpp_reservation_id(self) -> Optional[int]:
-        id = f'{self.country_code}{self.party_id}{self.reservation_id}'
+        id = f'{self.ocpi_master.country_code}{self.ocpi_master.party_id}{self.reservation_id}'
         return str_to_deterministic_int(id, limit=10)
 
     # The timestamp when the session became ACTIVE in the Charge Point.
@@ -369,7 +355,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return f'{round(self.kwh, 1)} kWh in {self.location.city}, updated {naturaltime(self.updated)}'
 
     def get_absolute_url(self, version=None):
-        return util.reverse('session-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return util.reverse(
+            'session-by-id',
+            args=[version or '2.2.1', self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
+        )
 
     def total_time(self):
         if self.status == self.INVALID:
@@ -432,9 +421,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 )
                 method = 'patch'
         assert data is None or isinstance(data, dict), f'Expected dict, got {type(data)}'
+        # Lähettääkö tämä todella patchinä?
         super().send_update_to_interested_parties(
             data=data, method=method,
-            path_components=path_components or [self.country_code, self.party_id, self.uid]
+            path_components=path_components or [self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
         )
 
 

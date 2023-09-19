@@ -6,7 +6,8 @@ from ocpiconnector.ocpi_identities import get_our_party
 def _find_our_evse(evse_uid) -> Evse:
     party = get_our_party(OcpiRolesEnum.CPO)
     evses = Evse.objects.filter(uid__iexact=evse_uid).select_related('location'). \
-        filter(location__country_code__iexact=party.country_code, location__party_id__iexact=party.party_id)
+        filter(location__ocpi_master__country_code__iexact=party.country_code,
+               location__ocpi_master__party_id__iexact=party.party_id)
     evse_count = evses.count()
     if not evse_count:
         raise Evse.DoesNotExist(f'EVSE with ID {evse_uid} '

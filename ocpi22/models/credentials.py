@@ -6,7 +6,6 @@ from rest_framework.exceptions import ValidationError
 
 import ocpi22.logging as logging
 import secrets
-from functools import lru_cache
 from typing import Optional, List
 
 from django import forms
@@ -14,7 +13,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.db import models
 from django.db.models import Q
-from django.db.models.signals import pre_save, pre_delete
+from django.db.models.signals import pre_save, pre_delete, post_save
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
 from django.utils import timezone
@@ -34,10 +33,23 @@ from ocpiconnector.ocpi_identities import get_our_party, Party
 
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
+    # Todo: Push HubCLientInfo in OCPI 2.2 format
+    """
+    Example:
+
+    PUT To URL: https://www.server.com/ocpi/cpo/2.0/clientinfo/NL/ALL
+    {
+      "country_code": "NL",
+      "party_id": "ALL",
+      "role": "CPO",
+      "status": "PLANNED",
+    }
+    """
+
     ocpi_serializer_class = 'ocpi22.ocpi.serializers.CredentialsSerializer'
     ocpi_module_name = OcpiModuleEnum.CREDENTIALS
     ocpi_object_owner = None
-    send_updates_to = None
+    send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB', 'CPO', 'SCSP', 'OTHER')
 
     class Meta:
         verbose_name = _('roaming partner')
@@ -90,10 +102,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return super(self.__class__, self).save(*args, **kwargs)
 
     def atomic_post_save(self, *_args, **_kwargs) -> None:
-        # This should trigger when Credentials is modified in Admin UI
+        """This should trigger when Credentials is modified in Admin UI or pushed over HubClientInfo"""
         find_endpoints_by_roles.cache_clear()
-        from ocpi22.pull import schedule_full_update
-        schedule_full_update(self, countdown=1)
+        # from ocpi22.pull import schedule_full_update
+        # schedule_full_update(self, countdown=1)
+        # if ocpi_platform.is_hub:
+        #     self.send_all_updates(ocpi_module_name=OcpiModuleEnum.HUBCLIENTINFO)
 
     def party(self) -> str:
         return ", ".join([
@@ -231,6 +245,16 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
     agreed_parties = models.ManyToManyField('ocpi22.CredentialsRole', blank=True,
                                             verbose_name=_('Parties with agreements'))
+    # Todo: Agreed parties should show on both sides, if CPO has an agreement with MSP, then MSP should also see it (in admin)
+
+    class ocpi_master:
+        @property
+        def country_code(self):
+            return self.country_code
+
+        @property
+        def party_id(self):
+            return self.party_id
 
     def __str__(self):
         if self.role:
@@ -314,6 +338,13 @@ def credentials_pre_save(sender, instance, *_args, **_kwargs):
         credentials.connection_status = choices.SUSPENDED
     if not credentials.token_a:
         credentials.token_a = generate_random_token()
+
+
+@receiver(post_save, sender=Credentials)
+def credentials_post_save(sender, instance, *_args, **_kwargs):
+    credentials: Credentials = instance
+    if credentials.is_complete():
+        credentials.atomic_post_save()
 
 
 @receiver(pre_delete, sender=Credentials)

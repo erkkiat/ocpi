@@ -22,10 +22,10 @@ class CommandTokenSerializer(SerializerCleanedUp):
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
-    country_code = CountryCodeField()
-    party_id = PartyIdField()
-
     uid = serializers.CharField(required=True)
+    country_code = serializers.CharField(max_length=2, required=True)
+    party_id = serializers.CharField(max_length=3, required=True)
+
     type = CiStringChoiceField(choices=choices.TOKEN_TYPE_CHOICES, required=True)
     contract_id = serializers.CharField(required=True)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)

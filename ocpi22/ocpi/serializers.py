@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from ocpi22 import choices
-from ocpi22.choices import TOKEN_TYPE_CHOICES
+from ocpi22.choices import TOKEN_TYPE_CHOICES, CONNECTION_STATUS_CHOICES
 from ocpi22.messages import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
@@ -15,11 +15,8 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension, ChargingPeriodSerializer, TotalCostSerializer
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
-from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
-from ocpi22.util import base64_to_ascii, CiStringField, CiStringChoiceField, MultipleChoiceFieldList, CountryCodeField, \
-    PartyIdField
-from ocpiconnector.ocpi_identities import ocpi_platform
+from ocpi22.util import base64_to_ascii, CiStringChoiceField, MultipleChoiceFieldList, CiStringField
 
 
 class CdrTokenSerializer(SerializerCleanedUp):
@@ -37,8 +34,9 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
-    country_code = CountryCodeField()
-    party_id = PartyIdField()
+    country_code = CiStringField(source='ocpi_master.country_code')
+    party_id = CiStringField(source='ocpi_master.party_id')
+
     whitelist = CiStringChoiceField(required=False, choices=Token.WHITELIST_CHOICES)
     default_profile_type = CiStringChoiceField(required=False, choices=Token.PROFILE_TYPE_CHOICES)
     language = CiStringChoiceField(required=False, default='EN', choices=choices.LANGUAGE_CHOICES)
@@ -77,10 +75,11 @@ class RestrictionSerializer(SerializerCleanedUp):
     reservation = serializers.ChoiceField(choices=choices.RESERVATION_CHOICES, required=False)
 
 
-class ElementsSaveSerializer(SerializerCleanedUp):
+class ElementsSerializer(SerializerCleanedUp):
     price_components = PriceComponentSerializer(
         many=True,
-        help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_pricecomponent_class'
+        help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc'
+                  f'#mod_tariffs_pricecomponent_class'
     )
     restrictions = RestrictionSerializer(source='*', required=False)
 
@@ -105,14 +104,15 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         model = Tariff
         exclude = ['updated', 'created', 'uid', 'archived', 'ocpi_master']
 
-    country_code = CountryCodeField()
-    party_id = PartyIdField()
-
     id = serializers.CharField(source='uid', required=False,
                                help_text='Preferably a human readable, unique identifier')
-    elements = ElementsSaveSerializer(
+    country_code = serializers.CharField(source='ocpi_master.country_code')
+    party_id = serializers.CharField(source='ocpi_master.party_id')
+
+    elements = ElementsSerializer(
         source='tariff_elements', many=True, required=True,
-        help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc#mod_tariffs_tariffelement_class'
+        help_text=f'See {settings.OCPI_SPECIFICATION_URL}mod_tariffs.asciidoc'
+                  f'#mod_tariffs_tariffelement_class'
     )
     min_price = MinPriceSerializer(source='*', required=False,
                                    default=dict(min_price_excl_vat=None, min_price_incl_vat=None))
@@ -121,8 +121,6 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
     tariff_alt_text = TariffAltTextSerializer(source='*', read_only=True)
     last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
-
-    # last_updated = serializers.DateTimeField(read_only=False)
 
     def _delete_children(self, tariff: Tariff) -> None:
         """
@@ -191,10 +189,10 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                   'cdr_location', 'tariffs', 'total_cost', 'total_energy', 'currency',
                   'total_time', 'credit', 'credit_reference_id', 'last_updated']
 
-    country_code = CountryCodeField()
-    party_id = PartyIdField()
-
     id = serializers.CharField(source='uid')
+    country_code = serializers.CharField(source='ocpi_master.country_code')
+    party_id = serializers.CharField(source='ocpi_master.party_id')
+
     cdr_token = CdrTokenSerializer(source='*')
     total_cost = TotalCostSerializer(source='*')
     tariffs = TariffSerializer(many=True, required=True)
@@ -211,6 +209,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
             for t in tariffs:
                 # Create archived copies of the relevant Tariffs, so that they don't change anymore
                 t['archived'] = True
+                # Todo: Store CDRs as json in the database
                 tariff_list.append(tariff_serializer.create(t))
             cdr = Cdr.objects.create(**validated_data)
             cdr.tariffs.set(tariff_list)
@@ -223,7 +222,8 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
 class RolesSerializer(serializers.ModelSerializer):
     class Meta:
         model = CredentialsRole
-        fields = ('country_code', 'party_id', 'role', 'business_details')
+        # Todo: Should there be country_code and party_id here?
+        fields = ('ocpi_master', 'role', 'business_details')
 
     business_details = BusinessDetailsSerializer()
 
@@ -365,6 +365,9 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
                   'status', 'last_updated']
 
     id = serializers.CharField(source='uid', max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    country_code = CiStringField(source='ocpi_master.country_code')
+    party_id = CiStringField(source='ocpi_master.party_id')
+
     charging_periods = ChargingPeriodSerializer(many=True, source='chargingperiods', required=False)
     cdr_token = CdrTokenSerializer(required=True, source='*')
     location_id = LocationIdDictSerializer(source='*')
@@ -414,31 +417,17 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         return instance
 
 
-class ConnectionStatusSerializer(serializers.Serializer):
-    def to_representation(self, instance: CredentialsRole):
-        if instance and instance.credentials:
-            return instance.credentials.connection_status
-        from ocpi22 import logging
-        logging.error(f'No connection status for {instance}')
-        return False
-
-
-class LastConnectionSerializer(serializers.Serializer):
-    def to_representation(self, instance: CredentialsRole):
-        if instance and instance.credentials:
-            return instance.credentials.last_connection
-        from ocpi22 import logging
-        logging.error(f'No last_connection for {instance}')
-        return False
-
-
 class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = CredentialsRole
         fields = ('country_code', 'party_id', 'role', 'status', 'last_updated')
 
-    status = ConnectionStatusSerializer(source='*')
-    last_updated = LastConnectionSerializer(source='*')
+    status = serializers.ChoiceField(
+        choices=CONNECTION_STATUS_CHOICES, source='credentials.connection_status'
+    )
+    last_updated = serializers.DateTimeField(
+        source='credentials.last_connection', format=settings.OCPI_DATE_FORMAT
+    )
 
 
 class LocationIdSerializer(serializers.Serializer):

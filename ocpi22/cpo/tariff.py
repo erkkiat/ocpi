@@ -9,7 +9,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo.serializers import TariffQuickSerializer
 from ocpi22.models.tariff import Tariff
-from ocpiconnector.ocpi_identities import Party, get_our_party
+from ocpiconnector.ocpi_identities import Party, get_our_credentialsrole
 
 
 class TariffQuickViewSet(mixins.ListModelMixin,
@@ -35,16 +35,14 @@ class TariffQuickViewSet(mixins.ListModelMixin,
             data = request.data
             data = data.get('data', data)  # Is the actual data on the top level or one level lower?
             uid = uid or request.data.get('id')
-            party = get_our_party(OcpiRolesEnum.CPO)
+            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
 
-            tariff = Tariff.get_if_exists(
-                uid__iexact=uid, country_code__iexact=party.country_code, party_id__iexact=party.party_id, archived=False
-            )
+            tariff = Tariff.get_if_exists(uid__iexact=uid, ocpi_master=our_role, archived=False)
             serializer = TariffQuickSerializer(data=data, instance=tariff, partial=partial,
                                                context={'request': request,
                                                         'party': Party(country_code, party_id)})
             if serializer.is_valid():
-                serializer.save()
+                serializer.save(ocpi_master=our_role)
                 http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
                 return Response(serializer.data, status=http_status)
             else:
@@ -59,11 +57,9 @@ class TariffQuickViewSet(mixins.ListModelMixin,
             url_path='(?P<uid>[^/.]+)')
     def by_id(self, request, uid) -> Response:
         try:
-            our_country_code, our_party_id = Tariff.get_owner_identity().split('*')
+            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
 
-            tariff = Tariff.objects.get(uid__iexact=uid, archived=False,
-                                       country_code__iexact=our_country_code,
-                                       party_id__iexact=our_party_id)
+            tariff = Tariff.objects.get(uid__iexact=uid, archived=False, ocpi_master=our_role)
 
             assert request.data.get('uid') in (uid, None), f'Different UID in request and URL'
 
@@ -75,7 +71,7 @@ class TariffQuickViewSet(mixins.ListModelMixin,
             serializer = TariffQuickSerializer(tariff, data=request.data, partial=partial,
                                                context={'request': request})
             if serializer.is_valid():
-                serializer.save()
+                serializer.save(ocpi_master=our_role)
                 serializer = TariffQuickSerializer(Tariff.objects.get(uid=uid))
                 return Response(serializer.data)
             else:

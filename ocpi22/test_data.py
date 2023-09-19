@@ -152,7 +152,7 @@ expected_get_responses = {
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/001/T1',
                    'issuer': 'EKI',
                    'last_updated': '2017-12-10T17:25:10Z',
-                   'party_id': '001',
+                   'party_id': 'MSP',
                    'type': 'RFID',
                    'uid': 'T1',
                    'valid': True,
@@ -189,38 +189,10 @@ expected_get_responses = {
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/001/FI*001*T*ADMIN*TOKEN',
                    'issuer': 'FI*001',
                    'last_updated': '2022-01-12T19:44:39Z',
-                   'party_id': '001',
+                   'party_id': 'MSP',
                    'type': 'OTHER',
                    'uid': 'FI*001*T*ADMIN*TOKEN',
-                   'valid': True},
-                  {'contract_id': 'DE8ACC12E46L89',
-                   'country_code': 'DE',
-                   'default_profile_type': 'GREEN',
-                   # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/DE/TNM/12345678905880',
-                   'group_id': 'DF000-2001-8999',
-                   'issuer': 'TheNewMotion',
-                   'language': 'IT',
-                   'last_updated': '2018-12-10T17:25:10Z',
-                   'party_id': 'TNM',
-                   'type': 'RFID',
-                   'uid': '12345678905880',
-                   'valid': True,
-                   'visual_number': 'DF000-2001-8999-1',
-                   'whitelist': 'ALLOWED'},
-                  {'contract_id': 'DE8ACC12E46L89',
-                   'country_code': 'FI',
-                   'default_profile_type': 'GREEN',
-                   # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/MSP/FIMSP-1',
-                   'group_id': 'DF000-2001-8999',
-                   'issuer': 'TheNewMotion',
-                   'language': 'IT',
-                   'last_updated': '2018-12-10T17:25:10Z',
-                   'party_id': 'MSP',
-                   'type': 'RFID',
-                   'uid': 'FIMSP-1',
-                   'valid': True,
-                   'visual_number': 'DF000-2001-8999-1',
-                   'whitelist': 'ALLOWED'}],
+                   'valid': True}],
          'status_code': 1000,
          'timestamp': '2022-01-01T12:00:00'},
 
@@ -530,7 +502,7 @@ expected_get_headers = {
          'Vary': 'Accept, Accept-Language, Cookie, origin',
          'X-Frame-Options': 'DENY',
          'X-Limit': '50',
-         'X-Total-Count': '6'},
+         'X-Total-Count': '4'},
     'http://testserver/ocpi/2.2.1/tokens/?limit=3&offset=3':
         {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '1100',
@@ -539,7 +511,7 @@ expected_get_headers = {
          'Vary': 'Accept, Accept-Language, Cookie, origin',
          'X-Frame-Options': 'DENY',
          'X-Limit': '50',
-         'X-Total-Count': '6'},
+         'X-Total-Count': '4'},
     'http://localhost:8001/ocpi/2.2.1/locations/?limit=3':
         {'Allow': 'GET, PUT, PATCH, HEAD, OPTIONS',
          'Content-Length': '3309',
@@ -603,7 +575,7 @@ class ExpectedSessionUpdateResults:
 
     webhook1 = {
         'country_code': 'FI', 'party_id': 'CPO', 'uid': '12345', 'start_date_time': '2022-01-01T12:00:00Z',
-        'display_start_date': '1.1.2022', 'display_start_time': '12:00', 'kwh': 18.0, 'charging_periods': [OrderedDict(
+        'kwh': 18.0, 'charging_periods': [OrderedDict(
             [('start_date_time', '2019-06-23T08:16:02Z'), ('tariff', None), ('dimensions', [
                 OrderedDict([('type', 'ENERGY'), ('volume', '3000.0000')]),
                 OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '80.0000')])])])], 'total_time': '0.00',
@@ -651,7 +623,7 @@ class ExpectedSessionUpdateResults:
 
     webhook2 = {
         'country_code': 'FI', 'party_id': 'CPO', 'uid': '12345', 'start_date_time': '2022-01-01T12:00:00Z',
-        'display_start_date': '1.1.2022', 'display_start_time': '12:00', 'kwh': 20.0, 'charging_periods': [OrderedDict(
+        'kwh': 20.0, 'charging_periods': [OrderedDict(
             [('start_date_time', '2019-06-23T08:16:02Z'), ('tariff', None), ('dimensions', [
                 OrderedDict([('type', 'ENERGY'), ('volume', '3000.0000')]),
                 OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '80.0000')])])]), OrderedDict(
@@ -831,7 +803,7 @@ class StopTransactionResponses:
                                       'session_id': 'FI*CPO*S*MOCK-1',
                                       'start_date_time': '2022-01-01T12:00:00Z',
                                       'tariffs': [dict([('detail_url',
-                                                         'http://testserver.test/ocpi/2.2.1/tariffs/FI/000/EKI1'),
+                                                         'http://testserver.test/ocpi/2.2.1/tariffs/FI/CPO/EKI1'),
                                                         ('id', 'EKI1'),
                                                         ('elements',
                                                          [dict([('price_components',
@@ -849,7 +821,8 @@ class StopTransactionResponses:
                                                                       ('text',
                                                                        '0,50€/kWh')])),
                                                         ('country_code', 'FI'),
-                                                        ('party_id', '000'),
+                                                        ('party_id', 'CPO'),
+                                                        ('last_updated', '2022-01-01T13:30:00Z'),
                                                         ('currency', 'EUR')])],
                                       'total_cost': dict([('excl_vat', 17.5),
                                                           ('incl_vat', 21.7)]),
@@ -1005,7 +978,7 @@ class StopTransactionResponses:
                                        ('start_date_time', '2022-01-01T12:00:00Z'),
                                        ('tariffs',
                                         [OrderedDict([('detail_url',
-                                                       'http://testserver.test/ocpi/2.2.1/tariffs/FI/000/EKI1'),
+                                                       'http://testserver.test/ocpi/2.2.1/tariffs/FI/CPO/EKI1'),
                                                       ('id', 'EKI1'),
                                                       ('elements',
                                                        [OrderedDict([('price_components',
@@ -1022,7 +995,8 @@ class StopTransactionResponses:
                                                                     ('text',
                                                                      '0,50€/kWh')])),
                                                       ('country_code', 'FI'),
-                                                      ('party_id', '000'),
+                                                      ('party_id', 'CPO'),
+                                                      ('last_updated', '2022-01-01T12:23:00Z'),
                                                       ('currency', 'EUR')])]),
                                        ('total_cost',
                                         OrderedDict([('excl_vat', 61.73),
@@ -1107,8 +1081,8 @@ class SessionData:
         'id': 'FI*CPO*S*MOCK-1'}
 
     meter_values_1_webhook = {'country_code': 'FI', 'party_id': 'CPO', 'uid': 'FI*CPO*S*MOCK-1',
-                              'start_date_time': '2022-01-01T12:00:00Z', 'display_start_date': '1.1.2022',
-                              'display_start_time': '12:00', 'kwh': 123.45, 'charging_periods': [OrderedDict(
+                              'start_date_time': '2022-01-01T12:00:00Z',
+                              'kwh': 123.45, 'charging_periods': [OrderedDict(
             [('start_date_time', '2022-01-01T12:00:00Z'), ('tariff', 'EKI1'), ('dimensions', [
                 OrderedDict([('type', 'ENERGY'), ('volume', '123.4500')]),
                 OrderedDict([('type', 'STATE_OF_CHARGE'), ('volume', '42.0000')]),
@@ -1163,12 +1137,34 @@ class RfidTestData:
         'currency': 'EUR',
         'evse_uid': 'HELSINKI-3',
         'kwh': 0.0,
-                       'location_id': 'HELSINKI-1',
-                       'party_id': 'CPO',
-                       'start_date_time': '2022-01-01T12:00:00Z',
-                       'status': 'ACTIVE',
-                       'last_updated': '2022-01-01T12:00:00Z',
-                       'id': 'FI*CPO*S*MOCK-1'}
+        'location_id': 'HELSINKI-1',
+        'party_id': 'CPO',
+        'start_date_time': '2022-01-01T12:00:00Z',
+        'status': 'ACTIVE',
+        'last_updated': '2022-01-01T12:00:00Z',
+        'id': 'FI*CPO*S*MOCK-1'}
+
+    expected_response_1 = {
+        'session': {'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                    'auth_method': 'AUTH_REQUEST',
+                    'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
+                    'billed_to': 'FI*MSP',
+                    'connector_id': '1',
+                    'currency': 'EUR',
+                    'evse_uid': 'HELSINKI-3',
+                    'internal_reference': 'MY-INTERNAL-REFERENCE',
+                    'location_id': 'HELSINKI-1',
+                    'session_id': 'FI*CPO*S*MOCK-1',
+                    'start_date_time': '2022-01-01T12:00:00Z',
+                    'start_kwh': 120.0,
+                    'stop_kwh': 120.0,
+                    'status': 'ACTIVE',
+                    'last_updated': '2022-01-01T12:00:00Z',
+                    'token': OrderedDict([('token_id', 'EKI1'),
+                                          ('type', 'RFID'),
+                                          ('contract_id', 'DE8ACC12E46L89')])},
+        'status_text': 'Session started'
+    }
 
 
 class SessionCommandsData:
@@ -1360,3 +1356,49 @@ class SessionCommandsData:
         'url': 'http://fakehost/stop/HELSINKI-3/',
         'verify': False
     }
+
+
+class AppChargingData:
+    expected_data_sent_max_price = {'headers': {
+        'Authorization':
+            'Token YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
+        'OCPI-from-country-code': 'FI',
+        'OCPI-from-party-id': 'MSP',
+        'OCPI-to-country-code': 'FI',
+        'OCPI-to-party-id': 'CPO',
+        'content-type': 'application/json'
+    },
+        'json': {'authorization_reference': 'REFERENCE-123',
+                 # 'connector_id': '1',  # OCPI 2.2 doesn't support this in the remote start command
+                 'evse_uid': 'HELSINKI-3',
+                 'location_id': 'HELSINKI-1',
+                 'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/REFERENCE-123',
+                 'token': OrderedDict([('country_code', 'FI'),
+                                       ('party_id', 'MSP'),
+                                       (
+                                           'uid',
+                                           'FI*MSP*T*APP*MOCK-1'),
+                                       ('type', 'APP_USER'),
+                                       ('contract_id',
+                                        'CONTRACT-123')])},
+        'timeout': 25
+    }
+
+    expected_data_sent = {'headers': {
+        'Authorization': 'Token YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
+        'OCPI-from-country-code': 'FI',
+        'OCPI-from-party-id': 'MSP',
+        'OCPI-to-country-code': 'FI',
+        'OCPI-to-party-id': 'CPO',
+        'content-type': 'application/json'},
+                          'json': {'authorization_reference': 'REFERENCE-123',
+                                   'evse_uid': 'HELSINKI-3',
+                                   'location_id': 'HELSINKI-1',
+                                   'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/REFERENCE-123',
+                                   'token': dict([('country_code', 'FI'),
+                                                  ('party_id', 'MSP'),
+                                                  ('uid', 'FI*MSP*T*APP*MOCK-1'),
+                                                  ('type', 'APP_USER'),
+                                                  ('contract_id', 'CONTRACT-123')])},
+                          'timeout': 25
+                          }

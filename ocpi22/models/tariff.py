@@ -19,7 +19,7 @@ from ocpi22.credentials.util import find_endpoints_by_roles
 import ocpi22.tasks as tasks
 from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
-from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id, get_our_party, ocpi_platform
+from ocpiconnector.ocpi_identities import get_our_party, ocpi_platform
 from ocpiconnector.util import weekday_range_to_str, humanize_time, humanize_date_range, build_item_url
 
 
@@ -50,22 +50,14 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     #         ),
     #     ]
 
-    upper_case_fields = ('country_code', 'party_id', 'currency', 'uid')
+    upper_case_fields = ('currency', 'uid')
 
     # This object has been archived, but there may be references to it
     archived = models.BooleanField(default=False, verbose_name=_('Archived'))
 
-    # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner),
-                                    choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
-
-    # CPO ID of the CPO that 'owns' this Tariff (following the ISO-15118 standard)
-    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner),
-                                verbose_name=_('Party ID'))
-
     # The party responsible for the master data for this object
     # The country_code and party_id can be found through the CredentialsRole
-    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='tariffs', null=True, on_delete=models.PROTECT)
+    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='tariffs', on_delete=models.PROTECT)
 
     # Uniquely identifies the tariff within the CPO’s platform (and suboperator platforms)
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True,
@@ -157,7 +149,10 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         )
 
     def get_absolute_url(self, version=None):
-        return util.reverse('tariff-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        # Todo: Move this to one of the OCPI utility classes
+        return util.reverse(
+            'tariff-by-id',
+            args=[version or '2.2.1', self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid])
 
     def get_admin_url(self):
         return build_absolute_uri(util.reverse('admin:ocpi22_tariff_change', args=(self.pk,)))
@@ -389,7 +384,7 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
         # Loop through all the parties which are interested in receiving Tariff updates
         for base_url, token_base64, country_code, party_id, credentials \
                 in find_endpoints_by_roles(instance.send_updates_to, OcpiModuleEnum.TARIFFS):
-            url = build_item_url(base_url, instance.country_code, instance.party_id, instance.uid)
+            url = build_item_url(base_url, instance.ocpi_master.country_code, instance.ocpi_master.party_id, instance.uid)
             tasks.send_ocpi_request.delay({},
                                     url,
                                     token_base64, country_code, party_id, our_party.country_code, our_party.party_id,

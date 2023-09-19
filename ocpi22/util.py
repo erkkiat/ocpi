@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Any, Union
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext as _
 
 import cachetools
@@ -117,22 +118,18 @@ class UpperCaseSerializerField(serializers.CharField):
             return value.upper()
 
 
-def check_ownership(request, country_code, party_id, check_operator_id_from_request_data=True):
+def check_ownership(request, ocpi_master, check_operator_id_from_request_data=True):
     if not hasattr(request, 'credentials'):
         return False
-    # ic(request.credentials.roles.filter(role='HUB'))
-    if request.credentials.roles.filter(role='HUB').count():
+    if request.credentials.is_hub:
         # We trust hubs
         return True
     if check_operator_id_from_request_data and hasattr(request, 'data'):
         cc = request.data.get('country_code')
         pi = request.data.get('party_id')
-        if (cc and cc != country_code) or (pi and pi != party_id):
+        if (cc and cc != ocpi_master.country_code) or (pi and pi != ocpi_master.party_id):
             return False
-    for role in request.credentials.roles.all():
-        if role.country_code == country_code and role.party_id == party_id:
-            return True
-    return False
+    return bool(request.credentials == ocpi_master.credentials)
 
 
 def matching_operator(request, country_code, party_id) -> bool:
@@ -302,7 +299,7 @@ def calculate_partition(coordinate):
 #     """
 #     return list(filter(None, [source.get(i) for i in role_options if source.get(i)]))
 
-@lru_cache(maxsize=None)
+@cachetools.cached({})
 def is_our_identifier(party: Party, identities=None) -> bool:
     """
     Check if the given country_code and party_id match one of our identities
@@ -327,17 +324,17 @@ def is_our_identifier(party: Party, identities=None) -> bool:
 
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(cls, *args, raise_exception=False, **kwargs) -> any:
+    def get_if_exists(cls, *args, raise_exception=False, multiple_is_ok_just_get_the_first_one=False, **kwargs) -> any:
         # Is the object already fetched?
         uid = kwargs.get('uid')
         if isinstance(uid, cls):
             return uid
 
         objects = cls.objects.filter(*args, **kwargs)
+        if multiple_is_ok_just_get_the_first_one or objects.count() == 1:
+            return objects.first()
         if objects.count() > 1:
             raise ValidationError(f'There are more than one {cls.__name__} with the criteria {kwargs} in the database')
-        if objects.count() == 1:
-            return objects.first()
         if raise_exception:
             error_message = f"{cls.__name__} with UID " \
                             f"{kwargs.get('uid', 'N/A')} doesn't exist in the database"
@@ -345,52 +342,50 @@ class ModelUtilMixin:
         return None
 
     def party(self) -> str:  # Todo: rename to party_str, but be careful
-        """
-        >>> from ocpi22.models.location import Location
-        >>> Location(country_code='FI', party_id='CPO').party()
-        'FI*CPO'
-        """
-        if hasattr(self, 'ocpi_master') and self.ocpi_master:
-            return f'{self.ocpi_master.country_code}*{self.ocpi_master.party_id}'
-        if hasattr(self, 'location') and self.location:
-            return f'{self.location.country_code}*{self.location.party_id}'
-        if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
-            return f'{self.country_code}*{self.party_id}'
-        return ''
-    party.short_description = _('Data Owner')
+        """ Get the party from the OCPI object as a string, e.g. "FI*CPO" """
+        return str(self.get_party())
+    party.short_description = _('Owner')
 
     def party_long(self) -> str:
         if hasattr(self, 'ocpi_master') and self.ocpi_master:
             return f'{self.ocpi_master.business_details.name}' \
                 f' ({self.ocpi_master.country_code}*{self.ocpi_master.party_id})'
         return self.party()
-    party_long.short_description = _('Data Owner')
+    party_long.short_description = _('Owner')
 
     def get_party(self) -> Party:
-        if hasattr(self, 'location'):
-            return Party(self.location.country_code, self.location.party_id)
-        if hasattr(self, 'country_code') and hasattr(self, 'party_id'):
-            return Party(self.country_code, self.party_id)
-        raise NotImplementedError(f'Object type {self.__class__} has no country_code and party_id')
+        """ Get the party from the OCPI object as a Party object, e.g. Party('FI', 'CPO') """
+        try:
+            if hasattr(self, 'ocpi_master') and self.ocpi_master is not None:
+                return self.ocpi_master.party
+            if hasattr(self, 'location') and self.location and self.location.ocpi_master:
+                return self.location.ocpi_master.party
+        except ObjectDoesNotExist as e:
+            print(f'get_party() failed for {self}: {e}')
+            raise
+        return Party('', '')
 
     def object_owner(self) -> str:
-        # For admin UI
+        """For admin UI"""
         return self.party()
 
     def is_ours(self) -> bool:
-        # Returns true if we hold the master data for this object
-        if not (hasattr(self, 'country_code') and hasattr(self, 'party_id')):
-            return False
-        return bool(is_our_identifier(self.get_party()))
+        """Returns true if we hold the master data for this object"""
+        return is_our_identifier(self.get_party())
 
     def is_owner(self, request) -> bool:
+        """Check if the request originates from the owner of this object, or if the user has superuser rights"""
         if request.user.is_superuser:
             return True
-        if not hasattr(self, 'country_code') or not hasattr(self, 'party_id'):
-            return False
-        return check_ownership(request, self.country_code, self.party_id)
+        ocpi_master = None
+        if hasattr(self, 'ocpi_master'):
+            ocpi_master = self.ocpi_master
+        elif hasattr(self, 'location'):
+            ocpi_master = self.location.ocpi_master
+        return ocpi_master and check_ownership(request, ocpi_master)
 
     def change_fields_to_upper_case(self) -> None:
+        """Change all fields in the upper_case_fields list to upper case"""
         if hasattr(self, 'upper_case_fields'):
             for field in self.upper_case_fields:
                 f = self.__getattribute__(field)
@@ -411,10 +406,6 @@ class ModelUtilMixin:
         return start_date_time.strftime(settings.DATETIME_FORMAT)
 
     start_date_time_local.short_description = _('Start time')
-
-    # @abc.abstractmethod
-    # def get_serializer_class(self, version):
-    #     ...
 
 
 class ParseUrl:

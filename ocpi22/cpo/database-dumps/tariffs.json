@@ -4,8 +4,7 @@
     "pk": 5,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "DC50",
       "currency": "PLN",
       "type": "REGULAR",
@@ -24,8 +23,7 @@
     "pk": 6,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "DC150",
       "currency": "PLN",
       "type": "",
@@ -44,8 +42,7 @@
     "pk": 7,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "AC",
       "currency": "PLN",
       "type": "",
@@ -64,8 +61,7 @@
     "pk": 8,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "52",
       "currency": "EUR",
       "type": "",
@@ -84,8 +80,7 @@
     "pk": 9,
     "fields": {
       "archived": false,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -104,8 +99,7 @@
     "pk": 10,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -124,8 +118,7 @@
     "pk": 11,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -144,8 +137,7 @@
     "pk": 12,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "AC",
       "currency": "PLN",
       "type": "",
@@ -164,8 +156,7 @@
     "pk": 13,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -184,8 +175,7 @@
     "pk": 14,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -204,8 +194,7 @@
     "pk": 16,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -224,8 +213,7 @@
     "pk": 19,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -244,8 +232,7 @@
     "pk": 20,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -264,8 +251,7 @@
     "pk": 21,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -284,8 +270,7 @@
     "pk": 22,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -304,8 +289,7 @@
     "pk": 23,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -324,8 +308,7 @@
     "pk": 24,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -344,8 +327,7 @@
     "pk": 25,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -364,8 +346,7 @@
     "pk": 26,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -384,8 +365,7 @@
     "pk": 27,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -404,8 +384,7 @@
     "pk": 28,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -424,8 +403,7 @@
     "pk": 29,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -444,8 +422,7 @@
     "pk": 30,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -464,8 +441,7 @@
     "pk": 31,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -484,8 +460,7 @@
     "pk": 32,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -504,8 +479,7 @@
     "pk": 33,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -524,8 +498,7 @@
     "pk": 34,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -544,8 +517,7 @@
     "pk": 35,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -564,8 +536,7 @@
     "pk": 36,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -584,8 +555,7 @@
     "pk": 37,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -604,8 +574,7 @@
     "pk": 38,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -624,8 +593,7 @@
     "pk": 39,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -644,8 +612,7 @@
     "pk": 40,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -664,8 +631,7 @@
     "pk": 41,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -684,8 +650,7 @@
     "pk": 42,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -704,8 +669,7 @@
     "pk": 43,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -724,8 +688,7 @@
     "pk": 44,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -744,8 +707,7 @@
     "pk": 45,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -764,8 +726,7 @@
     "pk": 46,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -784,8 +745,7 @@
     "pk": 47,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -804,8 +764,7 @@
     "pk": 48,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -824,8 +783,7 @@
     "pk": 49,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -844,8 +802,7 @@
     "pk": 50,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -864,8 +821,7 @@
     "pk": 51,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -884,8 +840,7 @@
     "pk": 52,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -904,8 +859,7 @@
     "pk": 53,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -924,8 +878,7 @@
     "pk": 54,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -944,8 +897,7 @@
     "pk": 55,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -964,8 +916,7 @@
     "pk": 56,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -984,8 +935,7 @@
     "pk": 57,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1004,8 +954,7 @@
     "pk": 58,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1024,8 +973,7 @@
     "pk": 60,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1044,8 +992,7 @@
     "pk": 62,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1064,8 +1011,7 @@
     "pk": 63,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1084,8 +1030,7 @@
     "pk": 64,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1104,8 +1049,7 @@
     "pk": 65,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1124,8 +1068,7 @@
     "pk": 66,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1144,8 +1087,7 @@
     "pk": 67,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1164,8 +1106,7 @@
     "pk": 68,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1184,8 +1125,7 @@
     "pk": 69,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",
@@ -1204,8 +1144,7 @@
     "pk": 70,
     "fields": {
       "archived": true,
-      "country_code": "FI",
-      "party_id": "000",
+      "ocpi_master": 999,
       "uid": "EKI1",
       "currency": "EUR",
       "type": "",

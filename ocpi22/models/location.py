@@ -4,7 +4,6 @@ from collections import Counter
 from dateutil import tz
 from django.conf import settings
 from django.core.exceptions import ValidationError
-# from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
@@ -82,23 +81,14 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         verbose_name_plural = _('locations')
 
         constraints = [
-            models.UniqueConstraint(fields=['uid', 'party_id'], name='party_uid'),
             models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
         ]
 
-    upper_case_fields = ['postal_code', 'country', 'country_code', 'party_id', 'uid']
+    upper_case_fields = ['postal_code', 'country', 'uid']
 
-    # ISO-3166 alpha-2 country code of the CPO that owns this Location
-    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner),
-                                    choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
-
-    # CPO ID of the CPO that 'owns' this Location (following the ISO-15118 standard).
-    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner),
-                                verbose_name=_('Party id'))
-
-    # The party responsible for the master data for this object
+    # The party that owns this Location
     # The country_code and party_id can be found through the CredentialsRole
-    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='locations', null=True, on_delete=models.PROTECT)
+    ocpi_master = models.ForeignKey('ocpi22.CredentialsRole', related_name='locations', on_delete=models.PROTECT)
 
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
@@ -219,7 +209,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self, version=None):
-        return util.reverse('location-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        return util.reverse(
+            'location-by-id',
+            args=[version or '2.2.1', self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
+        )
 
     def get_admin_url(self):
         return build_absolute_uri(util.reverse('admin:ocpi22_location_change', args=(self.pk,)))
@@ -329,7 +322,9 @@ class Evse(models.Model, ModelUtilMixin):
     def get_absolute_url(self, version=None):
         try:
             return util.reverse('location-by-evse-id',
-                           args=[version or '2.2.1', self.location.country_code, self.location.party_id,
+                           args=[version or '2.2.1',
+                                 self.location.ocpi_master.country_code,
+                                 self.location.ocpi_master.party_id,
                                  self.location.uid, self.uid])
         except NoReverseMatch:
             return ''
@@ -354,8 +349,10 @@ class Evse(models.Model, ModelUtilMixin):
             last_updated=self.last_updated
         )
         location = self.location
-        location.send_all_updates(data=data, method='patch',
-                                  path_components=[location.country_code, location.party_id, location.uid, self.uid])
+        location.send_all_updates(
+            data=data, method='patch',
+            path_components=[location.ocpi_master.country_code, location.ocpi_master.party_id, location.uid, self.uid]
+        )
 
     def save(self, *args, **kwargs):
         if self.location.is_ours():
@@ -363,6 +360,13 @@ class Evse(models.Model, ModelUtilMixin):
             self.location.last_updated = timezone.now()
             self.location.save(update_fields=['last_updated'])
         return super().save(*args, **kwargs)
+
+    def party_long(self) -> str:
+        if hasattr(self, 'location') and hasattr(self.location, 'ocpi_master') and self.location.ocpi_master:
+            return f'{self.location.ocpi_master.business_details.name}' \
+                f' ({self.location.ocpi_master.country_code}*{self.location.ocpi_master.party_id})'
+        return self.party()
+    party_long.short_description = _('Charge Point Owner')
 
 
 class Connector(models.Model, ModelUtilMixin):
@@ -431,7 +435,8 @@ class Connector(models.Model, ModelUtilMixin):
 @receiver(pre_save, sender=Evse)
 def evse_pre_save(sender, instance: Evse, *_args, **_kwargs):
     if not instance.evse_id:
-        instance.evse_id = f'{instance.location.country_code}*{instance.location.party_id}*E{instance.uid}'
+        instance.evse_id = f'{instance.location.ocpi_master.country_code}*' \
+                           f'{instance.location.ocpi_master.party_id}*E{instance.uid}'
 
 
 @receiver(pre_save, sender=Connector)

@@ -306,6 +306,20 @@
    },
    {
       "fields": {
+         "url": "http://localhost:8081/ocpi/versions/",
+         "theirs": "theirs-81",
+         "version": "22",
+         "last_updated": "2022-01-13T18:57:11.301",
+         "updated": "2022-01-17T04:49:23.253",
+         "ours": "ours-81",
+         "created": "2022-01-08T07:56:40.267",
+         "token_a": "a-2"
+      },
+      "model": "ocpi22.credentials",
+      "pk": 81
+   },
+   {
+      "fields": {
          "url": "http://localhost:8001/ocpi/versions/",
          "theirs": "theirs-9",
          "version": "22",
@@ -385,6 +399,17 @@
          "party_id": "CPO",
          "role": "CPO",
          "credentials": 9
+      }
+   },
+   {
+      "pk": 81,
+      "model": "ocpi22.credentialsrole",
+      "fields": {
+         "business_details": 1,
+         "country_code": "DE",
+         "party_id": "TNM",
+         "role": "CPO",
+         "credentials": 81
       }
    },
    {
@@ -544,9 +569,8 @@
          "currency": "EUR",
          "updated": "2022-01-16T17:50:31.687",
          "last_updated": "2022-01-14T15:52:22",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-08T07:51:41.531",
-         "country_code": "FI",
          "archived": true,
          "type": "REGULAR",
          "tariff_alt_url": "",
@@ -559,9 +583,8 @@
          "archived": false,
          "type": "REGULAR",
          "tariff_alt_url": "",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-08T07:52:37.768",
-         "country_code": "FI",
          "currency": "EUR",
          "last_updated": "2022-01-08T07:52:37.772",
          "updated": "2022-01-18T18:55:07.589"
@@ -580,8 +603,7 @@
          "currency": "EUR",
          "last_updated": "2022-01-14T10:29:21",
          "updated": "2022-01-16T18:35:19.918",
-         "country_code": "FI",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-09T14:16:46.932"
       }
    },
@@ -596,8 +618,7 @@
          "last_updated": "2022-01-14T15:52:22",
          "updated": "2022-01-16T17:58:16.079",
          "currency": "EUR",
-         "country_code": "FI",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-16T17:50:31.698"
       }
    },
@@ -612,9 +633,8 @@
          "updated": "2022-01-16T18:34:02.706",
          "last_updated": "2022-01-14T15:52:22",
          "currency": "EUR",
-         "country_code": "FI",
          "created": "2022-01-16T17:58:16.087",
-         "party_id": "000"
+         "ocpi_master": 9
       }
    },
    {
@@ -622,9 +642,8 @@
          "updated": "2022-01-17T05:45:59.285",
          "last_updated": "2022-01-08T07:52:37.772",
          "currency": "EUR",
-         "country_code": "FI",
          "created": "2022-01-17T05:45:59.278",
-         "party_id": "000",
+         "ocpi_master": 9,
          "tariff_alt_url": "",
          "type": "REGULAR",
          "archived": false,
@@ -635,8 +654,7 @@
    },
    {
       "fields": {
-         "country_code": "FI",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-17T05:46:58.892",
          "last_updated": "2022-01-08T07:52:37.772",
          "updated": "2022-01-17T05:46:58.898",
@@ -659,8 +677,7 @@
          "last_updated": null,
          "currency": "EUR",
          "created": "2022-01-19T18:23:33.593",
-         "party_id": "000",
-         "country_code": "FI"
+         "ocpi_master": 9
       },
       "model": "ocpi22.tariff",
       "pk": 18
@@ -672,9 +689,8 @@
          "last_updated": null,
          "updated": "2022-01-19T18:23:56.514",
          "currency": "EUR",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-19T18:23:56.511",
-         "country_code": "FI",
          "type": "REGULAR",
          "tariff_alt_url": "",
          "archived": false,
@@ -683,9 +699,8 @@
    },
    {
       "fields": {
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-19T18:24:14.252",
-         "country_code": "FI",
          "currency": "EUR",
          "last_updated": null,
          "updated": "2022-01-19T18:24:14.256",
@@ -949,9 +964,8 @@
          "default_profile_type": "FAST",
          "contract_id": "CONTRACT3",
          "language": null,
-         "country_code": "FI",
          "created": "2022-01-08T13:54:30.740",
-         "party_id": "001",
+         "ocpi_master": 4,
          "issuer": "EKI",
          "last_updated": "2017-12-10T17:25:10",
          "updated": "2022-01-17T11:18:18.777"
@@ -968,9 +982,8 @@
          "default_profile_type": null,
          "contract_id": "CONTRACT6",
          "language": null,
-         "country_code": "FI",
          "created": "2022-01-09T13:20:46.085",
-         "party_id": "000",
+         "ocpi_master": 9,
          "issuer": "eki",
          "last_updated": "2022-01-09T14:11:32.146",
          "updated": "2022-01-15T09:06:31.476"
@@ -980,10 +993,9 @@
    },
    {
       "fields": {
-         "country_code": "FI",
          "issuer": "eki",
          "created": "2022-01-09T14:12:45.863",
-         "party_id": "000",
+         "ocpi_master": 9,
          "updated": "2022-01-17T06:44:52.754",
          "last_updated": "2022-01-10T07:00:18",
          "group_id": null,
@@ -1003,9 +1015,8 @@
       "model": "ocpi22.token",
       "pk": 5,
       "fields": {
-         "country_code": "FI",
          "issuer": "FI*001",
-         "party_id": "001",
+         "ocpi_master": 4,
          "created": "2022-01-12T19:44:39.298",
          "last_updated": "2022-01-12T19:44:39.298",
          "updated": "2022-01-17T10:55:29.812",
@@ -1024,10 +1035,9 @@
       "pk": 6,
       "model": "ocpi22.token",
       "fields": {
-         "party_id": "TNM",
+         "ocpi_master": 81,
          "created": "2022-01-17T11:06:05.458",
          "issuer": "TheNewMotion",
-         "country_code": "DE",
          "last_updated": "2018-12-10T17:25:10",
          "updated": "2022-01-17T11:06:05.458",
          "visual_number": "DF000-2001-8999-1",
@@ -1045,10 +1055,9 @@
       "pk": 7,
       "model": "ocpi22.token",
       "fields": {
-         "party_id": "MSP",
+         "ocpi_master": 4,
          "created": "2022-01-17T11:06:05.458",
          "issuer": "TheNewMotion",
-         "country_code": "FI",
          "last_updated": "2018-12-10T17:25:10",
          "updated": "2022-01-17T11:06:05.458",
          "visual_number": "DF000-2001-8999-1",
@@ -1069,7 +1078,7 @@
          "publish_allowed_to": [],
          "time_zone": "Europe/Warsaw",
          "created": "2022-01-08T14:01:58.803",
-         "party_id": "000",
+         "ocpi_master": 9,
          "suboperator": null,
          "country": "POL",
          "city": "Warsaw",
@@ -1084,7 +1093,6 @@
             1,
             2
          ],
-         "country_code": "FI",
          "longitude": 10,
          "updated": "2022-01-15T09:06:31.139",
          "last_updated": "2022-01-08T14:05:06.894",
@@ -1099,7 +1107,7 @@
       "fields": {
          "country": "FIN",
          "city": "Lahti",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-08T14:12:36.913",
          "suboperator": null,
          "time_zone": "Europe/Helsinki",
@@ -1116,7 +1124,6 @@
             2,
             6
          ],
-         "country_code": "FI",
          "address": "Vierumäki 2",
          "parking_type": "PARKING_LOT",
          "operator": 2,
@@ -1143,7 +1150,6 @@
          "owner": null,
          "latitude": 64,
          "longitude": 27,
-         "country_code": "FI",
          "facilities": [
             1,
             2,
@@ -1157,7 +1163,7 @@
          "country": "FIN",
          "suboperator": null,
          "created": "2022-01-08T14:37:27.713",
-         "party_id": "001"
+         "ocpi_master": 4
       },
       "model": "ocpi22.location",
       "pk": 3
@@ -1169,7 +1175,6 @@
          "facilities": [
             2
          ],
-         "country_code": "FI",
          "updated": "2022-01-15T09:06:31.139",
          "last_updated": "2022-01-08T14:55:22.541",
          "owner": null,
@@ -1184,7 +1189,7 @@
          "parking_type": "PARKING_GARAGE",
          "address": "Vaasa 1",
          "created": "2022-01-08T14:54:41.193",
-         "party_id": "000",
+         "ocpi_master": 9,
          "suboperator": null,
          "country": "FIN",
          "city": "Vaasa",
@@ -1211,7 +1216,6 @@
          "owner": null,
          "longitude": 29,
          "latitude": 60,
-         "country_code": "FI",
          "facilities": [
             2,
             3,
@@ -1225,7 +1229,7 @@
          "country": "FIN",
          "suboperator": null,
          "created": "2022-01-08T15:05:18.427",
-         "party_id": "000"
+         "ocpi_master": 9
       }
    },
    {
@@ -1237,7 +1241,7 @@
          "country": "FIN",
          "city": "Helsinki",
          "suboperator": 1,
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-09T06:25:25.023",
          "address": "Helsinki 12",
          "parking_type": "PARKING_LOT",
@@ -1252,7 +1256,6 @@
          "owner": 2,
          "latitude": 60,
          "longitude": 30,
-         "country_code": "FI",
          "facilities": [
             1
          ]
@@ -1266,7 +1269,7 @@
       "fields": {
          "country": "SWE",
          "city": "Stockholm",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-09T08:56:12.056",
          "suboperator": null,
          "publish_allowed_to": [],
@@ -1276,7 +1279,6 @@
          "facilities": [
             2
          ],
-         "country_code": "FI",
          "name": "Stockholm Supercharger",
          "updated": "2022-01-15T09:06:31.139",
          "last_updated": "2022-01-09T08:56:12.056",
@@ -1645,7 +1647,6 @@
          "stop_kwh": 10,
          "start_date_time": "2022-01-18T19:19:20.755",
          "meter_id": null,
-         "country_code": "FI",
          "updated": "2022-01-18T19:23:16.641",
          "last_updated": null,
          "end_date_time": null,
@@ -1656,9 +1657,10 @@
          "total_cost_excl_vat": 1,
          "cdr_token_type": "OTHER",
          "auth_method": "COMMAND",
-         "party_id": "000",
+         "ocpi_master": 9,
          "created": "2022-01-18T19:19:20.759",
          "currency": "EUR",
+         "billed_to": "FI*MSP",
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN"
       },
       "model": "ocpi22.session",
@@ -1670,7 +1672,8 @@
       "fields": {
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
          "currency": "EUR",
-         "party_id": "000",
+         "billed_to": "FI*MSP",
+         "ocpi_master": 9,
          "created": "2022-01-18T19:41:07.301",
          "auth_method": "COMMAND",
          "cdr_token_type": "OTHER",
@@ -1682,7 +1685,6 @@
          "end_date_time": null,
          "updated": "2022-01-18T19:42:38.295",
          "last_updated": null,
-         "country_code": "FI",
          "meter_id": null,
          "start_date_time": "2022-01-18T19:41:07.297",
          "total_cost_incl_vat": 3,
@@ -1701,7 +1703,6 @@
          "stop_kwh": 32,
          "start_date_time": "2022-01-18T19:44:07.801",
          "meter_id": null,
-         "country_code": "FI",
          "updated": "2022-01-18T19:44:24.791",
          "last_updated": null,
          "end_date_time": null,
@@ -1712,7 +1713,8 @@
          "total_cost_excl_vat": 4,
          "cdr_token_type": "OTHER",
          "auth_method": "COMMAND",
-         "party_id": "000",
+         "ocpi_master": 9,
+         "billed_to": "FI*MSP",
          "created": "2022-01-18T19:44:07.808",
          "currency": "EUR",
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN"
@@ -1728,7 +1730,6 @@
          "stop_kwh": 13,
          "evse": 7,
          "uid": "3f843ead6aa64047a46c057fb7ebfe07",
-         "country_code": "FI",
          "meter_id": null,
          "end_date_time": null,
          "last_updated": null,
@@ -1741,7 +1742,8 @@
          "total_cost_excl_vat": 5,
          "authorization_reference": "cc015db27578422ab9f5f7aa0e91d62b",
          "created": "2022-01-18T19:47:01.483",
-         "party_id": "000",
+         "ocpi_master": 9,
+         "billed_to": "FI*MSP",
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
          "currency": "EUR"
       },
@@ -1755,7 +1757,8 @@
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
          "currency": "EUR",
          "created": "2022-01-19T14:07:35.712",
-         "party_id": "000",
+         "ocpi_master": 9,
+         "billed_to": "FI*MSP",
          "auth_method": "COMMAND",
          "authorization_reference": "375ef8eb25b94c3498889abeb73e5eea",
          "total_cost_excl_vat": 4,
@@ -1766,7 +1769,6 @@
          "end_date_time": null,
          "updated": "2022-01-19T14:09:33.871",
          "last_updated": null,
-         "country_code": "FI",
          "meter_id": null,
          "total_cost_incl_vat": 5,
          "status": "COMPLETED",
@@ -1788,7 +1790,8 @@
          "authorization_reference": "e86baa82cee14ac5bfd00b85371aa798",
          "total_cost_excl_vat": null,
          "created": "2022-01-20T16:05:59.895",
-         "party_id": "000",
+         "ocpi_master": 9,
+         "billed_to": "FI*MSP",
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
          "currency": "EUR",
          "start_date_time": "2022-01-20T16:05:59.883",
@@ -1797,7 +1800,6 @@
          "total_cost_incl_vat": null,
          "uid": "0f8a681462344bb78f79c0f553b1371c",
          "evse": 9,
-         "country_code": "FI",
          "meter_id": null,
          "end_date_time": null,
          "last_updated": null,
@@ -1815,7 +1817,6 @@
          "start_date_time": "2022-01-18T19:19:20",
          "cdr_location_city": "Helsinki",
          "cdr_location_postal_code": "01234",
-         "country_code": "FI",
          "session_id": "6cc56f6fbc484443b738e32c282e1f29",
          "cdr_location_connector_format": "CABLE",
          "end_date_time": "2022-01-18T19:23:17",
@@ -1831,7 +1832,8 @@
          "cdr_token_type": "OTHER",
          "cdr_location_address": "Helsinki 12B",
          "cdr_location_evse_id": "FI*TSL*EHELSINKI3",
-         "party_id": "000",
+         "ocpi_master": 9,
+         "billed_to": "FI*MSP",
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
          "currency": "EUR",
          "total_cost_incl_vat": 2,
@@ -1858,7 +1860,6 @@
          "cdr_location_postal_code": "-",
          "cdr_location_city": "Helsinki",
          "session_id": "a399a9eed3fc4c89bfe5e7f6b3b68336",
-         "country_code": "FI",
          "cdr_location_connector_format": "CABLE",
          "end_date_time": "2022-01-18T19:42:38.355",
          "updated": "2022-01-18T19:42:38.359",
@@ -1873,7 +1874,7 @@
          "cdr_location_connector_power_type": "DC",
          "authorization_reference": "19d546b6038b4a07941c4775e8ce2083",
          "cdr_location_evse_id": "FI*TSL*EHELSINKI1",
-         "party_id": "000",
+         "ocpi_master": 9,
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
          "currency": "EUR",
          "tariffs": [],
@@ -1907,7 +1908,7 @@
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
          "currency": "EUR",
          "cdr_location_evse_id": "FI*TSL*EHELSINKI2",
-         "party_id": "000",
+         "ocpi_master": 9,
          "start_date_time": "2022-01-18T19:44:07.801",
          "cdr_location_city": "Helsinki",
          "cdr_location_postal_code": "-",
@@ -1915,7 +1916,6 @@
          "credit": false,
          "last_updated": "2022-01-18T19:44:24.840",
          "updated": "2022-01-18T19:44:24.840",
-         "country_code": "FI",
          "session_id": "4c95538ac0544606949cf66911ca2191",
          "cdr_location_connector_format": "CABLE",
          "total_cost_excl_vat": 4,
@@ -1937,7 +1937,7 @@
          "cdr_location_address": "Helsinki 12",
          "cdr_token_type": "OTHER",
          "cdr_location_evse_id": "FI*TSL*EHELSINKI1",
-         "party_id": "000",
+         "ocpi_master": 9,
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
          "currency": "EUR",
          "cdr_location_latitude": "60.000000",
@@ -1955,7 +1955,6 @@
          "start_date_time": "2022-01-18T19:47:01.478",
          "cdr_location_city": "Helsinki",
          "cdr_location_postal_code": "-",
-         "country_code": "FI",
          "session_id": "3f843ead6aa64047a46c057fb7ebfe07",
          "cdr_location_connector_format": "CABLE",
          "end_date_time": "2022-01-18T19:47:42.149",
@@ -1978,7 +1977,7 @@
          "cdr_token_type": "OTHER",
          "auth_method": "COMMAND",
          "cdr_location_id": "HELSINKI-1",
-         "party_id": "000",
+         "ocpi_master": 9,
          "cdr_location_evse_id": "FI*TSL*EHELSINKI3",
          "currency": "EUR",
          "cdr_token_uid": "FI*001*T*ADMIN*TOKEN",
@@ -1998,7 +1997,6 @@
          "cdr_location_postal_code": "-",
          "start_date_time": "2022-01-19T14:07:35.707",
          "cdr_location_connector_format": "CABLE",
-         "country_code": "FI",
          "session_id": "fdc6a79a80144aa591df3876e1d158c0",
          "credit": false,
          "updated": "2022-01-19T14:09:33.952",

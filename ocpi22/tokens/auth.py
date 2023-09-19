@@ -25,6 +25,7 @@ from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.util import ocpi_post, Ocpi
 from ocpi22.routing import find_route, Route
@@ -287,7 +288,13 @@ def process_authorization_response(result, token, location, to, request=None) ->
             auth_method=Session.AUTH_REQUEST,
         )
     try:
-        token = Token(**authorization.get('token', {}))
+        token_data = authorization.get('token', {})
+
+        # Find the corresponding CredentialsRole or create one
+        to = Party(token_data.pop('country_code', ''), token_data.pop('party_id', ''))
+        token_data['ocpi_master'] = get_credentialsrole(None, to, create=True)
+
+        token = Token(**token_data)
     except (ValidationError, ValueError) as e:
         msg = f'Cannot read Token data from authorization response from {to}: {e}'
         # messages.error(request, msg)

@@ -10,16 +10,14 @@ from typing import Optional
 import requests
 from django.core.handlers.wsgi import WSGIRequest
 from django.views.decorators.csrf import csrf_exempt
-from django_filters.rest_framework import DjangoFilterBackend
 from icecream import ic
 from rest_framework import routers, status, mixins
-from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from ocpi22.decorators import requires_sender_role
+from ocpi22.decorators import requires_sender_role, requires_credentialsrole, requires_last_updated
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
@@ -69,8 +67,6 @@ class TokenViewSet(OCPIListModelMixin,
     versioning_class = OCPIVersioning
     lookup_field = 'uid'
     renderer_classes = RENDERERS
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['country_code', 'party_id', 'type']
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
@@ -96,33 +92,29 @@ class TokenViewSet(OCPIListModelMixin,
         uid = uid or data.get('uid')
 
         token: Token = Token.get_if_exists(uid__iexact=uid, ocpi_master=request.credentialsrole)
-        # Todo: Make a function for this, it raises NotOwner
-        if token and token.is_ours():
-            return OCPIBadRequestResponse(
-                f'We have the master data for the token "{uid}" '
-                'and it cannot be updated by anyone else over the OCPI protocol.'
-            )
         created = bool(not token)
         serializer = TokenSerializer(data=data, instance=token, partial=patch,
                                      context={'version': version or request.version})
         if serializer.is_valid():
-            logging.info(f'{"Creating" if created else "Updating"} Token {country_code}*{party_id} - {uid}.',
-                         log_to_admin=True, logentry=logentry)
+            logging.info(
+                f'{"Creating" if created else "Updating"} Token {country_code}*{party_id} - {uid}.',
+                log_to_admin=True, logentry=logentry
+            )
             created_token = serializer.save(ocpi_master=request.credentialsrole)
             created_token.send_hub_updates()
-            return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-        else:
-            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
+            return OCPIResponse(serializer.data,
+                                http_status=status.HTTP_201_CREATED
+                                if created else status.HTTP_200_OK)
+        return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST)
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
+    @requires_last_updated
     def patch(self, *args, **kwargs):
         return self.put(*args, patch=True, **kwargs)
 
     @ocpi_exception_handler
     @csrf_exempt
-    @action(methods=['POST'], detail=False,
-            url_path='(?P<token_uid>[^/.]+)/authorize')
     def authorize(self, request: Request, token_uid, **_kwargs) -> OCPIResponse:
         allowed = AuthorizationEnum.ALLOWED
         ocpi_status = Ocpi.OK
@@ -236,23 +228,26 @@ class TokenViewSet(OCPIListModelMixin,
             )
 
     @ocpi_exception_handler
-    def get(self, request, country_code=None, party_id=None, uid=None, **_kwargs):
+    @requires_credentialsrole
+    def get(self, request, credentialsrole, uid=None, **_kwargs):
+        # Respond to a GET which has parameters
         # Todo: Show only tokens that are relevant to the party
-        if country_code and party_id and uid:
-            # Todo: if running as HUB, filter results based on agreed parties
-            token = get_object_or_404(Token, country_code=country_code, party_id=party_id, uid=uid)
-            serializer = TokenSerializer(token, many=False, context={'request': request, 'version': request.version})
-            return OCPIResponse(serializer.data)
-        return OCPIBadRequestResponse()
+        # Todo: if running as HUB, filter results based on agreed parties
+        token = get_object_or_404(Token, ocpi_master=credentialsrole, uid=uid)
+        serializer = TokenSerializer(token, many=False, context={'request': request, 'version': request.version})
+        return OCPIResponse(serializer.data)
 
 
 class CdrViewSet(OCPIListModelMixin,
                  GenericViewSet):
     """
-    These are the records created for the purpose of billing. Once a CDR is created, it must not be modified or removed.
-    A CDR can be credited to the customer by creating a credit CDR in the admin tools.
+    These are the records created for the purpose of billing.
+    Once a CDR is created, it must not be modified or removed.
+    A CDR can be credited to the customer by creating a credit
+    CDR in the admin tools.
     **VISIBILITY**: A CDR record is only available to relevant parties,
-    so fetching another party's CDR should not be allowed. (When logged in as a superuser, you can see all CDRs)
+    so fetching another party's CDR should not be allowed.
+    (When logged in as a superuser, you can see all CDRs)
     """
     # queryset = Cdr.objects.none()  # Default to no visibility, fine tune with get_queryset()
     serializer_class = CdrSerializer
@@ -265,10 +260,7 @@ class CdrViewSet(OCPIListModelMixin,
             return Cdr.objects.all().order_by('created')
         if hasattr(self.request, 'country_code'):
             ic(self.request.country_code, self.request.party_id)
-            return Cdr.objects.filter(
-                country_code=self.request.country_code,
-                party_id=self.request.party_id
-            ).order_by('created')
+            return Cdr.objects.filter(ocpi_master=self.request.credentialsrole).order_by('created')
         return Cdr.objects.none()
 
     def get_view_name(self):
@@ -414,10 +406,12 @@ class TariffViewSet(OCPIListModelMixin,
 
     @ocpi_exception_handler
     @requires_premium
-    def get(self, request: Request, country_code, party_id, uid, version="2.2.1", *_args, **_kwargs):
-        tariff = Tariff.objects.get(country_code__iexact=country_code, party_id__iexact=party_id,
-                                    uid__iexact=uid, archived=False)
-        serializer = self.get_serializer(tariff, many=False, context={'request': request, 'version': request.version})
+    @requires_credentialsrole
+    def get(self, request: Request, credentialsrole, uid, *_args, **_kwargs):
+        """Handle a GET request for a specific Tariff"""
+        tariff = Tariff.objects.get(ocpi_master=credentialsrole, uid__iexact=uid, archived=False)
+        serializer = self.get_serializer(tariff, many=False,
+                                         context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 
     @staticmethod
@@ -427,14 +421,15 @@ class TariffViewSet(OCPIListModelMixin,
             return get_object_or_404(Tariff, uid=uid)
 
     @ocpi_exception_handler
-    @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_premium
-    def put(self, request, country_code=None, party_id=None, uid=None, data=None, version='2.2.1',
+    @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
+    @requires_credentialsrole
+    def put(self, request, credentialsrole, uid, data=None, version='2.2.1',
             logentry=None, **_kwargs) \
             -> OCPIResponse:
         uid = uid or data.get('id')
 
-        tariff: Tariff = Tariff.get_if_exists(uid__iexact=uid, ocpi_master=request.credentialsrole, archived=False)
+        tariff: Tariff = Tariff.get_if_exists(uid__iexact=uid, ocpi_master=credentialsrole, archived=False)
         created = bool(not tariff)
         if tariff and tariff.is_ours():
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
@@ -443,9 +438,9 @@ class TariffViewSet(OCPIListModelMixin,
         serializer = TariffSerializer(instance=tariff, data=data, context={'version': version or request.version,
                                                                            'request': request})
         if serializer.is_valid():
-            logging.info(f'{"Creating" if created else "Updating"} Tariff {country_code}*{party_id} - {uid}.',
+            logging.info(f'{"Creating" if created else "Updating"} Tariff {credentialsrole} - {uid}.',
                          logentry=logentry, log_to_admin=True)
-            created_tariff = serializer.save(ocpi_master=request.credentialsrole)
+            created_tariff = serializer.save(ocpi_master=credentialsrole)
             created_tariff.send_hub_updates()
             return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
         else:
@@ -454,15 +449,16 @@ class TariffViewSet(OCPIListModelMixin,
     @ocpi_exception_handler
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_premium
-    def delete(self, request, country_code, party_id, uid, *_args, **_kwargs) -> OCPIResponse:
-        tariff = Tariff.objects.get(uid__iexact=uid, country_code__iexact=country_code, party_id__iexact=party_id,
-                            archived=False)
+    @requires_credentialsrole
+    def delete(self, request, credentialsrole, uid, *_args, **_kwargs) -> OCPIResponse:
+        """Process a DELETE rest call for a Tariff"""
+        tariff = Tariff.objects.get(uid__iexact=uid, ocpi_master=credentialsrole, archived=False)
         if tariff.ocpi_master != request.credentialsrole \
                 and not request.user.is_superuser \
                 and request.credentials and not request.credentials.is_hub:
-            return NotOwner(f'Only {country_code}*{party_id} or a HUB can delete the tariff {uid}.')
+            return NotOwner(f'Only the owner or a HUB can delete the tariff {uid}.')
         if not tariff:
-            return OCPIResponse(f'No Tariff found with country_code={country_code}, party_id={party_id} and uid={uid}.',
+            return OCPIResponse(f'No Tariff found with {request.credentialsrole} and uid={uid}.',
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
         if hasattr(tariff, 'connectors') and tariff.connectors and tariff.connectors.count():
             return OCPIResponse('Cannot delete a Tariff which is referred to by one or more Connectors.',
@@ -498,7 +494,7 @@ def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
                                  from_country_code=we.country_code, from_party_id=we.party_id,
                                  method='GET')
     ic(response)
-    return bool(response.get('status_code') == status.HTTP_200_OK)
+    return bool(response and response.get('status_code') == status.HTTP_200_OK)
 
 
 def update_authorization(request, session: Session) -> None:
@@ -519,8 +515,6 @@ def update_authorization(request, session: Session) -> None:
 
 class SessionViewSet(OCPIListModelMixin,
                      GenericViewSet):
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['country_code', 'party_id', 'status', 'meter_id', 'cdr_token_uid', 'authorization_reference']
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = 'uid'
     queryset = Session.objects.all().order_by('created')
@@ -542,12 +536,11 @@ class SessionViewSet(OCPIListModelMixin,
             return get_object_or_404(Session, uid=uid)
 
     @ocpi_exception_handler
-    def get(self, request, country_code=None, party_id=None, uid=None, **_kwargs):
-        if country_code and party_id and uid:
-            session = Session.objects.get(country_code__iexact=country_code, party_id__iexact=party_id, uid=uid)
-            serializer = SessionSerializer(session, many=False, context={'request': request, 'version': request.version})
-            return OCPIResponse(serializer.data)
-        return OCPIBadRequestResponse('Country_code, party_id and uid are required.')
+    @requires_credentialsrole
+    def get(self, request, credentialsrole, uid, **_kwargs):
+        session = Session.objects.get(uid=uid, ocpi_master=credentialsrole)
+        serializer = SessionSerializer(session, many=False, context={'request': request, 'version': request.version})
+        return OCPIResponse(serializer.data)
 
     @classmethod
     @ocpi_exception_handler
@@ -597,43 +590,54 @@ class SessionViewSet(OCPIListModelMixin,
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
-    def patch(self, request, data, *args, version='2.2.1', **kwargs):
-        if not data.get('last_updated'):  # Required for Session PATCH in OCPI 2.2.1
-            raise ValidationError(f'In OCPI {version} PATCHing Sessions requires last_updated to be set')
+    @requires_last_updated
+    def patch(self, request, *args, **kwargs):
         return self.put(request, *args, partial=True, **kwargs)
 
 
 class ClientInfoViewSet(mixins.ListModelMixin,
                         GenericViewSet):
     """
-    The OCPI Hub Client Info endpoint is used for providing information on connection status between roaming parties.
-    This view shows as empty when accessing it in the Developer Central, but when using OCPI credentials,
-    it will show the actual statuses.
+    The OCPI Hub Client Info endpoint is used for providing
+    information on connection status between roaming parties.
+    This view shows as empty when accessing it in the Developer Central,
+    but when using OCPI credentials, it will show the actual statuses.
     """
-    filterset_fields = ['country_code', 'party_id']
     pagination_class = OCPIPaginationAndHeaders
     serializer_class = ClientInfoSerializer
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'id' in self.kwargs:
             return f'HubClientInfo {self.kwargs.get("id")}'
-        return f'HubClientInfo'
+        return 'HubClientInfo'
 
     def get_queryset(self):
         if ocpi_platform.is_hub:  # Todo: Maybe better to use inheritance?
             credentialsrole_ids: set = get_partners(self.request)
             if not credentialsrole_ids:
                 return CredentialsRole.objects.none()
-            return CredentialsRole.objects.filter(pk__in=credentialsrole_ids).order_by('country_code', 'party_id')
-        else:
-            return CredentialsRole.objects.all().order_by('country_code', 'party_id')
+            return CredentialsRole.objects.\
+                filter(pk__in=credentialsrole_ids, credentials__isnull=False).\
+                order_by('country_code', 'party_id')
+        return CredentialsRole.objects.filter(credentials__isnull=False).order_by('country_code', 'party_id')
 
     @staticmethod
     def get_object(object_id=None):
-        # Needed for OPTIONS to work in list view, could just return None
+        """Needed for OPTIONS to work in list view, could just return None"""
         if object_id:
             return get_object_or_404(CredentialsRole, pk=object_id)
 
+    @ocpi_exception_handler
+    @requires_sender_role(OcpiRolesEnum.HUB)
+    @requires_credentialsrole  # Are you sure?
+    def put(self, request, credentialsrole, *_args, **_kwargs):
+        serializer = ClientInfoSerializer(
+            data=request.data, context={'request': request, 'version': request.version}
+        )
+        if serializer.is_valid():
+            # Todo: Figure out how to create Credentials we don't know about
+            return OCPIResponse(serializer.data, http_status=status.HTTP_200_OK)
+        return OCPIBadRequestResponse(serializer.errors)
 
 class RootView(routers.APIRootView):
     """

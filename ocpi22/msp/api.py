@@ -10,7 +10,7 @@ from decimal import Decimal
 
 import requests
 from django.conf import settings
-from django.utils.translation import get_language
+from django.utils.translation import get_language, gettext as _
 from rest_framework import routers, status, viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -46,7 +46,6 @@ from ocpi22.tokens.util import construct_adhoc_token
 
 from ocpiconnector.ocpi_identities import get_our_party
 from premium import requires_premium
-
 
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
 
@@ -270,7 +269,8 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
                             return Response(dict(status_text='Session starting',
                                                  session=dict(
                                                      status=Session.PENDING,
-                                                     session_id='N/A',
+                                                     display_status=_('Pending'),
+                                                     session_id=_('N/A'),
                                                      token=dict(token_id=token_id, type='APP_USER', contract_id='N/A')
                                                  )),
                                             status=status.HTTP_200_OK)

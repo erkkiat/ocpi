@@ -1,5 +1,4 @@
 from django.db.models import Q
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 import ocpi22.logging as logging
@@ -115,7 +114,6 @@ class CommandsViewSet(GenericViewSet):
                 authorization_method=Session.COMMAND,
                 credentials=request.credentials,
                 connector_id=connector_id,
-                ocpi_master=request.ocpi_party
             )
         )
         params.pop('token')
@@ -144,8 +142,7 @@ class CommandsViewSet(GenericViewSet):
         session.save(update_fields=['start_date_time'])
 
         if settings.CPO_SIMULATOR:
-            start_simulated_session(session, token.get('uid'), connector_id, billed_to, evse_uid,
-                                    response_url=ocpi_response_url)
+            start_simulated_session(session, **kwargs)
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
@@ -176,9 +173,12 @@ class CommandsViewSet(GenericViewSet):
             if route:
                 response = send_ocpi_request(  # Todo: How about just data, route as parameters?
                     request.data, url=route.url, token_base64=route.token_base64,
-                    to_country_code=route.to.get('country_code'), to_party_id=route.to.get('party_id'),
-                    from_country_code=our_hub_party.country_code, from_party_id=our_hub_party.party_id,
-                    method='post', credentials_id=route.credentials_id, title='Hub response to CPO'
+                    to_country_code=route.to.get('country_code'),
+                    to_party_id=route.to.get('party_id'),
+                    from_country_code=our_hub_party.country_code,
+                    from_party_id=our_hub_party.party_id,
+                    method='post', credentials_id=route.credentials_id,
+                    title='Hub response to CPO'
                 )
                 ic(response)
                 status_code = {
@@ -194,7 +194,7 @@ class CommandsViewSet(GenericViewSet):
         if not getattr(request, 'data', None):
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
         billed_to = str(self._get_sender_party(request))
-        serializer = command_serializer(data=request.data)
+        serializer = command_serializer(data=request.data, context={'request': request, 'version': request.version})
         if serializer.is_valid():
 
             token = serializer.validated_data.get('token', '')
@@ -367,8 +367,8 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
     """
     As an eMSP we send an OCPI Command START_SESSION to the CPO
     """
-    country_code = evse.location.country_code
-    party_id = evse.location.party_id
+    country_code = evse.location.ocpi_master.country_code
+    party_id = evse.location.ocpi_master.party_id
 
     route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
     if route:
@@ -404,8 +404,8 @@ def send_reserve_command(request, location: Location, evse: Evse, token: Union[T
     """
     As an eMSP we send an OCPI Command RESERVE_NOW to the CPO
     """
-    country_code = evse.location.country_code
-    party_id = evse.location.party_id
+    country_code = evse.location.ocpi_master.country_code
+    party_id = evse.location.ocpi_master.party_id
 
     route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
     if route:
@@ -444,8 +444,8 @@ def send_reserve_command(request, location: Location, evse: Evse, token: Union[T
 
 
 def send_stop_command(session: Session) -> Optional[Response]:
-    country_code = session.location.country_code
-    party_id = session.location.party_id
+    country_code = session.location.ocpi_master.country_code
+    party_id = session.location.ocpi_master.party_id
 
     route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
     if route:

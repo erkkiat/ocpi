@@ -34,15 +34,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
 
     SENDER = None
 
-    upper_case_fields = ('country_code', 'party_id', 'uid', 'contract_id', 'language')
-
-    # ISO-3166 alpha-2 country code of the MSP that 'owns' this Token
-    country_code = models.CharField(max_length=2, default=get_our_country_code(ocpi_object_owner),
-                                    choices=choices.COUNTRY_CHOICES, verbose_name=_('Country code'))
-
-    # CPO ID of the MSP that 'owns' this Token (following the ISO-15118)
-    party_id = models.CharField(max_length=3, default=get_our_party_id(ocpi_object_owner),
-                                verbose_name=_('Party ID'))
+    upper_case_fields = ('uid', 'contract_id', 'language')
 
     # The party responsible for the master data for this object
     # The country_code and party_id can be found through the CredentialsRole
@@ -148,7 +140,12 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self, version=None):
-        return util.reverse('token-by-id', args=[version or '2.2.1', self.country_code, self.party_id, self.uid])
+        if not self.ocpi_master:
+            return ''
+        return util.reverse(
+            'token-by-id',
+            args=[version or '2.2.1', self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
+        )
 
     def total_balance_float(self) -> float:
         if self.customer:

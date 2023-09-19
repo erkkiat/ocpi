@@ -4,9 +4,9 @@ from ocpi22.util import clear_empty, set_callbacks_parameter, build_absolute_uri
 
 
 class SerializerCleanedUp(serializers.Serializer):
-    def to_representation(self, value):
-        # Remove empty values
-        repr_dict = super().to_representation(value)
+    def to_representation(self, instance):
+        """Remove empty values"""
+        repr_dict = super().to_representation(instance)
         result = clear_empty(repr_dict)
         return result
 

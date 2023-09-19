@@ -89,7 +89,7 @@ def check_auth_token(request, token: str) -> bool:
         raise NotAuthenticated(f'Authentication token: {e}')
 
 
-def get_credentialsrole(credentials: Optional[Credentials], party: Party, create=False) -> Optional[CredentialsRole]:
+def get_credentialsrole(credentials: Optional[Credentials], party: Party, create=False, role=None) -> Optional[CredentialsRole]:
     """
     Find the CredentialsRole for the given party and credentials
     If we received a message through a hub, we may not know the sender yet, so we need to create a CredentialsRole to
@@ -97,17 +97,26 @@ def get_credentialsrole(credentials: Optional[Credentials], party: Party, create
 
     @param credentials: The sender's credentials, so we know which CredentialsRoles are allowed for them
     @param party: Sender's party ID for choosing the CredentialsRole
+    @param role: The role, if a CredentialsRole is created
     @param create: Should we create the CredentialsRole if it doesn't exist yet?
     @return: The selected or created CredentialsRole
     """
+
+    def create_it():
+        credentialsrole = create_credentialsrole(
+            Party(country_code=party.country_code.upper(), party_id=party.party_id.upper()),
+            business_name='N/A', website='', role=role or OcpiRolesEnum.OTHER, credentials=credentials
+        )
+        return credentialsrole
+
     try:
         query = credentials.roles.all() if credentials else CredentialsRole.objects.all()
-        return query.filter(country_code__iexact=party.country_code, party_id__iexact=party.party_id).first()
+        result = query.filter(country_code__iexact=party.country_code,
+                            party_id__iexact=party.party_id).first()
+        return result or (create and create_it())
     except CredentialsRole.DoesNotExist:
         if create:
-            credentialsrole = create_credentialsrole(Party(country_code=party.country_code, party_id=party.party_id),
-                                                     business_name='N/A', website='', role=OcpiRolesEnum.OTHER)
-            return credentialsrole
+            return create_it()
         return None
 
 
