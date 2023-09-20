@@ -1,9 +1,11 @@
 from urllib.parse import urljoin
 
 import celery
+import pytz
 import requests
 from celery.result import GroupResult
 from django.conf import settings
+from django.utils.datetime_safe import datetime
 from django.utils.safestring import mark_safe
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -51,7 +53,7 @@ def get_session_by_adhoc_token(token_uid: str, max_age_minutes,
     @param statuses: Which Token statuses to look for
     @return: Session or if not found, None
     """
-    time_start = timezone.now() - timedelta(minutes=max_age_minutes)
+    time_start = datetime.utcnow().replace(tzinfo=pytz.utc) - timedelta(minutes=max_age_minutes)
     sessions = Session.objects.filter(
         Q(cdr_token_uid=token_uid) & Q(status__in=statuses) & Q(created__gte=time_start)
     ).order_by('-created')

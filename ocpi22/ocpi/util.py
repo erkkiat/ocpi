@@ -2,9 +2,10 @@ import functools
 import json
 import uuid
 from collections import OrderedDict
-from datetime import datetime
+from django.utils.datetime_safe import datetime
 from typing import Union
 
+import pytz
 import requests
 from django.conf import settings
 from django.db.models import QuerySet
@@ -65,7 +66,7 @@ class OcpiModule:
     def update_last_updated(self):
         if hasattr(self, 'last_updated'):
             if self.is_ours():
-                setattr(self, 'last_updated', timezone.now())
+                setattr(self, 'last_updated', datetime.utcnow().replace(tzinfo=pytz.utc))
 
     def atomic_post_save(self, *_args, **_kwargs) -> None:
         assert hasattr(self, 'ocpi_serializer_class') and hasattr(self, 'ocpi_module_name') \
@@ -233,7 +234,7 @@ def format_ocpi_response(status_code: int = 1000, status_message: str = '', data
     return dict(
         status_code=status_code,
         status_message=status_message,
-        timestamp=timezone.now().strftime(settings.OCPI_DATE_FORMAT),
+        timestamp=datetime.utcnow().replace(tzinfo=pytz.utc).strftime(settings.OCPI_DATE_FORMAT),
         data=data
     )
 
@@ -381,7 +382,7 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
         return Response(OrderedDict([
             ('status_code', Ocpi.OK),
-            ('timestamp', timezone.now()),
+            ('timestamp', datetime.utcnow().replace(tzinfo=pytz.utc)),
             # .strftime(settings.OCPI_DATE_FORMAT)), if you want the date without fractions
             ('data', data),
         ]), headers=headers)

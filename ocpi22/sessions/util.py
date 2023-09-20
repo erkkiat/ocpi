@@ -1,25 +1,24 @@
-from rest_framework.exceptions import ValidationError
+import pytz
+from django.utils.datetime_safe import datetime
 
 import ocpi22.logging as logging
 import os
-import uuid
 from collections import namedtuple
 from typing import Union
 
 from django.conf import settings
 from django.db.models import QuerySet
-from django.utils import timezone
 from rest_framework import exceptions
 from rest_framework.generics import get_object_or_404
 
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.choices import AuthorizationEnum
+from ocpi22.choices import AuthorizationEnum, OcpiRolesEnum
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.tokens.util import get_token_id
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.ocpi_identities import Party, get_our_credentialsrole
 
 
 def get_token(token_id, ad_hoc_token):
@@ -98,8 +97,8 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         start_kwh=start_kwh,
         stop_kwh=stop_kwh,
         status=session_status,
-        start_date_time=timezone.now(),
-        last_updated=timezone.now(),
+        start_date_time=datetime.utcnow().replace(tzinfo=pytz.utc),
+        last_updated=datetime.utcnow().replace(tzinfo=pytz.utc),
         cdr_token_uid=token.uid,
         cdr_token_type=token.type,
         cdr_token_contract_id=token.contract_id,

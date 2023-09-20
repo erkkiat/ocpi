@@ -1,3 +1,6 @@
+from django.utils.datetime_safe import datetime
+
+import pytz
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
@@ -136,7 +139,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
         if self.is_ours():
-            self.last_updated = timezone.now()
+            self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self, version=None):

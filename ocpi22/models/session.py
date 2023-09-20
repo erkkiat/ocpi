@@ -1,7 +1,9 @@
 import os
 
+import pytz
 from django.contrib import admin
 from django.db.models import QuerySet, Sum
+from django.utils.datetime_safe import datetime
 from humanize import naturaltime
 from rest_framework.fields import DateTimeField
 
@@ -11,7 +13,6 @@ from typing import Union, Optional
 
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -81,7 +82,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def total_time_float(self):
-        return ((self.end_date_time or timezone.now()) - self.start_date_time).total_seconds() / 3600
+        now = datetime.utcnow().replace(tzinfo=pytz.utc)
+        return ((self.end_date_time or now) - self.start_date_time).total_seconds() / 3600
 
     # How many kWh are in the charge point meter at the start of the session
     start_kwh = models.FloatField(default=0.0)
@@ -115,7 +117,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
         kwh_so_far = _sum(CdrDimensionEnum.ENERGY)
         hours_so_far = _sum(CdrDimensionEnum.TIME)
-        hours = ((timestamp or timezone.now()) - start_date_time).total_seconds() / 3600
+        hours = ((timestamp or datetime.utcnow().replace(tzinfo=pytz.utc)) - start_date_time).total_seconds() / 3600
         active_charging_period.set_dimension(
             Decimal(kwh) - Decimal(kwh_so_far), soc, power, Decimal(hours) - Decimal(hours_so_far)
         )
@@ -399,7 +401,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             )
             if last_period:
                 last_period_hours = \
-                    ((timestamp or timezone.now()) - last_period.start_date_time).total_seconds() / 3600
+                    ((timestamp or datetime.utcnow().replace(tzinfo=pytz.utc)) - last_period.start_date_time).total_seconds() / 3600
                 last_period.set_dimension(hours=last_period_hours)
                 # ic(last_period, last_period_hours)
             # ic('Created a new charging period', period)

@@ -269,8 +269,7 @@ USE_I18N = True
 USE_L10N = True
 
 # If you set this to False, Django will not use timezone-aware datetimes.
-USE_TZ = False  # DO NOT CHANGE THIS, or the OCPI date query parameters will not match
-
+USE_TZ = True
 TIMEZONE = os.environ.get('TIMEZONE', 'UTC')
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.

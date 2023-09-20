@@ -1,6 +1,8 @@
 import json
-from datetime import datetime, time, date
+from datetime import time, date
+from django.utils.datetime_safe import datetime
 
+import pytz
 from django.contrib.auth.decorators import login_required
 from django.db.models import F
 from django.db.models.signals import post_save
@@ -195,7 +197,7 @@ def get_evse_object(evse: Union[Evse, str]) -> Evse:
 def close_active_sessions_for_evse(evse_uid: str):
     # evse = get_evse_object(evse)
     active_sessions = Session.objects.filter(evse__uid=evse_uid, status__in=(Session.ACTIVE, Session.PENDING))
-    active_sessions.update(last_updated=timezone.now(), status=Session.COMPLETED, end_date_time=F('last_updated'))
+    active_sessions.update(last_updated=datetime.utcnow().replace(tzinfo=pytz.utc), status=Session.COMPLETED, end_date_time=F('last_updated'))
 
     for session in active_sessions:
         session.send_updates()
@@ -273,7 +275,7 @@ def create_charging_periods(session: Session):
 def process_meter_values(request, serializer, kwh, power=None, soc=None, session=None,
                          internal_reference=None, timestamp=None):
     next_url = reverse('chargepoint-stop-transaction')
-    timestamp = timestamp or timezone.now()
+    timestamp = timestamp or datetime.utcnow().replace(tzinfo=pytz.utc)
 
     if not session:
         session = Session.get_if_exists(
@@ -363,7 +365,7 @@ session_key = 'session:{session.uid}'
 def store_meter_values(_request, session, data):
     data.pop('session', None)
     if 'timestamp' not in data:
-        data['timestamp'] = timezone.now()
+        data['timestamp'] = datetime.utcnow().replace(tzinfo=pytz.utc)
     key = session_key.format(session=session)
     assert 'timestamp' in data
     redis_store.rpush(key, json.dumps(data, default=str))
@@ -432,7 +434,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                     evse: Evse = serializer.validated_data.get('evse')
 
                     evse.status = ocpi_status
-                    evse.last_updated = timezone.now()
+                    evse.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
                     evse.location.update_last_updated()
                     evse.save()
 
@@ -781,7 +783,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 if serializer.is_valid():
                     session = serializer.validated_data.get('session')
                     stop_kwh = serializer.validated_data.get('stop_kwh')
-                    stop_timestamp = serializer.validated_data.get('stop_timestamp', timezone.now())
+                    stop_timestamp = serializer.validated_data.get('stop_timestamp', datetime.utcnow().replace(tzinfo=pytz.utc))
                     if not session:
                         internal_reference = serializer.validated_data.get('internal_reference')
                         session = Session.get_if_exists(internal_reference=internal_reference)
@@ -796,7 +798,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.update_charging_periods(kwh=session.kwh, timestamp=stop_timestamp)
                     session.status = Session.COMPLETED
                     session.end_date_time = stop_timestamp
-                    session.last_updated = timezone.now()
+                    session.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
                     session.calculate_price()
                     session.save(update_fields=['stop_kwh', 'status', 'last_updated', 'end_date_time',
                                                 'total_cost_incl_vat', 'total_cost_excl_vat'])

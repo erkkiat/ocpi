@@ -1,6 +1,8 @@
 import uuid
 from collections import Counter
+from django.utils.datetime_safe import datetime
 
+import pytz
 from dateutil import tz
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -203,7 +205,7 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
         if self.is_ours():
-            self.last_updated = timezone.now()
+            self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
         self.lat_partition = calculate_partition(self.latitude)
         self.long_partition = calculate_partition(self.longitude)
         return super(self.__class__, self).save(*args, **kwargs)
@@ -356,8 +358,8 @@ class Evse(models.Model, ModelUtilMixin):
 
     def save(self, *args, **kwargs):
         if self.location.is_ours():
-            self.last_updated = timezone.now()
-            self.location.last_updated = timezone.now()
+            self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
+            self.location.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
             self.location.save(update_fields=['last_updated'])
         return super().save(*args, **kwargs)
 

@@ -1,5 +1,7 @@
 import base64
+from datetime import datetime
 
+import pytz
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
@@ -16,7 +18,6 @@ from django.db.models import Q
 from django.db.models.signals import pre_save, pre_delete, post_save
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
-from django.utils import timezone
 
 import util
 from ocpi22 import choices
@@ -157,7 +158,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     responding.admin_order_field = 'connection_status'
 
     def update_last_connection(self):
-        self.last_connection = timezone.now()
+        self.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
         self.save(update_fields=['last_connection'])
 
     def get_party_for_role(self, role: OcpiRolesEnum) -> Optional[Party]:
@@ -379,7 +380,7 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
 
 def store_endpoints_for_party(credentials, endpoints):
     credentials.version = endpoints['version'].replace('.', '')  # "2.2" => "22"
-    credentials.last_connection = timezone.now()
+    credentials.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
     credentials.save()
 
     # Replace any existing endpoints for this specific party

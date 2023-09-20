@@ -3,12 +3,13 @@ from copy import deepcopy
 from gettext import gettext as _
 from typing import Optional
 
+import pytz
 from django.conf import settings
 from django.db import models
 from django.db.models import QuerySet
 from django.db.models.signals import pre_save, post_save, pre_delete
 from django.dispatch import receiver
-from django.utils import timezone
+from django.utils.datetime_safe import datetime
 from django.utils.html import format_html
 from multiselectfield import MultiSelectField
 import util
@@ -207,7 +208,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
 
     def save(self, *args, **kwargs):
         if self.is_ours():
-            self.last_updated = timezone.now()
+            self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
         return super().save(*args, **kwargs)
 
 

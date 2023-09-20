@@ -1,6 +1,6 @@
 import os
 import random
-from datetime import timedelta
+from datetime import timedelta, datetime
 from json import JSONDecodeError
 from typing import Optional, Union
 from unittest.mock import MagicMock
@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 import celery
 import cronitor.celery
+import pytz
 import requests
 import pprint
 
@@ -252,9 +253,9 @@ def check_still_alive(credentials_id: int = None) -> None:
         time_since_last_connection = None
         try:
             credentials: Credentials = Credentials.objects.get(pk=credentials_id)
-            time_since_last_connection = (timezone.now() - credentials.last_connection).total_seconds()
+            time_since_last_connection = (datetime.utcnow().replace(tzinfo=pytz.utc) - credentials.last_connection).total_seconds()
             requests.get(credentials.url, timeout=20)
-            credentials.last_connection = timezone.now()
+            credentials.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
             credentials.connection_status = choices.CONNECTED
             logging.info(f"{credentials} is alive")
         except requests.exceptions.ConnectionError:
@@ -268,14 +269,14 @@ def check_still_alive(credentials_id: int = None) -> None:
         credentials.save(update_fields=['last_connection', 'connection_status'])
         return
     stale_credentials = Credentials.objects.filter(
-        last_connection__lte=timezone.now() - timedelta(seconds=STILL_ALIVE_FREQUENCY - 3),
+        last_connection__lte=datetime.utcnow().replace(tzinfo=pytz.utc) - timedelta(seconds=STILL_ALIVE_FREQUENCY - 3),
         valid=True
     )
     # logging.info(f"Checking {stale_credentials.count()} parties for alive")
     c: Credentials
     for c in stale_credentials:
         if c.is_complete() and c.connection_status in {choices.CONNECTED, choices.OFFLINE}:
-            # since_last_time = (timezone.now() - c.last_connection).seconds
+            # since_last_time = (datetime.utcnow().replace(tzinfo=pytz.utc) - c.last_connection).seconds
             # logging.info(f"Checking that {c} is alive and well, last successful "
             #              f"connection was {int(since_last_time / 60)} min ago")
             check_still_alive.apply_async((c.pk,), countdown=random.randint(0, stale_credentials.count()))
@@ -347,7 +348,7 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
 
     if session.status == Session.PENDING:
         print('Starting session')
-        session.start_date_time = timezone.now()
+        session.start_date_time = datetime.utcnow().replace(tzinfo=pytz.utc)
         # Don't actually start the session yet, it will be started in simulate_meter_values after a delay
         session.status = Session.ACTIVE
         session.save(update_fields=['status', 'start_date_time'])

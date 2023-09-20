@@ -1,10 +1,12 @@
+import pytz
+from django.utils.datetime_safe import datetime
+
 import ocpi22.logging as logging
 
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils import timezone
 from django.utils.html import format_html
 import util
 
@@ -240,7 +242,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         if session.total_cost_excl_vat is None:
             logging.error(f'{settings.HOSTNAME}: Session {session} has no total cost')
         if not session.end_date_time:
-            session.end_date_time = timezone.now()
+            session.end_date_time = datetime.utcnow().replace(tzinfo=pytz.utc)
 
         cdr = cls.objects.create(
             uid=generate_cdr_uid(),
@@ -277,7 +279,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             credentials=session.credentials,
             ocpi_master=session.ocpi_master,
             billed_to=session.billed_to,
-            last_updated=timezone.now(),
+            last_updated=datetime.utcnow().replace(tzinfo=pytz.utc),
         )
 
         tariffs = session.connector.tariff_ids.all()

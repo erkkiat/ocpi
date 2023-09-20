@@ -183,6 +183,6 @@ def get_price(key: str, when: datetime) -> float:
     if prices.count() == 0:
         return 0.0
     if prices.count() == 1:
-        # return timezone.now().second/100
+        # return datetime.utcnow().replace(tzinfo=pytz.utc).second/100
         return prices[0].price
     raise PriceSource.TooManyPrices()

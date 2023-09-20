@@ -1,7 +1,9 @@
 import logging
 import os
+from datetime import datetime
 from typing import Union
 
+import pytz
 import requests
 from cachetools.func import ttl_cache
 from django.conf import settings
@@ -44,7 +46,7 @@ def log_for_admin(text: str, logentry: Union[LogEntry, int], level=LogLevel.INFO
     if isinstance(logentry, LogEntry):
         logentry = logentry.pk
     ChildEvent.objects.create(text=text, logentry_id=logentry, level=level.value, **kwargs)
-    LogEntry.objects.filter(pk=logentry).update(updated=timezone.now())
+    LogEntry.objects.filter(pk=logentry).update(updated=datetime.utcnow().replace(tzinfo=pytz.utc))
 
 
 def get_default_logentry() -> LogEntry:
