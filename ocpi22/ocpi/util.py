@@ -9,7 +9,6 @@ import pytz
 import requests
 from django.conf import settings
 from django.db.models import QuerySet
-from django.utils import timezone
 from django.utils.module_loading import import_string
 from requests import Response
 from rest_framework import status
@@ -22,7 +21,7 @@ from rest_framework.response import Response
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.routing import find_route
 from ocpi22.logging import log_error
-from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_identity, Party, get_our_party
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_our_identity, Party, get_our_party
 from util import OCPIVersion
 
 
@@ -55,7 +54,7 @@ class OcpiModule:
     @classmethod
     def get_owner_identity(cls) -> str:
         if ocpi_platform.is_hub:
-            return get_identity('HUB')
+            return get_our_identity('HUB')
 
         assert hasattr(cls, 'ocpi_object_owner'), \
             f'The OCPI object {cls} needs to have ocpi_object_owner specified ' \
@@ -101,7 +100,7 @@ class OcpiModule:
                 logging.info('Sending updates to ALL connected parties')
                 self.send_all_updates(method=method)
 
-    def send_all_updates(self, data=None, method='put', path_components=None) -> bool:
+    def send_all_updates(self, data=None, method='put', path_components=None, ocpi_module_name=None) -> bool:
         # Todo: Use sender identity, not our HUB identity
         from ocpi22.credentials.util import find_endpoints_by_roles
         our_country_code, our_party_id = self.get_owner_identity().split('*')
@@ -109,9 +108,10 @@ class OcpiModule:
             f'Sending updates for {self} from {our_country_code}*{our_party_id} to {self.send_updates_to}'
         )
 
-        if isinstance(self.send_updates_to, tuple):
+        ocpi_module_name = ocpi_module_name or self.ocpi_module_name
+        if isinstance(self.send_updates_to, (list, tuple)):
             for url, token_base64, country_code, party_id, credentials in find_endpoints_by_roles(
-                    self.send_updates_to, self.ocpi_module_name):
+                    self.send_updates_to, ocpi_module_name):
                 try:
                     if path_components:
                         url = f'{url}/{"/".join(path_components)}'
@@ -183,7 +183,7 @@ class OcpiModule:
         else:
             logging.error(f'Unable to find route to {str(to)}')
 
-    def send_update_to_interested_parties(self, *args, **kwargs) -> None:
+    def send_update_to_interested_parties(self, *args, method='PUT', **kwargs) -> None:
         if hasattr(self, 'credentials'):
             if not hasattr(self, 'billed_to'):
                 log_error(None,
@@ -191,7 +191,7 @@ class OcpiModule:
                 return
             self.send_subscriber_updates(*args, **kwargs)
             to = Party(*(self.billed_to.split('*')))
-            return self.route_single_update_message(to=to, **kwargs)
+            return self.route_single_update_message(to=to, method=method, **kwargs)
         else:
             logging.error(f'Object #{self.uid} - {self} has no credentials, cannot send updates to interested parties')
             # Todo: Stop charging session, cannot bill

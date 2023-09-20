@@ -77,8 +77,6 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
                       f'active sessions at EVSE {evse.evse_id}: {",".join([s.uid for s in active_sessions])}')
         raise EvseOccupied(f'Cannot start a new session because there is an active charging session in progress')
 
-    our_country_code, our_party_id = Session.get_owner_identity().split('*')
-
     assert billed_to, 'Unable to bill session without billed_to'
 
     currency = currency or os.environ.get('CPO_CURRENCY', 'EUR')
@@ -89,8 +87,6 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
             currency = first_tariff.currency
 
     params = dict(
-        country_code=our_country_code,
-        party_id=our_party_id,
         uid=uid,
         reservation_id=reservation_id,
         internal_reference=internal_reference,
@@ -110,6 +106,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         currency=currency,
         billed_to=str(billed_to),
         credentials=credentials,
+        ocpi_master=get_our_credentialsrole(OcpiRolesEnum.CPO)
     )
     params.update(kwargs)
     params.pop('expiry_date', None)  # Todo: Finish implementing reservations
