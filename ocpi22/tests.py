@@ -1,6 +1,7 @@
 import doctest
 import json
 import os
+from functools import wraps
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -20,7 +21,6 @@ import redis.exceptions
 import time_machine
 from django.conf import settings
 from django.http import HttpResponse
-from django.utils import timezone
 
 from django.contrib.auth.models import AnonymousUser, User
 from django.test import TestCase, Client
@@ -79,7 +79,7 @@ from ocpiconnector.ocpi_identities import Party, get_our_party, create_credentia
 from settlement.calculate import create_invoice
 
 global ic
-faketime = datetime(2022, 1, 1, 12, 0)
+faketime = datetime(2022, 1, 1, 12, 0).replace(tzinfo=pytz.UTC)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = OCPIAPIRequestFactory()
@@ -122,6 +122,7 @@ class FakeResponse:
     status_code: int
     data: dict
     reason: str = field(default='Mocked response')
+    headers: dict = field(default_factory=dict)
 
     def json(self):
         return self.data
@@ -481,7 +482,7 @@ class ApiPutTests(TestCase):
                     self.assertTrue(check_function(tariff), f'Check function failed for {filename}')
 
     def test_cost_calculation(self):
-        start_date_time = datetime(2022, 1, 1, 0, 0)
+        start_date_time = datetime(2022, 1, 1, 0, 0).replace(tzinfo=pytz.UTC)
         evse = Evse.objects.all().first()
         location = evse.location
         connector = evse.connectors.first()
@@ -548,7 +549,6 @@ class ApiPutTests(TestCase):
                'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
            }.get(x))
     def test_post_cdr(self, _redis_store_mock: Mock):
-        self.skipTest('CDR tests will change when the CDR is stored as jsonb in the database')
         url = reverse('cdr-list')
         token_base64 = self.credentials.ours_base64()
         viewset = CdrViewSet
@@ -837,6 +837,50 @@ class TariffTests(TestCase):
         return credentials
 
 
+def simulate_surrounding_world(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with patch('ocpi22.tasks.requests') as requests:
+
+            # class FakeResponse(Mock):
+            #     headers = {'Content-Type': 'application/json'}
+            #     status_code = 200
+            #     reason = 'OK'
+
+            @dataclass
+            class Simulation:
+                requests: Mock
+
+                def reset(self):
+                    self.requests.reset_mock()
+
+                def __post_init__(self):
+                    self.requests.post.side_effect = self.post
+                    self.requests.get.side_effect = self.get
+                    self.requests.put.side_effect = self.put
+                    self.requests.delete.side_effect = self.delete
+
+                def post(self, *args, **kwargs):
+                    return self._request('POST', *args, **kwargs)
+
+                def get(self, *args, **kwargs):
+                    return self._request('GET', *args, **kwargs)
+
+                def put(self, *args, **kwargs):
+                    return self._request('PUT', *args, **kwargs)
+
+                def delete(self, *args, **kwargs):
+                    return self._request('DELETE', *args, **kwargs)
+
+                @staticmethod
+                def _request(method, url, json=None, **kwargs):
+                    return FakeResponse(200, dict())
+
+            simulation = Simulation(requests)
+            return func(*args, simulation=simulation, **kwargs)
+    return wrapper
+
+
 class CdrTests(TestCase):
     fixtures = [
         'ocpi22/data/initial.json',
@@ -861,7 +905,9 @@ class CdrTests(TestCase):
                'callback-session_url': 'http://localhost/session/{uid}/',
                'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
            }.get(x))
-    def test_session_to_cdr(self, _redis_store_mock: Mock):
+    @time_machine.travel(faketime, tick=False)
+    @simulate_surrounding_world
+    def test_session_to_cdr(self, _redis_store_mock: Mock, simulation):
         cpo_credentials = Credentials.objects.create()
         role = get_credentialsrole(cpo_credentials, Party('BE', 'BEC'),
                                    create=True, role=OcpiRolesEnum.CPO)
@@ -869,9 +915,10 @@ class CdrTests(TestCase):
         for t in [11, 12, 13]:
             create_tariff(uid=str(t), ocpi_master=role)
 
-        location = self.load_location('location_example')
-        evse = location.evses.first()
-        connector = evse.connectors.first()
+        # location = self.load_location('location_example')
+        connector = Connector.objects.get(pk=8)
+        evse = connector.evse
+        location = evse.location
         credentials = Credentials.objects.first()
 
         # ic(connector, connector.get_tariffs()[0].price())
@@ -879,8 +926,7 @@ class CdrTests(TestCase):
         session = Session.objects.create(
             ocpi_master=role,
             uid='TEST1',
-            start_date_time=datetime.utcnow().replace(tzinfo=pytz.utc) - timedelta(minutes=30),
-            # end_date_time=datetime.utcnow().replace(tzinfo=pytz.utc),
+            start_date_time=faketime - timedelta(minutes=30),
             stop_kwh=12.34,
             cdr_token_uid='TOKEN1',
             cdr_token_type='RFID',
@@ -892,10 +938,8 @@ class CdrTests(TestCase):
             connector=connector,
             meter_id='123',
             currency='EUR',
-            total_cost_excl_vat='1.0',
-            total_cost_incl_vat='1.24',
             status='COMPLETED',
-            last_updated=datetime.utcnow().replace(tzinfo=pytz.utc),
+            last_updated=faketime,
             credentials=credentials,
             billed_to='FI*MSP',
         )
@@ -907,12 +951,13 @@ class CdrTests(TestCase):
                          f"Expecting connector uid {connector.uid}, got {data['connector_id']}")
 
         self.assertTrue(session.calculate_price(), 'There is sufficient information to calculate the Session price')
-        self.assertEqual(session.total_cost_excl_vat, 1, "Price doesn't seem right.")
+        self.assertEqual(session.total_cost_excl_vat, 3.21, "Price doesn't seem right.")
 
-        cdr1 = Cdr.create_based_on_session(session)
+        cdr1: Cdr = Cdr.create_based_on_session(session)
+
+        simulation.requests.post.assert_called_once()
 
         # Check that Tariffs are archived copies and that they exist
-
         self.assertTrue(all(t.archived for t in cdr1.tariffs.all()),
                         'Cdr needs to point to only archived Tariffs, so that they are not modified anymore.')
 
@@ -927,14 +972,18 @@ class CdrTests(TestCase):
 
         self.assertTrue(session.calculate_price(),
                         'There should be sufficient information to calculate the Session price')
-        self.assertEqual(session.total_cost_excl_vat, 2.86,
+        self.assertEqual(session.total_cost_excl_vat, 2.72,
                          "Price without VAT doesn't seem right.")
-        self.assertEqual(session.total_cost_incl_vat, 3.55,
+        self.assertEqual(session.total_cost_incl_vat, 3.37,
                          "Price with VAT doesn't seem right.")
 
-        cdr: Cdr = Cdr.create_based_on_session(session)
+        #
+        # Let's have another go at creating a CDR with default_tariffs
+        #
 
-        # Check that Tariffs are archived copies and that they exist
+        simulation.reset()
+        cdr: Cdr = Cdr.create_based_on_session(session)
+        simulation.requests.post.assert_called_once()
 
         self.assertTrue(all(t.archived for t in cdr.tariffs.all()),
                         'Cdr needs to point to only archived Tariffs, so that they are not modified anymore')

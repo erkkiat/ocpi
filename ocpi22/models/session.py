@@ -310,7 +310,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if connector:
             tariffs = tariffs or connector.get_tariffs()
         if not connector or not tariffs:
-            msg = f'Unable to calculate price for EVSE {connector.evse} connector {connector}.'
+            msg = f'Unable to calculate price for EVSE {connector.evse if connector else "N/A"} connector {connector}.'
             logging.error(msg)
             raise RuntimeError(msg)
         # ic(self.uid, [t.price() for t in tariffs])

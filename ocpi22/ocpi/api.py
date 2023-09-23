@@ -278,7 +278,7 @@ class CdrViewSet(OCPIListModelMixin,
     @ocpi_exception_handler
     @requires_premium
     def get(self, request, country_code=None, party_id=None, uid=None, **_kwargs) -> Response:
-        cdr = get_object_or_404(Cdr, country_code=country_code, party_id=party_id, uid=uid)
+        cdr = Cdr.objects.get(country_code=country_code, party_id=party_id, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 

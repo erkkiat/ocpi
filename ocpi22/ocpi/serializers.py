@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from ocpi22 import choices
-from ocpi22.choices import TOKEN_TYPE_CHOICES, CONNECTION_STATUS_CHOICES
+from ocpi22.choices import TOKEN_TYPE_CHOICES, CONNECTION_STATUS_CHOICES, OcpiRolesEnum
 from ocpi22.messages import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
@@ -15,8 +15,10 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension, ChargingPeriodSerializer, TotalCostSerializer
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
 from ocpi22.util import base64_to_ascii, CiStringChoiceField, MultipleChoiceFieldList, CiStringField
+from ocpiconnector.ocpi_identities import Party
 
 
 class CdrTokenSerializer(SerializerCleanedUp):
@@ -155,12 +157,6 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 class CdrCoordinatesSerializer(SerializerCleanedUp):
-    def update(self, instance, validated_data):
-        raise NotImplementedError()
-
-    def create(self, validated_data):
-        raise NotImplementedError()
-
     latitude = Coordinate(source='cdr_location_latitude')
     longitude = Coordinate(source='cdr_location_longitude')
 
@@ -206,11 +202,13 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
             tariffs = validated_data.pop('tariffs')
             tariff_serializer = TariffSerializer()
             tariff_list = []
-            for t in tariffs:
+            for tariff in tariffs:
                 # Create archived copies of the relevant Tariffs, so that they don't change anymore
-                t['archived'] = True
+                tariff['archived'] = True
                 # Todo: Store CDRs as json in the database
-                tariff_list.append(tariff_serializer.create(t))
+                tariff['ocpi_master'] = get_credentialsrole(None, Party(**tariff.pop('ocpi_master')),
+                                                            role=OcpiRolesEnum.CPO)
+                tariff_list.append(tariff_serializer.create(tariff))
             cdr = Cdr.objects.create(**validated_data)
             cdr.tariffs.set(tariff_list)
             return cdr

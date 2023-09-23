@@ -136,9 +136,16 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     def __hash__(self):
         return util.member_hash(self)
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, raw=False, **kwargs):
+        """
+        Save the Token object to the database.
+        @param args:
+        @param raw: Is loaddata loading fixtures for unittest
+        @param kwargs:
+        @return:
+        """
         self.change_fields_to_upper_case()
-        if self.is_ours():
+        if self.is_ours() and not raw:
             self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
         return super(self.__class__, self).save(*args, **kwargs)
 

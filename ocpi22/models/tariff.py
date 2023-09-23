@@ -206,8 +206,15 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
                     return pc
         return None
 
-    def save(self, *args, **kwargs):
-        if self.is_ours():
+    def save(self, *args, raw=False, **kwargs):
+        """
+        Save the Tariff object to the database.
+        @param args:
+        @param raw: Is loaddata loading fixtures for unittest
+        @param kwargs:
+        @return:
+        """
+        if self.is_ours() and not raw:
             self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
         return super().save(*args, **kwargs)
 
@@ -371,10 +378,10 @@ def tariff_pre_save(sender, instance, *_args, **_kwargs):
 
 
 @receiver(post_save, sender=PriceComponent)
-def price_component_post_save(sender, instance: PriceComponent, *_args, **_kwargs):
+def price_component_post_save(sender, instance: PriceComponent, *_args, raw, **_kwargs):
     tariff = instance.tariff
     # Do not update last_updated here, only owner does that
-    tariff.save()
+    tariff.save(raw=raw)  # Raw = loaddata is loading fixtures for unittest
 
 
 @receiver(pre_delete, sender=Tariff)

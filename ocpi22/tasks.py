@@ -145,7 +145,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
             logging.error(
                 f'{settings.HOSTNAME}: Unable to send update to {url}: {result.status_code} - {result.reason}')
-            logging.error(result.text[-500:])
+            # logging.error(result.text[-500:])
         if credentials_id:
             from ocpi22.models.credentials import Credentials
             credentials = Credentials.get_if_exists(pk=credentials_id)
