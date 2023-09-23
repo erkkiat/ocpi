@@ -35,12 +35,12 @@
       "theirs": "C325D653270B77A35CBDE379B8EA3980795B909AFF7C2AB14A79DEC11E0D556D",
       "url": "http://localhost:8001/ocpi/versions/",
       "connection_status": "OFFLINE",
-      "last_connection": "2022-10-22T09:23:43.126",
+      "last_connection" : "2022-10-22T09:23:43.126Z",
       "version": "22",
       "valid": true,
       "last_updated": null,
-      "updated": "2022-12-11T06:54:16.654",
-      "created": "2022-10-22T08:09:32.096"
+      "updated" : "2022-12-11T06:54:16.654Z",
+      "created" : "2022-10-22T08:09:32.096Z"
     }
   },
   {
@@ -52,12 +52,12 @@
       "theirs": "adbb07f634a791f529ec388774cd24c8e1eb8043dbb008e930ee7e1edeb5a0b8",
       "url": "http://localhost:8002/ocpi/versions/",
       "connection_status": "CONNECTED",
-      "last_connection": "2022-12-17T11:30:44.231",
+      "last_connection" : "2022-12-17T11:30:44.231Z",
       "version": "22",
       "valid": true,
       "last_updated": null,
-      "updated": "2022-12-03T12:04:17.425",
-      "created": "2022-11-04T06:42:01.623"
+      "updated" : "2022-12-03T12:04:17.425Z",
+      "created" : "2022-11-04T06:42:01.623Z"
     }
   },
   {
@@ -365,6 +365,16 @@
       }
    },
    {
+      "pk" : 102,
+      "model" : "ocpi22.defaulttariffs",
+      "fields" : {
+         "standard" : "TESLA_S",
+         "tariffs" : [
+            18
+         ]
+      }
+   },
+   {
       "model" : "ocpi22.defaulttariffs",
       "fields" : {
          "tariffs" : [
@@ -388,12 +398,12 @@
       "pk" : 1,
       "fields" : {
          "type" : "REGULAR",
-         "created" : "2022-01-08T07:51:41.531",
+         "created" : "2022-01-08T07:51:41.531Z",
          "tariff_alt_url" : "",
          "currency" : "EUR",
          "uid" : "T1",
-         "last_updated" : "2022-01-14T15:52:22",
-         "updated" : "2022-01-16T17:50:31.687",
+         "last_updated" : "2022-01-14T15:52:22Z",
+         "updated" : "2022-01-16T17:50:31.687Z",
          "ocpi_master" : 99,
          "archived" : true
       },
@@ -405,10 +415,10 @@
       "fields" : {
          "archived" : false,
          "ocpi_master" : 99,
-         "updated" : "2022-01-18T18:55:07.589",
-         "last_updated" : "2022-01-08T07:52:37.772",
+         "updated" : "2022-01-18T18:55:07.589Z",
+         "last_updated" : "2022-01-08T07:52:37.772Z",
          "uid" : "T2",
-         "created" : "2022-01-08T07:52:37.768",
+         "created" : "2022-01-08T07:52:37.768Z",
          "type" : "REGULAR",
          "tariff_alt_url" : "",
          "currency" : "EUR"
@@ -417,15 +427,15 @@
    {
       "model" : "ocpi22.tariff",
       "fields" : {
-         "updated" : "2022-01-16T18:35:19.918",
+         "updated" : "2022-01-16T18:35:19.918Z",
          "ocpi_master" : 99,
          "archived" : true,
          "uid" : "T6",
-         "created" : "2022-01-09T14:16:46.932",
+         "created" : "2022-01-09T14:16:46.932Z",
          "type" : "REGULAR",
          "tariff_alt_url" : "",
          "currency" : "EUR",
-         "last_updated" : "2022-01-14T10:29:21"
+         "last_updated" : "2022-01-14T10:29:21Z"
       },
       "pk" : 7
    },
@@ -433,45 +443,45 @@
       "pk" : 9,
       "model" : "ocpi22.tariff",
       "fields" : {
-         "last_updated" : "2022-01-14T15:52:22",
-         "created" : "2022-01-16T17:50:31.698",
+         "last_updated" : "2022-01-14T15:52:22Z",
+         "created" : "2022-01-16T17:50:31.698Z",
          "tariff_alt_url" : "",
          "type" : "REGULAR",
          "currency" : "EUR",
          "uid" : "T1",
          "archived" : true,
          "ocpi_master" : 99,
-         "updated" : "2022-01-16T17:58:16.079"
+         "updated" : "2022-01-16T17:58:16.079Z"
       }
    },
    {
       "pk" : 10,
       "model" : "ocpi22.tariff",
       "fields" : {
-         "last_updated" : "2022-01-14T15:52:22",
+         "last_updated" : "2022-01-14T15:52:22Z",
          "uid" : "T1",
-         "created" : "2022-01-16T17:58:16.087",
+         "created" : "2022-01-16T17:58:16.087Z",
          "tariff_alt_url" : "",
          "type" : "REGULAR",
          "currency" : "EUR",
          "archived" : true,
          "ocpi_master": 99,
-         "updated" : "2022-01-16T18:34:02.706"
+         "updated" : "2022-01-16T18:34:02.706Z"
       }
    },
    {
       "pk" : 15,
       "model" : "ocpi22.tariff",
       "fields" : {
-         "updated" : "2022-01-17T05:45:59.285",
+         "updated" : "2022-01-17T05:45:59.285Z",
          "archived" : false,
          "ocpi_master": 99,
          "uid" : "T3",
-         "created" : "2022-01-17T05:45:59.278",
+         "created" : "2022-01-17T05:45:59.278Z",
          "tariff_alt_url" : "",
          "type" : "REGULAR",
          "currency" : "EUR",
-         "last_updated" : "2022-01-08T07:52:37.772"
+         "last_updated" : "2022-01-08T07:52:37.772Z"
       }
    },
    {
@@ -479,12 +489,12 @@
       "model" : "ocpi22.tariff",
       "fields" : {
          "uid" : "T4",
-         "created" : "2022-01-17T05:46:58.892",
+         "created" : "2022-01-17T05:46:58.892Z",
          "tariff_alt_url" : "",
          "type" : "REGULAR",
          "currency" : "EUR",
-         "last_updated" : "2022-01-08T07:52:37.772",
-         "updated" : "2022-01-17T05:46:58.898",
+         "last_updated" : "2022-01-08T07:52:37.772Z",
+         "updated" : "2022-01-17T05:46:58.898Z",
          "ocpi_master": 99,
          "archived" : false
       }
@@ -492,10 +502,10 @@
    {
       "pk" : 18,
       "fields" : {
-         "updated" : "2022-01-19T18:23:33.600",
+         "updated" : "2022-01-19T18:23:33.600Z",
          "archived" : false,
          "ocpi_master": 99,
-         "created" : "2022-01-19T18:23:33.593",
+         "created" : "2022-01-19T18:23:33.593Z",
          "type" : "REGULAR",
          "tariff_alt_url" : "",
          "currency" : "EUR",
@@ -510,13 +520,13 @@
       "fields" : {
          "last_updated" : null,
          "tariff_alt_url" : "",
-         "created" : "2022-01-19T18:23:56.511",
+         "created" : "2022-01-19T18:23:56.511Z",
          "currency" : "EUR",
          "type" : "REGULAR",
          "uid" : "TCCS",
          "ocpi_master": 99,
          "archived" : false,
-         "updated" : "2022-01-19T18:23:56.514"
+         "updated" : "2022-01-19T18:23:56.514Z"
       }
    },
    {
@@ -524,13 +534,13 @@
       "fields" : {
          "last_updated" : null,
          "tariff_alt_url" : "",
-         "created" : "2022-01-19T18:24:14.252",
+         "created" : "2022-01-19T18:24:14.252Z",
          "type" : "REGULAR",
          "currency" : "EUR",
          "uid" : "TCHADEMO",
          "ocpi_master": 99,
          "archived" : false,
-         "updated" : "2022-01-19T18:24:14.256"
+         "updated" : "2022-01-19T18:24:14.256Z"
       },
       "pk" : 20
    },
@@ -626,8 +636,8 @@
       "fields" : {
          "type" : "ENERGY",
          "price" : 0.26,
-         "step_size" : 1000,
-         "vat" : null,
+         "step_size" : 1,
+         "vat" : 20,
          "tariff_element" : 2
       },
       "pk" : 2,
@@ -639,7 +649,7 @@
          "price" : 1.23,
          "type" : "ENERGY",
          "vat" : null,
-         "step_size" : 1000
+         "step_size" : 1
       },
       "model" : "ocpi22.pricecomponent",
       "pk" : 7
@@ -715,7 +725,7 @@
          "price" : 0.22,
          "type" : "ENERGY",
          "vat" : 24,
-         "step_size" : 1000,
+         "step_size" : 1,
          "tariff_element" : 15
       },
       "model" : "ocpi22.pricecomponent",
@@ -728,14 +738,14 @@
          "type" : "ENERGY",
          "price" : 0.3,
          "vat" : null,
-         "step_size" : 1000,
+         "step_size" : 1,
          "tariff_element" : 16
       }
    },
    {
       "fields" : {
          "tariff_element" : 17,
-         "step_size" : 1000,
+         "step_size" : 1,
          "vat" : null,
          "price" : 0.3,
          "type" : "ENERGY"

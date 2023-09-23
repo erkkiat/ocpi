@@ -281,7 +281,7 @@
          "country": "FIN",
          "city": "Helsinki",
          "ocpi_master": 99,
-         "created": "2022-01-09T06:25:25.023",
+         "created" : "2022-01-09T06:25:25.023Z",
          "address": "Helsinki 12",
          "parking_type": "PARKING_LOT",
          "long_partition": 3000,
@@ -289,8 +289,8 @@
          "state": "",
          "uid": "HELSINKI-1",
          "name": "Helsinki Supercharger",
-         "last_updated": "2022-01-09T10:50:58.562",
-         "updated": "2022-01-15T19:14:14.602",
+         "last_updated": "2022-01-09T10:50:58.562Z",
+         "updated" : "2022-01-15T19:14:14.602Z",
          "operator": 1,
          "owner": 1,
          "suboperator": 1,
@@ -307,13 +307,13 @@
       "model": "ocpi22.evse",
       "pk": 7,
       "fields": {
-         "created": "2022-01-09T06:27:14.931",
+         "created" : "2022-01-09T06:27:14.931Z",
          "capabilities": [
             1
          ],
          "evse_id": "FI*TSL*EHELSINKI1",
-         "updated": "2022-01-18T19:46:46.556",
-         "last_updated": "2022-01-09T10:50:58.562",
+         "updated" : "2022-01-18T19:46:46.556Z",
+         "last_updated": "2022-01-09T10:50:58.562Z",
          "location": 6,
          "status": "AVAILABLE",
          "uid": "HELSINKI-1"
@@ -326,13 +326,13 @@
          "status": "AVAILABLE",
          "location": 6,
          "uid": "HELSINKI-2",
-         "created": "2022-01-09T06:38:44.357",
+         "created" : "2022-01-09T06:38:44.357Z",
          "capabilities": [
             3
          ],
          "evse_id": "FI*TSL*EHELSINKI2",
-         "updated": "2022-01-18T19:46:34.867",
-         "last_updated": "2022-01-09T06:38:44.362"
+         "updated" : "2022-01-18T19:46:34.867Z",
+         "last_updated": "2022-01-09T06:38:44.362Z"
       }
    },
    {
@@ -344,9 +344,9 @@
          "capabilities": [
             9
          ],
-         "created": "2022-01-09T06:40:43.558",
-         "updated": "2022-01-16T11:42:34.776",
-         "last_updated": "2022-01-09T10:48:07.901"
+         "created" : "2022-01-09T06:40:43.558Z",
+         "updated" : "2022-01-16T11:42:34.776Z",
+         "last_updated": "2022-01-09T10:48:07.901Z"
       },
       "pk": 9,
       "model": "ocpi22.evse"
@@ -360,11 +360,11 @@
          "uid": "3050",
          "max_voltage": 400,
          "evse": 7,
-         "last_updated": "2022-01-09T10:50:58.562",
-         "updated": "2022-01-18T19:46:46.564",
+         "last_updated": "2022-01-09T10:50:58.562Z",
+         "updated" : "2022-01-18T19:46:46.564Z",
          "max_electric_power": null,
          "power_type": "DC",
-         "created": "2022-01-09T06:27:14.942",
+         "created" : "2022-01-09T06:27:14.942Z",
          "max_amperage": 375,
          "tariff_ids": [
             16
@@ -381,10 +381,10 @@
          ],
          "format": "CABLE",
          "max_amperage": 375,
-         "created": "2022-01-09T06:38:44.362",
+         "created" : "2022-01-09T06:38:44.362Z",
          "power_type": "DC",
-         "last_updated": "2022-01-09T06:38:44.362",
-         "updated": "2022-01-18T19:46:34.877",
+         "last_updated": "2022-01-09T06:38:44.362Z",
+         "updated" : "2022-01-18T19:46:34.877Z",
          "max_electric_power": null,
          "evse": 8,
          "max_voltage": 400,
@@ -400,14 +400,14 @@
          "evse": 9,
          "terms_and_conditions": "",
          "standard": "TESLA_S",
-         "created": "2022-01-09T06:40:43.567",
+         "created" : "2022-01-09T06:40:43.567Z",
          "tariff_ids": [
             9
          ],
          "format": "CABLE",
          "max_amperage": 375,
-         "last_updated": "2022-01-09T10:48:07.901",
-         "updated": "2022-01-16T11:42:34.822",
+         "last_updated": "2022-01-09T10:48:07.901Z",
+         "updated" : "2022-01-16T11:42:34.822Z",
          "max_electric_power": null,
          "power_type": "DC"
       },
@@ -419,10 +419,10 @@
       "model": "ocpi22.token",
       "fields": {
          "ocpi_master": 3,
-         "created": "2022-01-17T11:06:05.458",
+         "created" : "2022-01-17T11:06:05.458Z",
          "issuer": "TheNewMotion",
-         "last_updated": "2018-12-10T17:25:10",
-         "updated": "2022-01-17T11:06:05.458",
+         "last_updated": "2018-12-10T17:25:10Z",
+         "updated" : "2022-01-17T11:06:05.458Z",
          "visual_number": "DF000-2001-8999-1",
          "whitelist": "ALLOWED",
          "uid": "EKI1",
@@ -439,10 +439,10 @@
       "model": "ocpi22.token",
       "fields": {
          "ocpi_master": 3,
-         "created": "2022-01-17T11:06:05.458",
+         "created" : "2022-01-17T11:06:05.458Z",
          "issuer": "TheNewMotion",
-         "last_updated": "2018-12-10T17:25:10",
-         "updated": "2022-01-17T11:06:05.458",
+         "last_updated": "2018-12-10T17:25:10Z",
+         "updated" : "2022-01-17T11:06:05.458Z",
          "visual_number": "DF000-2001-8999-1",
          "whitelist": "ALWAYS",
          "uid": "WHITELISTED",
@@ -469,8 +469,8 @@
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
          "last_updated": null,
-         "updated": "2022-03-23T06:39:54.213",
-         "created": "2022-02-20T14:42:04.475"
+         "updated" : "2022-03-23T06:39:54.213Z",
+         "created" : "2022-02-20T14:42:04.475Z"
       }
    },
    {
@@ -488,8 +488,8 @@
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
          "last_updated": null,
-         "updated": "2022-02-20T18:32:19.118",
-         "created": "2022-02-20T14:47:23.623"
+         "updated" : "2022-02-20T18:32:19.118Z",
+         "created" : "2022-02-20T14:47:23.623Z"
       }
    },
    {
@@ -507,8 +507,8 @@
          "max_price_excl_vat": 9.0,
          "max_price_incl_vat": 9.5,
          "last_updated": null,
-         "updated": "2022-02-21T20:52:34.056",
-         "created": "2022-02-20T14:50:15.962"
+         "updated" : "2022-02-21T20:52:34.056Z",
+         "created" : "2022-02-20T14:50:15.962Z"
       }
    },
    {
@@ -525,9 +525,9 @@
          "min_price_incl_vat": null,
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
-         "last_updated": "2018-12-29T15:55:58",
-         "updated": "2022-02-24T15:35:38.953",
-         "created": "2022-02-20T15:21:25.903"
+         "last_updated": "2018-12-29T15:55:58Z",
+         "updated" : "2022-02-24T15:35:38.953Z",
+         "created" : "2022-02-20T15:21:25.903Z"
       }
    },
    {
@@ -545,8 +545,8 @@
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
          "last_updated": null,
-         "updated": "2022-04-01T10:22:38.391",
-         "created": "2022-03-10T17:19:59.722"
+         "updated" : "2022-04-01T10:22:38.391Z",
+         "created" : "2022-03-10T17:19:59.722Z"
       }
    },
    {
@@ -564,8 +564,8 @@
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
          "last_updated": null,
-         "updated": "2022-03-22T19:53:08.124",
-         "created": "2022-03-22T19:53:08.110"
+         "updated" : "2022-03-22T19:53:08.124Z",
+         "created" : "2022-03-22T19:53:08.110Z"
       }
    },
    {
@@ -583,8 +583,8 @@
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
          "last_updated": null,
-         "updated": "2022-03-23T07:03:57.576",
-         "created": "2022-03-23T07:03:57.559"
+         "updated" : "2022-03-23T07:03:57.576Z",
+         "created" : "2022-03-23T07:03:57.559Z"
       }
    },
    {
@@ -602,8 +602,8 @@
          "max_price_excl_vat": 9.0,
          "max_price_incl_vat": 9.5,
          "last_updated": null,
-         "updated": "2022-03-30T17:40:23.923",
-         "created": "2022-03-30T17:40:23.910"
+         "updated" : "2022-03-30T17:40:23.923Z",
+         "created" : "2022-03-30T17:40:23.910Z"
       }
    },
    {
@@ -621,8 +621,8 @@
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
          "last_updated": null,
-         "updated": "2022-04-12T18:14:15.678",
-         "created": "2022-04-12T18:14:15.665"
+         "updated" : "2022-04-12T18:14:15.678Z",
+         "created" : "2022-04-12T18:14:15.665Z"
       }
    },
    {
@@ -640,8 +640,8 @@
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
          "last_updated": null,
-         "updated": "2022-04-12T18:14:15.715",
-         "created": "2022-04-12T18:14:15.704"
+         "updated" : "2022-04-12T18:14:15.715Z",
+         "created" : "2022-04-12T18:14:15.704Z"
       }
    },
    {
@@ -659,8 +659,8 @@
          "max_price_excl_vat": null,
          "max_price_incl_vat": null,
          "last_updated": null,
-         "updated": "2022-04-28T17:53:49.026",
-         "created": "2022-04-28T17:53:49.013"
+         "updated" : "2022-04-28T17:53:49.026Z",
+         "created" : "2022-04-28T17:53:49.013Z"
       }
    },
    {
