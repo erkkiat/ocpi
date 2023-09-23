@@ -205,12 +205,6 @@ ALLOWED_HOSTS = [
                     'localhost', '127.0.0.1', 'testserver.test',
                 ] + hostname_variants(HOSTNAME)
 
-# Local time zone for this installation. Choices can be found here:
-# http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
-# although not all choices may be available on all operating systems.
-# In a Windows environment this must be set to your system time zone.
-TIME_ZONE = 'UTC'  # DO NOT CHANGE THIS, or the OCPI date query parameters will not match
-
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = os.environ.get('LANGUAGE_CODE', 'en')
@@ -270,7 +264,7 @@ USE_L10N = True
 
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = True
-TIMEZONE = os.environ.get('TIMEZONE', 'UTC')
+TIME_ZONE = os.environ.get('TIMEZONE', 'UTC')
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/var/www/example.com/media/"
