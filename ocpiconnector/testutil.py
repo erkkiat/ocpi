@@ -40,6 +40,7 @@ def compare_lists_recursively(received, expected, path='', label1='received', la
 
 def compare_dicts_recursively(received, expected, path='', label='') -> bool:
     # ic(path, label, received, expected)
+    output = ''
     if not isinstance(received, (dict, OrderedDict)):
         return compare_dicts_recursively(json.loads(received), expected, path=path, label=label)
     if not isinstance(expected, (dict, OrderedDict)):
@@ -51,22 +52,23 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
         received_value = received[key] if key in received else None
         expected_value = expected[key] if key in expected else None
         if key not in received:
-            print(f'{path}.{key} not present in received'.strip('.'))
+            output = f'{path}.{key} not present in received'.strip('.')
             result = False
         elif key not in expected:
-            print(f'{path}.{key} not present in expected'.strip('.'))
+            output = f'{path}.{key} not present in expected'.strip('.')
             result = False
         elif isinstance(received_value, (dict, OrderedDict)) and isinstance(expected_value, (dict, OrderedDict)):
             result = result and compare_dicts_recursively(received_value, expected_value, path=f'{path}.{key}')
         elif isinstance(received_value, list) and isinstance(expected_value, list):
             result = result and compare_lists_recursively(received_value, expected_value, path=f'{path}.{key}')
         elif expected_value != received_value:
-            print(f'{path}.{key} is not equal, should be "{expected_value}", but is "{received_value}" instead'.strip('.'))
+            output = f'{path}.{key} is not equal, should be "{expected_value}", but is "{received_value}" instead'.strip('.')
             result = False
     # if label != 'expected':
     #     result = compare_dicts_recursively(expected, received, path=path, label='expected')
     if not result:
         ic(received, expected)
+        print(output)
     return result
 
 
