@@ -369,6 +369,10 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
         # Disable change
         return settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
+    def has_delete_permission(self, request, obj=None) -> bool:
+        # Disable delete
+        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+
 
 class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
     class ChargingPeriodInline(NestedStackedInline):
