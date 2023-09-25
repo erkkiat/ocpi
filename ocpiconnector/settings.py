@@ -492,7 +492,7 @@ if TEST:
     CELERY_TASK_EAGER_PROPAGATES = True
 
 
-def identifyUser(req, res):
+def identify_user(req, res):
     # For Moesif API analytics
     if req.user and req.user.is_authenticated:
         return req.user.username
@@ -503,7 +503,7 @@ def identifyUser(req, res):
 MOESIF_MIDDLEWARE = {
     'APPLICATION_ID': os.environ.get('MOESIF_APPLICATION_ID'),
     'CAPTURE_OUTGOING_REQUESTS': True,  # Set to True to also capture outgoing calls to 3rd parties.
-    'IDENTIFY_USER': identifyUser  # Optional hook to link API calls to users
+    'IDENTIFY_USER': identify_user  # Optional hook to link API calls to users
 }
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
