@@ -26,7 +26,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
-from util import reverse, url_link
+from util import reverse, url_link, redis_store
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts, AuthorizationEnum
@@ -40,7 +40,7 @@ from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.tariff import TariffElement
 from ocpi22.routing import find_credentials
-from ocpi22.util import command_store, redis_store
+from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token

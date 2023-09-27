@@ -9,9 +9,18 @@ from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner
-from ocpi22.ocpi.util_party import get_sender_party
+from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.util import matching_operator
+from ocpiconnector import settings
 from ocpiconnector.ocpi_identities import Party
+from ocpi22.certification import certification_steps
+
+
+def certify_check_ocpi_headers(headers):
+    # Todo: add the X-identifier checks
+    sender_party = get_sender_party(headers)
+    to_party = get_to_party(headers)
+    return sender_party and to_party
 
 
 def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None):
@@ -48,6 +57,11 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
             #     return OCPIBadRequestResponse('Data is required in the request body.')
             data = data.get('data', data) or {}
             sender_party = get_sender_party(request.headers or request.META)
+
+            if not certification_steps.headers and certify_check_ocpi_headers(request.headers or request.META):
+                certification_steps.headers.passed()
+
+            request.party_specified_in_url = bool(kwargs.get('country_code') and kwargs.get('party_id'))
             country_code = kwargs.get('country_code',
                                       data.get('country_code', sender_party.country_code))
             party_id = kwargs.get('party_id', data.get('party_id', sender_party.party_id))

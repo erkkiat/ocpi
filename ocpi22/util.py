@@ -1,11 +1,10 @@
 import base64
 import csv
 import hashlib
-import json
 import secrets
 import urllib.parse
 from collections import OrderedDict
-from dataclasses import dataclass, field, asdict, is_dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Any, Union
@@ -15,7 +14,6 @@ from django.utils.translation import gettext as _
 
 import cachetools
 import pycountry
-import redis
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.utils.module_loading import import_string
@@ -35,7 +33,7 @@ from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party, get_our_party
-from util import format_url
+from util import format_url, RedisStore, redis_store
 
 
 # slack_logging.init()
@@ -495,45 +493,6 @@ class MyCommandResponse:
     success: bool
     message: str
     response: Response = field(default=None)
-
-
-redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
-
-
-class RedisStore:
-    def __init__(self, namespace=None, expiration=None):
-        self.namespace = namespace
-        self.expiration = expiration
-
-    def _format_key(self, key):
-        if not self.namespace:
-            return key
-        return f'{self.namespace}-{key}'
-
-    def __setitem__(self, key, value):
-        namespace_key = self._format_key(key)
-        # ic()
-        # ic(key, namespace_key, value, self.expiration)
-        if isinstance(value, dict):
-            value = json.dumps(value, default=str)  # serializes also dates
-        elif is_dataclass(value):
-            value = json.dumps(asdict(value), default=str)
-        redis_store.set(namespace_key, value, self.expiration)
-
-    def __getitem__(self, item):
-        # ic()
-        # ic(item)
-        namespace_key = self._format_key(item)
-        value = redis_store.get(namespace_key)
-        if not value:
-            raise KeyError(f'No {item} stored for {self.namespace}')
-        if "{" in value:
-            try:
-                value = json.loads(value)
-            except json.JSONDecodeError:
-                pass
-        # ic(item, namespace_key, value)
-        return value
 
 
 class MyMetadata(SimpleMetadata):

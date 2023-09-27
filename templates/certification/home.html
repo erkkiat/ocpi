@@ -1,0 +1,64 @@
+{% extends "rest_framework/base.html" %}
+{% load static humanize %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+{% block title %}SolidRoam OCPI Certification{% endblock title %}
+{% block branding %}
+<a class='navbar-brand mb-5 mt-5' rel="nofollow" href='/'>
+    <img alt="SolidRoam logo" src="{% static 'images/SolidRoam-logo-black-80dpi.png' %}">
+    SolidRoam OCPI Certification Center
+</a>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="header">
+                    <h1 class="mb-4">Certification Status</h1>
+                    <div class="lead">
+                        This page shows the status of the OCPI protocol certification process for your platform.
+                    </div>
+                    <span class="muted">{{date_now}}</span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-8">
+                <table class="table">
+                {% for item in certification_items %}
+                <tr>
+                    <th scope="row" role="rowheader" colspan="3">
+                        <h2>{{item.heading}}</h2>
+                    </th>
+                </tr>
+                {% for step in item.steps %}
+                <tr>
+                    <th class="ml-3">
+                        <div>{{step.action}}</div>
+                        {% if step.subtopic %}<p class="muted small">{{step.subtopic}}</p>{% endif %}
+                    </th>
+                    <td>
+                        {% if step.customer_initiates %}
+                        <span>You initiate</span>
+                        {% else %}
+                        <a role="button" class="btn btn-primary btn-sm" href="{{step.url}}">Start test</a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if step.result %}
+                        <img src="{% static 'admin/img/icon-yes.svg' %}" alt="True">
+                        <span>passed {{step.passed_at|naturalday}}</span>
+                        {% else %}
+                        <img src="{% static 'admin/img/icon-no.svg' %}" alt="False">
+                        <span>not passed yet</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor step %}
+                {% endfor item %}
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

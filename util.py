@@ -1,6 +1,10 @@
 import hashlib
 import json
+from dataclasses import is_dataclass, asdict
 from typing import List, Any
+
+import redis
+from django.conf import settings
 
 from django.urls import NoReverseMatch
 from rest_framework.reverse import reverse as django_reverse
@@ -134,3 +138,42 @@ def member_hash(obj: Any) -> int:
     attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
     thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
     return thehash
+
+
+class RedisStore:
+    def __init__(self, namespace=None, expiration=None):
+        self.namespace = namespace
+        self.expiration = expiration
+
+    def _format_key(self, key):
+        if not self.namespace:
+            return key
+        return f'{self.namespace}-{key}'
+
+    def __setitem__(self, key, value):
+        namespace_key = self._format_key(key)
+        # ic()
+        # ic(key, namespace_key, value, self.expiration)
+        if isinstance(value, dict):
+            value = json.dumps(value, default=str)  # serializes also dates
+        elif is_dataclass(value):
+            value = json.dumps(asdict(value), default=str)
+        redis_store.set(namespace_key, value, self.expiration)
+
+    def __getitem__(self, item):
+        # ic()
+        # ic(item)
+        namespace_key = self._format_key(item)
+        value = redis_store.get(namespace_key)
+        if not value:
+            raise KeyError(f'No {item} stored for {self.namespace}')
+        if "{" in value:
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                pass
+        # ic(item, namespace_key, value)
+        return value
+
+
+redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)

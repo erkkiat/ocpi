@@ -78,6 +78,7 @@ urlpatterns = [
     path('lang/', set_language, name='admin_set_language'),
     path('', home),
     path('', include(root_router.urls), name='root-view'),
+    path('certification/', include('certification.urls')),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     path('ocpi/<str:version>/', include('ocpi22.locations.urls')),
     path('ocpi/<str:version>/', include('ocpi22.ocpi.urls')),

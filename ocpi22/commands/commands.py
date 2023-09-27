@@ -15,6 +15,7 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 
+from certification.decorators import certification_step
 from ocpi22.commands.cpo_simulator import start_simulated_session
 from ocpi22.decorators import requires_sender_role
 from ocpi22.msp.models import Authorization
@@ -98,6 +99,7 @@ class CommandsViewSet(GenericViewSet):
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
+    @certification_step(OcpiModuleEnum.COMMANDS, 'Send a START_SESSION command to the CPO')
     def start_session(self, request, **_kwargs):
         return self.process_remote_command(request,
                                            command_serializer=StartSessionSerializer,
@@ -147,6 +149,7 @@ class CommandsViewSet(GenericViewSet):
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
+    @certification_step(OcpiModuleEnum.COMMANDS, 'Send a RESERVE_NOW command to the CPO')
     def reserve_now(self, request, **_kwargs):
         # TODO: If this Token is of type RFID, the CPO SHALL NOT do a realtime authorization at the eMSP for
         #  this Token at the given EVSE/Charge Point within 15 minutes after having received this ReserveNow.
@@ -280,6 +283,7 @@ class CommandsViewSet(GenericViewSet):
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
+    @certification_step(OcpiModuleEnum.COMMANDS, 'Send a STOP_SESSION command to the CPO')
     def stop_session(self, request, **_kwargs):
         return self.process_remote_command(request,
                                            command_serializer=StopSessionSerializer,
@@ -298,6 +302,7 @@ class CommandsViewSet(GenericViewSet):
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
+    @certification_step(OcpiModuleEnum.COMMANDS, 'Send an UNLOCK_CONNECTOR command to the CPO')
     def unlock_connector(self, request, **_kwargs):
         if not request.data:
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
@@ -321,6 +326,7 @@ class CommandsViewSet(GenericViewSet):
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
     @ocpi_exception_handler
+    @certification_step(OcpiModuleEnum.COMMANDS, 'Send a CommandResult to the eMSP')
     def command_result(self, request, command=None, command_id=None, version='2.2.1'):
         """
         This is only used by eMSP for receiving the final result for remote command

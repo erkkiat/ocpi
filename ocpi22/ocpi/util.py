@@ -15,6 +15,7 @@ from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
 
 from ocpi22 import logging
+from ocpi22.certification import certification_steps
 from ocpi22.choices import OcpiRolesEnum
 from rest_framework.response import Response
 
@@ -380,6 +381,10 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
         if next_url:
             headers['Link'] = '<{next_url}; rel="next">'.format(next_url=self.get_next_link())
 
+        # Are we doing certification? Is it the last page of many?
+        if not certification_steps.paged_list and self.count > 1 and not next_url:
+            certification_steps.paged_list.passed()
+
         return Response(OrderedDict([
             ('status_code', Ocpi.OK),
             ('timestamp', datetime.utcnow().replace(tzinfo=pytz.utc)),
@@ -411,6 +416,10 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
         import dateutil.parser
         date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
         queryset = queryset.filter(last_updated__lt=date_to)
+
+    if not certification_steps.filtering and (date_from or date_to):
+        certification_steps.filtering.passed()
+
     return queryset
 
 

@@ -46,6 +46,7 @@ PREMIUM = _env_bool('PREMIUM', False)
 
 PERFORMANCE_TEST = _env_bool('PERFORMANCE_TEST', False)
 CPO_SIMULATOR = _env_bool('CPO_SIMULATOR', False)
+CERTIFICATION_MODE = _env_bool('CERTIFICATION_MODE', False)
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = _env_bool('ALLOW_ADMIN_DELETE_AND_CHANGE', False)
 
@@ -348,6 +349,7 @@ INSTALLED_APPS = [
     # 'django.contrib.admindocs',
     'ocpi22',
     'ocpiconnector',
+    'certification',
     'cars',
     'settlement',
     'django.contrib.admin',
