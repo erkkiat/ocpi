@@ -13,7 +13,7 @@ from ocpi22.models.tariff import Tariff
 from ocpiconnector.ocpi_identities import ocpi_platform
 
 
-# @cachetools.cached(cache={})
+# @cachetools.cached(cache={})  # Cannot cache the recent activity
 def _get_environment(request):
     is_emsp = ocpi_platform.is_emsp
     is_cpo = ocpi_platform.is_cpo
@@ -28,6 +28,9 @@ def _get_environment(request):
         # roles=" / ".join([f'{key}: {value}' for key, value in ocpi_identities.items()]),
         # admin_menu=get_admin_menu(),
         general_message=os.environ.get('GENERAL_MESSAGE'),
+        cpo_api=settings.CPO_API,
+        msp_api=settings.MSP_API,
+        certification_mode=settings.CERTIFICATION_MODE,
         ocpi_platform=ocpi_platform,
         recent_activity=Session.objects.all().order_by('-start_date_time'),
         expiration_alert=settings.EXPIRES_ON

@@ -10,14 +10,29 @@
     <div class="jumbotron border-grey">
         <h1>OCPI Developer Central</h1>
         <p class="lead">
-            Welcome to your speedway to OCPI roaming networks.
-        </p>
-        <hr class="my-4">
-        <p>
-            Here you can test your OCPI 2.2 and 2.2.1 implementation for interoperability, study the OCPI
-            data structures and quickly connect your charge points and app to OCPI protocol using the Roaming API.
+            Your speedway to OCPI roaming networks
         </p>
     </div>
+
+    {% if certification_mode %}
+    <h2 class="pt-5">OCPI Certification Central</h2>
+
+    <div class="row mt-3">
+        <div class="col-sm-12 col-md-3">
+            <img class="logo"
+                 src="https://evroaming.org/app/uploads/2019/10/Member-ocpi-community-beeld-site-2-525x309.png">
+        </div>
+        <div class="col-9">
+            Here you can observe the requirements of SolidRoam OCPI Certification and view the status of your
+            certification process.
+            <p class="py-2">
+                <a class="btn btn-primary btn-lg" href="{% url 'certification-status' %}" role="button">
+                    Access the OCPI Certification Central
+                </a>
+            </p>
+        </div>
+    </div>
+    {% endif %}
 
     <h2 class="pt-5">The OCPI protocol</h2>
 
@@ -31,14 +46,14 @@
             Here you get access to the OCPI 2.2 and 2.2.1 endpoints with examples.
             <p class="py-2">
                 <a class="btn btn-primary btn-lg" href="{% url 'base-versions' %}" role="button">
-                    Browse the OCPI implementation
+                    Access the OCPI implementation
                 </a>
             </p>
         </div>
     </div>
 
+    {% if ocpi_platform.is_cpo %}
     <hr>
-
     <h2>Roaming API for CPO</h2>
 
     <div class="row mt-3">
@@ -50,21 +65,17 @@
             Relay the data in your OCPP messages to the system and prepare to receive remote
             commands from MSP. It's like a bridge from OCPP to OCPI. You'll be roaming in no time.
             <p class="py-2">
-                {% if ocpi_platform.is_cpo %}
                 <a class="btn btn-primary btn-lg" href="{% url 'cpo-api' %}" role="button">
                     Access the API
                 </a>
-                {% else %}
-                <a class="btn btn-primary btn-lg" href="#" role="button">
-                    Read more
-                </a>
-                {% endif %}
             </p>
         </div>
     </div>
+    {% endif %}
 
+
+    {% if ocpi_platform.is_emsp %}
     <hr>
-
     <h2>Roaming API for eMSP</h2>
 
     <div class="row mt-3">
@@ -75,20 +86,13 @@
             The Roaming API for eMSP is a cost-effective shortcut to OCPI connectivity.
             Access the charge point data, billing and user information, and
             start & stop charging sessions.
-            {% if ocpi_platform.is_emsp %}
             <p class="py-3">
                 <a class="btn btn-primary btn-lg" href="{% url 'msp-api' %}" role="button">
                     Access the API
                 </a>
             </p>
-            {% else %}
-            <p class="py-3">
-                <a class="btn btn-primary btn-lg" href="#" role="button">
-                    Read more
-                </a>
-            </p>
-            {% endif %}
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock content %}

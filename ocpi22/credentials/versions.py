@@ -169,18 +169,9 @@ class VersionsViewSet(viewsets.ViewSet):
     publicly_visible = True  # This is understood by OCPIPermission
 
     @action(methods=['GET'], url_path='versions', detail=False)
-    def versions(self, request, version='2.2.1', *_args, **_kwargs):
+    def versions(self, request, *_args, **_kwargs):
         """
         This is the OCPI "versions" endpoint. A requesting party will use this information
         for choosing the OCPI version used between us and them.
         """
         return OCPIResponse(get_versions_dict())
-
-
-@api_view()
-def versions(request, version='2.2.1', *_args, **_kwargs):
-    """
-    This is the OCPI "versions" endpoint. A requesting party will use this information
-    for choosing the OCPI version used between us and them.
-    """
-    return OCPIResponse(get_versions_dict())

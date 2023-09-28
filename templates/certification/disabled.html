@@ -1,0 +1,27 @@
+{% extends "rest_framework/base.html" %}
+{% load static humanize %}
+
+{% block breadcrumbs %}{% endblock breadcrumbs %}
+{% block title %}SolidRoam OCPI Certification{% endblock title %}
+{% block branding %}
+<a class='navbar-brand mb-5 mt-5' rel="nofollow" href='/'>
+    <img alt="SolidRoam logo" src="{% static 'images/SolidRoam-logo-black-80dpi.png' %}">
+    SolidRoam OCPI Certification Center
+</a>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="header">
+                    <h1 class="mb-4">Certification Mode is Disabled</h1>
+                    <div class="lead">
+                        Apologies, the OCPI Certification mode is not enabled.
+                        If we did this by mistake, please contact support@solidroam.com.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock content %}

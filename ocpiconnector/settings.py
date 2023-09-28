@@ -43,6 +43,8 @@ DECIMAL_SEPARATOR = os.environ.get('DECIMAL_SEPARATOR', ',')
 DEFAULT_CURRENCY = os.environ.get('DEFAULT_CURRENCY', 'EUR')
 
 PREMIUM = _env_bool('PREMIUM', False)
+CPO_API = _env_bool('CPO_API', False)
+MSP_API = _env_bool('MSP_API', False)
 
 PERFORMANCE_TEST = _env_bool('PERFORMANCE_TEST', False)
 CPO_SIMULATOR = _env_bool('CPO_SIMULATOR', False)
