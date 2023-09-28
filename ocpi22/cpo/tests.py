@@ -7,6 +7,7 @@ from functools import wraps
 from unittest.mock import patch
 
 import geopy
+import pytz
 import time_machine
 from django.db import connection, reset_queries
 from django.test import TestCase
@@ -31,7 +32,7 @@ from ocpi22.models.session import Session
 from ocpi22.tests import meter_values
 
 api_factory = APIRequestFactory()
-faketime = datetime(2022, 1, 1, 12, 0)
+faketime = datetime(2022, 1, 1, 12, 0).replace(tzinfo=pytz.utc)
 
 
 def load_tests(_loader, tests, _ignore):
@@ -121,7 +122,7 @@ class TestQuickLocations(TestCase):
                                                   ('max_amperage', 32),
                                                   ('max_electric_power', 22200),
                                                   ('tariff_ids', ['EKI1'])])]),
-                                   ('last_updated', '2022-01-01T12:00:00')]),
+                                   ('last_updated', '2022-01-01T12:00:00Z')]),
                       OrderedDict([('uid', '2'),
                                    ('connectors',
                                     [OrderedDict([('uid', '1'),
@@ -129,7 +130,7 @@ class TestQuickLocations(TestCase):
                                                   ('format', 'SOCKET'),
                                                   ('max_voltage', 232),
                                                   ('max_amperage', 32)])]),
-                                   ('last_updated', '2022-01-01T12:00:00')]),
+                                   ('last_updated', '2022-01-01T12:00:00Z')]),
                       OrderedDict([('uid', '12321'),
                                    ('connectors',
                                     [OrderedDict([('uid', '1'),
@@ -138,7 +139,7 @@ class TestQuickLocations(TestCase):
                                                   ('max_voltage', 233),
                                                   ('max_amperage', 32),
                                                   ('tariff_ids', ['DC50'])])]),
-                                   ('last_updated', '2022-01-01T12:00:00')])],
+                                   ('last_updated', '2022-01-01T12:00:00Z')])],
             'id': 'EKI1',
             'latitude': 60.0,
             'longitude': 30.0,
@@ -172,16 +173,16 @@ class TestQuickLocations(TestCase):
                                       ('max_voltage', 233),
                                       ('max_amperage', 32), ('max_electric_power', 11000),
                                       ('tariff_ids', ['DC50'])])]),
-                                 ('last_updated', '2022-06-19T12:13:14')]),
+                                 ('last_updated', '2022-06-19T12:13:14Z')]),
                     OrderedDict(
                         [('uid', '2'), ('connectors', [OrderedDict(
                             [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 232),
                              ('max_amperage', 32)])]),
-                         ('last_updated', '2022-01-01T12:00:00')]),
+                         ('last_updated', '2022-01-01T12:00:00Z')]),
                     OrderedDict([('uid', '12321'), ('connectors', [OrderedDict(
                         [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
                          ('max_amperage', 32), ('tariff_ids', ['DC50'])])]),
-                                 ('last_updated', '2022-01-01T12:00:00')])
+                                 ('last_updated', '2022-01-01T12:00:00Z')])
                 ]
         }
         self.assertEqual(recursive_sort_dict(data), recursive_sort_dict(expected_data),

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional, Any, Union
 
+import pytz
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext as _
 
@@ -398,8 +399,8 @@ class ModelUtilMixin:
         return serializer_class(self, context={'request': request, 'version': version})
 
     def start_date_time_local(self) -> str:
-        start_date_time = self.start_date_time.replace(tzinfo=timezone('UTC'))
-        local_timezone = timezone(settings.TIMEZONE)
+        start_date_time = self.start_date_time.replace(tzinfo=pytz.utc)
+        local_timezone = timezone(settings.TIME_ZONE)
         start_date_time = start_date_time.astimezone(local_timezone)
         return start_date_time.strftime(settings.DATETIME_FORMAT)
 

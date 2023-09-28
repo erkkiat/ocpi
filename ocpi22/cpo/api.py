@@ -1,5 +1,5 @@
 import json
-from datetime import time, date
+from datetime import time, date, datetime as python_datetime
 from django.utils.datetime_safe import datetime
 
 import pytz
@@ -17,7 +17,6 @@ from typing import Union, Optional
 import redis
 from django.conf import settings
 from django.db import IntegrityError
-from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import routers, status, viewsets, mixins
 from rest_framework.decorators import action
@@ -207,7 +206,7 @@ def close_active_sessions_for_evse(evse_uid: str):
 def convert_to_time(t) -> time:
     if isinstance(t, str):
         return time(*t.split(':'))
-    if isinstance(t, datetime):
+    if isinstance(t, (datetime, python_datetime)):
         return t.time()
     return t
 

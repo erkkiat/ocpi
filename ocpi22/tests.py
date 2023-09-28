@@ -1191,7 +1191,7 @@ class CommandTests(TestCase):
                 'token_id': 'FI*001*T*ADMIN*TOKEN', 'token_type': 'OTHER', 'authorization_reference': 'AUTH-REFERENCE',
                 'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
                 'location_id': 'HELSINKI-1', 'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*MSP',
-                'expiry_date': '2022-01-12T19:44:39.298178', 'reservation_id': 'RESERVATION-ID'
+                'expiry_date': '2022-01-12T19:44:39.298178Z', 'reservation_id': 'RESERVATION-ID'
             }, 'Expecting a different response for a reservation')
         )
 
@@ -1446,6 +1446,11 @@ class TestCredentials(TestCase):
         }
 
         return MockResponse(response, 200)
+
+    def test_versions_endpoint(self):
+        with time_machine.travel(faketime, tick=False):
+            response = self.client.get(reverse('base-versions'))
+        self.assertTrue(compare_dicts_recursively(response.data, CredentialsData.expected_versions_response))
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpiconnector.management.commands.exchange_credentials.generate_random_token', side_effect=[fake_token])

@@ -72,6 +72,7 @@ ocpi_endpoints_response = {
     ]
 }
 
+
 expected_get_responses = {
     'http://localhost:8001/ocpi/2.2.1/tariffs/?limit=3':
         {'data': [{'country_code': 'FI',
@@ -108,7 +109,7 @@ expected_get_responses = {
                    'tariff_alt_text': {'language': 'EN', 'text': '2€/kWh'},
                    'type': 'REGULAR'}],
          'status_code': 1000,
-         'timestamp': '2022-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00Z'},
 
     'http://testserver/ocpi/2.2.1/tariffs/?limit=3&offset=3':
         {'data': [{'country_code': 'FI',
@@ -143,7 +144,7 @@ expected_get_responses = {
                    'tariff_alt_text': {'language': 'EN', 'text': '0,30€/kWh'},
                    'type': 'REGULAR'}],
          'status_code': 1000,
-         'timestamp': '2022-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00Z'},
 
     'http://localhost:8001/ocpi/2.2.1/tokens/?limit=3':
         {'data': [{'contract_id': 'CONTRACT3',
@@ -181,7 +182,7 @@ expected_get_responses = {
                    'visual_number': '123C',
                    'whitelist': 'NEVER'}],
          'status_code': 1000,
-         'timestamp': '2022-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00Z'},
 
     'http://testserver/ocpi/2.2.1/tokens/?limit=3&offset=3':
         {'data': [{'contract_id': 'INTERNAL 1',
@@ -194,7 +195,7 @@ expected_get_responses = {
                    'uid': 'FI*001*T*ADMIN*TOKEN',
                    'valid': True}],
          'status_code': 1000,
-         'timestamp': '2022-01-01T12:00:00'},
+         'timestamp': '2022-01-01T12:00:00Z'},
 
     'http://localhost:8001/ocpi/2.2.1/locations/?limit=3':
         dict([('data',

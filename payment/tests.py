@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from unittest.mock import patch, Mock
 
+import pytz
 import stripe
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -14,7 +15,7 @@ from payment import test_data
 from payment.models import Customer, Payment
 from payment.views import PaymentViewSet, StripePayments
 
-faketime = datetime(2022, 1, 1, 12, 0)
+faketime = datetime(2022, 1, 1, 12, 0).replace(tzinfo=pytz.utc)
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = APIRequestFactory()
 
