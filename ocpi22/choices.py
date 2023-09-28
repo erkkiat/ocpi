@@ -145,7 +145,8 @@ class OcpiModuleEnum(Enum):
             self.SESSIONS.value: 'ocpi22.ocpi.api.SessionViewSet',
         }[self.value]
 
-IDENTIFIER_CHOICES = ((module.value.lower(), module.value.capitalize()) for module in OcpiModuleEnum)
+
+IDENTIFIER_CHOICES = list((module.value.lower(), module.value.capitalize()) for module in OcpiModuleEnum)
 
 ROLE_OPTIONS = ('CPO', 'EMSP', 'HUB', 'NSP', 'NAP', 'SCSP')
 
