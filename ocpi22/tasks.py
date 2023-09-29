@@ -137,9 +137,8 @@ def send_ocpi_request(data, url: str, token_base64: str,
         if not function:
             raise NotImplementedError(f'Method {method} is not supported for send_ocpi_request')
 
-        with Timer() as t:
-            result = function(**kwargs)
-        logging.info(f'OCPI request response took {float(t):.2f} seconds')
+        result: requests.Response = function(**kwargs)
+        logging.info(f'OCPI request response took {result.elapsed} seconds')
 
         logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
@@ -168,8 +167,8 @@ def send_ocpi_request(data, url: str, token_base64: str,
             headers=dict(result.headers) if result.headers else {},
             sender=dict(country_code=to_country_code, party_id=to_party_id),
         )
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, JSONDecodeError) as e:
-        logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}.")
+    except (IOError, JSONDecodeError) as e:
+        logging.error(f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}: {e}")
         from ocpi22.models.credentials import Credentials
         if credentials_id:
             Credentials.objects.filter(
