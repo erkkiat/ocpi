@@ -446,7 +446,7 @@ class TestChargingPeriods(TestCase):
 
         _meter_values_test(meter_values_data, session_id)
 
-        start_date_time = datetime(2022, 12, 1, 12, 0)
+        start_date_time = datetime(2022, 12, 1, 12, 0).replace(tzinfo=pytz.utc)
         maxloop = 50
         performance_test_data = [
             (i, i * 100 / maxloop, start_date_time + timedelta(hours=i), None, None, None) for i in range(0, maxloop)

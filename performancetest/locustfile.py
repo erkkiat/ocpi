@@ -33,7 +33,7 @@ def create_evse(environment: Environment, location_id: str, evse_uid: int|str):
                         "last_updated": "2022-01-08T14:15:25Z"
                     }
                 ],
-                "last_updated": "2022-01-08T14:15:25.972000"
+                "last_updated": "2022-01-08T14:15:25.972000Z"
             }
         ]
     }

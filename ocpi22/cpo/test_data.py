@@ -27,7 +27,7 @@ class LocationData:
                         ]
                     }
                 ],
-                "last_updated": "2022-06-18T11:08:03.102160"
+                "last_updated": "2022-06-18T11:08:03.102160Z"
             },
             {
                 "status_url": "http://localhost:8000/api/cpo/v2/location/quick/EKI1/",
@@ -41,7 +41,7 @@ class LocationData:
                         "max_amperage": 32
                     }
                 ],
-                "last_updated": "2022-06-18T11:08:03.102160"
+                "last_updated": "2022-06-18T11:08:03.102160Z"
             },
             {
                 "status_url": "http://localhost:8000/api/cpo/v2/location/quick/EKI1/",
@@ -58,7 +58,7 @@ class LocationData:
                         ]
                     }
                 ],
-                "last_updated": "2022-06-18T11:08:03.102160"
+                "last_updated": "2022-06-18T11:08:03.102160Z"
             }
         ]
     }
