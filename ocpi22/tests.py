@@ -1365,7 +1365,8 @@ class UpdatePartiesTest(TestCase):
                             'OCPI-from-party-id': 'MSP',  # Tokens are owned by MSP, we should send with MSP identity
                             'OCPI-to-country-code': 'FI',
                             'OCPI-to-party-id': 'HUB',  # The recipient comes from the Credentials in the fixture
-                            'content-type': 'application/json'}
+                            'content-type': 'application/json',
+                            'platform-revision': 'unknown'}
         expected_data = {'contract_id': 'CONTRACT',
                          'country_code': 'FI',
                          'issuer': 'issuer',
@@ -2609,7 +2610,8 @@ class TestMspApi(TestCase):
         self.assertEqual(account.transactions.count(), 2, 'There should be two Transactions on Account')
         self.assertEqual(account.balance, Decimal("50"), "Second account deposit not working as expected")
 
-        response = start_charging(data, self.user)
+        with patch('ocpi22.ocpi.headers.get_platform_revision', return_value='REVISION'):
+            response = start_charging(data, self.user)
 
         # ic(recursive_sort_dict(response.data), recursive_sort_dict(self.accepted_result.get('data')))
         self.assertEqual(response.data, self.accepted_result.get('data'),
@@ -2625,7 +2627,9 @@ class TestMspApi(TestCase):
         data["max_price"] = Decimal(30)
         requests_post_mock.reset_mock()
 
-        response = start_charging(data, self.user)
+        with patch('ocpi22.ocpi.headers.get_platform_revision', return_value='REVISION'):
+            response = start_charging(data, self.user)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          'Expecting charging to start succesfully')
         args, kwargs = requests_post_mock.call_args

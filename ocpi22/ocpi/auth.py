@@ -70,18 +70,18 @@ def check_auth_token(request, token: str) -> bool:
                     f'The token "{token}" (ascii {token_ascii}) doesn\'t match any of our current credentials'
                 )
 
-        sender_party = get_sender_party(request.headers)
+            sender_party = get_sender_party(request.headers)
 
-        if credentials.is_hub:
-            # Implicit trust for hubs, since there is no hub authentication in OCPI 2.x
-            request.ocpi_party = get_credentialsrole(
-                credentials=None, party=sender_party, create=True
-            )
-        else:
-            request.ocpi_party = get_credentialsrole(request.credentials, party=sender_party)
-            if not request.ocpi_party:
-                request.credentials = None
-                raise NotAuthenticated(f'Sender party {sender_party} is not allowed for these credentials')
+            if credentials.is_hub:
+                # Implicit trust for hubs, since there is no hub authentication in OCPI 2.x
+                request.ocpi_party = get_credentialsrole(
+                    credentials=None, party=sender_party, create=True
+                )
+            else:
+                request.ocpi_party = get_credentialsrole(request.credentials, party=sender_party)
+                if not request.ocpi_party:
+                    request.credentials = None
+                    raise NotAuthenticated(f'Sender party {sender_party} is not allowed for these credentials')
 
         return True
 

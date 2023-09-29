@@ -1,4 +1,15 @@
+import cachetools
+
 from ocpiconnector.ocpi_identities import Party
+
+
+@cachetools.cached(cache={})
+def get_platform_revision():
+    try:
+        with open('version.txt', 'r') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return 'unknown'
 
 
 def make_headers(token_base64: str, to: Party = None, sender: Party = None, extra: dict = None) -> dict:
@@ -14,9 +25,11 @@ def make_headers(token_base64: str, to: Party = None, sender: Party = None, extr
     @param extra: Any additional headers
     @return: HTTP headers ready for sending
     """
+
     result = {
         "Authorization": f'Token {token_base64}',
         'content-type': 'application/json',
+        'platform-revision': get_platform_revision()
     }
     if extra:
         for key, value in extra.items():
