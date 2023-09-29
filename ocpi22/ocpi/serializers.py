@@ -252,10 +252,8 @@ class CredentialsSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.theirs = validated_data.get('theirs')
         instance.url = validated_data.get('url')
-        instance.roles.all().delete()
 
-        for role in validated_data['roles']:
-            instance.add_role(role)
+        # DO NOT allow changing the roles of an existing Credentials object, or other parties can pretend to be anyone
 
         # Delay storing tokens until now, in case the roles have some issue
         instance.save()
