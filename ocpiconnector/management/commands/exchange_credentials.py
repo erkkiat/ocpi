@@ -69,7 +69,7 @@ def select_version(url, token) -> str:
             raise OCPIProtocolError(f'Expecting a data element in response from version endpoint, '
                                     f'got "{data}"')
         data = data.get('data', data)
-        versions = dict([x for x in map(lambda x: (x.get('version'), x.get('url')), data)])
+        versions = dict(map(lambda x: (x.get('version'), x.get('url')), data))
         version_url = versions.get('2.2.1', versions.get('2.2'))
         if not version_url:
             raise NoCommonVersion('There is no common version available.')
