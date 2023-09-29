@@ -94,3 +94,36 @@ class OCPIAPIRequestFactory(APIRequestFactory):
         request.versioning_query_param = 'version'
         request.headers = request.META
         return request
+
+
+def mocked_object_get(url, *_args, **kwargs):
+    try:
+        credentials = Credentials.objects.get(pk=2)
+        headers = kwargs['headers']
+        # Let's swap the other token and receive this request as if it comes from outside
+        headers['HTTP_AUTHORIZATION'] = f'Token {credentials.ours_base64()}'
+
+        with patch('ocpi22.ocpi.auth.OCPIPermission.has_permission') as mock_has_permission:
+            # We will test authentication separately, so let's just make this test simpler and more focused
+            mock_has_permission.return_value = True
+            result = client.get(url, **headers)
+
+        json_text = result.content.decode('utf-8')
+        assert 'DOCTYPE' not in json_text, f"URL {url} is returning HTML, when excepting JSON"
+
+        content = json.loads(json_text)
+        assert compare_dicts_recursively(content, expected_get_responses[url]), \
+            f"Expecting a different result for {url}: {content}"
+
+        response_headers = dict(result.headers)
+        response_headers.pop('Content-Length', None)
+        expected_headers = expected_get_headers[url]
+        expected_headers.pop('Content-Length', None)
+        assert compare_dicts_recursively(response_headers, expected_headers), \
+            f"Expecting different headers for {url}: {response_headers}"
+
+        return result
+    except (AssertionError, KeyError):
+        # ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_headers))
+        # ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
+        raise

@@ -148,8 +148,8 @@ class TestQuickLocations(TestCase):
             'time_zone': 'Europe/Helsinki'}
         # ic(recursive_sort_dict(data))
         # ic(compare(data, expected_data))
-        self.assertEqual(recursive_sort_dict(data), recursive_sort_dict(expected_data),
-                         'New Location data differs from expected')
+        self.assertTrue(compare_dicts_recursively(data, expected_data),
+                        'New Location data differs from expected')
 
         #
         # Update Location
@@ -185,8 +185,8 @@ class TestQuickLocations(TestCase):
                                  ('last_updated', '2022-01-01T12:00:00Z')])
                 ]
         }
-        self.assertEqual(recursive_sort_dict(data), recursive_sort_dict(expected_data),
-                         'Updated Location data differs from expected')
+        self.assertTrue(compare_dicts_recursively(data, expected_data),
+                        'Updated Location data differs from expected')
 
     def test_quick_tariff(self):
         test_cases = [

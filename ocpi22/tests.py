@@ -38,7 +38,8 @@ from ocpi22.msp.account import Account
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.partners import invalidate_partner_cache
-from ocpiconnector.testutil import compare_dicts_recursively, OCPIAPIRequestFactory, compare_lists_recursively
+from ocpiconnector.testutil import compare_dicts_recursively, OCPIAPIRequestFactory, compare_lists_recursively, \
+    mocked_object_get
 from settlement.views import InvoiceReportViews
 from util import reverse
 
@@ -67,9 +68,9 @@ from ocpi22.ocpi.headers import make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
-from ocpi22.test_data import ocpi_endpoints_response, expected_get_headers, \
+from ocpi22.test_data import expected_get_headers, \
     accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, \
-    RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData
+    RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -123,6 +124,7 @@ class FakeResponse:
     data: dict
     reason: str = field(default='Mocked response')
     headers: dict = field(default_factory=dict)
+    elapsed: timedelta = field(default_factory=lambda: timedelta(seconds=0.1))
 
     def json(self):
         return self.data
@@ -840,25 +842,24 @@ class TariffTests(TestCase):
 def simulate_surrounding_world(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        with patch('ocpi22.tasks.requests') as requests:
-
-            # class FakeResponse(Mock):
-            #     headers = {'Content-Type': 'application/json'}
-            #     status_code = 200
-            #     reason = 'OK'
+        with patch('ocpi22.tasks.requests') as tasks_requests, \
+                patch('ocpiconnector.management.commands.exchange_credentials.requests') as credentials_requests:
 
             @dataclass
             class Simulation:
-                requests: Mock
+                tasks_requests: Mock
+                credentials_requests: Mock
 
                 def reset(self):
-                    self.requests.reset_mock()
+                    self.tasks_requests.reset_mock()
+                    self.credentials_requests.reset_mock()
 
                 def __post_init__(self):
-                    self.requests.post.side_effect = self.post
-                    self.requests.get.side_effect = self.get
-                    self.requests.put.side_effect = self.put
-                    self.requests.delete.side_effect = self.delete
+                    self.tasks_requests.post.side_effect = self.post
+                    self.tasks_requests.get.side_effect = self.get
+                    self.tasks_requests.put.side_effect = self.put
+                    self.tasks_requests.delete.side_effect = self.delete
+                    self.credentials_requests.get.side_effect = mocked_object_get
 
                 def post(self, *args, **kwargs):
                     return self._request('POST', *args, **kwargs)
@@ -876,7 +877,10 @@ def simulate_surrounding_world(func):
                 def _request(method, url, json=None, **kwargs):
                     return FakeResponse(200, dict())
 
-            simulation = Simulation(requests)
+            simulation = Simulation(
+                tasks_requests,
+                credentials_requests
+            )
             return func(*args, simulation=simulation, **kwargs)
     return wrapper
 
@@ -955,7 +959,7 @@ class CdrTests(TestCase):
 
         cdr1: Cdr = Cdr.create_based_on_session(session)
 
-        simulation.requests.post.assert_called_once()
+        simulation.tasks_requests.post.assert_called_once()
 
         # Check that Tariffs are archived copies and that they exist
         self.assertTrue(all(t.archived for t in cdr1.tariffs.all()),
@@ -983,7 +987,7 @@ class CdrTests(TestCase):
 
         simulation.reset()
         cdr: Cdr = Cdr.create_based_on_session(session)
-        simulation.requests.post.assert_called_once()
+        simulation.tasks_requests.post.assert_called_once()
 
         self.assertTrue(all(t.archived for t in cdr.tariffs.all()),
                         'Cdr needs to point to only archived Tariffs, so that they are not modified anymore')
@@ -1405,8 +1409,8 @@ class TestCredentials(TestCase):
 
         response_data = {
             'http://localhost/versions': {'data': [{'url': 'http://localhost/ocpi/2.2.1/', 'version': '2.2'}]},
-            'http://localhost/ocpi/2.2.1/': ocpi_endpoints_response,
-            'http://localhost/ocpi/2.2.1/credentials': ocpi_endpoints_response,
+            'http://localhost/ocpi/2.2.1/': CredentialsData.ocpi_endpoints_response,
+            'http://localhost/ocpi/2.2.1/credentials': CredentialsData.ocpi_endpoints_response,
         }
         return MockResponse(response_data[url], 200)
 
@@ -1529,41 +1533,9 @@ class TestObjectPull(TestCase):
         self.credentialsrole.agreed_parties.set(CredentialsRole.objects.all())
         invalidate_partner_cache(our_party)
 
-    def mocked_object_get(url, *_args, **kwargs):
-        try:
-            credentials = Credentials.objects.get(pk=2)
-            headers = kwargs['headers']
-            # Let's swap the other token and receive this request as if it comes from outside
-            headers['HTTP_AUTHORIZATION'] = f'Token {credentials.ours_base64()}'
-
-            with patch('ocpi22.ocpi.auth.OCPIPermission.has_permission') as mock_has_permission:
-                # We will test authentication separately, so let's just make this test simpler and more focused
-                mock_has_permission.return_value = True
-                result = client.get(url, **headers)
-
-            json_text = result.content.decode('utf-8')
-            assert 'DOCTYPE' not in json_text, f"URL {url} is returning HTML, when excepting JSON"
-
-            content = json.loads(json_text)
-            assert compare_dicts_recursively(content, expected_get_responses[url]), \
-                f"Expecting a different result for {url}: {content}"
-
-            response_headers = dict(result.headers)
-            response_headers.pop('Content-Length', None)
-            expected_headers = expected_get_headers[url]
-            expected_headers.pop('Content-Length', None)
-            assert compare_dicts_recursively(response_headers, expected_headers), \
-                f"Expecting different headers for {url}: {response_headers}"
-
-            return result
-        except (AssertionError, KeyError):
-            # ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_headers))
-            # ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
-            raise
-
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpiconnector.management.commands.exchange_credentials.requests.get', side_effect=mocked_object_get)
-    def test_pull(self, _mock_get: Mock):
+    @simulate_surrounding_world
+    def test_pull(self, simulation):
         settings.SEND_UPDATES = True
         settings.BACKGROUND_SEND = False
 
@@ -1842,7 +1814,7 @@ class TestSession(TestCase):
                 with patch('ocpi22.util.redis_store.get') as mock_get, \
                         patch('ocpi22.webhooks.requests.post') as webhook_post_mock:
                     mock_get.return_value = 'http://localhost/session/'
-                    response = SessionViewSet().patch(request, **kwargs)
+                    response = SessionViewSet().patch(request, certification=Mock(), **kwargs)
 
                 calls = webhook_post_mock.call_args_list
                 webhook_post_mock.assert_called_once()
@@ -2473,7 +2445,7 @@ def put_session_data(data, create_authorization=True):
     if create_authorization:
         authorization_reference = data.get('authorization_reference', '')
         Authorization.objects.create(authorization_reference=authorization_reference)
-    return SessionViewSet.put(request)
+    return SessionViewSet.put(request, country_code=data.get('country_code'), party_id=data.get('party_id'))
 
 
 class TestPutSession(TestCase):
@@ -2946,7 +2918,7 @@ class TestMspUserApi(TestCase):
 
         response = post_cdr(CdrMessages.test_transactions_rfid)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
-                         'A duplicate CDR PUT is expected to fail')
+                         'A duplicate CDR POST is expected to fail')
         msg = response.data.get('status_message')
         self.assertTrue('already exists' in msg,
                         f'A duplicate CDR PUT is expected to fail: {msg}')

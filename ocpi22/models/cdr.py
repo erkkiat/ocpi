@@ -40,9 +40,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     update_method = 'POST'
 
     class Meta:
-        # constraints = [
-        # Todo: models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
-        # ]
+        constraints = [
+            models.UniqueConstraint(fields=['session_id'], name='session_id'),
+        ]
         ordering = ('created',)
         verbose_name = _('Billing record')
         verbose_name_plural = _('Billing records')

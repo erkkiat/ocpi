@@ -1,76 +1,86 @@
 from collections import OrderedDict
 from decimal import Decimal
 
-ocpi_endpoints_response = {
-    "version": "2.2",
-    "endpoints": [
-        {
-            "identifier": "credentials",
-            "role": "RECEIVER",
-            "url": "http://localhost/ocpi/2.2.1/credentials"
-        },
-        {
-            "identifier": "credentials",
-            "role": "SENDER",
-            "url": "http://localhost/ocpi/2.2.1/credentials"
-        },
-        {
-            "identifier": "locations",
-            "role": "SENDER",
-            "url": "http://localhost/ocpi/2.2.1/locations"
-        },
-        {
-            "identifier": "locations",
-            "role": "RECEIVER",
-            "url": "http://localhost/ocpi/2.2.1/locations"
-        },
-        {
-            "identifier": "tokens",
-            "role": "RECEIVER",
-            "url": "http://localhost/ocpi/2.2.1/tokens"
-        },
-        {
-            "identifier": "tokens",
-            "role": "SENDER",
-            "url": "http://localhost/ocpi/2.2.1/tokens"
-        },
-        {
-            "identifier": "tariffs",
-            "role": "SENDER",
-            "url": "http://localhost/ocpi/2.2.1/tariffs"
-        },
-        {
-            "identifier": "tariffs",
-            "role": "RECEIVER",
-            "url": "http://localhost/ocpi/2.2.1/tariffs"
-        },
-        {
-            "identifier": "sessions",
-            "role": "SENDER",
-            "url": "http://localhost/ocpi/2.2.1/sessions"
-        },
-        {
-            "identifier": "sessions",
-            "role": "RECEIVER",
-            "url": "http://localhost/ocpi/2.2.1/sessions"
-        },
-        {
-            "identifier": "cdrs",
-            "role": "SENDER",
-            "url": "http://localhost/ocpi/2.2.1/cdrs"
-        },
-        {
-            "identifier": "cdrs",
-            "role": "RECEIVER",
-            "url": "http://localhost/ocpi/2.2.1/cdrs"
-        },
-        {
-            "identifier": "commands",
-            "role": "RECEIVER",
-            "url": "http://localhost/ocpi/2.2.1/commands"
-        }
-    ]
-}
+
+class CredentialsData:
+    expected_versions_response = {
+        'data': [{'url': 'http://testserver.test/ocpi/2.2/', 'version': '2.2'},
+                 {'url': 'http://testserver.test/ocpi/2.2.1/', 'version': '2.2.1'}],
+        'status_code': 1000,
+        'status_message': 'Success',
+        'timestamp': '2022-01-01T12:00:00Z'
+    }
+
+    ocpi_endpoints_response = {
+        "version": "2.2",
+        "endpoints": [
+            {
+                "identifier": "credentials",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/credentials"
+            },
+            {
+                "identifier": "credentials",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/credentials"
+            },
+            {
+                "identifier": "locations",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/locations"
+            },
+            {
+                "identifier": "locations",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/locations"
+            },
+            {
+                "identifier": "tokens",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/tokens"
+            },
+            {
+                "identifier": "tokens",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/tokens"
+            },
+            {
+                "identifier": "tariffs",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/tariffs"
+            },
+            {
+                "identifier": "tariffs",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/tariffs"
+            },
+            {
+                "identifier": "sessions",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/sessions"
+            },
+            {
+                "identifier": "sessions",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/sessions"
+            },
+            {
+                "identifier": "cdrs",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/cdrs"
+            },
+            {
+                "identifier": "cdrs",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/cdrs"
+            },
+            {
+                "identifier": "commands",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/commands"
+            }
+        ]
+    }
 
 
 expected_get_responses = {
@@ -79,7 +89,7 @@ expected_get_responses = {
                    'currency': 'EUR',
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tariffs/FI/000/T2',
                    'elements': [{'price_components': [{'price': 0.26,
-                                                       'step_size': 1000,
+                                                       'step_size': 1,
                                                        'type': 'ENERGY'}]}],
                    'id': 'T2',
                    'last_updated': '2022-01-08T07:52:37Z',
@@ -116,7 +126,7 @@ expected_get_responses = {
                    'currency': 'EUR',
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tariffs/FI/000/TTYPE2',
                    'elements': [{'price_components': [{'price': 0.22,
-                                                       'step_size': 1000,
+                                                       'step_size': 1,
                                                        'type': 'ENERGY',
                                                        'vat': 24.0}]}],
                    'id': 'TTYPE2',
@@ -127,7 +137,7 @@ expected_get_responses = {
                    'currency': 'EUR',
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tariffs/FI/000/TCCS',
                    'elements': [{'price_components': [{'price': 0.3,
-                                                       'step_size': 1000,
+                                                       'step_size': 1,
                                                        'type': 'ENERGY'}]}],
                    'id': 'TCCS',
                    'party_id': '000',
@@ -137,7 +147,7 @@ expected_get_responses = {
                    'currency': 'EUR',
                    # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tariffs/FI/000/TCHADEMO',
                    'elements': [{'price_components': [{'price': 0.3,
-                                                       'step_size': 1000,
+                                                       'step_size': 1,
                                                        'type': 'ENERGY'}]}],
                    'id': 'TCHADEMO',
                    'party_id': '000',
@@ -1365,6 +1375,7 @@ class AppChargingData:
         'OCPI-from-party-id': 'MSP',
         'OCPI-to-country-code': 'FI',
         'OCPI-to-party-id': 'CPO',
+        'platform-revision': 'REVISION',
         'content-type': 'application/json'
     },
         'json': {'authorization_reference': 'REFERENCE-123',
@@ -1389,7 +1400,8 @@ class AppChargingData:
         'OCPI-from-party-id': 'MSP',
         'OCPI-to-country-code': 'FI',
         'OCPI-to-party-id': 'CPO',
-        'content-type': 'application/json'},
+        'content-type': 'application/json',
+        'platform-revision': 'REVISION'},
         'json': {'authorization_reference': 'REFERENCE-123',
                  'evse_uid': 'HELSINKI-3',
                  'location_id': 'HELSINKI-1',

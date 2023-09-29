@@ -64,7 +64,7 @@ class CertificationSteps:
         subtopic='GET each page of a paged list, either Location, Session, CDR, Token or Tariff'
     )
     filtering = register_certification_step(
-        'FILTERING', 'GET a filtered list', customer_initiates=False,
+        'FILTERING', 'GET a filtered list',
         subtopic='GET a filtered list for Location, Session, CDR, Token or Tariff'
     )
 
