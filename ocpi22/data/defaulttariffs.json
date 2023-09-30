@@ -109,7 +109,7 @@
     "pk": 218,
     "fields": {
       "identifier": "credentials",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/credentials",
+      "url": "http://localhost:8001/ocpi/2.2/credentials",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -119,7 +119,7 @@
     "pk": 219,
     "fields": {
       "identifier": "credentials",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/credentials",
+      "url": "http://localhost:8001/ocpi/2.2/credentials",
       "role": "SENDER",
       "credentials": 17
     }
@@ -129,7 +129,7 @@
     "pk": 220,
     "fields": {
       "identifier": "hubclientinfo",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/hubclientinfo",
+      "url": "http://localhost:8001/ocpi/2.2/hubclientinfo",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -139,7 +139,7 @@
     "pk": 221,
     "fields": {
       "identifier": "hubclientinfo",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/hubclientinfo",
+      "url": "http://localhost:8001/ocpi/2.2/hubclientinfo",
       "role": "SENDER",
       "credentials": 17
     }
@@ -149,7 +149,7 @@
     "pk": 222,
     "fields": {
       "identifier": "locations",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/locations",
+      "url": "http://localhost:8001/ocpi/2.2/locations",
       "role": "SENDER",
       "credentials": 17
     }
@@ -159,7 +159,7 @@
     "pk": 223,
     "fields": {
       "identifier": "commands",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/commands",
+      "url": "http://localhost:8001/ocpi/2.2/commands",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -169,7 +169,7 @@
     "pk": 224,
     "fields": {
       "identifier": "tariffs",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/tariffs",
+      "url": "http://localhost:8001/ocpi/2.2/tariffs",
       "role": "SENDER",
       "credentials": 17
     }
@@ -179,7 +179,7 @@
     "pk": 225,
     "fields": {
       "identifier": "sessions",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/sessions",
+      "url": "http://localhost:8001/ocpi/2.2/sessions",
       "role": "SENDER",
       "credentials": 17
     }
@@ -189,7 +189,7 @@
     "pk": 226,
     "fields": {
       "identifier": "cdrs",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/cdrs",
+      "url": "http://localhost:8001/ocpi/2.2/cdrs",
       "role": "SENDER",
       "credentials": 17
     }
@@ -199,7 +199,7 @@
     "pk": 227,
     "fields": {
       "identifier": "tokens",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/tokens",
+      "url": "http://localhost:8001/ocpi/2.2/tokens",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -209,7 +209,7 @@
     "pk": 228,
     "fields": {
       "identifier": "tokens",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/tokens",
+      "url": "http://localhost:8001/ocpi/2.2/tokens",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -219,7 +219,7 @@
     "pk": 229,
     "fields": {
       "identifier": "locations",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/locations",
+      "url": "http://localhost:8001/ocpi/2.2/locations",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -229,7 +229,7 @@
     "pk": 230,
     "fields": {
       "identifier": "cdrs",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/cdrs",
+      "url": "http://localhost:8001/ocpi/2.2/cdrs",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -239,7 +239,7 @@
     "pk": 231,
     "fields": {
       "identifier": "tokens",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/tokens",
+      "url": "http://localhost:8001/ocpi/2.2/tokens",
       "role": "SENDER",
       "credentials": 17
     }
@@ -249,7 +249,7 @@
     "pk": 232,
     "fields": {
       "identifier": "tariffs",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/tariffs",
+      "url": "http://localhost:8001/ocpi/2.2/tariffs",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -259,7 +259,7 @@
     "pk": 233,
     "fields": {
       "identifier": "sessions",
-      "url": "http://localhost:8001/ocpi/cpo/2.2/sessions",
+      "url": "http://localhost:8001/ocpi/2.2/sessions",
       "role": "RECEIVER",
       "credentials": 17
     }
@@ -269,7 +269,7 @@
     "pk": 575,
     "fields": {
       "identifier": "credentials",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/credentials",
+      "url": "http://localhost:8002/ocpi/2.2/credentials",
       "role": "RECEIVER",
       "credentials": 24
     }
@@ -279,7 +279,7 @@
     "pk": 576,
     "fields": {
       "identifier": "credentials",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/credentials",
+      "url": "http://localhost:8002/ocpi/2.2/credentials",
       "role": "SENDER",
       "credentials": 24
     }
@@ -289,7 +289,7 @@
     "pk": 577,
     "fields": {
       "identifier": "hubclientinfo",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/hubclientinfo",
+      "url": "http://localhost:8002/ocpi/2.2/hubclientinfo",
       "role": "RECEIVER",
       "credentials": 24
     }
@@ -299,7 +299,7 @@
     "pk": 578,
     "fields": {
       "identifier": "tokens",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/tokens",
+      "url": "http://localhost:8002/ocpi/2.2/tokens",
       "role": "RECEIVER",
       "credentials": 24
     }
@@ -309,7 +309,7 @@
     "pk": 579,
     "fields": {
       "identifier": "locations",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/locations",
+      "url": "http://localhost:8002/ocpi/2.2/locations",
       "role": "RECEIVER",
       "credentials": 24
     }
@@ -319,7 +319,7 @@
     "pk": 580,
     "fields": {
       "identifier": "cdrs",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/cdrs",
+      "url": "http://localhost:8002/ocpi/2.2/cdrs",
       "role": "RECEIVER",
       "credentials": 24
     }
@@ -329,7 +329,7 @@
     "pk": 581,
     "fields": {
       "identifier": "tokens",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/tokens",
+      "url": "http://localhost:8002/ocpi/2.2/tokens",
       "role": "SENDER",
       "credentials": 24
     }
@@ -339,7 +339,7 @@
     "pk": 582,
     "fields": {
       "identifier": "tariffs",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/tariffs",
+      "url": "http://localhost:8002/ocpi/2.2/tariffs",
       "role": "RECEIVER",
       "credentials": 24
     }
@@ -349,7 +349,7 @@
     "pk": 583,
     "fields": {
       "identifier": "sessions",
-      "url": "http://localhost:8002/ocpi/cpo/2.2/sessions",
+      "url": "http://localhost:8002/ocpi/2.2/sessions",
       "role": "RECEIVER",
       "credentials": 24
     }

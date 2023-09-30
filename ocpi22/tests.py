@@ -795,11 +795,11 @@ class TariffTests(TestCase):
                  'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==', 'FI',
                  'HUB',
                  'FI', 'CPO', method='delete', credentials_id=2, title='Tariff'),
-            call({}, 'http://localhost:8001/ocpi/cpo/2.2/tariffs/FI/CPO/T1',
+            call({}, 'http://localhost:8001/ocpi/2.2/tariffs/FI/CPO/T1',
                  'QzMyNUQ2NTMyNzBCNzdBMzVDQkRFMzc5QjhFQTM5ODA3OTVCOTA5QUZGN0MyQUIxNEE3OURFQzExRTBENTU2RA==', 'FI',
                  'HB2',
                  'FI', 'CPO', method='delete', credentials_id=17, title='Tariff'),
-            call({}, 'http://localhost:8002/ocpi/cpo/2.2/tariffs/FI/CPO/T1',
+            call({}, 'http://localhost:8002/ocpi/2.2/tariffs/FI/CPO/T1',
                  'YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==', 'FI',
                  '001',
                  'FI', 'CPO', method='delete', credentials_id=24, title='Tariff')

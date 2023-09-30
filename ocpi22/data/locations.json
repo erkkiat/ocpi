@@ -219,7 +219,7 @@
          "credentials" : 42,
          "identifier" : "credentials",
          "role" : "RECEIVER",
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/credentials"
+         "url" : "http://localhost:5000/ocpi/2.2/credentials"
       },
       "model" : "ocpi22.endpoint",
       "pk" : 209
@@ -228,7 +228,7 @@
       "pk" : 210,
       "fields" : {
          "identifier" : "credentials",
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/credentials",
+         "url" : "http://localhost:5000/ocpi/2.2/credentials",
          "role" : "SENDER",
          "credentials" : 42
       },
@@ -237,7 +237,7 @@
    {
       "fields" : {
          "role" : "SENDER",
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/locations",
+         "url" : "http://localhost:5000/ocpi/2.2/locations",
          "identifier" : "locations",
          "credentials" : 42
       },
@@ -248,7 +248,7 @@
       "pk" : 212,
       "model" : "ocpi22.endpoint",
       "fields" : {
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/locations",
+         "url" : "http://localhost:5000/ocpi/2.2/locations",
          "role" : "RECEIVER",
          "identifier" : "locations",
          "credentials" : 42
@@ -259,7 +259,7 @@
       "fields" : {
          "credentials" : 42,
          "identifier" : "tokens",
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/tokens",
+         "url" : "http://localhost:5000/ocpi/2.2/tokens",
          "role" : "RECEIVER"
       },
       "pk" : 213
@@ -268,7 +268,7 @@
       "model" : "ocpi22.endpoint",
       "fields" : {
          "role" : "SENDER",
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/tokens",
+         "url" : "http://localhost:5000/ocpi/2.2/tokens",
          "identifier" : "tokens",
          "credentials" : 42
       },
@@ -279,7 +279,7 @@
       "model" : "ocpi22.endpoint",
       "fields" : {
          "role" : "SENDER",
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/tariffs",
+         "url" : "http://localhost:5000/ocpi/2.2/tariffs",
          "identifier" : "tariffs",
          "credentials" : 42
       }
@@ -288,7 +288,7 @@
       "fields" : {
          "credentials" : 42,
          "role" : "SENDER",
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/sessions",
+         "url" : "http://localhost:5000/ocpi/2.2/sessions",
          "identifier" : "sessions"
       },
       "model" : "ocpi22.endpoint",
@@ -298,7 +298,7 @@
       "pk" : 217,
       "model" : "ocpi22.endpoint",
       "fields" : {
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/cdrs",
+         "url" : "http://localhost:5000/ocpi/2.2/cdrs",
          "role" : "SENDER",
          "identifier" : "cdrs",
          "credentials" : 42
@@ -308,7 +308,7 @@
       "model" : "ocpi22.endpoint",
       "fields" : {
          "identifier" : "commands",
-         "url" : "http://localhost:5000/ocpi/cpo/2.2/commands",
+         "url" : "http://localhost:5000/ocpi/2.2/commands",
          "role" : "RECEIVER",
          "credentials" : 42
       },
