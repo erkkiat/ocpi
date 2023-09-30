@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Union
 
+import pytz
 from django.conf import settings
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
@@ -325,8 +326,8 @@ class StopTransactionSerializer(serializers.Serializer):
         help_text='Optionally, the final kWh reading from the charger',
     )
     stop_timestamp = serializers.DateTimeField(
-        required=False,
-        help_text='The timestamp of the moment when the driver has unplugged the vehicle'
+        required=False, default_timezone=pytz.UTC,
+        help_text='The timestamp of the moment when the driver has unplugged the vehicle, defaults to UTC timezone'
     )
 
     def validate(self, attrs):

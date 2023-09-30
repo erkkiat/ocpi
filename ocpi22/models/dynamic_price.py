@@ -49,7 +49,7 @@ class PriceSource:
         assert end > start
         dynamic_price, created = DynamicPrice.objects.get_or_create(
             dynamic_price_source=self.key,
-            start_datetime=start,
+            start_datetime=start.replace(tzinfo=pytz.UTC),  # Todo: replace with a configured timezone per PriceSource
             end_datetime=end,
             defaults=kwargs
         )
@@ -172,11 +172,15 @@ dynamic_price_sources = (
 
 def get_price(key: str, when: datetime) -> float:
     """
-    >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=1.0, start_datetime=datetime(2022,1,1,1,0), end_datetime=datetime(2022,1,1,2,0))
-    <DynamicPrice: ABC: 2022-01-01 01:00:00 - 2022-01-01 02:00:00 :: 1.0>
-    >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=2.0, start_datetime=datetime(2022,1,1,2,0), end_datetime=datetime(2022,1,1,3,0))
-    <DynamicPrice: ABC: 2022-01-01 02:00:00 - 2022-01-01 03:00:00 :: 2.0>
-    >>> get_price('ABC', datetime(2022,1,1,2,0))
+    >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=1.0,
+    ... start_datetime=datetime(2022,1,1,1,0).replace(tzinfo=pytz.UTC),
+    ... end_datetime=datetime(2022,1,1,2,0).replace(tzinfo=pytz.UTC))
+    <DynamicPrice: ABC: 2022-01-01 01:00:00+00:00 - 2022-01-01 02:00:00+00:00 :: 1.0>
+    >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=2.0,
+    ... start_datetime=datetime(2022,1,1,2,0).replace(tzinfo=pytz.UTC),
+    ... end_datetime=datetime(2022,1,1,3,0).replace(tzinfo=pytz.UTC))
+    <DynamicPrice: ABC: 2022-01-01 02:00:00+00:00 - 2022-01-01 03:00:00+00:00 :: 2.0>
+    >>> get_price('ABC', datetime(2022,1,1,2,0).replace(tzinfo=pytz.UTC))
     2.0
     """
     prices = DynamicPrice.objects.filter(dynamic_price_source=key, start_datetime__lte=when, end_datetime__gt=when)
