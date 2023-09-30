@@ -1,5 +1,9 @@
 import json
 from collections import OrderedDict
+from dataclasses import dataclass, field
+from datetime import timedelta
+from functools import wraps
+from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
 from rest_framework.test import APIRequestFactory
@@ -127,3 +131,75 @@ def mocked_object_get(url, *_args, **kwargs):
         # ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_headers))
         # ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
         raise
+
+
+@dataclass
+class Simulation:
+    tasks_requests: Mock
+    credentials_requests: Mock
+    get_platform_revision: Mock
+
+    def reset(self):
+        for x in self.__dict__.values():
+            if isinstance(x, Mock):
+                x.reset_mock()
+        # map(lambda x: x.reset_mock(), [x for x in self.__dict__.values() if isinstance(x, Mock)])
+        # self.tasks_requests.reset_mock()
+        # self.credentials_requests.reset_mock()
+        # self.get_platform_revision.reset_mock()
+
+    def __post_init__(self):
+        self.tasks_requests.post.side_effect = self.post
+        self.tasks_requests.get.side_effect = self.get
+        self.tasks_requests.put.side_effect = self.put
+        self.tasks_requests.delete.side_effect = self.delete
+        self.credentials_requests.get.side_effect = mocked_object_get
+        self.get_platform_revision.return_value = 'REVISION'
+
+    def post(self, *args, **kwargs):
+        return self._request('POST', *args, **kwargs)
+
+    def get(self, *args, **kwargs):
+        return self._request('GET', *args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        return self._request('PUT', *args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return self._request('DELETE', *args, **kwargs)
+
+    @staticmethod
+    def _request(method, url, json=None, **kwargs):
+        return FakeResponse(200, dict())
+
+
+def simulate_surrounding_world(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with patch('ocpi22.tasks.requests') as tasks_requests, \
+                patch('ocpiconnector.management.commands.exchange_credentials.requests') as credentials_requests, \
+                patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision:
+
+            simulation = Simulation(
+                tasks_requests,
+                credentials_requests,
+                get_platform_revision
+            )
+            return func(*args, simulation=simulation, **kwargs)
+    return wrapper
+
+
+@dataclass(eq=True, frozen=True)
+class FakeResponse:
+    status_code: int
+    data: dict
+    reason: str = field(default='Mocked response')
+    headers: dict = field(default_factory=dict)
+    elapsed: timedelta = field(default_factory=lambda: timedelta(seconds=0.1))
+
+    def json(self):
+        return self.data
+
+    @property
+    def text(self):
+        return self.data

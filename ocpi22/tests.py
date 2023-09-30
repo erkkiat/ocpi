@@ -1,7 +1,6 @@
 import doctest
 import json
 import os
-from functools import wraps
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -10,7 +9,7 @@ from rest_framework.exceptions import NotAuthenticated
 import ocpi22.logging as logging
 import uuid
 from collections import OrderedDict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 
 from datetime import timedelta, datetime
 from decimal import Decimal
@@ -39,7 +38,7 @@ from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpiconnector.testutil import compare_dicts_recursively, OCPIAPIRequestFactory, compare_lists_recursively, \
-    mocked_object_get
+    simulate_surrounding_world, FakeResponse
 from settlement.views import InvoiceReportViews
 from util import reverse
 
@@ -68,14 +67,12 @@ from ocpi22.ocpi.headers import make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
-from ocpi22.test_data import expected_get_headers, \
-    accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, \
+from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, \
     RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
-from ocpi22.test_data import expected_get_responses
 from ocpiconnector.ocpi_identities import Party, get_our_party, create_credentialsrole, get_our_credentialsrole
 from settlement.calculate import create_invoice
 
@@ -116,22 +113,6 @@ def make_json_response(data, status_code=200) -> Response:
     data_str = json.dumps(data).encode('UTF-8')
     response._content = data_str
     return response
-
-
-@dataclass(eq=True, frozen=True)
-class FakeResponse:
-    status_code: int
-    data: dict
-    reason: str = field(default='Mocked response')
-    headers: dict = field(default_factory=dict)
-    elapsed: timedelta = field(default_factory=lambda: timedelta(seconds=0.1))
-
-    def json(self):
-        return self.data
-
-    @property
-    def text(self):
-        return self.data
 
 
 def load_example(filename: str) -> dict:
@@ -839,52 +820,6 @@ class TariffTests(TestCase):
         return credentials
 
 
-def simulate_surrounding_world(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        with patch('ocpi22.tasks.requests') as tasks_requests, \
-                patch('ocpiconnector.management.commands.exchange_credentials.requests') as credentials_requests:
-
-            @dataclass
-            class Simulation:
-                tasks_requests: Mock
-                credentials_requests: Mock
-
-                def reset(self):
-                    self.tasks_requests.reset_mock()
-                    self.credentials_requests.reset_mock()
-
-                def __post_init__(self):
-                    self.tasks_requests.post.side_effect = self.post
-                    self.tasks_requests.get.side_effect = self.get
-                    self.tasks_requests.put.side_effect = self.put
-                    self.tasks_requests.delete.side_effect = self.delete
-                    self.credentials_requests.get.side_effect = mocked_object_get
-
-                def post(self, *args, **kwargs):
-                    return self._request('POST', *args, **kwargs)
-
-                def get(self, *args, **kwargs):
-                    return self._request('GET', *args, **kwargs)
-
-                def put(self, *args, **kwargs):
-                    return self._request('PUT', *args, **kwargs)
-
-                def delete(self, *args, **kwargs):
-                    return self._request('DELETE', *args, **kwargs)
-
-                @staticmethod
-                def _request(method, url, json=None, **kwargs):
-                    return FakeResponse(200, dict())
-
-            simulation = Simulation(
-                tasks_requests,
-                credentials_requests
-            )
-            return func(*args, simulation=simulation, **kwargs)
-    return wrapper
-
-
 class CdrTests(TestCase):
     fixtures = [
         'ocpi22/data/initial.json',
@@ -1339,9 +1274,9 @@ class UpdatePartiesTest(TestCase):
         self.assertTrue(compare_dicts_recursively(serializer.data, expected),
                         'Creating the admin token seems not to work')
 
-    @time_machine.travel(datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc), tick=False)
-    @patch('ocpi22.tasks.requests.put', side_effect=mocked_token_put)
-    def test_update_new_token(self, mock_put: Mock):
+    @time_machine.travel(faketime, tick=False)
+    @simulate_surrounding_world
+    def test_update_new_token(self, simulation):
         settings.SEND_UPDATES = True
         settings.BACKGROUND_SEND = False
         credentialsrole = get_credentialsrole(None, Party('FI', 'MSP'), create=True)
@@ -1352,9 +1287,7 @@ class UpdatePartiesTest(TestCase):
 
         # Let's examine what send_updates() was actually sending
 
-        # args, kwargs = mock_put.call_args
-
-        args_list = mock_put.call_args_list
+        args_list = simulation.tasks_requests.put.call_args_list
         self.assertEqual(len(args_list), 3, 'Expecting three calls to requests.put()')
 
         args, kwargs = args_list[1].args, args_list[1].kwargs
@@ -1366,7 +1299,7 @@ class UpdatePartiesTest(TestCase):
                             'OCPI-to-country-code': 'FI',
                             'OCPI-to-party-id': 'HUB',  # The recipient comes from the Credentials in the fixture
                             'content-type': 'application/json',
-                            'platform-revision': 'unknown'}
+                            'platform-revision': 'REVISION'}
         expected_data = {'contract_id': 'CONTRACT',
                          'country_code': 'FI',
                          'issuer': 'issuer',
