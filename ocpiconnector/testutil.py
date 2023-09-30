@@ -141,6 +141,7 @@ class Simulation:
     redis_store: Mock
     webhook_requests: Mock
     uuid4: Mock
+    ocpi_requests: Mock
 
     def reset(self):
         for x in self.__dict__.values():
@@ -194,23 +195,25 @@ def simulate_surrounding_world(func):
                 patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision, \
                 patch('ocpi22.util.redis_store',) as redis_store, \
                 patch('ocpi22.webhooks.requests') as webhook_requests, \
-                patch('ocpi22.ocpi.util.uuid.uuid4', return_value=MockUuid4()) as uuid4:
+                patch('ocpi22.ocpi.util.uuid.uuid4', return_value=MockUuid4()) as uuid4, \
+                patch('ocpi22.ocpi.util.requests') as ocpi_requests:
             simulation = Simulation(
                 tasks_requests,
                 credentials_requests,
                 get_platform_revision,
                 redis_store,
                 webhook_requests,
-                uuid4
+                uuid4,
+                ocpi_requests
             )
-            return func(*args, simulation=simulation, **kwargs)
+            return func(*args, simulation, **kwargs)
     return wrapper
 
 
 @dataclass(eq=True, frozen=True)
 class FakeResponse:
     status_code: int
-    data: dict
+    data: dict = field(default_factory=dict)
     reason: str = field(default='Mocked response')
     headers: dict = field(default_factory=dict)
     elapsed: timedelta = field(default_factory=lambda: timedelta(seconds=0.1))

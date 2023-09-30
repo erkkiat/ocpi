@@ -2348,19 +2348,8 @@ class TestPutSession(TestCase):
         calls = simulation.webhook_requests.post.call_args_list
         self.assertTrue(compare_dicts_recursively(calls[0].kwargs.get('json'), SessionData.meter_values_1_webhook))
 
-    @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {
-               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
-               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
-               'callback-session_url': 'http://localhost/session/{uid}/',
-               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
-           }.get(x))
-    @patch('ocpi22.webhooks.requests.post')
-    def test_put_session_to_wrong_evse(
-            self,
-            webhook_post_mock: Mock,
-            _redis_store_mock: Mock,
-    ):
+    @simulate_surrounding_world
+    def test_put_session_to_wrong_evse(self, simulation):
         with patch('ocpi22.ocpi.api.fetch_location') as mock_fetch_location:
             mock_fetch_location.return_value = None
             response = put_session_data(SessionData.wrong_evse)
@@ -2370,7 +2359,7 @@ class TestPutSession(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Creating a session with wrong EVSE should fail gracefully')
-        webhook_post_mock.assert_not_called()
+        simulation.webhook_requests.post.assert_not_called()
 
 
 def meter_values(data):
@@ -2432,16 +2421,8 @@ class TestMspApi(TestCase):
         self.user = User.objects.create_user('eki')
 
     @time_machine.travel(faketime, tick=True)
-    @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=MockUuid4())
-    @patch('ocpi22.webhooks.requests.post',
-           return_value=FakeResponse(200, accepted_result)
-           )
-    @patch('ocpi22.webhooks.requests.post')
-    def test_app_charging(self,
-                          _webhook_post_mock: Mock,
-                          requests_post_mock: Mock,
-                          _uuid4_mock: Mock):
+    @simulate_surrounding_world
+    def test_app_charging(self, simulation):
         data = {
             "location_id": "HELSINKI-1",
             "evse_uid": "HELSINKI-3",
@@ -2449,6 +2430,10 @@ class TestMspApi(TestCase):
             "contract_id": "CONTRACT-123",
             "internal_reference": "REFERENCE-123"
         }
+
+        # Provide eternal success from the webhook
+        simulation.webhook_requests.post.return_value = FakeResponse(200, self.accepted_result)
+        simulation.ocpi_requests.post.return_value = FakeResponse(200, self.accepted_result)
 
         # See that Account is created automatically
         response = start_charging(data, self.user)
@@ -2474,13 +2459,11 @@ class TestMspApi(TestCase):
         self.assertEqual(account.transactions.count(), 2, 'There should be two Transactions on Account')
         self.assertEqual(account.balance, Decimal("50"), "Second account deposit not working as expected")
 
-        with patch('ocpi22.ocpi.headers.get_platform_revision', return_value='REVISION'):
-            response = start_charging(data, self.user)
+        response = start_charging(data, self.user)
 
-        # ic(recursive_sort_dict(response.data), recursive_sort_dict(self.accepted_result.get('data')))
-        self.assertEqual(response.data, self.accepted_result.get('data'),
-                         'Response from CPO for START_SESSION differs from expected')
-        args, kwargs = requests_post_mock.call_args
+        self.assertTrue(compare_dicts_recursively(response.data, self.accepted_result.get('data')),
+                        'Response from CPO for START_SESSION differs from expected')
+        args, kwargs = simulation.ocpi_requests.post.call_args
         self.assertEqual(args, ('http://fakehost/command/START_SESSION',),
                          'URL for CPO Command START_SESSION differs from expected')
         self.assertTrue(compare_dicts_recursively(kwargs, AppChargingData.expected_data_sent),
@@ -2489,14 +2472,14 @@ class TestMspApi(TestCase):
         settings.REQUIRE_WALLET_BALANCE = False
 
         data["max_price"] = Decimal(30)
-        requests_post_mock.reset_mock()
+        simulation.ocpi_requests.post.reset_mock()
 
         with patch('ocpi22.ocpi.headers.get_platform_revision', return_value='REVISION'):
             response = start_charging(data, self.user)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          'Expecting charging to start succesfully')
-        args, kwargs = requests_post_mock.call_args
+        args, kwargs = simulation.ocpi_requests.post.call_args
         self.assertEqual(args, ('http://fakehost/command/START_SESSION',),
                          'URL for CPO Command START_SESSION differs from expected')
         self.assertTrue(compare_dicts_recursively(kwargs, AppChargingData.expected_data_sent_max_price),
