@@ -38,7 +38,7 @@ from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpiconnector.testutil import compare_dicts_recursively, OCPIAPIRequestFactory, compare_lists_recursively, \
-    simulate_surrounding_world, FakeResponse
+    simulate_surrounding_world, FakeResponse, Simulation, MockUuid4, MockResponse
 from settlement.views import InvoiceReportViews
 from util import reverse
 
@@ -936,33 +936,13 @@ class CdrTests(TestCase):
         self.assertEqual(cdr.billed_to, session.billed_to, 'Billed_to seems not to be copied correctly')
 
 
-class mock_uuid4():
-    number: int
-
-    def __init__(self, number=1):
-        self.number = number
-
-    @property
-    def hex(self):
-        return f'MOCK-{self.number}'
-
-
 class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
     maxDiff = 10000
 
     @time_machine.travel(faketime, tick=False)
-    # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
-    @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=mock_uuid4())
-    @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {
-               'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/',
-               'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
-               'callback-session_url': 'http://localhost/session/{uid}/',
-           }.get(x))
-    @patch('ocpi22.webhooks.requests.post')
-    def test_start_stop_session(self, requests_post_mock: Mock, _redis_get_mock: Mock, uuid4_mock: Mock):
+    @simulate_surrounding_world
+    def test_start_stop_session(self, simulation):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -984,9 +964,9 @@ class CommandTests(TestCase):
                          'Please make sure there are no Sessions at the start of this test')
 
         # Let's pretend to be the CPO and get an error from charger
-        requests_post_mock.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
-        requests_post_mock.reset_mock()
-        uuid4_mock.return_value = mock_uuid4(42)
+        simulation.webhook_requests.post.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
+        simulation.webhook_requests.post.reset_mock()
+        simulation.uuid4.return_value = MockUuid4(42)
 
         try:
             response = viewset.start_session(request)
@@ -995,27 +975,24 @@ class CommandTests(TestCase):
             return False
 
         # Check the request sent to the CPO
-        requests_post_mock.assert_called_once()
-        args, kwargs = requests_post_mock.call_args
+        simulation.webhook_requests.post.assert_called_once()
+        args, kwargs = simulation.webhook_requests.post.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
         self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.evse_inoperative_response),
                         'Expecting different response for start_session')
 
         # Let's pretend to be the CPO and all is good
-        requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
-        requests_post_mock.reset_mock()
-        uuid4_mock.return_value = mock_uuid4(99)
+        simulation.webhook_requests.post.return_value = make_json_response(dict(result='ACCEPTED'))
+        simulation.webhook_requests.post.reset_mock()
+        simulation.uuid4.return_value = MockUuid4(99)
 
         response = viewset.start_session(request)
 
         # Check the request sent to the CPO
-        requests_post_mock.assert_called_once()
-        args, kwargs = requests_post_mock.call_args
+        simulation.webhook_requests.post.assert_called_once()
+        args, kwargs = simulation.webhook_requests.post.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
         self.assertTrue(compare_dicts_recursively(kwargs, SessionCommandsData.start_webhook))
-
-        # Let's guess the new Session
-        session = Session.objects.all().first()
 
         check_ok_result(self, response)
 
@@ -1036,9 +1013,9 @@ class CommandTests(TestCase):
         # Stop session, successful case
         #
 
-        requests_post_mock.return_value = make_json_response(dict(result=CommandResponse.ACCEPTED))
-        requests_post_mock.reset_mock()
-        uuid4_mock.return_value = mock_uuid4(99)
+        simulation.webhook_requests.post.return_value = make_json_response(dict(result=CommandResponse.ACCEPTED))
+        simulation.webhook_requests.post.reset_mock()
+        simulation.uuid4.return_value = MockUuid4(99)
 
         data = dict(session_id=session.uid, response_url='http://localhost.local/response/')
 
@@ -1046,26 +1023,16 @@ class CommandTests(TestCase):
             mock_generate_random_token.return_value = 'COMMAND_ID'
             response = stop_session(data, AnonymousUser)
 
-        calls = requests_post_mock.call_args_list
-        requests_post_mock.assert_called_once()
+        calls = simulation.webhook_requests.post.call_args_list
+        simulation.webhook_requests.post.assert_called_once()
         self.assertTrue(compare_dicts_recursively(calls[0].kwargs, SessionCommandsData.stop_webhook))
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          f'Stop session was expected to succeed: response.data')
         self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.stop_success))
 
     @time_machine.travel(faketime, tick=False)
-    # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
-    @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=mock_uuid4())
-    @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {
-               'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/',
-               'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
-               'callback-reserve_now_url': 'http://john:his-password@fakehost/reserve/{location_id}/{evse_id}/',
-               'callback-session_url': 'http://localhost/session/{uid}/',
-           }.get(x, 'http://localhost/fallback/'))
-    # @patch('ocpi22.webhooks.requests.post')
-    def test_reserve_now(self, _redis_get_mock: Mock, uuid4_mock: Mock):
+    @simulate_surrounding_world
+    def test_reserve_now(self, simulation):
         url = reverse('commands-reserve-now')
         viewset = CommandsViewSet()
 
@@ -1073,8 +1040,7 @@ class CommandTests(TestCase):
         request = api_factory.get(url, sender=Party('FI', 'MSP'))
         request.data = {}
 
-        with patch('ocpi22.webhooks.requests.post') as _mock_requests_post:
-            response = viewset.reserve_now(request)
+        response = viewset.reserve_now(request)
 
         check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST)
 
@@ -1088,11 +1054,10 @@ class CommandTests(TestCase):
                          'Please make sure there are no Sessions at the start of this test')
 
         try:
-            with patch('ocpi22.webhooks.requests.post') as mock_requests_post:
-                # Let's pretend to be the CPO and get an error from charger
-                mock_requests_post.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
-                uuid4_mock.return_value = mock_uuid4(42)
-                response = viewset.reserve_now(request)
+            # Let's pretend to be the CPO and get an error from charger
+            simulation.webhook_requests.post.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
+            simulation.uuid4.return_value = MockUuid4(42)
+            response = viewset.reserve_now(request)
         except redis.exceptions.ConnectionError as e:
             print(f'This test requires a local Redis instance to be running: {e}')
             self.fail()
@@ -1101,8 +1066,8 @@ class CommandTests(TestCase):
                          'Expecting the reservation to fail')
 
         # Check the request sent to the CPO
-        mock_requests_post.assert_called_once()
-        args, kwargs = mock_requests_post.call_args
+        simulation.webhook_requests.post.assert_called_once()
+        args, kwargs = simulation.webhook_requests.post.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
         self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.evse_inoperative_response),
                         'Expecting a different response for a reservation')
@@ -1113,15 +1078,15 @@ class CommandTests(TestCase):
         Session.objects.filter(status__in=[Session.PENDING, Session.ACTIVE]).update(status=Session.COMPLETED)
         Session.objects.all().update(ocpi_master=cpo_credentialsrole)
 
-        with patch('ocpi22.webhooks.requests.post') as mock_requests_post:
-            # Let's simulate the CPO backend
-            mock_requests_post.return_value = make_json_response(dict(result='ACCEPTED'))
-            uuid4_mock.return_value = mock_uuid4(99)
-            response = viewset.reserve_now(request)
+        # Let's simulate the CPO backend
+        simulation.webhook_requests.reset_mock()
+        simulation.webhook_requests.post.return_value = make_json_response(dict(result='ACCEPTED'))
+        simulation.uuid4.return_value = MockUuid4(99)
+        response = viewset.reserve_now(request)
 
         # Check the request sent to the CPO
-        mock_requests_post.assert_called_once()
-        args, kwargs = mock_requests_post.call_args
+        simulation.webhook_requests.post.assert_called_once()
+        args, kwargs = simulation.webhook_requests.post.call_args
         self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
         self.assertTrue(compare_dicts_recursively(
             kwargs.get('json'),
@@ -1170,30 +1135,6 @@ class CommandTests(TestCase):
     #
     #     check_ok_result(self, response, http_status=status.HTTP_400_BAD_REQUEST,
     #                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-
-
-class MockResponse:
-    def __init__(self, json_data, status_code, headers=None, data=None, reason='Mocked function'):
-        self.json_data = json_data
-        self._status_code = status_code
-        self.reason = reason
-        self.headers = headers
-        self.data = data
-
-    def json(self):
-        return self.json_data
-
-    @property
-    def text(self):
-        return self.json_data
-
-    def get_status_code(self):
-        return self._status_code
-
-    def set_status_code(self, value):
-        self._status_code = value
-
-    status_code = property(get_status_code, set_status_code)
 
 
 class UpdatePartiesTest(TestCase):
@@ -1697,7 +1638,7 @@ class TestSession(TestCase):
                'callback-session_url': 'http://localhost/session/{uid}/'
            }.get(x, 'http://localhost/fallback/'))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=mock_uuid4())
+           return_value=MockUuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     def test_update_session(self,
                             _ocpi_post_mock: Mock,
@@ -1839,7 +1780,7 @@ class TestCpoApi(TestCase):
                'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
            }.get(x))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=mock_uuid4())
+           return_value=MockUuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
     @patch('ocpi22.webhooks.requests.post')
     @patch('ocpiconnector.analytics.send_session_update_to_analytics')
@@ -2080,7 +2021,7 @@ class TestCpoApi(TestCase):
            }.get(x))
     @patch('ocpi22.util.redis_store.set', return_value=True)
     @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=mock_uuid4())
+           return_value=MockUuid4())
     @patch('ocpi22.webhooks.requests.post')
     @patch('ocpi22.webhooks.requests.post')
     def test_adhoc_token(self,
@@ -2223,7 +2164,7 @@ class TestCpoApi(TestCase):
             authorize_token.cache_clear()
 
             # Use a new Session UID
-            uuid4_mock.return_value = mock_uuid4(3)
+            uuid4_mock.return_value = MockUuid4(3)
 
             cpo_response = authorize(data)
             self.assertEqual(cpo_response.status_code, 401,
@@ -2240,7 +2181,7 @@ class TestCpoApi(TestCase):
         response = make_json_response(dict(broken_response='APPLES_AND_ORANGES'))
         requests_post_mock.return_value = response
 
-        uuid4_mock.return_value = mock_uuid4(2)
+        uuid4_mock.return_value = MockUuid4(2)
         response = viewset.start_session(request)
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -2384,20 +2325,10 @@ def put_session_data(data, create_authorization=True):
 
 class TestPutSession(TestCase):
     fixtures = ['ocpi22/data/credentials-2.json', 'ocpi22/data/test-database-cpo-api.json']
+    maxDiff = None
 
-    @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {
-               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
-               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
-               'callback-session_url': 'http://localhost/session/{uid}/',
-               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
-           }.get(x))
-    @patch('ocpi22.webhooks.requests.post')
-    def test_put_session_with_charging_periods(
-            self,
-            webhook_post_mock: Mock,
-            _redis_store_mock: Mock,
-    ):
+    @simulate_surrounding_world
+    def test_put_session_with_charging_periods(self, simulation: Simulation):
         # First I decided to reject Session PUT if there is no matching Authorization on the MSP end,
         # But I realized that such Sessions need to be sorted by hand afterwards
         #
@@ -2413,9 +2344,9 @@ class TestPutSession(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                          'Creating a session with ChargingPeriods should succeed')
-        calls = webhook_post_mock.call_args_list
+        simulation.webhook_requests.post.assert_called_once()
+        calls = simulation.webhook_requests.post.call_args_list
         self.assertTrue(compare_dicts_recursively(calls[0].kwargs.get('json'), SessionData.meter_values_1_webhook))
-        webhook_post_mock.assert_called_once()
 
     @patch('ocpi22.util.redis_store.get',
            side_effect=lambda x: {
@@ -2502,7 +2433,7 @@ class TestMspApi(TestCase):
 
     @time_machine.travel(faketime, tick=True)
     @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=mock_uuid4())
+           return_value=MockUuid4())
     @patch('ocpi22.webhooks.requests.post',
            return_value=FakeResponse(200, accepted_result)
            )
@@ -2594,7 +2525,7 @@ class TestMspApi(TestCase):
     #
     # @time_machine.travel(faketime, tick=True)
     # @patch('ocpi22.ocpi.util.uuid.uuid4',
-    #        return_value=mock_uuid4())
+    #        return_value=MockUuid4())
     # @patch('ocpi22.webhooks.requests.post',
     #        return_value=FakeResponse(200, accepted_result)
     #        )

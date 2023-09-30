@@ -138,23 +138,36 @@ class Simulation:
     tasks_requests: Mock
     credentials_requests: Mock
     get_platform_revision: Mock
+    redis_store: Mock
+    webhook_requests: Mock
+    uuid4: Mock
 
     def reset(self):
         for x in self.__dict__.values():
             if isinstance(x, Mock):
                 x.reset_mock()
-        # map(lambda x: x.reset_mock(), [x for x in self.__dict__.values() if isinstance(x, Mock)])
-        # self.tasks_requests.reset_mock()
-        # self.credentials_requests.reset_mock()
-        # self.get_platform_revision.reset_mock()
 
     def __post_init__(self):
         self.tasks_requests.post.side_effect = self.post
         self.tasks_requests.get.side_effect = self.get
         self.tasks_requests.put.side_effect = self.put
         self.tasks_requests.delete.side_effect = self.delete
+
         self.credentials_requests.get.side_effect = mocked_object_get
+
         self.get_platform_revision.return_value = 'REVISION'
+
+        self.redis_store.get.side_effect = lambda x: {
+            'callback-start_transaction_url': 'http://john:his-password@fakehost/start/{evse_id}/',
+            'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
+            'callback-session_url': 'http://localhost/session/{uid}/',
+            'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
+            'callback-reserve_now_url': 'http://localhost/reserve/{uid}/',
+        }.get(x, 'http://localhost/default/')
+
+        self.webhook_requests.post.return_value = FakeResponse(200, {'timeout': 90, 'result': 'ACCEPTED'})
+
+        self.uuid4.return_value = MockUuid4()
 
     def post(self, *args, **kwargs):
         return self._request('POST', *args, **kwargs)
@@ -169,8 +182,8 @@ class Simulation:
         return self._request('DELETE', *args, **kwargs)
 
     @staticmethod
-    def _request(method, url, json=None, **kwargs):
-        return FakeResponse(200, dict())
+    def _request(method, url, json=None, response=None, **kwargs):
+        return FakeResponse(200, response or {})
 
 
 def simulate_surrounding_world(func):
@@ -178,12 +191,17 @@ def simulate_surrounding_world(func):
     def wrapper(*args, **kwargs):
         with patch('ocpi22.tasks.requests') as tasks_requests, \
                 patch('ocpiconnector.management.commands.exchange_credentials.requests') as credentials_requests, \
-                patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision:
-
+                patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision, \
+                patch('ocpi22.util.redis_store',) as redis_store, \
+                patch('ocpi22.webhooks.requests') as webhook_requests, \
+                patch('ocpi22.ocpi.util.uuid.uuid4', return_value=MockUuid4()) as uuid4:
             simulation = Simulation(
                 tasks_requests,
                 credentials_requests,
-                get_platform_revision
+                get_platform_revision,
+                redis_store,
+                webhook_requests,
+                uuid4
             )
             return func(*args, simulation=simulation, **kwargs)
     return wrapper
@@ -203,3 +221,38 @@ class FakeResponse:
     @property
     def text(self):
         return self.data
+
+
+class MockUuid4():
+    number: int
+
+    def __init__(self, number=1):
+        self.number = number
+
+    @property
+    def hex(self):
+        return f'MOCK-{self.number}'
+
+
+class MockResponse:
+    def __init__(self, json_data, status_code, headers=None, data=None, reason='Mocked function'):
+        self.json_data = json_data
+        self._status_code = status_code
+        self.reason = reason
+        self.headers = headers
+        self.data = data
+
+    def json(self):
+        return self.json_data
+
+    @property
+    def text(self):
+        return self.json_data
+
+    def get_status_code(self):
+        return self._status_code
+
+    def set_status_code(self, value):
+        self._status_code = value
+
+    status_code = property(get_status_code, set_status_code)
