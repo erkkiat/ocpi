@@ -12,6 +12,8 @@ import requests
 from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
+
+from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
@@ -108,6 +110,7 @@ class Command(BaseCommand):
         parser.add_argument('token_a', type=str, help='The TOKEN_A provided by the other party')
         parser.add_argument('versions_endpoint_url', type=str, help='The versions URL provided by the other party')
 
+    @ocpi_exception_handler
     def handle(self, *args, **options):
         def heading(s):
             logging.info(f"\n\n{Style.BRIGHT}{s}\n{Style.RESET_ALL}")
@@ -145,7 +148,7 @@ class Command(BaseCommand):
                 roles=roles,
             )
             url = find_endpoint_url(endpoints, 'credentials', 'receiver') or \
-                  find_endpoint_url(endpoints, 'credentials', 'sender')
+                find_endpoint_url(endpoints, 'credentials', 'sender')
             if not url:
                 raise OCPIProtocolError(
                     f'CREDENTIALS - There is no Credentials Sender or Receiver url provided by the other party')
