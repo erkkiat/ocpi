@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Copy to Clipboard Example</title>
+</head>
+<body>
+
+<h1>Copy to Clipboard Example</h1>
+
+<!-- The content you want to copy -->
+<p id="content-to-copy">This is the content you will copy to clipboard.</p>
+
+<!-- The button to trigger the copy action -->
+<button onclick="copyToClipboard()">Copy to Clipboard</button>
+
+<script>
+  function copyToClipboard() {
+    // Get the content you want to copy
+    const content = document.getElementById("content-to-copy").innerText;
+
+    // Create a temporary textarea to hold the content
+    const tempTextarea = document.createElement('textarea');
+    tempTextarea.value = content;
+    document.body.appendChild(tempTextarea);
+
+    // Select and copy the content
+    tempTextarea.select();
+    document.execCommand('copy');
+
+    // Remove the temporary textarea
+    document.body.removeChild(tempTextarea);
+
+    // Notify the user that the content has been copied
+    alert('Content copied to clipboard!');
+  }
+</script>
+
+</body>
+</html>
