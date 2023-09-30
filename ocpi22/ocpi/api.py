@@ -320,7 +320,7 @@ class CdrViewSet(OCPIListModelMixin,
 def make_my_credentials_dict(request, our_token) -> dict:
     return dict(
         token=our_token,
-        url=build_absolute_uri(reverse('base-versions', request=request)),
+        url=build_absolute_uri(reverse('base-versions')),
 
         # Todo: Check this, should be "Retrieves the credentials object to access the server’s platform"
         roles=get_our_roles(),
