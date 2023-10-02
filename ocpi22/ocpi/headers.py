@@ -29,14 +29,14 @@ def make_headers(token_base64: str, to: Party = None, sender: Party = None, extr
     result = {
         "Authorization": f'Token {token_base64}',
         'content-type': 'application/json',
+        'accept': 'application/json',
         'platform-revision': get_platform_revision()
     }
     if extra:
         for key, value in extra.items():
             result[key.replace('HTTP_', '').replace('_', '-').lower()] = value
-    if to and sender:
-        result.update({
-            "OCPI-from-country-code": sender.country_code, "OCPI-from-party-id": sender.party_id,
-            "OCPI-to-country-code": to.country_code, "OCPI-to-party-id": to.party_id,
-        })
+    if to:
+        result.update({"OCPI-to-country-code": to.country_code, "OCPI-to-party-id": to.party_id,})
+    if sender:
+        result.update({"OCPI-from-country-code": sender.country_code, "OCPI-from-party-id": sender.party_id})
     return result

@@ -3,7 +3,7 @@ from functools import wraps
 from django.db import IntegrityError
 from django.http import HttpRequest
 from rest_framework import status
-from rest_framework.exceptions import ValidationError, NotFound
+from rest_framework.exceptions import ValidationError, NotFound, APIException
 
 from ocpi22.ocpi.util import OCPIBadRequestResponse, Ocpi
 from ocpiconnector.exceptions import WrongRole
@@ -60,11 +60,19 @@ def ocpi_exception_handler(func):
                      status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                      http_status=status.HTTP_400_BAD_REQUEST),
             AssertionError:
-                dict(msg='Some data is not matching requirements: {}',
+                dict(msg='Data is not matching requirements: {}',
                      status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                      http_status=status.HTTP_400_BAD_REQUEST),
             ValueError:
                 dict(msg='ValueError: {}',
+                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                     http_status=status.HTTP_400_BAD_REQUEST),
+            OSError:
+                dict(msg='Error: {}',
+                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                     http_status=status.HTTP_400_BAD_REQUEST),
+            APIException:
+                dict(msg='TypeError: {}',
                      status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                      http_status=status.HTTP_400_BAD_REQUEST),
             WrongRole:

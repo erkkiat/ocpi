@@ -470,10 +470,7 @@ def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwa
         raise NotImplementedError(f'Method {method} is not supported for ocpi_credentials_request')
 
     logging.info(f'{method.upper()} {url} with token {token_base64[:2]}****')
-    headers = dict(
-        Authorization=f'Token {token_base64}',
-        Accept='application/json'
-    )
+    headers = make_headers(token_base64)  # No routing headers for Credentials or Versions
     response = function(
         url, headers=headers, timeout=timeout, *args, **kwargs
     )

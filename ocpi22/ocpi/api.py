@@ -366,10 +366,12 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     @requires_premium
     @csrf_exempt
     def post(self, request: Request, *_args, **_kwargs):
-        assert hasattr(request, 'credentials'), f'Posting to this endpoint requires OCPI Credentials'
+        credentials: Credentials = getattr(request, 'credentials', None)
+        assert credentials, f'Posting to this endpoint requires OCPI Credentials'
+        assert not credentials.theirs, \
+            f'Credentials exist already, use PUT to update'
         data = request.data
         data = data.get('data', data)
-        credentials: Credentials = request.credentials
         credentials.theirs = data.get('token')
         credentials.url = data.get('url')
         if not credentials.ours:

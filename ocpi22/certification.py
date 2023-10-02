@@ -55,7 +55,6 @@ class CertificationSteps:
                                                            subtopic='', customer_initiates=False)
 
     class CredentialsCertificationSteps:
-        sender = register_certification_step(OcpiModuleEnum.CREDENTIALS, 'Establish new Credentials as a sender')
         receiver = register_certification_step(OcpiModuleEnum.CREDENTIALS, 'Establish new Credentials as a receiver',
                                                customer_initiates=False)
 

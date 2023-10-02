@@ -25,8 +25,9 @@ from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.ocpi.util import OcpiModule, OCPIProtocolError
+from ocpi22.ocpi.util import OcpiModule, OCPIProtocolError, OCPIResponse
 from ocpi22.util import ModelUtilMixin, generate_random_token, build_absolute_uri
+from ocpiconnector.exception_handler import ocpi_exception_handler
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
@@ -57,7 +58,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name_plural = _('roaming partners')
 
     # The credentials token used only for the initial connection, and is communicated manually between parties
-    token_a = models.CharField(max_length=64, default=secrets.token_hex(32), verbose_name=_('Token A'))
+    token_a = models.CharField(max_length=64, blank=True, default='', verbose_name=_('Token A'))
 
     # Our credentials token used for the actual communication
     ours = models.CharField(max_length=64, blank=True, default='', verbose_name=_('Our token'))
@@ -87,6 +88,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def delete(self, using=None, keep_parents=False):
         self.soft_delete()
+
+    def reset(self):
+        self.theirs = None
+        self.ours = None
+        self.url = None
+        self.save(update_fields=['ours', 'theirs', 'url'])
 
     # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True, verbose_name=_('Last updated'))
@@ -125,8 +132,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def ours_base64(self):
         if not self.ours:
-            self.ours = generate_random_token()
-            self.save(update_fields=['ours'])
+            return ''
         return self.base64(self.ours)
 
     def theirs_base64(self):
@@ -305,28 +311,26 @@ class NewConnection(forms.Form):
     token_a = forms.CharField(max_length=64)
 
 
+@ocpi_exception_handler
 def new_connection(request):
     if not settings.PREMIUM:
         import premium
         premium.premium_message(request)
     else:
-        try:
-            if request.method == 'POST':
-                form = NewConnection(request.POST)
-                # ic(request.POST, form.fields)
-                if form.is_valid():
-                    from ocpiconnector.management.commands import exchange_credentials
-                    command = exchange_credentials.Command()
-                    result = command.handle(token_a=form.cleaned_data.get('token_a'),
-                                            versions_endpoint_url=form.cleaned_data.get('versions_url'))
-                    messages.success(request,
-                                     result if isinstance(result, str) else _('A new connection has been established'))
-                else:
-                    messages.error(request, form.errors)
-        except (SyntaxError, OCPIProtocolError, ValueError, KeyError, ImproperlyConfigured) as e:
-            msg = str(e)
-            logging.error(msg, request)
-            messages.error(request, msg)
+        if request.method == 'POST':
+            form = NewConnection(request.POST)
+            # ic(request.POST, form.fields)
+            if form.is_valid():
+                from ocpiconnector.management.commands import exchange_credentials
+                command = exchange_credentials.Command()
+                result = command.handle(token_a=form.cleaned_data.get('token_a'),
+                                        versions_endpoint_url=form.cleaned_data.get('versions_url'))
+                if isinstance(result, OCPIResponse):
+                    result = result.data.get('status_message')
+                messages.success(request,
+                                 result if isinstance(result, str) else _('A new connection has been established'))
+            else:
+                messages.error(request, form.errors)
 
     from util import reverse
     return HttpResponseRedirect(reverse('admin:ocpi22_credentials_changelist'))
@@ -337,8 +341,10 @@ def credentials_pre_save(sender, instance, *_args, **_kwargs):
     credentials: Credentials = instance
     if not credentials.valid:
         credentials.connection_status = choices.SUSPENDED
-    if not credentials.token_a:
-        credentials.token_a = generate_random_token()
+        credentials.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
+    if credentials.ours and credentials.theirs and credentials.token_a:
+        credentials.token_a = ''
+        credentials.save(update_fields=['token_a'])
 
 
 @receiver(post_save, sender=Credentials)

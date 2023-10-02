@@ -1,5 +1,6 @@
 import base64
 import binascii
+from enum import Enum
 from functools import cache
 from typing import Optional
 
@@ -18,10 +19,13 @@ from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpiconnector.settings import PUBLIC_VIEWS
 
 
-class OcpiAuthTypes:
+class OcpiAuthTypes(Enum):
     NONE = 0
     TOKEN_A = 1
     FINAL = 2
+
+    def __eq__(self, other):
+        return self.value == other or self is other
 
 
 def check_auth_token(request, token: str) -> bool:
@@ -43,11 +47,12 @@ def check_auth_token(request, token: str) -> bool:
         token_ascii = base64.b64decode(token).decode('ascii')
         request.ocpi_auth = OcpiAuthTypes.NONE
         request.ocpi_party = None
+        registering_credentials = request.path in allowed_for_token_a()
 
         # First check for TOKEN_A, are we still getting to know each other?
         credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
         if credentials_matches.count():
-            if request.path not in allowed_for_token_a():
+            if not registering_credentials:
                 raise exceptions.NotAuthenticated(  # HTTP 401
                     f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
                 )
@@ -66,8 +71,9 @@ def check_auth_token(request, token: str) -> bool:
                 request.ocpi_auth = OcpiAuthTypes.FINAL
                 request.credentials = credentials
             else:
-                raise exceptions.NotAuthenticated(  # HTTP 401
+                raise NotAuthenticated(  # HTTP 401
                     f'The token "{token}" (ascii {token_ascii}) doesn\'t match any of our current credentials'
+                    if settings.DEBUG else ''
                 )
 
             sender_party = get_sender_party(request.headers)
@@ -79,7 +85,7 @@ def check_auth_token(request, token: str) -> bool:
                 )
             else:
                 request.ocpi_party = get_credentialsrole(request.credentials, party=sender_party)
-                if not request.ocpi_party:
+                if not request.ocpi_party and not registering_credentials:
                     request.credentials = None
                     raise NotAuthenticated(f'Sender party {sender_party} is not allowed for these credentials')
 

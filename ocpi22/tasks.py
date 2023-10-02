@@ -111,7 +111,7 @@ else:
 def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
                       from_country_code: str, from_party_id: str, method: str = 'put',
-                      credentials_id=None, title=None, **_kwargs) -> Optional[dict]:
+                      credentials_id=None, title=None, **kwargs) -> Optional[dict]:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
     from ocpi22 import logging
@@ -128,9 +128,9 @@ def send_ocpi_request(data, url: str, token_base64: str,
         logging.info(f'Logged the message to Sentry in {float(t):.2f} seconds')
 
         if isinstance(data, dict):
-            kwargs = dict(url=url, json=data, headers=headers)
+            kwargs.update(dict(url=url, json=data, headers=headers))
         else:
-            kwargs = dict(url=url, data=data, headers=headers)
+            kwargs.update(dict(url=url, data=data, headers=headers))
 
         # Call the specified method in requests, for example, if method == 'put', call requests.put
         function = getattr(requests, method.lower())

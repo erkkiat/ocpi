@@ -151,9 +151,6 @@ class OCPIBaseView(routers.APIRootView):
             versions=request.build_absolute_uri(
                 reverse('base-versions', request=request)
             ),
-            # openapi=request.build_absolute_uri(
-            #     reverse('openapi-schema')
-            # ),
         )
         return Response(result)
 

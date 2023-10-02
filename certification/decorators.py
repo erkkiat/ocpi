@@ -96,9 +96,9 @@ def certification_step(topic, action: str, description: str = None,
             ocpi_response = func(*args, **kwargs)
             if not settings.CERTIFICATION_MODE:
                 return ocpi_response
-            if not step.result_reported:
-                success = getattr(ocpi_response, 'status_code', None) in {status.HTTP_200_OK, status.HTTP_201_CREATED}
-                step.passed(result=success)
+            success = ocpi_response is True or \
+                getattr(ocpi_response, 'status_code', None) in {status.HTTP_200_OK, status.HTTP_201_CREATED}
+            step.passed(result=success)
             return ocpi_response
         return wrapper
     return decorator

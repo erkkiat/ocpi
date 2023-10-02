@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from cachetools import cached
@@ -11,8 +11,8 @@ from ocpiconnector import settings
 
 @dataclass(eq=True, frozen=True)
 class Party:
-    country_code: str
-    party_id: str
+    country_code: str = field(default='')
+    party_id: str = field(default='')
 
     def __post_init__(self):
         if self.country_code and self.country_code.upper() not in choices.COUNTRIES_ISO_2_SET:

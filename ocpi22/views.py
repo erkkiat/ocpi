@@ -23,7 +23,10 @@ from ocpiconnector.ocpi_identities import ocpi_platform
 @permission_classes([AllowAny])
 def home(request):
     # Return JSON when acting as the OCPI Versions endpoint
-    if settings.RENDER_ONLY_JSON or (request.META and 'application/json' in request.META.get('HTTP_ACCEPT', '')):
+    accept = request.META.get('HTTP_ACCEPT', '')
+    content_type = request.META.get('HTTP_CONTENT_TYPE', '')
+    expected_type = 'application/json'
+    if settings.RENDER_ONLY_JSON or expected_type in accept or expected_type in content_type:
         return OCPIResponse(get_versions_dict())
 
     return render(request, template_name='index.html')

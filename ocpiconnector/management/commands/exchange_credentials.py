@@ -13,6 +13,9 @@ from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
 
+from certification.decorators import certification_step
+from ocpi22.choices import OcpiModuleEnum
+from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse
 
@@ -111,13 +114,15 @@ class Command(BaseCommand):
         parser.add_argument('versions_endpoint_url', type=str, help='The versions URL provided by the other party')
 
     @ocpi_exception_handler
-    def handle(self, *args, **options):
+    @certification_step(OcpiModuleEnum.CREDENTIALS, 'Establish new Credentials as a sender')
+    def handle(self, *args, **options) -> bool:
         def heading(s):
             logging.info(f"\n\n{Style.BRIGHT}{s}\n{Style.RESET_ALL}")
 
         token_a = str(options['token_a'])
         token_a_base64 = base64.b64encode(token_a.encode('ascii')).decode('ascii')
         url = options['versions_endpoint_url']
+        assert settings.HOSTNAME not in url, 'Cannot register Credentials with ourselves'
         our_token = generate_random_token()
         try:
             heading('1) Getting version info from other party '
@@ -150,12 +155,16 @@ class Command(BaseCommand):
             url = find_endpoint_url(endpoints, 'credentials', 'receiver') or \
                 find_endpoint_url(endpoints, 'credentials', 'sender')
             if not url:
+                if credentials:
+                    credentials.reset()
                 raise OCPIProtocolError(
                     f'CREDENTIALS - There is no Credentials Sender or Receiver url provided by the other party')
 
             credentials_response = ocpi_credentials_post(url, token_a_base64, json=data_to_send, timeout=15)
             if credentials_response.status_code != status.HTTP_200_OK:
                 msg = f'CREDENTIALS - Endpoints returned HTTP {credentials_response.status_code} from Credentials Receiver'
+                if credentials:
+                    credentials.reset()
                 raise OCPIProtocolError(msg)
             data = credentials_response.json()
             data = data.get('data', data)
@@ -164,10 +173,12 @@ class Command(BaseCommand):
                 serializer.save()
             else:
                 msg = f'CREDENTIALS - Response from Credentials Receiver is invalid: {serializer.errors}'
+                if credentials:
+                    credentials.reset()
                 raise OCPIProtocolError(msg)
             return True
 
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+        except OSError as e:
             logging.error(f'CREDENTIALS - Cannot reach the specified endpoint: {e}')
             print(f'*** Cannot reach the URL you specified: {str(e)}')
             raise
