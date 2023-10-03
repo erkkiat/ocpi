@@ -12,6 +12,7 @@ from django.db.models import QuerySet
 from django.utils.module_loading import import_string
 from requests import Response
 from rest_framework import status
+from rest_framework.exceptions import APIException
 from rest_framework.pagination import LimitOffsetPagination
 
 from ocpi22 import logging
@@ -455,7 +456,7 @@ def generate_cdr_uid():
     return generate_reference('C*', OcpiRolesEnum.CPO)
 
 
-class OCPIProtocolError(SyntaxError):
+class OCPIProtocolError(APIException):
     errno = None
 
     def __init__(self, msg, errno=None):

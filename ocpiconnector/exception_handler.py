@@ -72,7 +72,7 @@ def ocpi_exception_handler(func):
                      status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                      http_status=status.HTTP_400_BAD_REQUEST),
             APIException:
-                dict(msg='TypeError: {}',
+                dict(msg='API error: {}',
                      status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                      http_status=status.HTTP_400_BAD_REQUEST),
             WrongRole:
