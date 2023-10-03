@@ -337,14 +337,15 @@ def new_connection(request):
 
 
 @receiver(pre_save, sender=Credentials)
-def credentials_pre_save(sender, instance, *_args, **_kwargs):
+def credentials_pre_save(sender, instance, *_args, raw=False, **_kwargs):
+    if raw:  # Skip this if installing fixtures
+        return
     credentials: Credentials = instance
     if not credentials.valid:
         credentials.connection_status = choices.SUSPENDED
         credentials.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
     if credentials.ours and credentials.theirs and credentials.token_a:
         credentials.token_a = ''
-        credentials.save(update_fields=['token_a'])
 
 
 @receiver(post_save, sender=Credentials)

@@ -43,6 +43,10 @@ def compare_lists_recursively(received, expected, path='', label1='received', la
 
 
 def compare_dicts_recursively(received, expected, path='', label='') -> bool:
+    """
+    Compare the content and structure of two dicts recursively. "***" matches anything.
+    When a list is encountered, it is compared using compare_lists_recirsively.
+    """
     # ic(path, label, received, expected)
     output = ''
     if not isinstance(received, (dict, OrderedDict)):
@@ -65,7 +69,7 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
             result = result and compare_dicts_recursively(received_value, expected_value, path=f'{path}.{key}')
         elif isinstance(received_value, list) and isinstance(expected_value, list):
             result = result and compare_lists_recursively(received_value, expected_value, path=f'{path}.{key}')
-        elif expected_value != received_value:
+        elif expected_value != received_value and (expected_value != '***' and received_value != '***'):
             output = f'{path}.{key} is not equal, should be "{expected_value}", but is "{received_value}" instead'.strip('.')
             result = False
     # if label != 'expected':

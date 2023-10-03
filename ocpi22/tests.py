@@ -1240,6 +1240,7 @@ class UpdatePartiesTest(TestCase):
                             'OCPI-to-country-code': 'FI',
                             'OCPI-to-party-id': 'HUB',  # The recipient comes from the Credentials in the fixture
                             'content-type': 'application/json',
+                            'accept': 'application/json',
                             'platform-revision': 'REVISION'}
         expected_data = {'contract_id': 'CONTRACT',
                          'country_code': 'FI',
@@ -1289,6 +1290,7 @@ class TestCredentials(TestCase):
         }
         return MockResponse(response_data[url], 200)
 
+    @staticmethod
     def mocked_credentials_post(url, *_args, **_kwargs):
         # ic(_args, _kwargs)
         response = {
@@ -1307,6 +1309,7 @@ class TestCredentials(TestCase):
 
         return MockResponse(response, 200)
 
+    @staticmethod
     def mocked_credentials_delete(url, *_args, **_kwargs):
         # ic(_args, _kwargs)
         response = {
@@ -1342,10 +1345,12 @@ class TestCredentials(TestCase):
         # Let's examine what was actually sent
         args, kwargs = mock_get.call_args
 
-        expected_headers = {'Accept': 'application/json', 'Authorization': 'Token OTE4Mjcz'}
+        expected_headers = {'Authorization': 'Token OTE4Mjcz', 'accept': 'application/json',
+                            'content-type': 'application/json',
+                            'platform-revision': '***'}
 
-        self.assertDictEqual(kwargs['headers'], expected_headers,
-                             'Headers differ from expected')
+        self.assertTrue(compare_dicts_recursively(kwargs['headers'], expected_headers),
+                        'Headers differ from expected')
 
         args, kwargs = mock_post.call_args
 

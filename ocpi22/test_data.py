@@ -1376,6 +1376,7 @@ class AppChargingData:
         'OCPI-to-country-code': 'FI',
         'OCPI-to-party-id': 'CPO',
         'platform-revision': 'REVISION',
+        'accept': 'application/json',
         'content-type': 'application/json'
     },
         'json': {'authorization_reference': 'REFERENCE-123',
@@ -1401,6 +1402,7 @@ class AppChargingData:
         'OCPI-to-country-code': 'FI',
         'OCPI-to-party-id': 'CPO',
         'content-type': 'application/json',
+        'accept': 'application/json',
         'platform-revision': 'REVISION'},
         'json': {'authorization_reference': 'REFERENCE-123',
                  'evse_uid': 'HELSINKI-3',
