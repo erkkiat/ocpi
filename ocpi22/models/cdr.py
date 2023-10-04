@@ -72,7 +72,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
                                   verbose_name=_('Session ID'))
 
     # The internal order number or other identifier from the CPO billing system, not part of OCPI
-    internal_reference = models.CharField(max_length=36, blank=True, null=True, unique=True,
+    internal_reference = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH,
+                                          blank=True, null=True, unique=True,
                                           verbose_name=_('Internal reference'))
 
     def session_url(self):
@@ -104,13 +105,13 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # real-time authorization or StartSession, this field SHALL contain the same value.
     # When different authorization_reference values have been given by the eMSP that are relevant to this Session,
     # the last given value SHALL be used here.
-    authorization_reference = models.CharField(max_length=36, blank=True, default='',
+    authorization_reference = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, blank=True, default='',
                                                verbose_name=_('Authorization reference'))
 
     # Location where the charging session took place, including only the relevant EVSE and Connector.
     # Uniquely identifies the location within the CPO’s platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    cdr_location_id = models.CharField(max_length=36, verbose_name=_('Location ID'))
+    cdr_location_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_('Location ID'))
 
     # Street/block name and house number if available.
     cdr_location_address = models.CharField(max_length=45, verbose_name=_('Location address'))
@@ -139,7 +140,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # For example a database unique ID or the actual EVSE ID. This field can never be changed, modified or renamed.
     # This is the technical identification of the EVSE, not to be used as human readable identification,
     # use the field: evse_id for that.
-    cdr_location_evse_uid = models.CharField(max_length=36, verbose_name=_('EVSE UID'))
+    cdr_location_evse_uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_('EVSE UID'))
 
     # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects.".
@@ -150,7 +151,8 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         return self.cdr_location_evse_id
 
     # Identifier of the connector within the EVSE.
-    cdr_location_connector_id = models.CharField(max_length=36, verbose_name=_('Connector ID'))
+    cdr_location_connector_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH,
+                                                 verbose_name=_('Connector ID'))
 
     # The standard of the installed connector.
     cdr_location_connector_standard = models.CharField(max_length=21, choices=Ocpi.STANDARD_CHOICES,

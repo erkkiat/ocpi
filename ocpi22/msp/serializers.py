@@ -71,7 +71,7 @@ class StartChargingSerializer(serializers.Serializer):
         help_text='The contract ID for the EV driver who is charging'
     )
     internal_reference = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='Optional session ID from the MSP platform or order number from the MSP billing system',
         required=False, allow_null=True
     )

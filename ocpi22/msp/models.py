@@ -66,7 +66,8 @@ class OCPITokenField(models.CharField):
 
 
 class Authorization(models.Model):
-    authorization_reference = models.CharField(max_length=36, blank=True, db_index=True, default='',
+    authorization_reference = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH,
+                                               blank=True, db_index=True, default='',
                                                verbose_name=_('Authorization reference'))
     session = models.OneToOneField(
         Session, related_name='authorization', on_delete=models.SET_NULL, blank=True, null=True,

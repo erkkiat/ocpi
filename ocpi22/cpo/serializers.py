@@ -293,7 +293,7 @@ class StartTransactionSerializer(serializers.Serializer):
         help_text='The hidden ID of the RFID token, separate from the visual one'
     )
     internal_reference = serializers.CharField(
-        max_length=36,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='The session ID on the CPO platform or order number from the CPO billing system',
         required=False, allow_null=True
     )
