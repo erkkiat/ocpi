@@ -64,8 +64,8 @@ def find_credentials(party: Party) -> Optional['Credentials']:
         if roles_count > 1:
             logging.error(f'{settings.HOSTNAME}: Multiple Credentials for {str(party)} in the database')
         role = roles.first()
-        if not role.credentials.valid:
-            # We found Credentials for a direct route, but they are not active
+        if not role or not role.credentials or not role.credentials.valid:
+            # We may have found Credentials for a direct route, but they are not active
             return None
         return role.credentials
 
