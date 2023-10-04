@@ -399,8 +399,12 @@ def send_start_command(request, evse: Evse, token: Union[Token, str], connector_
             authorization_reference=authorization_reference,
         )
         if route.version == '2.2':
-            data.pop('connector_id', '')
-        serializer = StartSessionSerializer(instance=data)
+            data.pop('connector_id', None)
+        serializer = StartSessionSerializer(data=data)
+        if not serializer.is_valid():
+            logging.error('Malformed outbound data in send_start_command() (system bug)')
+            logging.error(serializer.errors)
+            raise ValidationError('Malformed outbound data (system bug)')
         return ocpi_post(urljoin(f'{route.url}/', 'START_SESSION'), route.token_base64,
                          to=Party(country_code, party_id),
                          sender=get_our_party(OcpiRolesEnum.EMSP),
