@@ -345,6 +345,15 @@ class OCPIResponse(Response):
         super().__init__(result, status=kwargs.pop('status', http_status), *args, **kwargs)
 
 
+class OCPIResponseUrlParametersRequired(OCPIResponse):
+    def __init__(self, module_name):
+        super().__init__(status_message='According to OCPI 2.2 specification, the country_code, '
+                                        f'party_id and {module_name} uid SHALL be provided as URL segments. For example: '
+                                        f'PUT To URL: https://www.server.com/ocpi/2.2/{module_name}s/NL/TNM/12',
+                         status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                         http_status=status.HTTP_400_BAD_REQUEST)
+
+
 class OCPIBadRequestResponse(OCPIResponse):
     def __init__(self, message='no message supplied', *args, **kwargs):
         super().__init__(

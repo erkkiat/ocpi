@@ -83,10 +83,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     def put(self, request, data, credentialsrole, uid=None, patch=False,
             version='2.2.1', logentry=None, **_kwargs):
         if not request.party_specified_in_url:
-            return OCPIResponse('According to OCPI 2.2 specification, the country_code, '
-                                'party_id and Location uid SHALL be provided as URL segments. For example: '
-                                'PUT To URL: https://www.server.com/ocpi/emsp/2.2/locations/NL/TNM/12',
-                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+            return OCPIResponseUrlParametersRequired('location')
 
         uid = uid or data.get('id')
         version = version or request.version

@@ -93,6 +93,9 @@ class TokenViewSet(OCPIListModelMixin,
             logentry=None, **_kwargs):
         uid = uid or data.get('uid')
 
+        if not request.party_specified_in_url:
+            return OCPIResponseUrlParametersRequired('token')
+
         token: Token = Token.get_if_exists(uid__iexact=uid, ocpi_master=request.credentialsrole)
         created = bool(not token)
         serializer = TokenSerializer(data=data, instance=token, partial=patch,
@@ -452,10 +455,8 @@ class TariffViewSet(OCPIListModelMixin,
         uid = uid or data.get('id')
 
         if not request.party_specified_in_url:
-            return OCPIResponse('According to OCPI 2.2 specification, the country_code, '
-                                'party_id and Tariff uid SHALL be provided as URL segments. For example: '
-                                'PUT To URL: https://www.server.com/ocpi/emsp/2.2/tariffs/NL/TNM/12',
-                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+            return OCPIResponseUrlParametersRequired('tariff')
+
         tariff: Tariff = Tariff.get_if_exists(uid__iexact=uid, ocpi_master=credentialsrole, archived=False)
         created = bool(not tariff)
         if tariff and tariff.is_ours():
@@ -579,10 +580,8 @@ class SessionViewSet(OCPIListModelMixin,
     def put(cls, request, country_code=None, party_id=None, uid=None, partial=False, data=None, tryagain=False,
             logentry=None, **kwargs) -> OCPIResponse:
         if not request.party_specified_in_url:
-            return OCPIResponse('According to OCPI 2.2 specification, the country_code, '
-                                'party_id and Session uid SHALL be provided as URL segments. For example: '
-                                'PUT To URL: https://www.server.com/ocpi/emsp/2.2/sessions/NL/TNM/12',
-                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+            return OCPIResponseUrlParametersRequired('session')
+
         uid = uid or data.get('id')
         session: Session = Session.get_if_exists(
             uid__iexact=uid, ocpi_master=request.credentialsrole
