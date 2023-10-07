@@ -210,9 +210,8 @@ class CommandsViewSet(GenericViewSet):
             )
 
             if session and session.status == Session.COMPLETED:
-                raise APIException(f'Unable to complete {command_prefix} '
-                                   'because a session with authorization reference '
-                                   f'{authorization_reference} has already been completed.')
+                raise APIException(f'Unable to complete command {command_prefix} '
+                                   'because the session has already been completed.')
 
             ocpi_response_url = serializer.validated_data.pop('response_url')
             token_id = session.cdr_token_uid if session else get_token_id(token)
