@@ -411,7 +411,7 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
     search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'cdr_token_uid',
                      'uid', 'authorization_reference']
     readonly_fields = ['uid', 'ocpi_master']
-    list_filter = ['status', 'connector__standard']
+    list_filter = ['status', 'last_updated']
 
     def has_add_permission(self, request, obj=None) -> bool:
         return False
