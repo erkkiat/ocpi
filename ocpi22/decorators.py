@@ -1,3 +1,4 @@
+import cProfile
 import types
 from functools import wraps
 from typing import Union
@@ -123,9 +124,23 @@ def requires_credentialsrole(func):
 
 def requires_last_updated(func):
     """For most PATCH requests, the last_updated field is required by the OCPI specification"""
+
     def wrapper(self, request, *args, **kwargs):
         data = request.data
         if 'last_updated' not in data:
             return OCPIBadRequestResponse('The field last_updated is required in the request body when doing PATCH.')
         return func(self, request, *args, **kwargs)
+
+    return wrapper
+
+
+def profile(func):
+    def wrapper(*args, **kwargs):
+        profiler = cProfile.Profile()
+        profiler.enable()
+        result = func(*args, **kwargs)
+        profiler.disable()
+        profiler.print_stats(sort="cumulative")
+        return result
+
     return wrapper
