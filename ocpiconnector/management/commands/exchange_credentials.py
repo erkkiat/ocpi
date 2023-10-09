@@ -1,7 +1,7 @@
 import base64
 from json import JSONDecodeError
 
-from icecream import ic
+import cachetools
 from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated
 
@@ -17,7 +17,7 @@ from certification.decorators import certification_step
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.exception_handler import ocpi_exception_handler
-from util import reverse
+from util import reverse, HashableDict
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
 from ocpi22.ocpi.serializers import CredentialsSerializer
@@ -27,22 +27,23 @@ from ocpiconnector.ocpi_identities import ROLE_OPTIONS
 
 from colorama import Style
 
+cache = cachetools.Cache(maxsize=len(ROLE_OPTIONS))
 
-def get_our_roles(source: dict = os.environ) -> list:
+
+@cachetools.cached(cache)
+def get_our_roles(source: dict = None) -> list:
     """
     Get the OCPI roles list of dicts for sending during Credentials exchange
 
-    >>> get_our_roles(source=dict(CPO='FI*EON', HUB='FI*HUB', \
+    >>> get_our_roles(source=HashableDict(CPO='FI*EON', HUB='FI*HUB', \
     BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://example.com'))
     [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'HUB'}]
 
-    >>> get_our_roles(source=dict())
-    []
-
     @param source: For testing purposes, you can set the source for role settings
-    @return:
+    @return: a list of roles formatted for Credentials registration
     """
 
+    source = source or os.environ
     roles = []
     business_name = source.get('BUSINESS_NAME', 'N/A')
     website = source.get('BUSINESS_WEBSITE', '')

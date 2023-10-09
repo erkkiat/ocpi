@@ -3,7 +3,7 @@ from rest_framework import fields, serializers
 from rest_framework.exceptions import ValidationError
 
 from ocpi22.choices import AuthorizationEnum
-from ocpi22.messages import default_error_messages
+from util import default_error_messages
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token

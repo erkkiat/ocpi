@@ -177,3 +177,25 @@ class RedisStore:
 
 
 redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
+default_error_messages = dict(
+    object_missing='There is no {name} with UID `{uid}` in our database',
+    no_connector_in_evse='There is no connector with UID `{uid}` in EVSE `{evse}`.',
+    location_evse_missing='There is no EVSE with UID `{evse}` in location `{location}`.',
+)
+
+
+class HashableDict(dict):
+    def __hash__(self):
+        return hash(tuple(sorted(super().items())))
+
+    def __setitem__(self, key, value):
+        raise RuntimeError('HashableDict is immutable')
+
+    def __delitem__(self, key):
+        raise RuntimeError('HashableDict is immutable')
+
+    def update(self, **new_kwargs):
+        raise RuntimeError('HashableDict is immutable')
+
+    def clear(self):
+        raise RuntimeError('HashableDict is immutable')

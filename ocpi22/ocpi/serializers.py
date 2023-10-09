@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 
 from ocpi22 import choices
 from ocpi22.choices import TOKEN_TYPE_CHOICES, CONNECTION_STATUS_CHOICES, OcpiRolesEnum
-from ocpi22.messages import default_error_messages
+from util import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials
