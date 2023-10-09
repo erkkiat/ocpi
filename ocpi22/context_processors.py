@@ -3,6 +3,7 @@ from datetime import datetime
 
 from django.conf import settings
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from ocpi22.issues import issue_count, get_issues
@@ -36,6 +37,7 @@ def _get_environment(request):
         expiration_alert=settings.EXPIRES_ON
         if settings.EXPIRES_ON and (settings.EXPIRES_ON - datetime.now()).days <= settings.WARN_BEFORE_DAYS else None,
         expires_on=settings.EXPIRES_ON,
+        date_now=timezone.now(),
         sections=(
             dict(
                 name='charge points',

@@ -8,7 +8,8 @@ from django.utils.datetime_safe import datetime
 from rest_framework import status
 
 from ocpi22.choices import OcpiModuleEnum
-from util import RedisStore
+from ocpi22.messages import messages
+from util import RedisStore, reverse
 from ocpiconnector import settings
 
 certification_step_list = defaultdict(list)
@@ -17,11 +18,11 @@ persistent_storage = RedisStore(namespace='certify')
 
 @dataclass
 class CertificationStep:
-    topic: str
-    action: str
-    description: str
+    topic: str  # The heading
+    action: str  # The description
     customer_initiates: bool
     subtopic: str
+    view: str = field(default='')  # Used for getting the URL using reverse()
     result_reported: bool = field(default=False)
     result: bool = field(default=None)
     passed_at: datetime = field(default=None)
@@ -62,29 +63,39 @@ class CertificationStep:
         hexdata = hashlib.md5(str(key).encode()).hexdigest()
         return int(hexdata, 16)
 
+    def url(self):
+        return reverse(self.view, version='2.2.1') if self.view else '#'
 
-def register_certification_step(topic, action: str, description: str = None,
-                                customer_initiates: bool = True, subtopic: str = None):
-    """Register a certification step so that we can show the certification progress to the user"""
+    @property
+    def has_link(self) -> bool:
+        return bool(self.view)
+
+
+def register_certification_step(topic, action: str,
+                                customer_initiates: bool = True, subtopic: str = None, view: str = None):
+    """
+    Register a certification step so that we can show the certification progress to the user
+    """
 
     global certification_step_list
     if isinstance(topic, OcpiModuleEnum):
         topic = topic.value
     # print(f'*** Registering certification_step: {topic=} {action=} {description=} {customer_initiates=}')
-    step = CertificationStep(topic, action, description, customer_initiates, subtopic)
+    step = CertificationStep(topic, action, customer_initiates, subtopic, view)
     certification_step_list[topic].append(step)
     return step
 
 
-def certification_step(topic, action: str, description: str = None,
-                       customer_initiates: bool = True, subtopic: str = None):
+def certification_step(topic, action: str, customer_initiates: bool = True, subtopic: str = None, view: str = None):
     """
     Decorator which notes the response from each action
     so that we can track and show the certification progress to the user
     """
 
     if settings.CERTIFICATION_MODE:
-        step = register_certification_step(topic, action, description, customer_initiates, subtopic)
+        step = register_certification_step(
+            topic, action, customer_initiates=customer_initiates, subtopic=subtopic, view=view
+        )
     else:
         return lambda func: func
 
@@ -99,6 +110,7 @@ def certification_step(topic, action: str, description: str = None,
             success = ocpi_response is True or \
                 getattr(ocpi_response, 'status_code', None) in {status.HTTP_200_OK, status.HTTP_201_CREATED}
             step.passed(result=success)
+            # Todo: Show recently passed steps as a chronological list on home page
             return ocpi_response
         return wrapper
     return decorator

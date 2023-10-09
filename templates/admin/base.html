@@ -125,27 +125,36 @@
 															{{ user.username }}
 														</a>
 														<ul class="dropdown-menu">
-															<li><a class="dropdown-item" href="/">
-																<i class="fa fa-code mr-2"></i>
-																{% trans 'Developer Central' %}
-															</a></li>
-															{% if user.has_usable_password %}
-															<li><a class="dropdown-item" href="{% url 'admin:password_change' %}">
-																<i class="fa fa-lock mr-2"></i>
-																{% translate 'Change password' %}
-															</a></li>
-															{% endif %}
-															{% if expires_on %}
-															<li><a class="dropdown-item disabled text-warning" href="#">
-																<i class="fa fa-clock mr-2"></i>
-																{% blocktranslate with expiration=expires_on|naturaltime %}Instance expires<br>{{ expiration }}{% endblocktranslate %}
-															</a></li>
-															{% endif %}
-															<li><a class="dropdown-item" href="{% url 'admin:logout' %}">
-																<i class="fa fa-sign-out mr-2"></i>
-																{% trans 'Log out' %}
-															</a></li>
-														</ul>
+                                                            <li><a class="dropdown-item" href="/">
+                                                                <i class="fa fa-code mr-2"></i>
+                                                                {% trans 'Developer Central' %}
+                                                            </a></li>
+                                                            <li><a class="dropdown-item"
+                                                                   href="{% url 'certification-status' %}">
+                                                                <i class="fa fa-award mr-2"></i>
+                                                                {% trans 'Certification Central' %}
+                                                            </a></li>
+                                                            {% if user.has_usable_password %}
+                                                            <li><a class="dropdown-item"
+                                                                   href="{% url 'admin:password_change' %}">
+                                                                <i class="fa fa-lock mr-2"></i>
+                                                                {% translate 'Change password' %}
+                                                            </a></li>
+                                                            {% endif %}
+                                                            {% if expires_on %}
+                                                            <li><a class="dropdown-item disabled text-warning" href="#">
+                                                                <i class="fa fa-clock mr-2"></i>
+                                                                {% blocktranslate with expiration=expires_on|naturaltime
+                                                                %}Instance expires<br>{{ expiration }}{%
+                                                                endblocktranslate %}
+                                                            </a></li>
+                                                            {% endif %}
+                                                            <li><a class="dropdown-item"
+                                                                   href="{% url 'admin:logout' %}">
+                                                                <i class="fa fa-sign-out mr-2"></i>
+                                                                {% trans 'Log out' %}
+                                                            </a></li>
+                                                        </ul>
 													</li>
 													{% else %} {# user.is_authenticated #}
 													<li>

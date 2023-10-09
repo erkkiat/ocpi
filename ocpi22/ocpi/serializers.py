@@ -321,8 +321,8 @@ class ConnectorIdSerializer(serializers.Serializer):
         return instance.connector.uid if hasattr(instance, 'connector') and instance.connector else None
 
     def to_internal_value(self, connector_id: str):
-        evse_uid = self.parent.initial_data.get('evse_uid')
-        location_id = self.parent.initial_data.get('location_id')
+        evse_uid = self.parent.initial_data.get('evse_uid') or self.parent.initial_data.get('evse')
+        location_id = self.parent.initial_data.get('location_id') or self.parent.initial_data.get('location')
         evse = Evse.get_if_exists(uid=evse_uid, location__uid=location_id)
         connector = Connector.get_if_exists(uid=connector_id, evse=evse)
         if not connector:

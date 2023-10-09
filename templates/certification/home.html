@@ -4,9 +4,9 @@
 {% block breadcrumbs %}{% endblock breadcrumbs %}
 {% block title %}SolidRoam OCPI Certification{% endblock title %}
 {% block branding %}
-<a class='navbar-brand mb-5 mt-5' rel="nofollow" href='/'>
+<a class='navbar-brand' rel="nofollow" href='{% url "certification-status" %}'>
     <img alt="SolidRoam logo" src="{% static 'images/SolidRoam-logo-black-80dpi.png' %}">
-    SolidRoam OCPI Certification Center
+    SolidRoam OCPI Certification Central
 </a>
 {% endblock %}
 
@@ -23,28 +23,72 @@
                 </div>
             </div>
         </div>
+        <hr/>
+        <div class="row">
+            <div class="col-md-10">
+                <h2>Mobile Application Charging Process</h2>
+                <div class="mermaid" style="min-width: 800px">
+                    flowchart LR;
+                    linkStyle default stroke-width:3px;
+                    start(fa:fa-money Receive<br/>START_SESSION<br/>remote command);
+                    respond1(Send the<br/>CommandResponse<br/>for start<br/>to MSP);
+                    respond2(Send the<br/>CommandResponse<br/>for stop<br/>to MSP);
+                    update(Push the newly<br/>created Session<br/>object to MSP);
+                    patch(Send meter<br/>values by<br/>PATCHing the Session);
+                    stop(Receive<br/>the STOP_SESSION<br/>remote command);
+                    cdr(Push the<br/>newly created<br/>CDR to MSP);
+                    start-->respond1-->update-->patch-->stop-->respond2-->cdr;
+                    patch-->patch;
+                    style start fill:#7d7,stroke:#585,stroke-width:2px;
+                    style respond1 fill:#dd7,stroke:#885,stroke-width:2px;
+                    style respond2 fill:#eee,stroke:#888,stroke-width:2px;
+                    style update fill:#eee,stroke:#888,stroke-width:2px;
+                    style patch fill:#eee,stroke:#888,stroke-width:2px;
+                    style stop fill:#eee,stroke:#888,stroke-width:2px;
+                    style cdr fill:#eee,stroke:#888,stroke-width:2px;
+                </div>
+                <hr/>
+                <h2>RFID Charging Process</h2>
+                <div class="mermaid" style="min-width: 800px">
+                    %% Seems that Mermaid.js is not loading properly, that's why you can't see the diagram here %%
+
+                    flowchart LR;
+                    linkStyle default stroke-width:3px;
+                    start("Authorize<br/>RFID token<br/>with the MSP"):::green;
+                    update(Push the newly<br/>created Session<br/>object to MSP);
+                    patch(Send meter<br/>values by<br/>PATCHing the Session);
+                    cdr(Push the<br/>newly created<br/>CDR to MSP);
+                    start-->update-->patch-->cdr;
+                    patch-->patch;
+                </div>
+            </div>
+        </div>
         <div class="row">
             <div class="col-md-8">
                 <table class="table">
-                {% for item in certification_items %}
-                <tr>
-                    <th scope="row" role="rowheader" colspan="3">
-                        <h2>{{item.heading}}</h2>
-                    </th>
-                </tr>
-                {% for step in item.steps %}
-                <tr>
-                    <th class="ml-3">
-                        <div>{{step.action}}</div>
-                        {% if step.subtopic %}<p class="muted small">{{step.subtopic}}</p>{% endif %}
-                    </th>
-                    <td>
-                        {% if step.customer_initiates %}
-                        <span>You initiate</span>
-                        {% else %}
-                        <a role="button" class="btn btn-primary btn-sm" href="{{step.url}}">Start test</a>
-                        {% endif %}
-                    </td>
+                    {% for item in certification_items %}
+                    <tr>
+                        <th scope="row" role="rowheader" colspan="3">
+                            <h2>{{item.heading}}</h2>
+                        </th>
+                    </tr>
+                    {% for step in item.steps %}
+                    <tr>
+                        <th class="ml-3">
+                            <div>{{step.action}}</div>
+                            {% if step.subtopic %}<p class="muted small">{{step.subtopic}}</p>{% endif %}
+                        </th>
+                        <td>
+                            {% if step.customer_initiates %}
+                            <span>You initiate</span>
+                            {% else %}
+                            <a role="button"
+                               class="btn btn-primary btn-sm{% if not step.has_link %} disabled{% endif %}"
+                               href="{{step.url}}">
+                                Start test
+                            </a>
+                            {% endif %}
+                        </td>
                     <td>
                         {% if step.result %}
                         <img src="{% static 'admin/img/icon-yes.svg' %}" alt="True">
@@ -54,11 +98,23 @@
                         <span>not passed yet</span>
                         {% endif %}
                     </td>
-                </tr>
-                {% endfor step %}
-                {% endfor item %}
+                    </tr>
+                    {% endfor step %}
+                    {% endfor item %}
                 </table>
             </div>
         </div>
     </div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+<script>
+    mermaid.initialize({
+        startOnLoad:true,
+        securityLevel: 'loose',
+        theme: 'base',
+    });
+
+
+</script>
+
 {% endblock content %}

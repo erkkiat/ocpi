@@ -1437,22 +1437,28 @@ class AppChargingData:
 
 class CpoApiData:
     expected_status_change_messages = [
-        dict(url='http://localhost:8002/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
-             json={'status': 'CHARGING', 'last_updated': '2022-01-01 12:00:00+00:00'}, headers={
-                'Authorization': 'Token YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
-                'content-type': 'application/json', 'accept': 'application/json',
-                'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI', 'OCPI-to-party-id': 'MSP',
-                'OCPI-from-country-code': 'FI', 'OCPI-from-party-id': 'CPO'}),
-        dict(url='http://localhost:8001/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
-             json={'status': 'CHARGING', 'last_updated': '2022-01-01 12:00:00+00:00'}, headers={
-                'Authorization': 'Token QzMyNUQ2NTMyNzBCNzdBMzVDQkRFMzc5QjhFQTM5ODA3OTVCOTA5QUZGN0MyQUIxNEE3OURFQzExRTBENTU2RA==',
-                'content-type': 'application/json', 'accept': 'application/json',
-                'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI', 'OCPI-to-party-id': 'HB2',
-                'OCPI-from-country-code': 'FI', 'OCPI-from-party-id': 'CPO'}),
-        dict(url='http://localhost:8002/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
-             json={'status': 'CHARGING', 'last_updated': '2022-01-01 12:00:00+00:00'}, headers={
-                'Authorization': 'Token YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
-                'content-type': 'application/json', 'accept': 'application/json',
-                'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI', 'OCPI-to-party-id': '001',
-                'OCPI-from-country-code': 'FI', 'OCPI-from-party-id': 'CPO'})
+        {'url': 'http://localhost:8002/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
+         'data': '{"status": "CHARGING", "last_updated": "2022-01-01 12:00:00+00:00"}',  # Note that these are str
+         'headers': {
+             'Authorization': 'Token YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
+             'content-type': 'application/json', 'accept': 'application/json',
+             'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI',
+             'OCPI-to-party-id': 'MSP', 'OCPI-from-country-code': 'FI',
+             'OCPI-from-party-id': 'CPO'}},
+        {'url': 'http://localhost:8001/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
+         'data': '{"status": "CHARGING", "last_updated": "2022-01-01 12:00:00+00:00"}',
+         'headers': {
+             'Authorization': 'Token QzMyNUQ2NTMyNzBCNzdBMzVDQkRFMzc5QjhFQTM5ODA3OTVCOTA5QUZGN0MyQUIxNEE3OURFQzExRTBENTU2RA==',
+             'content-type': 'application/json', 'accept': 'application/json',
+             'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI',
+             'OCPI-to-party-id': 'HB2', 'OCPI-from-country-code': 'FI',
+             'OCPI-from-party-id': 'CPO'}},
+        {'url': 'http://localhost:8002/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
+         'data': '{"status": "CHARGING", "last_updated": "2022-01-01 12:00:00+00:00"}',
+         'headers': {
+             'Authorization': 'Token YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
+             'content-type': 'application/json', 'accept': 'application/json',
+             'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI',
+             'OCPI-to-party-id': '001', 'OCPI-from-country-code': 'FI',
+             'OCPI-from-party-id': 'CPO'}}
     ]

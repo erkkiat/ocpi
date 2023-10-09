@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Optional
 
 import requests
 from django.conf import settings
@@ -11,7 +12,7 @@ from ocpiconnector.util import Timer
 
 
 def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
-                    outbound_serializer=None, timeout=10) -> dict:
+                    outbound_serializer=None, timeout=10) -> Optional[dict]:
     if settings.PERFORMANCE_TEST:
         return {}
     assert issubclass(serializer, CallbacksSerializer), \
@@ -25,10 +26,9 @@ def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
             serialized_data = outbound_serializer.data
 
         url, kwargs_update = build_callback_request(serializer.URL, serialized_data)
-
         if url:
             kwargs = {}
-            headers = {'content-type': 'application/json'}
+            headers = {'content-type': 'application/json', 'accept': 'application/json'}
             kwargs.update(kwargs_update)
 
             response = requests.post(
@@ -47,12 +47,14 @@ def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
                     return response_json
                 else:
                     logging.error(f'Got a malformed response from webhook at {url}: {response_json}')
+                    return None
         else:
             logging.info(f'No webhook {serializer.URL} specified => no action')
     except (IOError, ValueError, ValidationError) as e:
         logging.error(f'Problem communicating with webhook {serializer.__class__}: {e}')
+        raise
     except Exception as e:
         logging.error(f'Webhook error: {e}')
         raise
 
-    return {}
+    return None

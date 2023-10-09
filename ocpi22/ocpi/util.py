@@ -79,7 +79,7 @@ class OcpiModule:
 
         if not hasattr(self, 'update_sent') and self.is_ours():
             if not hasattr(self, 'archived') or not self.archived:
-                self.send_updates(getattr(self, 'update_method', 'PUT'))
+                self.send_updates(method=getattr(self, 'update_method', 'PUT'))
                 # Send update only once
                 setattr(self, 'update_sent', True)
 
@@ -133,10 +133,9 @@ class OcpiModule:
             return
 
         if url and token_base64 and to and sender:
-            logging.info(f'Send {cls.ocpi_module_name.value} update to {str(to)}, url {url}')
             from ocpi22.tasks import send_ocpi_request
-            args = json.dumps(data, default=str), url, token_base64, to.country_code, to.party_id, \
-                sender.country_code, sender.party_id, method
+            args = (json.dumps(data, default=str), url, token_base64, to.country_code, to.party_id,
+                    sender.country_code, sender.party_id, method)
             send_ocpi_request.apply_async(args, retry=False, title=f'{cls.ocpi_module_name.value} update')
         else:
             logging.warning(f"Skipping send for {cls}")
@@ -490,3 +489,4 @@ def ocpi_credentials_get(*args, **kwargs):
 
 def ocpi_credentials_post(*args, **kwargs):
     return ocpi_credentials_request(*args, method='post', **kwargs)
+

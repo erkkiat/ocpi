@@ -1242,7 +1242,7 @@ class UpdatePartiesTest(TestCase):
         assert (isinstance(kwargs['headers'], dict))
         self.assertTrue(compare_dicts_recursively(kwargs['headers'], expected_headers),
                         'Headers differ from expected')
-        self.assertTrue(compare_dicts_recursively(kwargs['json'], expected_data),
+        self.assertTrue(compare_dicts_recursively(json.loads(kwargs['data']), expected_data),
                         'JSON content differs from expected')
 
 

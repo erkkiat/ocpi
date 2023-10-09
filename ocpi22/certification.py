@@ -43,7 +43,8 @@ class CertificationSteps:
         class Receive:
             start_session = register_certification_step(OcpiModuleEnum.COMMANDS,
                                                         'Receive a START_SESSION command from the MSP',
-                                                        subtopic='', customer_initiates=False)
+                                                        subtopic='', customer_initiates=False,
+                                                        view='certification-sessions')
             stop_session = register_certification_step(OcpiModuleEnum.COMMANDS,
                                                        'Receive a STOP_SESSION command from the MSP',
                                                        subtopic='', customer_initiates=False)

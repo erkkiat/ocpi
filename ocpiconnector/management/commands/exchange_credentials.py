@@ -8,14 +8,12 @@ from rest_framework.exceptions import NotAuthenticated
 import ocpi22.logging as logging
 import os
 
-import requests
 from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
 
 from certification.decorators import certification_step
 from ocpi22.choices import OcpiModuleEnum
-from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse, HashableDict
 
@@ -60,10 +58,6 @@ def get_our_roles(source: dict = None) -> list:
             )
     return roles
     # Todo: Support multi-country CPOs / eMSPs
-
-
-class NoCommonVersion(SyntaxError):
-    pass
 
 
 def select_version(url, token) -> str:
