@@ -713,7 +713,7 @@ def fetch_object(uid: str, party: Party = None, credentials=None, ocpi_module: O
     our_party = get_our_party(OcpiRolesEnum.EMSP)  # eMSP is receiving Locations, which may have broken references
 
     # print(f'Fetching missing {ocpi_module.value} from {party} at {url}')
-    response = send_ocpi_request(data=dict(), url=url, token_base64=credentials.theirs_base64(),  method='GET',
+    response = send_ocpi_request(data=dict(), url=url, token_base64=route.token_base64, method='GET',
                                  to_country_code=party.country_code, to_party_id=party.party_id,
                                  from_country_code=our_party.country_code, from_party_id=our_party.party_id,
                                  title='tariff')
