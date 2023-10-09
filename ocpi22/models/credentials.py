@@ -25,7 +25,8 @@ from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.ocpi.util import OcpiModule, OCPIProtocolError, OCPIResponse
+from ocpi22.ocpi.util import OcpiModule, OCPIResponse
+from ocpiconnector.exceptions import OCPIProtocolError
 from ocpi22.util import ModelUtilMixin, generate_random_token, build_absolute_uri
 from ocpiconnector.exception_handler import ocpi_exception_handler
 

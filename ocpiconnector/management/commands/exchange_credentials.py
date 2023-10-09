@@ -21,7 +21,8 @@ from util import reverse, HashableDict
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
 from ocpi22.ocpi.serializers import CredentialsSerializer
-from ocpi22.ocpi.util import OCPIProtocolError, ocpi_credentials_get, ocpi_credentials_post
+from ocpi22.ocpi.util import ocpi_credentials_get, ocpi_credentials_post
+from ocpiconnector.exceptions import OCPIProtocolError, NoCommonVersion
 from ocpi22.util import generate_random_token
 from ocpiconnector.ocpi_identities import ROLE_OPTIONS
 

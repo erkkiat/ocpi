@@ -12,7 +12,6 @@ from django.db.models import QuerySet
 from django.utils.module_loading import import_string
 from requests import Response
 from rest_framework import status
-from rest_framework.exceptions import APIException
 from rest_framework.pagination import LimitOffsetPagination
 
 from ocpi22 import logging
@@ -23,6 +22,7 @@ from rest_framework.response import Response
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.routing import find_route
 from ocpi22.logging import log_error
+from ocpiconnector.exceptions import OCPIProtocolError
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_our_identity, Party, get_our_party
 from util import OCPIVersion
 
@@ -463,15 +463,6 @@ def generate_cdr_uid():
     Should be with the CPO identifier, since CDRs are owned by CPO
     """
     return generate_reference('C*', OcpiRolesEnum.CPO)
-
-
-class OCPIProtocolError(APIException):
-    errno = None
-
-    def __init__(self, msg, errno=None):
-        logging.error(msg)
-        super().__init__(msg)
-        self.errno = errno
 
 
 def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwargs):
