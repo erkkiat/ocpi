@@ -215,13 +215,13 @@ def ocpi_post(url, token_base64,
               to: Party,
               sender: Party,
               *args, **kwargs) -> Response:
-    logging.info(f'Posting to {url}')
     data = ''
     if 'data' in kwargs:
         data = kwargs.pop('data')
         # ic(data)
     response = requests.post(url, *args, **kwargs, json=data, timeout=25,
                              headers=make_headers(token_base64, to, sender))
+    logging.info(f'Posting to {url}, response {response.status_code}')
     if response.status_code >= 300:
         try:
             data = response.json()

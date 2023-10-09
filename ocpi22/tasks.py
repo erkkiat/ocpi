@@ -1,3 +1,4 @@
+import json
 import os
 import random
 from datetime import timedelta, datetime
@@ -112,20 +113,21 @@ def send_ocpi_request(data, url: str, token_base64: str,
                       to_country_code: str, to_party_id: str,
                       from_country_code: str, from_party_id: str, method: str = 'put',
                       credentials_id=None, title=None, **kwargs) -> Optional[dict]:
+    def write_to_file(text):
+        with open('error-response.html', 'w') as f:
+            f.write(text)
+
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
     from ocpi22 import logging
 
     try:
-        logging.info(f"Sending {method.upper()} {title} request to {url}")
         headers = make_headers(
             token_base64, to=to, sender=sender
         )
 
         # Log the message to Sentry
-        with Timer() as t:
-            sentry_sdk.set_context('data', data)
-        logging.info(f'Logged the message to Sentry in {float(t):.2f} seconds')
+        sentry_sdk.set_context('data', data)
 
         if isinstance(data, dict):
             kwargs.update(dict(url=url, json=data, headers=headers))
@@ -138,13 +140,14 @@ def send_ocpi_request(data, url: str, token_base64: str,
             raise NotImplementedError(f'Method {method} is not supported for send_ocpi_request')
 
         result: requests.Response = function(**kwargs)
-        logging.info(f'OCPI request response took {result.elapsed} seconds')
 
-        logging.info(f"Response: {result.status_code} - {result.reason if hasattr(result, 'reason') else ''}")
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
             logging.error(
                 f'{settings.HOSTNAME}: Unable to send update to {url}: {result.status_code} - {result.reason}')
-            # logging.error(result.text[-500:])
+            write_to_file(result.text)
+        else:
+            logging.info(f"Sending {method.upper()} {title} request to {url}, "
+                         f"response {result.status_code} (time {result.elapsed})")
         if credentials_id:
             from ocpi22.models.credentials import Credentials
             credentials = Credentials.get_if_exists(pk=credentials_id)
@@ -159,7 +162,8 @@ def send_ocpi_request(data, url: str, token_base64: str,
         try:
             result_json = result.json()
         except requests.exceptions.JSONDecodeError as e:
-            ic(result.text)
+            write_to_file(result.text)
+            logging.error(f'Unable to decode JSON response from {url}: {e}')
             result_json = dict()
         return dict(
             status_code=result.status_code,
