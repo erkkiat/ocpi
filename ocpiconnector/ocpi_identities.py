@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Optional
 
+import cachetools
 from cachetools import cached
 
 from ocpi22 import choices
@@ -208,7 +209,7 @@ def create_credentialsrole(party: Party, business_name, website='', role=OcpiRol
     return credentialsrole
 
 
-@cached(cache=dict())
+@cached(cache=cachetools.Cache(maxsize=len(ROLE_OPTIONS)))
 def get_our_credentialsrole(role: OcpiRolesEnum) -> "CredentialsRole":
     """
     Get the CredentialsRole object which corresponds to our OCPI roles set in environment variables,

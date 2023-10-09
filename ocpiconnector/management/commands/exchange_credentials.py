@@ -28,10 +28,8 @@ from ocpiconnector.ocpi_identities import ROLE_OPTIONS
 
 from colorama import Style
 
-cache = cachetools.Cache(maxsize=len(ROLE_OPTIONS))
 
-
-@cachetools.cached(cache)
+@cachetools.cached(cache=cachetools.Cache(maxsize=len(ROLE_OPTIONS)))
 def get_our_roles(source: dict = None) -> list:
     """
     Get the OCPI roles list of dicts for sending during Credentials exchange
