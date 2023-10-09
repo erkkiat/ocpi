@@ -12,7 +12,7 @@ from ocpi22.tasks import pull_objects
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
-# Todo: Full object pull for Cdrs
+# Todo: Full object pull for Cdrs and Sessions
 
 def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
     if not credentials.is_complete() or not credentials.valid:

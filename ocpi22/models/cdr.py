@@ -317,8 +317,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
 
 @receiver(post_save, sender=Session)
-def session_post_save(sender, instance: Session, *_args, **_kwargs):
-    Cdr.session_changed(instance)
-    if ocpi_platform.is_emsp:
-        check_balance(instance)
-    send_session_update_to_analytics(instance)
+def session_post_save(sender, instance: Session, raw=None, *_args, **_kwargs):
+    if not raw:  # Skip when installing test fixtures
+        Cdr.session_changed(instance)
+        if ocpi_platform.is_emsp:
+            check_balance(instance)
+        send_session_update_to_analytics(instance)

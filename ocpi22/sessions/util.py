@@ -112,6 +112,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     params.pop('expiry_date', None)  # Todo: Finish implementing reservations
 
     session = Session.objects.create(**params)
+    # No use to do session.send_update() yet, since pending sessions are not sent to the MSP
 
     logging.info(f'New session {session.uid} pending at {evse.evse_id}')
     return session

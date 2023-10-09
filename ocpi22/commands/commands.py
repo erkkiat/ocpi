@@ -303,6 +303,7 @@ class CommandsViewSet(GenericViewSet):
         session.status = Session.COMPLETED
         session.end_date_time = datetime.utcnow().replace(tzinfo=pytz.utc)
         session.save(update_fields=['status', 'end_date_time'])
+        session.send_updates()
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)

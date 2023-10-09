@@ -351,6 +351,7 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
         # Don't actually start the session yet, it will be started in simulate_meter_values after a delay
         session.status = Session.ACTIVE
         session.save(update_fields=['status', 'start_date_time'])
+        session.send_updates()
         send_simulated_cpo_response(session, response_url)
     else:
         kwh = run_number * 0.21
@@ -373,7 +374,12 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
 
         # session_charging_periods = [cp for cp in session.chargingperiods.order_by('start_date_time')]
         # session.send_updates(session_charging_periods)
-        session.send_updates()
+        # if run_number == 1:
+        #     session.send_updates()
+        # else:
+        data = dict(kwh=kwh, last_updated=session.last_updated.isoformat())
+        print(f'{data=}')
+        session.send_updates(data, method='patch')
 
     # meter_values.process_meter_values(request=None, serializer=None, kwh=run_number, session=session)
     if run_number <= 100:
@@ -387,4 +393,4 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
         session.save(update_fields=['status'])
         session.send_updates()
 
-        print('Done simulating meter values for session {session_pk} with token {token_uid}.')
+        print(f'*** Done simulating meter values for session {session_pk} with token {token_uid}.')

@@ -313,7 +313,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if not connector or not tariffs:
             msg = f'Unable to calculate price for EVSE {connector.evse if connector else "N/A"} connector {connector}.'
             logging.error(msg)
-            raise RuntimeError(msg)
+            # Todo: Prevent START_SESSION on a Connector where the price cannot be calculated
+            # Todo: Even better, mark the EVSE inoperative, or prevent making it available
+            return False
         # ic(self.uid, [t.price() for t in tariffs])
 
         # Calculate the session duration using either a stored end time or the current time
@@ -424,7 +426,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 )
                 method = 'patch'
         assert data is None or isinstance(data, dict), f'Expected dict, got {type(data)}'
-        # Lähettääkö tämä todella patchinä?
         super().send_update_to_interested_parties(
             data=data, method=method,
             path_components=path_components or [self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
