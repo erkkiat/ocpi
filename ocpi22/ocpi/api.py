@@ -45,7 +45,7 @@ from ocpi22.rendering import RENDERERS
 from ocpi22.util import OnlyRawBrowsableAPIRenderer, build_callback_request, OCPIVersioning, \
     OCPIListModelMixin, generate_random_token, build_absolute_uri
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
-    generate_auth_reference
+    generate_auth_reference, OCPIResponseUrlParametersRequired
 from ocpi22.credentials.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles, select_version, get_endpoints
 from ocpiconnector.ocpi_identities import ocpi_platform, Party, get_our_party
