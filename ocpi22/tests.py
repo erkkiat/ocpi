@@ -1,3 +1,4 @@
+import base64
 import doctest
 import json
 import os
@@ -29,7 +30,6 @@ from django.test import TestCase, Client
 # Todo: Tariff_id: Regular Expression: [A-Z]{2}[A-Za-z0-9]{3}[T][A-Z0-9][A-Z0-9\*]{0,29}
 # Todo: evse_id Regular Expression: [A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
-from requests import Response
 from rest_framework import status
 
 from ocpi22.locations.serializers import LocationSerializer
@@ -38,7 +38,7 @@ from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpiconnector.testutil import compare_dicts_recursively, OCPIAPIRequestFactory, compare_lists_recursively, \
-    simulate_surrounding_world, FakeResponse, Simulation, MockUuid4, MockResponse
+    simulate_surrounding_world, FakeResponse, Simulation, MockUuid4, MockResponse, make_json_response
 from settlement.views import InvoiceReportViews
 from util import reverse
 
@@ -67,8 +67,9 @@ from ocpi22.ocpi.headers import make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
-from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, SessionData, \
-    RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData
+from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, \
+    SessionData, \
+    RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -103,16 +104,6 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('util'))
     tests.addTests(doctest.DocTestSuite('ocpiconnector.ocpi_identities'))
     return tests
-
-
-def make_json_response(data, status_code=200) -> Response:
-    response = Response()
-    response.status_code = status_code
-    response.encoding = 'UTF-8'
-    response.json = lambda: data
-    data_str = json.dumps(data).encode('UTF-8')
-    response._content = data_str
-    return response
 
 
 def load_example(filename: str) -> dict:
@@ -737,7 +728,8 @@ class TariffTests(TestCase):
             self.assertEqual(e.price_components.count(), price_components,
                              f"TariffElement #{e.pk} `{e}` doesn't have {price_components} PriceComponents")
 
-    def test_tariff_copying(self):
+    @simulate_surrounding_world
+    def test_tariff_copying(self, simulation):
         Tariff.objects.all().delete()
         our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
 
@@ -756,8 +748,8 @@ class TariffTests(TestCase):
         tariff: Tariff = tariffs[0]
         self.assertEqual(tariff.tariff_elements.all()[0].price_components.all()[0].price, 0.22)
 
-    @patch('ocpi22.tasks.send_ocpi_request.delay')
-    def test_delete_tariff(self, mock_send_ocpi_request):
+    @simulate_surrounding_world
+    def test_delete_tariff(self, simulation):
         previous_count = Tariff.objects.count()
         our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
         t1 = create_tariff(uid='T1', ocpi_master=our_role)
@@ -770,8 +762,6 @@ class TariffTests(TestCase):
         request.user = AnonymousUser()
         viewset = TariffViewSet()
         viewset.request = request
-        credentialsrole = get_credentialsrole(credentials=None, party=our_role.party, create=True)
-        credentials = credentialsrole.credentials
 
         find_endpoints_by_roles.cache_clear()
 
@@ -780,8 +770,9 @@ class TariffTests(TestCase):
         self.assertEqual(response.status_code, 200, 'Tariff should be deleted')
         self.assertEqual(Tariff.objects.count(), previous_count,
                          'There should be the same amount of Tariffs as when we started this test')
-        self.assertTrue(mock_send_ocpi_request.called, 'send_ocpi_request should be called')
-        calls = mock_send_ocpi_request.call_args_list
+        self.assertTrue(simulation.tasks_requests.delete.call_count == 5,
+                        'requests.delete should have been called 5 times')
+        calls = simulation.tasks_requests.delete.call_args_list
         expected_calls = (
             call({}, 'http://localhost:8001/ocpi/2.2.1/tariffs/FI/CPO/T1',
                  'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==', 'FI',
@@ -837,16 +828,9 @@ class CdrTests(TestCase):
             self.fail(serializer.errors)
         return serializer.save(ocpi_master=get_credentialsrole(None, party=Party(country_code, party_id)))
 
-    @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {
-               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
-               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
-               'callback-session_url': 'http://localhost/session/{uid}/',
-               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
-           }.get(x))
     @time_machine.travel(faketime, tick=False)
     @simulate_surrounding_world
-    def test_session_to_cdr(self, _redis_store_mock: Mock, simulation):
+    def test_session_to_cdr(self, simulation):
         cpo_credentials = Credentials.objects.create()
         role = get_credentialsrole(cpo_credentials, Party('BE', 'BEC'),
                                    create=True, role=OcpiRolesEnum.CPO)
@@ -1258,7 +1242,7 @@ class UpdatePartiesTest(TestCase):
         assert (isinstance(kwargs['headers'], dict))
         self.assertTrue(compare_dicts_recursively(kwargs['headers'], expected_headers),
                         'Headers differ from expected')
-        self.assertTrue(compare_dicts_recursively(kwargs['data'], expected_data),
+        self.assertTrue(compare_dicts_recursively(kwargs['json'], expected_data),
                         'JSON content differs from expected')
 
 
@@ -1276,38 +1260,39 @@ def check_ok_result(testcase: TestCase, response, status_code: int = 1000, http_
 fake_token = '1234567890'
 
 
+def mocked_credentials_get(url, *_args, **_kwargs):
+    assert isinstance(url, str), f'Expecting a URL str, got {url}'
+    # ic(url, _args, _kwargs)
+
+    response_data = {
+        'http://localhost/versions': {'data': [{'url': 'http://localhost/ocpi/2.2.1/', 'version': '2.2'}]},
+        'http://localhost/ocpi/2.2.1/': CredentialsData.ocpi_endpoints_response,
+        'http://localhost/ocpi/2.2.1/credentials': CredentialsData.ocpi_endpoints_response,
+    }
+    return MockResponse(response_data[url], 200)
+
+
+def mocked_credentials_post(url, *_args, **_kwargs):
+    # ic(_args, _kwargs)
+    response = {
+        "status_code": 1000, "status_message": "", "timestamp": datetime.utcnow().replace(tzinfo=pytz.utc),
+        "data": {"token": fake_token + fake_token,
+                 "url": "http://localhost:8000/ocpi/versions/",
+                 "roles":
+                     [
+                         {
+                             "country_code": "FI", "party_id": "HUB", "role": "HUB",
+                             "business_details": {"name": "ChargerHub.EU"}
+                         }
+                     ]
+                 }
+    }
+
+    return MockResponse(response, 200)
+
+
 class TestCredentials(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
-
-    def mocked_credentials_get(url, *_args, **_kwargs):
-        assert isinstance(url, str)
-        # ic(url, _args, _kwargs)
-
-        response_data = {
-            'http://localhost/versions': {'data': [{'url': 'http://localhost/ocpi/2.2.1/', 'version': '2.2'}]},
-            'http://localhost/ocpi/2.2.1/': CredentialsData.ocpi_endpoints_response,
-            'http://localhost/ocpi/2.2.1/credentials': CredentialsData.ocpi_endpoints_response,
-        }
-        return MockResponse(response_data[url], 200)
-
-    @staticmethod
-    def mocked_credentials_post(url, *_args, **_kwargs):
-        # ic(_args, _kwargs)
-        response = {
-            "status_code": 1000, "status_message": "", "timestamp": datetime.utcnow().replace(tzinfo=pytz.utc),
-            "data": {"token": fake_token + fake_token,
-                     "url": "http://localhost:8000/ocpi/versions/",
-                     "roles":
-                         [
-                             {
-                                 "country_code": "FI", "party_id": "HUB", "role": "HUB",
-                                 "business_details": {"name": "ChargerHub.EU"}
-                             }
-                         ]
-                     }
-        }
-
-        return MockResponse(response, 200)
 
     @staticmethod
     def mocked_credentials_delete(url, *_args, **_kwargs):
@@ -1336,14 +1321,16 @@ class TestCredentials(TestCase):
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpiconnector.management.commands.exchange_credentials.generate_random_token', side_effect=[fake_token])
-    @patch('ocpiconnector.management.commands.exchange_credentials.requests.post', side_effect=mocked_credentials_post)
-    @patch('ocpiconnector.management.commands.exchange_credentials.requests.get', side_effect=mocked_credentials_get)
-    def test_exchange(self, mock_get: Mock, mock_post: Mock, _mock_generate_random_token):
+    @simulate_surrounding_world
+    def test_exchange(self, _mock_generate_random_token, simulation):
+        simulation.ocpi_requests.get.side_effect = mocked_credentials_get
+        simulation.ocpi_requests.post.side_effect = mocked_credentials_post
+
         command = exchange_credentials.Command()
-        _result = command.handle(token_a='918273', versions_endpoint_url='http://localhost/versions')
+        self.assertTrue(command.handle(token_a='918273', versions_endpoint_url='http://localhost/versions'))
 
         # Let's examine what was actually sent
-        args, kwargs = mock_get.call_args
+        args, kwargs = simulation.ocpi_requests.get.call_args
 
         expected_headers = {'Authorization': 'Token OTE4Mjcz', 'accept': 'application/json',
                             'content-type': 'application/json',
@@ -1352,23 +1339,14 @@ class TestCredentials(TestCase):
         self.assertTrue(compare_dicts_recursively(kwargs['headers'], expected_headers),
                         'Headers differ from expected')
 
-        args, kwargs = mock_post.call_args
+    def test_credentials_response(self):
+        token_a = '123'
+        token_a_base64 = base64.b64encode(token_a.encode('ascii')).decode('ascii')
+        with time_machine.travel(faketime, tick=False):
+            response = self.client.get(reverse('credentials-list'), **make_headers(token_base64=token_a_base64))
 
-        expected_data = {'roles': [{'business_details': {'name': 'ChargerHub.EU', 'website': ''},
-                                    'country_code': 'FI',
-                                    'party_id': 'CPO',
-                                    'role': 'CPO'},
-                                   {'business_details': {'name': 'ChargerHub.EU', 'website': ''},
-                                    'country_code': 'FI',
-                                    'party_id': 'MSP',
-                                    'role': 'EMSP'}],
-                         'token': fake_token,
-                         'url': 'http://testserver.test/ocpi/versions/'}
-
-        json_data = kwargs['json']
-        # ic(json_data)
-        # ic(kwargs['headers'])
-        self.assertDictEqual(json_data, expected_data, 'Credentials endpoint gives an unexpected response')
+        self.assertTrue(compare_dicts_recursively(response.data, CredentialsData.expected_credentials_response),
+                        'Credentials endpoint gives an unexpected response')
 
     #
     # Due to the database foregnkeys, we can't delete a Credentials object
@@ -1732,7 +1710,8 @@ class TestCpoApi(TestCase):
     maxDiff = None
 
     @time_machine.travel(faketime, tick=False)
-    def test_status_change(self):
+    @simulate_surrounding_world
+    def test_status_change(self, simulation):
 
         evse = Evse.objects.get(uid='HELSINKI-3')
         self.assertEqual(evse.status, 'AVAILABLE')
@@ -1776,6 +1755,11 @@ class TestCpoApi(TestCase):
                 if cpo_response.status_code != 404:
                     evse = Evse.objects.get(uid=case.get('request').get('evse_id'))
                     self.assertEqual(evse.status, case.get('evse_status'))
+
+        self.assertTrue(compare_lists_recursively(
+            list(map(lambda x: x.kwargs, simulation.tasks_requests.method_calls)),
+            CpoApiData.expected_status_change_messages
+        ))
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
@@ -2728,30 +2712,55 @@ class TestMspUserApi(TestCase):
         self.initial_balance = initial_balance
         self.session = session
 
-    @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
-    @patch('ocpi22.ocpi.api.requests.post', side_effect=[make_json_response(accept_authorization_msp)])
-    @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {
-               'callback-authorize_url': '',
-               'callback-session_url': 'http://localhost/session/{uid}/',
-           }.get(x))
     @patch('ocpi22.ocpi.util.logging')  # There are some conflicts with atomic transactions when logging to mysql
-    def test_cdrs_and_transactions(self, _mocked_logging: Mock, _mocked_redis_store: Mock, _mocked_requests_post: Mock,
-                                   _mocked_ocpi_post: Mock):
+    @simulate_surrounding_world
+    def test_token_authorization_with_webhook(self, _mocked_logging: Mock, simulation: Simulation):
+        simulation.webhook_requests.post.return_value = FakeResponse(200, accept_authorization_msp)
+
+        with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
+            token_id = 'EKI1'
+            Token.objects.filter(uid=token_id).update(customer=self.user)
+            # token = Token.objects.get(uid=token_id)
+            # ic(token, token.total_balance_float())
+            response = msp_authorize(token_id)
+
+            method_calls = simulation.webhook_requests.method_calls
+            self.assertTrue(
+                compare_lists_recursively(
+                    method_calls,
+                    [call.post(url='http://localhost/default/', json={'token_id': 'EKI1'},
+                               headers={'content-type': 'application/json', 'accept': 'application/json'},
+                               verify=False, timeout=28)],
+                    'requests.post() should have been called once by send_to_webhook()'
+                )
+            )
+
+    @patch('ocpi22.ocpi.util.logging')  # There are some conflicts with atomic transactions when logging to mysql
+    @simulate_surrounding_world
+    def test_cdrs_and_transactions(self, _mocked_logging: Mock, simulation: Simulation):
+        simulation.webhook_requests.post.return_value = FakeResponse(200, accept_authorization_msp)
+        simulation.redis_store.get.side_effect = None
+        simulation.redis_store.get.return_value = ''
+
         # Try to authorize charging with no money in account
         with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
             token_id = 'EKI1'
             Token.objects.filter(uid=token_id).update(customer=self.user)
             response = msp_authorize(token_id)
+
             # Todo: Test authorize also with Location and Evses
             self.assertEquals(response.status_code, status.HTTP_401_UNAUTHORIZED,
                               'Charging should not be authorized if account is empty')
             self.assertEquals(response.data.get('data').get('allowed'), 'NO_CREDIT',
                               'Declined authorization should have allowed status "NO_CREDIT"')
+
         #
         # Try an RFID
         #
 
+        simulation.webhook_requests.post.return_value = FakeResponse(200, accept_authorization)
+        # Anything should be fine, since we patch all HTTP calls
+        simulation.redis_store.get.return_value = 'http://localhost/webhook/'
         self.set_balance(self.initial_balance)
 
         with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True), \

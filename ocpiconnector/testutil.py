@@ -6,14 +6,19 @@ from functools import wraps
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
+from requests import Response
 from rest_framework.test import APIRequestFactory
 
 from django.conf import settings  # Do not remove if ic() is in use in this file
+from django.test import Client
 
 from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
+from ocpi22.test_data import accept_authorization, accept_authorization_msp
 from ocpiconnector.ocpi_identities import Party
+
+client = Client()
 
 
 def compare_lists_recursively(received, expected, path='', label1='received', label2='expected') -> bool:
@@ -140,7 +145,6 @@ def mocked_object_get(url, *_args, **kwargs):
 @dataclass
 class Simulation:
     tasks_requests: Mock
-    credentials_requests: Mock
     get_platform_revision: Mock
     redis_store: Mock
     webhook_requests: Mock
@@ -158,7 +162,7 @@ class Simulation:
         self.tasks_requests.put.side_effect = self.put
         self.tasks_requests.delete.side_effect = self.delete
 
-        self.credentials_requests.get.side_effect = mocked_object_get
+        self.ocpi_requests.get.side_effect = mocked_object_get
 
         self.get_platform_revision.return_value = 'REVISION'
 
@@ -195,7 +199,6 @@ def simulate_surrounding_world(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         with patch('ocpi22.tasks.requests') as tasks_requests, \
-                patch('ocpiconnector.management.commands.exchange_credentials.requests') as credentials_requests, \
                 patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision, \
                 patch('ocpi22.util.redis_store',) as redis_store, \
                 patch('ocpi22.webhooks.requests') as webhook_requests, \
@@ -203,14 +206,13 @@ def simulate_surrounding_world(func):
                 patch('ocpi22.ocpi.util.requests') as ocpi_requests:
             simulation = Simulation(
                 tasks_requests,
-                credentials_requests,
                 get_platform_revision,
                 redis_store,
                 webhook_requests,
                 uuid4,
                 ocpi_requests
             )
-            return func(*args, simulation, **kwargs)
+            return func(*args, simulation=simulation, **kwargs)
     return wrapper
 
 
@@ -263,3 +265,13 @@ class MockResponse:
         self._status_code = value
 
     status_code = property(get_status_code, set_status_code)
+
+
+def make_json_response(data, status_code=200) -> Response:
+    response = Response()
+    response.status_code = status_code
+    response.encoding = 'UTF-8'
+    response.json = lambda: data
+    data_str = json.dumps(data).encode('UTF-8')
+    response._content = data_str
+    return response

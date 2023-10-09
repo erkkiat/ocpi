@@ -6,7 +6,6 @@ from django.db.models import ProtectedError
 import ocpi22.logging as logging
 from typing import Optional
 
-import requests
 from django.core.handlers.wsgi import WSGIRequest
 from django.views.decorators.csrf import csrf_exempt
 from icecream import ic
@@ -42,7 +41,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.rendering import RENDERERS
-from ocpi22.util import OnlyRawBrowsableAPIRenderer, build_callback_request, OCPIVersioning, \
+from ocpi22.util import OnlyRawBrowsableAPIRenderer, OCPIVersioning, \
     OCPIListModelMixin, generate_random_token, build_absolute_uri
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
     generate_auth_reference, OCPIResponseUrlParametersRequired
@@ -165,32 +164,16 @@ class TokenViewSet(OCPIListModelMixin,
                 status_message = 'Your charging token is not valid at the moment'
                 message_user(status_message, '+358405480238')
 
-            data = {'token_id': token_uid}
-            serializer = MSPAuthorizeCallbackSerializer.OutboundSerializer(data=data)
-            assert serializer.is_valid()
-
             # Todo: Update tests for internal accounting and create tests for MSP authorize callback
 
-            authorize_token_url, kwargs_update = build_callback_request(MSPAuthorizeCallbackSerializer.URL, data)
-
-            if authorize_token_url:
-                kwargs = {}
-                headers = {'content-type': 'application/json'}
-                kwargs.update(kwargs_update)
-
-                logging.info(f'Calling MSP authorize webhook at url {authorize_token_url}')
-                msp_response = requests.post(
-                    url=authorize_token_url,
-                    json=serializer.data,
-                    headers=headers,
-                    verify=False,
-                    timeout=28,  # Just under the 30 second limit which is maximum for Heroku requests
-                    **kwargs)
-                data = msp_response.json()
-                serializer = MSPAuthorizeCallbackSerializer.ResponseSerializer(data=data)
+            msp_response = send_to_webhook(
+                {'token_id': token_uid}, MSPAuthorizeCallbackSerializer,
+                timeout=28)  # Just under the 30 second limit which is maximum for Heroku requests
+            if msp_response:
+                serializer = MSPAuthorizeCallbackSerializer.ResponseSerializer(data=msp_response)
                 if serializer.is_valid():
-                    allowed = data.get('result', 'NOT_ALLOWED').upper()
-                    max_price = data.get('max_price')
+                    allowed = msp_response.get('result', 'NOT_ALLOWED').upper()
+                    max_price = msp_response.get('max_price')
                 else:
                     allowed = 'NOT_ALLOWED'
                 http_status = dict(
@@ -405,6 +388,36 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return OCPIResponse(data)
 
+    @ocpi_exception_handler
+    @requires_premium
+    @csrf_exempt
+    def put(self, request: Request, *_args, **_kwargs):
+        credentials: Credentials = getattr(request, 'credentials', None)
+        assert credentials, f'Posting to this endpoint requires OCPI Credentials'
+        assert credentials.theirs and credentials.ours, \
+            f'Credentials registration has not been finalized, please use POST first'
+        data = request.data
+        data = data.get('data', data)
+        credentials.theirs = data.get('token')
+        credentials.url = data.get('url')
+        # *Do not allow updating the CredentialsRoles, it is a security vulnerability*
+        credentials.save()
+
+        token_base64 = credentials.theirs_base64()  # CREDENTIALS_TOKEN_B
+        versions_url = select_version(credentials.url, token_base64)
+        endpoints = get_endpoints(versions_url, token_base64)
+        store_endpoints_for_party(credentials, endpoints)
+        data = make_my_credentials_dict(request, our_token=credentials.ours)
+        serializer = CredentialsSerializer(data=data, context={'version': request.version})
+        if not serializer.is_valid():
+            logging.error(f'Our software has a logic error in Credentials POST: {serializer.errors}')
+            return Response(
+                dict(
+                    status_text='Sorry, but we have a slight problem. Support has been alerted.'
+                ),
+                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return OCPIResponse(data)
+
 
 class TariffViewSet(OCPIListModelMixin,
                     GenericViewSet):
@@ -579,6 +592,7 @@ class SessionViewSet(OCPIListModelMixin,
     @certification_step(OcpiModuleEnum.SESSIONS, 'PUT an individual Session with URL parameters')
     def put(cls, request, country_code=None, party_id=None, uid=None, partial=False, data=None, tryagain=False,
             logentry=None, **kwargs) -> OCPIResponse:
+
         if not request.party_specified_in_url:
             return OCPIResponseUrlParametersRequired('session')
 

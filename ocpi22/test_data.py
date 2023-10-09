@@ -11,6 +11,24 @@ class CredentialsData:
         'timestamp': '2022-01-01T12:00:00Z'
     }
 
+    expected_credentials_response = {
+        'data': {'roles': [{'business_details': {'name': 'ChargerHub.EU',
+                                                 'website': ''},
+                            'country_code': 'FI',
+                            'party_id': 'CPO',
+                            'role': 'CPO'},
+                           {'business_details': {'name': 'ChargerHub.EU',
+                                                 'website': ''},
+                            'country_code': 'FI',
+                            'party_id': 'MSP',
+                            'role': 'EMSP'}],
+                 'token': 'BF60351F296E9E1B339646C8B57338BFE84B61C18E50BCBE822A72D8DDC60A26',
+                 'url': 'http://testserver.test/ocpi/versions/'},
+        'status_code': 1000,
+        'status_message': 'Success',
+        'timestamp': '2022-01-01T12:00:00Z'
+    }
+
     ocpi_endpoints_response = {
         "version": "2.2",
         "endpoints": [
@@ -1263,7 +1281,7 @@ class SessionCommandsData:
 
     start_webhook = {
         'auth': ('john', 'his-password'),
-        'headers': {'content-type': 'application/json'},
+        'headers': {'content-type': 'application/json', 'accept': 'application/json'},
         'json': {'auth_method': 'COMMAND',
                  'authorization_reference': 'e86baa82cee14ac5bfd00b85371aa798',
                  'from_party': 'FI*MSP',
@@ -1354,7 +1372,7 @@ class SessionCommandsData:
 
     stop_webhook = {
         'auth': ('john', 'his-password'),
-        'headers': {'content-type': 'application/json'},
+        'headers': {'content-type': 'application/json', 'accept': 'application/json'},
         'json': {
             'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/COMMAND_ID/',
             'token_id': 'FI*001*T*ADMIN*TOKEN', 'token_type': 'OTHER',
@@ -1415,3 +1433,26 @@ class AppChargingData:
                                 ('contract_id', 'CONTRACT-123')])},
         'timeout': 25
     }
+
+
+class CpoApiData:
+    expected_status_change_messages = [
+        dict(url='http://localhost:8002/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
+             json={'status': 'CHARGING', 'last_updated': '2022-01-01 12:00:00+00:00'}, headers={
+                'Authorization': 'Token YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
+                'content-type': 'application/json', 'accept': 'application/json',
+                'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI', 'OCPI-to-party-id': 'MSP',
+                'OCPI-from-country-code': 'FI', 'OCPI-from-party-id': 'CPO'}),
+        dict(url='http://localhost:8001/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
+             json={'status': 'CHARGING', 'last_updated': '2022-01-01 12:00:00+00:00'}, headers={
+                'Authorization': 'Token QzMyNUQ2NTMyNzBCNzdBMzVDQkRFMzc5QjhFQTM5ODA3OTVCOTA5QUZGN0MyQUIxNEE3OURFQzExRTBENTU2RA==',
+                'content-type': 'application/json', 'accept': 'application/json',
+                'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI', 'OCPI-to-party-id': 'HB2',
+                'OCPI-from-country-code': 'FI', 'OCPI-from-party-id': 'CPO'}),
+        dict(url='http://localhost:8002/ocpi/2.2/locations/FI/CPO/HELSINKI-1/HELSINKI-3',
+             json={'status': 'CHARGING', 'last_updated': '2022-01-01 12:00:00+00:00'}, headers={
+                'Authorization': 'Token YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
+                'content-type': 'application/json', 'accept': 'application/json',
+                'platform-revision': 'REVISION', 'OCPI-to-country-code': 'FI', 'OCPI-to-party-id': '001',
+                'OCPI-from-country-code': 'FI', 'OCPI-from-party-id': 'CPO'})
+    ]
