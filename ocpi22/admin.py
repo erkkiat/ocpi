@@ -408,7 +408,7 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
     # Todo: Show only connectors for the selected evse
 
     list_display_links = ['status']
-    search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'party_id', 'cdr_token_uid',
+    search_fields = ['location__name', 'location__address', 'evse__evse_id', 'evse__uid', 'cdr_token_uid',
                      'uid', 'authorization_reference']
     readonly_fields = ['uid', 'ocpi_master']
     list_filter = ['status', 'connector__standard']
