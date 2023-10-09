@@ -27,6 +27,7 @@ from rest_framework.metadata import SimpleMetadata
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
+from urllib.parse import urljoin
 
 from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
@@ -708,7 +709,7 @@ def fetch_object(uid: str, party: Party = None, credentials=None, ocpi_module: O
         return False
     role = ocpi_module.get_owner()
     party = party or credentials.get_party_for_role(role)
-    url = f'{route.url}/{party.country_code}/{party.party_id}/{uid}'
+    url = urljoin(route.url, f"{party.country_code}/{party.party_id}/{uid}")
     our_party = get_our_party(OcpiRolesEnum.EMSP)  # eMSP is receiving Locations, which may have broken references
 
     # print(f'Fetching missing {ocpi_module.value} from {party} at {url}')
