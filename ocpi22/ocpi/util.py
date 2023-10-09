@@ -175,9 +175,11 @@ class OcpiModule:
         return serializer.data
 
     def route_single_update_message(self, method, to, data=None, path_components=None) -> None:
+        path_components = path_components or [self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
+
         sender = Party(*(self.get_owner_identity().split('*')))
         route = find_route(to, self.ocpi_module_name,
-                           add_path="/".join(path_components) if path_components else None)
+                           add_path="/".join(path_components))
         # ic(sender, to, route)
         if route:
             data = data or self.serialize(version=route.version.pure_number)
