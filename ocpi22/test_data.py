@@ -815,7 +815,7 @@ class TokenAuthorizationResponses:
         'data': {'location_id': [
             ErrorDetail(string='Location NONEXISTENT cannot be found from MSP database', code='invalid')]},
         'status_code': 2001,
-        'status_message': 'Bad request: Error',
+        'status_message': 'Bad request: no message supplied',
         'timestamp': '2022-01-01T12:00:00Z'
     }
 

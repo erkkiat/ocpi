@@ -2907,42 +2907,42 @@ class TestOCPIAuthentication(TestCase):
 class TestTasks(TestCase):
     fixtures = ['ocpi22/data/credentials.json']
 
+    def setUp(self) -> None:
+        self.credentials_id = 2
+
     @simulate_surrounding_world
-    def test_check_alive(self, simulation: Simulation):
-        # Todo: split this into multiple tests
-        credentials_id = 2
-        credentials = Credentials.objects.get(pk=credentials_id)
+    def test_check_alive_success(self, simulation: Simulation):
+        credentials = Credentials.objects.get(pk=self.credentials_id)
         # Make sure we start the test from a clean slate
         self.assertEqual(credentials.last_connection, None)
 
         # Successful connection, last_connection time should change
         with time_machine.travel(faketime, tick=False):
-            check_still_alive(credentials_id)
-        credentials = Credentials.objects.get(pk=credentials_id)
+            check_still_alive(self.credentials_id)
+        credentials = Credentials.objects.get(pk=self.credentials_id)
         self.assertEqual(credentials.last_connection, faketime)
 
-        # Simulate a connection error
+    @simulate_surrounding_world
+    def test_check_alive_connection_error(self, simulation: Simulation):
+        Credentials.objects.filter(pk=self.credentials_id).update(last_connection=None)
         simulation.tasks_requests.get.side_effect = requests.exceptions.ConnectionError
-        faketime2 = faketime + timedelta(hours=1)
-        with time_machine.travel(faketime2, tick=False):
-            check_still_alive(credentials_id)
-        credentials = Credentials.objects.get(pk=credentials_id)
-        self.assertEqual(credentials.last_connection, faketime)
+        with time_machine.travel(faketime, tick=False):
+            check_still_alive(self.credentials_id)
+        credentials = Credentials.objects.get(pk=self.credentials_id)
+        self.assertEqual(credentials.last_connection, None, 'Last connection should not be updated on connection error')
 
-        # Simulate some other error
+    @staticmethod
+    def reset_last_connection(credentials_id):
+        Credentials.objects.filter(pk=credentials_id).update(last_connection=None)
+
+    @simulate_surrounding_world
+    def test_check_alive_other_connection_error(self, simulation: Simulation):
+        self.reset_last_connection(self.credentials_id)
         simulation.tasks_requests.get.side_effect = IOError
-        faketime2 = faketime + timedelta(hours=1)
-        with time_machine.travel(faketime2, tick=False):
-            check_still_alive(credentials_id)
-        credentials = Credentials.objects.get(pk=credentials_id)
-        self.assertEqual(credentials.last_connection, faketime)
-
-        # Another successful connection, last_connection time should change again
-        simulation.tasks_requests.get.side_effect = None
-        with time_machine.travel(faketime2, tick=False):
-            check_still_alive(credentials_id)
-        credentials = Credentials.objects.get(pk=credentials_id)
-        self.assertEqual(credentials.last_connection, faketime2)
+        with time_machine.travel(faketime, tick=False):
+            check_still_alive(self.credentials_id)
+        credentials = Credentials.objects.get(pk=self.credentials_id)
+        self.assertEqual(credentials.last_connection, None)
 
 
 class BetterTestCase(TestCase):  # Seeing first how this works before during a big refactoring

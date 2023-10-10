@@ -253,7 +253,7 @@ def check_still_alive(credentials_id: int = None) -> None:
 
     if credentials_id:
         credentials = None
-        time_since_last_connection = None
+        time_since_last_connection = 0
         try:
             credentials: Credentials = Credentials.objects.get(pk=credentials_id)
             if credentials.last_connection:
