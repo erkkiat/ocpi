@@ -435,14 +435,18 @@ class Connector(models.Model, ModelUtilMixin):
 
 
 @receiver(pre_save, sender=Evse)
-def evse_pre_save(sender, instance: Evse, *_args, **_kwargs):
+def evse_pre_save(sender, instance: Evse, *_args, raw, **_kwargs):
+    if raw:
+        return
     if not instance.evse_id:
         instance.evse_id = f'{instance.location.ocpi_master.country_code}*' \
                            f'{instance.location.ocpi_master.party_id}*E{instance.uid}'
 
 
 @receiver(pre_save, sender=Connector)
-def connector_pre_save(sender, instance, *_args, **_kwargs):
+def connector_pre_save(sender, instance, *_args, raw, **_kwargs):
+    if raw:
+        return
     connector: Connector = instance
     if not connector.uid:
         connector.uid = uuid.uuid4().hex
@@ -451,7 +455,9 @@ def connector_pre_save(sender, instance, *_args, **_kwargs):
 
 
 @receiver(post_save, sender=Connector)
-def connector_post_save(sender, instance, *_args, **kwargs):
+def connector_post_save(sender, instance, *_args, raw, **kwargs):
+    if raw:
+        return
     # ic()
     # ic(kwargs)
     connector: Connector = instance

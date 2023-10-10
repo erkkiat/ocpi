@@ -120,6 +120,9 @@ def update_balance(cdr) -> None:
 
 
 @receiver(pre_save, sender=Account)
-def account_pre_save(sender, instance: Account, **_kwargs):
+def account_pre_save(sender, instance: Account, raw, **_kwargs):
+    if raw:
+        return
+
     if not instance.app_token_id:
         instance.app_token_id = generate_token_id()

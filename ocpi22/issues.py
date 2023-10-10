@@ -76,7 +76,9 @@ def issue_count(issue_list) -> int:
 
 
 @receiver(pre_save)
-def object_pre_save(sender, instance, **_kwargs):
+def object_pre_save(sender, instance, raw, **_kwargs):
+    if raw:
+        return
     # Issues will be recompiled whenever an object changes, in case the issue has been resolved
     get_issues.cache_clear()
     if sender == Connector:

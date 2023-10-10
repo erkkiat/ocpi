@@ -37,7 +37,9 @@ from ocpiconnector.util import Timer
 
 
 @receiver(post_save, sender=Token)
-def token_post_save(sender, instance: Token, *_args, **_kwargs):
+def token_post_save(sender, instance: Token, *_args, raw, **_kwargs):
+    if raw:
+        return
     # In case there is an outdated authorization in the cache
     authorize_token.cache_clear()
     _authorize_token.cache_clear()

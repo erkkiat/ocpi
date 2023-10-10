@@ -59,11 +59,13 @@ class Capability(models.Model, ModelUtilMixin):
 
 
 @receiver(post_save)
-def atomic_post_save(sender, instance, **kwargs):
+def atomic_post_save(sender, instance, raw, **kwargs):
     """
     This makes sure that updates are sent only once per atomic operation. There was a problem
     with post_save being triggered first when a new Location is saved, then again with Evses and Connectors.
     """
+    if raw:
+        return
     if hasattr(instance, "atomic_post_save") and transaction.get_connection().in_atomic_block:
         transaction.on_commit(lambda: instance.atomic_post_save(**kwargs))
 

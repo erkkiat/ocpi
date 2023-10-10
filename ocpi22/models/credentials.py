@@ -350,7 +350,9 @@ def credentials_pre_save(sender, instance, *_args, raw=False, **_kwargs):
 
 
 @receiver(post_save, sender=Credentials)
-def credentials_post_save(sender, instance, *_args, **_kwargs):
+def credentials_post_save(sender, instance, *_args, raw, **_kwargs):
+    if raw:
+        return
     credentials: Credentials = instance
     if credentials.is_complete():
         credentials.atomic_post_save()

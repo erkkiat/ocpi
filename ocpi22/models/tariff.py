@@ -371,7 +371,9 @@ class DefaultTariffs(models.Model):
 
 
 @receiver(pre_save, sender=Tariff)
-def tariff_pre_save(sender, instance, *_args, **_kwargs):
+def tariff_pre_save(sender, instance, *_args, raw, **_kwargs):
+    if raw:
+        return
     tariff: Tariff = instance
     if not tariff.uid:
         tariff.uid = uuid.uuid4().hex

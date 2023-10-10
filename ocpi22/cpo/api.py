@@ -1162,7 +1162,9 @@ class CPORouter(routers.DefaultRouter):
 
 
 @receiver(post_save, sender=Cdr)
-def cdr_post_save(sender, instance: Cdr, created, *_args, **_kwargs):
+def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
+    if raw:
+        return
     try:
         if not settings.TEST:
             cdr_serializer = CdrSerializer(instance)
