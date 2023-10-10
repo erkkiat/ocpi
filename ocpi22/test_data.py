@@ -1,5 +1,9 @@
 from collections import OrderedDict
+from datetime import datetime
 from decimal import Decimal
+
+import pytz
+from rest_framework.exceptions import ErrorDetail
 
 
 class CredentialsData:
@@ -785,6 +789,64 @@ accept_authorization = {
 }
 
 accept_authorization_msp = dict(result='ALLOWED')
+
+
+class TokenAuthorizationResponses:
+    invalid_token = {
+        'data': {'allowed': 'NOT_ALLOWED',
+                 'authorization_reference': '',
+                 'token': {'country_code': 'FI', 'party_id': 'CPO', 'uid': 'EKI1', 'type': 'APP_USER',
+                           'contract_id': 'CONTRACT_F', 'visual_number': '123C', 'issuer': 'eki', 'valid': False,
+                           'whitelist': 'NEVER', 'last_updated': '2022-01-10T07:00:01Z'}},
+        'status_code': 3000,
+        'status_message': 'Your charging token is not valid at the moment',
+        'timestamp': '2022-01-01T12:00:00Z'
+    }
+    webhook_data = [  # This is the data that is sent to the webhook
+        {
+            'url': 'http://localhost/default/',
+            'json': {'token_id': 'EKI1', 'location_id': 'HELSINKI-1'},
+            'headers': {'content-type': 'application/json', 'accept': 'application/json'},
+            'verify': False,
+            'timeout': 28
+        }
+    ]
+    location_not_found = {
+        'data': {'location_id': [
+            ErrorDetail(string='Location NONEXISTENT cannot be found from MSP database', code='invalid')]},
+        'status_code': 2001,
+        'status_message': 'Bad request: Error',
+        'timestamp': '2022-01-01T12:00:00Z'
+    }
+
+    non_existent_token = {
+        'data': '',
+        'status_code': 2004,
+        'status_message': 'Unknown Token',
+        'timestamp': '2022-01-01T12:00:00Z'
+    }
+
+    authorization_object_data = {
+        '_state': '***',  # Anything goes
+        'authorization_reference': 'FI*MSP*A*MOCK-1',
+        'created': datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc),
+        'id': '***',
+        'max_price': Decimal('30.00'),
+        'session_id': None,
+        'token_uid': None,
+        'updated': datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
+    }
+
+    success = {
+        'data': {'allowed': 'ALLOWED',
+                 'authorization_reference': 'FI*MSP*A*MOCK-1',  # "MOCK-1" comes from uuid4 through a mysterious process
+                 'token': {'country_code': 'FI', 'party_id': 'CPO', 'uid': 'EKI1', 'type': 'APP_USER',
+                           'contract_id': 'CONTRACT_F', 'visual_number': '123C', 'issuer': 'eki', 'valid': True,
+                           'whitelist': 'NEVER', 'last_updated': '2022-01-10T07:00:01Z'}},
+        'status_code': 1000,
+        'status_message': 'Success',
+        'timestamp': '2022-01-01T12:00:00Z'
+    }
 
 
 class StopTransactionResponses:

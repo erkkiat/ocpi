@@ -256,14 +256,16 @@ def check_still_alive(credentials_id: int = None) -> None:
         time_since_last_connection = None
         try:
             credentials: Credentials = Credentials.objects.get(pk=credentials_id)
-            time_since_last_connection = (datetime.utcnow().replace(tzinfo=pytz.utc) - credentials.last_connection).total_seconds()
+            if credentials.last_connection:
+                time_since_last_connection = (
+                            datetime.utcnow().replace(tzinfo=pytz.utc) - credentials.last_connection).total_seconds()
             requests.get(credentials.url, timeout=20)
             credentials.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
             credentials.connection_status = choices.CONNECTED
             logging.info(f"{credentials} is alive")
-        except requests.exceptions.ConnectionError:
+        except IOError as e:
             logging.error(f"{settings.HOSTNAME}: {credentials} is *NOT* alive ({credentials.url}), "
-                          f"last connection was {int(time_since_last_connection / 60)} minutes ago")
+                          f"last connection was {int(time_since_last_connection / 60) or 'N/A'} minutes ago: {e}")
             credentials.connection_status = choices.OFFLINE
         except Exception as e:
             logging.error(f"{settings.HOSTNAME}: STILL ALIVE CHECK: Unable to connect to "

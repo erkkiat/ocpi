@@ -205,12 +205,12 @@ def simulate_surrounding_world(func):
                 patch('ocpi22.ocpi.util.uuid.uuid4', return_value=MockUuid4()) as uuid4, \
                 patch('ocpi22.ocpi.util.requests') as ocpi_requests:
             simulation = Simulation(
-                tasks_requests,
-                get_platform_revision,
-                redis_store,
-                webhook_requests,
-                uuid4,
-                ocpi_requests
+                tasks_requests=tasks_requests,
+                get_platform_revision=get_platform_revision,
+                redis_store=redis_store,
+                webhook_requests=webhook_requests,
+                uuid4=uuid4,
+                ocpi_requests=ocpi_requests
             )
             return func(*args, simulation=simulation, **kwargs)
     return wrapper
@@ -218,7 +218,7 @@ def simulate_surrounding_world(func):
 
 @dataclass(eq=True, frozen=True)
 class FakeResponse:
-    status_code: int
+    status_code: int = field(default=200)
     data: dict = field(default_factory=dict)
     reason: str = field(default='Mocked response')
     headers: dict = field(default_factory=dict)
@@ -232,7 +232,7 @@ class FakeResponse:
         return self.data
 
 
-class MockUuid4():
+class MockUuid4:
     number: int
 
     def __init__(self, number=1):

@@ -489,4 +489,3 @@ def ocpi_credentials_get(*args, **kwargs):
 
 def ocpi_credentials_post(*args, **kwargs):
     return ocpi_credentials_request(*args, method='post', **kwargs)
-

@@ -270,10 +270,10 @@ class CredentialsRole(models.Model, ModelUtilMixin):
         return f'{self.country_code}*{self.party_id}'
 
     @property
-    def party(self):
+    def party(self) -> Party:
         return Party(self.country_code, self.party_id)
 
-    def party_str(self):
+    def party_str(self) -> str:
         return f'{self.country_code}*{self.party_id}'
     party_str.short_description = _('Party')  # For admin UI
 

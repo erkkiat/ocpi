@@ -15,7 +15,7 @@ from ocpi22 import choices
 class OCPIVersion:
     def __init__(self, version):
         """
-        >>> OCPIVersion('2.1.1')
+        >>> OCPIVersion(OCPIVersion('2.1.1'))
         Traceback (most recent call last):
         ValueError: Invalid version number 211, options are ['22', '221']
         >>> OCPIVersion('2')
@@ -31,11 +31,14 @@ class OCPIVersion:
         >>> OCPIVersion('223')  # doctest: +IGNORE_EXCEPTION_DETAIL
         Traceback (most recent call last):
         ValueError: Invalid version number 223, options are ['22', '221']
+        >>> OCPIVersion('2.2.1') == dict(this_is_not_going_to_work=True)
+        Traceback (most recent call last):
+          ...
+        ValueError: Cannot compare OCPIVersion with <class 'dict'>
+        >>> isinstance(hash(OCPIVersion('2.2.1')), int)
+        True
         """
-        if isinstance(version, OCPIVersion):
-            version = str(version.version)
-        else:
-            version = self.remove_dots(version)
+        version = self.remove_dots(version)
         if version in choices.VERSION_CHOICES_DICT:
             version = choices.VERSION_CHOICES_DICT[version]
         else:
@@ -79,6 +82,17 @@ class OCPIVersion:
 
 
 def reverse(s, args=[], request=None, version=None, kwargs=None) -> str:
+    """
+    >>> reverse('location-by-id', args=['2.2.1', 1, 2, 3])
+    '/ocpi/2.2.1/locations/1/2/3'
+
+    @param s:
+    @param args:
+    @param request:
+    @param version:
+    @param kwargs:
+    @return:
+    """
     version = OCPIVersion(version or request.version or '2.2.1' if request else '2.2.1')
     version_args = None
     # Handle versioning wether args or kwargs is used (can't use both with reverse())
@@ -93,6 +107,10 @@ def reverse(s, args=[], request=None, version=None, kwargs=None) -> str:
 
 
 def url_link(href, text, target='') -> str:
+    """
+    >>> url_link('https://www.google.com', 'Google')
+    '<a href="https://www.google.com">Google</a>'
+    """
     target = f' target="{target}" ' if target else ''
     return f'<a{target} href="{href}">{text}</a>'
 
@@ -101,6 +119,8 @@ def format_url(url, **kwargs) -> str:
     """
     >>> format_url("https://fakehost/start/{evse_id}/", evse_id=1)
     'https://fakehost/start/1/'
+    >>> format_url(b"https://fakehost/start/", evse_id=1, connector_id=2)
+    'https://fakehost/start/'
     """
     try:
         if isinstance(url, bytes):
@@ -131,6 +151,15 @@ def numbers_are_consequtive(numbers: List[int]) -> bool:
 
 
 def member_hash(obj: Any) -> int:
+    """
+    >>> from dataclasses import dataclass
+    >>> @dataclass
+    ... class Test:
+    ...     a: int
+    ...     b: str
+    >>> member_hash(Test(1, 'a'))
+    947394849765499942087305821015908087369400221253735434007988480287487229907
+    """
     attr_dict = vars(obj)
     attr_dict = attr_dict.copy()
     attr_dict.pop('_state', None)
@@ -145,10 +174,18 @@ class RedisStore:
         self.namespace = namespace
         self.expiration = expiration
 
-    def _format_key(self, key):
-        if not self.namespace:
+    def _format_key(self, key, namespace=None):
+        """
+        >>> test = RedisStore()
+        >>> test._format_key('test')
+        'test'
+        >>> test._format_key('a', namespace='b')
+        'b-a'
+        """
+        namespace = namespace or self.namespace
+        if not namespace:
             return key
-        return f'{self.namespace}-{key}'
+        return f'{namespace}-{key}'
 
     def __setitem__(self, key, value):
         namespace_key = self._format_key(key)
@@ -185,6 +222,30 @@ default_error_messages = dict(
 
 
 class HashableDict(dict):
+    """
+    >>> d = HashableDict(a=1, b=2)
+    >>> d
+    {'a': 1, 'b': 2}
+    >>> d['a']
+    1
+    >>> d['c'] = 3
+    Traceback (most recent call last):
+      ...
+    RuntimeError: HashableDict is immutable
+    >>> d.update(a=2)
+    Traceback (most recent call last):
+      ...
+    RuntimeError: HashableDict is immutable
+    >>> d.clear()
+    Traceback (most recent call last):
+      ...
+    RuntimeError: HashableDict is immutable
+    >>> del d['a']
+    Traceback (most recent call last):
+        ...
+    RuntimeError: HashableDict is immutable
+    """
+
     def __hash__(self):
         return hash(tuple(sorted(super().items())))
 

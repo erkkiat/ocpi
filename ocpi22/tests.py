@@ -2,9 +2,10 @@ import base64
 import doctest
 import json
 import os
-from typing import Optional
+from typing import Optional, Mapping, Any
 from urllib.parse import urljoin
 
+import requests
 from rest_framework.exceptions import NotAuthenticated
 
 import ocpi22.logging as logging
@@ -37,6 +38,7 @@ from ocpi22.msp.account import Account
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.partners import invalidate_partner_cache
+from ocpi22.tasks import check_still_alive
 from ocpiconnector.testutil import compare_dicts_recursively, OCPIAPIRequestFactory, compare_lists_recursively, \
     simulate_surrounding_world, FakeResponse, Simulation, MockUuid4, MockResponse, make_json_response
 from settlement.views import InvoiceReportViews
@@ -48,7 +50,7 @@ from ocpi22.msp.models import Authorization
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, TokenType
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, TokenType, AuthorizationEnum
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
@@ -69,7 +71,8 @@ from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, \
     SessionData, \
-    RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData
+    RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData, \
+    TokenAuthorizationResponses
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -94,6 +97,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.locations.serializers'))
     tests.addTests(doctest.DocTestSuite('ocpi22.commands.commands'))
     tests.addTests(doctest.DocTestSuite('ocpi22.commands.serializers'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.commands.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.models.dynamic_price'))
     tests.addTests(doctest.DocTestSuite('ocpi22.tasks'))
     tests.addTests(doctest.DocTestSuite('ocpi22.routing'))
@@ -2012,9 +2016,7 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=MockUuid4())
     @patch('ocpi22.webhooks.requests.post')
-    @patch('ocpi22.webhooks.requests.post')
     def test_adhoc_token(self,
-                         _webhook_post_mock: Mock,
                          requests_post_mock: Mock,
                          uuid4_mock: Mock,
                          _set_parameter_mock: Mock,
@@ -2463,8 +2465,7 @@ class TestMspApi(TestCase):
         data["max_price"] = Decimal(30)
         simulation.ocpi_requests.post.reset_mock()
 
-        with patch('ocpi22.ocpi.headers.get_platform_revision', return_value='REVISION'):
-            response = start_charging(data, self.user)
+        response = start_charging(data, self.user)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          'Expecting charging to start succesfully')
@@ -2747,7 +2748,6 @@ class TestMspUserApi(TestCase):
             token_id = 'EKI1'
             Token.objects.filter(uid=token_id).update(customer=self.user)
             response = msp_authorize(token_id)
-
             # Todo: Test authorize also with Location and Evses
             self.assertEquals(response.status_code, status.HTTP_401_UNAUTHORIZED,
                               'Charging should not be authorized if account is empty')
@@ -2903,5 +2903,191 @@ class TestOCPIAuthentication(TestCase):
         with self.assertRaises(NotAuthenticated):
             check_auth_token(request, 'AB==')
 
+
+class TestTasks(TestCase):
+    fixtures = ['ocpi22/data/credentials.json']
+
+    @simulate_surrounding_world
+    def test_check_alive(self, simulation: Simulation):
+        # Todo: split this into multiple tests
+        credentials_id = 2
+        credentials = Credentials.objects.get(pk=credentials_id)
+        # Make sure we start the test from a clean slate
+        self.assertEqual(credentials.last_connection, None)
+
+        # Successful connection, last_connection time should change
+        with time_machine.travel(faketime, tick=False):
+            check_still_alive(credentials_id)
+        credentials = Credentials.objects.get(pk=credentials_id)
+        self.assertEqual(credentials.last_connection, faketime)
+
+        # Simulate a connection error
+        simulation.tasks_requests.get.side_effect = requests.exceptions.ConnectionError
+        faketime2 = faketime + timedelta(hours=1)
+        with time_machine.travel(faketime2, tick=False):
+            check_still_alive(credentials_id)
+        credentials = Credentials.objects.get(pk=credentials_id)
+        self.assertEqual(credentials.last_connection, faketime)
+
+        # Simulate some other error
+        simulation.tasks_requests.get.side_effect = IOError
+        faketime2 = faketime + timedelta(hours=1)
+        with time_machine.travel(faketime2, tick=False):
+            check_still_alive(credentials_id)
+        credentials = Credentials.objects.get(pk=credentials_id)
+        self.assertEqual(credentials.last_connection, faketime)
+
+        # Another successful connection, last_connection time should change again
+        simulation.tasks_requests.get.side_effect = None
+        with time_machine.travel(faketime2, tick=False):
+            check_still_alive(credentials_id)
+        credentials = Credentials.objects.get(pk=credentials_id)
+        self.assertEqual(credentials.last_connection, faketime2)
+
+
+class BetterTestCase(TestCase):  # Seeing first how this works before during a big refactoring
+    def assertDictEqual(self, d1: Mapping[Any, object], d2: Mapping[Any, object], msg: Any = ...) -> None:
+        self.assertTrue(compare_dicts_recursively(d1, d2), msg)
+
+    def assertListEqual(self, list1: list[Any], list2: list[Any], msg: Any = ...) -> None:
+        self.assertTrue(compare_lists_recursively(list1, list2), msg)
+
+
+class TokenAuthorizationTests(BetterTestCase):
+    fixtures = ['ocpi22/data/token_authorization_tests.json']
+
+    def setUp(self):
+        self.token = Token.objects.get(uid='EKI1')
+        self.our_credentialsrole: CredentialsRole = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        self.token_base64 = self.our_credentialsrole.credentials.ours_base64()
+
+    def prepare_testcase(self, simulation, token_id, webhook_response, request_data=None):
+        request = api_factory.post(reverse('token-authorize', args=[token_id]),
+                                   **make_headers(self.token_base64, sender=self.our_credentialsrole.party,
+                                                  to=self.token.ocpi_master.party))
+        request.version = '2.2.1'
+        request.accepted_media_type = 'application/json'
+        request.data = request_data or {}
+
+        simulation.webhook_requests.post.return_value = webhook_response
+
+        Authorization.objects.all().delete()
+
+        return request
+
+    # @simulate_surrounding_world
+    # def test_token_list(self, simulation):
+    #     request = api_factory.get(reverse('token-list'))
+    #     request.user = get_fake_admin()
+    #     request.version = '2.2.1'
+    #     viewset = TokenViewSet()
+    #     viewset.request = request
+    #     response = viewset.list(request)
+    #     self.assertEqual(response.status_code, status.HTTP_200_OK)
+    #     self.assertEqual(response.data, TokenAuthorizationResponses.token_list)
+
+    @simulate_surrounding_world
+    def test_non_existent_token_authorization(self, simulation):
+        token_id = 'NONEXISTENT'
+        request = self.prepare_testcase(
+            simulation,
+            token_id=token_id,
+            # The response should not matter, since there should be no webhook call
+            webhook_response=FakeResponse(
+                data={'result': AuthorizationEnum.NOT_ALLOWED},
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+        )
+
+        viewset = TokenViewSet()
+        with time_machine.travel(faketime, tick=False):
+            response = viewset.authorize(request, token_id)
+        # There should be no webhook call for a non-existent RFID token
+        simulation.webhook_requests.assert_not_called()
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND,
+                         'OCPI 2.2.1 spec requires 404 for non-existent token')
+        self.assertDictEqual(response.data, TokenAuthorizationResponses.non_existent_token)
+
+        # While we're at it, check that the breadcrumbs can get the view name
+        self.assertEqual(viewset.get_view_name(), 'Tokens')
+        kwargs = dict(uid=123)
+        viewset.kwargs = kwargs
+        self.assertEqual(viewset.get_view_name(), 'Token 123')
+
+    @simulate_surrounding_world
+    def test_invalid_token_authorization(self, simulation):
+        token_id = 'EKI1'
+        Token.objects.filter(uid=token_id).update(valid=False)
+
+        request = self.prepare_testcase(
+            simulation,
+            token_id=token_id,
+            # The response should not matter, since there should be no webhook call
+            webhook_response=FakeResponse(
+                data={'result': AuthorizationEnum.NOT_ALLOWED},
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+        )
+
+        with time_machine.travel(faketime, tick=False):
+            response = TokenViewSet().authorize(request, token_id)
+
+        # There should be no webhook call for a non-existent RFID token
+        simulation.webhook_requests.assert_not_called()
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED,
+                         'Token is not valid, so authorization should fail')
+        self.assertDictEqual(response.data, TokenAuthorizationResponses.invalid_token)
+
+        # Clean up afterwards
+        Token.objects.filter(uid=token_id).update(valid=True)
+
+    @simulate_surrounding_world
+    def test_successful_token_authorization(self, simulation):
+        location_uid = 'HELSINKI-1'
+        Location.objects.get(uid=location_uid)  # Make sure the Location exists
+
+        request = self.prepare_testcase(
+            simulation,
+            self.token.uid,
+            request_data={'location_id': location_uid},
+            webhook_response=FakeResponse(
+                data={'result': AuthorizationEnum.ALLOWED, 'max_price': 30},
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+        )
+        with time_machine.travel(faketime, tick=False):
+            response = TokenViewSet().authorize(request, self.token.uid)
+
+        # There should be one call only to the webhook
+        webhook_data = list(map(lambda x: x.kwargs, simulation.webhook_requests.method_calls))
+        self.assertListEqual(webhook_data, TokenAuthorizationResponses.webhook_data)
+
+        self.assertTrue(compare_dicts_recursively(response.data, TokenAuthorizationResponses.success),
+                        'Response from MSP for Token authorize() differs from expected')
+        authorization = Authorization.objects.get(authorization_reference='FI*MSP*A*MOCK-1')
+        self.assertTrue(compare_dicts_recursively(authorization.__dict__,
+                                                  TokenAuthorizationResponses.authorization_object_data))
+
+    @simulate_surrounding_world
+    def test_location_missing_token_authorization(self, simulation):
+        request = self.prepare_testcase(
+            simulation,
+            self.token.uid,
+            request_data={'location_id': 'NONEXISTENT'},
+            webhook_response=FakeResponse(
+                data={'result': AuthorizationEnum.ALLOWED, 'max_price': 30},
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+        )
+
+        with time_machine.travel(faketime, tick=False):
+            response = TokenViewSet().authorize(request, self.token.uid)
+
+        self.assertDictEqual(response.data, TokenAuthorizationResponses.location_not_found)
+        # There should be no webhook call for a non-existent Location
+        simulation.webhook_requests.assert_not_called()
+        self.assertFalse(Authorization.objects.count())
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)

@@ -148,6 +148,7 @@ class MSPAuthorizeCallbackSerializer(CallbacksSerializer):
 
     class OutboundSerializer(serializers.Serializer):
         token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+        location_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
 
     class ResponseSerializer(serializers.Serializer):
         result = serializers.ChoiceField(choices=AuthorizationEnum.choices)

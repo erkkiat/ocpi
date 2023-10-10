@@ -963,7 +963,6 @@
          "publish": true,
          "postal_code": "",
          "publish_allowed_to": [],
-         "ocpi_master": 99,
          "time_zone": "Europe/Warsaw",
          "created" : "2022-01-08T14:01:58.803Z",
          "ocpi_master" : 99,

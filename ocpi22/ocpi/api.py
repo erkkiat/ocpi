@@ -131,6 +131,7 @@ class TokenViewSet(OCPIListModelMixin,
         status_message = 'Success'
         user_language = 'en'
         max_price = None
+        location = None
 
         try:
             token: Token = Token.get_if_exists(uid=token_uid)
@@ -145,13 +146,8 @@ class TokenViewSet(OCPIListModelMixin,
                 # ic(token, request.data, serializer.initial_data)
                 if serializer.is_valid():
                     location: Location = serializer.validated_data.get('location')
-                    location_name = f'{location.name} at {location.address}, {location.city}'
-                    prices = location.get_prices_str()
                 else:
-                    return OCPIResponse(serializer.errors)
-            else:
-                location_name = '-'
-                prices = 'not available'
+                    return OCPIBadRequestResponse(data=serializer.errors)
 
             if token.language:
                 user_language = token.language.lower()
@@ -165,9 +161,10 @@ class TokenViewSet(OCPIListModelMixin,
                 message_user(status_message, '+358405480238')
 
             # Todo: Update tests for internal accounting and create tests for MSP authorize callback
-
+            webhook_data = {'token_id': token_uid, 'location_id': location.uid if location else None}
             msp_response = send_to_webhook(
-                {'token_id': token_uid}, MSPAuthorizeCallbackSerializer,
+                webhook_data,
+                MSPAuthorizeCallbackSerializer,
                 timeout=28)  # Just under the 30 second limit which is maximum for Heroku requests
             if msp_response:
                 serializer = MSPAuthorizeCallbackSerializer.ResponseSerializer(data=msp_response)

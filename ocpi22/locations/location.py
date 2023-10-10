@@ -82,6 +82,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     @certification_step(OcpiModuleEnum.LOCATIONS, 'PUT a Location')
     def put(self, request, data, credentialsrole, uid=None, patch=False,
             version='2.2.1', logentry=None, **_kwargs):
+
         if not request.party_specified_in_url:
             return OCPIResponseUrlParametersRequired('location')
 
