@@ -511,7 +511,7 @@ class MyMetadata(SimpleMetadata):
         return metadata
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=0)
 def build_absolute_uri(path) -> str:
     """
     >>> str(build_absolute_uri('my/path'))

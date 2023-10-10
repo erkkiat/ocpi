@@ -353,8 +353,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         assert credentials, f'Posting to this endpoint requires OCPI Credentials'
         assert not credentials.theirs, \
             f'Credentials exist already, use PUT to update'
-        data = request.data
-        data = data.get('data', data)
+        data = request.data.get('data', request.data)
         credentials.theirs = data.get('token')
         credentials.url = data.get('url')
         if not credentials.ours:
@@ -378,12 +377,13 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         serializer = CredentialsSerializer(data=data, context={'version': request.version})
         if not serializer.is_valid():
             logging.error(f'Our software has a logic error in Credentials POST: {serializer.errors}')
-            return Response(
+            return OCPIResponse(
                 dict(
                     status_text='Sorry, but we have a slight problem. Support has been alerted.'
                 ),
+                status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
                 status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        return OCPIResponse(data)
+        return OCPIResponse(data, http_status=status.HTTP_201_CREATED)
 
     @ocpi_exception_handler
     @requires_premium
@@ -408,11 +408,13 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         serializer = CredentialsSerializer(data=data, context={'version': request.version})
         if not serializer.is_valid():
             logging.error(f'Our software has a logic error in Credentials POST: {serializer.errors}')
-            return Response(
+            return OCPIResponse(
                 dict(
                     status_text='Sorry, but we have a slight problem. Support has been alerted.'
                 ),
+                status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
                 status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
         return OCPIResponse(data)
 
 

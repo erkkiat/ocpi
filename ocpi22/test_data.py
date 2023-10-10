@@ -7,6 +7,43 @@ from rest_framework.exceptions import ErrorDetail
 
 
 class CredentialsData:
+    credentials_post_response = {
+        'data': {
+            'roles': [
+                {'business_details': {'name': 'ChargerHub.EU',
+                                      'website': ''},
+                 'country_code': 'FI',
+                 'party_id': 'CPO',
+                 'role': 'CPO'},
+                {'business_details': {'name': 'ChargerHub.EU',
+                                      'website': ''},
+                 'country_code': 'FI',
+                 'party_id': 'MSP',
+                 'role': 'EMSP'}
+            ],
+            'token': '12345',
+            'url': 'http://testserver.test/ocpi/versions/'},
+        'status_code': 1000,
+        'status_message': 'Success',
+        'timestamp': '2022-01-01T12:00:00Z'
+    }
+
+    registered_credentials = {
+        '_state': '***',
+        'connection_status': 'CONNECTED',
+        'created': datetime(2022, 1, 8, 7, 56, 40, 267000, tzinfo=pytz.utc),
+        'id': 2,
+        'last_connection': datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc),
+        'last_updated': datetime(2022, 1, 13, 18, 57, 11, 300000, tzinfo=pytz.utc),
+        'ours': '12345',
+        'theirs': '9e80a9c4-28be-11e9-b210-d663bd873d93',
+        'token_a': '',
+        'updated': datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc),
+        'url': 'https://ocpi.example.com/versions/',
+        'valid': True,
+        'version': '221'
+    }
+
     expected_versions_response = {
         'data': [{'url': 'http://testserver.test/ocpi/2.2/', 'version': '2.2'},
                  {'url': 'http://testserver.test/ocpi/2.2.1/', 'version': '2.2.1'}],
@@ -31,6 +68,30 @@ class CredentialsData:
         'status_code': 1000,
         'status_message': 'Success',
         'timestamp': '2022-01-01T12:00:00Z'
+    }
+
+    example = {
+        "token": "9e80a9c4-28be-11e9-b210-d663bd873d93",
+        "url": "https://ocpi.example.com/versions/",
+        "roles":
+            [
+                {
+                    "role": "CPO",
+                    "party_id": "EXA",
+                    "country_code": "NL",
+                    "business_details": {
+                        "name": "Example Operator"
+                    }
+                },
+                {
+                    "role": "EMSP",
+                    "party_id": "EXA",
+                    "country_code": "NL",
+                    "business_details": {
+                        "name": "Example Provider"
+                    }
+                }
+            ]
     }
 
     ocpi_endpoints_response = {

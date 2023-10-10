@@ -32,27 +32,31 @@ def get_versions_dict():
     ]
 
 
-def get_endpoints_dict(request) -> dict:
+def get_endpoints_dict(request=None, version=None) -> dict:
     R = "RECEIVER"
     S = "SENDER"
 
+    assert request or version, "Either request or version must be given"
+    if not version:
+        version = request.version
+
     result = dict(
-        version=request.version,
+        version=version,
         endpoints=[
             dict(
                 identifier="credentials",
                 role=R,
-                url=request.build_absolute_uri(reverse('credentials-list', args=[request.version]))
+                url=build_absolute_uri(reverse('credentials-list', args=[version]))
             ),
             dict(
                 identifier="credentials",
                 role=S,
-                url=request.build_absolute_uri(reverse('credentials-list', args=[request.version]))
+                url=build_absolute_uri(reverse('credentials-list', args=[version]))
             ),
             dict(
                 identifier="hubclientinfo",
                 role=R,
-                url=request.build_absolute_uri(reverse('clientinfo-list', args=[request.version]))
+                url=build_absolute_uri(reverse('clientinfo-list', args=[version]))
             ),
         ]
     )
@@ -62,7 +66,7 @@ def get_endpoints_dict(request) -> dict:
             dict(
                 identifier="hubclientinfo",
                 role=S,
-                url=request.build_absolute_uri(reverse('clientinfo-list', args=[request.version]))
+                url=build_absolute_uri(reverse('clientinfo-list', args=[version]))
             ),
         ]
 
@@ -71,32 +75,32 @@ def get_endpoints_dict(request) -> dict:
             dict(
                 identifier="locations",
                 role=S,
-                url=request.build_absolute_uri(reverse('location-list', args=[request.version]))
+                url=build_absolute_uri(reverse('location-list', args=[version]))
             ),
             dict(
                 identifier="commands",
                 role=R,
-                url=request.build_absolute_uri(reverse('commands-list', args=[request.version]))
+                url=build_absolute_uri(reverse('commands-list', args=[version]))
             ),
             dict(
                 identifier="tariffs",
                 role=S,
-                url=request.build_absolute_uri(reverse('tariff-list', args=[request.version]))
+                url=build_absolute_uri(reverse('tariff-list', args=[version]))
             ),
             dict(
                 identifier="sessions",
                 role=S,
-                url=request.build_absolute_uri(reverse('session-list', args=[request.version]))
+                url=build_absolute_uri(reverse('session-list', args=[version]))
             ),
             dict(
                 identifier="cdrs",
                 role=S,
-                url=request.build_absolute_uri(reverse('cdr-list', args=[request.version]))
+                url=build_absolute_uri(reverse('cdr-list', args=[version]))
             ),
             dict(
                 identifier="tokens",
                 role=R,
-                url=request.build_absolute_uri(reverse('token-list', args=[request.version]))
+                url=build_absolute_uri(reverse('token-list', args=[version]))
             ),
         ]
     if ocpi_platform.is_emsp or ocpi_platform.is_hub:
@@ -105,32 +109,32 @@ def get_endpoints_dict(request) -> dict:
             dict(
                 identifier="tokens",
                 role=R,
-                url=request.build_absolute_uri(reverse('token-list', args=[request.version]))
+                url=build_absolute_uri(reverse('token-list', args=[version]))
             ),
             dict(
                 identifier="locations",
                 role=R,
-                url=request.build_absolute_uri(reverse('location-list', args=[request.version]))
+                url=build_absolute_uri(reverse('location-list', args=[version]))
             ),
             dict(
                 identifier="cdrs",
                 role=R,
-                url=request.build_absolute_uri(reverse('cdr-list', args=[request.version]))
+                url=build_absolute_uri(reverse('cdr-list', args=[version]))
             ),
             dict(
                 identifier="tokens",
                 role=S,
-                url=request.build_absolute_uri(reverse('token-list', args=[request.version]))
+                url=build_absolute_uri(reverse('token-list', args=[version]))
             ),
             dict(
                 identifier="tariffs",
                 role=R,
-                url=request.build_absolute_uri(reverse('tariff-list', args=[request.version]))
+                url=build_absolute_uri(reverse('tariff-list', args=[version]))
             ),
             dict(
                 identifier="sessions",
                 role=R,
-                url=request.build_absolute_uri(reverse('session-list', args=[request.version]))
+                url=build_absolute_uri(reverse('session-list', args=[version]))
             ),
         ]
     return result
