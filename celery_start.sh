@@ -11,6 +11,7 @@ fi
 FILENAME=".env-$PORT"
 QUEUE=localhost$PORT
 
+source venv/bin/activate || exit 1
 brew services start redis || exit 1
 
 echo "Reading ENV from file $FILENAME"
