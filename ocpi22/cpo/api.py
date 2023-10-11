@@ -138,14 +138,14 @@ class LocationQuickViewSet(mixins.ListModelMixin,
     @staticmethod
     def _put(request, uid=None, partial=False):
         try:
-            uid = uid or request.data.get('id')
+            uid = (uid or request.data.get('id', '')).upper()
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            location = Location.get_if_exists(uid__iexact=uid, ocpi_master=our_role)
-            serializer = LocationQuickSerializer(data=request.data, instance=location, partial=partial)
+            existing_location = Location.get_if_exists(uid__iexact=uid, ocpi_master=our_role)
+            serializer = LocationQuickSerializer(data=request.data, instance=existing_location, partial=partial)
 
             if serializer.is_valid():
                 serializer.save(ocpi_master=our_role)
-                http_status = status.HTTP_200_OK if location else status.HTTP_201_CREATED
+                http_status = status.HTTP_200_OK if existing_location else status.HTTP_201_CREATED
                 return Response(serializer.data, status=http_status)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

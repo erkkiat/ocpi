@@ -49,9 +49,11 @@ class TestQuickLocations(TestCase):
         # Test new location outside of any cities, coordinates as string
         #
 
+        location_id = 'Korso'
+        location_name = 'Location Name'
         data = {
-            "id": "Aplinkkelis",
-            "name": "IONITY High Power Charging Aplinkkelis",
+            "id": location_id,
+            "name": location_name,
             "latitude": "55.67309",
             "longitude": "24.33591"
         }
@@ -59,10 +61,10 @@ class TestQuickLocations(TestCase):
             response = put_location(data, reverse('quick-location-list'))
             self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                              'Expecting Location to be created successfully')
-            location = Location.get_if_exists(uid='Aplinkkelis')
+            location = Location.objects.get(uid=location_id)
             data = LocationQuickSerializer(instance=location).data
             expected = {
-                'id': 'APLINKKELIS', 'name': 'IONITY High Power Charging Aplinkkelis',
+                'id': location_id.upper(), 'name': location_name,
                 'address': 'Panevėžio aplinkl. 20', 'city': '-', 'postal_code': '38417',
                 'country': 'LTU',
                 'time_zone': 'Europe/Vilnius', 'latitude': 55.67309, 'longitude': 24.33591
@@ -76,25 +78,25 @@ class TestQuickLocations(TestCase):
             #
 
             data = {
-                "id": "Aplinkkelis",
-                "latitude": 42.6975216,
-                "longitude": 23.3191493
+                "id": location_id,
+                "latitude": 60.3507477,
+                "longitude": 25.0763834
             }
             response = patch_location(data, reverse('quick-location-list'))
             self.assertEqual(response.status_code, status.HTTP_200_OK,
                              'Expecting Location to be updated successfully')
-            location = Location.get_if_exists(uid='Aplinkkelis')
+            location = Location.get_if_exists(uid=location_id)
             data = LocationQuickSerializer(instance=location).data
-            self.assertEqual(data,
-                             # Todo: Maybe we should have English addresses available in parallel?
-                             {
-                                 # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/Aplinkkelis/',
-                                 'id': 'Aplinkkelis', 'name': 'IONITY High Power Charging Aplinkkelis',
-                                 'address': 'Княз Борис Ⅰ 134', 'city': 'София', 'postal_code': '1000',
-                                 'country': 'BGR',
-                                 'time_zone': 'Europe/Sofia', 'latitude': 42.6975216, 'longitude': 23.3191493
-                             },
-                             'Updated Location data differs from expected')
+            self.assertTrue(compare_dicts_recursively(
+                data,
+                # Todo: Maybe we should have English addresses available in parallel?
+                {
+                    'id': location_id, 'name': location_name,
+                    'address': 'Korsonpolku 4', 'city': 'Vantaa', 'postal_code': '01450',
+                    'country': 'FIN',
+                    'time_zone': 'Europe/Helsinki', 'latitude': 60.3507477, 'longitude': 25.0763834
+                }
+            ), 'Updated Location data differs from expected')
         except (geopy.exc.GeocoderUnavailable, geopy.exc.GeocoderServiceError, ConnectTimeoutError):
             self.skipTest('Geocoder is unavailable')
 
