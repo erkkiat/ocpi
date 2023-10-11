@@ -3,33 +3,33 @@
   <head>
       {% block head %}
 
-      {% block meta %}
-      <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-      <meta name="robots" content="NONE,NOARCHIVE"/>
-      {% endblock %}
+    {% block meta %}
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="robots" content="NONE,NOARCHIVE"/>
+    {% endblock %}
 
-      <title>{% block title %}{% if name %}{{ name }} – {% endif %}Roaming Module - SolidRoam{% endblock %}</title>
+    <title>{% block title %}{% if name %}{{ name }} – {% endif %}Roaming Module - SolidRoam{% endblock %}</title>
 
-      {% block style %}
-      {% block bootstrap_theme %}
-      <link rel="stylesheet" type="text/css" href="{% static " rest_framework
-      /css/bootstrap.min.css" %}"/>
-      <link rel="stylesheet" type="text/css" href="{% static " vendor
-      /bootstrap/css/bootstrap-grid.css" %}"/>
-      <!--          <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/bootstrap-tweaks.css" %}"/>-->
-      {% endblock %}
+    {% block style %}
+    {% block bootstrap_theme %}
+    <link rel="stylesheet" type="text/css" href="{% static " rest_framework
+    /css/bootstrap.min.css" %}"/>
+    <link rel="stylesheet" type="text/css" href="{% static " vendor
+    /bootstrap/css/bootstrap-grid.css" %}"/>
+    <!--          <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/bootstrap-tweaks.css" %}"/>-->
+    {% endblock %}
 
-      <!--        <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/prettify.css" %}"/>-->
-      <link rel="stylesheet" type="text/css" href="{% static " rest_framework
-      /css/default.css" %}"/>
-      <link rel="stylesheet" type="text/css" href="{% static " css
-      /ocpiconnector.css" %}"/>
-      {% if code_style %}
-      <style>{{ code_style }}</style>
-      {% endif %}
-      {% endblock %}
+    <!--        <link rel="stylesheet" type="text/css" href="{% static "rest_framework/css/prettify.css" %}"/>-->
+    <link rel="stylesheet" type="text/css" href="{% static " rest_framework
+    /css/default.css" %}"/>
+    <link rel="stylesheet" type="text/css" href="{% static " css
+    /ocpiconnector.css" %}"/>
+    {% if code_style %}
+    <style>{{ code_style }}</style>
+    {% endif %}
+    {% endblock %}
 
-      {% endblock %}
+    {% endblock %}
   </head>
 
   {% block body %}
