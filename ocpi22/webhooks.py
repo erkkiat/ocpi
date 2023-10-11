@@ -31,7 +31,7 @@ def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
             headers = {'content-type': 'application/json', 'accept': 'application/json'}
             kwargs.update(kwargs_update)
 
-            response = requests.post(
+            response = requests.put(
                 url=url,
                 json=serialized_data,
                 headers=headers,

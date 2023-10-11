@@ -952,8 +952,8 @@ class CommandTests(TestCase):
                          'Please make sure there are no Sessions at the start of this test')
 
         # Let's pretend to be the CPO and get an error from charger
-        simulation.webhook_requests.post.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
-        simulation.webhook_requests.post.reset_mock()
+        simulation.webhook_requests.put.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
+        simulation.webhook_requests.put.reset_mock()
         simulation.uuid4.return_value = MockUuid4(42)
 
         try:
@@ -963,23 +963,23 @@ class CommandTests(TestCase):
             return False
 
         # Check the request sent to the CPO
-        simulation.webhook_requests.post.assert_called_once()
-        args, kwargs = simulation.webhook_requests.post.call_args
-        self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        simulation.webhook_requests.put.assert_called_once()
+        args, kwargs = simulation.webhook_requests.put.call_args
+        self.assertFalse(args, 'Not expecting positional arguments to requests.put()')
         self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.evse_inoperative_response),
                         'Expecting different response for start_session')
 
         # Let's pretend to be the CPO and all is good
-        simulation.webhook_requests.post.return_value = make_json_response(dict(result='ACCEPTED'))
-        simulation.webhook_requests.post.reset_mock()
+        simulation.webhook_requests.put.return_value = make_json_response(dict(result='ACCEPTED'))
+        simulation.webhook_requests.put.reset_mock()
         simulation.uuid4.return_value = MockUuid4(99)
 
         response = viewset.start_session(request)
 
         # Check the request sent to the CPO
-        simulation.webhook_requests.post.assert_called_once()
-        args, kwargs = simulation.webhook_requests.post.call_args
-        self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        simulation.webhook_requests.put.assert_called_once()
+        args, kwargs = simulation.webhook_requests.put.call_args
+        self.assertFalse(args, 'Not expecting positional arguments to requests.put()')
         self.assertTrue(compare_dicts_recursively(kwargs, SessionCommandsData.start_webhook))
 
         check_ok_result(self, response)
@@ -1001,8 +1001,8 @@ class CommandTests(TestCase):
         # Stop session, successful case
         #
 
-        simulation.webhook_requests.post.return_value = make_json_response(dict(result=CommandResponse.ACCEPTED))
-        simulation.webhook_requests.post.reset_mock()
+        simulation.webhook_requests.put.return_value = make_json_response(dict(result=CommandResponse.ACCEPTED))
+        simulation.webhook_requests.put.reset_mock()
         simulation.uuid4.return_value = MockUuid4(99)
 
         data = dict(session_id=session.uid, response_url='http://localhost.local/response/')
@@ -1011,8 +1011,8 @@ class CommandTests(TestCase):
             mock_generate_random_token.return_value = 'COMMAND_ID'
             response = stop_session(data, AnonymousUser)
 
-        calls = simulation.webhook_requests.post.call_args_list
-        simulation.webhook_requests.post.assert_called_once()
+        calls = simulation.webhook_requests.put.call_args_list
+        simulation.webhook_requests.put.assert_called_once()
         self.assertTrue(compare_dicts_recursively(calls[0].kwargs, SessionCommandsData.stop_webhook))
         self.assertEqual(response.status_code, status.HTTP_200_OK,
                          f'Stop session was expected to succeed: response.data')
@@ -1035,7 +1035,7 @@ class CommandTests(TestCase):
         # Load up the test message and send it
         data = load_example(f'data/examples/command_reserve_now.json')
 
-        request = api_factory.post(url, sender=Party('FI', 'MSP'))
+        request = api_factory.put(url, sender=Party('FI', 'MSP'))
         request.data = data
 
         self.assertFalse(Session.objects.all().exists(),
@@ -1043,7 +1043,7 @@ class CommandTests(TestCase):
 
         try:
             # Let's pretend to be the CPO and get an error from charger
-            simulation.webhook_requests.post.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
+            simulation.webhook_requests.put.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
             simulation.uuid4.return_value = MockUuid4(42)
             response = viewset.reserve_now(request)
         except redis.exceptions.ConnectionError as e:
@@ -1054,9 +1054,9 @@ class CommandTests(TestCase):
                          'Expecting the reservation to fail')
 
         # Check the request sent to the CPO
-        simulation.webhook_requests.post.assert_called_once()
-        args, kwargs = simulation.webhook_requests.post.call_args
-        self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        simulation.webhook_requests.put.assert_called_once()
+        args, kwargs = simulation.webhook_requests.put.call_args
+        self.assertFalse(args, 'Not expecting positional arguments to requests.put()')
         self.assertTrue(compare_dicts_recursively(response.data, SessionCommandsData.evse_inoperative_response),
                         'Expecting a different response for a reservation')
 
@@ -1068,14 +1068,14 @@ class CommandTests(TestCase):
 
         # Let's simulate the CPO backend
         simulation.webhook_requests.reset_mock()
-        simulation.webhook_requests.post.return_value = make_json_response(dict(result='ACCEPTED'))
+        simulation.webhook_requests.put.return_value = make_json_response(dict(result='ACCEPTED'))
         simulation.uuid4.return_value = MockUuid4(99)
         response = viewset.reserve_now(request)
 
         # Check the request sent to the CPO
-        simulation.webhook_requests.post.assert_called_once()
-        args, kwargs = simulation.webhook_requests.post.call_args
-        self.assertFalse(args, 'Not expecting positional arguments to requests.post()')
+        simulation.webhook_requests.put.assert_called_once()
+        args, kwargs = simulation.webhook_requests.put.call_args
+        self.assertFalse(args, 'Not expecting positional arguments to requests.put()')
         self.assertTrue(compare_dicts_recursively(
             kwargs.get('json'),
             {
@@ -1109,7 +1109,7 @@ class CommandTests(TestCase):
     #     # Load up the test message and send it
     #     data = load_example(f'data/examples/command_unlock_connector.json')
     #
-    #     request = api_factory.post(url)
+    #     request = api_factory.put(url)
     #     request.data = data
     #     response = viewset.unlock_connector(request)
     #
@@ -1117,7 +1117,7 @@ class CommandTests(TestCase):
     #
     #     data = load_example(f'data/examples/command_unlock_connector_unknown_location.json')
     #
-    #     request = api_factory.post(url)
+    #     request = api_factory.put(url)
     #     request.data = data
     #     response = viewset.unlock_connector(request)
     #
@@ -1674,7 +1674,7 @@ class TestSession(TestCase):
                 request.data = data
 
                 with patch('ocpi22.util.redis_store.get') as mock_get, \
-                        patch('ocpi22.webhooks.requests.post') as webhook_post_mock:
+                        patch('ocpi22.webhooks.requests.put') as webhook_post_mock:
                     mock_get.return_value = 'http://localhost/session/'
                     response = SessionViewSet().patch(request, certification=Mock(), **kwargs)
 
@@ -1775,7 +1775,7 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=MockUuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
-    @patch('ocpi22.webhooks.requests.post')
+    @patch('ocpi22.webhooks.requests.put')
     @patch('ocpiconnector.analytics.send_session_update_to_analytics')
     def test_rfid_charging_flow(self,
                                 _send_analytics: Mock,
@@ -2015,7 +2015,7 @@ class TestCpoApi(TestCase):
     @patch('ocpi22.util.redis_store.set', return_value=True)
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=MockUuid4())
-    @patch('ocpi22.webhooks.requests.post')
+    @patch('ocpi22.webhooks.requests.put')
     def test_adhoc_token(self,
                          requests_post_mock: Mock,
                          uuid4_mock: Mock,
@@ -2335,8 +2335,8 @@ class TestPutSession(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                          'Creating a session with ChargingPeriods should succeed')
-        simulation.webhook_requests.post.assert_called_once()
-        calls = simulation.webhook_requests.post.call_args_list
+        simulation.webhook_requests.put.assert_called_once()
+        calls = simulation.webhook_requests.put.call_args_list
         self.assertTrue(compare_dicts_recursively(calls[0].kwargs.get('json'), SessionData.meter_values_1_webhook))
 
     @simulate_surrounding_world
@@ -2350,7 +2350,7 @@ class TestPutSession(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Creating a session with wrong EVSE should fail gracefully')
-        simulation.webhook_requests.post.assert_not_called()
+        simulation.webhook_requests.put.assert_not_called()
 
 
 def meter_values(data):
@@ -2423,7 +2423,7 @@ class TestMspApi(TestCase):
         }
 
         # Provide eternal success from the webhook
-        simulation.webhook_requests.post.return_value = FakeResponse(200, self.accepted_result)
+        simulation.webhook_requests.put.return_value = FakeResponse(200, self.accepted_result)
         simulation.ocpi_requests.post.return_value = FakeResponse(200, self.accepted_result)
 
         # See that Account is created automatically
@@ -2499,10 +2499,10 @@ class TestMspApi(TestCase):
     # @time_machine.travel(faketime, tick=True)
     # @patch('ocpi22.ocpi.util.uuid.uuid4',
     #        return_value=MockUuid4())
-    # @patch('ocpi22.webhooks.requests.post',
+    # @patch('ocpi22.webhooks.requests.put',
     #        return_value=FakeResponse(200, accepted_result)
     #        )
-    # @patch('ocpi22.webhooks.requests.post')
+    # @patch('ocpi22.webhooks.requests.put')
     # def test_without_authorization_reference(self,
     #                       _webhook_post_mock: Mock,
     #                       requests_post_mock: Mock,
@@ -2716,7 +2716,7 @@ class TestMspUserApi(TestCase):
     @patch('ocpi22.ocpi.util.logging')  # There are some conflicts with atomic transactions when logging to mysql
     @simulate_surrounding_world
     def test_token_authorization_with_webhook(self, _mocked_logging: Mock, simulation: Simulation):
-        simulation.webhook_requests.post.return_value = FakeResponse(200, accept_authorization_msp)
+        simulation.webhook_requests.put.return_value = FakeResponse(200, accept_authorization_msp)
 
         with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
             token_id = 'EKI1'
@@ -2729,17 +2729,17 @@ class TestMspUserApi(TestCase):
             self.assertTrue(
                 compare_lists_recursively(
                     method_calls,
-                    [call.post(url='http://localhost/default/', json={'token_id': 'EKI1'},
-                               headers={'content-type': 'application/json', 'accept': 'application/json'},
-                               verify=False, timeout=28)],
-                    'requests.post() should have been called once by send_to_webhook()'
+                    [call.put(url='http://localhost/default/', json={'token_id': 'EKI1'},
+                              headers={'content-type': 'application/json', 'accept': 'application/json'},
+                              verify=False, timeout=28)],
+                    'requests.put() should have been called once by send_to_webhook()'
                 )
             )
 
     @patch('ocpi22.ocpi.util.logging')  # There are some conflicts with atomic transactions when logging to mysql
     @simulate_surrounding_world
     def test_cdrs_and_transactions(self, _mocked_logging: Mock, simulation: Simulation):
-        simulation.webhook_requests.post.return_value = FakeResponse(200, accept_authorization_msp)
+        simulation.webhook_requests.put.return_value = FakeResponse(200, accept_authorization_msp)
         simulation.redis_store.get.side_effect = None
         simulation.redis_store.get.return_value = ''
 
@@ -2758,7 +2758,7 @@ class TestMspUserApi(TestCase):
         # Try an RFID
         #
 
-        simulation.webhook_requests.post.return_value = FakeResponse(200, accept_authorization)
+        simulation.webhook_requests.put.return_value = FakeResponse(200, accept_authorization)
         # Anything should be fine, since we patch all HTTP calls
         simulation.redis_store.get.return_value = 'http://localhost/webhook/'
         self.set_balance(self.initial_balance)
@@ -2969,7 +2969,7 @@ class TokenAuthorizationTests(BetterTestCase):
         request.accepted_media_type = 'application/json'
         request.data = request_data or {}
 
-        simulation.webhook_requests.post.return_value = webhook_response
+        simulation.webhook_requests.put.return_value = webhook_response
 
         Authorization.objects.all().delete()
 
