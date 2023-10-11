@@ -906,7 +906,7 @@ class TokenAuthorizationData:
     non_existent_token = {
         'data': '',
         'status_code': 2004,
-        'status_message': 'Unknown Token',
+        'status_message': 'Unknown Token "NONEXISTENT"',
         'timestamp': '2022-01-01T12:00:00Z'
     }
 

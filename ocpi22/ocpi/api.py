@@ -140,7 +140,7 @@ class TokenViewSet(OCPIListModelMixin,
                 # 2004: Unknown Token, and no data field.
                 return OCPIResponse(status_code=Ocpi.ClientError.UNKNOWN_TOKEN,
                                     status=status.HTTP_404_NOT_FOUND,
-                                    status_message='Unknown Token')
+                                    status_message=f'Unknown Token "{token_uid}"')
             if request.data:
                 serializer = AuthorizeSerializer(data=request.data)
                 # ic(token, request.data, serializer.initial_data)

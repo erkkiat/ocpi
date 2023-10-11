@@ -152,6 +152,7 @@ class Simulation:
     webhook_requests: Mock
     uuid4: Mock
     ocpi_requests: Mock
+    logging: Mock
 
     def reset(self):
         for x in self.__dict__.values():
@@ -202,17 +203,21 @@ def simulate_surrounding_world(func):
     def wrapper(*args, **kwargs):
         with patch('ocpi22.tasks.requests') as tasks_requests, \
                 patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision, \
-                patch('ocpi22.util.redis_store',) as redis_store, \
+                patch('ocpi22.util.redis_store', ) as redis_store, \
                 patch('ocpi22.webhooks.requests') as webhook_requests, \
                 patch('ocpi22.ocpi.util.uuid.uuid4', return_value=MockUuid4()) as uuid4, \
-                patch('ocpi22.ocpi.util.requests') as ocpi_requests:
+                patch('ocpi22.ocpi.util.requests') as ocpi_requests, \
+                patch('ocpi22.logging.error') as logging_error, \
+                patch('ocpi22.logging.info') as logging_info, \
+                patch('ocpi22.logging.warning') as logging_warning:
             simulation = Simulation(
                 tasks_requests=tasks_requests,
                 get_platform_revision=get_platform_revision,
                 redis_store=redis_store,
                 webhook_requests=webhook_requests,
                 uuid4=uuid4,
-                ocpi_requests=ocpi_requests
+                ocpi_requests=ocpi_requests,
+                logging=Mock(error=logging_error, warning=logging_warning, info=logging_info)
             )
             return func(*args, simulation=simulation, **kwargs)
     return wrapper
