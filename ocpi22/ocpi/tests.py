@@ -1,7 +1,9 @@
 import base64
+from typing import Union
 from unittest.mock import patch
 
 import time_machine
+from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
 
 from ocpi22.credentials.versions import get_versions_dict, get_endpoints_dict
@@ -32,6 +34,17 @@ class CredentialsTests(BetterTestCase):
         result = CredentialsViewSet().list(request)
         self.assertEqual(result.status_code, 405, 'Credentials should not be accessible without OCPI authentication')
 
+    @staticmethod
+    def make_request(data: dict, token_base64=None, url_name='credentials-list') -> WSGIRequest:
+        assert isinstance(data, dict)
+        request: WSGIRequest = api_factory.post(
+            reverse(url_name),
+            data=data,
+            **make_headers(token_base64)
+        )
+        request.data = data
+        return request
+
     @simulate_surrounding_world
     def test_credentials_post(self, simulation):
         token_a = '123'
@@ -42,16 +55,12 @@ class CredentialsTests(BetterTestCase):
             FakeResponse(data=dict(data=get_endpoints_dict(version='2.2.1')), status_code=status.HTTP_200_OK)
         ]
 
-        request = api_factory.post(
-            reverse('credentials-list'),
-            data=CredentialsData.example,
-            **make_headers(token_base64)
-        )
-        request.data = CredentialsData.example
+        request = self.make_request(CredentialsData.example, token_base64=token_base64)
         random_token = '12345'
+
         with time_machine.travel(faketime, tick=False), \
                 patch('ocpi22.ocpi.api.generate_random_token', return_value=random_token):
-            credentials = Credentials.objects.create(token_a=token_a)
+            Credentials.objects.create(token_a=token_a)
             result = CredentialsViewSet().post(request)
 
         serializer = CredentialsSerializer(data=result.data.get('data'))
@@ -63,3 +72,10 @@ class CredentialsTests(BetterTestCase):
 
         credentials = Credentials.objects.get(ours=random_token)
         self.assertDictEqual(credentials.__dict__, CredentialsData.registered_credentials)
+
+        # Updating an existing one using POST should fail
+        result = CredentialsViewSet().post(request)
+        self.assertTrue(result.status_code not in (status.HTTP_200_OK, status.HTTP_201_CREATED),
+                        'Updating an existing credentials should fail')
+        self.assertTrue('Credentials exist' in result.data.get('status_message', ''),
+                        'Updating an existing credentials should fail')

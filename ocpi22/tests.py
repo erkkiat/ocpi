@@ -72,7 +72,7 @@ from ocpi22.sessions.util import create_session
 from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, \
     SessionData, \
     RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData, \
-    TokenAuthorizationResponses
+    TokenAuthorizationData
 from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -2721,20 +2721,15 @@ class TestMspUserApi(TestCase):
         with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
             token_id = 'EKI1'
             Token.objects.filter(uid=token_id).update(customer=self.user)
-            # token = Token.objects.get(uid=token_id)
-            # ic(token, token.total_balance_float())
-            response = msp_authorize(token_id)
 
-            method_calls = simulation.webhook_requests.method_calls
-            self.assertTrue(
-                compare_lists_recursively(
-                    method_calls,
-                    [call.put(url='http://localhost/default/', json={'token_id': 'EKI1'},
-                              headers={'content-type': 'application/json', 'accept': 'application/json'},
-                              verify=False, timeout=28)],
-                    'requests.put() should have been called once by send_to_webhook()'
-                )
-            )
+            with time_machine.travel(faketime, tick=False):
+                response = msp_authorize(token_id)
+
+            self.assertTrue(compare_dicts_recursively(response.data, TokenAuthorizationData.authorization_response))
+
+            method_calls = list(map(lambda x: x.kwargs, simulation.webhook_requests.method_calls))
+
+            self.assertTrue(compare_lists_recursively(method_calls, TokenAuthorizationData.authorization_webhook_calls))
 
     @patch('ocpi22.ocpi.util.logging')  # There are some conflicts with atomic transactions when logging to mysql
     @simulate_surrounding_world
@@ -2984,7 +2979,7 @@ class TokenAuthorizationTests(BetterTestCase):
     #     viewset.request = request
     #     response = viewset.list(request)
     #     self.assertEqual(response.status_code, status.HTTP_200_OK)
-    #     self.assertEqual(response.data, TokenAuthorizationResponses.token_list)
+    #     self.assertEqual(response.data, TokenAuthorizationData.token_list)
 
     @simulate_surrounding_world
     def test_non_existent_token_authorization(self, simulation):
@@ -3007,7 +3002,7 @@ class TokenAuthorizationTests(BetterTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND,
                          'OCPI 2.2.1 spec requires 404 for non-existent token')
-        self.assertDictEqual(response.data, TokenAuthorizationResponses.non_existent_token)
+        self.assertDictEqual(response.data, TokenAuthorizationData.non_existent_token)
 
         # While we're at it, check that the breadcrumbs can get the view name
         self.assertEqual(viewset.get_view_name(), 'Tokens')
@@ -3038,7 +3033,7 @@ class TokenAuthorizationTests(BetterTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED,
                          'Token is not valid, so authorization should fail')
-        self.assertDictEqual(response.data, TokenAuthorizationResponses.invalid_token)
+        self.assertDictEqual(response.data, TokenAuthorizationData.invalid_token)
 
         # Clean up afterwards
         Token.objects.filter(uid=token_id).update(valid=True)
@@ -3062,13 +3057,13 @@ class TokenAuthorizationTests(BetterTestCase):
 
         # There should be one call only to the webhook
         webhook_data = list(map(lambda x: x.kwargs, simulation.webhook_requests.method_calls))
-        self.assertListEqual(webhook_data, TokenAuthorizationResponses.webhook_data)
+        self.assertListEqual(webhook_data, TokenAuthorizationData.webhook_data)
 
-        self.assertTrue(compare_dicts_recursively(response.data, TokenAuthorizationResponses.success),
+        self.assertTrue(compare_dicts_recursively(response.data, TokenAuthorizationData.success),
                         'Response from MSP for Token authorize() differs from expected')
         authorization = Authorization.objects.get(authorization_reference='FI*MSP*A*MOCK-1')
         self.assertTrue(compare_dicts_recursively(authorization.__dict__,
-                                                  TokenAuthorizationResponses.authorization_object_data))
+                                                  TokenAuthorizationData.authorization_object_data))
 
     @simulate_surrounding_world
     def test_location_missing_token_authorization(self, simulation):
@@ -3085,7 +3080,7 @@ class TokenAuthorizationTests(BetterTestCase):
         with time_machine.travel(faketime, tick=False):
             response = TokenViewSet().authorize(request, self.token.uid)
 
-        self.assertDictEqual(response.data, TokenAuthorizationResponses.location_not_found)
+        self.assertDictEqual(response.data, TokenAuthorizationData.location_not_found)
         # There should be no webhook call for a non-existent Location
         simulation.webhook_requests.assert_not_called()
         self.assertFalse(Authorization.objects.count())

@@ -54,11 +54,13 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
     """
     # ic(path, label, received, expected)
     output = ''
-    if not isinstance(received, (dict, OrderedDict)):
+    if isinstance(received, (str, bytes, bytearray)):
         return compare_dicts_recursively(json.loads(received), expected, path=path, label=label)
-    if not isinstance(expected, (dict, OrderedDict)):
+    if isinstance(expected, (str, bytes, bytearray)):
         return compare_dicts_recursively(received, json.loads(expected), path=path, label=label)
     result = True
+    assert isinstance(expected, dict) and isinstance(received, dict), \
+        f'Not expecting {type(received)=} {type(expected)=}'
     keys = list(expected.keys())
     keys += list(received.keys())
     for key in set(keys):
