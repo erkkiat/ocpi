@@ -11,7 +11,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import uid_validator, fetch_object
-from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp
+from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -113,7 +113,7 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
 
     id = serializers.CharField(source='uid')
     tariff_ids = TariffField(many=True, required=False)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
     power_type = PowerTypeSerializer()
     max_electric_power = MaxElectricPowerSerializer(source='*', required=False)
 
@@ -128,7 +128,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     connectors = ConnectorSerializer(many=True, required=False)
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySerializer(many=True, required=False)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
 
     def to_representation(self, evse: Evse):
         result = super().to_representation(evse)
@@ -226,7 +226,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     owner = BusinessDetailsSerializer(required=False)
     operator = BusinessDetailsSerializer(required=False)
     suboperator = BusinessDetailsSerializer(required=False)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
     publish_allowed_to = PublishAllowedToSerializer(many=True, required=False)
 
     @staticmethod

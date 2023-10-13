@@ -15,7 +15,8 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES, fill_out_location_address
-from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer
+from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer, \
+    UTCDateTimeField
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -24,7 +25,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['url', 'uid', 'status', 'last_updated']
 
     uid = serializers.CharField(read_only=True)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
 
 
 class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -43,9 +44,9 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     location_id = serializers.SerializerMethodField(read_only=True)
     evse_uid = serializers.SerializerMethodField(read_only=True)
     connector_id = serializers.SerializerMethodField(read_only=True)
-    start_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT)
-    end_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    start_date_time = UTCDateTimeField(format=settings.OCPI_DATE_FORMAT)
+    end_date_time = UTCDateTimeField(required=False)
+    last_updated = UTCDateTimeField(required=False)
 
     @staticmethod
     def get_token(session):
@@ -89,7 +90,7 @@ class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
 
     uid = serializers.CharField(validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
     tariff_ids = ConnectorTariffIdSerializer(required=False, many=True)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
 
 
 class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -267,7 +268,7 @@ class MeterValuesSerializer(serializers.Serializer):
                   'When negative, more energy was feed into the grid then charged into the EV. '
                   'Default step_size is 1.',
     )
-    timestamp = serializers.DateTimeField(
+    timestamp = UTCDateTimeField(
         required=False,
         help_text="Optional timestamp for the meter values. Using this field is highly recommended, so that "
                   "disruptions in connectivity won't distort cost calculation."
@@ -325,7 +326,7 @@ class StopTransactionSerializer(serializers.Serializer):
         max_digits=8, decimal_places=4, required=False,
         help_text='Optionally, the final kWh reading from the charger',
     )
-    stop_timestamp = serializers.DateTimeField(
+    stop_timestamp = UTCDateTimeField(
         required=False, default_timezone=pytz.UTC,
         help_text='The timestamp of the moment when the driver has unplugged the vehicle, defaults to UTC timezone'
     )
@@ -411,7 +412,7 @@ class CPOReserveNowWebhookSerializer(CallbacksSerializer):
     reserve_now_url = serializers.URLField()
 
     class OutboundSerializer(CpoOutboundWebhookSerializer):
-        expiry_date = serializers.DateTimeField()
+        expiry_date = UTCDateTimeField()
         location_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
         reservation_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 

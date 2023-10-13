@@ -1,3 +1,5 @@
+from dateutil import parser
+from django.conf import settings
 from rest_framework import serializers
 
 from ocpi22.util import clear_empty, set_callbacks_parameter, build_absolute_uri
@@ -86,3 +88,16 @@ class CallbacksSerializer(serializers.Serializer):
         for key, value in self.validated_data.items():
             set_callbacks_parameter(key, value)
         # redis_store.save()  # This is not allowed in Heroku Redis
+
+    OutboundSerializer = None
+    ResponseSerializer = None
+
+
+class UTCDateTimeField(serializers.DateTimeField):
+    def to_representation(self, value):
+        value = value.strftime(settings.OCPI_DATE_FORMAT)
+        return super().to_representation(value)
+
+    def to_internal_value(self, value: str):
+        value = parser.parse(value)
+        return value

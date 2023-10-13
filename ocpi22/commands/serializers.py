@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from ocpi22 import choices
 from ocpi22.ocpi.serializers import LocationIdDictSerializer, StrictEvseUidSerializer
-from ocpi22.serializers import SerializerCleanedUp
+from ocpi22.serializers import SerializerCleanedUp, UTCDateTimeField
 from ocpi22.util import CountryCodeField, PartyIdField, CiStringChoiceField
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -28,7 +28,7 @@ class CommandTokenSerializer(SerializerCleanedUp):
 
     type = CiStringChoiceField(choices=choices.TOKEN_TYPE_CHOICES, required=True)
     contract_id = serializers.CharField(required=True)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
 
     def create(self, validated_data):
         raise NotImplementedError()
@@ -89,7 +89,7 @@ class ReserveNowSerializer(serializers.Serializer):
         required=False, allow_blank=True,
         help_text='Optional EVSE.uid of the EVSE of this Location on which a session is to be started.'
     )
-    expiry_date = serializers.DateTimeField(
+    expiry_date = UTCDateTimeField(
         help_text='The Date/Time when this reservation ends, in UTC.'
     )
     reservation_id = serializers.CharField(

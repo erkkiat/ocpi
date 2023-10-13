@@ -16,7 +16,7 @@ from ocpi22.models.session import Session, ChargingPeriod, CdrDimension, Chargin
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
-from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp
+from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
 from ocpi22.util import base64_to_ascii, CiStringChoiceField, MultipleChoiceFieldList, CiStringField
 from ocpiconnector.ocpi_identities import Party
 
@@ -43,7 +43,7 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     default_profile_type = CiStringChoiceField(required=False, choices=Token.PROFILE_TYPE_CHOICES)
     language = CiStringChoiceField(required=False, default='EN', choices=choices.LANGUAGE_CHOICES)
     type = CiStringChoiceField(required=False, choices=choices.TOKEN_TYPE_CHOICES)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
 
 
 class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -122,7 +122,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
                                    default=dict(max_price_excl_vat=None, max_price_incl_vat=None))
 
     tariff_alt_text = TariffAltTextSerializer(source='*', read_only=True)
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
 
     def _delete_children(self, tariff: Tariff) -> None:
         """
@@ -193,9 +193,9 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     total_cost = TotalCostSerializer(source='*')
     tariffs = TariffSerializer(many=True, required=True)
     cdr_location = CdrLocationSerializer(source='*')
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
-    start_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=True)
-    end_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=True)
+    last_updated = UTCDateTimeField(required=False)
+    start_date_time = UTCDateTimeField(required=True)
+    end_date_time = UTCDateTimeField(required=True)
 
     def create(self, validated_data):
         try:
@@ -371,10 +371,10 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     connector_id = ConnectorIdSerializer(source='*', required=False)
     total_cost = TotalCostSerializer(source='*', required=False)
 
-    start_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT)
-    end_date_time = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    start_date_time = UTCDateTimeField(format=settings.OCPI_DATE_FORMAT)
+    end_date_time = UTCDateTimeField(required=False)
 
-    last_updated = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT, required=False)
+    last_updated = UTCDateTimeField(required=False)
     kwh = serializers.FloatField(required=False)
 
     def create(self, validated_data):
@@ -421,7 +421,7 @@ class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
     status = serializers.ChoiceField(
         choices=CONNECTION_STATUS_CHOICES, source='credentials.connection_status'
     )
-    last_updated = serializers.DateTimeField(
+    last_updated = UTCDateTimeField(
         source='credentials.last_connection', format=settings.OCPI_DATE_FORMAT
     )
 
