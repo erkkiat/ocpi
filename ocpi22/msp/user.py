@@ -196,7 +196,7 @@ class BriefTransactionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Transaction
         fields = ('delta', 'balance_after', 'currency', 'discount', 'total_energy', 'cdr',
-                  'datetime', 'display_date', 'display_time')
+                  'datetime')
 
     cdr = BriefCdrSerializer()
     datetime = UTCDateTimeField(format=settings.OCPI_DATE_FORMAT)

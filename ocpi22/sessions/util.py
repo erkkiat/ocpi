@@ -75,7 +75,8 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     if active_sessions.exists():
         logging.error(f'Cannot start a new Session because there are {active_sessions.count()} '
                       f'active sessions at EVSE {evse.evse_id}: {",".join([s.uid for s in active_sessions])}')
-        raise EvseOccupied(f'Cannot start a new session because there is an active charging session in progress')
+        raise EvseOccupied('Cannot start a new session because there is an active charging session '
+                           f'{active_sessions.first().uid} in progress.')
 
     assert billed_to, 'Unable to bill session without billed_to'
 

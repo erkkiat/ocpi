@@ -35,7 +35,7 @@ from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party, get_our_party
-from util import format_url, RedisStore, redis_store
+from util import format_url, RedisStore, redis_store, with_trailing_slash
 
 
 # slack_logging.init()
@@ -709,7 +709,7 @@ def fetch_object(uid: str, party: Party = None, credentials=None, ocpi_module: O
         return False
     role = ocpi_module.get_owner()
     party = party or credentials.get_party_for_role(role)
-    url = urljoin(route.url, f"{party.country_code}/{party.party_id}/{uid}")
+    url = urljoin(with_trailing_slash(route.url), f"{party.country_code}/{party.party_id}/{uid}")
     our_party = get_our_party(OcpiRolesEnum.EMSP)  # eMSP is receiving Locations, which may have broken references
 
     # print(f'Fetching missing {ocpi_module.value} from {party} at {url}')

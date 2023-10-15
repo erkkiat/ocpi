@@ -21,7 +21,7 @@ from ocpi22.ocpi.parse import parse_ocpi_url
 from ocpiconnector.exceptions import WrongRole
 
 from ocpiconnector.ocpi_identities import Party
-from util import OCPIVersion, reverse
+from util import OCPIVersion, reverse, with_trailing_slash
 
 
 @dataclass
@@ -175,7 +175,7 @@ def process_incoming_remote_command_at_hub(request: HttpRequest, data: str) -> s
         old_path = json_data.get('response_url', '')
         if old_path:
             command_response_path = reverse('commands-hubresponse', args=[command_id])
-            new_path = build_absolute_uri(urljoin(command_response_path, command_id))
+            new_path = build_absolute_uri(urljoin(with_trailing_slash(command_response_path), command_id))
             assert hasattr(request, 'credentials'), 'Unable to find credentials from request'
             credentials = request.credentials
             route_back = Route(url=old_path, identifier=OcpiModuleEnum.COMMANDS, credentials_id=credentials.pk,
@@ -223,7 +223,7 @@ def route_ocpi_request(request: HttpRequest, party: Party):
                     data = data.decode('utf-8')
                 data = process_incoming_remote_command_at_hub(request, data)
                 method = request.method
-                url = urljoin(route.url, ocpi_url.parameters)
+                url = urljoin(with_trailing_slash(route.url), ocpi_url.parameters)
                 logging.info(f'Forwarding message to {str(party)} at {url}')
                 response: requests.Response = requests.request(
                     method=method, url=url,

@@ -34,6 +34,7 @@ from ocpi22.routing import find_route, Route
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party, Party
 from ocpiconnector.util import Timer
+from util import with_trailing_slash
 
 
 @receiver(post_save, sender=Token)
@@ -107,6 +108,8 @@ def authorize_with_all_msps(token: str, location: Location, request=None) -> Opt
     parties = find_endpoints_by_roles((OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS)
     # ic(parties)
     authorize_calls = []
+    to: Party()
+
     for url, token_base64, country_code, party_id, credentials in parties:
         try:
             route = find_route(credentials, OcpiModuleEnum.TOKENS)
@@ -242,7 +245,7 @@ def do_authorization(token: Union[Token, str], location: Location, route: Route,
     if isinstance(token, Token):
         to = to or token.get_party()
         token = token.uid
-    url = urljoin(route.url, f'{token}/authorize')
+    url = urljoin(with_trailing_slash(route.url), f'{token}/authorize')
     result = ocpi_post(
         url=url,
         token_base64=route.token_base64,

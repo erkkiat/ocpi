@@ -132,6 +132,9 @@ class MspSessionSerializer(SessionSerializer):
                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
                   'status', 'display_status', 'message', 'last_updated']
 
+    country_code = serializers.CharField(source='ocpi_master.country_code', read_only=True)
+    party_id = serializers.CharField(source='ocpi_master.party_id', read_only=True)
+
     total_time = serializers.DecimalField(source='total_time_float', read_only=True, max_digits=8, decimal_places=2)
     display_total_time = serializers.CharField(source='total_time', read_only=True)
 

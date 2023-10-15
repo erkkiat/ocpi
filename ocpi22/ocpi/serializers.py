@@ -447,6 +447,7 @@ class EvseUidSerializer(serializers.Serializer):
 class StrictEvseUidSerializer(serializers.CharField):
     def to_internal_value(self, data):
         evse = None
+        location_id = 'N/A'
         if hasattr(self, 'parent'):
             location_id = self.parent.initial_data.get('location_id')
             if not location_id and hasattr(self.parent, 'parent'):

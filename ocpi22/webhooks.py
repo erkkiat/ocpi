@@ -40,7 +40,7 @@ def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
                 **kwargs)
             logging.info(f'Webhook {serializer.URL} at {url} responded in {response.elapsed}')
 
-            if hasattr(serializer, 'ResponseSerializer'):
+            if getattr(serializer, 'ResponseSerializer', None):
                 response_json = response.json()
                 response_serializer = serializer.ResponseSerializer(data=response_json)
                 if response_serializer.is_valid():
@@ -50,7 +50,7 @@ def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
                     return None
         else:
             logging.info(f'No webhook {serializer.URL} specified => no action')
-    except (IOError, ValueError, ValidationError) as e:
+    except (IOError, ValidationError) as e:
         logging.error(f'Problem communicating with webhook {serializer.__class__}: {e}')
         raise
     except Exception as e:

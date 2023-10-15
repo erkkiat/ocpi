@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Union
+
 from dateutil import parser
 from django.conf import settings
 from rest_framework import serializers
@@ -98,6 +101,9 @@ class UTCDateTimeField(serializers.DateTimeField):
         value = value.strftime(settings.OCPI_DATE_FORMAT)
         return super().to_representation(value)
 
-    def to_internal_value(self, value: str):
+    def to_internal_value(self, value: Union[str, datetime]):
+        if isinstance(value, datetime):
+            return value
+        assert isinstance(value, str), f'Expected a string, got type {type(value)} with value {value}'
         value = parser.parse(value)
         return value

@@ -260,3 +260,15 @@ class HashableDict(dict):
 
     def clear(self):
         raise RuntimeError('HashableDict is immutable')
+
+
+def with_trailing_slash(url):
+    """
+    >>> with_trailing_slash('https://fakehost/start')
+    'https://fakehost/start/'
+    >>> with_trailing_slash('https://fakehost/start/')
+    'https://fakehost/start/'
+    """
+    if url.endswith('/'):
+        return url
+    return f'{url}/'

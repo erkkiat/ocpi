@@ -12,7 +12,7 @@ urlpatterns = [
          name='cdr-by-id'),
 
     # Tokens
-    path('tokens/<str:token_id>/authorize',
+    path('tokens/<str:token_uid>/authorize',
          TokenViewSet.as_view({'post': 'authorize'}),
          name='token-authorize'),
     path('tokens/',

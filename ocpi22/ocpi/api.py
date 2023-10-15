@@ -21,7 +21,7 @@ from ocpi22.ocpi.partners import get_partners
 from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.exception_handler import ocpi_exception_handler
-from util import reverse
+from util import reverse, with_trailing_slash
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import MessageTexts, get_language, AuthorizationEnum, OcpiModuleEnum, OcpiRolesEnum
@@ -527,8 +527,8 @@ def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
     party = Party(country_code, party_id)
     route = find_route(to=party, ocpi_module=OcpiModuleEnum.LOCATIONS)
     if not route:
-        return None
-    url = urljoin(route.url, f'{country_code}/{party_id}/{location_id}')
+        return False
+    url = urljoin(with_trailing_slash(route.url), f'{country_code}/{party_id}/{location_id}')
     we = get_our_party(OcpiRolesEnum.EMSP) or get_our_party(OcpiRolesEnum.HUB)
     print(f'Fetching unknown location from {party=}, {route=}, {url=}, {we=}')
     response = send_ocpi_request(data=dict(), url=route.url, token_base64=route.token_base64,
@@ -619,6 +619,7 @@ class SessionViewSet(OCPIListModelMixin,
             if 'last_updated' not in request.data:
                 session.update_last_updated()
             session.send_hub_updates()
+            # Send the full Session data to MSP webhook, not just the PATCHed fields
             outbound_data = MSPSessionCallbackSerializer.OutboundSerializer(instance=session).data
             send_to_webhook(data, MSPSessionCallbackSerializer, serialized_data=outbound_data)
             stop_session_if_money_runs_out(request, session)

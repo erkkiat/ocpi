@@ -705,7 +705,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
             stop_transaction_url = reverse('chargepoint-stop-transaction')
             status_change_url = reverse('chargepoint-status-change')
             messages.error(request,
-                           mark_safe('There is an active Session on this EVSE. You can finish it using the '
+                           mark_safe(f'{e} You can complete active sessions using the '
                                      f'<a href="{stop_transaction_url}">stop_transaction</a> or by '
                                      f'<a href="{status_change_url}">changing the EVSE status</a> to "AVAILABLE".'))
             return Response(

@@ -547,5 +547,4 @@ class InvoicingCallbackSerializer(CallbacksSerializer):
     class OutboundSerializer(CdrSerializer):
         pass
 
-    class ResponseSerializer(serializers.Serializer):
-        pass
+    ResponseSerializer = None

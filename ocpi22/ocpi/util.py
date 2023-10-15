@@ -2,6 +2,8 @@ import functools
 import json
 import uuid
 from collections import OrderedDict
+from urllib.parse import urljoin
+
 from django.utils.datetime_safe import datetime
 from typing import Union
 
@@ -24,7 +26,7 @@ from ocpi22.routing import find_route
 from ocpi22.logging import log_error
 from ocpiconnector.exceptions import OCPIProtocolError
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_our_identity, Party, get_our_party
-from util import OCPIVersion
+from util import OCPIVersion, with_trailing_slash
 
 
 def get_serializer(ocpi_serializer_class):
@@ -43,6 +45,9 @@ class OcpiModule:
 
     # This determines which identity of ours we will use when sending updates for this type of object
     ocpi_object_owner = None
+
+    # Who holds the master data for this object
+    ocpi_master = None
 
     # A list of subscribers for objects of this type
     subscribers = None
@@ -116,7 +121,7 @@ class OcpiModule:
                     self.send_updates_to, ocpi_module_name):
                 try:
                     if path_components:
-                        url = f'{url}/{"/".join(path_components)}'
+                        url = urljoin(with_trailing_slash(url), "/".join(path_components))
 
                     data = data or self.serialize(credentials.version)
                     self.send_background_update(data, url, token_base64, to=Party(country_code, party_id),

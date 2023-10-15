@@ -404,60 +404,60 @@ class ApiPutTests(TestCase):
 
         for filename, http_status, ocpi_status, price_component_count, *extra \
                 in testcases:
+            with self.subTest('Putting tariff', filename=filename):
+                data = load_example(f'data/examples/{filename}.json')
 
-            data = load_example(f'data/examples/{filename}.json')
+                # ic(filename, data.get('id'))
+                country_code = data.get('country_code')
+                party_id = data.get('party_id')
 
-            # ic(filename, data.get('id'))
-            country_code = data.get('country_code')
-            party_id = data.get('party_id')
+                create_credentialsrole(Party(country_code, party_id), role=OcpiRolesEnum.CPO,
+                                       business_name='Test Business', website='http://example.com',
+                                       credentials=self.credentials)
 
-            create_credentialsrole(Party(country_code, party_id), role=OcpiRolesEnum.CPO,
-                                   business_name='Test Business', website='http://example.com',
-                                   credentials=self.credentials)
+                # Send the request
+                response = self.put(url, data, token_base64, TariffViewSet)
+                # if response.status_text:
+                #     print(f'status_text: "{response.status_text}" for {filename} case.')
+                self.assertEqual(response.status_code, http_status,
+                                 f'Expected a HTTP status code {http_status} for {filename} case.')
+                self.assertEqual(response.data['status_code'], ocpi_status,
+                                 f'Expected an OCPI status code {ocpi_status} for {filename} case.')
 
-            # Send the request
-            response = self.put(url, data, token_base64, TariffViewSet)
-            # if response.status_text:
-            #     print(f'status_text: "{response.status_text}" for {filename} case.')
-            self.assertEqual(response.status_code, http_status,
-                             f'Expected a HTTP status code {http_status} for {filename} case.')
-            self.assertEqual(response.data['status_code'], ocpi_status,
-                             f'Expected an OCPI status code {ocpi_status} for {filename} case.')
+                # Verify the saved data
+                uid = data.get('id')
+                # noinspection PyUnresolvedReferences
+                tariff = Tariff.objects.get(uid=uid, archived=False)
+                saved_data = TariffSerializer(tariff).data
+                # ic(saved_data)
+                last_updated = data.get('last_updated')
 
-            # Verify the saved data
-            uid = data.get('id')
-            # noinspection PyUnresolvedReferences
-            tariff = Tariff.objects.get(uid=uid, archived=False)
-            saved_data = TariffSerializer(tariff).data
-            # ic(saved_data)
-            last_updated = data.get('last_updated')
+                if last_updated:
+                    # Make sure that the received last_updated timestamp will be stored and not overwritten by datetime.utcnow()
+                    self.assertEqual(saved_data.get('last_updated'), last_updated,
+                                     f'Last_updated is not stored from the incoming data with file {filename}')
 
-            if last_updated:
-                # Make sure that the received last_updated timestamp will be stored and not overwritten by datetime.utcnow()
-                self.assertEqual(saved_data.get('last_updated'), last_updated,
-                                 f'Last_updated is not stored from the incoming data with file {filename}')
-
-            # Check that there are all three levels stored from the incoming JSON
-            elements_list = saved_data.get('elements')
-            self.assertIsInstance(elements_list, list,
-                                  'TariffElements list is missing from the stored Tariff')
-            self.assertTrue(len(elements_list), 'Stored TariffElement list is empty')
-            total_price_components = 0
-            for el in elements_list:
-                price_components_list = el.get('price_components')
-                total_price_components += len(price_components_list)
-                self.assertIsInstance(price_components_list, list,
-                                      'PriceComponents list is missing from the stored Tariff')
-                for pc in price_components_list:
-                    self.assertTrue(pc.get('type'),
-                                    'Looks like TariffSerializer is not storing PriceComponents')
-            self.assertEqual(total_price_components, price_component_count,
-                             f'There should be exactly {price_component_count} '
-                             f'PriceComponents in the Tariff after {filename}.json')
-            if extra:
-                check_function = extra[0].get('check_function')
-                if check_function:
-                    self.assertTrue(check_function(tariff), f'Check function failed for {filename}')
+                # Check that there are all three levels stored from the incoming JSON
+                elements_list = saved_data.get('elements')
+                self.assertIsInstance(elements_list, list,
+                                      'TariffElements list is missing from the stored Tariff')
+                self.assertTrue(len(elements_list), 'Stored TariffElement list is empty')
+                total_price_components = 0
+                for el in elements_list:
+                    price_components_list = el.get('price_components')
+                    total_price_components += len(price_components_list)
+                    self.assertIsInstance(price_components_list, list,
+                                          'PriceComponents list is missing from the stored Tariff')
+                    for pc in price_components_list:
+                        self.assertTrue(pc.get('type'),
+                                        'Looks like TariffSerializer is not storing PriceComponents')
+                self.assertEqual(total_price_components, price_component_count,
+                                 f'There should be exactly {price_component_count} '
+                                 f'PriceComponents in the Tariff after {filename}.json')
+                if extra:
+                    check_function = extra[0].get('check_function')
+                    if check_function:
+                        self.assertTrue(check_function(tariff), f'Check function failed for {filename}')
 
     def test_cost_calculation(self):
         start_date_time = datetime(2022, 1, 1, 0, 0, tzinfo=pytz.utc)
@@ -496,14 +496,17 @@ class ApiPutTests(TestCase):
             # ('tariff_4_complex', dict(stop_kwh=20.45), 5.63, 6.24),
 
         )
+
+        get_our_credentialsrole.cache_clear()
+        our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        if not our_role.credentials:
+            our_role.credentials = Credentials.objects.create()
+            our_role.save()
+
         for filename, case_params, excl_vat, incl_vat in testcases:
             with self.subTest(filename=filename):
                 params = session_params.copy()
                 params.update(case_params)
-                credentials = Credentials.objects.create()
-                our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-                our_role.credentials = credentials
-                our_role.save()
 
                 session: Session = Session.objects.create(uid=uuid.uuid4().hex, billed_to='FI*MSP', **params)
                 data = load_example(f'data/examples/{filename}.json')
@@ -725,6 +728,7 @@ class TariffTests(TestCase):
 
     def setUp(self) -> None:
         logging.disable(logging.CRITICAL)
+        get_our_credentialsrole.cache_clear()  # Needed whenever loading different fixtures
 
     def check_tariff(self, tariff, tariff_elements, price_components):
         self.assertEqual(tariff.tariff_elements.count(), tariff_elements,
@@ -929,6 +933,9 @@ class CommandTests(TestCase):
     fixtures = ['ocpi22/data/test-database-1.json']
     maxDiff = 10000
 
+    def setUp(self) -> None:
+        get_our_credentialsrole.cache_clear()
+
     @time_machine.travel(faketime, tick=False)
     @simulate_surrounding_world
     def test_start_stop_session(self, simulation):
@@ -1071,6 +1078,8 @@ class CommandTests(TestCase):
         simulation.webhook_requests.reset_mock()
         simulation.webhook_requests.put.return_value = make_json_response(dict(result='ACCEPTED'))
         simulation.uuid4.return_value = MockUuid4(99)
+
+        get_our_credentialsrole.cache_clear()
         response = viewset.reserve_now(request)
 
         # Check the request sent to the CPO
@@ -1241,7 +1250,7 @@ class UpdatePartiesTest(TestCase):
                          'valid': True,
                          'whitelist': 'ALWAYS'}
 
-        self.assertEqual(kwargs['url'], 'http://localhost:8001/ocpi/2.2.1/tokens/',
+        self.assertEqual(kwargs['url'], 'http://localhost:8001/ocpi/2.2.1/tokens/FI/MSP/UID',
                          'Expected to send the update to another address')
         assert (isinstance(expected_headers, dict))
         assert (isinstance(kwargs['headers'], dict))
@@ -1713,6 +1722,9 @@ class TestSession(TestCase):
 class TestCpoApi(TestCase):
     fixtures = ['ocpi22/data/credentials-2.json', 'ocpi22/data/test-database-cpo-api.json']
     maxDiff = None
+
+    def setUp(self) -> None:
+        find_endpoints_by_roles.cache_clear()
 
     @time_machine.travel(faketime, tick=False)
     @simulate_surrounding_world
