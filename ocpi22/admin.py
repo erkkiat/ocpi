@@ -526,9 +526,11 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
 
     def save_model(self, request, obj, form, change):
         """Since the admin is saving the object, it's ours, so let's fill out the needed fields"""
-        our_cpo_credentialsrole = get_our_credentialsrole(OcpiRolesEnum.CPO)
         try:
-            if not settings.ALLOW_ADMIN_DELETE_AND_CHANGE and obj.ocpi_master \
+            our_cpo_credentialsrole = get_our_credentialsrole(OcpiRolesEnum.CPO)
+            if not change:
+                obj.ocpi_master = our_cpo_credentialsrole
+            elif not settings.ALLOW_ADMIN_DELETE_AND_CHANGE and obj.ocpi_master \
                     and obj.ocpi_master != our_cpo_credentialsrole:
                 raise ValidationError('This is not our object')
         except Location.ocpi_master.RelatedObjectDoesNotExist:
