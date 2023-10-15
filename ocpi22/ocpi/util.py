@@ -93,6 +93,8 @@ class OcpiModule:
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
         """
+        path_components = path_components or [self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
+
         if settings.SEND_UPDATES and settings.PREMIUM:
             # Do we possess the role who controls the master data for this type of object or are we acting as HUB
             if self.ocpi_object_owner not in ocpi_identities.roles and not ocpi_platform.is_hub:
@@ -105,7 +107,7 @@ class OcpiModule:
                                                        path_components=path_components)
             else:
                 logging.info('Sending updates to ALL connected parties')
-                self.send_all_updates(method=method)
+                self.send_all_updates(method=method, path_components=path_components)
 
     def send_all_updates(self, data=None, method='put', path_components=None, ocpi_module_name=None) -> bool:
         # Todo: Use sender identity, not our HUB identity
