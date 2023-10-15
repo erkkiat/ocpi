@@ -3,6 +3,7 @@ from django.conf.urls import include
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path, re_path
+from django.views.i18n import set_language
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
@@ -21,7 +22,7 @@ from ocpi22.models.credentials import new_connection
 from ocpi22.msp.api import MSPRouter, MspRoamingViewSet, MspTokenViewSet, MspAuthorizeWebhookViewSet, \
     MspTariffQuickViewSet, MspChargePointStatusWebhookViewSet, MspSessionWebhookViewSet, MspInvoiceWebhookViewSet
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
-from ocpi22.views import home, set_language
+from ocpi22.views import home
 from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
 
