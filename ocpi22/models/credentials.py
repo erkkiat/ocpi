@@ -165,7 +165,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     responding.admin_order_field = 'connection_status'
 
     def update_last_connection(self):
-        self.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
+        self.last_connection = datetime.now(pytz.utc)
         self.save(update_fields=['last_connection'])
 
     def get_party_for_role(self, role: OcpiRolesEnum) -> Optional[Party]:
@@ -344,7 +344,7 @@ def credentials_pre_save(sender, instance, *_args, raw=False, **_kwargs):
     credentials: Credentials = instance
     if not credentials.valid:
         credentials.connection_status = choices.SUSPENDED
-        credentials.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
+        credentials.last_connection = datetime.now(pytz.utc)
     if credentials.ours and credentials.theirs and credentials.token_a:
         credentials.token_a = ''
 
@@ -390,7 +390,7 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
 
 def store_endpoints_for_party(credentials, endpoints):
     credentials.version = endpoints['version'].replace('.', '')  # "2.2" => "22"
-    credentials.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
+    credentials.last_connection = datetime.now(pytz.utc)
     credentials.save()
 
     # Replace any existing endpoints for this specific party

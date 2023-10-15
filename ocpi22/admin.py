@@ -1,3 +1,4 @@
+import pytz
 from django.db import models
 from django.utils.datetime_safe import datetime
 from django.utils.translation import gettext as _
@@ -532,8 +533,7 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
                 raise ValidationError('This is not our object')
         except Location.ocpi_master.RelatedObjectDoesNotExist:
             pass
-        obj.ocpi_master = our_cpo_credentialsrole
-        obj.last_updated = datetime.utcnow
+        obj.last_updated = datetime.now(pytz.utc)
         super().save_model(request, obj, form, change)
 
 

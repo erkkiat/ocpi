@@ -37,7 +37,7 @@ class CertificationStep:
         )
         self.result_reported = True
         self.result = result
-        self.passed_at = datetime.utcnow().replace(tzinfo=pytz.utc)
+        self.passed_at = datetime.now(pytz.utc)
         self.store()
 
     def failed(self, reason='No details available'):

@@ -146,7 +146,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         """
         self.change_fields_to_upper_case()
         if self.is_ours() and not raw:
-            self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
+            self.last_updated = datetime.now(pytz.utc)
         return super(self.__class__, self).save(*args, **kwargs)
 
     def get_absolute_url(self, version=None):

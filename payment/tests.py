@@ -15,7 +15,7 @@ from payment import test_data
 from payment.models import Customer, Payment
 from payment.views import PaymentViewSet, StripePayments
 
-faketime = datetime(2022, 1, 1, 12, 0).replace(tzinfo=pytz.utc)
+faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = APIRequestFactory()
 

@@ -67,7 +67,7 @@ class OcpiModule:
     def update_last_updated(self):
         if hasattr(self, 'last_updated'):
             if self.is_ours():
-                setattr(self, 'last_updated', datetime.utcnow().replace(tzinfo=pytz.utc))
+                setattr(self, 'last_updated', datetime.now(pytz.utc))
 
     def atomic_post_save(self, *_args, **_kwargs) -> None:
         assert hasattr(self, 'ocpi_serializer_class') and hasattr(self, 'ocpi_module_name') \
@@ -237,7 +237,7 @@ def format_ocpi_response(status_code: int = 1000, status_message: str = '', data
     return dict(
         status_code=status_code,
         status_message=status_message,
-        timestamp=datetime.utcnow().replace(tzinfo=pytz.utc).strftime(settings.OCPI_DATE_FORMAT),
+        timestamp=datetime.now(pytz.utc).strftime(settings.OCPI_DATE_FORMAT),
         data=data
     )
 
@@ -398,7 +398,7 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
         return Response(OrderedDict([
             ('status_code', Ocpi.OK),
-            ('timestamp', datetime.utcnow().replace(tzinfo=pytz.utc)),
+            ('timestamp', datetime.now(pytz.utc)),
             # .strftime(settings.OCPI_DATE_FORMAT)), if you want the date without fractions
             ('data', data),
         ]), headers=headers)

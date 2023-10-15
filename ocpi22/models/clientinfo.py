@@ -26,5 +26,5 @@
 #                f'is {self.status} since {self.last_updated.strftime(settings.OCPI_DATE_FORMAT)}'
 #
 #     def save(self, *args, **kwargs):
-#         self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
+#         self.last_updated = datetime.now(pytz.utc)
 #         return super(self.__class__, self).save(*args, **kwargs)

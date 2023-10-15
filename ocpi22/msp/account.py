@@ -34,7 +34,7 @@ class Account(models.Model):
 
     def deposit(self, amount: Decimal, **kwargs) -> Decimal:
         transaction = Transaction.objects.create(
-            account=self, delta=amount, balance_after=self.balance + amount, datetime=datetime.utcnow().replace(tzinfo=pytz.utc), **kwargs
+            account=self, delta=amount, balance_after=self.balance + amount, datetime=datetime.now(pytz.utc), **kwargs
         )
         return transaction.balance_after
 

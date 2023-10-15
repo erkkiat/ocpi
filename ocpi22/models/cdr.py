@@ -245,7 +245,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         if session.total_cost_excl_vat is None:
             logging.error(f'{settings.HOSTNAME}: Session {session} has no total cost')
         if not session.end_date_time:
-            session.end_date_time = datetime.utcnow().replace(tzinfo=pytz.utc)
+            session.end_date_time = datetime.now(pytz.utc)
 
         cdr = cls.objects.create(
             uid=generate_cdr_uid(),
@@ -282,7 +282,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             credentials=session.credentials,
             ocpi_master=session.ocpi_master,
             billed_to=session.billed_to,
-            last_updated=datetime.utcnow().replace(tzinfo=pytz.utc),
+            last_updated=datetime.now(pytz.utc),
         )
 
         tariffs = session.connector.tariff_ids.all()

@@ -173,20 +173,20 @@ dynamic_price_sources = (
 def get_price(key: str, when: datetime) -> float:
     """
     >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=1.0,
-    ... start_datetime=datetime(2022,1,1,1,0).replace(tzinfo=pytz.UTC),
-    ... end_datetime=datetime(2022,1,1,2,0).replace(tzinfo=pytz.UTC))
+    ... start_datetime=datetime(2022,1,1,1,0, tzinfo=pytz.utc),
+    ... end_datetime=datetime(2022,1,1,2,0, tzinfo=pytz.utc))
     <DynamicPrice: ABC: 2022-01-01 01:00:00+00:00 - 2022-01-01 02:00:00+00:00 :: 1.0>
     >>> DynamicPrice.objects.create(dynamic_price_source='ABC', price=2.0,
-    ... start_datetime=datetime(2022,1,1,2,0).replace(tzinfo=pytz.UTC),
-    ... end_datetime=datetime(2022,1,1,3,0).replace(tzinfo=pytz.UTC))
+    ... start_datetime=datetime(2022,1,1,2,0, tzinfo=pytz.utc),
+    ... end_datetime=datetime(2022,1,1,3,0, tzinfo=pytz.utc))
     <DynamicPrice: ABC: 2022-01-01 02:00:00+00:00 - 2022-01-01 03:00:00+00:00 :: 2.0>
-    >>> get_price('ABC', datetime(2022,1,1,2,0).replace(tzinfo=pytz.UTC))
+    >>> get_price('ABC', datetime(2022,1,1,2,0, tzinfo=pytz.utc))
     2.0
     """
     prices = DynamicPrice.objects.filter(dynamic_price_source=key, start_datetime__lte=when, end_datetime__gt=when)
     if prices.count() == 0:
         return 0.0
     if prices.count() == 1:
-        # return datetime.utcnow().replace(tzinfo=pytz.utc).second/100
+        # return datetime.now(pytz.utc).second/100
         return prices[0].price
     raise PriceSource.TooManyPrices()

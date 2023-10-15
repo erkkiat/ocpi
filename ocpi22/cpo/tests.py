@@ -18,6 +18,7 @@ from rest_framework.exceptions import ErrorDetail
 from urllib3.exceptions import ConnectTimeoutError
 
 from ocpi22.ocpi.serializers import SessionSerializer
+from ocpiconnector import settings
 from ocpiconnector.testutil import compare_dicts_recursively
 from ocpiconnector.util import recursive_sort_dict, Timer
 from util import reverse
@@ -32,7 +33,7 @@ from ocpi22.models.session import Session
 from ocpi22.tests import meter_values
 
 api_factory = APIRequestFactory()
-faketime = datetime(2022, 1, 1, 12, 0).replace(tzinfo=pytz.utc)
+faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 
 
 def load_tests(_loader, tests, _ignore):
@@ -298,7 +299,7 @@ class TestChargingPeriods(TestCase):
     def test_tariff_change(self):
         meter_values_data = (
             # (kWh, SoC, timestamp)
-            (2, 52, datetime(2022, 12, 25, 21, 55),  # Weekday 6 = Sunday
+            (2, 52, datetime(2022, 12, 25, 21, 55, tzinfo=pytz.utc),  # Weekday 6 = Sunday
              {  # Check send_update() parameters for the first call
                  'kwh': Decimal('2.000'),
                  'last_updated': '2022-12-25T21:55:00Z',
@@ -322,14 +323,14 @@ class TestChargingPeriods(TestCase):
                  'total_kwh': Decimal('2.000')
              }, None
              ),
-            (7, 57, datetime(2022, 12, 25, 21, 58), None, None, None),  # Weekday 6 = Sunday
+            (7, 57, datetime(2022, 12, 25, 21, 58, tzinfo=pytz.utc), None, None, None),  # Weekday 6 = Sunday
             # The ChargingPeriod should change here, and the first one should stop at the time the next one starts
-            (10, 60, datetime(2022, 12, 25, 22, 1), None, None, None),  # Weekday 0 = Monday
-            (13, 63, datetime(2022, 12, 25, 22, 3), None, None, None),
-            (15, 65, datetime(2022, 12, 25, 22, 5), None, None, None),
-            (45, 95, datetime(2022, 12, 26, 6, 0),  # This should cause a third ChargingPeriod to be created
+            (10, 60, datetime(2022, 12, 25, 22, 1, tzinfo=pytz.utc), None, None, None),  # Weekday 0 = Monday
+            (13, 63, datetime(2022, 12, 25, 22, 3, tzinfo=pytz.utc), None, None, None),
+            (15, 65, datetime(2022, 12, 25, 22, 5, tzinfo=pytz.utc), None, None, None),
+            (45, 95, datetime(2022, 12, 26, 6, 0, tzinfo=pytz.utc),  # This should cause a third ChargingPeriod to be created
              None, None, None),
-            (50, 99, datetime(2022, 12, 26, 6, 30),
+            (50, 99, datetime(2022, 12, 26, 6, 30, tzinfo=pytz.utc),
              {'charging_periods': [OrderedDict(
                  [('start_date_time', '2022-12-25T21:55:00Z'), ('tariff', 'WEEKENDS'),
                   ('dimensions', [OrderedDict([('type', 'ENERGY'), ('volume', '7.0000')]),
@@ -409,6 +410,7 @@ class TestChargingPeriods(TestCase):
         # session.location.save()
 
         def _meter_values_test(data, sess_id):
+            timestamp: datetime
             for kwh, soc, timestamp, expected_args, expected_response, expected_session_data in data:
                 # ic('*' * 60, kwh, soc, timestamp)
                 try:
@@ -419,7 +421,8 @@ class TestChargingPeriods(TestCase):
                                 patch('ocpi22.logging.error') as logging_error_mock:
 
                             logging_error_mock.reset_mock()
-                            response = meter_values(dict(session_id=sess_id, kwh=kwh, soc=soc, timestamp=timestamp))
+                            response = meter_values(dict(session_id=sess_id, kwh=kwh, soc=soc,
+                                                         timestamp=timestamp.strftime(settings.OCPI_DATE_FORMAT)))
                         self.assertFalse(logging_error_mock.call_count,
                                          f'There was an error logged: {logging_error_mock.call_args}')
 
@@ -448,7 +451,7 @@ class TestChargingPeriods(TestCase):
 
         _meter_values_test(meter_values_data, session_id)
 
-        start_date_time = datetime(2022, 12, 1, 12, 0).replace(tzinfo=pytz.utc)
+        start_date_time = datetime(2022, 12, 1, 12, 0, tzinfo=pytz.utc)
         maxloop = 50
         performance_test_data = [
             (i, i * 100 / maxloop, start_date_time + timedelta(hours=i), None, None, None) for i in range(0, maxloop)

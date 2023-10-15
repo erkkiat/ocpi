@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 import pytz
 from django.contrib import admin
@@ -83,7 +84,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def total_time_float(self):
-        now = datetime.utcnow().replace(tzinfo=pytz.utc)
+        now = datetime.now(pytz.utc)
         return ((self.end_date_time or now) - self.start_date_time).total_seconds() / 3600
 
     # How many kWh are in the charge point meter at the start of the session
@@ -110,6 +111,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         start_date_time = first_charging_period.start_date_time \
             if first_charging_period else active_charging_period.start_date_time
 
+        assert timestamp.utcoffset() == timedelta(0), f'Timestamp {timestamp} should be UTC'
+        assert start_date_time.utcoffset() == timedelta(0), f'Start date time {start_date_time} should be UTC'
+
         def _sum(dimension_type: CdrDimensionEnum) -> float:
             aggregation = CdrDimension.objects.filter(
                 chargingperiod__in=earlier_charging_periods, type=dimension_type.value
@@ -118,7 +122,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
         kwh_so_far = _sum(CdrDimensionEnum.ENERGY)
         hours_so_far = _sum(CdrDimensionEnum.TIME)
-        hours = ((timestamp or datetime.utcnow().replace(tzinfo=pytz.utc)) - start_date_time).total_seconds() / 3600
+        hours = ((timestamp or datetime.now(pytz.utc)) - start_date_time).total_seconds() / 3600
         active_charging_period.set_dimension(
             Decimal(kwh) - Decimal(kwh_so_far), soc, power, Decimal(hours) - Decimal(hours_so_far)
         )
@@ -404,7 +408,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             )
             if last_period:
                 last_period_hours = \
-                    ((timestamp or datetime.utcnow().replace(tzinfo=pytz.utc)) - last_period.start_date_time).total_seconds() / 3600
+                    ((timestamp or datetime.now(pytz.utc)) - last_period.start_date_time).total_seconds() / 3600
                 last_period.set_dimension(hours=last_period_hours)
                 # ic(last_period, last_period_hours)
             # ic('Created a new charging period', period)

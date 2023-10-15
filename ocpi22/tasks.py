@@ -258,9 +258,9 @@ def check_still_alive(credentials_id: int = None) -> None:
             credentials: Credentials = Credentials.objects.get(pk=credentials_id)
             if credentials.last_connection:
                 time_since_last_connection = (
-                            datetime.utcnow().replace(tzinfo=pytz.utc) - credentials.last_connection).total_seconds()
+                            datetime.now(pytz.utc) - credentials.last_connection).total_seconds()
             requests.get(credentials.url, timeout=20)
-            credentials.last_connection = datetime.utcnow().replace(tzinfo=pytz.utc)
+            credentials.last_connection = datetime.now(pytz.utc)
             credentials.connection_status = choices.CONNECTED
             logging.info(f"{credentials} is alive")
         except IOError as e:
@@ -274,14 +274,14 @@ def check_still_alive(credentials_id: int = None) -> None:
         credentials.save(update_fields=['last_connection', 'connection_status'])
         return
     stale_credentials = Credentials.objects.filter(
-        last_connection__lte=datetime.utcnow().replace(tzinfo=pytz.utc) - timedelta(seconds=STILL_ALIVE_FREQUENCY - 3),
+        last_connection__lte=datetime.now(pytz.utc) - timedelta(seconds=STILL_ALIVE_FREQUENCY - 3),
         valid=True
     )
     # logging.info(f"Checking {stale_credentials.count()} parties for alive")
     c: Credentials
     for c in stale_credentials:
         if c.is_complete() and c.connection_status in {choices.CONNECTED, choices.OFFLINE}:
-            # since_last_time = (datetime.utcnow().replace(tzinfo=pytz.utc) - c.last_connection).seconds
+            # since_last_time = (datetime.now(pytz.utc) - c.last_connection).seconds
             # logging.info(f"Checking that {c} is alive and well, last successful "
             #              f"connection was {int(since_last_time / 60)} min ago")
             check_still_alive.apply_async((c.pk,), countdown=random.randint(0, stale_credentials.count()))
@@ -353,7 +353,7 @@ def simulate_meter_values(session_pk, token_uid, connector_id, billed_to, evse_u
 
     if session.status == Session.PENDING:
         print('Starting session')
-        session.start_date_time = datetime.utcnow().replace(tzinfo=pytz.utc)
+        session.start_date_time = datetime.now(pytz.utc)
         # Don't actually start the session yet, it will be started in simulate_meter_values after a delay
         session.status = Session.ACTIVE
         session.save(update_fields=['status', 'start_date_time'])

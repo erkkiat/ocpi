@@ -127,7 +127,7 @@ def sessions(request, template_name='certification/start_session.html'):
     evses = Evse.objects.filter(location__uid=selected_location) if selected_location else None
     connectors = evses.get(uid=selected_evse).connectors.all() if selected_evse else None
 
-    now = datetime.utcnow().replace(tzinfo=pytz.utc)
+    now = datetime.now(pytz.utc)
 
     return render(
         request,

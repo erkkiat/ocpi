@@ -215,7 +215,7 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         @return:
         """
         if self.is_ours() and not raw:
-            self.last_updated = datetime.utcnow().replace(tzinfo=pytz.utc)
+            self.last_updated = datetime.now(pytz.utc)
         return super().save(*args, **kwargs)
 
 

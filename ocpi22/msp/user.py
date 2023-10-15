@@ -25,7 +25,7 @@ from ocpi22.msp.models import PHONE_FIELD_LENGTH, VEHICLE_FIELD_LENGTH
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.ocpi.util import options_message
 from ocpi22.util import hours_minutes, StandardResultsSetPagination
-from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp
+from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
 
 
 class Username(serializers.CharField):
@@ -167,7 +167,7 @@ class TransactionSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ('delta', 'balance_after', 'discount', 'cdr', 'datetime')
 
     cdr = CdrSerializer()
-    datetime = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT)
+    datetime = UTCDateTimeField(format=settings.OCPI_DATE_FORMAT)
 
 
 class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -199,9 +199,7 @@ class BriefTransactionSerializer(HyperlinkedModelSerializerCleanedUp):
                   'datetime', 'display_date', 'display_time')
 
     cdr = BriefCdrSerializer()
-    datetime = serializers.DateTimeField(format=settings.OCPI_DATE_FORMAT)
-    display_date = serializers.DateTimeField(source='datetime', format="%-d.%-m.%Y")
-    display_time = serializers.DateTimeField(source='datetime', format="%H:%M")
+    datetime = UTCDateTimeField(format=settings.OCPI_DATE_FORMAT)
     total_energy = serializers.SerializerMethodField()
     currency = serializers.CharField(source='account.currency')
 
@@ -254,7 +252,7 @@ class UserViewSet(viewsets.GenericViewSet):
                 return Response(data=data, status=status.HTTP_201_CREATED)
             else:
                 return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
-        except IntegrityError as e:
+        except IntegrityError:
             return Response(_('The user {email} already exists').format(
                 email=serializer.validated_data.get("email")),
                 status.HTTP_409_CONFLICT)

@@ -55,7 +55,7 @@ def get_session_by_adhoc_token(token_uid: str, max_age_minutes,
     @param statuses: Which Token statuses to look for
     @return: Session or if not found, None
     """
-    time_start = datetime.utcnow().replace(tzinfo=pytz.utc) - timedelta(minutes=max_age_minutes)
+    time_start = datetime.now(pytz.utc) - timedelta(minutes=max_age_minutes)
     sessions = Session.objects.filter(
         Q(cdr_token_uid=token_uid) & Q(status__in=statuses) & Q(created__gte=time_start)
     ).order_by('-created')

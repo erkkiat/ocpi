@@ -81,7 +81,7 @@ from ocpiconnector.ocpi_identities import Party, get_our_party, create_credentia
 from settlement.calculate import create_invoice
 
 global ic
-faketime = datetime(2022, 1, 1, 12, 0).replace(tzinfo=pytz.UTC)
+faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = OCPIAPIRequestFactory()
@@ -460,13 +460,14 @@ class ApiPutTests(TestCase):
                     self.assertTrue(check_function(tariff), f'Check function failed for {filename}')
 
     def test_cost_calculation(self):
-        start_date_time = datetime(2022, 1, 1, 0, 0).replace(tzinfo=pytz.UTC)
+        start_date_time = datetime(2022, 1, 1, 0, 0, tzinfo=pytz.utc)
         evse = Evse.objects.all().first()
         location = evse.location
         connector = evse.connectors.first()
         credentials = Credentials.objects.create()
         our_role = get_credentialsrole(credentials, Party('FI', 'CP2'), create=True)
         assert our_role.credentials == credentials, 'Credentials should be linked to the new CredentialsRole'
+        assert start_date_time.tzinfo == pytz.utc, 'Start date time should be in UTC'
 
         session_params = dict(
             start_date_time=start_date_time,
@@ -1083,7 +1084,7 @@ class CommandTests(TestCase):
                 'token_id': 'FI*001*T*ADMIN*TOKEN', 'token_type': 'OTHER', 'authorization_reference': 'AUTH-REFERENCE',
                 'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
                 'location_id': 'HELSINKI-1', 'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*MSP',
-                'expiry_date': '2022-01-12T19:44:39.298178Z', 'reservation_id': 'RESERVATION-ID'
+                'expiry_date': '2022-01-12T19:44:39Z', 'reservation_id': 'RESERVATION-ID'
             }, 'Expecting a different response for a reservation')
         )
 
@@ -1210,7 +1211,7 @@ class UpdatePartiesTest(TestCase):
         settings.BACKGROUND_SEND = False
         credentialsrole = get_credentialsrole(None, Party('FI', 'MSP'), create=True)
         token: Token = Token(ocpi_master=credentialsrole, uid='uid', type='RFID', contract_id='contract',
-                             issuer='issuer', whitelist='ALWAYS', last_updated=datetime.utcnow().replace(tzinfo=pytz.utc))
+                             issuer='issuer', whitelist='ALWAYS', last_updated=datetime.now(pytz.utc))
         token.save()
         token.send_updates()
 
@@ -1279,7 +1280,7 @@ def mocked_credentials_get(url, *_args, **_kwargs):
 def mocked_credentials_post(url, *_args, **_kwargs):
     # ic(_args, _kwargs)
     response = {
-        "status_code": 1000, "status_message": "", "timestamp": datetime.utcnow().replace(tzinfo=pytz.utc),
+        "status_code": 1000, "status_message": "", "timestamp": datetime.now(pytz.utc),
         "data": {"token": fake_token + fake_token,
                  "url": "http://localhost:8000/ocpi/versions/",
                  "roles":
@@ -1302,7 +1303,7 @@ class TestCredentials(TestCase):
     def mocked_credentials_delete(url, *_args, **_kwargs):
         # ic(_args, _kwargs)
         response = {
-            "status_code": 1000, "status_message": "", "timestamp": datetime.utcnow().replace(tzinfo=pytz.utc),
+            "status_code": 1000, "status_message": "", "timestamp": datetime.now(pytz.utc),
             "headers": {"fakeheader": 1},
             "data": {"token": fake_token + fake_token,
                      "url": "http://localhost:8000/ocpi/versions/",
@@ -2256,7 +2257,7 @@ class TestCpoApi(TestCase):
         cdr_count_before = Cdr.objects.all().count()
 
         with time_machine.travel(faketime + timedelta(minutes=23), tick=False):
-            response = stop_transaction(dict(session_id='FI*CPO*S*MOCK-1', stop_timestamp=datetime.utcnow().replace(tzinfo=pytz.utc)))
+            response = stop_transaction(dict(session_id='FI*CPO*S*MOCK-1', stop_timestamp=datetime.now(pytz.utc)))
 
         self.assertEqual(response.status_code, 200, f'CPO stop_transaction is expected to succeed: {response.data}')
         cdr_count_after = Cdr.objects.all().count()
@@ -2279,7 +2280,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(cdr.authorization_reference, session.authorization_reference)
 
         # Try to end the same Session again, should fail
-        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2', stop_timestamp=datetime.utcnow().replace(tzinfo=pytz.utc)))
+        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2', stop_timestamp=datetime.now(pytz.utc)))
         cdr_count_after = Cdr.objects.all().count()
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be only one new CDR after trying to stop a session twice')

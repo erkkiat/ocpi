@@ -141,7 +141,7 @@ class CommandsViewSet(GenericViewSet):
             logging.info(f'Found an existing session {session.uid}.')
 
         # Reservation may have started earlier, but charging session starts now
-        session.start_date_time = datetime.utcnow().replace(tzinfo=pytz.utc)
+        session.start_date_time = datetime.now(pytz.utc)
         session.save(update_fields=['start_date_time'])
 
         if settings.CPO_SIMULATOR:
@@ -301,7 +301,7 @@ class CommandsViewSet(GenericViewSet):
         This method is called from the process_remote_command
         """
         session.status = Session.COMPLETED
-        session.end_date_time = datetime.utcnow().replace(tzinfo=pytz.utc)
+        session.end_date_time = datetime.now(pytz.utc)
         session.save(update_fields=['status', 'end_date_time'])
         session.send_updates()
 
