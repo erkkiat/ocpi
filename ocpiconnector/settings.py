@@ -519,3 +519,9 @@ MESSAGE_TAGS = {
     messages.WARNING: 'alert-warning',
     messages.ERROR: 'alert-danger',
 }
+
+try:
+    import test_without_migrations  # Use on your local computer for speeding up testing
+    INSTALLED_APPS = ['test_without_migrations'] + INSTALLED_APPS
+except:
+    pass
