@@ -294,7 +294,7 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
         session.update_last_updated()
 
         # with Timer() as t:
-        store_meter_values(request, session, serializer.validated_data)
+        # store_meter_values(request, session, serializer.validated_data)
         session.update_charging_periods(kwh - session.start_kwh, soc, power, timestamp)
         # logging.info(f'Meter values stored and fetched in {float(t):.2f} seconds', request)
 
@@ -360,14 +360,14 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
 
 session_key = 'session:{session.uid}'
 
-
-def store_meter_values(_request, session, data):
-    data.pop('session', None)
-    if 'timestamp' not in data:
-        data['timestamp'] = datetime.now(pytz.utc)
-    key = session_key.format(session=session)
-    assert 'timestamp' in data
-    redis_store.rpush(key, json.dumps(data, default=str))
+# We should use Redis append-only lists for storing the meter values
+# def store_meter_values(_request, session, data):
+#     data.pop('session', None)
+#     if 'timestamp' not in data:
+#         data['timestamp'] = datetime.now(pytz.utc)
+#     key = session_key.format(session=session)
+#     assert 'timestamp' in data
+#     redis_store.rpush(key, json.dumps(data, default=str))
 
 
 class MeterValuesStorageSerializer(MeterValuesSerializer):
