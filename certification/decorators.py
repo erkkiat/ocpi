@@ -54,7 +54,8 @@ class CertificationStep:
             global persistent_storage
             data = persistent_storage[hash(self)]
             self.__dict__.update(data)
-            self.passed_at = datetime.fromisoformat(data['passed_at'])
+            if isinstance(self.passed_at, str):
+                self.passed_at = datetime.fromisoformat(data['passed_at'])
         except KeyError:
             pass
 

@@ -121,7 +121,7 @@ class TokenViewSet(OCPIListModelMixin,
 
     @ocpi_exception_handler
     @csrf_exempt
-    @certification_step(OcpiModuleEnum.TOKENS, 'Authorize a Token',
+    @certification_step(OcpiModuleEnum.TOKENS, 'Send authorization request',
                         subtopic='')
     def authorize(self, request: Request, token_uid, **_kwargs) -> OCPIResponse:
         allowed = AuthorizationEnum.ALLOWED

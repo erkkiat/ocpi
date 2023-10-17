@@ -222,7 +222,7 @@ class OcpiModule:
 def ocpi_post(url, token_base64,
               to: Party,
               sender: Party,
-              *args, **kwargs) -> Response:
+              *args, **kwargs) -> requests.Response:
     data = ''
     if 'data' in kwargs:
         data = kwargs.pop('data')

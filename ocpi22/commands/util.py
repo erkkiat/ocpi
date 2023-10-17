@@ -25,7 +25,7 @@ def store_reservation(reservation: Reservation):
     Store the parameters of the received RESERVE_NOW command
     >>> store_reservation(Reservation('1', '2', '3', None, datetime(2020, 1, 1, tzinfo=pytz.utc)))
     >>> a = get_reservation('3')
-    >>> bool(a.get('ocpp_reservation_id'))
+    >>> bool(a.ocpp_reservation_id)
     True
 
     Please see more unittests in get_reservation()
@@ -43,12 +43,12 @@ def get_reservation(reservation_id: str) -> Reservation:
     """
     >>> store_reservation(Reservation('1', '2', '3', 4, datetime(2020, 1, 1, tzinfo=pytz.utc)))
     >>> get_reservation('3')
-    {'evse_pk': '1', 'connector_id': '2', 'ocpi_reservation_id': '3', 'ocpp_reservation_id': 4, 'expiry_date': '2020-01-01 00:00:00+00:00'}
+    Reservation(evse_pk='1', connector_id='2', ocpi_reservation_id='3', ocpp_reservation_id=4, expiry_date=datetime(2020, 1, 1, 0, 0, tzinfo=<UTC>))
     >>> get_reservation(4)
-    {'evse_pk': '1', 'connector_id': '2', 'ocpi_reservation_id': '3', 'ocpp_reservation_id': 4, 'expiry_date': '2020-01-01 00:00:00+00:00'}
+    Reservation(evse_pk='1', connector_id='2', ocpi_reservation_id='3', ocpp_reservation_id=4, expiry_date=datetime(2020, 1, 1, 0, 0, tzinfo=<UTC>))
     >>> get_reservation('5')
     Traceback (most recent call last):
     ...
-    KeyError: 'No 5 stored for rsv'
+    KeyError: 'Key 5 not found in Redis'
     """
     return reservation_store[reservation_id]

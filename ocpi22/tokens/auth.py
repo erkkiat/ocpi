@@ -19,7 +19,6 @@ from cachetools.func import ttl_cache
 from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils import timezone
 
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, AuthorizationEnum, TokenType
 from ocpi22.messages import messages
@@ -34,7 +33,7 @@ from ocpi22.routing import find_route, Route
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party, Party
 from ocpiconnector.util import Timer
-from util import with_trailing_slash
+from util import with_trailing_slash, DistributedCache
 
 
 @receiver(post_save, sender=Token)
@@ -42,7 +41,6 @@ def token_post_save(sender, instance: Token, *_args, raw, **_kwargs):
     if raw:
         return
     # In case there is an outdated authorization in the cache
-    authorize_token.cache_clear()
     _authorize_token.cache_clear()
     _get_authorization_from_sessions.cache_clear()
 
@@ -127,7 +125,7 @@ def authorize_with_all_msps(token: str, location: Location, request=None) -> Opt
                     )
                 )
             else:
-                authorization = do_authorization(token, location, route, to=to)
+                authorization = send_authorization_request(token, location, route, to=to)
                 if authorization and authorization.allowed == AuthorizationEnum.ALLOWED:
                     return authorization
         except requests.exceptions.ConnectionError as e:
@@ -162,7 +160,6 @@ def authorize_with_all_msps(token: str, location: Location, request=None) -> Opt
                               authorization_reference='', auth_method='')
 
 
-@ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
 def authorize_token(token: Union[str, Token], location=None, request=None) -> Optional[TokenAuthorization]:
     with Timer() as t:
         if not isinstance(token, Token):
@@ -186,17 +183,12 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
                 )
 
         # Not AD HOC, so Token should be found from database
-        authorization = _authorize_token(token, location)
+        authorization = _authorize_token(token, location, request=request)
         if authorization is None:
             # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
             messages.info(request, 'This Token is not in our database, '
                                    'so an authorization request was sent to all MSPs connected to us.')
             authorization = authorize_with_all_msps(token, location, request=request)
-        else:
-            func = {
-                AuthorizationEnum.ALLOWED.value: messages.success,
-            }.get(authorization.allowed, messages.error)
-            func(request, f'Response for OCPI authorization request was "{authorization.allowed}".')
     if authorization and t:
         if authorization.authorization_reference:
             messages.info(request,
@@ -205,11 +197,10 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
                           "It is the way to connect the record in the MSP database to the record in the CPO database. "
                           "After the charging session is finished, the MSP will receive the Charge Detail Record, which "
                           "has an authorization reference matching the one stored by the MSP internally.")
-        logging.info(f'Request for authorization from {authorization.party} finished in {float(t):.1f} seconds')
     return authorization
 
 
-@ttl_cache(maxsize=1024, ttl=14 * 60)
+@DistributedCache(expiration=15*60)  # 15 minutes cache, required by OCPI 2.2.1 spec
 def _authorize_token(token: Union[Token, str], location=None, request=None) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15-1 minutes
@@ -237,16 +228,16 @@ def _authorize_token(token: Union[Token, str], location=None, request=None) -> O
         logging.warning(f'Route ({route}) or Token ({token}) missing, cannot authorize Token', request=request)
         return None
 
-    return do_authorization(token, location, route)
+    return send_authorization_request(token, location, route, request=request)
 
 
-def do_authorization(token: Union[Token, str], location: Location, route: Route, to: Party = None,
+def send_authorization_request(token: Union[Token, str], location: Location, route: Route, to: Party = None,
                      request=None) -> Optional[TokenAuthorization]:
     if isinstance(token, Token):
         to = to or token.get_party()
         token = token.uid
     url = urljoin(with_trailing_slash(route.url), f'{token}/authorize')
-    result = ocpi_post(
+    result: requests.Response = ocpi_post(
         url=url,
         token_base64=route.token_base64,
         to=to,
@@ -256,7 +247,18 @@ def do_authorization(token: Union[Token, str], location: Location, route: Route,
             evse_uids=[e.uid for e in location.evses.all()]
         ) if location else dict()
     )
-    return process_authorization_response(result, token, location, to, request=request)
+    logging.info(f'Authorization request to {to} finished in {result.elapsed}.')
+    messages.info(request, 'The authorization request to '
+                           f'{to} finished in {result.elapsed}. '
+                           'Positive authorizations are cached for 15 minutes.')
+    response = process_authorization_response(result, token, location, to, request=request)
+
+    func = {
+        AuthorizationEnum.ALLOWED.value: messages.success,
+    }.get(response.allowed, messages.error)
+    func(request, f'Response for OCPI authorization request was "{response.allowed}".')
+
+    return response
 
 
 def process_authorization_response(result, token, location, to, request=None) -> Optional[TokenAuthorization]:

@@ -854,7 +854,8 @@ accept_authorization_msp = dict(result='ALLOWED')
 
 class TokenAuthorizationData:
     authorization_webhook_calls = [
-        dict(url='http://localhost/default/', json={'token_id': 'EKI1', 'location_id': None},
+        dict(url='https://chargerhub.proxy.beeceptor.com/local-msp/webhooks/authorize/EKI1/',
+             json={'token_id': 'EKI1', 'location_id': None},
              headers={'content-type': 'application/json', 'accept': 'application/json'},
              verify=False, timeout=28)
     ]
@@ -888,7 +889,7 @@ class TokenAuthorizationData:
     }
     webhook_data = [  # This is the data that is sent to the webhook
         {
-            'url': 'http://localhost/default/',
+            'url': 'https://chargerhub.proxy.beeceptor.com/local-msp/webhooks/authorize/EKI1/',
             'json': {'token_id': 'EKI1', 'location_id': 'HELSINKI-1'},
             'headers': {'content-type': 'application/json', 'accept': 'application/json'},
             'verify': False,

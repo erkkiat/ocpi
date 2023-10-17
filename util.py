@@ -1,7 +1,8 @@
 import hashlib
 import json
-from dataclasses import is_dataclass, asdict
-from typing import List, Any
+import pickle
+from functools import wraps
+from typing import List, Any, Optional
 
 import redis
 from django.conf import settings
@@ -10,6 +11,12 @@ from django.urls import NoReverseMatch
 from rest_framework.reverse import reverse as django_reverse
 
 from ocpi22 import choices
+
+default_error_messages = dict(
+    object_missing='There is no {name} with UID `{uid}` in our database',
+    no_connector_in_evse='There is no connector with UID `{uid}` in EVSE `{evse}`.',
+    location_evse_missing='There is no EVSE with UID `{evse}` in location `{location}`.',
+)
 
 
 class OCPIVersion:
@@ -81,7 +88,7 @@ class OCPIVersion:
         return hash(self.pure_number)
 
 
-def reverse(s, args=[], request=None, version=None, kwargs=None) -> str:
+def reverse(s, args=None, request=None, version=None, kwargs=None) -> str:
     """
     >>> reverse('location-by-id', args=['2.2.1', 1, 2, 3])
     '/ocpi/2.2.1/locations/1/2/3'
@@ -93,6 +100,7 @@ def reverse(s, args=[], request=None, version=None, kwargs=None) -> str:
     @param kwargs:
     @return:
     """
+    args = args or []
     version = OCPIVersion(version or request.version or '2.2.1' if request else '2.2.1')
     version_args = None
     # Handle versioning wether args or kwargs is used (can't use both with reverse())
@@ -119,7 +127,7 @@ def format_url(url, **kwargs) -> str:
     """
     >>> format_url("https://fakehost/start/{evse_id}/", evse_id=1)
     'https://fakehost/start/1/'
-    >>> format_url(b"https://fakehost/start/", evse_id=1, connector_id=2)
+    >>> format_url("https://fakehost/start/", evse_id=1, connector_id=2)
     'https://fakehost/start/'
     """
     try:
@@ -180,45 +188,114 @@ class RedisStore:
         >>> test._format_key('test')
         'test'
         >>> test._format_key('a', namespace='b')
-        'b-a'
+        'b:a'
         """
         namespace = namespace or self.namespace
         if not namespace:
             return key
-        return f'{namespace}-{key}'
+        return f'{namespace}:{key}'
+
+    def store(self, key, value):
+        # if isinstance(value, dict):
+        #     value = json.dumps(value, default=str)  # serializes also dates
+        # elif is_dataclass(value):
+        #     value = json.dumps(asdict(value), default=str)
+        value = pickle.dumps(value)
+        redis_store.set(key, value, self.expiration)
 
     def __setitem__(self, key, value):
         namespace_key = self._format_key(key)
-        # ic()
-        # ic(key, namespace_key, value, self.expiration)
-        if isinstance(value, dict):
-            value = json.dumps(value, default=str)  # serializes also dates
-        elif is_dataclass(value):
-            value = json.dumps(asdict(value), default=str)
-        redis_store.set(namespace_key, value, self.expiration)
+        self.store(namespace_key, value)
 
-    def __getitem__(self, item):
-        # ic()
-        # ic(item)
-        namespace_key = self._format_key(item)
-        value = redis_store.get(namespace_key)
-        if not value:
-            raise KeyError(f'No {item} stored for {self.namespace}')
-        if "{" in value:
-            try:
+    @staticmethod
+    def retrieve(key) -> Optional[Any]:
+        value = ''
+        try:
+            value = redis_store.get(key)
+            if not value:
+                return None
+            if isinstance(value, str) and value.startswith('{'):
+                # print(f'Parsing {value} as JSON')
                 value = json.loads(value)
-            except json.JSONDecodeError:
-                pass
-        # ic(item, namespace_key, value)
+            else:
+                # print(f'Parsing {value} using pickle')
+                value = pickle.loads(value)
+            return value
+        except pickle.UnpicklingError as e:
+            from ocpi22 import logging
+            logging.error(f'Error retrieving and decoding Redis key {key} as pickled: {e}')
+            # print(f'Error retrieving Redis key {key} as pickled: {e}')
+        except (TypeError, UnicodeDecodeError) as e:
+            from ocpi22 import logging
+            logging.error(f'Error decoding value {value} from Redis with key {key}: {e}')
+            # print(f'Error decoding value from Redis with key {key}: {e}')
+        except json.JSONDecodeError as e:
+            from ocpi22 import logging
+            logging.error(f'Error decoding Redis key {key} value {value} as JSON: {e}')
+            # print(f'Error decoding Redis key {key} value {value} as JSON: {e}')
+        return None  # If reading the stored data fails, there is not much we can do, but for caching this is ok
+
+    def __getitem__(self, key):
+        namespace_key = self._format_key(key)
+        value = self.retrieve(namespace_key)
+        if not value:
+            raise KeyError(f'Key {key} not found in Redis')
         return value
 
 
-redis_store = redis.from_url(settings.REDIS_URL, decode_responses=True)
-default_error_messages = dict(
-    object_missing='There is no {name} with UID `{uid}` in our database',
-    no_connector_in_evse='There is no connector with UID `{uid}` in EVSE `{evse}`.',
-    location_evse_missing='There is no EVSE with UID `{evse}` in location `{location}`.',
-)
+redis_store = redis.from_url(settings.REDIS_URL, decode_responses=False)
+
+
+class DistributedCache(RedisStore):
+    def generate_cache_key(self, func, args, kwargs):
+        key = f"{func.__module__}.{func.__name__}:{args}:{kwargs}"
+        return f'{self.namespace}:{hashlib.md5(pickle.dumps(key)).hexdigest()}'
+
+    def __call__(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            key = self.generate_cache_key(func, args, kwargs)
+            cached_value = self.retrieve(key)
+            if cached_value:
+                return cached_value
+            value = func(*args, **kwargs)
+            self.store(key, value)
+            return value
+
+        def clear_cache_item(*args, **kwargs):
+            key = self.generate_cache_key(func, args, kwargs)
+            redis_store.delete(f'{self.namespace}:{key}')
+
+        def cache_clear():
+            redis_store.delete(f'{self.namespace}:*')
+
+        self.namespace = self.namespace or f'{func.__module__}.{func.__name__}'
+        wrapper.clear_cache_item = clear_cache_item  # Attach the method to the wrapper
+        wrapper.cache_clear = cache_clear  # Attach the method to the wrapper
+        return wrapper
+
+
+# def generate_cache_key(func, args, kwargs):
+#     key = f"{func.__module__}:{func.__name__}:{args}:{kwargs}"
+#     return hashlib.md5(pickle.dumps(key)).hexdigest()
+
+
+# def distributed_cache(namespace='cache', expiration=None):
+#     @wraps(distributed_cache)
+#     def decorator(func):
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+#             key = generate_cache_key(func, args, kwargs)
+#             cached_value = redis_store.get(f'{namespace}:{key}')
+#             if cached_value:
+#                 ic('Cache hit', key)
+#                 return pickle.loads(cached_value)  # Deserialize the cached value
+#             value = func(*args, **kwargs)
+#             redis_store.setex(f'{namespace}:{key}', expiration, pickle.dumps(value))  # Serialize the value
+#             ic('Cache miss', key)
+#             return value
+#         return wrapper
+#     return decorator
 
 
 class HashableDict(dict):

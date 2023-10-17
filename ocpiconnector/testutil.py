@@ -3,6 +3,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import wraps
+from types import FunctionType
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
@@ -15,7 +16,6 @@ from django.test import Client
 from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
-from ocpi22.test_data import accept_authorization, accept_authorization_msp
 from ocpiconnector.ocpi_identities import Party
 
 client = Client()
@@ -154,6 +154,8 @@ class Simulation:
     ocpi_requests: Mock
     logging: Mock
 
+    original_redis_store: FunctionType
+
     def reset(self):
         for x in self.__dict__.values():
             if isinstance(x, Mock):
@@ -175,7 +177,7 @@ class Simulation:
             'callback-session_url': 'http://localhost/session/{uid}/',
             'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
             'callback-reserve_now_url': 'http://localhost/reserve/{uid}/',
-        }.get(x, 'http://localhost/default/')
+        }.get(x, self.original_redis_store.get(x))
 
         self.webhook_requests.post.return_value = FakeResponse(200, {'timeout': 90, 'result': 'ACCEPTED'})
 
@@ -201,6 +203,8 @@ class Simulation:
 def simulate_surrounding_world(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
+        from util import redis_store
+        original_redis_store = redis_store
         with patch('ocpi22.tasks.requests') as tasks_requests, \
                 patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision, \
                 patch('ocpi22.util.redis_store', ) as redis_store, \
@@ -217,7 +221,8 @@ def simulate_surrounding_world(func):
                 webhook_requests=webhook_requests,
                 uuid4=uuid4,
                 ocpi_requests=ocpi_requests,
-                logging=Mock(error=logging_error, warning=logging_warning, info=logging_info)
+                logging=Mock(error=logging_error, warning=logging_warning, info=logging_info),
+                original_redis_store=original_redis_store,
             )
             return func(*args, simulation=simulation, **kwargs)
     return wrapper

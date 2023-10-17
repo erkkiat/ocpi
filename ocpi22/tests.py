@@ -1629,18 +1629,11 @@ class TestSession(TestCase):
     maxDiff = None
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {
-               'callback-start_transaction_url': 'http://localhost/start/{evse_id}/',
-               'callback-session_url': 'http://localhost/session/{uid}/'
-           }.get(x, 'http://localhost/fallback/'))
-    @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=MockUuid4())
     @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    @simulate_surrounding_world
     def test_update_session(self,
                             _ocpi_post_mock: Mock,
-                            _uuid4_mock: Mock,
-                            _get_parameter_mock: Mock):
+                            simulation):
         evse = Evse.objects.all()[0]
         location = evse.location
         uid = '12345'
@@ -2165,7 +2158,6 @@ class TestCpoApi(TestCase):
             # Clear authorization caches to get a clean start
             _get_authorization_from_sessions.cache_clear()
             _authorize_token.cache_clear()
-            authorize_token.cache_clear()
 
             # Use a new Session UID
             uuid4_mock.return_value = MockUuid4(3)
@@ -2196,8 +2188,6 @@ class TestCpoApi(TestCase):
                         f'get_authorization_from_sessions should be cached for 1 minute')
         self.assertTrue(hasattr(_authorize_token, 'cache_clear'),
                         f'_authorize_token should be cached for 15 minutes')
-        self.assertTrue(hasattr(authorize_token, 'cache_clear'),
-                        f'authorize_token should be cached for 15 minutes')
 
         # Todo: Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
