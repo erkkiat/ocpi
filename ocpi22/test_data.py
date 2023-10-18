@@ -1223,7 +1223,8 @@ class SessionData:
         "location_id": "12",
         "evse_uid": {
             "evse_uid": "87da"
-        }
+        },
+        "start_date_time": "2022-01-01T12:00:00Z",
     }
 
     meter_values_1 = {  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',

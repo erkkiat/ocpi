@@ -1,5 +1,6 @@
 import json
 from collections import OrderedDict
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import wraps
@@ -164,6 +165,7 @@ class Simulation:
     def __post_init__(self):
         self.tasks_requests.post.side_effect = self.post
         self.tasks_requests.get.side_effect = self.get
+        self.tasks_requests.patch.side_effect = self.put  # NOTE patch is re-used for PUT
         self.tasks_requests.put.side_effect = self.put
         self.tasks_requests.delete.side_effect = self.delete
 
@@ -176,12 +178,44 @@ class Simulation:
             'callback-stop_transaction_url': 'http://john:his-password@fakehost/stop/{evse_id}/',
             'callback-session_url': 'http://localhost/session/{uid}/',
             'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
-            'callback-reserve_now_url': 'http://localhost/reserve/{uid}/',
+            'callback-reserve_now_url': 'http://localhost/reserve/{evse_id}/',
         }.get(x, self.original_redis_store.get(x))
 
         self.webhook_requests.post.return_value = FakeResponse(200, {'timeout': 90, 'result': 'ACCEPTED'})
 
         self.uuid4.return_value = MockUuid4()
+
+        self.enable_logging_exceptions()
+
+    @contextmanager
+    def no_logging_exceptions(self):
+        self.disable_logging_exceptions()
+        yield
+        self.enable_logging_exceptions()
+
+    @contextmanager
+    def assert_error_logged(self, text: str):
+        """Expect one logging.error() call and make sure text is included in the first argument"""
+        def assert_logged_error_has_text(*args, **kwargs):
+            success = text in args[0]
+            if not success:
+                ic(args, kwargs)
+                self.enable_logging_exceptions()  # Avoid loops
+                raise AssertionError(f'Expected {text} to be logged as error, but it was not')
+
+        self.enable_logging_exceptions(assert_logged_error_has_text)
+        yield
+        self.enable_logging_exceptions()
+
+    def disable_logging_exceptions(self):
+        """Prevent logging errors from raising exceptions"""
+        self.logging.error.side_effect = None
+
+    def enable_logging_exceptions(self, func=None):
+        """(Re-)activate logging error exceptions"""
+        def exception_handler_for_logged_errors(*args, **kwargs):
+            raise RuntimeError(f'Test logged an error: {args=}, {kwargs=}')
+        self.logging.error.side_effect = func or exception_handler_for_logged_errors
 
     def post(self, *args, **kwargs):
         return self._request('POST', *args, **kwargs)

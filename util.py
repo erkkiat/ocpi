@@ -1,6 +1,7 @@
 import hashlib
 import json
 import pickle
+from dataclasses import dataclass
 from functools import wraps
 from typing import List, Any, Optional
 
@@ -247,6 +248,16 @@ redis_store = redis.from_url(settings.REDIS_URL, decode_responses=False)
 
 
 class DistributedCache(RedisStore):
+    @dataclass
+    class CacheInfo:
+        hits: int
+        misses: int
+        maxsize: int  # Not supported due to performance issues
+        currsize: int  # Not supported due to performance issues
+
+        def __repr__(self):
+            return f'CacheInfo(hits={self.hits}, misses={self.misses}, maxsize={self.maxsize}, currsize={self.currsize})'
+
     def generate_cache_key(self, func, args, kwargs):
         key = f"{func.__module__}.{func.__name__}:{args}:{kwargs}"
         return f'{self.namespace}:{hashlib.md5(pickle.dumps(key)).hexdigest()}'
@@ -257,7 +268,9 @@ class DistributedCache(RedisStore):
             key = self.generate_cache_key(func, args, kwargs)
             cached_value = self.retrieve(key)
             if cached_value:
+                self.hits += 1
                 return cached_value
+            self.misses += 1
             value = func(*args, **kwargs)
             self.store(key, value)
             return value
@@ -267,35 +280,25 @@ class DistributedCache(RedisStore):
             redis_store.delete(f'{self.namespace}:{key}')
 
         def cache_clear():
-            redis_store.delete(f'{self.namespace}:*')
+            for key in redis_store.scan_iter(f"{self.namespace}:*"):
+                if not redis_store.delete(key):
+                    from ocpi22 import logging
+                    logging.warning(f'Could not delete key {key} from Redis')
+            self.hits = 0
+            self.misses = 0
 
+        def cache_info():
+            return self.CacheInfo(self.hits, self.misses, 0, 0)
+
+        self.hits = 0
+        self.misses = 0
         self.namespace = self.namespace or f'{func.__module__}.{func.__name__}'
-        wrapper.clear_cache_item = clear_cache_item  # Attach the method to the wrapper
-        wrapper.cache_clear = cache_clear  # Attach the method to the wrapper
+
+        wrapper.clear_cache_item = clear_cache_item  # Attach the methods to the wrapper
+        wrapper.cache_clear = cache_clear
+        wrapper.cache_info = cache_info
+
         return wrapper
-
-
-# def generate_cache_key(func, args, kwargs):
-#     key = f"{func.__module__}:{func.__name__}:{args}:{kwargs}"
-#     return hashlib.md5(pickle.dumps(key)).hexdigest()
-
-
-# def distributed_cache(namespace='cache', expiration=None):
-#     @wraps(distributed_cache)
-#     def decorator(func):
-#         @wraps(func)
-#         def wrapper(*args, **kwargs):
-#             key = generate_cache_key(func, args, kwargs)
-#             cached_value = redis_store.get(f'{namespace}:{key}')
-#             if cached_value:
-#                 ic('Cache hit', key)
-#                 return pickle.loads(cached_value)  # Deserialize the cached value
-#             value = func(*args, **kwargs)
-#             redis_store.setex(f'{namespace}:{key}', expiration, pickle.dumps(value))  # Serialize the value
-#             ic('Cache miss', key)
-#             return value
-#         return wrapper
-#     return decorator
 
 
 class HashableDict(dict):

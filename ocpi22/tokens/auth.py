@@ -64,7 +64,7 @@ def get_session_by_adhoc_token(token_uid: str, max_age_minutes,
     return None
 
 
-@ttl_cache(maxsize=1024, ttl=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
+@DistributedCache(expiration=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed
 def _get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
     session = get_session_by_adhoc_token(token_uid, max_age_minutes=15)
     if session:

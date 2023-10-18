@@ -73,9 +73,11 @@ class CredentialsTests(BetterTestCase):
         credentials = Credentials.objects.get(ours=random_token)
         self.assertDictEqual(credentials.__dict__, CredentialsData.registered_credentials)
 
-        # Updating an existing one using POST should fail
-        result = CredentialsViewSet().post(request)
-        self.assertTrue(result.status_code not in (status.HTTP_200_OK, status.HTTP_201_CREATED),
+        # Updating an existing Credentials using POST should fail
+        with simulation.assert_error_logged('use PUT to update'):
+            result = CredentialsViewSet().post(request)
+
+        self.assertTrue(result.status_code == status.HTTP_400_BAD_REQUEST,
                         'Updating an existing credentials should fail')
         self.assertTrue('Credentials exist' in result.data.get('status_message', ''),
                         'Updating an existing credentials should fail')

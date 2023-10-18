@@ -6,6 +6,7 @@ from cachetools.func import ttl_cache
 from django.utils.functional import cached_property
 
 from cars.test_data import cars_json
+from util import DistributedCache
 
 
 @dataclass(eq=True, frozen=True)
@@ -59,7 +60,7 @@ def get_json(url):
     return requests.get(url, timeout=10).json()
 
 
-@ttl_cache(maxsize=1, ttl=86400)  # 24 hours cache
+@DistributedCache(expiration=86400)  # 24 hours cache
 def get_models() -> dict:
     results = dict()
     if os.environ.get('TEST'):
@@ -115,7 +116,7 @@ def search(substr: str) -> list:
     return [value for key, value in get_models().items() if substr in value.search_name]
 
 
-@ttl_cache(maxsize=100, ttl=3600)  # 1 hour cache
-def model_exists(id: str) -> bool:
+@DistributedCache(expiration=3600)  # 1 hour cache
+def model_exists(model_id: str) -> bool:
     models = get_models()
-    return id in models
+    return model_id in models

@@ -21,7 +21,7 @@ from ocpi22.ocpi.parse import parse_ocpi_url
 from ocpiconnector.exceptions import WrongRole
 
 from ocpiconnector.ocpi_identities import Party
-from util import OCPIVersion, reverse, with_trailing_slash
+from util import OCPIVersion, reverse, with_trailing_slash, DistributedCache
 
 
 @dataclass
@@ -104,7 +104,7 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
 CredentialsType: TypeAlias = 'Credentials'
 
 
-@ttl_cache(ttl=60 * 2)
+@DistributedCache(expiration=2*60)
 def find_route(to: Union[Party, CredentialsType], ocpi_module: OcpiModuleEnum, add_path=None,
                role: EndpointRoleEnum = EndpointRoleEnum.RECEIVER) -> Optional[Route]:
     if not to:

@@ -965,7 +965,8 @@ class CommandTests(TestCase):
         simulation.uuid4.return_value = MockUuid4(42)
 
         try:
-            response = viewset.start_session(request)
+            with simulation.assert_error_logged('REJECTED'):
+                response = viewset.start_session(request)
         except redis.exceptions.ConnectionError as e:
             print(f'This test requires a local Redis instance to be running: {e}')
             return False
@@ -1053,7 +1054,10 @@ class CommandTests(TestCase):
             # Let's pretend to be the CPO and get an error from charger
             simulation.webhook_requests.put.return_value = make_json_response(dict(result='EVSE_INOPERATIVE'))
             simulation.uuid4.return_value = MockUuid4(42)
-            response = viewset.reserve_now(request)
+
+            with simulation.assert_error_logged('REJECTED'):
+                response = viewset.reserve_now(request)
+
         except redis.exceptions.ConnectionError as e:
             print(f'This test requires a local Redis instance to be running: {e}')
             self.fail()
@@ -1497,9 +1501,11 @@ class TestRouting(TestCase):
 
     def test_find_route(self):
         try:
-            self.assertTrue(hasattr(find_route, 'cache_info'), "find_route() should be cached")
+            self.assertTrue(hasattr(find_route, 'cache_clear'), "find_route() should be cached")
             find_route.cache_clear()
             route: Route = find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)
+            self.assertEqual(find_route.cache_info().hits, 0, "find_route() should first give a cache miss")
+            self.assertEqual(find_route.cache_info().misses, 1, "find_route() should first give a cache miss")
 
             # Does caching work?
             find_route(Party('fi', 'msp'), OcpiModuleEnum.LOCATIONS)  # These should be acceptable in lower case
@@ -1617,7 +1623,7 @@ class TestRouting(TestCase):
                                          'OCPI-to-party-id': to.party_id,
                                          'content-type': 'application/json'},
                              'method': 'POST',
-                             'url': 'http://localhost:9002/ocpi/cpo-fi/2.2/commands/START_SESSION'},
+                             'url': 'http://fakehost/command/START_SESSION'},
                             f'The routed hub message is not as expected'
                         )
                         self.assertJSONEqual(response.content, {'message': 'Hello from the other side'},
@@ -1756,7 +1762,8 @@ class TestCpoApi(TestCase):
         for case in testcases:
             with self.subTest(request=case.get('request')):
                 cpo_request.data = case.get('request')
-                cpo_response = cpo_viewset.status_change(cpo_request)
+                with simulation.assert_error_logged('EVSE with ID NON-EXISTENT-EVSE does not'):
+                    cpo_response = cpo_viewset.status_change(cpo_request)
 
                 self.assertEqual(cpo_response.status_code, case.get('status_code'),
                                  'Status change should succeed')
@@ -2346,7 +2353,8 @@ class TestPutSession(TestCase):
     def test_put_session_to_wrong_evse(self, simulation):
         with patch('ocpi22.ocpi.api.fetch_location') as mock_fetch_location:
             mock_fetch_location.return_value = None
-            response = put_session_data(SessionData.wrong_evse)
+            with simulation.assert_error_logged('There is no Location with UID'):
+                response = put_session_data(SessionData.wrong_evse)
             mock_fetch_location.assert_called_once()
 
             # Todo: do the actual test
@@ -2452,6 +2460,9 @@ class TestMspApi(TestCase):
         account.deposit(Decimal("50") - account.balance)
         self.assertEqual(account.transactions.count(), 2, 'There should be two Transactions on Account')
         self.assertEqual(account.balance, Decimal("50"), "Second account deposit not working as expected")
+
+        simulation.ocpi_requests.post.reset_mock()
+        assert simulation.ocpi_requests.post.call_count == 0
 
         response = start_charging(data, self.user)
 
@@ -2924,7 +2935,7 @@ class TestTasks(TestCase):
     def test_check_alive_connection_error(self, simulation: Simulation):
         Credentials.objects.filter(pk=self.credentials_id).update(last_connection=None)
         simulation.tasks_requests.get.side_effect = requests.exceptions.ConnectionError
-        with time_machine.travel(faketime, tick=False):
+        with time_machine.travel(faketime, tick=False), simulation.assert_error_logged('is *NOT* alive'):
             check_still_alive(self.credentials_id)
         credentials = Credentials.objects.get(pk=self.credentials_id)
         self.assertEqual(credentials.last_connection, None, 'Last connection should not be updated on connection error')
@@ -2937,7 +2948,7 @@ class TestTasks(TestCase):
     def test_check_alive_other_connection_error(self, simulation: Simulation):
         self.reset_last_connection(self.credentials_id)
         simulation.tasks_requests.get.side_effect = IOError
-        with time_machine.travel(faketime, tick=False):
+        with time_machine.travel(faketime, tick=False), simulation.assert_error_logged('is *NOT* alive'):
             check_still_alive(self.credentials_id)
         credentials = Credentials.objects.get(pk=self.credentials_id)
         self.assertEqual(credentials.last_connection, None)
@@ -2998,7 +3009,7 @@ class TokenAuthorizationTests(BetterTestCase):
         )
 
         viewset = TokenViewSet()
-        with time_machine.travel(faketime, tick=False):
+        with time_machine.travel(faketime, tick=False), simulation.assert_error_logged('Unknown Token'):
             response = viewset.authorize(request, token_id)
         # There should be no webhook call for a non-existent RFID token
         simulation.webhook_requests.assert_not_called()
@@ -3028,7 +3039,8 @@ class TokenAuthorizationTests(BetterTestCase):
             )
         )
 
-        with time_machine.travel(faketime, tick=False):
+        with time_machine.travel(faketime, tick=False), \
+                simulation.assert_error_logged('Your charging token is not valid at the moment'):
             response = TokenViewSet().authorize(request, token_id)
 
         # There should be no webhook call for a non-existent RFID token
@@ -3080,7 +3092,8 @@ class TokenAuthorizationTests(BetterTestCase):
             )
         )
 
-        with time_machine.travel(faketime, tick=False):
+        with time_machine.travel(faketime, tick=False), \
+                simulation.assert_error_logged('Location NONEXISTENT cannot be found from MSP database'):
             response = TokenViewSet().authorize(request, self.token.uid)
 
         self.assertDictEqual(response.data, TokenAuthorizationData.location_not_found)

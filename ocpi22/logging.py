@@ -12,6 +12,7 @@ from django.utils import timezone
 from ocpi22.messages import messages
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.models.logging import LogEntry, LogTopic, ChildEvent, LogLevel
+from util import DistributedCache
 
 CRITICAL = logging.CRITICAL
 SLACK_WEBHOOK = os.environ.get('SLACK_WEBHOOK')
@@ -19,7 +20,7 @@ SLACK_WEBHOOK = os.environ.get('SLACK_WEBHOOK')
 USER_ACTIVITY_LOGGING_FREQUENCY_HOURS = 2
 
 
-@ttl_cache(ttl=USER_ACTIVITY_LOGGING_FREQUENCY_HOURS * 60 * 60)
+@DistributedCache(expiration=USER_ACTIVITY_LOGGING_FREQUENCY_HOURS * 60 * 60)
 def log_user_activity(username: str) -> None:
     message = f'User {username} became active on {settings.HOSTNAME}.'
     logging.info(message)
@@ -27,7 +28,7 @@ def log_user_activity(username: str) -> None:
         requests.post(url=SLACK_WEBHOOK, json=dict(text=message, icon_emoji=':face_with_monocle:'))
 
 
-@ttl_cache(ttl=USER_ACTIVITY_LOGGING_FREQUENCY_HOURS * 60 * 60)
+@DistributedCache(expiration=USER_ACTIVITY_LOGGING_FREQUENCY_HOURS * 60 * 60)
 def log_ocpi_activity(host: str) -> None:
     message = f'Host {host} is sending OCPI requests to {settings.HOSTNAME} ' \
               f'(time window is {USER_ACTIVITY_LOGGING_FREQUENCY_HOURS}h).'
