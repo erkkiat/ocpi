@@ -18,6 +18,8 @@ from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
+from ocpi22.routing import find_route
+from ocpi22.tokens.auth import _authorize_token, _get_authorization_from_sessions
 
 client = Client()
 
@@ -187,6 +189,11 @@ class Simulation:
 
         self.enable_logging_exceptions()
 
+        # Unit tests are loading their own fixtures, so we need to clear the cache not to get the fixture data mixed up
+        find_route.cache_clear()
+        _authorize_token.cache_clear()
+        _get_authorization_from_sessions.cache_clear()
+
     @contextmanager
     def no_logging_exceptions(self):
         self.disable_logging_exceptions()
@@ -208,11 +215,15 @@ class Simulation:
         self.enable_logging_exceptions()
 
     def disable_logging_exceptions(self):
-        """Prevent logging errors from raising exceptions"""
+        """Switch off logging error exceptions for the simulation"""
         self.logging.error.side_effect = None
 
     def enable_logging_exceptions(self, func=None):
-        """(Re-)activate logging error exceptions"""
+        """
+        (Re-)activate logging error exceptions
+        By default any error logged during a simulation test will raise an exception,
+        so that they are not ignored unintentionally
+        """
         def exception_handler_for_logged_errors(*args, **kwargs):
             raise RuntimeError(f'Test logged an error: {args=}, {kwargs=}')
         self.logging.error.side_effect = func or exception_handler_for_logged_errors
@@ -224,6 +235,7 @@ class Simulation:
         return self._request('GET', *args, **kwargs)
 
     def put(self, *args, **kwargs):
+        """Used for both PUT and PATCH"""
         return self._request('PUT', *args, **kwargs)
 
     def delete(self, *args, **kwargs):
@@ -235,10 +247,17 @@ class Simulation:
 
 
 def simulate_surrounding_world(func):
+    """
+    Patch all external dependencies to make sure the test is isolated from the outside world
+    - All Mocks are accesible through the simulation object as simulation.<mock_name>
+    - You can switch mocks on and off, and set side_effects
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
+        # Store the original redis_store for use during the test for access to actual Redis
         from util import redis_store
         original_redis_store = redis_store
+
         with patch('ocpi22.tasks.requests') as tasks_requests, \
                 patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision, \
                 patch('ocpi22.util.redis_store', ) as redis_store, \
