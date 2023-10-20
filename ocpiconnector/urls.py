@@ -62,11 +62,11 @@ common_router.register(r'', VersionsViewSet, basename='base')
 
 schema_view = get_schema_view(
    openapi.Info(
-      title="ChargerHub Roaming API",
+      title="SolidRoam Roaming API",
       default_version='v2',
-      description="This is the expressway to roaming",
+      description="Your expressway to OCPI roaming",
       # terms_of_service="https://www.google.com/policies/terms/",
-      contact=openapi.Contact(email="erkki.tapola@chargerhub.eu"),
+      contact=openapi.Contact(email="erkki.tapola@solidroam.com"),
       # license=openapi.License(name="BSD License"),
    ),
    public=True,
