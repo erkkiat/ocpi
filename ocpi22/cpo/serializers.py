@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Union
+from typing import Union, Optional
 
 import pytz
 from django.conf import settings
@@ -202,6 +202,14 @@ class SessionIdSerializer(fields.CharField):
         return None
 
 
+class InternalReferenceSerializer(fields.CharField):
+    """Results in a Session or None"""
+    def to_internal_value(self, data) -> Optional[Session]:
+        if data:
+            return Session.objects.get(internal_reference=data)
+        return None
+
+
 class OcppStatusSerializer(fields.ChoiceField):
     def __init__(self):
         super().__init__(OcppStatusChoices.choices)
@@ -250,7 +258,7 @@ class MeterValuesSerializer(serializers.Serializer):
         source='session', required=False,
         help_text='The optional OCPI session ID (from the response of the start_transaction endpoint)',
     )
-    internal_reference = serializers.CharField(
+    internal_reference = InternalReferenceSerializer(
         required=False,
         help_text='The optional internal reference on the CPO platform '
                   '(for example order number from the billing system)',
@@ -317,7 +325,7 @@ class StopTransactionSerializer(serializers.Serializer):
         source='session', required=False,
         help_text='The optional OCPI session ID (from the response of the start_transaction endpoint)',
     )
-    internal_reference = serializers.CharField(
+    internal_reference = InternalReferenceSerializer(
         required=False,
         help_text='The optional internal reference on the CPO platform '
                   '(for example order number from the billing system)',
@@ -337,46 +345,36 @@ class StopTransactionSerializer(serializers.Serializer):
         return attrs
 
 
-# class CPOCallbacksSerializer(CallbacksSerializer):
-#     """
-#     The URLs for callback endpoints in the CPO system
-#     """
-#     START_TRANSACTION_URL = 'start_transaction_url'
-#     STOP_TRANSACTION_URL = 'stop_transaction_url'
-#
-#     start_transaction_url = serializers.URLField()
-#     stop_transaction_url = serializers.URLField()
-#
-#     # unlock_connector_url = serializers.URLField(required=False)
-#     # reserve_now_url = serializers.URLField(required=False)
-#     # cancel_reservation_url = serializers.URLField(required=False)
-
-# class CPOCallbacksSerializer(CallbacksSerializer):
-#     """
-#     The URLs for callback endpoints in the CPO system
-#     """
-#     START_TRANSACTION_URL = 'start_transaction_url'
-#     STOP_TRANSACTION_URL = 'stop_transaction_url'
-#
-#     start_transaction_url = serializers.URLField()
-#     stop_transaction_url = serializers.URLField()
-#
-#     # unlock_connector_url = serializers.URLField(required=False)
-#     # reserve_now_url = serializers.URLField(required=False)
-#     # cancel_reservation_url = serializers.URLField(required=False)
-
-
 class CpoOutboundWebhookSerializer(serializers.Serializer):
     response_url = serializers.URLField()
     token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
     token_type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES)
-    authorization_reference = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
-                                                    allow_null=True)
+    authorization_reference = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True,
+        help_text='Optional reference to the authorization given by the eMSP')
     auth_method = serializers.ChoiceField(choices=Session.AUTH_METHOD_CHOICES)
-    from_party = serializers.CharField()
+    from_party = serializers.CharField(
+        help_text='The ID of the party sending the command'
+    )
     evse_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
     connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
-    billed_to = serializers.CharField(max_length=6)
+    billed_to = serializers.CharField(
+        max_length=6,
+        help_text='The party ID of the eMSP that is responsible for paying for the session'
+    )
+
+
+class CommandResponseSerializer(serializers.Serializer):
+    timeout = serializers.IntegerField(
+        required=False, allow_null=True,
+        help_text='Timeout for this ChargingProfile request in seconds. '
+                  'When the Result is not received within this timeout, '
+                  'the eMSP can assume that the message might never be sent.'
+    )
+    result = serializers.ChoiceField(
+        choices=CommandResultBaseSerializer.RESULT_OPTIONS,
+        help_text='The result of the remote command.'
+    )
 
 
 class CPOStartWebhookSerializer(CallbacksSerializer):
@@ -388,9 +386,7 @@ class CPOStartWebhookSerializer(CallbacksSerializer):
         connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
                                              allow_null=True)
 
-    class ResponseSerializer(serializers.Serializer):
-        timeout = serializers.IntegerField(required=False, allow_null=True)
-        result = serializers.ChoiceField(choices=CommandResultBaseSerializer.RESULT_OPTIONS)
+    ResponseSerializer = CommandResponseSerializer
 
 
 class CPOStopWebhookSerializer(CallbacksSerializer):
@@ -402,9 +398,7 @@ class CPOStopWebhookSerializer(CallbacksSerializer):
         connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
                                              allow_null=True)
 
-    class ResponseSerializer(serializers.Serializer):
-        timeout = serializers.IntegerField(required=False, allow_null=True)
-        result = serializers.ChoiceField(choices=CommandResultBaseSerializer.RESULT_OPTIONS)
+    ResponseSerializer = CommandResponseSerializer
 
 
 class CPOReserveNowWebhookSerializer(CallbacksSerializer):
@@ -416,9 +410,7 @@ class CPOReserveNowWebhookSerializer(CallbacksSerializer):
         location_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
         reservation_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
-    class ResponseSerializer(serializers.Serializer):
-        timeout = serializers.IntegerField(required=False, allow_null=True)
-        result = serializers.ChoiceField(choices=CommandResultBaseSerializer.RESULT_OPTIONS)
+    ResponseSerializer = CommandResponseSerializer
 
 
 class VatSerializer(serializers.IntegerField):

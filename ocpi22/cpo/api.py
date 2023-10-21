@@ -275,19 +275,10 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
                          internal_reference=None, timestamp=None):
     next_url = reverse('chargepoint-stop-transaction')
     timestamp = timestamp or datetime.now(pytz.utc)
-
-    if not session:
-        session = Session.get_if_exists(
-            internal_reference=internal_reference
-        )
-        if not session:
-            raise ValidationError(f'Session with internal reference `{internal_reference}` not found')
-        serializer.validated_data.pop('internal_reference', None)
-
-    # ic(session.connector, session.connector.tariff_ids.all(), session.connector.get_tariffs())
+    session = session or internal_reference
 
     # We found a valid Session
-    if session.status == Session.ACTIVE:
+    if session and session.status == Session.ACTIVE:
         if not session.connector.tariff_ids.count():
             raise RuntimeError(f'EVSE {session.evse} connector {session.connector} has no tariffs')
         session.stop_kwh = kwh
@@ -780,14 +771,10 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                 serializer = StopTransactionSerializer(data=request.data,
                                                        context={'version': request.version, 'request': request})
                 if serializer.is_valid():
-                    session = serializer.validated_data.get('session')
+                    session = serializer.validated_data.get('session',
+                                                            serializer.validated_data.get('internal_reference'))
                     stop_kwh = serializer.validated_data.get('stop_kwh')
                     stop_timestamp = serializer.validated_data.get('stop_timestamp', datetime.now(pytz.utc))
-                    if not session:
-                        internal_reference = serializer.validated_data.get('internal_reference')
-                        session = Session.get_if_exists(internal_reference=internal_reference)
-                        if not session:
-                            raise ValidationError(f'Session with internal_reference `{internal_reference}` not found.')
 
                     if session.is_final():
                         return Response(dict(status_text='Session was completed earlier, cannot stop it twice'),
