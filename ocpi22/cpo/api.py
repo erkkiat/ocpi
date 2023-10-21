@@ -408,7 +408,7 @@ class ChargePointViewSet(FlowchartViewSet):
 
         * `HTTP_200_OK` when the EVSE status has been successfully updated
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
-        * `HTTP_404_NOT_FOUND` when the EVSE or Token is not found
+        * `HTTP_404_NOT_FOUND` when the EVSE is not found
 
         """
 
@@ -471,7 +471,7 @@ class ChargePointViewSet(FlowchartViewSet):
     def authorize(self, request):
         """
         Authorize charging using a specific RFID token. Call this when the driver has tapped an RFID
-        which is not known to your Charger Point Management System.
+        which is not known to your Charge Point Management System.
 
         **NOTE**: Authorization responses from MSPs are cached for 15 minutes, so feel free to
         call this endpoint multiple times when preparing to start a charging session.
@@ -549,7 +549,7 @@ class ChargePointViewSet(FlowchartViewSet):
                           mark_safe('Seems that the ID for the EVSE or the Token was not quite correct. You can '
                                     f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
                                     f'and <a target="tokenadmin" href="{token_admin}">the list of known Tokens</a> '
-                                    'using the admin tools. You should use the value from the UID field below.'))
+                                    'using the admin tools.'))
             return Response(
                 dict(status_message=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
@@ -840,9 +840,9 @@ class ChargePointViewSet(FlowchartViewSet):
             url_path='remote_command_result(?:/(?P<command_id>[^/.]+))?')
     def remote_command_result(self, request, command_id=None):
         """
-        Using this endpoint you tell system if the requested remote command has been successful.
+        Using this endpoint you indicate the success of the requested remote command.
         You'll need the command_id in the URL, so you must use the exact response_url you get when
-        the system calls your start_transaction callback.
+        we call your start_transaction callback.
 
         ## Status codes
 
@@ -991,7 +991,7 @@ class CpoReserveNowWebhookViewSet(WebhookViewSet):
 
 class CpoStartWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the system where to send remote start commands.
+    These endpoints are used for receiving remote commands from MSPs.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
 
@@ -1018,7 +1018,7 @@ class CpoStartWebhookViewSet(WebhookViewSet):
 
 class CpoStopWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the system where to send remote stop commands.
+    These endpoints are used for receiving remote commands from MSPs.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
 
@@ -1045,7 +1045,7 @@ class CpoStopWebhookViewSet(WebhookViewSet):
 
 class InvoiceWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the system where to send the invoicing lines (Charge Detail Records).
+    This webhook will receive the invoicing data (Charge Detail Records).
 
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
@@ -1053,7 +1053,7 @@ class InvoiceWebhookViewSet(WebhookViewSet):
     Example URL: `https://your.emsp.backend.server/session/{session_id}/`. The session_id will be substituted with
     the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
 
-    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
+    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
     > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
     ## Status codes

@@ -237,7 +237,7 @@ class CommandsViewSet(GenericViewSet):
                 token_type=session.cdr_token_type if session else get_token_type(token, TokenType.APP_USER),
                 authorization_reference=session.authorization_reference if session else authorization_reference,
                 auth_method=Session.COMMAND,
-                from_party=str(request.ocpi_party.party),
+                from_party=str(request.ocpi_party.party),  # HUB or eMSP
                 evse_id=evse_uid,
                 connector_id=connector_id,
                 billed_to=billed_to,

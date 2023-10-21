@@ -123,7 +123,7 @@ class ConnectorAdminForm(forms.ModelForm):
         if not data:
             raise ValidationError(
                 _('Connector needs to have a Tariff selected, so that billing is possible'),
-                code='missing'
+                code='invalid'
             )
         return data
 
