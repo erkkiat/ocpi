@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Union
 
 from dateutil import parser
+from dateutil.tz import tzoffset
 from django.conf import settings
 from rest_framework import serializers
 
@@ -105,5 +106,9 @@ class UTCDateTimeField(serializers.DateTimeField):
         if isinstance(value, datetime):
             return value
         assert isinstance(value, str), f'Expected a string, got type {type(value)} with value {value}'
-        value = parser.parse(value)
+        value: datetime = parser.parse(value)
+        if value and isinstance(value.tzinfo, tzoffset):
+            raise serializers.ValidationError(
+                'according to OCPI specification, datetimes should be in UTC timezone', code='invalid'
+            )
         return value

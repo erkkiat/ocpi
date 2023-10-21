@@ -212,9 +212,9 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
             cdr = Cdr.objects.create(**validated_data)
             cdr.tariffs.set(tariff_list)
             return cdr
-        except IntegrityError as e:
-            raise ValidationError(f'A CDR with uid `{validated_data.get("uid")}` already exists. '
-                                  'Overwriting an existing CDR is forbidden.')
+        except IntegrityError:
+            raise serializers.ValidationError('The CDR with this UID already exists. '
+                                  'Overwriting an existing CDR is not possible.', code='invalid')
 
 
 class RolesSerializer(serializers.ModelSerializer):
