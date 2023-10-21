@@ -1,5 +1,7 @@
 import json
-from datetime import time, date, datetime as python_datetime
+from datetime import time, date
+
+from django.urls import reverse_lazy
 from django.utils.datetime_safe import datetime
 
 import pytz
@@ -18,14 +20,15 @@ import redis
 from django.conf import settings
 from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import routers, status, viewsets, mixins
+from rest_framework import routers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
-from util import reverse, url_link, redis_store
+from ocpi22.viewsets import FlowchartViewSet
+from util import reverse, url_link, redis_store, time_lte, time_lt
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts, AuthorizationEnum
@@ -203,26 +206,6 @@ def close_active_sessions_for_evse(evse_uid: str):
         logging.error(f'Completed active Session {session.uid} which has been left hanging')
 
 
-def convert_to_time(t) -> time:
-    if isinstance(t, str):
-        return time(*t.split(':'))
-    if isinstance(t, (datetime, python_datetime)):
-        return t.time()
-    return t
-
-
-def time_lte(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
-    time1 = convert_to_time(time1)
-    time2 = convert_to_time(time2)
-    return time1 <= time2
-
-
-def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
-    time1 = convert_to_time(time1)
-    time2 = convert_to_time(time2)
-    return time1 < time2
-
-
 def applying_tariff_element(session_instance: Session, timestamp: Union[datetime, DateTimeField] = None,
                             **_kwargs) -> Optional[TariffElement]:
     def matching_weekday(wd, wd_numbers):
@@ -378,7 +361,7 @@ def get_meter_values(session):
     return serializer.validated_data
 
 
-class ChargePointViewSet(viewsets.GenericViewSet):
+class ChargePointViewSet(FlowchartViewSet):
     """
     The charge point is connected to roaming networks through this API. It interprets the OCPP
     status and other data from the charge point.
@@ -386,6 +369,20 @@ class ChargePointViewSet(viewsets.GenericViewSet):
 
     queryset = Location.objects.all()  # A CPO instance should only have its own Locations in the database
     lookup_field = 'uid'
+
+    flowchart = dict(
+        steps=(
+            ('status_change', 'Status Change', reverse_lazy('chargepoint-status-change')),
+            ('authorize', 'Authorize Token', reverse_lazy('chargepoint-authorize')),
+            ('start_transaction', 'Start Transaction', reverse_lazy('chargepoint-start-transaction')),
+            ('meter_values', 'Meter Values', reverse_lazy('chargepoint-meter-values')),
+            ('stop_transaction', 'Stop Transaction', reverse_lazy('chargepoint-stop-transaction')),
+            # Prevent Mermaid from combining these two steps, the number will be otherwise ignored (remove_numbers())
+            ('status_change2', 'Status Change', reverse_lazy('chargepoint-status-change')),
+        ),
+        process='status_change-->authorize-->start_transaction-->meter_values-->stop_transaction-->status_change2;\n'
+                'meter_values-->meter_values;\n'
+    )
 
     def get_serializer_class(self):
         return dict(
@@ -783,7 +780,7 @@ class ChargePointViewSet(viewsets.GenericViewSet):
                         session.stop_kwh = stop_kwh
                         session.update_charging_periods(kwh=session.kwh, timestamp=stop_timestamp)
                     session.status = Session.COMPLETED
-                    session.end_date_time = stop_timestamp
+                    session.end_date_time = stop_timestamp.replace(tzinfo=pytz.utc)
                     session.last_updated = datetime.now(pytz.utc)
                     session.calculate_price()
                     session.save(update_fields=['stop_kwh', 'status', 'last_updated', 'end_date_time',
@@ -952,6 +949,19 @@ class ChargePointViewSet(viewsets.GenericViewSet):
         return None
 
 
+msp_remote_commands_flowchart = dict(
+    steps=(
+        ('reserve_now_webhook', 'Reserve Now Webhook', reverse_lazy('cpo-reserve-now-webhook')),
+        ('start_transaction_webhook', 'Start Transaction Webhook', reverse_lazy('cpo-start-transaction-webhook')),
+        ('remote_command_result', 'Remote Command Result'),
+        ('stop_transaction_webhook', 'Stop Transaction Webhook', reverse_lazy('cpo-stop-transaction-webhook')),
+        ('invoicing_webhook', 'Invoicing Webhook', reverse_lazy('msp-invoicing-webhook')),
+    ),
+    process='reserve_now_webhook-->remote_command_result; start_transaction_webhook-->remote_command_result; '
+            'stop_transaction_webhook-->remote_command_result; stop_transaction_webhook-->invoicing_webhook;'
+)
+
+
 class CpoReserveNowWebhookViewSet(WebhookViewSet):
     """
     You need to tell the system where to send remote ReserveNow commands.
@@ -972,6 +982,7 @@ class CpoReserveNowWebhookViewSet(WebhookViewSet):
     serializer_class = CPOReserveNowWebhookSerializer
     serializer = serializer_class()
     queryset = Location.objects.none()
+    flowchart = msp_remote_commands_flowchart
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='reserve_now')
     def reserve_now_webhook(self, request):
@@ -998,6 +1009,7 @@ class CpoStartWebhookViewSet(WebhookViewSet):
     serializer_class = CPOStartWebhookSerializer
     serializer = serializer_class()
     queryset = Location.objects.none()
+    flowchart = msp_remote_commands_flowchart
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='start_transaction')
     def start_transaction_webhook(self, request):
@@ -1024,6 +1036,7 @@ class CpoStopWebhookViewSet(WebhookViewSet):
     serializer_class = CPOStopWebhookSerializer
     serializer = serializer_class()
     queryset = Location.objects.none()
+    flowchart = msp_remote_commands_flowchart
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='stop_transaction')
     def stop_transaction_webhook(self, request):
@@ -1051,6 +1064,7 @@ class InvoiceWebhookViewSet(WebhookViewSet):
     serializer_class = InvoicingCallbackSerializer
     serializer = serializer_class()
     queryset = Session.objects.none()
+    flowchart = msp_remote_commands_flowchart
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='invoice')
     def invoicing_webhook(self, request):

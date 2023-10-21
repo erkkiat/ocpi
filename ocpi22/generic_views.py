@@ -3,13 +3,14 @@ import ocpi22.logging as logging
 import redis
 from django.conf import settings
 from django.utils.translation import gettext as _
-from rest_framework import viewsets, status
+from rest_framework import status
 from rest_framework.response import Response
 
+from ocpi22.viewsets import FlowchartViewSet
 from ocpi22.util import MyMetadata, get_callbacks_parameter
 
 
-class WebhookViewSet(viewsets.GenericViewSet):
+class WebhookViewSet(FlowchartViewSet):
     metadata = MyMetadata()
     outbound_data_serializer = None
     response_data_serializer = None

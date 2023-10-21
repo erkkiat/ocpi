@@ -2,13 +2,15 @@ import hashlib
 import json
 import pickle
 from dataclasses import dataclass
+from datetime import time, datetime as python_datetime
 from functools import wraps
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Union
 
 import redis
 from django.conf import settings
 
 from django.urls import NoReverseMatch
+from django.utils.datetime_safe import datetime
 from rest_framework.reverse import reverse as django_reverse
 
 from ocpi22 import choices
@@ -352,3 +354,23 @@ def with_trailing_slash(url):
     if url.endswith('/'):
         return url
     return f'{url}/'
+
+
+def convert_to_time(t) -> time:
+    if isinstance(t, str):
+        return time(*t.split(':'))
+    if isinstance(t, (datetime, python_datetime)):
+        return t.time()
+    return t
+
+
+def time_lte(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
+    time1 = convert_to_time(time1)
+    time2 = convert_to_time(time2)
+    return time1 <= time2
+
+
+def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
+    time1 = convert_to_time(time1)
+    time2 = convert_to_time(time2)
+    return time1 < time2
