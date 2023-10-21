@@ -453,15 +453,14 @@ class ChargePointViewSet(FlowchartViewSet):
 
             # method == GET
             return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
-        except (Evse.DoesNotExist, Token.DoesNotExist) as e:
+        except Evse.DoesNotExist as e:
             logging.error(f'Exception in CPO status_change(): {e}')
             evse_admin = reverse("admin:ocpi22_evse_changelist")
             token_admin = reverse("admin:ocpi22_token_changelist")
             messages.info(request,
-                          mark_safe('Seems that the ID for the EVSE or the Token was not quite correct. You can '
+                          mark_safe('Seems that the EVSE you specified does not exist. You can '
                                     f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
-                                    f'and <a target="tokenadmin" href="{token_admin}">the list of known Tokens</a> '
-                                    'using the admin tools. You should use the value from the UID field below.'))
+                                    'using the admin tools.'))
             return Response(
                 dict(status_text=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
