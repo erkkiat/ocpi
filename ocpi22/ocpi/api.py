@@ -274,10 +274,11 @@ class CdrViewSet(OCPIListModelMixin,
 
     @ocpi_exception_handler
     @requires_premium
+    @requires_sender_role(OcpiRolesEnum.EMSP)  # CPO should have the specific URL, no need to fetch using this endpoint
     @certification_step(OcpiModuleEnum.CDRS, 'GET a CDR which belongs to you',
                         subtopic='URL parameters are required by OCPI 2.2')
-    def get(self, request, country_code=None, party_id=None, uid=None, **_kwargs) -> Response:
-        cdr = Cdr.objects.get(country_code=country_code, party_id=party_id, uid=uid)
+    def get(self, request, uid=None, **_kwargs) -> Response:
+        cdr = Cdr.objects.get(ocpi_master=request.credentialsrole, uid=uid)
         serializer = CdrSerializer(cdr, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 
