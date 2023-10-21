@@ -539,7 +539,10 @@ def set_callbacks_parameter(key: str, value: str) -> None:
 
 
 def get_callbacks_parameter(key: str) -> Union[str, int, list]:
-    return redis_store.get(_format_redis_key(key, 'callback')).decode()
+    result = redis_store.get(_format_redis_key(key, 'callback'))
+    if result and isinstance(result, bytes):
+        return result.decode()
+    return result or ''
 
 
 def build_callback_request(key: str, data: dict) -> tuple[str, dict]:
