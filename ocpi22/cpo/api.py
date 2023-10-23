@@ -1,5 +1,6 @@
 import json
 from datetime import time, date
+from functools import reduce
 
 from django.urls import reverse_lazy
 from django.utils.datetime_safe import datetime
@@ -400,11 +401,13 @@ class ChargePointViewSet(FlowchartViewSet):
         """
         Update the charge point availability to the roaming network parties.
 
+        {{flowchart}}
+
         **IMPORTANT**: To prevent the EV driver from relying on malfunctioning chargers, please update the status
         whenever your monitoring notices a possible problem with the charge point. This way
         we will be able to show the real availability status to the driver.
 
-        ## Status codes
+        ## Status Codes
 
         * `HTTP_200_OK` when the EVSE status has been successfully updated
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
@@ -469,13 +472,15 @@ class ChargePointViewSet(FlowchartViewSet):
     @requires_premium
     def authorize(self, request):
         """
-        Authorize charging using a specific RFID token. Call this when the driver has tapped an RFID
+        Authorize a charging session using a specific RFID token. Call this when the driver has tapped an RFID
         which is not known to your Charge Point Management System.
+
+        {{flowchart}}
 
         **NOTE**: Authorization responses from MSPs are cached for 15 minutes, so feel free to
         call this endpoint multiple times when preparing to start a charging session.
 
-        ## Status codes
+        ## Status Codes
 
         * `HTTP_200_OK` when the RFID tag was authorized for charging
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
@@ -559,19 +564,16 @@ class ChargePointViewSet(FlowchartViewSet):
         """
         This call starts the charging transaction (which equals the OCPI session in the roaming network).
 
-        **ENERGY**: If your charge point doesn't reset its energy meter between charging sessions,
+        {{flowchart}}
+
+        ## Energy
+        If your charge point doesn't reset its energy meter between charging sessions,
         set start_kwh to the current meter value at the start of the session.
 
-        **AUTHORIZATION REQUEST**: You don't have to call the `authorization` endpoint before `start_transaction`,
-        since we will call it for you. Also, authorization requests are not sent to MSP when the
-        Token has `whitelist=ALWAYS`, and in such cases **authorization_reference will be an empty string**.
+        ## Charger Status
+        Please update the status to `CHARGING` by using [status_change]. The status doesn't affect starting a session.
 
-        **CHARGER STATUS**: Please update the status to `CHARGING` by using `status_change`.
-        The session will be started regardless of charger status,
-        in case some status change messages have been lost on the way.
-
-        ## Status codes
-
+        ## Status Codes
         * `HTTP_200_OK` when the charging session was started successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_401_UNAUTHORIZED` when the APP_USER token has expired
@@ -703,12 +705,13 @@ class ChargePointViewSet(FlowchartViewSet):
     @requires_premium
     def meter_values(self, request):
         """
-        Update the session progress, so that the MSP and finally the end user will see the status
+        Update the session progress, so that the MSP can inform their end user about the status
         and kWh of the current charging session. This endpoint should be called at least once per minute with the
         up to date information about the ongoing charging session, preferably every 10-15 seconds.
 
-        ## Status codes
+        {{flowchart}}
 
+        ## Status Codes
         * `HTTP_200_OK` when the session was updated with the provided meter values
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_403_FORBIDDEN` when the session is not active
@@ -716,7 +719,6 @@ class ChargePointViewSet(FlowchartViewSet):
         * `HTTP_409_CONFLICT` when the applicable Tariff is misconfigured
 
         ## Energy
-
         The used energy is calculated by `kwh - start_kwh` (given in `start_transaction`).
 
         """
@@ -748,15 +750,18 @@ class ChargePointViewSet(FlowchartViewSet):
     @requires_premium
     def stop_transaction(self, request):
         """
-        This call will end the OCPI Session. Call it when the cable is disconnected from the vehicle.
+        This call will end the OCPI Session. Call it after the cable has been disconnected from the vehicle.
 
-        **ENERGY**: The used energy is calculated by `stop_kwh - start_kwh`
+        {{flowchart}}
+
+        ## Energy
+        The used energy is calculated by `stop_kwh - start_kwh`
         (`start_kwh` was given in `start_transaction`).
 
-        **CHARGER STATUS**: Please update the status by using `status_change`.
+        ## Charger Status
+        Please update the status by using [status_change].
 
-        ## Status codes
-
+        ## Status Codes
         * `HTTP_200_OK` when the session was finished and Charge Detail Record was created successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_404_NOT_FOUND` when the Session doesn't exist
@@ -843,8 +848,9 @@ class ChargePointViewSet(FlowchartViewSet):
         You'll need the command_id in the URL, so you must use the exact response_url you get when
         we call your start_transaction callback.
 
-        ## Status codes
+        {{flowchart}}
 
+        ## Status Codes
         * `HTTP_200_OK` when the call was succesful
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
 
@@ -966,14 +972,20 @@ class CpoReserveNowWebhookViewSet(WebhookViewSet):
     You need to tell the system where to send remote ReserveNow commands.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
+    Please see OPTIONS for details on the data fields available to the webhook,
+    and the data this platform expects in response.
 
+    {{flowchart}}
+
+    ## URL Segments
     Example URL: `https://your.emsp.backend.server/reserve/{location_id}/{token_id}/`. The token_id will be substituted with
     the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
 
-    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
-    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    ## Basic Authentication
+    Include user credentials and port in URL,
+    for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
-    ## Status codes
+    ## Status Codes
 
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
@@ -993,15 +1005,20 @@ class CpoStartWebhookViewSet(WebhookViewSet):
     These endpoints are used for receiving remote commands from MSPs.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
+    Please see OPTIONS for details on the data fields available to the webhook,
+    and the data this platform expects in response.
 
+    {{flowchart}}
+
+    ## URL Segments
     Example URL: `https://your.emsp.backend.server/start_charging/{token_id}/`. The token_id will be substituted with
-    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+    the corresponding parameter from the data sent to this URL.
 
-    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
-    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    ## Basic Authentication
+    Include user credentials and port in URL,
+    for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
-    ## Status codes
-
+    ## Status Codes
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
@@ -1020,15 +1037,20 @@ class CpoStopWebhookViewSet(WebhookViewSet):
     These endpoints are used for receiving remote commands from MSPs.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
+    Please see OPTIONS for details on the data fields available to the webhook,
+    and the data this platform expects in response.
 
+    {{flowchart}}
+
+    ## URL Segments
     Example URL: `https://your.emsp.backend.server/stop_charging/{token_id}/`. The token_id will be substituted with
     the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
 
-    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
-    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    ## Basic Authentication
+    Include user credentials and port in URL,
+    for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
-    ## Status codes
-
+    ## Status Codes
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
@@ -1045,18 +1067,22 @@ class CpoStopWebhookViewSet(WebhookViewSet):
 class InvoiceWebhookViewSet(WebhookViewSet):
     """
     This webhook will receive the invoicing data (Charge Detail Records).
-
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
+    Please see OPTIONS for details on the data fields available to the webhook,
+    and the data this platform expects in response.
 
+    {{flowchart}}
+
+    ## URL Segments
     Example URL: `https://your.emsp.backend.server/session/{session_id}/`. The session_id will be substituted with
     the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
 
-    > **BASIC AUTHENTICATION**: Include user credentials and port in URL,
-    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    ## Basic Authentication
+    Include user credentials and port in URL,
+    for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
-    ## Status codes
-
+    ## Status Codes
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
@@ -1073,20 +1099,28 @@ class InvoiceWebhookViewSet(WebhookViewSet):
 class ChargePointOperatorAPIView(routers.APIRootView):
     """
     This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for CPOs,
-    a shortcut to roaming across OCPI networks.
+    a shortcut to roaming across OCPI networks. By using these simple endpoints, you can connect your existing
+    backend to roaming partners without the need to implement the full OCPI protocol.
 
-    > You can use these CPO API interfaces interactively
-    > to support your development and integration work.
-    > These streamlined interfaces provide the necessary tools for quickly but comprehensively connecting
-    > a CPO backend to eMSPs and roaming hubs.
+    **For more details on the individual endpoints, click the flow nodes or the links below,
+    and you will find the step-by-step technical documentation.**
 
-    **ADMIN UI**: All the objects in the system are available for browsing
-    and selective modification in the admin tools.
-    It also provides tools for maintaining users, groups and their access to the system.
+    # Flows
 
-    For more details, click the links below and you will find the step-by-step technical documentation.
+    ## Charging Process Using an RFID
+    {{rfid_charging_flowchart}}
 
+    ## Charging Process Using a Mobile or a Web App
+    {{app_charging_flowchart}}
     """
+
+    def get_view_description(self, html=False):
+        shorthand = [
+            ('{{rfid_charging_flowchart}}', ChargePointViewSet().get_flowchart()),
+            ('{{app_charging_flowchart}}', CpoStartWebhookViewSet().get_flowchart())
+        ]
+        result = reduce(lambda a, kv: a.replace(*kv), shorthand, super().get_view_description(html))
+        return mark_safe(result)
 
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):

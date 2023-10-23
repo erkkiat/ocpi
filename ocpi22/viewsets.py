@@ -12,8 +12,9 @@ class FlowchartViewSet(viewsets.GenericViewSet):
     def get_view_description(self, html=False) -> str:
         result = super().get_view_description(html)
         if self.flowchart:
-            result = mark_safe(f'{self.get_flowchart()}\n{super().get_view_description(html)}')
-        return result
+            result = super().get_view_description(html)
+            result = result.replace('{{flowchart}}', self.get_flowchart())
+        return mark_safe(result)
 
     def get_flowchart(self):
         def color(active: bool) -> str:
@@ -27,12 +28,12 @@ class FlowchartViewSet(viewsets.GenericViewSet):
             """Create a Mermaid link"""
             return f'click {step} "{url}";\n'
 
+        action = getattr(self, 'action', None)
         steps = (f'{step[0]}({step[1]});\n' for step in self.flowchart['steps'])
-        colors = (f'style {step[0]} {color(self.action == remove_numbers(step[0]))}' for step in self.flowchart['steps'])
+        colors = (f'style {step[0]} {color(action == remove_numbers(step[0]))}' for step in self.flowchart['steps'])
         links = (link(step[0], step[2]) for step in self.flowchart['steps'] if len(step) > 2)
         result = f'<div class="mermaid" style="min-width: 800px">\n{self.message}\n\nflowchart LR;' \
                  '\nlinkStyle default stroke-width:3px;\n' \
                  f'{"".join(steps)}\n{self.flowchart["process"]}\n' \
                  f'{"".join(colors)}\n{"".join(links)}</div>'
-        ic(result)
         return result
