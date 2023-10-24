@@ -1738,7 +1738,7 @@ class TestCpoApi(TestCase):
         testcases = (
             dict(
                 request=dict(
-                    evse_id='HELSINKI-3',
+                    evse_uid='HELSINKI-3',
                     status='PREPARING',
                 ),
                 response={'evse': 'HELSINKI-3',
@@ -1750,7 +1750,7 @@ class TestCpoApi(TestCase):
             ),
             dict(
                 request=dict(
-                    evse_id='NON-EXISTENT-EVSE',
+                    evse_uid='NON-EXISTENT-EVSE',
                     status='AVAILABLE',
                 ),
                 response={'status_text': 'EVSE with ID NON-EXISTENT-EVSE does not exist in the system '
@@ -1766,11 +1766,11 @@ class TestCpoApi(TestCase):
                     cpo_response = cpo_viewset.status_change(cpo_request)
 
                 self.assertEqual(cpo_response.status_code, case.get('status_code'),
-                                 'Status change should succeed')
+                                 f'Status change should succeed: {cpo_response.data}')
                 self.assertDictEqual(cpo_response.data, case.get('response'),
                                      f'Case request {case.get("request")}, response {case.get("response")}')
                 if cpo_response.status_code != 404:
-                    evse = Evse.objects.get(uid=case.get('request').get('evse_id'))
+                    evse = Evse.objects.get(uid=case.get('request').get('evse_uid'))
                     self.assertEqual(evse.status, case.get('evse_status'))
 
         self.assertTrue(compare_lists_recursively(

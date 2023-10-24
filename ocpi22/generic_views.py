@@ -25,8 +25,8 @@ class WebhookViewSet(FlowchartViewSet):
         return dict(
             webhook_details=dict(
                 data_sent=self.metadata.get_serializer_info(outbound_serializer()),
-                expected_response=self.metadata.get_serializer_info(response_serializer()) \
-                    if response_serializer else _('Response can be anything')
+                expected_response=self.metadata.get_serializer_info(response_serializer())
+                    if response_serializer else _('Response is not parsed')
             )
         )
 
@@ -44,7 +44,7 @@ class WebhookViewSet(FlowchartViewSet):
             if request.method == 'GET':
                 result = self._get_callbacks()
                 return Response(result)
-            if request.method in {'POST', 'PATCH'}:
+            if request.method in {'POST', 'PATCH'}:  # Todo: Change POST to PUT
                 partial = bool(request.method == 'PATCH')
                 serializer = self.serializer_class(data=request.data, partial=partial)
                 if serializer.is_valid():

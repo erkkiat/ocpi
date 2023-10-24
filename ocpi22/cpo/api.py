@@ -37,7 +37,7 @@ from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResul
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
-    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer, InvoicingCallbackSerializer
+    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
@@ -48,7 +48,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
-from ocpi22.ocpi.serializers import CdrSerializer
+from ocpi22.ocpi.serializers import CdrSerializer, InvoicingCallbackSerializer
 from ocpi22.ocpi.util import generate_session_uid, options_message
 from ocpi22.sessions.util import create_session, EvseOccupied
 from ocpi22.tasks import send_ocpi_request
@@ -571,7 +571,8 @@ class ChargePointViewSet(FlowchartViewSet):
         set start_kwh to the current meter value at the start of the session.
 
         ## Charger Status
-        Please update the status to `CHARGING` by using [status_change]. The status doesn't affect starting a session.
+        Please update the status to `CHARGING` by using [chargepoint-status-change]. This way
+        we will be able to show the real availability status to the driver.
 
         ## Status Codes
         * `HTTP_200_OK` when the charging session was started successfully
@@ -759,7 +760,7 @@ class ChargePointViewSet(FlowchartViewSet):
         (`start_kwh` was given in `start_transaction`).
 
         ## Charger Status
-        Please update the status by using [status_change].
+        Please update the status by using the [chargepoint-status-change].
 
         ## Status Codes
         * `HTTP_200_OK` when the session was finished and Charge Detail Record was created successfully
@@ -969,7 +970,7 @@ msp_remote_commands_flowchart = dict(
 
 class CpoReserveNowWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the system where to send remote ReserveNow commands.
+    This is where you tell the system where to send remote ReserveNow commands.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
     Please see OPTIONS for details on the data fields available to the webhook,

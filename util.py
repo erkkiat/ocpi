@@ -1,6 +1,7 @@
 import hashlib
 import json
 import pickle
+import re
 from dataclasses import dataclass
 from datetime import time, datetime as python_datetime
 from functools import wraps
@@ -374,3 +375,22 @@ def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]
     time1 = convert_to_time(time1)
     time2 = convert_to_time(time2)
     return time1 < time2
+
+
+def title_case(name: str) -> str:
+    """Convert a name to title case"""
+    return name.replace('-', ' ').replace('_', ' ').title()
+
+
+def replace_links(result):
+    """Replace all links in the result with the corresponding URL
+    >>> replace_links('Check [msp-authorize-webhook] for details.')
+    'Check <a href="/api/msp/v1/webhook/authorize/">Msp Authorize Webhook</a> for details.'
+    """
+
+    def replacer(match):
+        view_name = match.group(1)  # Extract the view name from the matched string.
+        return f'<a href="{reverse(view_name)}">{title_case(view_name)}</a>'  # Reverse the URL for that view.
+
+    pattern = r'\[([\w-]+)\]'  # Regular expression to match "[something]"
+    return re.sub(pattern, replacer, result)

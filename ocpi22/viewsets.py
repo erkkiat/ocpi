@@ -3,6 +3,8 @@ import re
 from django.utils.safestring import mark_safe
 from rest_framework import viewsets
 
+from util import replace_links
+
 
 class FlowchartViewSet(viewsets.GenericViewSet):
     flowchart = None
@@ -14,7 +16,7 @@ class FlowchartViewSet(viewsets.GenericViewSet):
         if self.flowchart:
             result = super().get_view_description(html)
             result = result.replace('{{flowchart}}', self.get_flowchart())
-        return mark_safe(result)
+        return mark_safe(replace_links(result))
 
     def get_flowchart(self):
         def color(active: bool) -> str:

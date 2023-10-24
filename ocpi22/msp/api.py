@@ -1,7 +1,9 @@
 import json
+from functools import reduce
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 
@@ -11,7 +13,7 @@ from decimal import Decimal
 import requests
 from django.conf import settings
 from django.utils.translation import get_language, gettext as _
-from rest_framework import routers, status, viewsets, mixins
+from rest_framework import routers, status, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -20,6 +22,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ocpi22.cpo.api import InvoiceWebhookViewSet
+from ocpi22.viewsets import FlowchartViewSet
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
@@ -27,6 +30,7 @@ from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.commands import send_start_command, send_stop_command, send_reserve_command
 from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.cpo.serializers import TariffQuickSerializer
+from ocpi22.ocpi.serializers import InvoicingCallbackSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse, Connector
@@ -127,13 +131,34 @@ def process_start_charging(request, serializer, location, evse, connector_id: st
     return _language_response(response)
 
 
-class MspRoamingViewSet(viewsets.GenericViewSet):
+msp_flowchart = dict(
+    steps=(
+        ('reserve', 'Reserve', reverse_lazy('roaming-reserve')),
+        ('status_webhook', 'Chargepoint Status Webhook', reverse_lazy('msp-status-webhook')),
+        ('start_charging', 'Start Charging', reverse_lazy('roaming-start-charging')),
+        ('session_status', 'Session Status Query', reverse_lazy('roaming-session-status')),
+        ('session_webhook', 'Session Status Webhook', reverse_lazy('msp-session-webhook')),
+        ('stop_charging', 'Stop Charging', reverse_lazy('roaming-stop-charging')),
+        ('invoicing_webhook', 'Invoice Webhook', reverse_lazy('msp-invoicing-webhook')),
+        ('authorize_webhook', 'Authorize Token Webhook', reverse_lazy('msp-authorize-webhook')),
+    ),
+    process="""push_or_pull{Session<br/>update type};
+            status_webhook-->reserve-->start_charging-->push_or_pull-- you pull -->session_status
+            -->stop_charging-->invoicing_webhook;
+            push_or_pull-- we push -->session_webhook-->stop_charging;
+            authorize_webhook-->push_or_pull;
+            """
+)
+
+
+class MspRoamingViewSet(FlowchartViewSet):
     """
     """
     queryset = Token.objects.all()
     lookup_field = 'uid'
     permission_classes = [IsAuthenticated]
     publicly_visible = True  # Don't use the OCPI authentication, just require basic auth or OAuth2
+    flowchart = msp_flowchart
 
     def get_serializer_class(self):
         return dict(
@@ -147,10 +172,11 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
     @requires_premium
     def reserve(self, request):
         """
-        This call sends an OCPI ReserveNow command to the CPO.
+        This call sends an OCPI ReserveNow command to the CPO. Reserving a charge point is optional.
 
-        ## Status codes
+        {{flowchart}}
 
+        ## Status Codes
         * `HTTP_200_OK` when the reservation was made successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_404_NOT_FOUND` when the Token, Location or EVSE doesn't exist
@@ -203,7 +229,9 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         """
         This call starts the charging transaction (which equals the OCPI session in the roaming network).
 
-        ## Status codes
+        {{flowchart}}
+
+        ## Status Codes
 
         * `HTTP_200_OK` when the charging session was started successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
@@ -242,9 +270,15 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
     @requires_premium
     def session_status(self, request):
         """
-        Get the status of the ongoing session for this user. Currently only one session at a time is supported.
+        Poll the status of the ongoing session for this user.
+        For performance reasons, please use the [msp-session-webhook]
+        to receive push messages instead of polling at regular intervals.
 
-        ## Status codes
+        {{flowchart}}
+
+        NOTE: If you are using the User management system of this platform, only one session at a time is supported.
+
+        ## Status Codes
 
         * `HTTP_200_OK` when the charging session is ongoing and status is available
         * `HTTP_404_NOT_FOUND` when the Session doesn't exist or status is not yet available
@@ -295,7 +329,9 @@ class MspRoamingViewSet(viewsets.GenericViewSet):
         """
         This call stops the charging transaction.
 
-        ## Status codes
+        {{flowchart}}
+
+        ## Status Codes
 
         * `HTTP_200_OK` when the charging session was stopped successfully
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
@@ -388,26 +424,45 @@ class MspTokenViewSet(TokenViewSet):
         pass
 
 
+webhooks_flowchart = dict(
+    steps=(
+        ('authorize', 'Authorize Token Webhook', reverse_lazy('cpo-reserve-now-webhook')),
+        ('start_transaction_webhook', 'Start Transaction Webhook', reverse_lazy('cpo-start-transaction-webhook')),
+        ('remote_command_result', 'Remote Command Result'),
+        ('stop_transaction_webhook', 'Stop Transaction Webhook', reverse_lazy('cpo-stop-transaction-webhook')),
+        ('invoicing_webhook', 'Invoicing Webhook', reverse_lazy('msp-invoicing-webhook')),
+    ),
+    process='reserve_now_webhook-->remote_command_result; start_transaction_webhook-->remote_command_result; '
+            'stop_transaction_webhook-->remote_command_result; stop_transaction_webhook-->invoicing_webhook;'
+)
+
+
 class MspAuthorizeWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the system where to check for authorization of a specific RFID.
+    When an RFID is tapped on a charger, this webhook will be called to authorize the token.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
+    Please see OPTIONS for details on the data fields available to the webhook,
+    and the data this platform expects in response.
 
+    {{flowchart}}
+
+    ## URL Segments
     Example URL: `https://your.emsp.backend.server/authorize/{token_id}/`. The token_id will be substituted with
-    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+    the corresponding parameter from the data sent to this URL.
 
-    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
-    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    ## Basic Authentication
+    Include the user credentials and port of your endpoint in the URL,
+    for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
-    ## Status codes
-
+    ## Status Codes
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
     serializer_class = MSPAuthorizeCallbackSerializer
     serializer = serializer_class()
     queryset = Token.objects.none()
+    flowchart = msp_flowchart
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='authorize')
     def authorize_webhook(self, request):
@@ -416,26 +471,31 @@ class MspAuthorizeWebhookViewSet(WebhookViewSet):
 
 class MspChargePointStatusWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the system where to send charge point status updates.
-    For example, when a charge point is reserved, the system pushes the new charge point status
-    to your webhook URL.
+    This is where you tell the system where to send charge point status updates.
+    When a charge point changes status, the system pushes the new status to your webhook URL.
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
+    Please see OPTIONS for details on the data fields available to the webhook,
+    and the data this platform expects in response.
 
+    {{flowchart}}
+
+    ## URL Segments
     Example URL: `https://your.emsp.backend.server/authorize/{token_id}/`. The token_id will be substituted with
     the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
 
-    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
-    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    ## Basic Authentication
+    Include the user credentials and port of your endpoint in the URL,
+    for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
-    ## Status codes
-
+    ## Status Codes
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
     serializer_class = MSPChargePointStatusCallbackSerializer
     serializer = serializer_class()
     queryset = Token.objects.none()
+    flowchart = msp_flowchart
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='status')
     def status_webhook(self, request):
@@ -444,25 +504,31 @@ class MspChargePointStatusWebhookViewSet(WebhookViewSet):
 
 class MspSessionWebhookViewSet(WebhookViewSet):
     """
-    You need to tell the system where to send Session updates.
+    This is where you tell the system where to send Session updates.
 
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
+    Please see OPTIONS for details on the data fields available to the webhook,
+    and the data this platform expects in response.
 
+    {{flowchart}}
+
+    ## URL Segments
     Example URL: `https://your.emsp.backend.server/session/{session_id}/`. The session_id will be substituted with
-    the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
+    the corresponding parameter from the data sent to this URL.
 
-    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
-    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    ## Basic Authentication
+    Include the user credentials and port of your endpoint in the URL,
+    for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
-    ## Status codes
-
+    ## Status Codes
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
     serializer_class = MSPSessionCallbackSerializer
     serializer = serializer_class()
     queryset = Session.objects.none()
+    flowchart = msp_flowchart
 
     @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='session')
     def session_webhook(self, request):
@@ -471,23 +537,33 @@ class MspSessionWebhookViewSet(WebhookViewSet):
 
 class MspInvoiceWebhookViewSet(InvoiceWebhookViewSet):
     """
-    You need to tell the system where to send the invoicing lines (Charge Detail Records).
+    This is where you tell the system where to send the invoicing lines (Charge Detail Records).
 
     Using this endpoint you can set and get your callback URL and
     user credentials needed for accessing the endpoint.
 
+    {{flowchart}}
+
+    ## URL Segments
     Example URL: `https://your.emsp.backend.server/session/{session_id}/`. The session_id will be substituted with
     the corresponding parameter from the data sent to this URL. For details, please use "OPTIONS".
 
-    > **BASIC AUTHENTICATION**: Include the user credentials and port of your endpoint in the URL,
-    > for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
+    ## Basic Authentication
+    Include the user credentials and port of your endpoint in the URL,
+    for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 
     ## Status codes
-
     * `HTTP_200_OK` when the webhook was set successfully
     * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """
-    pass
+    serializer_class = InvoicingCallbackSerializer
+    serializer = serializer_class()
+    queryset = Session.objects.none()
+    flowchart = msp_flowchart
+
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='invoice')
+    def invoicing_webhook(self, request):
+        return self.webhook(request)
 
 
 class MobilityServiceProviderAPIView(routers.APIRootView):
@@ -495,20 +571,22 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
     This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for MSPs,
     a shortcut to roaming across OCPI networks.
 
-    > You can use these eMSP API interfaces interactively
-    > to support your development and integration work.
-    > These streamlined interfaces provide the necessary tools for quickly but comprehensively connecting
-    > an eMSP backend to CPOs and roaming hubs.
+    ## Remote Charging Process
+    {{remote_charging_flowchart}}
 
-    **ADMIN UI**: All the objects in the system are available for browsing
-    and selective modification in the admin tools.
-    It also provides tools for maintaining users, groups and their access to the system.
-
-    For more details, click the links below and you will find the step-by-step technical documentation.
+    For more details, click the flowchart nodes or the links below
+    and you will find the step-by-step technical documentation.
 
     """
 
     metadata_class = None
+
+    def get_view_description(self, html=False):
+        shorthand = [
+            ('{{remote_charging_flowchart}}', MspRoamingViewSet().get_flowchart()),
+        ]
+        result = reduce(lambda a, kv: a.replace(*kv), shorthand, super().get_view_description(html))
+        return mark_safe(result)
 
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
@@ -531,7 +609,7 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                     reverse('roaming-stop-charging')
                 ),
             ),
-            authorization=dict(
+            data_management=dict(
                 tokens=request.build_absolute_uri(
                     reverse('msp-token-list'),
                 ),
@@ -578,7 +656,7 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                     reverse('msp-session-webhook'),
                 ),
                 invoice=request.build_absolute_uri(
-                    reverse('cpo-invoicing-webhook')
+                    reverse('msp-invoicing-webhook')
                 ),
             ),
             payment=dict(
