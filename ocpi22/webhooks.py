@@ -1,23 +1,34 @@
 from collections import OrderedDict
-from typing import Optional
+from typing import Optional, Union
 
 import requests
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
 
 from ocpi22 import logging as logging
+from ocpi22.models.location import Location, Evse
 from ocpi22.serializers import CallbacksSerializer
 from ocpi22.util import build_callback_request
-from ocpiconnector.util import Timer
 
 
-def send_to_webhook(data: dict = None, serializer=None, serialized_data=None,
+def send_to_webhook(data: Union[dict, Location, Evse] = None, serializer=None, serialized_data=None,
                     outbound_serializer=None, timeout=10) -> Optional[dict]:
     if settings.PERFORMANCE_TEST:
         return {}
+    if isinstance(data, Location):
+        # Send updates for all EVSEs at this Location
+        list(map(lambda evse: send_to_webhook(evse, serializer, serialized_data, outbound_serializer, timeout),
+                 data.evses.all()))
+        return {}
+    # if isinstance(data, Evse):
+    #     # Send updates for this EVSE
+    #     return send_to_webhook(
+    #         dict(location_id=data.location.uid, evse_id=data.uid, status=data.status),
+    #         serializer, serialized_data, outbound_serializer, timeout
+    #     )
     assert issubclass(serializer, CallbacksSerializer), \
         'The serializer needs to be inherited from CallbacksSerializer'
-    assert not data or isinstance(data, (dict, OrderedDict))
+    assert not data or isinstance(data, (dict, OrderedDict, Evse))
     try:
         if not serialized_data:
             OutboundSerializer = outbound_serializer or serializer.OutboundSerializer

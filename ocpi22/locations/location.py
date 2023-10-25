@@ -18,7 +18,7 @@ from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import OCPIVersioning, OCPIListModelMixin
-from ocpi22.ocpi.util import OCPIResponse, Ocpi, OCPIPaginationAndHeaders
+from ocpi22.ocpi.util import OCPIResponse, Ocpi, OCPIPaginationAndHeaders, OCPIResponseUrlParametersRequired
 
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
@@ -101,8 +101,9 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             created = bool(not existing_location)
             logging.info(f'{"Creating" if created else "Updating"}'
                          f' Location {credentialsrole} - {uid}.', log_to_admin=True, logentry=logentry)
-            created_location = serializer.save(ocpi_master=credentialsrole)
-            created_location.send_hub_updates()
+            saved_location = serializer.save(ocpi_master=credentialsrole)
+            saved_location.send_hub_updates()
+            send_to_webhook(saved_location, MSPChargePointStatusCallbackSerializer)
             http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
             return OCPIResponse(serializer.data, http_status=http_status)
         else:
