@@ -971,8 +971,6 @@ msp_remote_commands_flowchart = dict(
 class CpoReserveNowWebhookViewSet(WebhookViewSet):
     """
     This is where you tell the system where to send remote ReserveNow commands.
-    Using this endpoint you can set and get your callback URL and
-    user credentials needed for accessing the endpoint.
     Please see OPTIONS for details on the data fields available to the webhook,
     and the data this platform expects in response.
 
@@ -1004,8 +1002,6 @@ class CpoReserveNowWebhookViewSet(WebhookViewSet):
 class CpoStartWebhookViewSet(WebhookViewSet):
     """
     These endpoints are used for receiving remote commands from MSPs.
-    Using this endpoint you can set and get your callback URL and
-    user credentials needed for accessing the endpoint.
     Please see OPTIONS for details on the data fields available to the webhook,
     and the data this platform expects in response.
 
@@ -1036,8 +1032,6 @@ class CpoStartWebhookViewSet(WebhookViewSet):
 class CpoStopWebhookViewSet(WebhookViewSet):
     """
     These endpoints are used for receiving remote commands from MSPs.
-    Using this endpoint you can set and get your callback URL and
-    user credentials needed for accessing the endpoint.
     Please see OPTIONS for details on the data fields available to the webhook,
     and the data this platform expects in response.
 
@@ -1068,8 +1062,6 @@ class CpoStopWebhookViewSet(WebhookViewSet):
 class InvoiceWebhookViewSet(WebhookViewSet):
     """
     This webhook will receive the invoicing data (Charge Detail Records).
-    Using this endpoint you can set and get your callback URL and
-    user credentials needed for accessing the endpoint.
     Please see OPTIONS for details on the data fields available to the webhook,
     and the data this platform expects in response.
 

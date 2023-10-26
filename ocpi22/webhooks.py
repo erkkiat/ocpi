@@ -20,12 +20,12 @@ def send_to_webhook(data: Union[dict, Location, Evse] = None, serializer=None, s
         list(map(lambda evse: send_to_webhook(evse, serializer, serialized_data, outbound_serializer, timeout),
                  data.evses.all()))
         return {}
-    # if isinstance(data, Evse):
-    #     # Send updates for this EVSE
-    #     return send_to_webhook(
-    #         dict(location_id=data.location.uid, evse_id=data.uid, status=data.status),
-    #         serializer, serialized_data, outbound_serializer, timeout
-    #     )
+    if isinstance(data, Evse):
+        # Send updates for this EVSE
+        return send_to_webhook(
+            dict(location_id=data.location.uid, evse_id=data.uid, status=data.status),
+            serializer, serialized_data, outbound_serializer, timeout
+        )
     assert issubclass(serializer, CallbacksSerializer), \
         'The serializer needs to be inherited from CallbacksSerializer'
     assert not data or isinstance(data, (dict, OrderedDict, Evse))

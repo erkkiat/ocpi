@@ -164,6 +164,13 @@ class MSPChargePointStatusCallbackSerializer(CallbacksSerializer):
     chargepoint_status_url = serializers.URLField()
 
     class OutboundSerializer(serializers.Serializer):
+        def __init__(self, data, *args, **kwargs):
+            # if isinstance(data, Evse):
+            #     data = dict(location_id=data.location.uid, evse_id=data.uid, status=data.status)
+            assert isinstance(data, dict), f'Data needs to be a dict for {self.__class__.__name__}'
+            assert all(data.values()), f'All values in {self.__class__.__name__} need to be set: {data}'
+            super().__init__(data=data, *args, **kwargs)
+
         location_id = LocationIdSerializer(
             help_text='The Location UID of the EVSE which had a status update'
         )

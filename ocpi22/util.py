@@ -135,9 +135,11 @@ def check_ownership(request, ocpi_master, check_operator_id_from_request_data=Tr
 def matching_operator(request, country_code, party_id) -> bool:
     if not hasattr(request, 'credentials'):
         return False
+    if hasattr(request, 'user') and request.user.is_staff:
+        return True
     # We trust staff and hubs implicitly
-    return request.user.is_staff or request.credentials.is_hub \
-        or bool(request.credentials.roles.filter(country_code__iexact=country_code, party_id__iexact=party_id))
+    return (getattr(request, 'credentials', None) and (request.credentials.is_hub or
+           bool(request.credentials.roles.filter(country_code__iexact=country_code, party_id__iexact=party_id))))
 
 
 CURRENCY_CHOICES = (

@@ -440,8 +440,6 @@ webhooks_flowchart = dict(
 class MspAuthorizeWebhookViewSet(WebhookViewSet):
     """
     When an RFID is tapped on a charger, this webhook will be called to authorize the token.
-    Using this endpoint you can set and get your callback URL and
-    user credentials needed for accessing the endpoint.
     Please see OPTIONS for details on the data fields available to the webhook,
     and the data this platform expects in response.
 
@@ -473,8 +471,6 @@ class MspChargePointStatusWebhookViewSet(WebhookViewSet):
     """
     This is where you tell the system where to send charge point status updates.
     When a charge point changes status, the system pushes the new status to your webhook URL.
-    Using this endpoint you can set and get your callback URL and
-    user credentials needed for accessing the endpoint.
     Please see OPTIONS for details on the data fields available to the webhook,
     and the data this platform expects in response.
 
@@ -506,8 +502,6 @@ class MspSessionWebhookViewSet(WebhookViewSet):
     """
     This is where you tell the system where to send Session updates.
 
-    Using this endpoint you can set and get your callback URL and
-    user credentials needed for accessing the endpoint.
     Please see OPTIONS for details on the data fields available to the webhook,
     and the data this platform expects in response.
 
@@ -539,8 +533,6 @@ class MspInvoiceWebhookViewSet(InvoiceWebhookViewSet):
     """
     This is where you tell the system where to send the invoicing lines (Charge Detail Records).
 
-    Using this endpoint you can set and get your callback URL and
-    user credentials needed for accessing the endpoint.
 
     {{flowchart}}
 

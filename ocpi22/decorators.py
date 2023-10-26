@@ -57,9 +57,10 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
             # if require_data and (not data or not isinstance(data, dict)):
             #     return OCPIBadRequestResponse('Data is required in the request body.')
             data = data.get('data', data) or {}
-            sender_party = get_sender_party(request.headers or request.META)
+            headers = getattr(request, 'headers', None) or getattr(request, 'META', None)
+            sender_party = get_sender_party(headers)
 
-            if not certification_steps.headers and certify_check_ocpi_headers(request.headers or request.META):
+            if certification_steps and not certification_steps.headers and certify_check_ocpi_headers(headers):
                 certification_steps.headers.passed()
 
             request.party_specified_in_url = bool(kwargs.get('country_code') and kwargs.get('party_id'))
@@ -69,7 +70,7 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
             if not country_code or not party_id:
                 return OCPIBadRequestResponse('Country code and party ID are required.')
             if request.user.is_superuser or \
-                    (hasattr(request, 'credentials') and request.credentials.is_hub):
+                    (hasattr(request, 'credentials') and getattr(request.credentials, 'is_hub', None)):
                 # Pick the right credentialsrole for the almighty
                 request.credentialsrole = get_credentialsrole(
                     credentials=None, party=Party(country_code, party_id), create=True
@@ -82,7 +83,8 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
                 criteria = Q(country_code__iexact=country_code, party_id__iexact=party_id)
                 if roles:  # A specific role is required
                     criteria &= Q(role__in=roles)
-                request.credentialsrole = request.credentials.roles.filter(criteria).first()
+                if hasattr(request, 'credentials') and request.credentials:
+                    request.credentialsrole = request.credentials.roles.filter(criteria).first()
                 if not matching_operator(request, country_code, party_id):
                     return NotOwner()
             if not hasattr(request, 'credentialsrole') or not request.credentialsrole:

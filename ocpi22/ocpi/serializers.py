@@ -431,6 +431,9 @@ class LocationIdSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         return Location.get_if_exists(uid=data) or data
 
+    def to_representation(self, instance):
+        return instance.uid
+
 
 class StrictLocationIdSerializer(serializers.CharField):
     def to_internal_value(self, data):

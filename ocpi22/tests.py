@@ -72,8 +72,8 @@ from ocpi22.sessions.util import create_session
 from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, \
     SessionData, \
     RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData, \
-    TokenAuthorizationData
-from ocpi22.tokens.auth import authorize_token, _get_authorization_from_sessions, _authorize_token, TokenAuthorization
+    TokenAuthorizationData, LocationData
+from ocpi22.tokens.auth import _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
@@ -228,11 +228,11 @@ class ApiPutTests(TestCase):
             connectors = evse.get('connectors')
             self.assertIsInstance(connectors, list, msg='EVSE connectors should be a list')
 
-    def put(self, url, data, token, viewset, credentials=None) -> OCPIResponse:
+    def put(self, url, data, token, viewset, credentials=None, authenticate=True) -> OCPIResponse:
         request = api_factory.put(url, data, content_type="application/json",
                                   Authorization=f'Token {token}')
         request.data = data
-        request.credentials = credentials or self.credentials
+        request.credentials = credentials or self.credentials if authenticate else None
         return viewset().put(request, country_code=data.get('country_code'), party_id=data.get('party_id'), uid=data.get('id'))
 
     def post(self, url, data, token, viewset, use_credentials=True) -> OCPIResponse:
@@ -245,24 +245,30 @@ class ApiPutTests(TestCase):
         request.version = '2.2.1'
         return viewset().post(request)
 
-    def test_put_location(self):
+    @simulate_surrounding_world
+    def test_put_location(self, simulation):
         url = reverse('location-list')
         token_base64 = self.credentials.ours_base64()
         credentials = Credentials.objects.create()
         our_msp_role = get_credentialsrole(credentials, Party('FI', 'MSP'), create=True, role=OcpiRolesEnum.EMSP)
 
         invalid_data = dict(country_code=self.location.ocpi_master.country_code,
-                            party_id=self.location.ocpi_master.party_id, id=123)
+                            party_id=self.location.ocpi_master.party_id, id=123,
+                            address="Koekatu 1", city="Espoo", country="FIN",
+                            coordinates=dict(latitude=60.0, longitude=30.0), time_zone='Europe/Helsinki')
 
-        response = self.put(url, invalid_data, 'FALSETOKEN', LocationViewSet)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
-                         'A Location request should require OCPI authentication. '
+        with simulation.assert_error_logged('Country ID and Party ID need to match your credentials'):
+            response = self.put(url, invalid_data, 'FALSETOKEN', LocationViewSet, authenticate=False)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED,
+                         'A Location PUT request should require OCPI authentication: '
                          f'{response.data}')
         self.assertEqual(response.data['status_code'], Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                          'The response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
                          f'{response.data}')
 
-        response = self.put(url, invalid_data, token_base64, LocationViewSet)
+        with simulation.assert_error_logged('Bad request'):
+            response = self.put(url, dict(city='Espoo'), token_base64, LocationViewSet)
+
         self.assertEqual(
             response.status_code, status.HTTP_400_BAD_REQUEST,
             f'Badly formed but correctly authenticated request should produce http status code 400: {response.data}'
@@ -346,9 +352,7 @@ class ApiPutTests(TestCase):
 
                 if evses:
                     uid = data.get('id').upper()
-                    # noinspection PyUnresolvedReferences
                     try:
-                        # noinspection PyUnresolvedReferences
                         location = Location.objects.get(uid=uid)
                         # print(f"Evses: {location.evses.count()}")
                         self.assertEqual(location.evses.count(), evses,
@@ -361,8 +365,10 @@ class ApiPutTests(TestCase):
                                          f'There should be {connectors} connectors after {filename} case.')
                     except Location.DoesNotExist:
                         print(f'Unable to fetch Location {uid} created from file {filename}.')
-                        # noinspection PyUnresolvedReferences
                         self.fail(f'Possible options are: {", ".join([l.uid for l in Location.objects.all()])}')
+
+        method_calls = list(map(lambda x: x.kwargs, simulation.webhook_requests.method_calls))
+        self.assertTrue(compare_lists_recursively(method_calls, LocationData.webhook_calls))
 
     def test_put_tariff(self):
         url = reverse('tariff-list')
