@@ -29,6 +29,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 from ocpi22.viewsets import FlowchartViewSet
+from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse, url_link, redis_store, time_lte, time_lt
 from rest_framework.viewsets import GenericViewSet
 
@@ -841,6 +842,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 dict(status=str(e)),
                 status=status.HTTP_404_NOT_FOUND)
 
+    @ocpi_exception_handler
     @action(methods=('GET', 'POST'), detail=False,
             url_path='remote_command_result(?:/(?P<command_id>[^/.]+))?')
     def remote_command_result(self, request, command_id=None):
@@ -861,6 +863,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 return Response({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
 
             command = command_store[command_id]
+            assert command, 'Unable to find the remote command in question'
 
             if request.method == 'POST':
                 serializer = CpoCommandResultSerializer(data=request.data,
