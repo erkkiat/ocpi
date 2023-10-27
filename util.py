@@ -237,14 +237,12 @@ class RedisStore:
             from ocpi22 import logging
             logging.error(f'Error decoding Redis key {key} value {value} as JSON: {e}')
             # print(f'Error decoding Redis key {key} value {value} as JSON: {e}')
-        return None  # If reading the stored data fails, there is not much we can do, but for caching this is ok
+        # If reading the stored data fails, there is not much we can do, but for caching this is ok
+        raise KeyError(f'Key {key} not found in Redis')
 
     def __getitem__(self, key):
         namespace_key = self._format_key(key)
-        value = self.retrieve(namespace_key)
-        if not value:
-            raise KeyError(f'Key {key} not found in Redis')
-        return value
+        return self.retrieve(namespace_key)
 
 
 redis_store = redis.from_url(settings.REDIS_URL, decode_responses=False)
@@ -269,14 +267,15 @@ class DistributedCache(RedisStore):
         @wraps(func)
         def wrapper(*args, **kwargs):
             key = self.generate_cache_key(func, args, kwargs)
-            cached_value = self.retrieve(key)
-            if cached_value:
+            try:
+                cached_value = self.retrieve(key)
                 self.hits += 1
                 return cached_value
-            self.misses += 1
-            value = func(*args, **kwargs)
-            self.store(key, value)
-            return value
+            except KeyError:
+                self.misses += 1
+                value = func(*args, **kwargs)
+                self.store(key, value)
+                return value
 
         def clear_cache_item(*args, **kwargs):
             key = self.generate_cache_key(func, args, kwargs)
