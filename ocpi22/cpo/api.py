@@ -961,7 +961,7 @@ msp_remote_commands_flowchart = dict(
         ('start_transaction_webhook', 'Start Transaction Webhook', reverse_lazy('cpo-start-transaction-webhook')),
         ('remote_command_result', 'Remote Command Result'),
         ('stop_transaction_webhook', 'Stop Transaction Webhook', reverse_lazy('cpo-stop-transaction-webhook')),
-        ('invoicing_webhook', 'Invoicing Webhook', reverse_lazy('msp-invoicing-webhook')),
+        ('invoicing_webhook', 'Invoicing Webhook', reverse_lazy('cpo-invoicing-webhook')),
     ),
     process='reserve_now_webhook-->remote_command_result; start_transaction_webhook-->remote_command_result; '
             'stop_transaction_webhook-->remote_command_result; stop_transaction_webhook-->invoicing_webhook;'
@@ -1091,8 +1091,8 @@ class InvoiceWebhookViewSet(WebhookViewSet):
 
 class ChargePointOperatorAPIView(routers.APIRootView):
     """
-    This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for CPOs,
-    a shortcut to roaming across OCPI networks. By using these simple endpoints, you can connect your existing
+    This is the ChargerHub.EU roaming API for CPOs.
+    By using these simple endpoints, you can connect your existing
     backend to roaming partners without the need to implement the full OCPI protocol.
 
     **For more details on the individual endpoints, click the flow nodes or the links below,

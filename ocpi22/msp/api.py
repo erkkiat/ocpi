@@ -560,8 +560,9 @@ class MspInvoiceWebhookViewSet(InvoiceWebhookViewSet):
 
 class MobilityServiceProviderAPIView(routers.APIRootView):
     """
-    This API is not a part of the OCPI protocol. It is the ChargerHub.EU roaming API for MSPs,
-    a shortcut to roaming across OCPI networks.
+    This is the ChargerHub.EU roaming API for MSPs.
+    By using these simple endpoints, you can connect your existing
+    backend to roaming partners without the need to implement the full OCPI protocol.
 
     ## Remote Charging Process
     {{remote_charging_flowchart}}
