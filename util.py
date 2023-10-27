@@ -200,8 +200,12 @@ class RedisStore:
         return f'{namespace}:{key}'
 
     def store(self, key, value):
+        """
+        Store a value in Redis, with expiration specified at initialization.
+        The key is preformatted with the namespace. This is to make inheritance easier.
+        """
         value = pickle.dumps(value)
-        redis_store.setex(key, timedelta(seconds=self.expiration), value)
+        redis_store.setex(key, self.expiration*1000, value)  # Expiration in milliseconds
 
     def __setitem__(self, key, value):
         namespace_key = self._format_key(key)
