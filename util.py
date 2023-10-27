@@ -3,7 +3,7 @@ import json
 import pickle
 import re
 from dataclasses import dataclass
-from datetime import time, datetime as python_datetime
+from datetime import time, datetime as python_datetime, timedelta
 from functools import wraps
 from typing import List, Any, Optional, Union
 
@@ -200,12 +200,8 @@ class RedisStore:
         return f'{namespace}:{key}'
 
     def store(self, key, value):
-        # if isinstance(value, dict):
-        #     value = json.dumps(value, default=str)  # serializes also dates
-        # elif is_dataclass(value):
-        #     value = json.dumps(asdict(value), default=str)
         value = pickle.dumps(value)
-        redis_store.set(key, value, self.expiration)
+        redis_store.setex(key, timedelta(seconds=self.expiration), value)
 
     def __setitem__(self, key, value):
         namespace_key = self._format_key(key)
