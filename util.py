@@ -205,7 +205,7 @@ class RedisStore:
         The key is preformatted with the namespace. This is to make inheritance easier.
         """
         value = pickle.dumps(value)
-        redis_store.setex(key, self.expiration*1000, value)  # Expiration in milliseconds
+        redis_store.setex(key, self.expiration, value)
 
     def __setitem__(self, key, value):
         namespace_key = self._format_key(key)
