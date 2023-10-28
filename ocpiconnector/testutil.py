@@ -182,7 +182,7 @@ class Simulation:
             'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
             'callback-reserve_now_url': 'http://localhost/reserve/{evse_id}/',
             'callback-chargepoint_status_url': 'http://localhost/status/{evse_id}/',
-        }.get(x, self.original_redis_store.get(x))
+        }.get(x, self.original_redis_store.get(x))  # Revert back to the actual Redis.get() for any other keys
 
         self.webhook_requests.post.return_value = FakeResponse(200, {'timeout': 90, 'result': 'ACCEPTED'})
 

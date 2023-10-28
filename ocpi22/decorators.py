@@ -1,4 +1,3 @@
-import cProfile
 import types
 from functools import wraps
 from typing import Union
@@ -12,7 +11,6 @@ from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner
 from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.util import matching_operator
-from ocpiconnector import settings
 from ocpiconnector.ocpi_identities import Party
 from ocpi22.certification import certification_steps
 
@@ -132,17 +130,5 @@ def requires_last_updated(func):
         if 'last_updated' not in data:
             return OCPIBadRequestResponse('The field last_updated is required in the request body when doing PATCH.')
         return func(self, request, *args, **kwargs)
-
-    return wrapper
-
-
-def profile(func):
-    def wrapper(*args, **kwargs):
-        profiler = cProfile.Profile()
-        profiler.enable()
-        result = func(*args, **kwargs)
-        profiler.disable()
-        profiler.print_stats(sort="cumulative")
-        return result
 
     return wrapper

@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
+from ocpiconnector.testutil import compare_lists_recursively
 from util import RedisStore
 
 
@@ -20,17 +21,21 @@ class TestRedisStore(TestCase):
 
     def test_storing(self):
 
-        dataclass_data = TestDataClass(1, 2)
-
-        with patch('util.redis_store.set') as mock_set:
+        with patch('util.redis_store') as mock_set:
             # Store a string
             self.store['test'] = 'value'
-            self.assertEqual(mock_set.call_args.args, ('test_namespace:test', pickle.dumps('value'), 60))
+            method_calls = list(map(lambda x: x.args, mock_set.method_calls))
+            self.assertTrue(compare_lists_recursively(
+                method_calls, [('test_namespace:test', 60, pickle.dumps('value'))]
+            ))
 
             # Store a dataclass
+            dataclass_data = TestDataClass(1, 2)
             self.store['dataclass'] = dataclass_data
-            self.assertEqual(mock_set.call_args.args,
-                             ('test_namespace:dataclass', pickle.dumps(dataclass_data), 60))
+            method_calls = list(map(lambda x: x.args, mock_set.method_calls))
+            self.assertTrue(compare_lists_recursively(
+                method_calls, [('test_namespace:test', 60, pickle.dumps(dataclass_data))]
+            ))
 
         # Store a dict actually to Redis
         dict_data = {'a': 1, 'b': 2}

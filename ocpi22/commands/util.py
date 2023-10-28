@@ -49,6 +49,6 @@ def get_reservation(reservation_id: str) -> Reservation:
     >>> get_reservation('5')
     Traceback (most recent call last):
     ...
-    KeyError: 'Key 5 not found in Redis'
+    KeyError: 'Key rsv:5 not found in Redis'
     """
     return reservation_store[reservation_id]

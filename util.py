@@ -217,7 +217,7 @@ class RedisStore:
         try:
             value = redis_store.get(key)
             if not value:
-                return None
+                raise KeyError(f'Key {key} not found in Redis')
             if isinstance(value, str) and value.startswith('{'):
                 # print(f'Parsing {value} as JSON')
                 value = json.loads(value)

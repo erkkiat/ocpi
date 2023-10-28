@@ -27,7 +27,6 @@ from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
 from ocpiconnector.settings import STILL_ALIVE_FREQUENCY
-from ocpiconnector.util import Timer
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 zoined_token = os.environ.get('ZOINED_TOKEN')
