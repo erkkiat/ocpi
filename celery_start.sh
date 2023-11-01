@@ -15,7 +15,7 @@ source venv/bin/activate || exit 1
 brew services start redis || exit 1
 
 echo "Reading ENV from file $FILENAME"
-export $(cat $FILENAME | xargs) || (echo 'Unable to read ENV file $FILENAME' && exit 1)
+export $(cat $FILENAME | xargs) || (echo "Unable to read ENV file $FILENAME" && exit 1)
 
 echo "Celery queue $QUEUE"
 export CELERY_QUEUE=$QUEUE
