@@ -288,7 +288,7 @@ class MeterValuesSerializer(serializers.Serializer):
 
 
 class StartTransactionSerializer(serializers.Serializer):
-    evse_id = EvseSerialnumberSerializer(
+    evse_uid = EvseSerialnumberSerializer(
         source='evse',
         help_text='The identifier of the device which provides electricity to one or more connectors'
     )
