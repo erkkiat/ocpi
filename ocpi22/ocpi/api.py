@@ -646,7 +646,7 @@ class SessionViewSet(OCPIListModelMixin,
     @requires_last_updated
     @certification_step(OcpiModuleEnum.SESSIONS, 'PATCH an individual Session',
                         subtopic='Include at least the kwh and last_updated fields')
-    def patch(self, request, certification, data, *args, **kwargs):
+    def patch(self, request, data, certification=None, *args, **kwargs):
         if 'kwh' not in data:
             certification.failed('You need to PATCH at least the kwh and the last_updated fields.')
         return self.put(request, *args, partial=True, **kwargs)
