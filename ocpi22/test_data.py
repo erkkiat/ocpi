@@ -1686,3 +1686,68 @@ class LocationData:
          'url': 'http://localhost/status/4534ad5f-45be-428b-bfd0-fa489dda932d/',
          'verify': False}
     ]
+
+
+class TariffData:
+    expected_delete_calls = [
+            {'args': (),
+             'kwargs': {'headers': {'Authorization': 'Token '
+                                                     'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+                                    'OCPI-from-country-code': 'FI',
+                                    'OCPI-from-party-id': 'CPO',
+                                    'OCPI-to-country-code': 'FI',
+                                    'OCPI-to-party-id': 'MSP',
+                                    'accept': 'application/json',
+                                    'content-type': 'application/json',
+                                    'platform-revision': 'REVISION'},
+                        'json': {},
+                        'url': 'http://localhost:8001/ocpi/2.2.1/tariffs/FI/CPO/T1'}},
+            {'args': (),
+             'kwargs': {'headers': {'Authorization': 'Token '
+                                                     'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+                                    'OCPI-from-country-code': 'FI',
+                                    'OCPI-from-party-id': 'CPO',
+                                    'OCPI-to-country-code': 'FI',
+                                    'OCPI-to-party-id': 'NAP',
+                                    'accept': 'application/json',
+                                    'content-type': 'application/json',
+                                    'platform-revision': 'REVISION'},
+                        'json': {},
+                        'url': 'http://localhost:8001/ocpi/2.2.1/tariffs/FI/CPO/T1'}},
+            {'args': (),
+             'kwargs': {'headers': {'Authorization': 'Token '
+                                                     'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
+                                    'OCPI-from-country-code': 'FI',
+                                    'OCPI-from-party-id': 'CPO',
+                                    'OCPI-to-country-code': 'FI',
+                                    'OCPI-to-party-id': 'HUB',
+                                    'accept': 'application/json',
+                                    'content-type': 'application/json',
+                                    'platform-revision': 'REVISION'},
+                        'json': {},
+                        'url': 'http://localhost:8001/ocpi/2.2.1/tariffs/FI/CPO/T1'}},
+            {'args': (),
+             'kwargs': {'headers': {'Authorization': 'Token '
+                                                     'QzMyNUQ2NTMyNzBCNzdBMzVDQkRFMzc5QjhFQTM5ODA3OTVCOTA5QUZGN0MyQUIxNEE3OURFQzExRTBENTU2RA==',
+                                    'OCPI-from-country-code': 'FI',
+                                    'OCPI-from-party-id': 'CPO',
+                                    'OCPI-to-country-code': 'FI',
+                                    'OCPI-to-party-id': 'HB2',
+                                    'accept': 'application/json',
+                                    'content-type': 'application/json',
+                                    'platform-revision': 'REVISION'},
+                        'json': {},
+                        'url': 'http://localhost:8001/ocpi/2.2/tariffs/FI/CPO/T1'}},
+            {'args': (),
+             'kwargs': {'headers': {'Authorization': 'Token '
+                                                     'YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==',
+                                    'OCPI-from-country-code': 'FI',
+                                    'OCPI-from-party-id': 'CPO',
+                                    'OCPI-to-country-code': 'FI',
+                                    'OCPI-to-party-id': '001',
+                                    'accept': 'application/json',
+                                    'content-type': 'application/json',
+                                    'platform-revision': 'REVISION'},
+                        'json': {},
+                        'url': 'http://localhost:8002/ocpi/2.2/tariffs/FI/CPO/T1'}}
+        ]

@@ -30,11 +30,12 @@ class TestRedisStore(TestCase):
             ))
 
             # Store a dataclass
+            mock_set.reset_mock()
             dataclass_data = TestDataClass(1, 2)
             self.store['dataclass'] = dataclass_data
             method_calls = list(map(lambda x: x.args, mock_set.method_calls))
             self.assertTrue(compare_lists_recursively(
-                method_calls, [('test_namespace:test', 60, pickle.dumps(dataclass_data))]
+                method_calls, [('test_namespace:dataclass', 60, pickle.dumps(dataclass_data))]
             ))
 
         # Store a dict actually to Redis

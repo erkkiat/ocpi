@@ -17,6 +17,7 @@ from django.test import Client
 from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
+from ocpi22.test_data import expected_get_responses, expected_get_headers
 from ocpiconnector.ocpi_identities import Party
 from ocpi22.routing import find_route
 from ocpi22.tokens.auth import _authorize_token, _get_authorization_from_sessions
@@ -24,29 +25,34 @@ from ocpi22.tokens.auth import _authorize_token, _get_authorization_from_session
 client = Client()
 
 
-def compare_lists_recursively(received, expected, path='', label1='received', label2='expected') -> bool:
+def compare_lists_recursively(received, expected, path='', label1='received', label2='expected', swapped=False) -> bool:
     assert isinstance(received, (list, tuple)) and isinstance(expected, (list, tuple)), \
-        f'Not expecting {type(received)=} {type(expected)=}'
+        f'Not expecting {type(received)=} {type(expected)=} {received=} {expected=}'
     result = True
+    output = ''
     for i, v in enumerate(received):
         if i >= len(expected):
-            print(f'{i=} {len(received)=} {len(expected)=} {type(received)=} {type(expected)=}')
-            # print(f'{received[3]=}')
-            # print(f'{received[4]=}')
-            # print(f'{received[5]=}')
-            print(f'{path}.{received[i]} not present in {label2}'.strip('.'))
+            output = f'{path}.{received[i]} not present in {label2}'.strip('.')
             result = False
         elif isinstance(v, (dict, OrderedDict)):
             if not compare_dicts_recursively(dict(v), dict(expected[i]), path=f'{path}.{i}'):
                 result = False
-        elif isinstance(v, list):
+        elif isinstance(v, (list, tuple)):
             if not compare_lists_recursively(v, expected[i], path=f'{path}.{i}'):
                 result = False
         elif v not in received:
-            print(f'{path}.{received[i]} not equal in {label2}'.strip('.'))
+            output = f'{path}.{received[i]} not equal in {label2}'.strip('.')
             result = False
-    if label1 != 'expected':
-        result = compare_lists_recursively(expected, received, path=path, label1='expected', label2='received')
+        elif v != expected[i] and (expected[i] != '***' and v != '***'):
+            output = f'{path}.{received[i]} is not equal, should be "{expected[i]}", but is "{v}" instead'.strip('.')
+            result = False
+    if not swapped:
+        result = result and compare_lists_recursively(
+            expected, received, path=path, label1=label2, label2=label1, swapped=True
+        )
+    if not result:
+        ic(received, expected)
+        print(output)
     return result
 
 

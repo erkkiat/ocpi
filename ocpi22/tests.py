@@ -72,7 +72,7 @@ from ocpi22.sessions.util import create_session
 from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, \
     SessionData, \
     RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData, \
-    TokenAuthorizationData, LocationData
+    TokenAuthorizationData, LocationData, TariffData
 from ocpi22.tokens.auth import _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -787,30 +787,9 @@ class TariffTests(TestCase):
                          'There should be the same amount of Tariffs as when we started this test')
         self.assertTrue(simulation.tasks_requests.delete.call_count == 5,
                         'requests.delete should have been called 5 times')
-        calls = simulation.tasks_requests.delete.call_args_list
-        expected_calls = (
-            call({}, 'http://localhost:8001/ocpi/2.2.1/tariffs/FI/CPO/T1',
-                 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==', 'FI',
-                 'MSP',
-                 'FI', 'CPO', method='delete', credentials_id=2, title='Tariff'),
-            call({}, 'http://localhost:8001/ocpi/2.2.1/tariffs/FI/CPO/T1',
-                 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==', 'FI',
-                 'NAP',
-                 'FI', 'CPO', method='delete', credentials_id=2, title='Tariff'),
-            call({}, 'http://localhost:8001/ocpi/2.2.1/tariffs/FI/CPO/T1',
-                 'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==', 'FI',
-                 'HUB',
-                 'FI', 'CPO', method='delete', credentials_id=2, title='Tariff'),
-            call({}, 'http://localhost:8001/ocpi/2.2/tariffs/FI/CPO/T1',
-                 'QzMyNUQ2NTMyNzBCNzdBMzVDQkRFMzc5QjhFQTM5ODA3OTVCOTA5QUZGN0MyQUIxNEE3OURFQzExRTBENTU2RA==', 'FI',
-                 'HB2',
-                 'FI', 'CPO', method='delete', credentials_id=17, title='Tariff'),
-            call({}, 'http://localhost:8002/ocpi/2.2/tariffs/FI/CPO/T1',
-                 'YWRiYjA3ZjYzNGE3OTFmNTI5ZWMzODg3NzRjZDI0YzhlMWViODA0M2RiYjAwOGU5MzBlZTdlMWVkZWI1YTBiOA==', 'FI',
-                 '001',
-                 'FI', 'CPO', method='delete', credentials_id=24, title='Tariff')
-        )
-        self.assertTrue(compare_lists_recursively(calls, expected_calls),
+        method_calls = list(map(lambda x: dict(args=x.args, kwargs=x.kwargs),
+                                simulation.tasks_requests.delete.call_args_list))
+        self.assertTrue(compare_lists_recursively(method_calls, TariffData.expected_delete_calls),
                         'send_ocpi_request should be called with the correct parameters')
 
     @staticmethod
