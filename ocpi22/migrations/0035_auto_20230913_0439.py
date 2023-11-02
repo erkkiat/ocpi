@@ -101,10 +101,10 @@ class Migration(migrations.Migration):
             model_name='location',
             name='party_uid',
         ),
-        migrations.RemoveConstraint(
-            model_name='session',
-            name='session_party_id_uid',
-        ),
+        # migrations.RemoveConstraint(
+        #     model_name='session',
+        #     name='session_party_id_uid',
+        # ),
         migrations.RemoveConstraint(
             model_name='session',
             name='session_party_id_uid_country_code',
