@@ -273,7 +273,8 @@ def simulate_surrounding_world(func):
                 patch('ocpi22.ocpi.util.requests') as ocpi_requests, \
                 patch('ocpi22.logging.error') as logging_error, \
                 patch('ocpi22.logging.info') as logging_info, \
-                patch('ocpi22.logging.warning') as logging_warning:
+                patch('ocpi22.logging.warning') as logging_warning, \
+                patch('ocpiconnector.analytics.send_session_update_to_analytics'):
             simulation = Simulation(
                 tasks_requests=tasks_requests,
                 get_platform_revision=get_platform_revision,
