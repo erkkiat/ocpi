@@ -1792,7 +1792,7 @@ class TestCpoApi(TestCase):
         cpo_request.accepted_media_type = 'text/html'  # To get the detail_url in the response
         cpo_request.version = '2.2.1'
         cpo_request.data = {
-            "evse_id": "HELSINKI-3",
+            "evse_uid": "HELSINKI-3",
             "connector_id": "1",
             "token_id": "EKI1",
             "internal_reference": "MY-INTERNAL-REFERENCE",
@@ -1800,7 +1800,7 @@ class TestCpoApi(TestCase):
         }
         with patch('ocpi22.ocpi.util.OcpiModule.send_background_update') as send_updates_mock:
             cpo_response = cpo_viewset.start_transaction(cpo_request)
-
+            self.assertEqual(cpo_response.status_code, 200, 'Start session should succeed')
             # Make sure the created Session was sent to the relevant party
             send_updates_mock.assert_called()
             args, kwargs = send_updates_mock.call_args
@@ -2106,7 +2106,7 @@ class TestCpoApi(TestCase):
         #
 
         data = dict(
-            evse_id='HELSINKI-3',
+            evse_uid='HELSINKI-3',
             token_id='SOME-ADHOC-TOKEN',
             internal_reference='MY-INTERNAL-REFERENCE-2',
             connector_id='1',
