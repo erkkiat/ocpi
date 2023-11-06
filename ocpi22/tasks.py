@@ -1,4 +1,3 @@
-import json
 import os
 import random
 from datetime import timedelta, datetime
@@ -17,7 +16,6 @@ import sentry_sdk
 from celery import shared_task
 from celery.schedules import crontab
 from django.conf import settings
-from django.utils import timezone
 from django.utils.module_loading import import_string
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
@@ -26,7 +24,6 @@ from sentry_sdk import capture_exception
 from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
-from ocpiconnector.settings import STILL_ALIVE_FREQUENCY
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 zoined_token = os.environ.get('ZOINED_TOKEN')
@@ -58,12 +55,12 @@ app.conf.beat_schedule = {
     },
     'still-alive': {
         'task': 'ocpi22.tasks.check_still_alive',
-        'schedule': STILL_ALIVE_FREQUENCY
+        'schedule': settings.STILL_ALIVE_FREQUENCY
     },
     'pull-all-objects': {
         'task': 'ocpi22.tasks.pull_all_objects',
         # 'schedule': 120  # For testing
-        'schedule': crontab(hour=pull_hour, minute=pull_minute)
+        'schedule': crontab(hour=str(pull_hour), minute=str(pull_minute))
     }
 }
 
@@ -85,9 +82,10 @@ def pull_all_objects() -> bool:
     return True
 
 
-# For Heroku Redis and Redis Enterprise Cloud
+# Make sure Redis is available
 REDIS_URL = settings.REDIS_URL
-assert settings.DEBUG or REDIS_URL, 'REDIS_URL or REDISCLOUD_URL needs to be set at least in the production'
+assert settings.DEBUG or REDIS_URL, \
+    f'One of these keys needs to be set at least in the production: {settings.REDIS_KEYS}'
 if 'rediss' in REDIS_URL and 'ssl_cert_reqs' not in REDIS_URL:
     REDIS_URL += '?ssl_cert_reqs=CERT_NONE'
 

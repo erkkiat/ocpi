@@ -77,7 +77,7 @@ TWILIO_API_KEY = os.environ.get('TWILIO_API_KEY')
 
 # Find a Redis, since Heroku Redis services use different environment variables
 REDIS_KEYS = ['REDIS_URL', 'REDISCLOUD_URL', 'STACKHERO_REDIS_URL_TLS']
-REDIS_URL = next((os.environ.get(key) for key in REDIS_KEYS if key), None)
+REDIS_URL = next((os.environ.get(key, None) for key in REDIS_KEYS if key), None)
 
 # Send updates to partners who we have Credentials for
 SEND_UPDATES = _env_bool('SEND_UPDATES', True)
