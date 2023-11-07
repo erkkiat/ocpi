@@ -164,7 +164,8 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def update_last_connection(self):
         self.last_connection = datetime.now(pytz.utc)
-        self.save(update_fields=['last_connection'])
+        self.connection_status = choices.CONNECTED
+        self.save(update_fields=['last_connection', 'connection_status'])
 
     def get_party_for_role(self, role: OcpiRolesEnum) -> Optional[Party]:
         credentialsrole = self.roles.filter(role=role.value).first()
