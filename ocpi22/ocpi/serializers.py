@@ -222,7 +222,7 @@ class RolesSerializer(serializers.ModelSerializer):
     class Meta:
         model = CredentialsRole
         # Todo: Should there be country_code and party_id here?
-        fields = ('ocpi_master', 'role', 'business_details')
+        fields = ('country_code', 'party_id', 'role', 'business_details')
 
     business_details = BusinessDetailsSerializer()
 

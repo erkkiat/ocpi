@@ -7,7 +7,7 @@ from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
 
 from ocpi22.credentials.versions import get_versions_dict, get_endpoints_dict
-from ocpi22.models.credentials import Credentials
+from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.api import CredentialsViewSet
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ocpi.serializers import CredentialsSerializer
@@ -60,8 +60,14 @@ class CredentialsTests(BetterTestCase):
 
         with time_machine.travel(faketime, tick=False), \
                 patch('ocpi22.ocpi.api.generate_random_token', return_value=random_token):
-            Credentials.objects.create(token_a=token_a)
             result = CredentialsViewSet().post(request)
+
+        credentials = Credentials.objects.get(pk=2)
+        self.assertFalse(credentials.token_a, 'Token A should have been cleared')
+        self.assertEqual(credentials.roles.count(), 2, 'Credentials should have two roles')
+        first_role: CredentialsRole = credentials.roles.first()
+        self.assertEqual(first_role.country_code, 'NL', 'Expecting different country code')
+        self.assertEqual(first_role.party_id, 'EXA', 'Expecting different party ID')
 
         serializer = CredentialsSerializer(data=result.data.get('data'))
         self.assertTrue(serializer.is_valid(), f'Credentials POST response should be valid: {serializer.errors}')

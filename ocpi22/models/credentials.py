@@ -199,9 +199,10 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
             business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(
                 name=bd.get('name'), website=bd.get('website', ''), defaults=dict(logo=bd.get('logo', ''))
             )
-
             role, _role_created = CredentialsRole.objects.get_or_create(
-                **data, defaults=dict(business_details=business_details)
+                **data, defaults=dict(country_code=data.get('country_code', ''),
+                                      party_id=data.get('party_id', ''),
+                                      business_details=business_details)
             )
             self.roles.add(role)
             return role
