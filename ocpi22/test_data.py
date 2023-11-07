@@ -1751,3 +1751,18 @@ class TariffData:
                         'json': {},
                         'url': 'http://localhost:8002/ocpi/2.2/tariffs/FI/CPO/T1'}}
         ]
+
+
+class AdhocTokenData:
+    start_session_method_calls = [
+        {'auth': ('john', 'his-password'),
+         'headers': {'accept': 'application/json', 'content-type': 'application/json'},
+         'json': {
+             'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/FI*001-AUTH-REFERENCE/',
+             'token_id': 'SOME-ADHOC-TOKEN', 'token_type': 'AD_HOC_USER',
+             'authorization_reference': 'FI*001-AUTH-REFERENCE', 'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
+             'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*MSP'},
+         'timeout': 10,
+         'url': 'http://fakehost/start/HELSINKI-3/',
+         'verify': False}
+    ]

@@ -72,7 +72,7 @@ from ocpi22.sessions.util import create_session
 from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, \
     SessionData, \
     RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData, \
-    TokenAuthorizationData, LocationData, TariffData
+    TokenAuthorizationData, LocationData, TariffData, AdhocTokenData
 from ocpi22.tokens.auth import _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -2003,22 +2003,8 @@ class TestCpoApi(TestCase):
                              'stop_transaction is sending different session data than expected to MSP')
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.util.redis_store.get',
-           side_effect=lambda x: {
-               'callback-start_transaction_url': 'http://fakehost/start/{evse_id}/',
-               'callback-stop_transaction_url': 'http://fakehost/stop/{evse_id}/',
-               'callback-session_url': 'http://localhost/session/{uid}/',
-               'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
-           }.get(x))
-    @patch('ocpi22.util.redis_store.set', return_value=True)
-    @patch('ocpi22.ocpi.util.uuid.uuid4',
-           return_value=MockUuid4())
-    @patch('ocpi22.webhooks.requests.put')
-    def test_adhoc_token(self,
-                         requests_post_mock: Mock,
-                         uuid4_mock: Mock,
-                         _set_parameter_mock: Mock,
-                         _get_parameter_mock: Mock):
+    @simulate_surrounding_world
+    def test_adhoc_token(self, simulation):
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -2032,45 +2018,21 @@ class TestCpoApi(TestCase):
                          'Please make sure there are no Sessions at the start of this test')
 
         # Let's pretend to be the CPO and all is good
-        requests_post_mock.return_value = make_json_response(dict(result='ACCEPTED'))
-
+        simulation.webhook_requests.put.return_value = make_json_response(dict(result='ACCEPTED'))
         response = viewset.start_session(request)
 
         # Let's guess the new Session
         session = Session.objects.all().first()
         self.assertEqual(session.billed_to, str(billed_party), 'Billed party appears not to be stored properly')
 
-        args, kwargs = requests_post_mock.call_args
-        # ic(args, kwargs)
+        method_calls = list(map(lambda x: x.kwargs, simulation.webhook_requests.method_calls))
 
         self.assertEqual(response.status_code, 200, 'Remote Command start_session was expected to succeed')
-        self.assertEqual(kwargs.get('url'), 'http://fakehost/start/HELSINKI-3/',
-                         'CPO start transaction URL differs from expected')
+        # self.assertEqual(kwargs.get('url'), 'http://fakehost/start/HELSINKI-3/',
+        #                  'CPO start transaction URL differs from expected')
         authorization_reference = 'FI*001-AUTH-REFERENCE'
         url = f'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
-        self.assertDictEqual(
-            kwargs.get('json'),
-            {'auth_method': 'COMMAND',
-             'authorization_reference': authorization_reference,
-             'from_party': 'FI*MSP',
-             'billed_to': 'FI*MSP',
-             'connector_id': None,
-             'evse_id': 'HELSINKI-3',
-             'response_url': url,
-             'token_id': 'SOME-ADHOC-TOKEN',
-             'token_type': 'AD_HOC_USER'}
-        )
-
-        # Capture the data going to Redis
-        # args, kwargs = set_parameter_mock.call_args
-        # _key, value, _ttl = args
-        # ic(_key, value)
-        #
-        # Command result
-        #
-
-        # Inject the data supposedly coming from Redis
-        # get_parameter_mock.return_value = value
+        self.assertTrue(compare_lists_recursively(method_calls, AdhocTokenData.start_session_method_calls))
 
         data = dict(result='ACCEPTED')
         response = send_command_result(data, url, 'start', authorization_reference)
@@ -2152,9 +2114,12 @@ class TestCpoApi(TestCase):
             _authorize_token.cache_clear()
 
             # Use a new Session UID
-            uuid4_mock.return_value = MockUuid4(3)
+            simulation.uuid4.return_value = MockUuid4(3)
+            simulation.ocpi_requests.post.return_value = make_json_response(TokenAuthorizationData.invalid_token)
 
-            cpo_response = authorize(data)
+            with simulation.assert_error_logged('Multiple Endpoints for FI*HB2'):
+                cpo_response = authorize(data)
+
             self.assertEqual(cpo_response.status_code, 401,
                              'Token should NOT be authorized')
             self.assertDictEqual(cpo_response.data,
@@ -2167,10 +2132,16 @@ class TestCpoApi(TestCase):
         #
 
         response = make_json_response(dict(broken_response='APPLES_AND_ORANGES'))
-        requests_post_mock.return_value = response
+        simulation.webhook_requests.put.return_value = response
 
-        uuid4_mock.return_value = MockUuid4(2)
-        response = viewset.start_session(request)
+        simulation.uuid4.return_value = MockUuid4(2)
+
+        with simulation.assert_error_logged([
+            'Got a malformed response from webhook',
+            'Unable to connect',
+            'Unable to complete'
+        ]):
+            response = viewset.start_session(request)
 
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE,
                          'JSON decode errors should return HTTP 503')
@@ -2210,7 +2181,8 @@ class TestCpoApi(TestCase):
         tariffs = connector.tariff_ids.all()
         connector.tariff_ids.clear()
 
-        cpo_response = meter_values(data)
+        with simulation.assert_error_logged('has no tariffs'):
+            cpo_response = meter_values(data)
 
         self.assertEqual(cpo_response.status_code, status.HTTP_409_CONFLICT)
         connector.tariff_ids.set(tariffs)

@@ -2,12 +2,10 @@ import base64
 from datetime import datetime
 
 import pytz
-from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
 
 import ocpi22.logging as logging
-import secrets
 from typing import Optional, List
 
 from django import forms

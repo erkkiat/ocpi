@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError, NotFound, APIException
 
 from ocpi22.ocpi.util import OCPIBadRequestResponse, Ocpi
-from ocpiconnector.exceptions import WrongRole
+from ocpiconnector.exceptions import WrongRole, OCPIProtocolError
 
 
 def find_request_from_args(*args, **kwargs):
@@ -73,6 +73,10 @@ def ocpi_exception_handler(func):
                      http_status=status.HTTP_400_BAD_REQUEST),
             APIException:
                 dict(msg='API error: {}',
+                     status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                     http_status=status.HTTP_400_BAD_REQUEST),
+            OCPIProtocolError:
+                dict(msg='OCPI protocol error: {}',
                      status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                      http_status=status.HTTP_400_BAD_REQUEST),
             WrongRole:

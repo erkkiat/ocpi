@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import wraps
 from types import FunctionType
+from typing import Union
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
@@ -190,7 +191,7 @@ class Simulation:
             'callback-chargepoint_status_url': 'http://localhost/status/{evse_id}/',
         }.get(x, self.original_redis_store.get(x))  # Revert back to the actual Redis.get() for any other keys
 
-        self.webhook_requests.post.return_value = FakeResponse(200, {'timeout': 90, 'result': 'ACCEPTED'})
+        self.webhook_requests.put.return_value = FakeResponse(200, {'timeout': 90, 'result': 'ACCEPTED'})
 
         self.uuid4.return_value = MockUuid4()
 
@@ -208,14 +209,23 @@ class Simulation:
         self.enable_logging_exceptions()
 
     @contextmanager
-    def assert_error_logged(self, text: str):
-        """Expect one logging.error() call and make sure text is included in the first argument"""
+    def assert_error_logged(self, text: Union[str, tuple[str]]):
+        """
+        Expect one or more logging.error() calls and make sure
+        specified texts are included in the corresponding arguments
+        """
         def assert_logged_error_has_text(*args, **kwargs):
-            success = text in args[0]
+            """This wrapper should normally receive a single args[0] each time logging.error() is called"""
+            success = False
+            if isinstance(text, (tuple, list)):
+                # Loop through all the texts and corresponding arguments
+                success = any([t in args[0] for t in text])
+            elif isinstance(text, str):
+                success = text in args[0]
             if not success:
                 ic(args, kwargs)
                 self.enable_logging_exceptions()  # Avoid loops
-                raise AssertionError(f'Expected {text} to be logged as error, but it was not')
+                raise AssertionError(f'Expected "{text}" to be logged as error, but it was "{args[0]}" instead')
 
         self.enable_logging_exceptions(assert_logged_error_has_text)
         yield

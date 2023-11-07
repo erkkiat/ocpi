@@ -155,7 +155,7 @@ class Command(BaseCommand):
                     f'CREDENTIALS - There is no Credentials Sender or Receiver url provided by the other party')
 
             credentials_response = ocpi_credentials_post(url, token_a_base64, json=data_to_send, timeout=15)
-            if credentials_response.status_code != status.HTTP_200_OK:
+            if credentials_response.status_code not in (status.HTTP_200_OK, status.HTTP_201_CREATED):
                 msg = f'CREDENTIALS - Endpoints returned HTTP {credentials_response.status_code} from Credentials Receiver'
                 if credentials:
                     credentials.reset()
@@ -172,11 +172,11 @@ class Command(BaseCommand):
                 raise OCPIProtocolError(msg)
             return True
 
-        except OSError as e:
-            logging.error(f'CREDENTIALS - Cannot reach the specified endpoint: {e}')
-            print(f'*** Cannot reach the URL you specified: {str(e)}')
-            raise
         except (JSONDecodeError, NotAuthenticated) as e:
             logging.error(f'CREDENTIALS - Credentials exchange protocol error: {e}')
             print(f'*** There has been a protocol error: {str(e)}')
+            raise
+        except (OSError, IOError) as e:
+            logging.error(f'CREDENTIALS - Cannot reach the specified endpoint: {e}')
+            print(f'*** Cannot reach the URL you specified: {str(e)}')
             raise

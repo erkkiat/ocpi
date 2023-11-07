@@ -46,7 +46,8 @@ class TestQuickLocations(TestCase):
     fixtures = ['ocpi22/data/credentials-2.json', 'ocpi22/cpo/database-dumps/tariffs.json']
     maxDiff = 99999
 
-    def test_quick_location(self):
+    @simulate_surrounding_world
+    def test_quick_location(self, simulation):
         #
         # Test new location outside of any cities, coordinates as string
         #
@@ -102,7 +103,8 @@ class TestQuickLocations(TestCase):
         except (geopy.exc.GeocoderUnavailable, geopy.exc.GeocoderServiceError, ConnectTimeoutError):
             self.skipTest('Geocoder is unavailable')
 
-    def test_quick_location_with_evses_and_connectors(self):
+    @simulate_surrounding_world
+    def test_quick_location_with_evses_and_connectors(self, simulation):
         #
         # Create Location
         #

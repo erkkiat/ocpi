@@ -483,7 +483,7 @@ def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwa
     response = function(
         url, headers=headers, timeout=timeout, *args, **kwargs
     )
-    if response.status_code != 200:
+    if response.status_code not in (200, 201):
         raise OCPIProtocolError(
             f'Got OCPI response {response.status_code} for {method.upper()} {url}: {response.reason} - {response.text}',
             errno=response.status_code)

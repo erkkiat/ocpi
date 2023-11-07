@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 
 from ocpiconnector.ocpi_identities import Party
 
@@ -17,6 +18,10 @@ def get_sender_party(headers,
     >>> str(get_sender_party({'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'EON'}))
     'FI*EON'
     """
+    if not headers:
+        from ocpi22 import logging
+        logging.error(f'No headers from sender')
+        return Party('', '')
     headers = dict_keys_to_lower_and_filter(headers, 'ocpi')
     country_code = headers.get(country_code_key.lower(),
                                headers.get(_secondary_header_name(country_code_key), '')).upper()
@@ -35,11 +40,13 @@ def get_to_party(headers) -> Party:
     return get_sender_party(headers, 'HTTP_OCPI_TO_COUNTRY_CODE', 'HTTP_OCPI_TO_PARTY_ID')
 
 
-def dict_keys_to_lower_and_filter(d: dict, filter_word: str) -> dict:
+def dict_keys_to_lower_and_filter(d: dict, filter_word: str) -> Optional[dict]:
     """
     >>> dict_keys_to_lower_and_filter({'OCPI-this': 'that', 'ocpi-THAT': 'THIS', 'others': 'ignored'}, 'ocpi')
     {'ocpi-this': 'that', 'ocpi-that': 'THIS'}
     """
+    if not d:
+        return None
     return dict((key.lower(), value) for key, value in d.items() if filter_word in key.lower())
 
 
