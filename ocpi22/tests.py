@@ -49,7 +49,8 @@ from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.models import Authorization
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
-from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer
+from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, SessionSerializer, \
+    CredentialsSerializer
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, TokenType, AuthorizationEnum
 from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
@@ -1330,6 +1331,41 @@ class TestCredentials(TestCase):
         }
         credentials.add_role(data)
         credentials.save()
+        self.assertEqual(credentials.roles.count(), 1, 'Expecting to find one role')
+        role = credentials.roles.first()
+        self.assertEqual(str(role), 'FI*001 (EMSP)',
+                        'Expecting different results for add_role()')
+        self.assertEqual(str(role.business_details), 'SolidRoam', 'Expecting different results for add_role()')
+
+    @simulate_surrounding_world
+    def test_update_credentials(self, simulation):
+        credentials = Credentials.objects.create()
+        data = {
+            'token': '1234567890', 'url': 'http://localhost:8000/',
+            'roles': [{'role': 'EMSP', 'country_code': 'FI', 'party_id': '001',
+                       'business_details': {'name': 'SolidRoam', 'website': ''}}]
+        }
+        serializer = CredentialsSerializer(credentials, data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        credentials = serializer.save()
+        self.assertEqual(credentials.roles.count(), 1, 'Expecting to find one role')
+        role = credentials.roles.first()
+        self.assertEqual(str(role), 'FI*001 (EMSP)',
+                        'Expecting different results for add_role()')
+        self.assertEqual(str(role.business_details), 'SolidRoam', 'Expecting different results for add_role()')
+
+        # Attempt to change an existing role
+        data = {
+            'token': '1234567890', 'url': 'http://localhost:8000/',
+            'roles': [{'role': 'CPO', 'country_code': 'FI', 'party_id': 'CPO',
+                       'business_details': {'name': 'SolidRoam', 'website': ''}}]
+        }
+        serializer = CredentialsSerializer(credentials, data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        with simulation.assert_error_logged('Cannot update roles for existing Credentials object'):
+            credentials = serializer.save()
+
         self.assertEqual(credentials.roles.count(), 1, 'Expecting to find one role')
         role = credentials.roles.first()
         self.assertEqual(str(role), 'FI*001 (EMSP)',

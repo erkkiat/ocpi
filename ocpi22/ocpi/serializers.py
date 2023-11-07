@@ -254,7 +254,14 @@ class CredentialsSerializer(serializers.ModelSerializer):
         instance.theirs = validated_data.get('theirs')
         instance.url = validated_data.get('url')
 
-        # DO NOT allow changing the roles of an existing Credentials object, or other parties can pretend to be anyone
+        # Add roles, but only if this is the first Credentials registration
+        if instance.roles.count() == 0:
+            for role in validated_data['roles']:
+                instance.add_role(role)
+        else:
+            # DO NOT allow changing the roles of an existing Credentials object, or other parties can pretend to be anyone
+            from ocpi22 import logging
+            logging.error(f'Cannot update roles for existing Credentials object {instance}')
 
         # Delay storing tokens until now, in case the roles have some issue
         instance.save()
