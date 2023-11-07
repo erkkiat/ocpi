@@ -149,7 +149,8 @@ class LocationQuickViewSet(mixins.ListModelMixin,
             serializer = LocationQuickSerializer(data=request.data, instance=existing_location, partial=partial)
 
             if serializer.is_valid():
-                serializer.save(ocpi_master=our_role)
+                saved_location = serializer.save(ocpi_master=our_role)
+                saved_location.send_updates()
                 http_status = status.HTTP_200_OK if existing_location else status.HTTP_201_CREATED
                 return Response(serializer.data, status=http_status)
             else:
