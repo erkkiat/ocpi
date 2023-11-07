@@ -1322,6 +1322,20 @@ class TestCredentials(TestCase):
             response = self.client.get(reverse('base-versions'))
         self.assertTrue(compare_dicts_recursively(response.data, CredentialsData.expected_versions_response))
 
+    def test_add_role(self):
+        credentials = Credentials.objects.create()
+        data = {
+            'role': 'EMSP', 'country_code': 'FI', 'business_details': {'name': 'SolidRoam', 'website': ''},
+            'party_id': '001'
+        }
+        credentials.add_role(data)
+        credentials.save()
+        self.assertEqual(credentials.roles.count(), 1, 'Expecting to find one role')
+        role = credentials.roles.first()
+        self.assertEqual(str(role), 'FI*001 (EMSP)',
+                        'Expecting different results for add_role()')
+        self.assertEqual(str(role.business_details), 'SolidRoam', 'Expecting different results for add_role()')
+
     @time_machine.travel(faketime, tick=False)
     @patch('ocpiconnector.management.commands.exchange_credentials.generate_random_token', side_effect=[fake_token])
     @simulate_surrounding_world
