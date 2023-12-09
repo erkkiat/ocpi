@@ -96,11 +96,11 @@ class OcpiModule:
         if not getattr(self, 'updates_sent', None):
             path_components = path_components or [self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
 
-        if settings.SEND_UPDATES and settings.PREMIUM:
-            # Do we possess the role who controls the master data for this type of object or are we acting as HUB
-            if self.ocpi_object_owner not in ocpi_identities.roles and not ocpi_platform.is_hub:
-                logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
-                return
+            if settings.SEND_UPDATES and settings.PREMIUM:
+                # Do we possess the role who controls the master data for this type of object or are we acting as HUB
+                if self.ocpi_object_owner not in ocpi_identities.roles and not ocpi_platform.is_hub:
+                    logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
+                    return
 
                 if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
                     logging.info('Sending updates to INTERESTED PARTIES')
@@ -153,7 +153,7 @@ class OcpiModule:
     def send_hub_updates(self) -> None:
         if ocpi_platform.is_hub and settings.SEND_UPDATES:
             logging.info(f'Sending HUB updates for {self}.')
-            self.send_all_updates()  # Todo: Use sender identity, not our HUB identity
+            self.send_updates()  # Todo: Use sender identity, not our HUB identity
 
     @classmethod
     def get_serializer_class(cls, version: Union[OCPIVersion, str]):

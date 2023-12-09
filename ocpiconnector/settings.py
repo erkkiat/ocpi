@@ -1,4 +1,5 @@
 # Django settings for ocpiconnector project.
+import hashlib
 import os
 from datetime import datetime
 
@@ -110,6 +111,7 @@ MANAGERS = ADMINS
 TIMEOUT_FOR_COMMANDS = 2 * 60
 
 HOSTNAME = os.environ['HOSTNAME']
+HOSTNAME_SHORT = HOSTNAME.split('.')[0]
 SCHEME = os.environ.get('SCHEME', 'https')
 
 OCPI_SPECIFICATION_URL = 'https://github.com/ocpi/ocpi/blob/release-2.2-bugfixes/'

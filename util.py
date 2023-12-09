@@ -249,6 +249,9 @@ redis_store = redis.from_url(settings.REDIS_URL, decode_responses=False)
 
 
 class DistributedCache(RedisStore):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, namespace=settings.HOSTNAME_SHORT, **kwargs)
+
     @dataclass
     class CacheInfo:
         hits: int
