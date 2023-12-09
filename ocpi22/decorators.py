@@ -61,7 +61,9 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
             if certification_steps and not certification_steps.headers and certify_check_ocpi_headers(headers):
                 certification_steps.headers.passed()
 
-            request.party_specified_in_url = bool(kwargs.get('country_code') and kwargs.get('party_id'))
+            request.party_specified_in_url = bool(kwargs.get('country_code') and kwargs.get('party_id')) \
+                if request and hasattr(request, 'party_specified_in_url') else None
+
             country_code = kwargs.get('country_code',
                                       data.get('country_code', sender_party.country_code))
             party_id = kwargs.get('party_id', data.get('party_id', sender_party.party_id))

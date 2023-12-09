@@ -271,7 +271,7 @@ def check_still_alive(credentials_id: int = None) -> None:
         credentials.save(update_fields=['last_connection', 'connection_status'])
         return
     stale_credentials = Credentials.objects.filter(
-        last_connection__lte=datetime.now(pytz.utc) - timedelta(seconds=STILL_ALIVE_FREQUENCY - 3),
+        last_connection__lte=datetime.now(pytz.utc) - timedelta(seconds=settings.STILL_ALIVE_FREQUENCY - 3),
         valid=True
     )
     # logging.info(f"Checking {stale_credentials.count()} parties for alive")
