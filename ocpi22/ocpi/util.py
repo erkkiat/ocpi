@@ -93,7 +93,8 @@ class OcpiModule:
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
         """
-        path_components = path_components or [self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
+        if not getattr(self, 'updates_sent', None):
+            path_components = path_components or [self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
 
         if settings.SEND_UPDATES and settings.PREMIUM:
             # Do we possess the role who controls the master data for this type of object or are we acting as HUB
@@ -101,13 +102,15 @@ class OcpiModule:
                 logging.warning(f"We don't possess the role required for sending updates for {type(self)}.")
                 return
 
-            if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
-                logging.info('Sending updates to INTERESTED PARTIES')
-                self.send_update_to_interested_parties(method=method,
-                                                       path_components=path_components)
-            else:
-                logging.info('Sending updates to ALL connected parties')
-                self.send_all_updates(method=method, path_components=path_components)
+                if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
+                    logging.info('Sending updates to INTERESTED PARTIES')
+                    self.send_update_to_interested_parties(method=method,
+                                                           path_components=path_components)
+                else:
+                    logging.info('Sending updates to ALL connected parties')
+                    self.send_all_updates(method=method, path_components=path_components)
+
+                setattr(self, 'updates_sent', True)
 
     def send_all_updates(self, data=None, method='put', path_components=None, ocpi_module_name=None) -> bool:
         # Todo: Use sender identity, not our HUB identity
