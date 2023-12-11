@@ -1,10 +1,12 @@
 from functools import lru_cache
 from typing import Optional
 
+from cachetools.func import ttl_cache
+
 from ocpi22 import choices
 
 
-@lru_cache(maxsize=None)
+@ttl_cache(ttl=14400)  # 4 hours local memory cache, maybe Redis would not be smart here since hub uses this for routing
 def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: choices.OcpiModuleEnum) -> list:
     """
     Find all endpoints for specified roles for sending updates to other parties.
