@@ -34,7 +34,7 @@ sleep 4
 echo "Creating app $HEROKU_APP..."
 
 heroku create --region eu "$HEROKU_APP" \
- && heroku addons:create rediscloud \
+ && heroku addons:create rediscloud:100 \
  && heroku addons:create jawsdb-maria \
  && heroku config:set HOSTNAME=$HOST.ocpiconnector.com \
  SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` $4 $5 $6 $ROLE1 $ROLE2 \
