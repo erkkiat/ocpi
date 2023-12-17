@@ -29,6 +29,7 @@ from ocpi22.models.token import Token
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
 from ocpi22.ocpi.partners import invalidate_partner_cache
+from ocpi22.pull import admin_pull_all
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_our_credentialsrole
 from payment.models import Payment
 
@@ -553,6 +554,7 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a',
                      'roles__business_details__name']
     list_display_links = ['name']
+    actions = [admin_pull_all]
 
     def has_add_permission(self, request, obj=None):
         return settings.PREMIUM

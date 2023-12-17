@@ -12,27 +12,27 @@ from ocpi22.util import build_callback_request
 
 
 def send_to_webhook(data: Union[dict, Location, Evse] = None, serializer=None, serialized_data=None,
-                    outbound_serializer=None, timeout=10) -> Optional[dict]:
+                    outbound_serializer=None, timeout=10, ocpi_master=None) -> Optional[dict]:
     if settings.PERFORMANCE_TEST:
         return {}
     if isinstance(data, Location):
         # Send updates for all EVSEs at this Location
         list(map(lambda evse: send_to_webhook(evse, serializer, serialized_data, outbound_serializer, timeout),
-                 data.evses.all()))
+                 data.evses.all()))  # "list" triggers the evaluation of the map
         return {}
     if isinstance(data, Evse):
         # Send updates for this EVSE
         return send_to_webhook(
             dict(location_id=data.location.uid, evse_id=data.uid, status=data.status),
-            serializer, serialized_data, outbound_serializer, timeout
+            serializer, serialized_data, outbound_serializer, timeout, ocpi_master=data.location.ocpi_master
         )
     assert issubclass(serializer, CallbacksSerializer), \
         'The serializer needs to be inherited from CallbacksSerializer'
-    assert not data or isinstance(data, (dict, OrderedDict, Evse))
+    assert not data or isinstance(data, (dict, OrderedDict))
     try:
         if not serialized_data:
             OutboundSerializer = outbound_serializer or serializer.OutboundSerializer
-            outbound_serializer = OutboundSerializer(data=data)
+            outbound_serializer = OutboundSerializer(data=data, context={'request': None, 'ocpi_master': ocpi_master})
             assert outbound_serializer.is_valid(), outbound_serializer.errors
             serialized_data = outbound_serializer.data
 

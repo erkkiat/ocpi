@@ -29,6 +29,12 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
             ("charge_with_any_token",
              "Can start and stop charging with any token ID (even if it's not in the database)"),
         ]
+        constraints = [
+            models.UniqueConstraint(fields=['uid', 'ocpi_master'], name='unique_token_uid_per_ocpimaster')
+        ]
+        indexes = [
+            models.Index(fields=['uid', 'ocpi_master']),
+        ]
 
     ocpi_serializer_class = 'ocpi22.ocpi.serializers.TokenSerializer'
     ocpi_module_name = OcpiModuleEnum.TOKENS
@@ -48,7 +54,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
     # If this is a APP_USER or AD_HOC_USER Token, it will be a uniquely, by the eMSP, generated ID.
     # This field is named uid instead of id to prevent confusion with: contract_id.
-    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, unique=True, db_index=True,
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH,
                            verbose_name=_('UID'))
 
     type = models.CharField(max_length=11, choices=choices.TOKEN_TYPE_CHOICES, default='RFID',

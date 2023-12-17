@@ -16,6 +16,7 @@ import sentry_sdk
 from celery import shared_task
 from celery.schedules import crontab
 from django.conf import settings
+from django.http import HttpRequest
 from django.utils.module_loading import import_string
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
@@ -24,6 +25,7 @@ from sentry_sdk import capture_exception
 from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.ocpi_identities import Party
+from util import unwrap
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 zoined_token = os.environ.get('ZOINED_TOKEN')
@@ -187,8 +189,12 @@ def exchange_credentials(token, url):
 
 
 @shared_task(max_retries=2, retry_jitter=True, retry_backoff=120)
-def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects=0, **kwargs) -> None:
+def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects=0, credentials_id=None, **kwargs) -> None:
     from ocpi22 import logging
+    from ocpi22.models.credentials import Credentials
+
+    assert isinstance(credentials_id, int), f'credentials_id is missing: {credentials_id}'
+    credentials = Credentials.objects.get(pk=credentials_id)
 
     try:
         if not object_list:
@@ -210,7 +216,38 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects
                 for i in items:
                     try:
                         # TODO: Check that party matches with Credentials, don't allow third party data
-                        response = viewset().put(request=None, data=i, logentry=logentry_id)
+                        request = HttpRequest()
+                        request.party_specified_in_url = True
+                        party = Party(i.get('country_code'), i.get('party_id'))
+                        if not party:
+                            logging.error(f'Trying to pull data from {credentials}, ' \
+                                      f'but unable to determine party for {i}')
+                            continue
+                        if credentials.is_hub:
+                            # We accept data owned by any party if pulling from a hub
+                            from ocpi22.ocpi.auth import get_credentialsrole
+                            credentialsrole = get_credentialsrole(credentials=None,
+                                                                  party=party)
+                        else:
+                            # Not pulling from a hub, so the Credentials party must match
+                            credentialsrole = credentials.roles.first()
+                            ic(credentialsrole, credentialsrole.party)
+                            if credentialsrole.party != party:
+                                logging.error(f'Party {party} in the pulled data doesn not match party '
+                                              f'{credentialsrole.party} in the credentialsrole. '
+                                              'The other party may be spoofing a location of another operator.')
+                                continue
+
+                        # Check if we have pulled our own object
+                        from ocpi22.util import is_our_identifier
+                        if is_our_identifier(credentialsrole.party):
+                            logging.info(f'Party {party} in the pulled data matches our own party, not storing.')
+                            continue
+
+                        # Unwrap the decorated put function so that we can provide the suitable parameters directly
+                        func = unwrap(viewset.put)
+                        response = func(viewset(), request=None, data=i, logentry=logentry_id,
+                                        credentialsrole=credentialsrole)
                         if response.status_code >= status.HTTP_400_BAD_REQUEST:
                             raise Exception(response.data.get('status_message', '<no status message provided>'))
                     except Exception as e:
@@ -231,14 +268,10 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects
         countdown = random.randint(delay, int(1.5 * delay))
 
         if settings.BACKGROUND_SEND:
-            # logging.info(f'Scheduling the next pull for {kwargs.get("url")} in {countdown} seconds')
-            # logging.info(f'My default_queue: {app.conf.task_default_queue}')
-
-            # pull_objects.subtask((object_list, limit), kwargs=kwargs, countdown=countdown)
-            pull_objects.apply_async((object_list, limit, delay, logentry_id, total_objects),
+            pull_objects.apply_async((object_list, limit, delay, logentry_id, total_objects, credentials_id),
                                      kwargs=kwargs, countdown=countdown)
         else:
-            pull_objects(object_list, limit, delay, logentry_id, total_objects, **kwargs)
+            pull_objects(object_list, limit, delay, logentry_id, total_objects, credentials_id, **kwargs)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
         logging.error(f"Unable to pull objects: {e}", logentry=logentry_id)
 
@@ -249,7 +282,7 @@ def check_still_alive(credentials_id: int = None) -> None:
     from ocpi22 import logging
 
     if credentials_id:
-        credentials = None
+        credentials = Credentials.objects.none()
         time_since_last_connection = 0
         try:
             credentials: Credentials = Credentials.objects.get(pk=credentials_id)

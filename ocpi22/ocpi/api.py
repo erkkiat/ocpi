@@ -89,22 +89,27 @@ class TokenViewSet(OCPIListModelMixin,
     @certification_step(OcpiModuleEnum.TOKENS, 'PUT an individual Token',
                         subtopic='')
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, patch=False, version='2.2.1',
-            logentry=None, **_kwargs):
-        uid = uid or data.get('uid')
-
-        if not request.party_specified_in_url:
+            logentry=None, credentialsrole=None, certification=False) -> OCPIResponse:
+        if request and not request.party_specified_in_url:
             return OCPIResponseUrlParametersRequired('token')
 
-        token: Token = Token.get_if_exists(uid__iexact=uid, ocpi_master=request.credentialsrole)
+        uid = uid or data.get('uid')
+        return self.save_or_update(request, data, credentialsrole, uid, patch, version, logentry)
+
+    @staticmethod
+    def save_or_update(request, data, credentialsrole, uid, patch=False, version='2.2.1',
+            logentry=None) -> OCPIResponse:
+        assert uid, f'UID is a required parameter for TokenViewSet.save_or_update()'
+        token: Token = Token.get_if_exists(uid__iexact=uid, ocpi_master=credentialsrole)
         created = bool(not token)
         serializer = TokenSerializer(data=data, instance=token, partial=patch,
-                                     context={'version': version or request.version})
+                                     context={'version': version})
         if serializer.is_valid():
+            created_token = serializer.save(ocpi_master=credentialsrole)
             logging.info(
-                f'{"Creating" if created else "Updating"} Token {country_code}*{party_id} - {uid}.',
+                f'{"Creating" if created else "Updating"} {created_token}',
                 log_to_admin=True, logentry=logentry
             )
-            created_token = serializer.save(ocpi_master=request.credentialsrole)
             created_token.send_hub_updates()
             return OCPIResponse(serializer.data,
                                 http_status=status.HTTP_201_CREATED
@@ -463,20 +468,28 @@ class TariffViewSet(OCPIListModelMixin,
     @certification_step(OcpiModuleEnum.TARIFFS, 'PUT an individual Tariff',
                         subtopic='URL parameters are required by OCPI 2.2')
     def put(self, request, credentialsrole, uid=None, data=None, version='2.2.1',
-            logentry=None, **_kwargs) \
-            -> OCPIResponse:
+            logentry=None, certification=False) -> OCPIResponse:
+        assert isinstance(data, dict) and data, \
+            f'{self.__class__.__name__}: Data must be dict and have a value, not {data}'
+        assert isinstance(credentialsrole, CredentialsRole) and credentialsrole
         uid = uid or data.get('id')
 
-        if not request.party_specified_in_url:
+        if request and not request.party_specified_in_url:
             return OCPIResponseUrlParametersRequired('tariff')
 
+        return self.save_or_update(request, credentialsrole, uid, data, version, logentry)
+
+    @staticmethod
+    def save_or_update(request, credentialsrole, uid, data=None, version='2.2.1',
+            logentry=None) -> OCPIResponse:
+        assert uid, f'UID is a required parameter for TariffViewSet.save_or_update()'
         tariff: Tariff = Tariff.get_if_exists(uid__iexact=uid, ocpi_master=credentialsrole, archived=False)
         created = bool(not tariff)
         if tariff and tariff.is_ours():
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
                                 http_status=status.HTTP_401_UNAUTHORIZED,
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
-        serializer = TariffSerializer(instance=tariff, data=data, context={'version': version or request.version,
+        serializer = TariffSerializer(instance=tariff, data=data, context={'version': version,
                                                                            'request': request})
         if serializer.is_valid():
             logging.info(f'{"Creating" if created else "Updating"} Tariff {credentialsrole} - {uid}.',

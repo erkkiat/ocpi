@@ -2,6 +2,7 @@ import ocpi22.logging as logging
 
 from django.conf import settings
 
+from ocpi22.messages import messages
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location
 from ocpi22.choices import EndpointRoleEnum
@@ -54,3 +55,12 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
                                  retry_policy=dict(max_retries=3, interval_start=60 * 5))
     else:
         pull_objects(object_list, **kwargs)
+
+
+def admin_pull_all(modeladmin, request, queryset):
+    for credentials in queryset.all():
+        schedule_full_update(credentials)
+    messages.success(request, 'Full update queued for {} parties'.format(queryset.count()))
+
+
+admin_pull_all.short_description = 'Pull all OCPI objects'

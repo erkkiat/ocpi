@@ -45,30 +45,33 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
 
         @wraps(func)
         def wrapper(self, request, *args, **kwargs):
-            if 'credentialsrole' in kwargs:
+            if 'credentialsrole' in kwargs and kwargs['credentialsrole']:
                 raise ImproperlyConfigured(
                     'The decorator @requires_sender_role should be before @requires_credentialsrole'
                 )
-            data = kwargs.get('data')
-            data = data or request.data.get('data', request.data) \
-                if hasattr(request, 'data') else {}
+            assert isinstance(kwargs, dict), \
+                f'kwargs should be a dict, not a {type(kwargs)}.'
+            data = kwargs.get('data') or {}
+            if not data and hasattr(request, 'data') and request.data:
+                data = request.data
             # if require_data and (not data or not isinstance(data, dict)):
             #     return OCPIBadRequestResponse('Data is required in the request body.')
-            data = data.get('data', data) or {}
+            if data:
+                data = data.get('data', data) or {}
             headers = getattr(request, 'headers', None) or getattr(request, 'META', None)
             sender_party = get_sender_party(headers)
 
             if certification_steps and not certification_steps.headers and certify_check_ocpi_headers(headers):
                 certification_steps.headers.passed()
 
-            request.party_specified_in_url = bool(kwargs.get('country_code') and kwargs.get('party_id')) \
-                if request else None
+            if request:
+                setattr(request, 'party_specified_in_url', bool(kwargs.get('country_code') and kwargs.get('party_id')))
 
             country_code = kwargs.get('country_code',
                                       data.get('country_code', sender_party.country_code))
             party_id = kwargs.get('party_id', data.get('party_id', sender_party.party_id))
             if not country_code or not party_id:
-                return OCPIBadRequestResponse('Country code and party ID are required.')
+                return OCPIBadRequestResponse('Country code and party ID are required')
             if request.user.is_superuser or \
                     (hasattr(request, 'credentials') and getattr(request.credentials, 'is_hub', None)):
                 # Pick the right credentialsrole for the almighty

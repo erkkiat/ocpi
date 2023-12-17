@@ -396,3 +396,14 @@ def replace_links(result):
 
     pattern = r'\[([\w-]+)\]'  # Regular expression to match "[something]"
     return re.sub(pattern, replacer, result)
+
+
+def unwrap(func):
+    """
+    Unwrap a decorated function to provide direct access to the original function
+    @param func: A function decorated with one or more decorators
+    @return: Unwrapped (undecorated) function
+    """
+    if hasattr(func, '__wrapped__'):
+        return unwrap(func.__wrapped__)
+    return func

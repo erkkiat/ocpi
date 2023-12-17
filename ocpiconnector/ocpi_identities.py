@@ -195,8 +195,13 @@ def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Par
     return Party(country_code, party_id)
 
 
-def create_credentialsrole(party: Party, business_name, website='', role=OcpiRolesEnum.UNKNO,
+def create_credentialsrole(party: Party, business_name: str, website='', role=OcpiRolesEnum.UNKNO,
                            credentials=None) -> Optional['CredentialsRole']:
+    """
+    Create a CredentialsRole object for the given party, business name, website and role.
+    Use only for creating our own CredentialsRole objects. If you use this for other parties, they will not have
+    any Credentials tokens set, and communication will not be possible.
+    """
     from ocpi22.models.business_details import BusinessDetails
     from ocpi22.models.credentials import CredentialsRole
     bt, _created = BusinessDetails.objects.get_or_create(name__iexact=business_name,

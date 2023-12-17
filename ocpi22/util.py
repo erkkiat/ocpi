@@ -133,6 +133,9 @@ def check_ownership(request, ocpi_master, check_operator_id_from_request_data=Tr
 
 
 def matching_operator(request, country_code, party_id) -> bool:
+    """
+    Check that the request matches the given country_code and party_id
+    """
     if not hasattr(request, 'credentials'):
         return False
     if hasattr(request, 'user') and request.user.is_staff:
@@ -301,7 +304,7 @@ def calculate_partition(coordinate):
 #     """
 #     return list(filter(None, [source.get(i) for i in role_options if source.get(i)]))
 
-@cachetools.cached({})
+@cachetools.cached(cache=cachetools.Cache(maxsize=len(ocpi_identities)))
 def is_our_identifier(party: Party, identities=None) -> bool:
     """
     Check if the given country_code and party_id match one of our identities
@@ -729,7 +732,9 @@ def fetch_object(uid: str, party: Party = None, credentials=None, ocpi_module: O
     from ocpi22 import logging
     if data:
         viewset = import_string(ocpi_module.get_viewset())
-        response = viewset().put(request=None, data=data, version=version)
+        from ocpi22.ocpi.auth import get_credentialsrole
+        credentialsrole = get_credentialsrole(party, role)
+        response = viewset().put(request=None, data=data, credentialsrole=credentialsrole, version=version)
         if response.status_code in {200, 201}:
             logging.info(f'Fetched missing {ocpi_module.value} with id: "{uid}"')
             return True

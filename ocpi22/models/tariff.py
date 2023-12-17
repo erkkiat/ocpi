@@ -39,6 +39,12 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     class Meta:
         verbose_name = _('tariff')
         verbose_name_plural = _('tariffs')
+        # constraints = [  # Cannot constrain because there will be archived Tariffs with the same uid and ocpi_master
+        #     models.UniqueConstraint(fields=['uid', 'ocpi_master'], name='unique_tariff_uid_per_ocpimaster')
+        # ]
+        indexes = [
+            models.Index(fields=['uid', 'ocpi_master', 'archived'])
+        ]
 
     # MySQL didn't support Q-conditions
     # class Meta:

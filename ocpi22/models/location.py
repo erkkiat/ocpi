@@ -83,7 +83,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         verbose_name_plural = _('locations')
 
         constraints = [
-            models.UniqueConstraint(fields=['uid', 'suboperator', 'operator'], name='operator_suboperator_uid'),
+            models.UniqueConstraint(fields=['uid', 'ocpi_master'], name='unique_uid_per_ocpi_master'),
+        ]
+        indexes = [
+            models.Index(fields=['uid', 'ocpi_master']),
         ]
 
     upper_case_fields = ['postal_code', 'country', 'uid']

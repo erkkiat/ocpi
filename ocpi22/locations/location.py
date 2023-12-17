@@ -81,21 +81,30 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_credentialsrole
     @certification_step(OcpiModuleEnum.LOCATIONS, 'PUT a Location')
     def put(self, request, data, credentialsrole, uid=None, patch=False,
-            version='2.2.1', logentry=None, **_kwargs):
+            version='2.2.1', logentry=None, credentials=None, **_kwargs):
 
-        if not request.party_specified_in_url:
+        if request and not request.party_specified_in_url:
             return OCPIResponseUrlParametersRequired('location')
 
         uid = uid or data.get('id')
-        version = version or request.version
 
+        if not credentials and request and hasattr(request, 'credentials'):
+            credentials = request.credentials
+
+        return self.save_or_update(request, data, credentialsrole, uid, patch, version, logentry, credentials)
+
+    @staticmethod
+    def save_or_update(request, data, credentialsrole, uid, patch=False,
+            version='2.2.1', logentry=None, credentials=None):
+
+        assert uid, 'Location ID is a required parameter for LocationViewSet.save_or_update()'
         existing_location: Location = Location.get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )
-        patch = bool(patch or request.method == 'PATCH')
+
         serializer_class = Location.get_serializer_class(version)
         serializer = serializer_class(instance=existing_location, data=data, partial=patch,
-                                      context={'version': version, 'credentials': request.credentials,
+                                      context={'version': version, 'credentials': credentials,
                                                'party': credentialsrole.party, 'request': request})
         if serializer.is_valid():
             created = bool(not existing_location)
