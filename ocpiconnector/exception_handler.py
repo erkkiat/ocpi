@@ -1,7 +1,12 @@
 from functools import wraps
 
+from django.contrib import messages
+from django.core.exceptions import ImproperlyConfigured
+
 from django.db import IntegrityError
 from django.http import HttpRequest
+from django.shortcuts import redirect
+from requests import Timeout
 from rest_framework import status
 from rest_framework.exceptions import ValidationError, NotFound, APIException
 
@@ -99,3 +104,17 @@ def ocpi_exception_handler(func):
 
     return wrapper
 
+
+def view_exception_handler(redirect_url_name, view_name='your request'):
+    @wraps(view_exception_handler)
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except (ImproperlyConfigured, OCPIProtocolError, ValidationError, Timeout, OSError, IOError) as e:
+                messages.error(find_request_from_args(*args, **kwargs), f'An error occurred with {view_name}: {e}')
+                from util import reverse
+                return redirect(reverse(redirect_url_name))
+        return wrapper
+    return decorator

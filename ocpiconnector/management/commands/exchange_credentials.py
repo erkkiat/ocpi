@@ -14,7 +14,6 @@ from django.core.management.base import BaseCommand
 
 from certification.decorators import certification_step
 from ocpi22.choices import OcpiModuleEnum
-from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse, HashableDict
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
@@ -107,7 +106,6 @@ class Command(BaseCommand):
         parser.add_argument('token_a', type=str, help='The TOKEN_A provided by the other party')
         parser.add_argument('versions_endpoint_url', type=str, help='The versions URL provided by the other party')
 
-    @ocpi_exception_handler
     @certification_step(OcpiModuleEnum.CREDENTIALS, 'Establish new Credentials as a sender')
     def handle(self, *args, **options) -> bool:
         def heading(s):

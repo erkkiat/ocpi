@@ -24,9 +24,8 @@ from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi.util import OcpiModule, OCPIResponse
-from ocpiconnector.exceptions import OCPIProtocolError
-from ocpi22.util import ModelUtilMixin, generate_random_token, build_absolute_uri
-from ocpiconnector.exception_handler import ocpi_exception_handler
+from ocpi22.util import ModelUtilMixin, build_absolute_uri
+from ocpiconnector.exception_handler import view_exception_handler
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
@@ -312,7 +311,8 @@ class NewConnection(forms.Form):
     token_a = forms.CharField(max_length=64)
 
 
-@ocpi_exception_handler
+@view_exception_handler(redirect_url_name='admin:ocpi22_credentials_changelist',
+                        view_name='the Credentials registration')
 def new_connection(request):
     if not settings.PREMIUM:
         import premium
@@ -320,7 +320,6 @@ def new_connection(request):
     else:
         if request.method == 'POST':
             form = NewConnection(request.POST)
-            # ic(request.POST, form.fields)
             if form.is_valid():
                 from ocpiconnector.management.commands import exchange_credentials
                 command = exchange_credentials.Command()
