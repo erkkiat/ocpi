@@ -6,83 +6,83 @@ from django.db.transaction import atomic
 
 
 class Migration(migrations.Migration):
-    #
-    # There were issues with removing party_id.
+
+    # There were issues with removing Session.party_id.
     # You can use this code to force through all individual operations and get detailed error messages for the failed ones.
-    #
-    # def apply(self, project_state, schema_editor, collect_sql=False):
-    #     for operation in self.operations:
-    #         try:
-    #             # If this operation cannot be represented as SQL, place a comment
-    #             # there instead
-    #             if collect_sql:
-    #                 schema_editor.collected_sql.append("--")
-    #                 if not operation.reduces_to_sql:
-    #                     schema_editor.collected_sql.append(
-    #                         "-- MIGRATION NOW PERFORMS OPERATION THAT CANNOT BE WRITTEN AS SQL:"
-    #                     )
-    #                 schema_editor.collected_sql.append("-- %s" % operation.describe())
-    #                 schema_editor.collected_sql.append("--")
-    #                 if not operation.reduces_to_sql:
-    #                     continue
-    #             # Save the state before the operation has run
-    #             old_state = project_state.clone()
-    #             operation.state_forwards(self.app_label, project_state)
-    #             # Run the operation
-    #             atomic_operation = operation.atomic or (self.atomic and operation.atomic is not False)
-    #             if not schema_editor.atomic_migration and atomic_operation:
-    #                 # Force a transaction on a non-transactional-DDL backend or an
-    #                 # atomic operation inside a non-atomic migration.
-    #                 with atomic(schema_editor.connection.alias):
-    #                     operation.database_forwards(self.app_label, schema_editor, old_state, project_state)
-    #             else:
-    #                 # Normal behaviour
-    #                 operation.database_forwards(self.app_label, schema_editor, old_state, project_state)
-    #         except Exception as e:
-    #             print(operation, e)
-    #     return project_state
-    #
-    # def unapply(self, project_state, schema_editor, collect_sql=False):
-    #     # Construct all the intermediate states we need for a reverse migration
-    #     to_run = []
-    #     new_state = project_state
-    #     # Phase 1
-    #     for operation in self.operations:
-    #         # If it's irreversible, error out
-    #         if not operation.reversible:
-    #             raise IrreversibleError("Operation %s in %s is not reversible" % (operation, self))
-    #         # Preserve new state from previous run to not tamper the same state
-    #         # over all operations
-    #         new_state = new_state.clone()
-    #         old_state = new_state.clone()
-    #         operation.state_forwards(self.app_label, new_state)
-    #         to_run.insert(0, (operation, old_state, new_state))
-    #
-    #     # Phase 2
-    #     for operation, to_state, from_state in to_run:
-    #         try:
-    #             if collect_sql:
-    #                 schema_editor.collected_sql.append("--")
-    #                 if not operation.reduces_to_sql:
-    #                     schema_editor.collected_sql.append(
-    #                         "-- MIGRATION NOW PERFORMS OPERATION THAT CANNOT BE WRITTEN AS SQL:"
-    #                     )
-    #                 schema_editor.collected_sql.append("-- %s" % operation.describe())
-    #                 schema_editor.collected_sql.append("--")
-    #                 if not operation.reduces_to_sql:
-    #                     continue
-    #             atomic_operation = operation.atomic or (self.atomic and operation.atomic is not False)
-    #             if not schema_editor.atomic_migration and atomic_operation:
-    #                 # Force a transaction on a non-transactional-DDL backend or an
-    #                 # atomic operation inside a non-atomic migration.
-    #                 with atomic(schema_editor.connection.alias):
-    #                     operation.database_backwards(self.app_label, schema_editor, from_state, to_state)
-    #             else:
-    #                 # Normal behaviour
-    #                 operation.database_backwards(self.app_label, schema_editor, from_state, to_state)
-    #         except Exception as e:
-    #             print(operation, e)
-    #     return project_state
+
+    def apply(self, project_state, schema_editor, collect_sql=False):
+        for operation in self.operations:
+            try:
+                # If this operation cannot be represented as SQL, place a comment
+                # there instead
+                if collect_sql:
+                    schema_editor.collected_sql.append("--")
+                    if not operation.reduces_to_sql:
+                        schema_editor.collected_sql.append(
+                            "-- MIGRATION NOW PERFORMS OPERATION THAT CANNOT BE WRITTEN AS SQL:"
+                        )
+                    schema_editor.collected_sql.append("-- %s" % operation.describe())
+                    schema_editor.collected_sql.append("--")
+                    if not operation.reduces_to_sql:
+                        continue
+                # Save the state before the operation has run
+                old_state = project_state.clone()
+                operation.state_forwards(self.app_label, project_state)
+                # Run the operation
+                atomic_operation = operation.atomic or (self.atomic and operation.atomic is not False)
+                if not schema_editor.atomic_migration and atomic_operation:
+                    # Force a transaction on a non-transactional-DDL backend or an
+                    # atomic operation inside a non-atomic migration.
+                    with atomic(schema_editor.connection.alias):
+                        operation.database_forwards(self.app_label, schema_editor, old_state, project_state)
+                else:
+                    # Normal behaviour
+                    operation.database_forwards(self.app_label, schema_editor, old_state, project_state)
+            except Exception as e:
+                print(operation, e)
+        return project_state
+
+    def unapply(self, project_state, schema_editor, collect_sql=False):
+        # Construct all the intermediate states we need for a reverse migration
+        to_run = []
+        new_state = project_state
+        # Phase 1
+        for operation in self.operations:
+            # If it's irreversible, error out
+            if not operation.reversible:
+                raise IrreversibleError("Operation %s in %s is not reversible" % (operation, self))
+            # Preserve new state from previous run to not tamper the same state
+            # over all operations
+            new_state = new_state.clone()
+            old_state = new_state.clone()
+            operation.state_forwards(self.app_label, new_state)
+            to_run.insert(0, (operation, old_state, new_state))
+
+        # Phase 2
+        for operation, to_state, from_state in to_run:
+            try:
+                if collect_sql:
+                    schema_editor.collected_sql.append("--")
+                    if not operation.reduces_to_sql:
+                        schema_editor.collected_sql.append(
+                            "-- MIGRATION NOW PERFORMS OPERATION THAT CANNOT BE WRITTEN AS SQL:"
+                        )
+                    schema_editor.collected_sql.append("-- %s" % operation.describe())
+                    schema_editor.collected_sql.append("--")
+                    if not operation.reduces_to_sql:
+                        continue
+                atomic_operation = operation.atomic or (self.atomic and operation.atomic is not False)
+                if not schema_editor.atomic_migration and atomic_operation:
+                    # Force a transaction on a non-transactional-DDL backend or an
+                    # atomic operation inside a non-atomic migration.
+                    with atomic(schema_editor.connection.alias):
+                        operation.database_backwards(self.app_label, schema_editor, from_state, to_state)
+                else:
+                    # Normal behaviour
+                    operation.database_backwards(self.app_label, schema_editor, from_state, to_state)
+            except Exception as e:
+                print(operation, e)
+        return project_state
 
     dependencies = [
         ('ocpi22', '0034_auto_20230819_0823'),
@@ -126,14 +126,6 @@ class Migration(migrations.Migration):
             name='party_id',
         ),
         migrations.RemoveField(
-            model_name='session',
-            name='country_code',
-        ),
-        migrations.RemoveField(
-            model_name='session',
-            name='party_id',
-        ),
-        migrations.RemoveField(
             model_name='tariff',
             name='country_code',
         ),
@@ -166,6 +158,19 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(
             model_name='token',
+            name='party_id',
+        ),
+        migrations.RemoveField(
+            model_name='session',
+            name='country_code',
+        ),
+        migrations.AlterField(
+            model_name='session',
+            name='party_id',
+            field=models.CharField(blank=True, max_length=3, null=True),
+        ),
+        migrations.RemoveField(  # This will generally fail, no reason found so far
+            model_name='session',
             name='party_id',
         ),
     ]
