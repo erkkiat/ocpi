@@ -95,6 +95,8 @@ REQUIRE_WALLET_BALANCE = bool(_env_bool('REQUIRE_WALLET_BALANCE', True) and USE_
 OCPI_DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 OCPI_22_URL = '/ocpi/2.2/'
 OCPI_221_URL = '/ocpi/2.2.1/'
+VERSION_URLS = {OCPI_22_URL, OCPI_221_URL}
+VERSIONS = {'2.2', '2.2.1'}
 
 # How often to check that other party is alive
 STILL_ALIVE_FREQUENCY = os.environ.get('STILL_ALIVE_FREQUENCY', 60 * 5)

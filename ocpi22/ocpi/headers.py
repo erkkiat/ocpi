@@ -3,7 +3,7 @@ import cachetools
 from ocpiconnector.ocpi_identities import Party
 
 
-@cachetools.cached(cache={})
+@cachetools.cached(cache=cachetools.Cache(maxsize=1))
 def get_platform_revision():
     try:
         with open('version.txt', 'r') as f:

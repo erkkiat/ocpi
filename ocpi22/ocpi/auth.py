@@ -31,14 +31,16 @@ class OcpiAuthTypes(Enum):
 def check_auth_token(request, token: str) -> bool:
     @cache
     def allowed_for_token_a():
-        return (
+        # ('/ocpi/versions/', '/ocpi/2.2/credentials/', '/ocpi/2.2.1/credentials/', '/ocpi/2.2/', '/ocpi/2.2.1/', '/')
+        result = {
             reverse('base-versions'),  # The "Versions" endpoint
-            reverse('credentials-list', args=['2.2']),  # Getting the Credentials
-            reverse('credentials-list', args=['2.2.1']),  # Getting the Credentials
-            settings.OCPI_22_URL,  # The "Endpoints" endpoint
-            settings.OCPI_221_URL,  # The "Endpoints" endpoint
+            # reverse('credentials-list', args=['2.2']),  # Getting the Credentials
+            # reverse('credentials-list', args=['2.2.1']),  # Getting the Credentials
             '/',  # The front page, which serves as HTML page and versions endpoint
-        )
+        }
+        result.update(settings.VERSION_URLS)
+        result.update(reverse('credentials-list', args=[version]) for version in settings.VERSIONS)
+        return result
 
     # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
     try:
