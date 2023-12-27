@@ -15734,7 +15734,6 @@
     "pk": 435,
     "fields": {
       "ocpi_master": 999,
-      "ocpi_master": 999,
       "uid": "FI*000*S*B58DDC4D3B304A47AD623C22147",
       "internal_reference": null,
       "reservation_id": null,
@@ -15769,7 +15768,6 @@
     "model": "ocpi22.session",
     "pk": 999,
     "fields": {
-      "ocpi_master": 999,
       "ocpi_master": 999,
       "uid": "FI*000*S*PERFORMANCE*TEST",
       "internal_reference": null,
