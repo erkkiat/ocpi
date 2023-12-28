@@ -49,12 +49,12 @@ def check_auth_token(request, token: str) -> bool:
         token_ascii = base64.b64decode(token).decode('ascii')
         request.ocpi_auth = OcpiAuthTypes.NONE
         request.ocpi_party = None
-        registering_credentials = request.path in allowed_for_token_a()
+        request.registering_credentials = request.path in allowed_for_token_a()
 
         # First check for TOKEN_A, are we still getting to know each other?
         credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
         if credentials_matches.count():
-            if not registering_credentials:
+            if not request.registering_credentials:
                 raise exceptions.NotAuthenticated(  # HTTP 401
                     f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
                 )
@@ -63,14 +63,12 @@ def check_auth_token(request, token: str) -> bool:
             # NOTE: At a given time, one party may possess all three tokens while the other has only two
 
             credentials = credentials_matches.first()
-            request.ocpi_auth = OcpiAuthTypes.TOKEN_A
             request.credentials = credentials
         else:
             # Or are we already best friends?
             credentials_matches = Credentials.objects.filter(ours=token_ascii, valid=True)
             if credentials_matches.count():
                 credentials = credentials_matches.first()
-                request.ocpi_auth = OcpiAuthTypes.FINAL
                 request.credentials = credentials
             else:
                 raise NotAuthenticated(  # HTTP 401
@@ -87,7 +85,7 @@ def check_auth_token(request, token: str) -> bool:
                 )
             else:
                 request.ocpi_party = get_credentialsrole(request.credentials, party=sender_party)
-                if not request.ocpi_party and not registering_credentials:
+                if not request.ocpi_party and not request.registering_credentials:
                     request.credentials = None
                     raise NotAuthenticated(f'Sender party {sender_party} is not allowed for these credentials')
 
@@ -161,14 +159,18 @@ class OCPIPermission(DjangoModelPermissions):
         # Remove the "Token" keyword if present to get just the token value
         token = self.get_token(request)
 
-        # Check for token authentication, secondarily basic auth
-        if check_auth_token(request, token) and (request.ocpi_auth == OcpiAuthTypes.TOKEN_A or request.ocpi_party):
+        # Check for token authentication
+        if check_auth_token(request, token) and (request.registering_credentials or request.ocpi_party):
             return True
 
+        # Check for basic authentication
         if view and (hasattr(view, 'publicly_visible') or super().has_permission(request, view)):
             return True
 
+        # Allow access to public views
         if request.path in self.public_views:
             return True
 
+        from ocpi22 import logging
+        logging.warning(f'No valid authentication for {request.path} (token: {token})')
         raise exceptions.NotAuthenticated

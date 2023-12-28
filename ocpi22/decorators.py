@@ -111,7 +111,7 @@ def requires_credentialsrole(func):
     Used for any method that receives a country_code and a party_id.
     This decorator finds the corresponding credentialsrole
     and changes the country_code and party_id arguments to
-    a credentialsrole object for the decorated function.
+    a credentialsrole object before calling the decorated function.
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
