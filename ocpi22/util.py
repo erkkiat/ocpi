@@ -147,6 +147,7 @@ def matching_operator(request, country_code, party_id) -> bool:
 
 CURRENCY_CHOICES = (
     ('EUR', 'Euro'),
+    ('USD', 'United States dollar'),
     ('ALL', 'Albanian lek'),
     ('BYN', 'Belarusian ruble'),
     ('BAM', 'Bosnia and Herzegovina convertible mark'),
