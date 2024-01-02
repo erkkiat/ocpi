@@ -3,6 +3,7 @@ import csv
 import hashlib
 import secrets
 import urllib.parse
+from abc import ABC
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -11,6 +12,7 @@ from typing import Optional, Any, Union
 
 import pytz
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import QuerySet
 from django.utils.translation import gettext as _
 
 import cachetools
@@ -636,7 +638,11 @@ class OCPIVersioning(versioning.BaseVersioning):
         return '2.2.1'
 
 
-class OCPIListModelMixin:
+class OCPIListModelMixin(ABC):
+    @classmethod
+    def get_queryset(cls):
+        return QuerySet().none()
+
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         serializer_class = self.get_serializer_class() \
