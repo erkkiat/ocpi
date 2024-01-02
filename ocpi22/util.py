@@ -639,9 +639,9 @@ class OCPIVersioning(versioning.BaseVersioning):
 
 
 class OCPIListModelMixin(ABC):
-    @classmethod
-    def get_queryset(cls):
-        return QuerySet().none()
+    # @classmethod
+    # def get_queryset(cls):
+    #     return QuerySet().none()
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
