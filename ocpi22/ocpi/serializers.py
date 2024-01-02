@@ -37,8 +37,8 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
                   'contract_id', 'visual_number', 'issuer', 'group_id',
                   'valid', 'whitelist', 'language', 'default_profile_type', 'last_updated']
 
-    country_code = CiStringField(source='ocpi_master.country_code')
-    party_id = CiStringField(source='ocpi_master.party_id')
+    country_code = CiStringField(source='ocpi_master.country_code', default='--')
+    party_id = CiStringField(source='ocpi_master.party_id', default='---')
 
     whitelist = CiStringChoiceField(required=False, choices=Token.WHITELIST_CHOICES)
     default_profile_type = CiStringChoiceField(required=False, choices=Token.PROFILE_TYPE_CHOICES)

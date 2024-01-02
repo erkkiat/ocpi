@@ -86,6 +86,7 @@ class TokenViewSet(OCPIListModelMixin,
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
+    @requires_credentialsrole
     @certification_step(OcpiModuleEnum.TOKENS, 'PUT an individual Token',
                         subtopic='')
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, patch=False, version='2.2.1',
@@ -467,7 +468,7 @@ class TariffViewSet(OCPIListModelMixin,
     @requires_credentialsrole
     @certification_step(OcpiModuleEnum.TARIFFS, 'PUT an individual Tariff',
                         subtopic='URL parameters are required by OCPI 2.2')
-    def put(self, request, credentialsrole, uid=None, data=None, version='2.2.1',
+    def put(self, request, credentialsrole, uid=None, country_code=None, party_id=None, data=None, version='2.2.1',
             logentry=None, certification=False) -> OCPIResponse:
         assert isinstance(data, dict) and data, \
             f'{self.__class__.__name__}: Data must be dict and have a value, not {data}'
