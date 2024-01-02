@@ -47,6 +47,14 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             return f'{self.name.capitalize()}'
         return 'Locations'
 
+    def get_queryset(self):
+        criteria = Q()
+        if ocpi_platform.is_hub:
+            agreed_parties = get_partners(self.request)
+            criteria = Q(ocpi_master__in=agreed_parties)
+        return Location.objects.filter(criteria).order_by('created')
+
+    @ocpi_exception_handler
     @requires_premium
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
