@@ -47,6 +47,11 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     last_updated = UTCDateTimeField(required=False)
 
 
+class TokenFlatSerializer(TokenSerializer):
+    country_code = serializers.CharField(default='--')
+    party_id = serializers.CharField(default='---')
+
+
 class PriceComponentSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = PriceComponent
@@ -479,6 +484,19 @@ class AuthorizeSerializer(serializers.Serializer):
 
 # class MspAuthorizationResponseSerializer(serializers.Serializer):
 #     result = serializers.ChoiceField(choices=AuthorizationEnum.choices)
+
+
+class LocationReferencesSerializer(serializers.Serializer):
+    location_id = ...
+    evse_ids = ...
+
+
+class AuthorizationInfoSerializer(serializers.Serializer):
+    allowed = serializers.ChoiceField(choices=choices.AuthorizationEnum.choices)
+    token = TokenFlatSerializer()
+    location = LocationReferencesSerializer(required=False, allow_null=True)
+    authorization_reference = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    info = DisplayTextSerializer(required=False, allow_null=True, many=True)
 
 
 class InvoicingCallbackSerializer(CallbacksSerializer):

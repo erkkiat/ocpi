@@ -1,3 +1,4 @@
+import dataclasses
 import json
 from datetime import time, date
 from functools import reduce
@@ -501,8 +502,8 @@ class ChargePointViewSet(FlowchartViewSet):
                     if isinstance(token, str) and authorization:
                         # This is an AD_HOC_USER or APP_USER Token
                         # eMSP has already authorized this AD HOC token for 15 minutes
-                        token = AdhocToken(uid=token, valid=True, owner=authorization.party,
-                                           type=authorization.token.type)
+                        token = AdhocToken(uid=token, valid=True, owner=authorization.get_token_party(),
+                                           type=authorization.token.get('type', ''))
 
                     if not authorization:
                         token_admin = reverse('admin:ocpi22_token_changelist')
@@ -526,21 +527,7 @@ class ChargePointViewSet(FlowchartViewSet):
                                                    f'Make sure to use the Token "{get_token_id(token)}", '
                                                    f'which has been authorized. The authorization expires in 15 minutes.'))
 
-                    return Response(
-                        dict(
-                            allowed=authorization.allowed,
-                            status_text=get_language('xx', authorization.info) or
-                                        get_language('en', authorization.info) or '',
-                            display_text=authorization.info or '',
-                            evse_id=evse.uid,
-                            token_id=token.uid,
-                            token_type=token.type,
-                            billed_to=token.party(),
-                            authorization_reference=authorization.authorization_reference,
-                            authorization_method=authorization.auth_method,
-                        ), status=status.HTTP_200_OK if authorization.allowed == AuthorizationEnum.ALLOWED
-                        else status.HTTP_401_UNAUTHORIZED
-                    )
+                    return Response(dataclasses.asdict(authorization), status=authorization.get_http_status())
                 else:
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

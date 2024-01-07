@@ -20,6 +20,7 @@ from ocpi22.decorators import requires_sender_role, requires_credentialsrole, re
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
+from ocpi22.tokens.auth import authorize_token, TokenAuthorization
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse, with_trailing_slash
 from rest_framework.viewsets import GenericViewSet
@@ -47,15 +48,32 @@ from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocp
     generate_auth_reference, OCPIResponseUrlParametersRequired
 from ocpi22.credentials.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles, select_version, get_endpoints
-from ocpiconnector.ocpi_identities import ocpi_platform, Party, get_our_party
+from ocpiconnector.ocpi_identities import ocpi_platform, Party, get_our_party, get_our_credentialsrole
 from premium import requires_premium
 
 
 # Todo: In case a PATCH request fails, the client is expected to call the GET method to check the state
 #  of the object in the other party’s system. If the object doesn’t exist, the client should do a PUT.
 
-# Todo: Only requests/responses from Function Modules: such as: Tokens, Locations, CDRs etc. SHALL be routed,
-#  so need the routing headers.
+
+def make_ocpi_response(authorization: TokenAuthorization) -> OCPIResponse:
+    ocpi_status = dict(
+        ALLOWED=Ocpi.OK,
+        BLOCKED=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
+        EXPIRED=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
+        NO_CREDIT=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
+        NOT_ALLOWED=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
+    ).get(authorization.allowed, Ocpi.ServerError.GENERIC_SERVER_ERROR)
+    http_status = authorization.get_http_status()
+    status_message = authorization.get_status_message()
+
+    return OCPIResponse(
+        dict(
+            allowed=authorization.allowed,
+            token=authorization.token,
+            authorization_reference=authorization.authorization_reference,
+        ), status_code=ocpi_status, status=http_status, status_message=status_message
+    )
 
 
 class TokenViewSet(OCPIListModelMixin,
@@ -129,7 +147,7 @@ class TokenViewSet(OCPIListModelMixin,
     @csrf_exempt
     @certification_step(OcpiModuleEnum.TOKENS, 'Send authorization request',
                         subtopic='')
-    def authorize(self, request: Request, token_uid, **_kwargs) -> OCPIResponse:
+    def authorize(self, request: Request, token_uid, **kwargs) -> OCPIResponse:
         allowed = AuthorizationEnum.ALLOWED
         ocpi_status = Ocpi.OK
         http_status = 200
@@ -140,20 +158,25 @@ class TokenViewSet(OCPIListModelMixin,
         location = None
 
         try:
-            token: Token = Token.get_if_exists(uid=token_uid)
-            if not token:
+            if request.data:
+                serializer = AuthorizeSerializer(data=request.data)
+                if serializer.is_valid():
+                    location: Location = serializer.validated_data.get('location')
+                else:
+                    return OCPIBadRequestResponse(data=serializer.errors)
+
+            if ocpi_platform.is_hub:
+                return self.hub_authorize(request, token_uid, location)
+
+            token: Token = Token.get_if_exists(uid=token_uid, ocpi_master=get_our_credentialsrole(OcpiRolesEnum.EMSP))
+            if not token and not ocpi_platform.is_hub:
                 # OCPI 2.2: If the token is not known, the response SHALL contain the status code:
                 # 2004: Unknown Token, and no data field.
                 return OCPIResponse(status_code=Ocpi.ClientError.UNKNOWN_TOKEN,
                                     status=status.HTTP_404_NOT_FOUND,
                                     status_message=f'Unknown Token "{token_uid}"')
-            if request.data:
-                serializer = AuthorizeSerializer(data=request.data)
-                # ic(token, request.data, serializer.initial_data)
-                if serializer.is_valid():
-                    location: Location = serializer.validated_data.get('location')
-                else:
-                    return OCPIBadRequestResponse(data=serializer.errors)
+
+            logging.info(f'Authorization request received for our token {token_uid} for location {location}.')
 
             if token.language:
                 user_language = token.language.lower()
@@ -234,6 +257,14 @@ class TokenViewSet(OCPIListModelMixin,
         token = Token.objects.get(ocpi_master=credentialsrole, uid=uid)
         serializer = TokenSerializer(token, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
+
+    @staticmethod
+    def hub_authorize(request, token, location) -> OCPIResponse:
+        """
+        Handle a POST request for a token authorization as a hub. Forward the authorization request.
+        """
+        authorization: TokenAuthorization = authorize_token(token, location, request=request)
+        return make_ocpi_response(authorization)
 
 
 class CdrViewSet(OCPIListModelMixin,

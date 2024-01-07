@@ -23,3 +23,6 @@ class AdhocToken:
 
     def __str__(self):
         return f'{self.party()}: {self.type} {self.uid}'
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
