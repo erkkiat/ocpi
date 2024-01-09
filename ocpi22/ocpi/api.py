@@ -147,14 +147,10 @@ class TokenViewSet(OCPIListModelMixin,
     @certification_step(OcpiModuleEnum.TOKENS, 'Send authorization request',
                         subtopic='')
     def authorize(self, request: Request, token_uid, **kwargs) -> OCPIResponse:
-        allowed = AuthorizationEnum.ALLOWED
-        ocpi_status = Ocpi.OK
-        http_status = 200
         info = None
-        status_message = 'Success'
         user_language = 'en'
         max_price = None
-        location = None
+        location = Location.objects.none
 
         try:
             if request.data:
@@ -183,59 +179,46 @@ class TokenViewSet(OCPIListModelMixin,
             if not token.valid:
                 allowed = AuthorizationEnum.EXPIRED
                 info = MessageTexts.get('TOKEN_NOT_VALID')
-                ocpi_status = 2000
-                http_status = status.HTTP_401_UNAUTHORIZED
-                status_message = 'Your charging token is not valid at the moment'
-                message_user(status_message, '+358405480238')
-
-            # Todo: Update tests for internal accounting and create tests for MSP authorize callback
-            webhook_data = {'token_id': token_uid, 'location_id': location.uid if location else None}
-            msp_response = send_to_webhook(
-                webhook_data,
-                MSPAuthorizeCallbackSerializer,
-                timeout=28)  # Just under the 30 second limit which is maximum for Heroku requests
-            if msp_response:
-                serializer = MSPAuthorizeCallbackSerializer.ResponseSerializer(data=msp_response)
-                if serializer.is_valid():
-                    allowed = msp_response.get('result', 'NOT_ALLOWED').upper()
-                    max_price = msp_response.get('max_price')
-                else:
-                    allowed = 'NOT_ALLOWED'
-                http_status = dict(
-                    ALLOWED=status.HTTP_200_OK
-                ).get(allowed, status.HTTP_401_UNAUTHORIZED)
-                ocpi_status = dict(
-                    ALLOWED=Ocpi.OK,
-                ).get(allowed, Ocpi.ServerError.GENERIC_SERVER_ERROR)
             else:
-                if settings.REQUIRE_WALLET_BALANCE and token.total_balance_float() < 1.0:
-                    log_error(request, f'Token {token} has no balance')
-                    allowed = AuthorizationEnum.NO_CREDIT
-                    info = MessageTexts.get('NO_BALANCE')
-                    ocpi_status = Ocpi.ClientError.GENERIC_CLIENT_ERROR
-                    http_status = status.HTTP_401_UNAUTHORIZED
-                    status_message = get_language(user_language, info)
-                    # message_user(status_message, '+358405480238')
-
-            # if allowed == AuthorizationEnum.ALLOWED:
-            #     message = UserMessages.approve_charging.get(user_language)
-            #     ic(message)
-            #     message_user(message, '+358405480238', location=location_name,
-            #                  price=prices, url="http://secureautocharge.com/132244/")
+                # Todo: Update tests for internal accounting and create tests for MSP authorize callback
+                webhook_data = {'token_id': token_uid, 'location_id': location.uid if location else None}
+                msp_response = send_to_webhook(
+                    webhook_data,
+                    MSPAuthorizeCallbackSerializer,
+                    timeout=28)  # Just under the 30 second limit which is maximum for Heroku requests
+                if msp_response:
+                    serializer = MSPAuthorizeCallbackSerializer.ResponseSerializer(data=msp_response)
+                    if serializer.is_valid():
+                        allowed = msp_response.get('result', 'NOT_ALLOWED').upper()
+                        max_price = msp_response.get('max_price')
+                    else:
+                        allowed = 'NOT_ALLOWED'
+                else:
+                    if settings.REQUIRE_WALLET_BALANCE and token.total_balance_float() < 1.0:
+                        log_error(request, f'Token {token} has no balance')
+                        allowed = AuthorizationEnum.NO_CREDIT
+                        info = MessageTexts.get('NO_BALANCE')
+                    else:
+                        allowed = AuthorizationEnum.NOT_ALLOWED
+                        info = MessageTexts.get('PROTOCOL_ERROR')
 
             serializer = TokenSerializer(instance=token, context={'version': request.version})
+
             authorization_reference = generate_auth_reference() if allowed == AuthorizationEnum.ALLOWED else ''
             if authorization_reference:
                 # Todo: Figure out the balance for the token's owner and set the max_price accordingly
                 Authorization.objects.create(authorization_reference=authorization_reference, max_price=max_price)
                 logging.info(f'Created authorization reference {authorization_reference} with max price {max_price}')
-            return OCPIResponse(
-                dict(
-                    allowed=allowed,
-                    token=serializer.data,
-                    authorization_reference=authorization_reference,
-                ), status_code=ocpi_status, status=http_status, status_message=status_message
-            )
+
+            location_dict = {'location_id': location.uid, 'evse_uids': [e.uid for e in location.evses.all()]}
+
+            return make_ocpi_response(TokenAuthorization(
+                allowed=allowed,
+                token=serializer.data,
+                info=info,
+                location=location_dict,
+                authorization_reference=authorization_reference,
+            ))
         except ValueError as e:
             return OCPIResponse(
                 {},

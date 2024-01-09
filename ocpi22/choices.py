@@ -270,7 +270,7 @@ class MessageTexts:
         # dict(language='FI', text='Lataustunniste on hyväksytty'),
         TOKEN_NOT_VALID = _make_texts(_('Your token is no longer valid'))
         # dict(language='FI', text='Lataustunniste ei ole enää voimassa'),
-        PROTOCOL_ERROR = _make_texts(_('There is a protocol error with the CPO charge point management system'))
+        PROTOCOL_ERROR = _make_texts(_('There is a communication error with one of the service provider internal systems'))
 
         _texts = dict(
             START_ACCEPTED=PREPARING_TO_CHARGE,

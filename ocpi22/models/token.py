@@ -142,6 +142,14 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     def __hash__(self):
         return util.member_hash(self)
 
+    def get(self, key, default=None):
+        """Mimic a dict, so that we can use the same code for Token and AdhocToken as well as dicts and OrderedDicts"""
+        return getattr(self, key, default)
+
+    @property
+    def owner(self):
+        return self.ocpi_master.party
+
     def save(self, *args, raw=False, **kwargs):
         """
         Save the Token object to the database.

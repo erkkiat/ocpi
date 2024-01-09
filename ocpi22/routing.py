@@ -46,6 +46,11 @@ class Route:
     def __bool__(self):
         return bool(self.url and self.credentials_id)
 
+    @property
+    def credentials(self):
+        from ocpi22.models.credentials import Credentials
+        return Credentials.objects.get(pk=self.credentials_id)
+
 
 def get_hub_credentials() -> QuerySet:
     from ocpi22.models.credentials import Credentials

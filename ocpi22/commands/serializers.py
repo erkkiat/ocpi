@@ -6,7 +6,7 @@ from rest_framework import serializers
 from ocpi22 import choices
 from ocpi22.ocpi.serializers import LocationIdDictSerializer, StrictEvseUidSerializer
 from ocpi22.serializers import SerializerCleanedUp, UTCDateTimeField
-from ocpi22.util import CountryCodeField, PartyIdField, CiStringChoiceField
+from ocpi22.util import CiStringChoiceField
 
 pp = pprint.PrettyPrinter(indent=4).pprint
 
@@ -134,14 +134,6 @@ class UnlockConnectorSerializer(serializers.Serializer):
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         help_text='Connector.id of the Connector of this Location of which it is requested to unlock.'
     )
-
-
-class DisplayTextSerializer(serializers.Serializer):
-    # Language Code ISO 639-1.
-    language = serializers.CharField(max_length=2)
-
-    # Text to be displayed to a end user. No markup, html etc. allowed.
-    text = serializers.CharField(max_length=512)
 
 
 class CommandResponse(serializers.Serializer):

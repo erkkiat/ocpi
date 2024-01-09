@@ -39,6 +39,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
     lookup_field = "uid"
+    queryset = Location.objects.none()
 
     def get_view_name(self):
         if hasattr(self, 'kwargs') and 'uid' in self.kwargs:

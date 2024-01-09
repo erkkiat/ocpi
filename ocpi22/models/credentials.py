@@ -270,7 +270,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
     @property
     def party(self) -> Party:
-        return Party(self.country_code, self.party_id)
+        return Party(str(self.country_code), str(self.party_id))
 
     def party_str(self) -> str:
         return f'{self.country_code}*{self.party_id}'

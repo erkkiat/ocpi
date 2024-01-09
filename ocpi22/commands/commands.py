@@ -139,6 +139,7 @@ class CommandsViewSet(GenericViewSet):
             logging.info(f'Created session {session.uid} based on remote command from MSP.')
         else:
             logging.info(f'Found an existing session {session.uid}.')
+            # raise APIException(f'Session already exists')
 
         # Reservation may have started earlier, but charging session starts now
         session.start_date_time = datetime.now(pytz.utc)

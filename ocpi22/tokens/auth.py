@@ -1,11 +1,9 @@
-from urllib.parse import urljoin
-
 import pytz
-import requests
 from django.utils.datetime_safe import datetime
 from django.utils.safestring import mark_safe
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from django.conf import settings
+from rest_framework.utils.serializer_helpers import ReturnDict
 
 import ocpi22.logging as logging
 from dataclasses import dataclass, field
@@ -16,19 +14,16 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from ocpi22.tokens.token_async import authorize_with_all_msps_sync
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, AuthorizationEnum, TokenType
+from ocpi22.tokens.token_async import authorize_with_msps_sync
+from ocpi22.choices import OcpiModuleEnum, MessageTexts, AuthorizationEnum, TokenType, get_language
 from ocpi22.messages import messages
-from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.dataclasses import AdhocToken
-from ocpi22.ocpi.util import ocpi_post, Ocpi
 from ocpi22.routing import find_route, Route
-from ocpiconnector.ocpi_identities import get_our_party, Party
+from ocpiconnector.ocpi_identities import Party
 from ocpiconnector.util import Timer
-from util import with_trailing_slash, DistributedCache
+from util import DistributedCache
 
 
 @receiver(post_save, sender=Token)
@@ -67,18 +62,50 @@ def _get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
     return None, None, None, None
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass
 class TokenAuthorization:
     # Mandatory fields
     allowed: str
     token: Union[Token, AdhocToken, None]
 
     # Optional fields
-    responding_party: Party = field(default_factory=Party)
+    responding_party: str = ''
     authorization_reference: str = ''
     auth_method: str = ''
     location: dict = field(default_factory=dict)
     info: list = field(default_factory=list)
+    billed_to: str = ''
+    status_text: str = ''
+
+    @staticmethod
+    def get_token_owner(token) -> Party:
+        """
+        >>> TokenAuthorization.get_token_owner(None)
+        Party(country_code='', party_id='')
+        >>> TokenAuthorization.get_token_owner(dict(country_code='FI', party_id='EON'))
+        Party(country_code='FI', party_id='EON')
+        @param token:
+        @return:
+        """
+        if token:
+            if isinstance(token, Token):
+                return token.get_party()
+            if isinstance(token, (dict, OrderedDict, ReturnDict)):
+                return token.get('owner', '') or Party(token.get('country_code', ''), token.get('party_id', ''))
+        return Party()
+
+    def __post_init__(self):
+
+        self.billed_to = str(self.get_token_owner(self.token))
+        if not self.billed_to:
+            msg = f'Unable to determine who to bill for Token {self.token}'
+            logging.error(msg, request=None)
+            raise ValueError(msg)
+        language = getattr(self.token, 'language', 'en') if self.token else 'en'
+        ic(language)
+        if self.info:
+            self.status_text = get_language(language, self.info)
+            ic(self.status_text)
 
     def __bool__(self):
         return bool(self.auth_method)
@@ -134,7 +161,7 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
                     allowed='ALLOWED',
                     info=MessageTexts.get('TOKEN_ACCEPTED'),
                     token=AdhocToken(True, session.get_party(), token, TokenType.AD_HOC_USER),
-                    responding_party=session.get_party(),
+                    responding_party=str(session.get_party()),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                 )
@@ -145,7 +172,9 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
             # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
             messages.info(request, 'This Token is not in our database, '
                                    'so an authorization request was sent to all MSPs connected to us.')
-            authorization = authorize_with_all_msps_sync(token, location)
+            authorization = authorize_with_msps_sync(token, location)
+    if t:
+        logging.info(f'Authorization took {t}', request=request)
     if authorization.is_positive and authorization.authorization_reference:
         messages.info(request,
                       mark_safe(f'<b>"{authorization.get_token_party()}"</b> responded <b>"{authorization.allowed}"</b> and '
@@ -176,100 +205,22 @@ def _authorize_token(token: Union[Token, str], location=None, request=None) -> O
             auth_method=Session.WHITELIST,
         )
 
-    # ic(token.get_party())
-    route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)
-    # ic(route)
+    route: Route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)
     if not route or not token:
         logging.warning(f'Route ({route}) or Token ({token}) missing, cannot authorize Token', request=request)
         return None
 
-    return send_authorization_request(token, location, route, request=request)
+    # Let's send the authorization request using the same code as when sending request to multiple MSPs
+    # to keep things DRY
+    parties = [(route.url, route.token_base64, route.to.country_code, route.to.party_id, route.credentials)]
+    # data = {'location_id': location.uid, 'evse_uids': [e.uid for e in location.evses.all()]}
+    # result_dict = asyncio.run(authorize_with_msps(token, data, parties))
+
+    # return TokenAuthorization(**result_dict, auth_method=Session.AUTH_REQUEST) if result_dict else None
+    return authorize_with_msps_sync(token.uid, location, parties)
 
 
-def send_authorization_request(token: Union[Token, str], location: Location, route: Route, to: Party = None,
-                     request=None) -> Optional[TokenAuthorization]:
-    if isinstance(token, Token):
-        to = to or token.get_party()
-        token = token.uid
-    url = urljoin(with_trailing_slash(route.url), f'{token}/authorize')
-    result: requests.Response = ocpi_post(
-        url=url,
-        token_base64=route.token_base64,
-        to=to,
-        sender=get_our_party(OcpiRolesEnum.CPO),
-        data=dict(
-            location_id=location.uid,
-            evse_uids=[e.uid for e in location.evses.all()]
-        ) if location else dict()
-    )
-    logging.info(f'Authorization request to {to} finished in {result.elapsed}.')
-    messages.info(request, 'The authorization request to '
-                           f'{to} finished in {result.elapsed}. '
-                           'Positive authorizations are cached for 15 minutes.')
-    response = process_authorization_response(result, token, location, to, request=request)
-
-    func = {
-        AuthorizationEnum.ALLOWED.value: messages.success,
-    }.get(response.allowed, messages.error)
-    func(request, f'Response for OCPI authorization request was "{response.allowed}".')
-
-    return response
-
-
-def process_authorization_response(result, token, location, to, request=None) -> Optional[TokenAuthorization]:
-    if result.status_code == status.HTTP_200_OK:
-        data = result.json()
-        authorization = data.get('data', data)
-        allowed = authorization.get('allowed', AuthorizationEnum.NOT_ALLOWED)
-    else:
-        data = {}
-        authorization = {}
-        allowed = AuthorizationEnum.NOT_ALLOWED
-
-    if allowed != AuthorizationEnum.ALLOWED:
-        logging.warning(f'Result for authorizing token {token} at {location or "<not known>"} '
-                        f'from {to} (HTTP {result.status_code}), '
-                        f'response: {allowed}. ', request=request)
-        messages.error(request, f'Token {token} was not authorized by {to}: {allowed}.')
-        return TokenAuthorization(
-            allowed=allowed,
-            info=authorization.get('info', []),
-            token=token,
-            responding_party=token.get_party() if not isinstance(token, str) else Party('', ''),
-            authorization_reference=authorization.get('authorization_reference', ''),
-            auth_method=Session.AUTH_REQUEST,
-        )
-    if data.get('status_code') not in (Ocpi.OK, Ocpi.ClientError.UNKNOWN_TOKEN):
-        msg = f'Token {token} OCPI authorization request returned an error: {data}'
-        # messages.error(request, msg)
-        logging.error(msg, request=request)
-        return TokenAuthorization(
-            allowed=AuthorizationEnum.NOT_ALLOWED,
-            info=authorization.get('info', []),
-            token=token,
-            responding_party=token.get_party(),
-            authorization_reference=authorization.get('authorization_reference', ''),
-            auth_method=Session.AUTH_REQUEST,
-        )
-    try:
-        token_data = authorization.get('token', {})
-
-        # Find the corresponding CredentialsRole or create one
-        to = Party(token_data.pop('country_code', ''), token_data.pop('party_id', ''))
-        token_data['ocpi_master'] = get_credentialsrole(None, to, create=True)
-
-        token = Token(**token_data)
-    except (ValidationError, ValueError) as e:
-        msg = f'Cannot read Token data from authorization response from {to}: {e}'
-        # messages.error(request, msg)
-        logging.error(msg, request=request)
-        return None
-
-    return TokenAuthorization(
-        allowed=allowed,
-        info=authorization.get('info', []),
-        token=token,
-        responding_party=token.get_party(),
-        authorization_reference=authorization.get('authorization_reference', ''),
-        auth_method=Session.AUTH_REQUEST,
-    )
+    #   File "/Users/eki1/Documents/Work/Src/ocpiconnector/util.py", line 220, in retrieve
+    #     raise KeyError(f'Key {key} not found in Redis')
+    # KeyError: 'Key testserver:14d9ec0dce2fde81e53e1334eafe61dd not found in Redis'
+    # Unable to determine who to bill for Token

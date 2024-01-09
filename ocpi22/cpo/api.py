@@ -462,7 +462,6 @@ class ChargePointViewSet(FlowchartViewSet):
         except Evse.DoesNotExist as e:
             logging.error(f'Exception in CPO status_change(): {e}')
             evse_admin = reverse("admin:ocpi22_evse_changelist")
-            token_admin = reverse("admin:ocpi22_token_changelist")
             messages.info(request,
                           mark_safe('Seems that the EVSE you specified does not exist. You can '
                                     f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
@@ -599,7 +598,7 @@ class ChargePointViewSet(FlowchartViewSet):
                                 status_text='Token is (no longer) valid',
                                 token_id=get_token_id(token),
                             ), status=status.HTTP_401_UNAUTHORIZED)
-                        party = authorization.party
+                        party = authorization.token.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
                         if session:
                             session.connector = Connector.get_if_exists(uid=connector_id, evse=evse)

@@ -17,7 +17,7 @@ from ocpiconnector.ocpi_identities import Party, get_our_party
 from util import with_trailing_slash
 
 
-async def post_request(session, url, data, headers=None):
+async def post_request(session, url, data, headers=None) -> (int, dict):
     headers = headers or {}
     headers.update({'Content-Type': 'application/json', 'Accept:': 'application/json'})
     async with session.post(url, json=data, headers=headers) as response:
@@ -49,7 +49,7 @@ def process_task_result(successful_task):
     return None
 
 
-async def authorize_with_all_msps(token: Union[str, Token], data, parties):
+async def authorize_with_msps(token: Union[str, Token], data, parties):
     """
     Send authorization request asynchronously to all MSPs and wait for the first properly formatted response.
 
@@ -103,35 +103,45 @@ async def authorize_with_all_msps(token: Union[str, Token], data, parties):
         return result
 
 
-def authorize_with_all_msps_sync(token: str, location: Location = None):
+def authorize_with_msps_sync(token: str, location: Location = None, parties: list[tuple] = None):
     """
     When a Token ID is not known, we need to authorize with all MSPs we have a contract with.
+    This sync function calls an async function to process authorizations in parallel.
+    Defaults to a list of all MSPs, but typically a list of one is also useful.
+
     @param token: An unknown Token ID to be authorized
     @param location: An optional Location for which the charging is requested, this may be relevant for the MSP
+    @param parties: An optional tuple of parties to which the authorization request should be sent
     @return: TokenAuthorization or None
     """
-    # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
-    parties = find_endpoints_by_roles((OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS)
-    data = {'location_id': location.uid, 'evse_uids': [e.uid for e in location.evses.all()]}
-    response = asyncio.run(authorize_with_all_msps(token, data, parties))
-    responding_party = response.get('responding_party', '')  # See response.token to see who is actually paying the bill
     from ocpi22.tokens.auth import TokenAuthorization
     from ocpi22.ocpi.serializers import AuthorizationInfoSerializer
     from ocpi22 import logging
     # Todo: Add info texts for TokenNotAuthorized
     TokenNotAuthorized = TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, token=None)
-    if not response:
-        return TokenNotAuthorized
-    try:
-        serializer = AuthorizationInfoSerializer(data=response)
-        if serializer.is_valid():
-            from ocpi22.models.session import Session
-            return TokenAuthorization(**serializer.validated_data, responding_party=responding_party,
-                                      auth_method=Session.AUTH_REQUEST)
-        else:
-            logging.error('Cannot create TokenAuthorization from response from '
-                          f'{serializer.validated_data.get("responding_party", "N/A")}: {serializer.errors}')
+
+    # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
+
+    if not parties:
+        parties = find_endpoints_by_roles((OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS)
+
+    data = {'location_id': location.uid, 'evse_uids': [e.uid for e in location.evses.all()]}
+    response = asyncio.run(authorize_with_msps(token, data, parties))
+    if response:
+        responding_party = response.get('responding_party', '')  # See response.token to see who is actually paying the bill
+        if not response:
             return TokenNotAuthorized
-    except TypeError as e:
-        logging.error(f'Cannot create TokenAuthorization from response: {e}')
-        return TokenNotAuthorized
+        try:
+            serializer = AuthorizationInfoSerializer(data=response)
+            if serializer.is_valid():
+                from ocpi22.models.session import Session
+                return TokenAuthorization(**serializer.validated_data, responding_party=responding_party,
+                                          auth_method=Session.AUTH_REQUEST)
+            else:
+                logging.error('Cannot create TokenAuthorization from response from '
+                              f'{serializer.validated_data.get("responding_party", "N/A")}: {serializer.errors}')
+                return TokenNotAuthorized
+        except TypeError as e:
+            logging.error(f'Cannot create TokenAuthorization from response: {e}')
+            return TokenNotAuthorized
+    return TokenNotAuthorized
