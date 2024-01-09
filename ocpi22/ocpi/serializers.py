@@ -443,6 +443,10 @@ class ClientInfoSerializer(HyperlinkedModelSerializerCleanedUp):
 class LocationIdSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         ocpi_master = self.context.get('ocpi_master')
+        if not ocpi_master:
+            request = self.context.get('request')
+            if request and hasattr(request, 'credentialsrole'):
+                ocpi_master = request.credentialsrole
         assert ocpi_master, 'LocationIdSerializer needs ocpi_master in context'
         return Location.get_if_exists(uid=data, ocpi_master=ocpi_master)
 
