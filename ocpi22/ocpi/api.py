@@ -648,7 +648,10 @@ class SessionViewSet(OCPIListModelMixin,
                 session.update_last_updated()
             session.send_hub_updates()
             # Send the full Session data to MSP webhook, not just the PATCHed fields
-            outbound_data = MSPSessionCallbackSerializer.OutboundSerializer(instance=session).data
+            outbound_data = MSPSessionCallbackSerializer.OutboundSerializer(
+                instance=session,
+                context={'request': request,
+                         'ocpi_master': request.credentialsrole}).data
             send_to_webhook(data, MSPSessionCallbackSerializer, serialized_data=outbound_data)
             stop_session_if_money_runs_out(request, session)
             return OCPIResponse(serializer.data,

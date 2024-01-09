@@ -71,7 +71,8 @@ def start_session(request):
     Send a START_SESSION remote command
     """
     if request.method == 'POST':
-        serializer = StartSessionSerializer(data=request.POST.dict())
+        serializer = StartSessionSerializer(data=request.POST.dict(), context={'request': request,
+                                                                               'ocpi_master': request.credentialsrole})
         if serializer.is_valid():
             request.version = '2.2.1'
             authorization_reference = f'A-{datetime.now().strftime("%Y-%m-%dT%H-%M-%SZ")}'
