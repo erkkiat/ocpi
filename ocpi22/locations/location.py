@@ -3,7 +3,6 @@ from django.db.models import Q
 import ocpi22.logging as logging
 
 from django.core.validators import RegexValidator
-from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
@@ -18,14 +17,15 @@ from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import OCPIVersioning, OCPIListModelMixin
-from ocpi22.ocpi.util import OCPIResponse, Ocpi, OCPIPaginationAndHeaders, OCPIResponseUrlParametersRequired
+from ocpi22.ocpi.util import OCPIResponse, Ocpi, OCPIPaginationAndHeaders, OCPIUrlParametersRequiredResponse, \
+    OCPIBadRequestResponse, OCPINotFoundResponse
 
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
 
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.exception_handler import ocpi_exception_handler
-from ocpiconnector.ocpi_identities import Party, ocpi_platform
+from ocpiconnector.ocpi_identities import ocpi_platform
 from premium import requires_premium
 from util import OCPIVersion
 
@@ -92,7 +92,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             version='2.2.1', logentry=None, credentials=None, **_kwargs):
 
         if request and not request.party_specified_in_url:
-            return OCPIResponseUrlParametersRequired('location')
+            return OCPIUrlParametersRequiredResponse('location')
 
         uid = uid or data.get('id')
 
@@ -176,11 +176,18 @@ class EvseViewSet(GenericViewSet):
     @requires_sender_role(OcpiRolesEnum.CPO)
     def put(self, request, uid, evse_uid, patch=False,
             *_args, **_kwargs) -> OCPIResponse:
+        if evse_uid != request.data.get('uid'):
+            return OCPIBadRequestResponse('EVSE UID in URL does not match EVSE UID in payload')
         evse: Evse = Evse.get_if_exists(uid=evse_uid, location__uid=uid,
                                         location__ocpi_master=request.credentialsrole)
+        location: Location = Location.get_if_exists(uid=uid, ocpi_master=request.credentialsrole)
+        if not location:
+            return OCPINotFoundResponse(f'Location with UID "{uid}" not found')
+
         data = request.data
-        readonly_fields = ['evse_id']
-        # Remove readonly fields from the incoming data
+
+        # Remove readonly fields from the incoming data, but only if the EVSE already exists
+        readonly_fields = ['evse_id'] if evse else []
         for f in readonly_fields:
             data.pop(f, None)
 
@@ -189,9 +196,9 @@ class EvseViewSet(GenericViewSet):
 
         serializer = EvseSerializer(instance=evse, data=data, partial=patch, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            evse = serializer.save(location=location)
             data = {
-                'location_id': evse.location.uid,
+                'location_id': location.uid,
                 'evse_id': evse.uid,
                 'status': evse.status
             }

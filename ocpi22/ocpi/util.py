@@ -356,7 +356,7 @@ class OCPIResponse(Response):
         super().__init__(result, status=kwargs.pop('status', http_status), *args, **kwargs)
 
 
-class OCPIResponseUrlParametersRequired(OCPIResponse):
+class OCPIUrlParametersRequiredResponse(OCPIResponse):
     def __init__(self, module_name):
         super().__init__(status_message='According to OCPI 2.2 specification, the country_code, '
                                         f'party_id and {module_name} uid SHALL be provided as URL segments. For example: '
@@ -375,12 +375,18 @@ class OCPIBadRequestResponse(OCPIResponse):
             **kwargs)
 
 
-class NotOwner(OCPIResponse):
+class OCPINotOwnerResponse(OCPIResponse):
     def __init__(self, msg: str = "Country ID and Party ID need to match your credentials."):
         super().__init__(
             status_message=msg,
             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
             http_status=status.HTTP_401_UNAUTHORIZED)
+
+
+class OCPINotFoundResponse(OCPIResponse):
+    def __init__(self, msg):
+        super().__init__(msg, http_status=status.HTTP_404_NOT_FOUND,
+                         status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
 
 options_message = f'Please see OPTIONS to learn what you can POST at this endpoint'

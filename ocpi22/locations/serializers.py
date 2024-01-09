@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.models.business_details import BusinessDetails
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.tariff import Tariff
@@ -12,6 +13,7 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import uid_validator, fetch_object
 from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
+from ocpiconnector.ocpi_identities import Party
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -51,14 +53,15 @@ class PowerTypeSerializer(serializers.CharField):
 class TariffField(serializers.StringRelatedField):
     def to_internal_value(self, data):
         try:
-            party = self.context.get('party')
-            tariff = Tariff.objects.get(uid__iexact=data, archived=False,
-                                        ocpi_master__country_code__iexact=party.country_code,
-                                        ocpi_master__party_id__iexact=party.party_id)
+            request = self.context.get('request')
+            role = request.credentialsrole
+            tariff = Tariff.objects.get(uid__iexact=data, archived=False, ocpi_master=role)
             return tariff
         except Tariff.DoesNotExist as e:
-            if fetch_object(uid=data, ocpi_module=OcpiModuleEnum.TARIFFS, credentials=self.context.get('credentials')):
-                return self.to_internal_value(data)
+            credentials = self.context.get('credentials')
+            if credentials:
+                if fetch_object(uid=data, ocpi_module=OcpiModuleEnum.TARIFFS, credentials=credentials):
+                    return self.to_internal_value(data)
             raise ValidationError(f'Tariff with UID `{data}` cannot be fetched: {e}')
         except Tariff.MultipleObjectsReturned as e:
             raise ValidationError(f'Tariff with UID `{data}` cannot be fetched: {e}')
@@ -143,13 +146,17 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     @staticmethod
     def process_connectors(evse: Evse, connectors: dict) -> None:
         for c in connectors:
+            tariff_ids = c.pop('tariff_ids', [])
             try:
                 connector = Connector.objects.get(uid=c.get('uid'), evse=evse)
+                for key, value in c.items():
+                    if key != 'uid':
+                        setattr(connector, key, value)
+                connector.tariff_ids.set(tariff_ids)
+                connector.save()
             except Connector.DoesNotExist:
-                connector = None
-            connector_serializer = ConnectorSerializer(connector, data=c)
-            if connector_serializer.is_valid():
-                connector_serializer.save(evse=evse)
+                connector = Connector.objects.create(evse=evse, **c)
+                connector.tariff_ids.set(tariff_ids)
 
     def create(self, validated_data):
         connectors = validated_data.pop('connectors', [])

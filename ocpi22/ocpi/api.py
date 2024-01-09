@@ -32,7 +32,6 @@ from ocpi22.webhooks import send_to_webhook
 from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
 from ocpi22.msp.serializers import MSPAuthorizeCallbackSerializer, MSPSessionCallbackSerializer
-from ocpi22.msp.twilio import message_user
 from ocpi22.ocpi.serializers import TokenSerializer, TariffSerializer, CdrSerializer, \
     CredentialsSerializer, SessionSerializer, ClientInfoSerializer, AuthorizeSerializer
 from ocpi22.models.credentials import Credentials, CredentialsRole, store_endpoints_for_party
@@ -44,8 +43,8 @@ from ocpi22.models.cdr import Cdr
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import OnlyRawBrowsableAPIRenderer, OCPIVersioning, \
     OCPIListModelMixin, generate_random_token, build_absolute_uri
-from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
-    generate_auth_reference, OCPIResponseUrlParametersRequired
+from ocpi22.ocpi.util import OCPIBadRequestResponse, OCPINotOwnerResponse, OCPIResponse, Ocpi, OCPIPaginationAndHeaders, \
+    generate_auth_reference, OCPIUrlParametersRequiredResponse
 from ocpi22.credentials.versions import get_endpoints_dict
 from ocpiconnector.management.commands.exchange_credentials import get_our_roles, select_version, get_endpoints
 from ocpiconnector.ocpi_identities import ocpi_platform, Party, get_our_party, get_our_credentialsrole
@@ -110,7 +109,7 @@ class TokenViewSet(OCPIListModelMixin,
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, patch=False, version='2.2.1',
             logentry=None, credentialsrole=None, certification=False) -> OCPIResponse:
         if request and not request.party_specified_in_url:
-            return OCPIResponseUrlParametersRequired('token')
+            return OCPIUrlParametersRequiredResponse('token')
 
         uid = uid or data.get('uid')
         return self.save_or_update(request, data, credentialsrole, uid, patch, version, logentry)
@@ -507,7 +506,7 @@ class TariffViewSet(OCPIListModelMixin,
         uid = uid or data.get('id')
 
         if request and not request.party_specified_in_url:
-            return OCPIResponseUrlParametersRequired('tariff')
+            return OCPIUrlParametersRequiredResponse('tariff')
 
         return self.save_or_update(request, credentialsrole, uid, data, version, logentry)
 
@@ -544,7 +543,7 @@ class TariffViewSet(OCPIListModelMixin,
         if tariff.ocpi_master != request.credentialsrole \
                 and not request.user.is_superuser \
                 and request.credentials and not request.credentials.is_hub:
-            return NotOwner(f'Only the owner or a HUB can delete the tariff {uid}.')
+            return OCPINotOwnerResponse(f'Only the owner or a HUB can delete the tariff {uid}.')
         if not tariff:
             return OCPIResponse(f'No Tariff found with {request.credentialsrole} and uid={uid}.',
                                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
@@ -639,7 +638,7 @@ class SessionViewSet(OCPIListModelMixin,
             logentry=None, **kwargs) -> OCPIResponse:
 
         if not request.party_specified_in_url:
-            return OCPIResponseUrlParametersRequired('session')
+            return OCPIUrlParametersRequiredResponse('session')
 
         uid = uid or data.get('id')
         session: Session = Session.get_if_exists(

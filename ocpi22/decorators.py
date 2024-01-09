@@ -8,7 +8,7 @@ from django.db.models import Q
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.ocpi.auth import get_credentialsrole
-from ocpi22.ocpi.util import OCPIBadRequestResponse, NotOwner
+from ocpi22.ocpi.util import OCPIBadRequestResponse, OCPINotOwnerResponse
 from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.util import matching_operator
 from ocpiconnector.ocpi_identities import Party
@@ -89,7 +89,7 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
                 if hasattr(request, 'credentials') and request.credentials:
                     request.credentialsrole = request.credentials.roles.filter(criteria).first()
                 if not matching_operator(request, country_code, party_id):
-                    return NotOwner()
+                    return OCPINotOwnerResponse()
             if not hasattr(request, 'credentialsrole') or not request.credentialsrole:
                 return OCPIBadRequestResponse(
                     f'To do this, you need to have credentials with one of these roles: {roles}.'
