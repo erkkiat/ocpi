@@ -16,15 +16,18 @@ def send_to_webhook(data: Union[dict, Location, Evse] = None, serializer=None, s
     if settings.PERFORMANCE_TEST:
         return {}
     if isinstance(data, Location):
+        ocpi_master = ocpi_master or data.ocpi_master
         # Send updates for all EVSEs at this Location
-        list(map(lambda evse: send_to_webhook(evse, serializer, serialized_data, outbound_serializer, timeout),
+        list(map(lambda evse: send_to_webhook(evse, serializer, serialized_data,
+                                              outbound_serializer, timeout, ocpi_master),
                  data.evses.all()))  # "list" triggers the evaluation of the map
         return {}
     if isinstance(data, Evse):
+        ocpi_master = ocpi_master or data.location.ocpi_master
         # Send updates for this EVSE
         return send_to_webhook(
             dict(location_id=data.location.uid, evse_id=data.uid, status=data.status),
-            serializer, serialized_data, outbound_serializer, timeout, ocpi_master=data.location.ocpi_master
+            serializer, serialized_data, outbound_serializer, timeout, ocpi_master
         )
     assert issubclass(serializer, CallbacksSerializer), \
         'The serializer needs to be inherited from CallbacksSerializer'
