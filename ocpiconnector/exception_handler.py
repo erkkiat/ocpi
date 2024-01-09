@@ -99,11 +99,12 @@ def ocpi_exception_handler(func):
                                     http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             result = EXCEPTION_MAPPINGS.get(type(e), default_response)
             error_message = result.get('msg', 'An exception has occurred: {}').format(e)
-            return OCPIBadRequestResponse(str(e),
-                status_message=error_message,
-                status_code=result.get('status_code', Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS),
-                http_status=result.get('http_status', status.HTTP_404_NOT_FOUND),
-            )
+            raise
+            # return OCPIBadRequestResponse(str(e),
+            #     status_message=error_message,
+            #     status_code=result.get('status_code', Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS),
+            #     http_status=result.get('http_status', status.HTTP_404_NOT_FOUND),
+            # )
 
     return wrapper
 
