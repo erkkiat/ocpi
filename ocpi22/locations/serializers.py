@@ -160,7 +160,9 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def create(self, validated_data):
         connectors = validated_data.pop('connectors', [])
+        capabilities = validated_data.pop('capabilities', [])
         evse = Evse.objects.create(**validated_data)
+        evse.capabilities.set(capabilities)
         self.process_connectors(evse, connectors)
         return evse
 
