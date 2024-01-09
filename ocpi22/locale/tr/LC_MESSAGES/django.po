@@ -95,7 +95,7 @@ msgstr "Jeton hesapta yeterli bakiyeye sahip değil"
 
 #: choices.py:169
 msgid "The token is accepted"
-msgstr "jeton kabul edildi"
+msgstr "Jeton kabul ediliyor"
 
 #: choices.py:171
 msgid "Your token is no longer valid"
