@@ -204,7 +204,7 @@ class EvseViewSet(GenericViewSet):
                 'status': evse.status
             }
             if ocpi_platform.is_emsp:
-                send_to_webhook(data, MSPChargePointStatusCallbackSerializer)
+                send_to_webhook(data, MSPChargePointStatusCallbackSerializer, ocpi_master=request.credentialsrole)
             return OCPIResponse(serializer.data)
         else:
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
