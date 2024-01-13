@@ -10,7 +10,6 @@ from django.db import models
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.urls import NoReverseMatch
-from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.translation import gettext as _
 
@@ -22,7 +21,6 @@ from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
-from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 
 
 def validate_timezone(t: str):
@@ -190,7 +188,7 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
                                  verbose_name=_('Time zone'), choices=choices.TIMEZONE_CHOICES)
 
     def get_timezone(self):
-        return tz.gettz(self.time_zone)
+        return tz.gettz(str(self.time_zone))
 
     # The times when the EVSEs at the location can be accessed for charging
     # opening_times
@@ -303,7 +301,7 @@ class Evse(models.Model, ModelUtilMixin):
         (RESERVED, _('Reserved for a particular EV driver')),
         (UNKNOWN, _('No status information available (also used when offline)')),
     )
-    status = models.CharField(max_length=11, choices=STATUS_CHOICES, verbose_name=_('Status'), default=PLANNED)
+    status = models.CharField(max_length=11, choices=STATUS_CHOICES, verbose_name=_('Status'))
 
     capabilities = models.ManyToManyField(Capability, related_name='evses', blank=True, verbose_name=_('Capabilities'))
 

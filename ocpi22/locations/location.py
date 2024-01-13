@@ -10,9 +10,9 @@ from rest_framework.generics import get_object_or_404
 from certification.decorators import certification_step
 from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum
 from ocpi22.decorators import requires_sender_role, requires_credentialsrole, requires_last_updated
-from ocpi22.locations.serializers import EvseSerializer
+from ocpi22.locations.serializers import EvseSerializer, ConnectorSerializer
 from ocpi22.messages import messages
-from ocpi22.models.location import Location, Evse
+from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.rendering import RENDERERS
@@ -139,6 +139,66 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                           'Also, the state is missing from the OCPI 2.2 postal address and the '
                           'START_SESSION_CONNECTOR_REQUIRED capability is filtered out.')
         return Location.get_serializer_class(version.pure_number)
+
+
+class ConnectorViewSet(GenericViewSet):
+    pagination_class = OCPIPaginationAndHeaders
+    root_view_name = 'connectors'
+    renderer_classes = RENDERERS
+    versioning_class = OCPIVersioning
+    lookup_field = "uid"
+    queryset = Connector.objects.none()
+    serializer_class = ConnectorSerializer
+
+    def get_view_name(self):
+        if hasattr(self, 'kwargs') and 'uid' in self.kwargs:
+            return f'Connector {self.kwargs.get("uid")}'
+        if self.name:
+            return f'{self.name.capitalize()}'
+        return 'Connectors'
+
+    @ocpi_exception_handler
+    @requires_premium
+    @requires_last_updated
+    def patch(self, *args, **kwargs) -> OCPIResponse:
+        return self.put(*args, patch=True, **kwargs)
+
+    @ocpi_exception_handler
+    @requires_premium
+    @requires_credentialsrole
+    def get(self, request, credentialsrole, uid, evse_uid, connector_uid, *_args, **_kwargs) -> OCPIResponse:
+        """Serve a GET request for a specific EVSE"""
+        connector: Connector = get_object_or_404(Connector, evse__uid=evse_uid, evse__location__uid=uid,
+                                                 uid=connector_uid, evse__location__ocpi_master=credentialsrole)
+        serializer = self.serializer_class(connector, context={'version': request.version, 'request': request})
+        return OCPIResponse(serializer.data)
+
+    @ocpi_exception_handler
+    @requires_premium
+    @requires_sender_role(OcpiRolesEnum.CPO)
+    def put(self, request, uid, evse_uid, connector_uid, patch=False,
+            *_args, **_kwargs) -> OCPIResponse:
+        if connector_uid != request.data.get('id'):
+            return OCPIBadRequestResponse('Connector UID in URL does not match Connector UID in payload')
+        connector: Connector = Connector.get_if_exists(uid=connector_uid, evse__uid=evse_uid, evse__location__uid=uid,
+                                        evse__location__ocpi_master=request.credentialsrole)
+
+        data = request.data
+
+        # Remove readonly fields from the incoming data, but only if the Connector already exists
+        readonly_fields = ['connector_uid'] if connector else []
+        for f in readonly_fields:
+            data.pop(f, None)
+
+        serializer = self.serializer_class(instance=connector, data=data, partial=patch, context={'request': request})
+        if serializer.is_valid():
+            evse: Evse = get_object_or_404(Evse, location__uid=uid, uid=evse_uid,
+                                           location__ocpi_master=request.credentialsrole)
+            serializer.save(evse=evse)
+            return OCPIResponse(serializer.data)
+        else:
+            return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
 
 class EvseViewSet(GenericViewSet):

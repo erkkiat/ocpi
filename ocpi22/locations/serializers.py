@@ -128,7 +128,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
 
     lookup_field = 'uid'
 
-    connectors = ConnectorSerializer(many=True, required=False)
+    connectors = ConnectorSerializer(many=True, required=True)
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySerializer(many=True, required=False)
     last_updated = UTCDateTimeField(required=False)
