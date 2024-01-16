@@ -317,6 +317,10 @@ class Evse(models.Model, ModelUtilMixin):
     def __str__(self):
         return self.evse_id
 
+    @property
+    def parent(self):
+        return self.location
+
     def connector_list(self):
         return format_html(
             '<hr style="margin: 4px">'.join([f'{str(c)}<br>{c.tariff_html()}' for c in self.connectors.all()])
@@ -432,6 +436,10 @@ class Connector(models.Model, ModelUtilMixin):
     @property
     def issue_parent(self):
         # For showing the EVSE of this Connector in the issue list
+        return self.evse
+
+    @property
+    def parent(self):
         return self.evse
 
 

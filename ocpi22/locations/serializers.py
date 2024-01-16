@@ -116,7 +116,7 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
 
     id = serializers.CharField(source='uid')
     tariff_ids = TariffField(many=True, required=False)
-    last_updated = UTCDateTimeField(required=False)
+    last_updated = UTCDateTimeField()
     power_type = PowerTypeSerializer()
     max_electric_power = MaxElectricPowerSerializer(source='*', required=False)
 
