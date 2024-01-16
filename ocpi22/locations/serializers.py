@@ -107,7 +107,16 @@ class MaxElectricPowerSerializer(serializers.IntegerField):
         return dict(max_electric_power=data)
 
 
-class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
+class UpdateMixin:
+    def update_last_updated(self, instance, last_updated):
+        if instance:
+            instance.last_updated = last_updated
+            instance.save()
+            if instance and hasattr(instance, 'parent'):
+                self.update_last_updated(instance.parent, last_updated)
+
+
+class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
     class Meta:
         model = Connector
         fields = ['id', 'standard', 'format',
@@ -120,8 +129,12 @@ class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp):
     power_type = PowerTypeSerializer()
     max_electric_power = MaxElectricPowerSerializer(source='*', required=False)
 
+    def save(self, **kwargs):
+        self.update_last_updated(self.instance, self.validated_data.get('last_updated'))
+        return super().save(**kwargs)
 
-class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
+
+class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
     class Meta:
         model = Evse
         fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors', 'capabilities']
@@ -132,6 +145,10 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     uid = serializers.CharField(validators=[uid_validator])
     capabilities = CapabilitySerializer(many=True, required=False)
     last_updated = UTCDateTimeField(required=False)
+
+    def save(self, **kwargs):
+        self.update_last_updated(self.instance, self.validated_data.get('last_updated'))
+        return super().save(**kwargs)
 
     def to_representation(self, evse: Evse):
         result = super().to_representation(evse)
@@ -175,6 +192,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
         capabilities = validated_data.pop('capabilities', [])
         evse.capabilities.set(capabilities)
 
+        # Todo: map() or [] instead of for loop
         for key, value in validated_data.items():
             if key not in skip_fields:
                 setattr(evse, key, value)

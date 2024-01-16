@@ -70,12 +70,10 @@ class OcpiModule:
         return ocpi_identities.get(cls.ocpi_object_owner, default='*')
 
     def update_last_updated(self):
+        """Set the current date and time to last_updated (not to be used for incoming OCPI objects)"""
         if hasattr(self, 'last_updated'):
             if self.is_ours():
                 setattr(self, 'last_updated', datetime.now(pytz.utc))
-                # Update also EVSE and Location if needed
-                if hasattr(self, 'parent') and hasattr(self.parent, 'update_last_updated'):
-                    self.parent.update_last_updated()
 
     def atomic_post_save(self, *_args, **_kwargs) -> None:
         assert hasattr(self, 'ocpi_serializer_class') and hasattr(self, 'ocpi_module_name') \
