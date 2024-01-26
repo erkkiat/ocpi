@@ -501,7 +501,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     if isinstance(token, str) and authorization:
                         # This is an AD_HOC_USER or APP_USER Token
                         # eMSP has already authorized this AD HOC token for 15 minutes
-                        token = AdhocToken(uid=token, valid=True, owner=authorization.get_token_party(),
+                        token = AdhocToken(uid=token, valid=True, billed_to=authorization.get_token_party(),
                                            type=authorization.token.get('type', ''))
 
                     if not authorization:

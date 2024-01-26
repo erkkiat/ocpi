@@ -1,5 +1,5 @@
 {
-  "authorization_reference": "FI*001-AUTH-REFERENCE",
+  "authorization_reference": "FI*MSP-AUTH-REFERENCE",
   "evse_uid": "HELSINKI-3",
   "location_id": "HELSINKI-1",
   "response_url": "http://localhost:8001/",

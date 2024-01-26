@@ -14,12 +14,12 @@ class OCPIUrlComponents:
 @dataclass(eq=True, frozen=True)
 class AdhocToken:
     valid: bool
-    owner: Party
+    billed_to: Party
     uid: str
     type: str
 
     def party(self):
-        return str(self.owner)
+        return str(self.billed_to)
 
     def __str__(self):
         return f'{self.party()}: {self.type} {self.uid}'

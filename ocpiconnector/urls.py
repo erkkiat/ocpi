@@ -10,7 +10,7 @@ from rest_framework import permissions
 
 from cars.views import CarsViewSet
 from ocpi22 import msp, views
-from ocpi22.cpo.tariff import TariffQuickViewSet
+import ocpi22.cpo.tariff
 from ocpi22.msp.map import MapViewSet
 from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import OCPIRouter, \
@@ -32,7 +32,7 @@ ocpi_router.register(r'hubclientinfo/', ClientInfoViewSet, basename='clientinfo'
 
 cpo_router = CPORouter()
 cpo_router.register(r'location/quick', LocationQuickViewSet, basename='quick-location')
-cpo_router.register(r'tariff/quick', TariffQuickViewSet, basename='quick-tariff')
+cpo_router.register(r'tariff/quick', ocpi22.cpo.tariff.TariffQuickViewSet, basename='quick-tariff')
 cpo_router.register(r'chargepoint', ChargePointViewSet, basename='chargepoint')
 cpo_router.register(r'webhook', CpoReserveNowWebhookViewSet, basename='cpo')
 cpo_router.register(r'webhook', CpoStartWebhookViewSet, basename='cpo')

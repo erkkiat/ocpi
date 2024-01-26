@@ -827,29 +827,30 @@ class CdrMessages:
                                 'total_time': 0.0}
 
 
-accept_authorization = {
-    "status_code": 1000,
-    "status_message": "Success",
-    "timestamp": "2022-11-07T06:41:41Z",
-    "data": {
-        "allowed": "ALLOWED",
-        "token": {
-            "country_code": "FI",
-            "party_id": "MSP",
-            "uid": "EKI1",
-            "type": "RFID",
-            "contract_id": "CONTRACT-EKI",
-            "visual_number": "123456",
-            "issuer": "EKI",
-            "valid": True,
-            "whitelist": "NEVER",
-            "language": "FI"
-        },
-        "authorization_reference": "MOCK-AUTHORIZATION-REFERENCE"
+class AuthorizeData:
+    accept_authorization = {
+        "status_code": 1000,
+        "status_message": "Success",
+        "timestamp": "2022-11-07T06:41:41Z",
+        "data": {
+            "allowed": "ALLOWED",
+            "token": {
+                "country_code": "FI",
+                "party_id": "MSP",
+                "uid": "EKI1",
+                "type": "RFID",
+                "contract_id": "CONTRACT-EKI",
+                "visual_number": "123456",
+                "issuer": "EKI",
+                "valid": True,
+                "whitelist": "NEVER",
+                "language": "FI"
+            },
+            "authorization_reference": "MOCK-AUTHORIZATION-REFERENCE"
+        }
     }
-}
 
-accept_authorization_msp = dict(result='ALLOWED')
+    accept_authorization_msp = dict(result='ALLOWED')
 
 
 class TokenAuthorizationData:
@@ -878,12 +879,12 @@ class TokenAuthorizationData:
     }
 
     invalid_token = {
-        'data': {'allowed': 'NOT_ALLOWED',
+        'data': {'allowed': 'EXPIRED',
                  'authorization_reference': '',
-                 'token': {'country_code': 'FI', 'party_id': 'CPO', 'uid': 'EKI1', 'type': 'APP_USER',
+                 'token': {'country_code': 'FI', 'party_id': 'MSP', 'uid': 'EKI1', 'type': 'APP_USER',
                            'contract_id': 'CONTRACT_F', 'visual_number': '123C', 'issuer': 'eki', 'valid': False,
                            'whitelist': 'NEVER', 'last_updated': '2022-01-10T07:00:01Z'}},
-        'status_code': 3000,
+        'status_code': 1000,
         'status_message': 'Your charging token is not valid at the moment',
         'timestamp': '2022-01-01T12:00:00Z'
     }
@@ -907,7 +908,7 @@ class TokenAuthorizationData:
     non_existent_token = {
         'data': '',
         'status_code': 2004,
-        'status_message': 'Unknown Token "NONEXISTENT"',
+        'status_message': '***',  # Ignore the text, it's not specified in OCPI specs
         'timestamp': '2022-01-01T12:00:00Z'
     }
 
@@ -925,7 +926,7 @@ class TokenAuthorizationData:
     success = {
         'data': {'allowed': 'ALLOWED',
                  'authorization_reference': 'FI*MSP*A*MOCK-1',  # "MOCK-1" comes from uuid4 through a mysterious process
-                 'token': {'country_code': 'FI', 'party_id': 'CPO', 'uid': 'EKI1', 'type': 'APP_USER',
+                 'token': {'country_code': 'FI', 'party_id': 'MSP', 'uid': 'EKI1', 'type': 'APP_USER',
                            'contract_id': 'CONTRACT_F', 'visual_number': '123C', 'issuer': 'eki', 'valid': True,
                            'whitelist': 'NEVER', 'last_updated': '2022-01-10T07:00:01Z'}},
         'status_code': 1000,
@@ -1116,7 +1117,7 @@ class StopTransactionResponses:
 
     stop3 = OrderedDict([('charge_detail_record',
                           OrderedDict([('auth_method', 'COMMAND'),
-                                       ('authorization_reference', 'FI*001-AUTH-REFERENCE'),
+                                       ('authorization_reference', 'FI*MSP-AUTH-REFERENCE'),
                                        ('cdr_location',
                                         OrderedDict([('address', 'Helsinki 12'),
                                                      ('city', 'Helsinki'),
@@ -1181,7 +1182,7 @@ class StopTransactionResponses:
                          ('kwh_total', Decimal('123.450')),
                          ('session',
                           OrderedDict([('auth_method', 'COMMAND'),
-                                       ('authorization_reference', 'FI*001-AUTH-REFERENCE'),
+                                       ('authorization_reference', 'FI*MSP-AUTH-REFERENCE'),
                                        ('billed_to', 'FI*MSP'),
                                        ('connector_id', '1'),
                                        ('currency', 'EUR'),
@@ -1229,7 +1230,7 @@ class SessionData:
 
     meter_values_1 = {  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
         'auth_method': 'COMMAND',
-        'authorization_reference': 'FI*001-AUTH-REFERENCE',
+        'authorization_reference': 'FI*MSP-AUTH-REFERENCE',
         'cdr_token': OrderedDict([('uid', 'SOME-ADHOC-TOKEN'),
                                   ('type', 'AD_HOC_USER'),
                                   ('contract_id', 'INTERNAL')]),
@@ -1264,7 +1265,7 @@ class SessionData:
                 OrderedDict([('type', 'POWER'), ('volume', '150.0000')])])])], 'total_time': '0.00',
                               'display_total_time': '0 s', 'cdr_token': OrderedDict(
             [('uid', 'SOME-ADHOC-TOKEN'), ('type', 'AD_HOC_USER'), ('contract_id', 'INTERNAL')]),
-                              'auth_method': 'COMMAND', 'authorization_reference': 'FI*001-AUTH-REFERENCE',
+                              'auth_method': 'COMMAND', 'authorization_reference': 'FI*MSP-AUTH-REFERENCE',
                               'location_id': 'HELSINKI-1', 'evse_uid': 'HELSINKI-3', 'connector_id': '1',
                               'currency': 'EUR',
                               'total_cost': OrderedDict([('excl_vat', 61.73), ('incl_vat', 76.54)]), 'status': 'ACTIVE',
@@ -1385,48 +1386,50 @@ class SessionCommandsData:
                                  'timestamp': '2022-01-01T12:00:00Z'}
 
     authorization_success = {'allowed': 'ALLOWED',
-                             'authorization_method': 'COMMAND',
-                             'authorization_reference': 'FI*001-AUTH-REFERENCE',
-                             'billed_to': 'FI*CPO',
-                             'display_text': [{'language': 'EN', 'text': 'The token is accepted'},
-                                              {'language': 'NL', 'text': 'Het token wordt geaccepteerd'},
-                                              {'language': 'FR', 'text': 'Le jeton est accepté'},
-                                              {'language': 'DE', 'text': 'Der Token wird akzeptiert'},
-                                              {'language': 'ES', 'text': 'Se acepta la ficha'},
-                                              {'language': 'IT', 'text': 'Il token è accettato'},
-                                              {'language': 'PT', 'text': 'O token é aceito'},
-                                              {'language': 'LB', 'text': 'Den Token gëtt ugeholl'},
-                                              {'language': 'CY', 'text': 'Derbynnir y tocyn'},
-                                              {'language': 'GA', 'text': 'Glactar leis an comhartha'},
-                                              {'language': 'BE', 'text': 'Токен прыняты'},
-                                              {'language': 'BG', 'text': 'Токенът е приет'},
-                                              {'language': 'RO', 'text': 'Jetonul este acceptat'},
-                                              {'language': 'BS', 'text': 'Token je prihvaćen'},
-                                              {'language': 'MK', 'text': 'Токенот е прифатен'},
-                                              {'language': 'SQ', 'text': 'Shenja pranohet'},
-                                              {'language': 'SR', 'text': 'Токен је прихваћен'},
-                                              {'language': 'TR', 'text': 'jeton kabul edildi'},
-                                              {'language': 'UK', 'text': 'Токен прийнято'},
-                                              {'language': 'EL', 'text': 'Το διακριτικό γίνεται αποδεκτό'},
-                                              {'language': 'PL', 'text': 'Token jest akceptowany'},
-                                              {'language': 'HU', 'text': 'A tokent elfogadják'},
-                                              {'language': 'CS', 'text': 'Token je přijat'},
-                                              {'language': 'SK', 'text': 'Token je akceptovaný'},
-                                              {'language': 'SL', 'text': 'Žeton je sprejet'},
-                                              {'language': 'FI', 'text': 'Lataustunniste on hyväksytty'},
-                                              {'language': 'NN', 'text': 'Tokenet er akseptert'},
-                                              {'language': 'DA', 'text': 'Tokenet accepteres'},
-                                              {'language': 'SV', 'text': 'Token accepteras'},
-                                              {'language': 'IS', 'text': 'Táknið er samþykkt'},
-                                              {'language': 'ET', 'text': 'Token on vastu võetud'},
-                                              {'language': 'LT', 'text': 'Žetonas priimtas'},
-                                              {'language': 'LV', 'text': 'Žetons ir pieņemts'},
-                                              {'language': 'AF', 'text': 'Die teken word aanvaar'}],
-                             'evse_id': 'HELSINKI-3',
-                             'status_text': 'The token is accepted',
-                             'token_id': 'SOME-ADHOC-TOKEN',
-                             'token_type': 'AD_HOC_USER'}
-
+               'auth_method': 'COMMAND',
+               'authorization_reference': 'FI*MSP-AUTH-REFERENCE',
+               'billed_to': 'FI*MSP',
+               'info': [{'language': 'EN', 'text': 'The token is accepted'},
+                        {'language': 'NL', 'text': 'Het token wordt geaccepteerd'},
+                        {'language': 'FR', 'text': 'Le jeton est accepté'},
+                        {'language': 'DE', 'text': 'Der Token wird akzeptiert'},
+                        {'language': 'ES', 'text': 'Se acepta la ficha'},
+                        {'language': 'IT', 'text': 'Il token è accettato'},
+                        {'language': 'PT', 'text': 'O token é aceito'},
+                        {'language': 'LB', 'text': 'Den Token gëtt ugeholl'},
+                        {'language': 'CY', 'text': 'Derbynnir y tocyn'},
+                        {'language': 'GA', 'text': 'Glactar leis an comhartha'},
+                        {'language': 'BE', 'text': 'Токен прыняты'},
+                        {'language': 'BG', 'text': 'Токенът е приет'},
+                        {'language': 'RO', 'text': 'Jetonul este acceptat'},
+                        {'language': 'BS', 'text': 'Token je prihvaćen'},
+                        {'language': 'MK', 'text': 'Токенот е прифатен'},
+                        {'language': 'SQ', 'text': 'Shenja pranohet'},
+                        {'language': 'SR', 'text': 'Токен је прихваћен'},
+                        {'language': 'TR', 'text': 'Jeton kabul ediliyor'},
+                        {'language': 'UK', 'text': 'Токен прийнято'},
+                        {'language': 'EL', 'text': 'Το διακριτικό γίνεται αποδεκτό'},
+                        {'language': 'PL', 'text': 'Token jest akceptowany'},
+                        {'language': 'HU', 'text': 'A tokent elfogadják'},
+                        {'language': 'CS', 'text': 'Token je přijat'},
+                        {'language': 'SK', 'text': 'Token je akceptovaný'},
+                        {'language': 'SL', 'text': 'Žeton je sprejet'},
+                        {'language': 'FI', 'text': 'Lataustunniste on hyväksytty'},
+                        {'language': 'NN', 'text': 'Tokenet er akseptert'},
+                        {'language': 'DA', 'text': 'Tokenet accepteres'},
+                        {'language': 'SV', 'text': 'Token accepteras'},
+                        {'language': 'IS', 'text': 'Táknið er samþykkt'},
+                        {'language': 'ET', 'text': 'Token on vastu võetud'},
+                        {'language': 'LT', 'text': 'Žetonas priimtas'},
+                        {'language': 'LV', 'text': 'Žetons ir pieņemts'},
+                        {'language': 'AF', 'text': 'Die teken word aanvaar'}],
+               'location': {},
+               'responding_party': 'FI*CPO',
+               'status_text': 'The token is accepted',
+               'token': {'billed_to': 'FI*MSP',
+                         'type': 'AD_HOC_USER',
+                         'uid': 'SOME-ADHOC-TOKEN',
+                         'valid': True}}
     start_webhook = {
         'auth': ('john', 'his-password'),
         'headers': {'content-type': 'application/json', 'accept': 'application/json'},
@@ -1758,9 +1761,9 @@ class AdhocTokenData:
         {'auth': ('john', 'his-password'),
          'headers': {'accept': 'application/json', 'content-type': 'application/json'},
          'json': {
-             'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/FI*001-AUTH-REFERENCE/',
+             'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/FI*MSP-AUTH-REFERENCE/',
              'token_id': 'SOME-ADHOC-TOKEN', 'token_type': 'AD_HOC_USER',
-             'authorization_reference': 'FI*001-AUTH-REFERENCE', 'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
+             'authorization_reference': 'FI*MSP-AUTH-REFERENCE', 'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
              'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*MSP'},
          'timeout': 10,
          'url': 'http://fakehost/start/HELSINKI-3/',

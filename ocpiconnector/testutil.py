@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import wraps
 from types import FunctionType
-from typing import Union
+from typing import Union, Iterable
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
@@ -163,8 +163,10 @@ class Simulation:
     uuid4: Mock
     ocpi_requests: Mock
     logging: Mock
+    get_our_credentialsrole: Mock
 
     original_redis_store: FunctionType
+    original_get_our_credentialsrole: FunctionType
 
     def reset(self):
         for x in self.__dict__.values():
@@ -202,6 +204,17 @@ class Simulation:
         _authorize_token.cache_clear()
         _get_authorization_from_sessions.cache_clear()
 
+        self.get_our_credentialsrole.side_effect = lambda x: self.original_get_our_credentialsrole(x)
+
+    @contextmanager
+    def our_msp_role(self, party):
+        """Set our MSP role for the duration of the context, create role if it does not exist"""
+        role = get_credentialsrole(None, party, create=True)
+        self.get_our_credentialsrole.side_effect = None
+        self.get_our_credentialsrole.return_value = role
+        yield role
+        self.get_our_credentialsrole.side_effect = lambda x: self.original_get_our_credentialsrole(x)
+
     @contextmanager
     def no_logging_exceptions(self):
         self.disable_logging_exceptions()
@@ -209,7 +222,7 @@ class Simulation:
         self.enable_logging_exceptions()
 
     @contextmanager
-    def assert_error_logged(self, text: Union[str, tuple[str]]):
+    def assert_error_logged(self, text: Union[str, Iterable[str]]):
         """
         Expect one or more logging.error() calls and make sure
         specified texts are included in the corresponding arguments
@@ -217,7 +230,7 @@ class Simulation:
         def assert_logged_error_has_text(*args, **kwargs):
             """This wrapper should normally receive a single args[0] each time logging.error() is called"""
             success = False
-            if isinstance(text, (tuple, list)):
+            if isinstance(text, Iterable):
                 # Loop through all the texts and corresponding arguments
                 success = any([t in args[0] for t in text])
             elif isinstance(text, str):
@@ -274,6 +287,8 @@ def simulate_surrounding_world(func):
         # Store the original redis_store for use during the test for access to actual Redis
         from util import redis_store
         original_redis_store = redis_store
+        from ocpi22.ocpi.api import get_our_credentialsrole
+        original_get_our_credentialsrole = get_our_credentialsrole
 
         with patch('ocpi22.tasks.requests') as tasks_requests, \
                 patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision, \
@@ -284,7 +299,8 @@ def simulate_surrounding_world(func):
                 patch('ocpi22.logging.error') as logging_error, \
                 patch('ocpi22.logging.info') as logging_info, \
                 patch('ocpi22.logging.warning') as logging_warning, \
-                patch('ocpiconnector.analytics.send_session_update_to_analytics'):
+                patch('ocpiconnector.analytics.send_session_update_to_analytics'), \
+                patch("ocpi22.ocpi.api.get_our_credentialsrole") as get_our_credentialsrole:
             simulation = Simulation(
                 tasks_requests=tasks_requests,
                 get_platform_revision=get_platform_revision,
@@ -294,8 +310,11 @@ def simulate_surrounding_world(func):
                 ocpi_requests=ocpi_requests,
                 logging=Mock(error=logging_error, warning=logging_warning, info=logging_info),
                 original_redis_store=original_redis_store,
+                get_our_credentialsrole=get_our_credentialsrole,
+                original_get_our_credentialsrole=original_get_our_credentialsrole,
             )
-            return func(*args, simulation=simulation, **kwargs)
+            kwargs['simulation'] = simulation
+            return func(*args, **kwargs)
     return wrapper
 
 

@@ -95,20 +95,21 @@ class TokenAuthorization:
         return Party()
 
     def __post_init__(self):
-
-        self.billed_to = str(self.get_token_owner(self.token))
-        if not self.billed_to:
+        self.billed_to = self.billed_to or str(self.get_token_owner(self.token))
+        if self.is_positive and not self.is_billable:
             msg = f'Unable to determine who to bill for Token {self.token}'
             logging.error(msg, request=None)
             raise ValueError(msg)
         language = getattr(self.token, 'language', 'en') if self.token else 'en'
-        ic(language)
         if self.info:
             self.status_text = get_language(language, self.info)
-            ic(self.status_text)
 
     def __bool__(self):
         return bool(self.auth_method)
+
+    @property
+    def is_billable(self):
+        return self.billed_to not in {'*', ''}
 
     @property
     def is_positive(self):
@@ -122,14 +123,10 @@ class TokenAuthorization:
                 return f"{self.token.get('country_code', '--')}*{self.token.get('party_id', '---')}"
         return Party()
 
-    def get_http_status(self) -> int:
-        return dict(
-            ALLOWED=status.HTTP_200_OK,
-            BLOCKED=status.HTTP_401_UNAUTHORIZED,
-            EXPIRED=status.HTTP_401_UNAUTHORIZED,
-            NO_CREDIT=status.HTTP_401_UNAUTHORIZED,
-            NOT_ALLOWED=status.HTTP_401_UNAUTHORIZED,
-        ).get(self.allowed, status.HTTP_401_UNAUTHORIZED)
+    @staticmethod
+    def get_http_status() -> int:
+        """When an OCPI message has been successfully processed, the HTTP status code 200 OK is always returned."""
+        return status.HTTP_200_OK
 
     def get_status_message(self) -> str:
         return dict(
@@ -160,10 +157,11 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
                 return TokenAuthorization(
                     allowed='ALLOWED',
                     info=MessageTexts.get('TOKEN_ACCEPTED'),
-                    token=AdhocToken(True, session.get_party(), token, TokenType.AD_HOC_USER),
+                    token=AdhocToken(True, session.billed_to, token, TokenType.AD_HOC_USER),
                     responding_party=str(session.get_party()),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
+                    billed_to=session.billed_to,
                 )
 
         # Not AD HOC, so Token should be found from database
@@ -203,6 +201,7 @@ def _authorize_token(token: Union[Token, str], location=None, request=None) -> O
             token=token,
             info=MessageTexts.get('TOKEN_ACCEPTED'),
             auth_method=Session.WHITELIST,
+            billed_to=str(token.get_party()),
         )
 
     route: Route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)

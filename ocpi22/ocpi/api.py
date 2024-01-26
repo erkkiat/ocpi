@@ -56,12 +56,13 @@ from premium import requires_premium
 
 
 def make_ocpi_response(authorization: TokenAuthorization) -> OCPIResponse:
+    # Do not return an HTTP error if OCPI message is intact (except for nonexistent Tokens)
     ocpi_status = dict(
         ALLOWED=Ocpi.OK,
-        BLOCKED=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
-        EXPIRED=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
-        NO_CREDIT=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
-        NOT_ALLOWED=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
+        BLOCKED=Ocpi.OK,
+        EXPIRED=Ocpi.OK,
+        NO_CREDIT=Ocpi.OK,
+        NOT_ALLOWED=Ocpi.OK,
     ).get(authorization.allowed, Ocpi.ServerError.GENERIC_SERVER_ERROR)
     http_status = authorization.get_http_status()
     status_message = authorization.get_status_message()
@@ -146,11 +147,11 @@ class TokenViewSet(OCPIListModelMixin,
     @csrf_exempt
     @certification_step(OcpiModuleEnum.TOKENS, 'Send authorization request',
                         subtopic='')
-    def authorize(self, request: Request, token_uid, **kwargs) -> OCPIResponse:
+    def authorize(self, request: Request, token_uid: str, **kwargs) -> OCPIResponse:
         info = None
         user_language = 'en'
         max_price = None
-        location = Location.objects.none
+        location: Optional[Location] = None
 
         try:
             if request.data:
@@ -162,7 +163,6 @@ class TokenViewSet(OCPIListModelMixin,
 
             if ocpi_platform.is_hub:
                 return self.hub_authorize(request, token_uid, location)
-
             token: Token = Token.get_if_exists(uid=token_uid, ocpi_master=get_our_credentialsrole(OcpiRolesEnum.EMSP))
             if not token and not ocpi_platform.is_hub:
                 # OCPI 2.2: If the token is not known, the response SHALL contain the status code:
@@ -210,7 +210,9 @@ class TokenViewSet(OCPIListModelMixin,
                 Authorization.objects.create(authorization_reference=authorization_reference, max_price=max_price)
                 logging.info(f'Created authorization reference {authorization_reference} with max price {max_price}')
 
-            location_dict = {'location_id': location.uid, 'evse_uids': [e.uid for e in location.evses.all()]}
+            location_dict = {'location_id': location.uid,
+                             'evse_uids': [e.uid for e in location.evses.all()]} \
+                if location else {}
 
             return make_ocpi_response(TokenAuthorization(
                 allowed=allowed,
@@ -650,8 +652,7 @@ class SessionViewSet(OCPIListModelMixin,
             # Send the full Session data to MSP webhook, not just the PATCHed fields
             outbound_data = MSPSessionCallbackSerializer.OutboundSerializer(
                 instance=session,
-                context={'request': request,
-                         'ocpi_master': request.credentialsrole}).data
+                context={'request': request, 'ocpi_master': request.credentialsrole, 'exclude_urls': True}).data
             send_to_webhook(data, MSPSessionCallbackSerializer, serialized_data=outbound_data)
             stop_session_if_money_runs_out(request, session)
             return OCPIResponse(serializer.data,

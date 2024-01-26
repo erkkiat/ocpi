@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass
 
 from datetime import timedelta, datetime
 from decimal import Decimal
-from unittest.mock import Mock, patch, call, MagicMock
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
 
 import pytz
 import redis.exceptions
@@ -70,10 +70,10 @@ from ocpi22.ocpi.headers import make_headers
 from ocpi22.pull import schedule_full_update
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
-from ocpi22.test_data import accept_authorization, ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, \
+from ocpi22.test_data import ExpectedSessionUpdateResults, CdrMessages, StopTransactionResponses, \
     SessionData, \
-    RfidTestData, accept_authorization_msp, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData, \
-    TokenAuthorizationData, LocationData, TariffData, AdhocTokenData
+    RfidTestData, SessionCommandsData, AppChargingData, CredentialsData, CpoApiData, \
+    TokenAuthorizationData, LocationData, TariffData, AdhocTokenData, AuthorizeData
 from ocpi22.tokens.auth import _get_authorization_from_sessions, _authorize_token, TokenAuthorization
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -234,6 +234,7 @@ class ApiPutTests(TestCase):
                                   Authorization=f'Token {token}')
         request.data = data
         request.credentials = credentials or self.credentials if authenticate else None
+        request.credentialsrole = credentialsrole or request.credentials.roles.first()
         request.party_specified_in_url = True
         if credentials and authenticate:
             credentialsrole = credentialsrole or credentials.roles.first()
@@ -1676,11 +1677,11 @@ class TestSession(TestCase):
     maxDiff = None
 
     @time_machine.travel(faketime, tick=False)
-    @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    @patch('ocpi22.tokens.token_async.post_request', new_callable=AsyncMock)
     @simulate_surrounding_world
-    def test_update_session(self,
-                            _ocpi_post_mock: Mock,
-                            simulation):
+    def test_update_session(self, mock_post_request, simulation):
+        mock_post_request.return_value = 200, AuthorizeData.accept_authorization
+
         evse = Evse.objects.all()[0]
         location = evse.location
         uid = '12345'
@@ -1828,15 +1829,18 @@ class TestCpoApi(TestCase):
            }.get(x))
     @patch('ocpi22.ocpi.util.uuid.uuid4',
            return_value=MockUuid4())
-    @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(accept_authorization)])
+    # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(AuthorizeData.accept_authorization)])
+    @patch('ocpi22.tokens.token_async.post_request', new_callable=AsyncMock)
     @patch('ocpi22.webhooks.requests.put')
     @patch('ocpiconnector.analytics.send_session_update_to_analytics')
     def test_rfid_charging_flow(self,
                                 _send_analytics: Mock,
                                 _webhook_post_mock: Mock,
-                                _ocpi_post_mock: Mock,
+                                mock_post_request: Mock,
                                 _uuid4_mock: Mock,
                                 _get_parameter_mock: Mock):
+
+        mock_post_request.return_value = 200, AuthorizeData.accept_authorization
 
         evse = Evse.objects.get(uid='HELSINKI-3')
         self.assertEqual(evse.status, 'AVAILABLE')
@@ -2059,8 +2063,11 @@ class TestCpoApi(TestCase):
                              'stop_transaction is sending different session data than expected to MSP')
 
     @time_machine.travel(faketime, tick=False)
+    @patch('ocpi22.tokens.token_async.post_request', new_callable=AsyncMock)
     @simulate_surrounding_world
-    def test_adhoc_token(self, simulation):
+    def test_adhoc_token(self, mock_post_request: Mock, simulation):
+        mock_post_request.return_value = 200, AuthorizeData.accept_authorization
+
         url = reverse('commands-start-session')
         viewset = CommandsViewSet()
 
@@ -2078,6 +2085,7 @@ class TestCpoApi(TestCase):
         response = viewset.start_session(request)
 
         # Let's guess the new Session
+        assert Session.objects.count() == 1, 'There should be only one session for this test'
         session = Session.objects.all().first()
         self.assertEqual(session.billed_to, str(billed_party), 'Billed party appears not to be stored properly')
 
@@ -2086,7 +2094,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(response.status_code, 200, 'Remote Command start_session was expected to succeed')
         # self.assertEqual(kwargs.get('url'), 'http://fakehost/start/HELSINKI-3/',
         #                  'CPO start transaction URL differs from expected')
-        authorization_reference = 'FI*001-AUTH-REFERENCE'
+        authorization_reference = f'{str(billed_party)}-AUTH-REFERENCE'
         url = f'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
         self.assertTrue(compare_lists_recursively(method_calls, AdhocTokenData.start_session_method_calls))
 
@@ -2095,7 +2103,7 @@ class TestCpoApi(TestCase):
 
         self.assertDictEqual(
             response.data,
-            {'data': {'command_id': 'FI*001-AUTH-REFERENCE'},
+            {'data': {'command_id': authorization_reference},
              'status_code': 1000,
              'status_message': 'Command result received, thank you!',
              'timestamp': '2022-01-01T12:00:00Z'}
@@ -2136,8 +2144,8 @@ class TestCpoApi(TestCase):
             cpo_response.data,
             {'session': {'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
                          'auth_method': 'COMMAND',
-                         'authorization_reference': 'FI*001-AUTH-REFERENCE',
-                         'billed_to': 'FI*MSP',
+                         'authorization_reference': authorization_reference,
+                         'billed_to': str(billed_party),
                          'currency': 'EUR',
                          'evse_uid': 'HELSINKI-3',
                          'location_id': 'HELSINKI-1',
@@ -2171,7 +2179,8 @@ class TestCpoApi(TestCase):
 
             # Use a new Session UID
             simulation.uuid4.return_value = MockUuid4(3)
-            simulation.ocpi_requests.post.return_value = make_json_response(TokenAuthorizationData.invalid_token)
+            # simulation.ocpi_requests.post.return_value = make_json_response(TokenAuthorizationData.invalid_token)
+            mock_post_request.return_value = 401, TokenAuthorizationData.invalid_token
 
             with simulation.assert_error_logged('Multiple Endpoints for FI*HB2'):
                 cpo_response = authorize(data)
@@ -2267,7 +2276,8 @@ class TestCpoApi(TestCase):
         session = Session.objects.get(internal_reference='MY-INTERNAL-REFERENCE-2')
         session_data = SessionSerializer(session).data
         # ic(recursive_sort_dict(session_data), recursive_sort_dict(SessionData.meter_values_1))
-        self.assertEqual(session_data, SessionData.meter_values_1, 'Session differs from expected')
+        self.assertTrue(compare_dicts_recursively(session_data, SessionData.meter_values_1),
+                        'Session differs from expected')
 
         #
         # CPO stops the session
@@ -2644,13 +2654,21 @@ class TestMspMap(TestCase):
                              'The charge point GeoJSON differs from expected')
 
 
-def msp_authorize(loser_token_id):
+def msp_authorize(loser_token_id, credentialsrole: CredentialsRole):
     request = api_factory.post(reverse('token-authorize', args=[loser_token_id]))
     request.data = dict()
-    request.user = get_fake_admin()
+    if not credentialsrole:
+        request.user = get_fake_admin()
+    request.credentialsrole = credentialsrole
     request.accepted_media_type = 'text/html'  # To get the detail_url in the response
     request.version = '2.2.1'
     return TokenViewSet().authorize(request, loser_token_id)
+
+
+def create_token(token_id, party: Party, user=None) -> Token:
+    created, token = Token.objects.get_or_create(uid=token_id, ocpi_master=get_credentialsrole(None, party, create=True),
+                                                 defaults=dict(customer=user))
+    return token
 
 
 class TestMspUserApi(TestCase):
@@ -2663,7 +2681,8 @@ class TestMspUserApi(TestCase):
     def setUp(self) -> None:
         os.environ['TEST'] = "1"
 
-    def _create_user(self, **data):
+    @staticmethod
+    def _create_user(**data):
         return send_create_user(data)
 
     @patch('cars.cars.get_json', return_value=test_data.cars_json)
@@ -2721,7 +2740,7 @@ class TestMspUserApi(TestCase):
                     allowed='ALLOWED',
                     info=MessageTexts.get('TOKEN_ACCEPTED'),
                     token=AdhocToken(True, party, self.token_uid, TokenType.AD_HOC_USER),
-                    party=party,
+                    billed_to=str(party),
                     authorization_reference='1234567890',
                     auth_method=Session.AUTH_REQUEST,
                 )
@@ -2743,14 +2762,16 @@ class TestMspUserApi(TestCase):
     @patch('ocpi22.ocpi.util.logging')  # There are some conflicts with atomic transactions when logging to mysql
     @simulate_surrounding_world
     def test_token_authorization_with_webhook(self, _mocked_logging: Mock, simulation: Simulation):
-        simulation.webhook_requests.put.return_value = FakeResponse(200, accept_authorization_msp)
+        simulation.webhook_requests.put.return_value = FakeResponse(200, AuthorizeData.accept_authorization_msp)
 
         with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
             token_id = 'EKI1'
-            Token.objects.filter(uid=token_id).update(customer=self.user)
+            party = Party('DE', 'TNM')
+            create_token(token_id, party, user=self.user)
 
-            with time_machine.travel(faketime, tick=False):
-                response = msp_authorize(token_id)
+            with time_machine.travel(faketime, tick=False), \
+                    simulation.our_msp_role(party):
+                response = msp_authorize(token_id, get_credentialsrole(None, party))
 
             self.assertTrue(compare_dicts_recursively(response.data, TokenAuthorizationData.authorization_response))
 
@@ -2761,18 +2782,18 @@ class TestMspUserApi(TestCase):
     @patch('ocpi22.ocpi.util.logging')  # There are some conflicts with atomic transactions when logging to mysql
     @simulate_surrounding_world
     def test_cdrs_and_transactions(self, _mocked_logging: Mock, simulation: Simulation):
-        simulation.webhook_requests.put.return_value = FakeResponse(200, accept_authorization_msp)
+        simulation.webhook_requests.put.return_value = FakeResponse(200, AuthorizeData.accept_authorization_msp)
         simulation.redis_store.get.side_effect = None
         simulation.redis_store.get.return_value = ''
 
         # Try to authorize charging with no money in account
         with patch('django.conf.settings.REQUIRE_WALLET_BALANCE', True):
             token_id = 'EKI1'
-            Token.objects.filter(uid=token_id).update(customer=self.user)
-            response = msp_authorize(token_id)
+            role = get_our_credentialsrole(OcpiRolesEnum.EMSP)
+            Token.objects.filter(uid=token_id).update(customer=self.user,
+                                                      ocpi_master=role)
+            response = msp_authorize(token_id, role)
             # Todo: Test authorize also with Location and Evses
-            self.assertEquals(response.status_code, status.HTTP_401_UNAUTHORIZED,
-                              'Charging should not be authorized if account is empty')
             self.assertEquals(response.data.get('data').get('allowed'), 'NO_CREDIT',
                               'Declined authorization should have allowed status "NO_CREDIT"')
 
@@ -2780,7 +2801,7 @@ class TestMspUserApi(TestCase):
         # Try an RFID
         #
 
-        simulation.webhook_requests.put.return_value = FakeResponse(200, accept_authorization)
+        simulation.webhook_requests.put.return_value = FakeResponse(200, AuthorizeData.accept_authorization)
         # Anything should be fine, since we patch all HTTP calls
         simulation.redis_store.get.return_value = 'http://localhost/webhook/'
         self.set_balance(self.initial_balance)
@@ -3022,16 +3043,20 @@ class TokenAuthorizationTests(BetterTestCase):
         )
 
         viewset = TokenViewSet()
-        with time_machine.travel(faketime, tick=False), simulation.assert_error_logged('Unknown Token'):
+        with time_machine.travel(faketime, tick=False), \
+                simulation.assert_error_logged(('Cannot find the specified Token', 'Unknown Token')):
             response = viewset.authorize(request, token_id)
         # There should be no webhook call for a non-existent RFID token
         simulation.webhook_requests.assert_not_called()
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND,
                          'OCPI 2.2.1 spec requires 404 for non-existent token')
-        self.assertDictEqual(response.data, TokenAuthorizationData.non_existent_token)
+        self.assertTrue(compare_dicts_recursively(response.data, TokenAuthorizationData.non_existent_token),
+                        'Response from MSP for Token authorize() differs from expected')
 
-        # While we're at it, check that the breadcrumbs can get the view name
+    def test_token_viewset_name(self):
+        # Check that the breadcrumbs can get the view name
+        viewset = TokenViewSet()
         self.assertEqual(viewset.get_view_name(), 'Tokens')
         kwargs = dict(uid=123)
         viewset.kwargs = kwargs
@@ -3052,16 +3077,24 @@ class TokenAuthorizationTests(BetterTestCase):
             )
         )
 
+        party = Party('FI', 'MSP')
+
         with time_machine.travel(faketime, tick=False), \
-                simulation.assert_error_logged('Your charging token is not valid at the moment'):
+                simulation.assert_error_logged('Your charging token is not valid at the moment'), \
+                simulation.our_msp_role(party) as role:
+            # Make the Token invalid
+            Token.objects.filter(uid=token_id).update(valid=False)
+            token = Token.objects.get(uid=token_id)
+            self.assertEqual(token.ocpi_master, role,
+                             f'The test fixture should have a Token EKI1 for party {str(party)}')
+
             response = TokenViewSet().authorize(request, token_id)
 
         # There should be no webhook call for a non-existent RFID token
         simulation.webhook_requests.assert_not_called()
 
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED,
-                         'Token is not valid, so authorization should fail')
-        self.assertDictEqual(response.data, TokenAuthorizationData.invalid_token)
+        self.assertDictEqual(response.data, TokenAuthorizationData.invalid_token,
+                             'Authorization response differs from expected')
 
         # Clean up afterwards
         Token.objects.filter(uid=token_id).update(valid=True)
@@ -3080,7 +3113,13 @@ class TokenAuthorizationTests(BetterTestCase):
                 status_code=status.HTTP_404_NOT_FOUND
             )
         )
-        with time_machine.travel(faketime, tick=False):
+
+        party = Party('FI', 'MSP')
+        with time_machine.travel(faketime, tick=False), \
+                simulation.our_msp_role(party) as role:
+            token = Token.objects.get(uid=self.token.uid)
+            self.assertEqual(token.ocpi_master, role,
+                             f'The test fixture should have a Token {self.token.uid} for party {str(party)}')
             response = TokenViewSet().authorize(request, self.token.uid)
 
         # There should be one call only to the webhook

@@ -35,7 +35,7 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_absolute_url') or not self.is_browser():
+        if not hasattr(obj, 'get_absolute_url') or not self.is_browser() or self.context.get('exclude_urls'):
             return ''
         version = self.context.get('version')
         return f'{build_absolute_uri(obj.get_absolute_url(version))}'

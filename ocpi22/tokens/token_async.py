@@ -5,8 +5,7 @@ from urllib.parse import urljoin
 import aiohttp
 import asyncio
 
-from icecream import ic
-
+from ocpi22 import logging
 from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, AuthorizationEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location
@@ -25,26 +24,26 @@ async def post_request(session, url, data, headers=None) -> (int, dict):
         try:
             json_data = await response.json()
         except (aiohttp.ContentTypeError, json.JSONDecodeError):
-            print('Cannot decode JSON response')
+            logging.error(f'Cannot decode JSON response from url {url}')
             json_data = None
 
         return status, json_data
 
 
 def process_task_result(successful_task):
-    print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
+    # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
     try:
         status_code, json_data = successful_task.result()
         if isinstance(json_data, dict):
             json_data = json_data.get('data')
             # If content is a Token authorize response, then break, otherwise continue
             if isinstance(json_data, dict) and json_data.get('allowed'):
-                print(f"Received authorization from {successful_task.get_name()}")
+                logging.info(f"Received authorization from {successful_task.get_name()}")
                 json_data['responding_party'] = successful_task.get_name()
                 return json_data
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
         # Handle the case where response is not JSON or cannot be decoded
-        print('Cannot decode JSON response')
+        logging.error(f'Cannot decode JSON response from party {successful_task.get_name()}')
         pass
     return None
 
@@ -75,20 +74,20 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
         while tasks:
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-            print(f'Processing {len(done)} done tasks ({len(pending)} still pending)...')
+            # print(f'Processing {len(done)} done tasks ({len(pending)} still pending)...')
 
             for task in done:
                 try:
                     status, data = task.result()
-                    ic(task.get_name(), status, data)
+                    # ic(task.get_name(), status, data)
                     if status == 200:
                         result = process_task_result(task)
                         if result:
                             break
-                    else:
-                        print(f'Task {task.get_name()} failed with return code {status}')
+                    # else:
+                    #     print(f'Task {task.get_name()} failed with return code {status}')
                 except Exception as e:
-                    print(f"Task {task.get_name()} raised an exception:", e)
+                    logging.error(f"Task {task.get_name()} raised an exception:", e)
 
             if not pending:
                 # No more tasks pending, break the loop
@@ -98,7 +97,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
         # Cancel all pending tasks as we have found our successful task or there are no tasks left
         for task in pending:
-            print(f'Cancelling task {task.get_name()}', task.cancel())
+            logging.info(f'Cancelling task {task.get_name()}', task.cancel())
 
         return result
 
@@ -135,8 +134,9 @@ def authorize_with_msps_sync(token: str, location: Location = None, parties: lis
             serializer = AuthorizationInfoSerializer(data=response)
             if serializer.is_valid():
                 from ocpi22.models.session import Session
+                token = serializer.validated_data.get('token', {})
                 return TokenAuthorization(**serializer.validated_data, responding_party=responding_party,
-                                          auth_method=Session.AUTH_REQUEST)
+                                          auth_method=Session.AUTH_REQUEST, billed_to=token.get('party', Party()))
             else:
                 logging.error('Cannot create TokenAuthorization from response from '
                               f'{serializer.validated_data.get("responding_party", "N/A")}: {serializer.errors}')
