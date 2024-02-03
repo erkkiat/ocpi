@@ -33,12 +33,12 @@ sleep 4
 
 echo "Creating app $HEROKU_APP..."
 
-heroku create --region eu "$HEROKU_APP" \
+(heroku create --region eu "$HEROKU_APP" \
  && heroku addons:create rediscloud:100 \
  && heroku addons:create jawsdb-maria \
  && heroku config:set HOSTNAME=$HOST.ocpiconnector.com \
- SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` $4 $5 $6 $ROLE1 $ROLE2 \
- SLACK_WEBHOOK=$SLACK_WEBHOOK DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE SCHEME=http \
+ SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` "$4" "$5" "$6" "$ROLE1" "$ROLE2" \
+ SLACK_WEBHOOK="$SLACK_WEBHOOK" DJANGO_SETTINGS_MODULE="$DJANGO_SETTINGS_MODULE" SCHEME=http PREMIUM=1 \
  && echo "Let's give the Redis installer a moment to settle down..." \
  && sleep 15 \
  && heroku pipelines:add ocpi-connector --stage=production \
@@ -52,7 +52,7 @@ heroku create --region eu "$HEROKU_APP" \
  && echo "======================================================" \
  && heroku run  DJANGO_SUPERUSER_USERNAME="$USERNAME" \
                 DJANGO_SUPERUSER_PASSWORD="$PASSWORD" \
-                ./manage.py createsuperuser --username "$USERNAME" --email "$EMAIL" --noinput
+                ./manage.py createsuperuser --username "$USERNAME" --email "$EMAIL" --noinput) || (echo "Instance creation failed" && exit 1)
 
 heroku addons:create papertrail || echo "*** Cannot activate papertrail"
 heroku addons:create sentry || echo "*** Cannot activate sentry"
