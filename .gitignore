@@ -2,3 +2,7 @@
 /venv*
 staticfiles
 version.txt
+terraform.tfstate
+terraform.tfstate.backup
+env.sh
+.env*
