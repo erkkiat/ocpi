@@ -14,7 +14,7 @@ from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum
 from ocpi22.util import ModelUtilMixin
 from ocpi22.ocpi.util import OcpiModule
-from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
+from ocpiconnector.manager import PartnerManager
 
 
 class Token(models.Model, ModelUtilMixin, OcpiModule):
@@ -40,6 +40,8 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_module_name = OcpiModuleEnum.TOKENS
     ocpi_object_owner = 'EMSP'
     send_updates_to = ('CPO', 'HUB')
+
+    objects = PartnerManager()
 
     SENDER = None
 

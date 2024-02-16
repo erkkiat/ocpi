@@ -385,7 +385,7 @@ def title_case(name: str) -> str:
 
 
 def replace_links(result):
-    """Replace all links in the result with the corresponding URL
+    """Replace all links in the result with the corresponding URL using reverse()
     >>> replace_links('Check [msp-authorize-webhook] for details.')
     'Check <a href="/api/msp/v1/webhook/authorize/">Msp Authorize Webhook</a> for details.'
     """
@@ -400,7 +400,7 @@ def replace_links(result):
 
 def unwrap(func):
     """
-    Unwrap a decorated function to provide direct access to the original function
+    Recursively unwrap a decorated function to provide direct access to the original function.
     @param func: A function decorated with one or more decorators
     @return: Unwrapped (undecorated) function
     """

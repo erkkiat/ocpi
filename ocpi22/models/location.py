@@ -21,6 +21,7 @@ from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
+from ocpiconnector.manager import PartnerManager
 
 
 def validate_timezone(t: str):
@@ -75,6 +76,8 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     ocpi_module_name = OcpiModuleEnum.LOCATIONS
     ocpi_object_owner = 'CPO'
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB', 'OTHER')
+
+    objects = PartnerManager()
 
     class Meta:
         verbose_name = _('location')
@@ -265,6 +268,8 @@ class Evse(models.Model, ModelUtilMixin):
             models.UniqueConstraint(fields=['uid', 'location'], name='evse_party_uid'),
         ]
 
+    objects = PartnerManager()
+
     # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
     # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.
     # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
@@ -384,6 +389,8 @@ class Connector(models.Model, ModelUtilMixin):
         verbose_name = _('connector')
         verbose_name_plural = _('connectors')
         unique_together = [['evse', 'uid']]
+
+    objects = PartnerManager()
 
     uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
 

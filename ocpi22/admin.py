@@ -28,9 +28,9 @@ from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultT
 from ocpi22.models.token import Token
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
-from ocpi22.ocpi.partners import invalidate_partner_cache
+from ocpi22.ocpi.partners import invalidate_partner_cache, get_partners_by_party_as_party
 from ocpi22.pull import admin_pull_all
-from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_our_credentialsrole
+from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_our_credentialsrole, Party
 from payment.models import Payment
 
 admin.site.site_header = 'Roaming Admin'
@@ -548,7 +548,7 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
         model = Endpoint
 
     model = Credentials
-    list_display = ['name', 'valid', 'responding', 'last_update']
+    list_display = ['name', 'party', 'valid', 'responding', 'last_update']
     readonly_fields = ['theirs_base64', 'ours_base64', 'last_updated', 'created', 'last_connection']
     inlines = [CredentialRolesInline, EndpointsInline]
     search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a',
@@ -565,6 +565,29 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
     def last_update(self, obj):
         return naturaltime(obj.last_connection)
 
+    def save_model(self, request, obj, form, change):
+
+        super().save_model(request, obj, form, change)
+        if obj and change:
+            def invalidate_current_partners_cache():
+                current_partners: [Party] = map(get_partners_by_party_as_party, roles)
+                flattened_set = set.union(*current_partners)
+                list(map(invalidate_partner_cache, flattened_set))
+
+            # Todo: The below code is not working fully, there is a n+1 delay in clearing the cache
+            # Now the cache is cleared fully every time to compensate
+
+            # List all the roles of the changed Credentials
+            roles = {role.party for role in obj.roles.all()}
+
+            # Invalidate the agreed partners cache to enable the new roles and disable the old ones
+            list(map(invalidate_partner_cache, roles))
+
+            # Do the same for the partners (this one comes from cache)
+            invalidate_current_partners_cache()
+            # Do the same again, now cache has been reset
+            invalidate_current_partners_cache()
+
     last_update.admin_order_field = 'last_connection'
     last_update.short_description = 'Last connection'
 
@@ -578,12 +601,6 @@ class CredentialsRoleAdmin(admin.ModelAdmin, AdminUtilityMixin):
     autocomplete_fields = ['agreed_parties']
     search_fields = ['business_details__name', 'business_details__website',
                      'agreed_parties__country_code', 'agreed_parties__party_id']
-
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
-        if obj and change and hasattr(obj, 'ocpi_master'):
-            party = obj.ocpi_master.party
-            invalidate_partner_cache(party)
 
 
 @admin.register(DefaultTariffs)

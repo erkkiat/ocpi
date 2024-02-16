@@ -12,7 +12,7 @@ from typing import Optional, Any, Union
 
 import pytz
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import QuerySet
+from django.db.models import Q
 from django.utils.translation import gettext as _
 
 import cachetools
@@ -33,10 +33,11 @@ from urllib.parse import urljoin
 
 from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
+from ocpi22.ocpi.partners import get_partners
 from ocpi22.ocpi.util import OCPIResponse
 from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
-from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party, get_our_party
+from ocpiconnector.ocpi_identities import ocpi_identities, OCPIIdentities, Party, get_our_party, ocpi_platform
 from util import format_url, RedisStore, redis_store, with_trailing_slash
 
 
@@ -332,22 +333,8 @@ def is_our_identifier(party: Party, identities=None) -> bool:
 
 class ModelUtilMixin:
     @classmethod
-    def get_if_exists(cls, *args, raise_exception=False, multiple_is_ok_just_get_the_first_one=False, **kwargs) -> any:
-        # Is the object already fetched?
-        uid = kwargs.get('uid')
-        if isinstance(uid, cls):
-            return uid
-
-        objects = cls.objects.filter(*args, **kwargs)
-        if multiple_is_ok_just_get_the_first_one or objects.count() == 1:
-            return objects.first()
-        if objects.count() > 1:
-            raise ValidationError(f'There are more than one {cls.__name__} with the criteria {kwargs} in the database')
-        if raise_exception:
-            error_message = f"{cls.__name__} with UID " \
-                            f"{kwargs.get('uid', 'N/A')} doesn't exist in the database"
-            raise cls.DoesNotExist(error_message)
-        return None
+    def get_if_exists(cls, *args, **kwargs) -> any:
+        return cls.objects.get_if_exists(*args, **kwargs)
 
     def party(self) -> str:  # Todo: rename to party_str, but be careful
         """ Get the party from the OCPI object as a string, e.g. "FI*CPO" """
@@ -639,10 +626,6 @@ class OCPIVersioning(versioning.BaseVersioning):
 
 
 class OCPIListModelMixin(ABC):
-    # @classmethod
-    # def get_queryset(cls):
-    #     return QuerySet().none()
-
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         serializer_class = self.get_serializer_class() \
@@ -654,6 +637,12 @@ class OCPIListModelMixin(ABC):
 
         serializer = serializer_class(queryset, many=True, context={'version': request.version, 'request': request})
         return OCPIResponse(serializer.data)
+
+    def partner_criteria(self):
+        if ocpi_platform.is_hub and hasattr(self.request, 'credentials'):
+            agreed_parties = get_partners(self.request)
+            return Q(ocpi_master__in=agreed_parties)
+        return Q()
 
 # def group_by_value(pairs):
 #     """

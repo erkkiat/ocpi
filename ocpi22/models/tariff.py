@@ -20,6 +20,7 @@ from ocpi22.credentials.util import find_endpoints_by_roles
 import ocpi22.tasks as tasks
 from ocpi22.util import ModelUtilMixin, format_currency, CURRENCY_CHOICES, hours_minutes, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
+from ocpiconnector.manager import PartnerManager
 from ocpiconnector.ocpi_identities import get_our_party, ocpi_platform
 from ocpiconnector.util import weekday_range_to_str, humanize_time, humanize_date_range, build_item_url
 
@@ -35,6 +36,8 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_module_name = OcpiModuleEnum.TARIFFS
     ocpi_object_owner = 'CPO'
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB', 'OTHER')
+
+    objects = PartnerManager()
 
     class Meta:
         verbose_name = _('tariff')

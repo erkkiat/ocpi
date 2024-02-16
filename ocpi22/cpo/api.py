@@ -371,7 +371,7 @@ class ChargePointViewSet(FlowchartViewSet):
     status and other data from the charge point.
     """
 
-    queryset = Location.objects.all()  # A CPO instance should only have its own Locations in the database
+    queryset = Location.objects.all()  # Todo: A CPO instance can have locations from other partners as well
     lookup_field = 'uid'
 
     flowchart = dict(

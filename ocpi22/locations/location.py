@@ -49,11 +49,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return 'Locations'
 
     def get_queryset(self):
-        criteria = Q()
-        if ocpi_platform.is_hub:
-            agreed_parties = get_partners(self.request)
-            criteria = Q(ocpi_master__in=agreed_parties)
-        return Location.objects.filter(criteria).order_by('created')
+        return Location.objects.partner_filter(self.request).order_by('created')
 
     @ocpi_exception_handler
     @requires_premium
@@ -64,7 +60,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     def get_object(uid=None) -> Location:
         # Needed for OPTIONS to work in list view, could just return None
         if uid:
-            return get_object_or_404(Location, uid=uid)
+            return get_object_or_404(Location, uid=uid)  # Todo: Data security risk?
 
     @requires_premium
     @ocpi_exception_handler
@@ -80,7 +76,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     def get(self, request, credentialsrole, uid, *_args, **_kwargs):
         """Respond to GET for a specified location"""
         serializer = self.get_serializer_class()(
-            Location.objects.get(uid__iexact=uid, ocpi_master=credentialsrole),
+            self.get_queryset().get(uid__iexact=uid, ocpi_master=credentialsrole),
             context={'version': request.version, 'request': request})
         return OCPIResponse(serializer.data)
 
@@ -102,12 +98,11 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
         return self.save_or_update(request, data, credentialsrole, uid, patch, version, logentry, credentials)
 
-    @staticmethod
-    def save_or_update(request, data, credentialsrole, uid, patch=False,
+    def save_or_update(self, request, data, credentialsrole, uid, patch=False,
             version='2.2.1', logentry=None, credentials=None):
 
         assert uid, 'Location ID is a required parameter for LocationViewSet.save_or_update()'
-        existing_location: Location = Location.get_if_exists(
+        existing_location: Location = self.get_queryset().get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )
 
@@ -241,7 +236,7 @@ class EvseViewSet(GenericViewSet):
             return OCPIBadRequestResponse('EVSE UID in URL does not match EVSE UID in payload')
         evse: Evse = Evse.get_if_exists(uid=evse_uid, location__uid=uid,
                                         location__ocpi_master=request.credentialsrole)
-        location: Location = Location.get_if_exists(uid=uid, ocpi_master=request.credentialsrole)
+        location: Location = self.get_queryset().get_if_exists(uid=uid, ocpi_master=request.credentialsrole)
         if not location:
             return OCPINotFoundResponse(f'Location with UID "{uid}" not found')
 

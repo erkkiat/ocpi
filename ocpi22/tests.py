@@ -236,6 +236,7 @@ class ApiPutTests(TestCase):
         request.credentials = credentials or self.credentials if authenticate else None
         request.credentialsrole = credentialsrole or request.credentials.roles.first()
         request.party_specified_in_url = True
+        viewset.request = request
         if credentials and authenticate:
             credentialsrole = credentialsrole or credentials.roles.first()
         return viewset().save_or_update(request, data=data, uid=data.get('uid', data.get('id')),

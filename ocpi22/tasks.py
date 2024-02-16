@@ -231,7 +231,7 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects
                         else:
                             # Not pulling from a hub, so the Credentials party must match
                             credentialsrole = credentials.roles.first()
-                            ic(credentialsrole, credentialsrole.party)
+                            # ic(credentialsrole, credentialsrole.party)
                             if credentialsrole.party != party:
                                 logging.error(f'Party {party} in the pulled data doesn not match party '
                                               f'{credentialsrole.party} in the credentialsrole. '

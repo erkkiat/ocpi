@@ -78,7 +78,6 @@ def make_ocpi_response(authorization: TokenAuthorization) -> OCPIResponse:
 
 class TokenViewSet(OCPIListModelMixin,
                    GenericViewSet):
-    queryset = Token.objects.all().order_by('created')
     serializer_class = TokenSerializer
     pagination_class = OCPIPaginationAndHeaders
     versioning_class = OCPIVersioning
@@ -91,6 +90,9 @@ class TokenViewSet(OCPIListModelMixin,
         if self.name:
             return f'{self.name.capitalize()}'
         return f'Tokens'
+
+    def get_queryset(self):
+        return Token.objects.partner_filter(self.request).order_by('created')
 
     @ocpi_exception_handler
     def list(self, request, *args, **kwargs):
@@ -238,7 +240,7 @@ class TokenViewSet(OCPIListModelMixin,
 
         # Todo: Show only tokens that are relevant to the party
         # Todo: if running as HUB, filter results based on agreed parties
-        token = Token.objects.get(ocpi_master=credentialsrole, uid=uid)
+        token = self.get_queryset().get(ocpi_master=credentialsrole, uid=uid)
         serializer = TokenSerializer(token, many=False, context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
 
@@ -442,7 +444,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
 
 class TariffViewSet(OCPIListModelMixin,
                     GenericViewSet):
-    queryset = Tariff.objects.exclude(archived=True).order_by('created')
     serializer_class = TariffSerializer
     versioning_class = OCPIVersioning
     pagination_class = OCPIPaginationAndHeaders
@@ -456,6 +457,9 @@ class TariffViewSet(OCPIListModelMixin,
             return f'{self.name.capitalize()}'
         return 'Tariffs'
 
+    def get_queryset(self):
+        return Tariff.objects.partner_filter(self.request).exclude(archived=True).order_by('created')
+
     @ocpi_exception_handler
     @requires_premium
     def list(self, *args, **kwargs):
@@ -466,7 +470,7 @@ class TariffViewSet(OCPIListModelMixin,
     @requires_credentialsrole
     def get(self, request: Request, credentialsrole, uid, *_args, **_kwargs):
         """Handle a GET request for a specific Tariff"""
-        tariff = Tariff.objects.get(ocpi_master=credentialsrole, uid__iexact=uid, archived=False)
+        tariff = self.get_queryset().get(ocpi_master=credentialsrole, uid__iexact=uid)
         serializer = self.get_serializer(tariff, many=False,
                                          context={'request': request, 'version': request.version})
         return OCPIResponse(serializer.data)
@@ -495,11 +499,10 @@ class TariffViewSet(OCPIListModelMixin,
 
         return self.save_or_update(request, credentialsrole, uid, data, version, logentry)
 
-    @staticmethod
-    def save_or_update(request, credentialsrole, uid, data=None, version='2.2.1',
+    def save_or_update(self, request, credentialsrole, uid, data=None, version='2.2.1',
             logentry=None) -> OCPIResponse:
         assert uid, f'UID is a required parameter for TariffViewSet.save_or_update()'
-        tariff: Tariff = Tariff.get_if_exists(uid__iexact=uid, ocpi_master=credentialsrole, archived=False)
+        tariff: Tariff = self.get_queryset().get_if_exists(uid__iexact=uid, ocpi_master=credentialsrole, archived=False)
         created = bool(not tariff)
         if tariff and tariff.is_ours():
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',
@@ -524,7 +527,7 @@ class TariffViewSet(OCPIListModelMixin,
                         subtopic='')
     def delete(self, request, credentialsrole, uid, *_args, **_kwargs) -> OCPIResponse:
         """Process a DELETE rest call for a Tariff"""
-        tariff = Tariff.objects.get(uid__iexact=uid, ocpi_master=credentialsrole, archived=False)
+        tariff = self.get_queryset().get(uid__iexact=uid, ocpi_master=credentialsrole)
         if tariff.ocpi_master != request.credentialsrole \
                 and not request.user.is_superuser \
                 and request.credentials and not request.credentials.is_hub:

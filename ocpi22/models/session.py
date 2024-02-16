@@ -28,6 +28,7 @@ from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHO
     apply_step_size, str_to_deterministic_int, build_absolute_uri
 from ocpi22.serializers import SerializerCleanedUp, UTCDateTimeField
 from ocpi22.ocpi.util import OcpiModule
+from ocpiconnector.manager import PartnerManager
 
 
 class Session(models.Model, ModelUtilMixin, OcpiModule):
@@ -48,6 +49,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
     subscribers = os.environ.get('SESSION_SUBSCRIBERS', '').upper().split(',')
+
+    objects = PartnerManager()
 
     # The party responsible for the master data for this object
     # The country_code and party_id can be found through the CredentialsRole
@@ -444,6 +447,8 @@ class ChargingPeriod(models.Model, ModelUtilMixin):
 
     class Meta:
         ordering = ('start_date_time',)
+
+    objects = PartnerManager()
 
     # Start timestamp of the charging period. A period ends when the next period starts.
     # The last period ends when the session ends.

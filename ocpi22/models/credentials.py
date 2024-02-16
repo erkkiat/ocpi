@@ -26,6 +26,7 @@ from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi.util import OcpiModule, OCPIResponse
 from ocpi22.util import ModelUtilMixin, build_absolute_uri
 from ocpiconnector.exception_handler import view_exception_handler
+from ocpiconnector.manager import PartnerManager
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
@@ -50,6 +51,8 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_module_name = OcpiModuleEnum.CREDENTIALS
     ocpi_object_owner = None
     send_updates_to = ('EMSP', 'NAP', 'NSP', 'HUB', 'CPO', 'SCSP', 'OTHER')
+
+    objects = PartnerManager()
 
     class Meta:
         verbose_name = _('roaming partner')
@@ -120,6 +123,8 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
             f'{r.country_code}*{r.party_id} ({r.role})'
             for r in self.roles.all()
         ])
+
+    party.short_description = _('Parties')  # For admin UI
 
     @staticmethod
     def base64(token: models.CharField):
@@ -235,6 +240,8 @@ class CredentialsRole(models.Model, ModelUtilMixin):
         ]
         verbose_name = _('party')
         verbose_name_plural = _('parties')
+
+    objects = PartnerManager()
 
     role = models.CharField(max_length=5, choices=ROLE_CHOICES, verbose_name=_('Role'))
 
