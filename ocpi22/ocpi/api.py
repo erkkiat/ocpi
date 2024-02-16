@@ -703,14 +703,8 @@ class ClientInfoViewSet(mixins.ListModelMixin,
         return 'HubClientInfo'
 
     def get_queryset(self):
-        if ocpi_platform.is_hub:  # Todo: Maybe better to use inheritance?
-            credentialsrole_ids: set = get_partners(self.request)
-            if not credentialsrole_ids:
-                return CredentialsRole.objects.none()
-            return CredentialsRole.objects.\
-                filter(pk__in=credentialsrole_ids, credentials__isnull=False).\
-                order_by('country_code', 'party_id')
-        return CredentialsRole.objects.filter(credentials__isnull=False).order_by('country_code', 'party_id')
+        return CredentialsRole.objects.partner_filter(self.request).\
+            filter(credentials__isnull=False).order_by('country_code', 'party_id')
 
     @staticmethod
     def get_object(object_id=None):
