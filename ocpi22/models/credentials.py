@@ -257,7 +257,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     credentials = models.ForeignKey(Credentials, related_name='roles', on_delete=models.CASCADE, null=True,
                                     verbose_name=_('Credentials'))
 
-    agreed_parties = models.ManyToManyField('ocpi22.CredentialsRole', blank=True,
+    agreed_parties = models.ManyToManyField('ocpi22.CredentialsRole', blank=True, related_name='agreed_parties_backwards',
                                             verbose_name=_('Parties with agreements'))
     # Todo: Agreed parties should show on both sides, if CPO has an agreement with MSP, then MSP should also see it (in admin)
 

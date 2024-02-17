@@ -26,6 +26,10 @@ class Party:
     def __bool__(self):
         return bool(self.country_code and self.party_id)
 
+    def get_role_if_exists(self):
+        from ocpi22.models.credentials import CredentialsRole
+        return CredentialsRole.get_if_exists(country_code__iexact=self.country_code, party_id__iexact=self.party_id)
+
 
 class Singleton(type):
     _instances = {}

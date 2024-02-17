@@ -2,6 +2,8 @@ import os
 
 import cachetools
 
+from django.http import HttpRequest
+
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpiconnector.ocpi_identities import Party, ocpi_identities
 
@@ -11,6 +13,14 @@ partners_cache = cachetools.TTLCache(maxsize=1024, ttl=60*60*4)
 
 @cachetools.cached(cache=partners_cache)
 def get_partners_by_party(party: Party, source: dict = os.environ) -> set[int]:
+    """
+    Get the partners of a party from the database. If the party is not found in the database, it is created.
+    This function returns a set of primary keys of the partners of the given party, because that is used
+    for filtering OCPI objects depending on which party is asking.
+    @param party: The asking party
+    @param source: Source of the environment variables (for unit testing purposes)
+    @return: A set of CredentialsRole primary keys
+    """
     from ocpi22.models.credentials import CredentialsRole
     from ocpi22.models.business_details import BusinessDetails
     if not party:
@@ -28,8 +38,9 @@ def get_partners_by_party(party: Party, source: dict = os.environ) -> set[int]:
                                                   business_details=bt)
         else:
             raise
-    partners = role.agreed_parties.all().values_list('id', flat=True)
-    return set(partners)
+    our_partners = role.agreed_parties.all().values_list('id', flat=True)
+    we_are_partners_to = role.agreed_parties_backwards.all().values_list('id', flat=True)
+    return set.union(set(our_partners), set(we_are_partners_to))
 
 
 def get_partners_by_party_as_party(party: Party) -> set[Party]:
@@ -39,11 +50,33 @@ def get_partners_by_party_as_party(party: Party) -> set[Party]:
     return set(role.party for role in roles)
 
 
-def get_partners(request) -> set[int]:
+def get_partners(request: HttpRequest) -> set[int]:
     if request and hasattr(request, 'headers'):
         party = get_sender_party(request.headers)
         return get_partners_by_party(party)
     return set()
+
+
+def add_partner(party: Party, partner: Party) -> bool:
+    role = party.get_role_if_exists()
+    partner_role = partner.get_role_if_exists()
+    if all([role, partner_role]):
+        role.agreed_parties.add(partner_role)
+        invalidate_partner_cache(party)
+        invalidate_partner_cache(partner)
+        return True
+    raise ValueError(f'Parties {party} and {partner} are not both found in the database')
+
+
+def remove_partner(party: Party, partner: Party) -> bool:
+    role = party.get_role_if_exists()
+    partner_role = partner.get_role_if_exists()
+    if all([role, partner_role]):
+        role.agreed_parties.remove(partner_role)
+        invalidate_partner_cache(party)
+        invalidate_partner_cache(partner)
+        return True
+    raise ValueError(f'Parties {party} and {partner} are not both found in the database')
 
 
 def invalidate_partner_cache(party: Party) -> bool:
