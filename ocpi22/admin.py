@@ -12,6 +12,7 @@ from django.contrib import admin, messages
 from django.contrib.auth.models import User
 from humanize import naturaltime
 
+import widgets
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.logging import LogEntry, ChildEvent
 from django.utils.html import format_html
@@ -34,6 +35,7 @@ from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_ou
 from payment.models import Payment
 
 admin.site.site_header = 'Roaming Admin'
+admin.site.index_title = 'Dashboard'
 
 
 class AdminUtilityMixin:
@@ -144,6 +146,8 @@ class ConnectorInline(NestedStackedInline):
     )
     autocomplete_fields = ['tariff_ids']
 
+    formfield_overrides = widgets.formfield_overrides
+
     def has_change_permission(self, request, obj: Evse = None) -> bool:
         if not super().has_change_permission(request, obj):
             return False
@@ -164,9 +168,7 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
         inlines = [ConnectorInline]
         autocomplete_fields = ['capabilities']
 
-        formfield_overrides = {
-            models.TextField: {'classes': 'form-control'},
-        }
+        formfield_overrides = widgets.formfield_overrides
 
         def has_change_permission(self, request, obj=None) -> bool:
             if not super().has_change_permission(request, obj):
@@ -176,9 +178,7 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
         def has_add_permission(self, request, obj=None) -> bool:
             return Location.ocpi_object_owner in ocpi_identities
 
-    formfield_overrides = {
-        models.TextField: {'classes': 'form-control'},
-    }
+    formfield_overrides = widgets.formfield_overrides
 
     model = Location
     search_fields = ['ocpi_master__country_code', 'ocpi_master__party_id', 'uid', 'name', 'address', 'city',
@@ -251,6 +251,8 @@ class EvseAdmin(NestedModelAdmin, AdminUtilityMixin):
     autocomplete_fields = ['capabilities', 'location']
     exclude = ['last_updated']
     list_filter = ['status']
+
+    formfield_overrides = widgets.formfield_overrides
 
     def get_queryset(self, request):
         return Evse.objects.select_related('location').all().order_by('-last_updated')
@@ -363,6 +365,8 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
                      'cdr_location_country', 'cdr_token_uid', 'cdr_token_contract_id', 'billed_to']
     autocomplete_fields = ['tariffs']
 
+    formfield_overrides = widgets.formfield_overrides
+
     def has_add_permission(self, request) -> bool:
         # Disable add
         return settings.ALLOW_ADMIN_DELETE_AND_CHANGE
@@ -395,6 +399,9 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
         'location',
         'kwh', 'cost',
     ]
+
+    formfield_overrides = widgets.formfield_overrides
+
     inlines = [ChargingPeriodInline]
     fieldsets = (
         ('Identification', dict(fields=(('ocpi_master',), ('uid', 'meter_id'),
@@ -437,6 +444,8 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
             model = PriceComponent
             exclude = ['dynamic_price_source']
 
+            formfield_overrides = widgets.formfield_overrides
+
             def has_change_permission(self, request, obj=None) -> bool:
                 if not super().has_change_permission(request, obj):
                     return False
@@ -450,6 +459,8 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
 
         model = TariffElement
         inlines = [PriceComponentsInline]
+
+        formfield_overrides = widgets.formfield_overrides
 
         fieldsets = [
             ('Scope of the below price components', dict(
@@ -469,7 +480,7 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
             if not super().has_change_permission(request, obj):
                 return False
             return (not obj or obj.is_ours()) \
-                   or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+                or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
 
         def has_add_permission(self, request, obj=None) -> bool:
             return Tariff.ocpi_object_owner in ocpi_identities or self.has_change_permission(request, obj)
@@ -483,6 +494,8 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
     inlines = [ElementsInline]
     search_fields = ['uid']
     readonly_fields = ('last_updated',)
+
+    formfield_overrides = widgets.formfield_overrides
 
     fieldsets = [
         ('',
@@ -609,6 +622,8 @@ class DefaultTariffsAdmin(admin.ModelAdmin, AdminUtilityMixin):
     list_display = ['standard', 'tariff_list']
     autocomplete_fields = ['tariffs']
 
+    formfield_overrides = widgets.formfield_overrides
+
 
 @admin.register(DynamicPrice)
 class DynamicPriceAdmin(admin.ModelAdmin, AdminUtilityMixin):
@@ -684,6 +699,8 @@ class AuthorizationAdmin(admin.ModelAdmin, AdminUtilityMixin):
     list_display = ('authorization_reference', 'session', 'max_price', 'created')
     search_fields = ('authorization_reference', 'session__uid')
 
+    formfield_overrides = widgets.formfield_overrides
+
     def has_change_permission(self, request, obj=None):
         return False
 
@@ -715,6 +732,8 @@ class LogEntryAdmin(NestedModelAdmin, AdminUtilityMixin):
     list_display = ('topic', 'updated')
     ordering = ['-updated']
     search_fields = ['events__text', 'topic']
+
+    formfield_overrides = widgets.formfield_overrides
 
     def has_change_permission(self, request, obj=None):
         return False
