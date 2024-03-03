@@ -96,12 +96,12 @@ class TokenAdmin(admin.ModelAdmin, AdminUtilityMixin):
     ]
 
     def has_add_permission(self, request) -> bool:
-        return Token.ocpi_object_owner in ocpi_identities or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+        return (Token.ocpi_object_owner in ocpi_identities or settings.ALLOW_ADMIN_DELETE_AND_CHANGE) \
+               and super().has_add_permission(request)
 
     def has_change_permission(self, request, obj: Token = None) -> bool:
-        if not super().has_change_permission(request, obj):
-            return False
-        return (obj and obj.is_ours()) or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+        return ((obj and obj.is_ours()) or settings.ALLOW_ADMIN_DELETE_AND_CHANGE) \
+               and super().has_change_permission(request, obj)
 
     def save_model(self, request, obj, form, change):
         """Since the admin is saving the object, it's ours, so let's fill out the needed fields"""
@@ -149,15 +149,13 @@ class ConnectorInline(NestedStackedInline):
     formfield_overrides = widgets.formfield_overrides
 
     def has_change_permission(self, request, obj: Evse = None) -> bool:
-        if not super().has_change_permission(request, obj):
-            return False
         # Todo: Admin should only be able to change owned Connectors
         if obj and hasattr(obj, 'location'):
             obj = obj.location
-        return obj and hasattr(obj, 'is_ours') and obj.is_ours()
+        return obj and hasattr(obj, 'is_ours') and obj.is_ours() and super().has_change_permission(request, obj)
 
     def has_add_permission(self, request, obj=None) -> bool:
-        return Location.ocpi_object_owner in ocpi_identities
+        return Location.ocpi_object_owner in ocpi_identities and super().has_add_permission(request, obj)
 
 
 class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
@@ -171,12 +169,10 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
         formfield_overrides = widgets.formfield_overrides
 
         def has_change_permission(self, request, obj=None) -> bool:
-            if not super().has_change_permission(request, obj):
-                return False
-            return obj and obj.is_ours()
+            return obj and obj.is_ours() and super().has_change_permission(request, obj)
 
         def has_add_permission(self, request, obj=None) -> bool:
-            return Location.ocpi_object_owner in ocpi_identities
+            return Location.ocpi_object_owner in ocpi_identities and super().has_add_permission(request, obj)
 
     formfield_overrides = widgets.formfield_overrides
 
@@ -205,12 +201,10 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
     )
 
     def has_change_permission(self, request, obj=None) -> bool:
-        if not super().has_change_permission(request, obj):
-            return False
-        return obj and obj.is_ours()
+        return obj and obj.is_ours() and super().has_change_permission(request, obj)
 
     def has_add_permission(self, request) -> bool:
-        return Location.ocpi_object_owner in ocpi_identities
+        return Location.ocpi_object_owner in ocpi_identities and super().has_add_permission(request)
 
     def get_readonly_fields(self, request, obj=None) -> list:
         if obj:
@@ -277,9 +271,8 @@ class EvseAdmin(NestedModelAdmin, AdminUtilityMixin):
         return []
 
     def has_change_permission(self, request, obj=None) -> bool:
-        if not super().has_change_permission(request, obj):
-            return False
-        return not obj or (hasattr(obj, 'location') and obj.location.is_ours())
+        return not obj or (hasattr(obj, 'location') and obj.location.is_ours()) \
+               and super().has_change_permission(request, obj)
 
     # def save_model(self, request, obj, form, change):
     #     """Since the admin is saving the object, it's ours, so let's fill out the needed fields"""
@@ -291,6 +284,7 @@ class EvseAdmin(NestedModelAdmin, AdminUtilityMixin):
     #     super().save_model(request, obj, form, change)
 
 
+@admin.register(BusinessDetails)
 class BusinessDetailsAdmin(admin.ModelAdmin, AdminUtilityMixin):
     model = BusinessDetails
     list_display = ['name', 'website', 'logo', 'referenced_locations', 'referenced_credentials']
@@ -369,15 +363,15 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
 
     def has_add_permission(self, request) -> bool:
         # Disable add
-        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE and super().has_add_permission(request)
 
     def has_change_permission(self, request, obj=None) -> bool:
         # Disable change
-        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE and super().has_change_permission(request, obj)
 
     def has_delete_permission(self, request, obj=None) -> bool:
         # Disable delete
-        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+        return settings.ALLOW_ADMIN_DELETE_AND_CHANGE and super().has_delete_permission(request, obj)
 
 
 class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
@@ -447,15 +441,13 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
             formfield_overrides = widgets.formfield_overrides
 
             def has_change_permission(self, request, obj=None) -> bool:
-                if not super().has_change_permission(request, obj):
-                    return False
                 if obj and hasattr(obj, 'tariff'):
                     obj = obj.tariff
                 return (not obj or obj.is_ours()) \
-                       or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+                    or settings.ALLOW_ADMIN_DELETE_AND_CHANGE and super().has_change_permission(request, obj)
 
             def has_add_permission(self, request, obj=None) -> bool:
-                return Tariff.ocpi_object_owner in ocpi_identities or self.has_change_permission(request, obj)
+                return Tariff.ocpi_object_owner in ocpi_identities or super().has_change_permission(request, obj)
 
         model = TariffElement
         inlines = [PriceComponentsInline]
@@ -477,13 +469,11 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
         ]
 
         def has_change_permission(self, request, obj=None) -> bool:
-            if not super().has_change_permission(request, obj):
-                return False
-            return (not obj or obj.is_ours()) \
-                or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+            return ((not obj or obj.is_ours()) \
+                or settings.ALLOW_ADMIN_DELETE_AND_CHANGE) and super().has_change_permission(request, obj)
 
         def has_add_permission(self, request, obj=None) -> bool:
-            return Tariff.ocpi_object_owner in ocpi_identities or self.has_change_permission(request, obj)
+            return Tariff.ocpi_object_owner in ocpi_identities and super().has_add_permission(request, obj)
 
     model = Tariff
     if ocpi_platform.is_cpo:
@@ -530,13 +520,11 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
         return readonly_fields
 
     def has_change_permission(self, request, obj=None) -> bool:
-        if not super().has_change_permission(request, obj):
-            return False
         return (obj and obj.is_ours()) \
-               or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
+               or settings.ALLOW_ADMIN_DELETE_AND_CHANGE and super().has_change_permission(request, obj)
 
     def has_add_permission(self, request) -> bool:
-        return Tariff.ocpi_object_owner in ocpi_identities
+        return Tariff.ocpi_object_owner in ocpi_identities and super().has_add_permission(request)
 
     def save_model(self, request, obj, form, change):
         """Since the admin is saving the object, it's ours, so let's fill out the needed fields"""
@@ -569,11 +557,11 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
     list_display_links = ['name']
     actions = [admin_pull_all]
 
-    def has_add_permission(self, request, obj=None):
-        return settings.PREMIUM
+    def has_add_permission(self, request):
+        return settings.PREMIUM and super().has_add_permission(request)
 
     def has_change_permission(self, request, obj=None):
-        return settings.PREMIUM
+        return settings.PREMIUM and super().has_change_permission(request, obj=obj)
 
     def last_update(self, obj):
         return naturaltime(obj.last_connection)
@@ -748,7 +736,6 @@ class LogEntryAdmin(NestedModelAdmin, AdminUtilityMixin):
 admin.site.register(Token, TokenAdmin)
 admin.site.register(Location, LocationAdmin)
 admin.site.register(Evse, EvseAdmin)
-admin.site.register(BusinessDetails, BusinessDetailsAdmin)
 admin.site.register(Facility, FacilityAdmin)
 admin.site.register(Capability, CapabilityAdmin)
 admin.site.register(Tariff, TariffAdmin)

@@ -360,6 +360,7 @@ INSTALLED_APPS = [
     'ocpi22',
     'ocpiconnector',
     'certification',
+    'hub',
     'cars',
     'settlement',
     'django.contrib.admin',

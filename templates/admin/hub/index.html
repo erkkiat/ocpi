@@ -1,0 +1,67 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/dashboard.css' %}">{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    {% if issue_count %}
+  <div class="alert alert-danger d-flex align-items-center mt-3" role="alert">
+    <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img" aria-label="Danger:">
+      <use xlink:href="#exclamation-triangle-fill"/>
+    </svg>
+    <div>
+    {% blocktrans with issue_count=issue_count %}
+      There are {{ issue_count }} issues requiring attention.
+    {% endblocktrans %}
+      <a class="alert-link" href="{% url 'issues' %}">{% trans 'show issues' %}</a>
+    </div>
+  </div>
+  {% endif %}
+
+          <div class="row">
+              <div class="col-sm-12 col-md-6 col-lg-4">
+                  {% for section in sections|slice:":3" %}
+                  {% include "admin/includes/section_card.html" with section=section %}
+                  {% endfor %}
+              </div>
+              <div class="col-sm-12 col-md-6 col-lg-4">
+                  {% for section in sections|slice:"3:" %}
+                  {% include "admin/includes/section_card.html" with section=section %}
+                  {% endfor %}
+              </div>
+              <div class="col-sm-12 col-md-6 col-lg-4">
+                  {% include "admin/includes/recent_activity.html" with recent=recent_activities %}
+              </div>
+          </div>
+</div>
+
+<script>
+    var timer = null;
+
+    // Refresh the page after 2 minutes of inactivity
+    function refresh() {
+        if (timer) {
+            clearTimeout(timer);
+        }
+        timer = setTimeout(function() {
+            window.location.reload();
+        }, 120000);
+    }
+
+    window.addEventListener('mousemove', refresh, true);
+    window.addEventListener('keydown', refresh, true);
+
+    refresh();  // start the first timer off
+</script>
+{% endblock %}
+
+{% block sidebar %}
+{% endblock %}

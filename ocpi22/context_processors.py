@@ -24,10 +24,7 @@ def _get_environment(request):
             return reverse(f'admin:{module}_{obj}_{action}')
         return ''
 
-    return dict(
-        # header_color=os.environ.get('HEADER_COLOR'),
-        # roles=" / ".join([f'{key}: {value}' for key, value in ocpi_identities.items()]),
-        # admin_menu=get_admin_menu(),
+    result = dict(
         general_message=os.environ.get('GENERAL_MESSAGE'),
         cpo_api=settings.CPO_API,
         msp_api=settings.MSP_API,
@@ -37,8 +34,13 @@ def _get_environment(request):
         expiration_alert=settings.EXPIRES_ON
         if settings.EXPIRES_ON and (settings.EXPIRES_ON - datetime.now()).days <= settings.WARN_BEFORE_DAYS else None,
         expires_on=settings.EXPIRES_ON,
-        date_now=timezone.now(),
-        sections=(
+        date_now=timezone.now()
+    )
+    if ocpi_platform.is_hub:  # Todo: Use inheritance
+        from hub.menus import get_hub_menus
+        result['sections'] = get_hub_menus(request)
+    else:
+        result['sections'] = (
             dict(
                 name='charge points',
                 items=Location.objects.all(),
@@ -108,7 +110,7 @@ def _get_environment(request):
                 ],
             ),
             dict(
-                name='roaming partners',
+                name='customers' if ocpi_platform.is_hub else 'roaming partners',
                 items=Credentials.objects.all().order_by('-connection_status', '-last_connection'),
                 icon='fa-handshake',
                 list_url=get_url('ocpi22', 'credentials', 'changelist'),
@@ -116,8 +118,7 @@ def _get_environment(request):
             ),
         )
 
-    )
-
+    return result
 
 def export_environment_variables(request):
     return _get_environment(request)

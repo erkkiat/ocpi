@@ -111,9 +111,15 @@
 											<nav class="collapse">
 												<ul class="nav nav-pills" id="mainNav">
 													<li>
+														{% if ocpi_platform.is_hub %}
+														<a class="dropdown-item dropdown-toggle{% if not module_name %} active{% endif %}" href="{% url 'hubadmin:index' %}">
+															Home
+														</a>
+														{% else %}
 														<a class="dropdown-item dropdown-toggle{% if not module_name %} active{% endif %}" href="{% url 'admin:index' %}">
 															Home
 														</a>
+														{% endif %}
 													</li>
 													{% if user.is_authenticated %}
 													{% for section in sections %}
@@ -163,6 +169,8 @@
 														</a>
 													</li>
 													{% endif %} {# user.is_authenticated #}
+
+													{% comment %} The language selection doesn't seem to be working
 													<li class="dropdown dropdown-mega">
 														{# Todo: Language cannot be changed on mobile or tablet #}
 														<a class="dropdown-item dropdown-toggle" href="{% url 'admin:index' %}">
@@ -194,6 +202,7 @@
 														</ul>
 
 													</li>
+													{% endcomment %}
 												</ul>
 											</nav>
 										</div>
@@ -218,7 +227,8 @@
 							<hr class="mt-1 mb-1">
 						</div>
 					</div>
-
+{% block breadcrumbs %}
+					{% if not is_popup %}
 					<ul class="breadcrumb d-block mt-2 mb-4">
 						<li><a href="{% url 'admin:index' %}">Home</a></li>
 						{% if cl.opts %}
@@ -226,51 +236,8 @@
 						{% endif %}
 						<li>{% if title %}{{ title }}{% endif %}</li>
 					</ul>
-
-{% comment %}
-<!--        {% if has_permission %}-->
-<!--        <div id="user-tools">-->
-<!--            <form id="language-selector" action="{% url 'set_language' %}" method="post">{% csrf_token %}-->
-<!--                <i class="bi-globe2" style="font-size: 1rem; vertical-align: middle; padding-right: .3em"></i><span>Language:</span>-->
-<!--                <input name="next" type="hidden" value="{{ redirect_to }}">-->
-<!--                <select name="language" class="form-control form-control-sm">-->
-<!--                    {% get_current_language as LANGUAGE_CODE %}-->
-<!--                    {% get_available_languages as LANGUAGES %}-->
-<!--                    {% get_language_info_list for LANGUAGES as languages %}-->
-<!--                    {% for language in languages %}-->
-<!--                    <option value="{{ language.code }}" {% if language.code == LANGUAGE_CODE %} selected{% endif %}>-->
-<!--                        {{ language.name_local }} ({{ language.code }})-->
-<!--                    </option>-->
-<!--                    {% endfor %}-->
-<!--                </select>-->
-<!--                <input type="submit" value="Go" class="btn btn-sm btn-light">-->
-<!--            </form>-->
-<!--            {% block welcome-msg %}-->
-<!--            {% translate 'Welcome,' %}-->
-<!--            <strong>{% firstof user.get_short_name user.get_username %}</strong>.-->
-<!--            {% endblock %}-->
-<!--            {% block userlinks %}-->
-<!--            {% if site_url %}-->
-<!--            <a href="{{ site_url }}">{% translate 'Developer Central' %}</a> /-->
-<!--            {% endif %}-->
-<!--            {% if user.is_active and user.is_staff %}-->
-<!--            {% url 'django-admindocs-docroot' as docsroot %}-->
-<!--                    {% if docsroot %}-->
-<!--                        <a href="{{ docsroot }}">{% translate 'Documentation' %}</a> /-->
-<!--                    {% endif %}-->
-<!--                {% endif %}-->
-<!--                {% if user.has_usable_password %}-->
-<!--                <a href="{% url 'admin:password_change' %}">{% translate 'Change password' %}</a> /-->
-<!--                {% endif %}-->
-<!--                <a href="{% url 'admin:logout' %}">{% translate 'Log out' %}</a>-->
-<!--            {% endblock %}-->
-<!--        </div>-->
-<!--        {% endif %}-->
-<!--        {% endblock %}-->
-<!--        {% block nav-global %}{% endblock %}-->
-<!--    </div>-->
-    <!-- END Header -->
-{% endcomment %}
+					{% endif %}
+{% endblock %}
     {% endif %}
 
     <div class="main shifted" id="main">

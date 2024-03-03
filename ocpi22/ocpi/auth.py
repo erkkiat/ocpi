@@ -1,5 +1,6 @@
 import base64
 import binascii
+import os
 from enum import Enum
 from functools import cache
 from typing import Optional
@@ -12,7 +13,7 @@ from rest_framework.permissions import DjangoModelPermissions
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.ocpi.util_party import get_sender_party
-from ocpiconnector.ocpi_identities import Party, create_credentialsrole
+from ocpiconnector.ocpi_identities import Party, create_credentialsrole, ocpi_identities
 from util import reverse
 
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -109,9 +110,15 @@ def get_credentialsrole(credentials: Optional[Credentials], party: Party, create
     """
 
     def create_it():
+        business_name = 'N/A'
+        website = ''
+        # Is this (one of) our identity?
+        if str(party) in ocpi_identities:
+            business_name = os.environ.get('BUSINESS_NAME', 'N/A')
+            website = os.environ.get('BUSINESS_WEBSITE', '')
         credentialsrole = create_credentialsrole(
             Party(country_code=party.country_code.upper(), party_id=party.party_id.upper()),
-            business_name='N/A', website='', role=role or OcpiRolesEnum.OTHER, credentials=credentials
+            business_name=business_name, website=website, role=role or OcpiRolesEnum.OTHER, credentials=credentials
         )
         return credentialsrole
 

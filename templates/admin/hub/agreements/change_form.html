@@ -1,0 +1,113 @@
+{% extends "admin/base.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/dashboard.css' %}">{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block content_title %}{% endblock %}
+{% block content_subtitle %}{% endblock %}
+
+{% block breadcrumbs %}
+    <ul class="breadcrumb mt-2 mb-4">
+        <li><a href="{% url 'hubadmin:index' %}">Home</a></li>
+        <li><a href="{% url 'hubadmin:ocpi22_credentials_changelist' %}">
+            {% trans 'Roaming Partners' context 'heading' %}
+        </a></li>
+        <li>{% if title %}{{ title }}{% endif %}</li>
+    </ul>
+{% endblock %}
+
+{% block content %}<div id="content-main">
+
+    <div class="container credentials">
+          <div class="row">
+              <div class="col-md-3 col-sm-12 ml-4 order-md-2">
+                  <h5>{% trans "Roaming Partners" context "page heading" %}</h5>
+
+                  <p class="help">
+                    {% blocktrans %}
+                    Here you can see a list of the current roaming partners for each party.
+                    In some cases a company uses multiple party identifiers,
+                    in which case there will be multiple lists of roaming parties below.
+                    There are buttons for connecting and disconnecting roaming partners to each of the party identifiers separately.
+                    {% endblocktrans %}
+                  </p>
+              </div>
+              <div class="col-md-8 align-middle">
+                {% for ownrole, partnerlist in partners.items %}
+                    {% include 'includes/horizontal_ruler.html' %}
+                    <h2 class="align-middle">
+                      <img class="logo" src="{{ ownrole.business_details.logo }}">
+                      {{ ownrole.party }} - {{ ownrole.business_details.name }}
+                    </h2>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <div align="center">
+                                        Website
+                                    </div>
+                                </th>
+                                <th>Roaming Partner Name</th>
+                                <th>Party Identifier</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for role in partnerlist %}
+                          <tr>
+                            <td class="align-middle">
+                              <div align="center">
+                              <a target="{{ role.business_details.name }}" href="{{ role.business_details.website }}">
+                                <img class="logo" src="{{ role.business_details.logo }}">
+                              </a>
+                              </div>
+                            </td>
+                            <td class="align-middle">
+                                {{ role.business_details.name }}
+                            </td>
+                            <td class="align-middle">
+                              {{ role.country_code }}*{{ role.party_id }}
+                            </td>
+                            {% if perms.ocpi22.can_remove_roaming_agreement %}
+                            <td class="align-middle">
+                              <a href="{% url 'remove-roaming-agreement' role1=ownrole.pk role2=role.pk %}" class="btn btn-outline-danger" role="button">
+                                <i class="fa fa-delete-left mr-2"></i>
+                                {% trans "Disconnect" context "Disconnect a roaming partner" %}
+                              </a>
+                            </td>
+                            {% endif %}
+                          </tr>
+                        {% empty %}
+                          <tr>
+                            <td></td>
+                            <td>
+                              <p>{% trans "This party is currently not connected to any roaming partners" %}</p>
+                            </td>
+                            <td></td>
+                          </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if perms.ocpi22.can_add_roaming_agreement %}
+                      <a href="{% url 'list-roaming-parties' role=ownrole.pk %}" class="btn btn-outline-success mb-5" role="button">
+                        <i class="fa fa-circle-plus mr-2"></i>
+                        {% trans 'Connect New Partner' %}
+                      </a>
+
+                    {% endif %}
+                {% endfor %}
+              </div>
+          </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block sidebar %}
+{% endblock %}

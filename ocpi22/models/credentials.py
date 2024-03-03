@@ -57,6 +57,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     class Meta:
         verbose_name = _('roaming partner')
         verbose_name_plural = _('roaming partners')
+        permissions = [
+            ('can_add_roaming_partners', 'Can add roaming partnerships'),
+            ('can_delete_roaming_partners', 'Can remove roaming partnerships'),
+            ('can_view_roaming_partners', 'Can view roaming partnerships'),
+            ('can_change_roaming_partners', 'Can view roaming partnerships'),
+        ]
 
     # The credentials token used only for the initial connection, and is communicated manually between parties
     token_a = models.CharField(max_length=64, blank=True, default='', verbose_name=_('Token A'))
@@ -140,6 +146,10 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def theirs_base64(self):
         return self.base64(self.theirs)
+
+    token_a.short_description = _('Token A for establishing connection')
+    ours_base64.short_description = _('OCPI token for receiving')
+    theirs_base64.short_description = _('OCPI token for sending')
 
     @staticmethod
     def find(token: str, create=False):

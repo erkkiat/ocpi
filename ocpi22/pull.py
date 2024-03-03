@@ -1,3 +1,5 @@
+from django.utils.translation import gettext as _
+
 import ocpi22.logging as logging
 
 from django.conf import settings
@@ -11,7 +13,6 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.tasks import pull_objects
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
-
 
 # Todo: Full object pull for Cdrs and Sessions
 
@@ -60,7 +61,7 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
 def admin_pull_all(modeladmin, request, queryset):
     for credentials in queryset.all():
         schedule_full_update(credentials)
-    messages.success(request, 'Full update queued for {} parties'.format(queryset.count()))
+    messages.success(request, _('Full update queued for {} parties').format(queryset.count()))
 
 
-admin_pull_all.short_description = 'Pull all OCPI objects'
+admin_pull_all.short_description = _('Fetch all data from selected roaming partners')

@@ -1,11 +1,13 @@
 from django.db import models
+from django.utils.html import format_html
 
 from ocpi22.util import ModelUtilMixin
 
 
 class BusinessDetails(models.Model, ModelUtilMixin):
     class Meta:
-        verbose_name_plural = 'business details'
+        verbose_name = 'roaming party'
+        verbose_name_plural = 'roaming parties'
         constraints = [
             models.UniqueConstraint(fields=['name', 'website'], name='businessdetails_name_website'),
         ]
@@ -24,3 +26,11 @@ class BusinessDetails(models.Model, ModelUtilMixin):
 
     def referenced_credentials(self):
         return self.credentialsroles.all().count()
+
+    def admin_party_ids(self):
+        roles = self.credentialsroles.all()
+        return format_html('<br>'.join([str(role) for role in roles]))
+
+    admin_party_ids.short_description = 'Party IDs'
+    admin_party_ids.allow_tags = True
+    admin_party_ids.admin_order_field = 'credentialsroles'

@@ -1,0 +1,79 @@
+{% extends "admin/base.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/dashboard.css' %}">{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block content_title %}<a href="{{ original.website }}">{{ original.website }}</a>{% endblock %}
+
+{% block breadcrumbs %}
+<ul class="breadcrumb mt-2 mb-4">
+  <li>
+    <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+  </li>
+  <li>
+    <a href="{% url 'hubadmin:ocpi22_credentials_changelist' %}">
+      {% translate 'Roaming Partners' %}
+    </a>
+  </li>
+  <li>
+    <a href="{% url 'hubadmin:ocpi22_credentials_change' ownrole.credentials.pk %}">
+      {% translate 'Change Roaming Partner' %}
+    </a>
+  </li>
+  <li>
+    {% translate 'Connect New Partner' %}
+  </li>
+</ul>
+{% endblock %}
+
+{% block content %}<div id="content-main">
+
+  <h2 class="mt-4">Connect a New Roaming Partner to {{ ownrole }} - {{ ownrole.business_details.name }}</h2>
+
+  <table class="table credentials mb-5">
+    {% for role in parties %}
+    <tr>
+      {% if perms.ocpi22.can_add_roaming_agreement %}
+      <td class="align-middle">
+        <a href="{% url 'add-roaming-agreement' role1=ownrole.pk role2=role.pk %}" class="btn btn-outline-success" role="button">
+          <i class="fa fa-plus-circle mr-2"></i>
+          {% trans "Connect" context "Connect a roaming partner" %}
+        </a>
+      </td>
+      {% endif %}
+      <td class="align-middle">
+        <div align="center">
+          <img class="logo" src="{{ role.business_details.logo }}">
+        </div>
+      </td>
+      <td class="align-middle">
+        {% if role.business_details.name and role.country_code and role.party_id %}
+          {{ role.business_details.name }}
+        {% endif %}
+      </td>
+      <td class="align-middle">
+        {{ role.country_code }}*{{ role.party_id }}
+      </td>
+      <td class="align-middle">
+        <a target="{{ role.business_details.name }}" href="{{ role.business_details.website }}">
+          {{ role.business_details.website }}
+        </a>
+      </td>
+    </tr>
+  {% empty %}
+    <tr>
+      <td>This party is already roaming with all available other parties.</td>
+    </tr>
+  {% endfor %}
+  </table>
+
+</div>{% endblock %}
+
+
+{% block sidebar %}
+{% endblock %}
