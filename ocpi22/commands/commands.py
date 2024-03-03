@@ -183,7 +183,7 @@ class CommandsViewSet(GenericViewSet):
                     from_country_code=our_hub_party.country_code,
                     from_party_id=our_hub_party.party_id,
                     method='post', credentials_id=route.credentials_id,
-                    title='Hub response to CPO'
+                    title='the response received from CPO'
                 )
                 ic(response)
                 status_code = {

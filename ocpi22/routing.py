@@ -180,7 +180,7 @@ def process_incoming_remote_command_at_hub(request: HttpRequest, data: str) -> s
         old_path = json_data.get('response_url', '')
         if old_path:
             command_response_path = reverse('commands-hubresponse', args=[command_id])
-            new_path = build_absolute_uri(urljoin(with_trailing_slash(command_response_path), command_id))
+            new_path = build_absolute_uri(command_response_path)
             assert hasattr(request, 'credentials'), 'Unable to find credentials from request'
             credentials = request.credentials
             route_back = Route(url=old_path, identifier=OcpiModuleEnum.COMMANDS, credentials_id=credentials.pk,
