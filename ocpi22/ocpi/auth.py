@@ -96,7 +96,8 @@ def check_auth_token(request, token: str) -> bool:
         raise NotAuthenticated(f'Authentication token: {e}')
 
 
-def get_credentialsrole(credentials: Optional[Credentials], party: Party, create=False, role=None) -> Optional[CredentialsRole]:
+def get_credentialsrole(credentials: Optional[Credentials] = None, party: Party = None,
+                        create=False, role=None) -> Optional[CredentialsRole]:
     """
     Find the CredentialsRole for the given party and credentials
     If we received a message through a hub, we may not know the sender yet, so we need to create a CredentialsRole to
@@ -108,6 +109,8 @@ def get_credentialsrole(credentials: Optional[Credentials], party: Party, create
     @param create: Should we create the CredentialsRole if it doesn't exist yet?
     @return: The selected or created CredentialsRole
     """
+
+    assert party and isinstance(party, Party), 'Party needs to be a Party object'
 
     def create_it():
         business_name = 'N/A'

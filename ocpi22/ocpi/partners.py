@@ -26,7 +26,6 @@ def get_partners_by_party(party: Union[Party, 'CredentialsRole']) -> set[int]:
     """
     if not party:
         return set()
-    print('***** Checking partners for', party)
     if isinstance(party, Party):
         from ocpi22.ocpi.auth import get_credentialsrole
         role = get_credentialsrole(None, party, create=True)

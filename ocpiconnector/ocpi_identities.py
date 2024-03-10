@@ -18,7 +18,6 @@ class Party:
     def __post_init__(self):
         if self.country_code and self.country_code.upper() not in choices.COUNTRIES_ISO_2_SET:
             raise ValueError(f'Country code {self.country_code} is not a valid ISO 3166-1 alpha-2 code')
-        # assert len(self.party_id) == 3, 'Party ID must be 3 characters'  # Not necessarily 3 characters
 
     def __str__(self):
         return f'{self.country_code}*{self.party_id}'
