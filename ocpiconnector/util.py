@@ -16,6 +16,16 @@ from django.core.exceptions import ValidationError
 from django.db.models import TimeField
 
 
+def timer(func):
+    """Timer wrapper function to be used as a decorator. Prints out the time it took to execute the function."""
+    def wrapper(*args, **kwargs):
+        start = datetime.now()
+        result = func(*args, **kwargs)
+        print(f'Function {func.__name__} took {datetime.now() - start}')
+        return result
+    return wrapper
+
+
 class Timer:
     interval = 0.0
 
@@ -54,7 +64,8 @@ def recursive_sort_dict(d: dict) -> dict:
 
 def consecutive_ranges(numbers):
     """
-    Written by OpenAI ChatGPT
+    Finds consecutive ranges in a list of numbers and returns them as sublists.
+    Written by OpenAI ChatGPT.
     >>> consecutive_ranges([1,2,3,6,7,8,10])
     [[1, 3], [6, 8], [10, 10]]
     """
