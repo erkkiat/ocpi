@@ -199,7 +199,7 @@ def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Par
 
 
 def create_credentialsrole(party: Party, business_name: str, website='', role=OcpiRolesEnum.UNKNO,
-                           credentials=None) -> Optional['CredentialsRole']:
+                           credentials=None, pk=None) -> Optional['CredentialsRole']:
     """
     Create a CredentialsRole object for the given party, business name, website and role.
     Use only for creating our own CredentialsRole objects. If you use this for other parties, they will not have
@@ -212,7 +212,7 @@ def create_credentialsrole(party: Party, business_name: str, website='', role=Oc
     credentialsrole, _created = CredentialsRole.objects.get_or_create(
         country_code__iexact=party.country_code, party_id__iexact=party.party_id, credentials=credentials,
         defaults=dict(country_code=party.country_code, party_id=party.party_id,
-                      business_details=bt, role=role)
+                      business_details=bt, role=role, pk=pk)
     )
     return credentialsrole
 

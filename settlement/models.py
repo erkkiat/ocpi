@@ -1,10 +1,4 @@
-from typing import Optional
-
 from django.db import models
-from django.db.models import Sum
-from django.utils.functional import cached_property
-
-from settlement.calculate import InvoiceData
 
 
 class Invoice(models.Model):
@@ -31,22 +25,23 @@ class Invoice(models.Model):
         STRIPE = 'ST', 'Stripe'
         PAYPAL = 'PP', 'Paypal'
         OPENCART = 'OC', 'OpenCart'
+        CUSTOM = 'CU', 'Custom'
 
     payment_system = models.CharField(max_length=2, choices=PaymentProcessorChoices.choices, null=True, blank=True)
 
-    @cached_property
-    def totals(self) -> Optional[InvoiceData]:
-        transactions = self.cdrs
-        if transactions.count():
-            result = InvoiceData(
-                currency=transactions[0].currency,
-                total_cost_excl_vat=transactions.aggregate(Sum('total_cost_excl_vat')),
-                total_cost_incl_vat=transactions.aggregate(Sum('total_cost_incl_vat')),
-                total_energy=transactions.aggregate(Sum('total_energy')),
-                total_time=transactions.aggregate(Sum('total_time')),
-                transactions=transactions.count(),
-            )
-            return result
+    # @cached_property
+    # def totals(self) -> Optional[InvoiceData]:
+    #     transactions = self.cdrs
+    #     if transactions.count():
+    #         result = Invoice(
+    #             currency=transactions[0].currency,
+    #             total_cost_excl_vat=transactions.aggregate(Sum('total_cost_excl_vat')),
+    #             total_cost_incl_vat=transactions.aggregate(Sum('total_cost_incl_vat')),
+    #             total_energy=transactions.aggregate(Sum('total_energy')),
+    #             total_time=transactions.aggregate(Sum('total_time')),
+    #             transactions=transactions.count(),
+    #         )
+    #         return result
 
     # Seuraavaksi: luo oikea Invoice laskuttamattomista CDRstä kyseiselle billed_to (tai siis kaikille)
     # InvoiceAdmin

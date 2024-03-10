@@ -19,7 +19,6 @@ from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHO
 from ocpi22.ocpi.util import OcpiModule, Ocpi, generate_cdr_uid
 from ocpiconnector.analytics import send_session_update_to_analytics
 from ocpiconnector.ocpi_identities import ocpi_platform
-from settlement.models import Invoice
 
 from django.utils.translation import gettext as _
 
@@ -198,7 +197,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     # Has this CDR been billed as a part of an invoice? Null means it's not yet on any invoice
     # This is not a part of OCPI, but a part of the settlement module
-    invoice = models.ForeignKey(Invoice, on_delete=models.PROTECT, related_name='cdrs', blank=True, null=True,
+    invoice = models.ForeignKey("settlement.Invoice", on_delete=models.PROTECT, related_name='cdrs', blank=True, null=True,
                                 verbose_name=_('Invoice'))
 
     credentials = models.ForeignKey('ocpi22.Credentials', on_delete=models.PROTECT, null=True, related_name='cdrs',
