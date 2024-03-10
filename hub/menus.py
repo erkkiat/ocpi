@@ -85,11 +85,18 @@ def get_hub_menus(request: HttpRequest):
             ],
         ),
         dict(
-            name='roaming',
+            name='customers',
             items=Credentials.objects.all(),
             icon='fa-handshake',
             list_url=get_url('ocpi22', 'credentials', 'changelist', namespace='hubadmin'),
             add_url=get_url('ocpi22', 'credentials', 'add', namespace='hubadmin'),
+            extra_items=[
+                dict(
+                    url=reverse('billing-summary'),
+                    name=_('Invoices'),
+                    icon='fa-money',
+                ),
+            ],
         ),
     )
     return sections
