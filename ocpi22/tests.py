@@ -2473,7 +2473,8 @@ class TestMspApi(TestCase):
         settings.REQUIRE_WALLET_BALANCE = True
 
         # Try charging without enough money
-        response = start_charging(data, self.user, version='2.2')
+        with simulation.assert_error_logged('not enough balance'):
+            response = start_charging(data, self.user, version='2.2')
         # ic(response, response.data)
         self.assertEqual(response.status_code, status.HTTP_402_PAYMENT_REQUIRED,
                          'Charging should fail due to insufficient account balance')
@@ -2517,7 +2518,8 @@ class TestMspApi(TestCase):
         # Try bad values for stop_charging()
         #
 
-        response = stop_charging(dict(token_id=1, session_id=2))
+        with simulation.assert_error_logged('Session with ID 2 not found'):
+            response = stop_charging(dict(token_id=1, session_id=2))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
                          'Response with bad parameters is expected to return HTTP 400')
         #
