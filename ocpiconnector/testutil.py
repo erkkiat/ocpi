@@ -22,6 +22,7 @@ from ocpi22.test_data import expected_get_responses, expected_get_headers
 from ocpiconnector.ocpi_identities import Party
 from ocpi22.routing import find_route
 from ocpi22.tokens.auth import _authorize_token, _get_authorization_from_sessions
+from util import unwrap
 
 client = Client()
 
@@ -60,7 +61,7 @@ def compare_lists_recursively(received, expected, path='', label1='received', la
 def compare_dicts_recursively(received, expected, path='', label='') -> bool:
     """
     Compare the content and structure of two dicts recursively. "***" matches anything.
-    When a list is encountered, it is compared using compare_lists_recirsively.
+    When a list is encountered, it is compared using compare_lists_recursively.
     """
     # ic(path, label, received, expected)
     output = ''
@@ -86,7 +87,8 @@ def compare_dicts_recursively(received, expected, path='', label='') -> bool:
             result = result and compare_dicts_recursively(received_value, expected_value, path=f'{path}.{key}')
         elif isinstance(received_value, list) and isinstance(expected_value, list):
             result = result and compare_lists_recursively(received_value, expected_value, path=f'{path}.{key}')
-        elif expected_value != received_value and (expected_value != '***' and received_value != '***'):
+        elif expected_value != received_value and (expected_value != '***' and received_value != '***')\
+                and str(expected_value) != str(received_value):
             output = f'{path}.{key} is not equal, should be "{expected_value}", but is "{received_value}" instead'.strip('.')
             result = False
     # if label != 'expected':
@@ -288,7 +290,7 @@ def simulate_surrounding_world(func):
         from util import redis_store
         original_redis_store = redis_store
         from ocpi22.ocpi.api import get_our_credentialsrole
-        original_get_our_credentialsrole = get_our_credentialsrole
+        original_get_our_credentialsrole = unwrap(get_our_credentialsrole)
 
         with patch('ocpi22.tasks.requests') as tasks_requests, \
                 patch('ocpi22.ocpi.headers.get_platform_revision') as get_platform_revision, \
