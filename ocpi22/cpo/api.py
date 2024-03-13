@@ -27,14 +27,13 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.response import Response
 
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
-from util import reverse, url_link, redis_store, time_lte, time_lt
+from util import reverse, url_link, redis_store, time_lte, time_lt, ErrorLoggingResponse as Response
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.choices import OcpiRolesEnum, get_language, MessageTexts, AuthorizationEnum
+from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum
 from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResultSerializer
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
@@ -323,7 +322,7 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
                                             f'You can see {session_admin_link}.'))
         return Response(
             dict(
-                status_text=f'You can only update an Session which has a status "ACTIVE".',
+                status_text=f'You can only update a Session which has a status "ACTIVE".',
                 session_id=session.uid,
                 internal_reference=session.internal_reference,
                 start_kwh=session.start_kwh,
