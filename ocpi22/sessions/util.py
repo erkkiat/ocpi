@@ -11,10 +11,16 @@ from django.db.models import QuerySet
 from rest_framework import exceptions
 from rest_framework.generics import get_object_or_404
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ocpi22.models.credentials import CredentialsRole
+
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.choices import AuthorizationEnum, OcpiRolesEnum
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.tokens.util import get_token_id
@@ -41,12 +47,16 @@ class EvseOccupied(RuntimeError):
     pass
 
 
-def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, str], credentials,
+def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, str, "CredentialsRole"], credentials,
                    internal_reference=None, token_id: Union[Token, str] = None, ad_hoc_token=None,
                    uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
                    authorization_reference='', reservation_id=None, authorization_method=None, currency=None,
                    *_args, **kwargs
                    ) -> Session:
+    if isinstance(billed_to, str):
+        billed_to = get_credentialsrole(party=Party(*billed_to.split('*')))
+    if isinstance(billed_to, Party):
+        billed_to = get_credentialsrole(party=billed_to)
     if not uid:
         uid = generate_session_uid()
     token: Token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
@@ -105,7 +115,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         evse=evse,
         connector=connector,
         currency=currency,
-        billed_to=str(billed_to),
+        billed_to=billed_to,
         credentials=credentials,
         ocpi_master=get_our_credentialsrole(OcpiRolesEnum.CPO)
     )

@@ -3,6 +3,8 @@ from rest_framework.exceptions import ValidationError
 
 
 class PartnerQuerySet(models.QuerySet):
+    """When running as HUB, limit the visibility of roaming partners
+    to the ones that have an agreement with the current party"""
     def partner_filter(self, request):
         from ocpiconnector.ocpi_identities import ocpi_platform
         from ocpi22.models.credentials import CredentialsRole

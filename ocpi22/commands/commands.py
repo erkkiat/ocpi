@@ -28,7 +28,7 @@ from ocpi22.util import OCPIVersioning, generate_random_token
 from ocpi22.cpo.api import close_active_sessions_for_evse
 from ocpi22.webhooks import send_to_webhook
 from ocpi22.ocpi.serializers import TokenSerializer
-from ocpi22.ocpi.auth import OCPIPermission
+from ocpi22.ocpi.auth import OCPIPermission, get_credentialsrole
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts, TokenType
 from ocpi22.commands.serializers import StartSessionSerializer, StopSessionSerializer, UnlockConnectorSerializer, \
     CommandResponse, CommandResultSerializer, ReserveNowSerializer
@@ -109,6 +109,8 @@ class CommandsViewSet(GenericViewSet):
 
     @staticmethod
     def create_session(request, token, connector_id, billed_to, evse_uid, serializer, **_kwargs):
+        from ocpi22.models.credentials import CredentialsRole
+        assert isinstance(billed_to, CredentialsRole)
         params = serializer.validated_data.copy()
         params.update(
             dict(
@@ -198,7 +200,7 @@ class CommandsViewSet(GenericViewSet):
 
         if not getattr(request, 'data', None):
             return OCPIResponse({'status_message': options_message}, status=status.HTTP_400_BAD_REQUEST)
-        billed_to = str(self._get_sender_party(request))
+        billed_to = get_credentialsrole(party=self._get_sender_party(request))
         serializer = command_serializer(data=request.data, context={'request': request, 'version': request.version})
         if serializer.is_valid():
 

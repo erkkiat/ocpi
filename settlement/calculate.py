@@ -53,7 +53,7 @@ def calculate_invoice_totals(start_date: datetime, end_date: datetime) -> list[I
     # Convert the result to a list of InvoiceTotals
     return list(map(
         lambda x: InvoiceTotals(cpo=CredentialsRole.objects.get(pk=x[0]),
-                                msp=get_credentialsrole(party=Party(*x[1].split('*')), create=True),
+                                msp=CredentialsRole.objects.get(pk=x[1]),
                                 currency=x[2], total=round(x[3], 2)),
         result))
 

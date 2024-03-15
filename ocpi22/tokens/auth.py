@@ -161,7 +161,7 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
                     responding_party=str(session.get_party()),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
-                    billed_to=session.billed_to,
+                    billed_to=session.billed_to.party_str(),
                 )
 
         # Not AD HOC, so Token should be found from database

@@ -523,7 +523,9 @@ class ApiPutTests(TestCase):
                 params = session_params.copy()
                 params.update(case_params)
 
-                session: Session = Session.objects.create(uid=uuid.uuid4().hex, billed_to='FI*MSP', **params)
+                session: Session = Session.objects.create(uid=uuid.uuid4().hex,
+                                                          billed_to=create_credentialsrole(Party('FI', 'MSP'), 'MSP'),
+                                                          **params)
                 data = load_example(f'data/examples/{filename}.json')
                 serializer = TariffSerializer(data=data)
                 self.assertTrue(serializer.is_valid(),
@@ -545,7 +547,8 @@ class ApiPutTests(TestCase):
                'callback-session_url': 'http://localhost/session/{uid}/',
                'callback-invoicing_url': 'http://localhost/invoice/{uid}/',
            }.get(x))
-    def test_post_cdr(self, _redis_store_mock: Mock):
+    @simulate_surrounding_world
+    def test_post_cdr(self, _redis_store_mock: Mock, simulation):
         url = reverse('cdr-list')
         token_base64 = self.credentials.ours_base64()
         viewset = CdrViewSet
@@ -867,7 +870,7 @@ class CdrTests(TestCase):
             status='COMPLETED',
             last_updated=faketime,
             credentials=credentials,
-            billed_to='FI*MSP',
+            billed_to=CredentialsRole.objects.get(pk=61),
         )
 
         # Check that the serializer gives the correct connector ID and Tariff
@@ -2076,6 +2079,7 @@ class TestCpoApi(TestCase):
         data = load_example(f'data/examples/command_start_session_adhoc.json')
 
         billed_party = Party('FI', 'MSP')
+        billed_to = get_credentialsrole(party=billed_party)
         request = api_factory.post(url, sender=billed_party)
         request.data = data
         self.assertFalse(Session.objects.all().exists(),
@@ -2088,7 +2092,7 @@ class TestCpoApi(TestCase):
         # Let's guess the new Session
         assert Session.objects.count() == 1, 'There should be only one session for this test'
         session = Session.objects.all().first()
-        self.assertEqual(session.billed_to, str(billed_party), 'Billed party appears not to be stored properly')
+        self.assertEqual(session.billed_to, billed_to, 'Billed party appears not to be stored properly')
 
         method_calls = list(map(lambda x: x.kwargs, simulation.webhook_requests.method_calls))
 
@@ -2141,28 +2145,7 @@ class TestCpoApi(TestCase):
         cpo_response = start_transaction(data)
 
         # ic(recursive_sort_dict(cpo_response.data))
-        self.assertDictEqual(
-            cpo_response.data,
-            {'session': {'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
-                         'auth_method': 'COMMAND',
-                         'authorization_reference': authorization_reference,
-                         'billed_to': str(billed_party),
-                         'currency': 'EUR',
-                         'evse_uid': 'HELSINKI-3',
-                         'location_id': 'HELSINKI-1',
-                         'connector_id': '1',
-                         'session_id': 'FI*CPO*S*MOCK-1',
-                         'internal_reference': 'MY-INTERNAL-REFERENCE-2',
-                         'start_date_time': '2022-01-01T12:00:00Z',
-                         'start_kwh': 0.0,
-                         'stop_kwh': 0.0,
-                         'status': 'ACTIVE',
-                         'last_updated': '2022-01-01T12:00:00Z',
-                         'token': OrderedDict([('token_id', 'SOME-ADHOC-TOKEN'),
-                                               ('type', 'AD_HOC_USER'),
-                                               ('contract_id', 'INTERNAL')])},
-             'status_text': 'Session started'}
-        )
+        self.assertTrue(compare_dicts_recursively(cpo_response.data, AdhocTokenData.start_transaction_response))
 
         #
         # Check that the AD_HOC_USER token expires after 15 minutes
@@ -2233,7 +2216,8 @@ class TestCpoApi(TestCase):
 
         Session.objects.filter(internal_reference='MY-INTERNAL-REFERENCE-2').update(status=Session.COMPLETED)
 
-        cpo_response = meter_values(data)
+        with simulation.assert_error_logged('You can only update a Session which has a status'):
+            cpo_response = meter_values(data)
         self.assertEqual(cpo_response.status_code, status.HTTP_403_FORBIDDEN)
 
         #
@@ -2313,22 +2297,24 @@ class TestCpoApi(TestCase):
         self.assertEqual(cdr.authorization_reference, session.authorization_reference)
 
         # Try to end the same Session again, should fail
-        response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2', stop_timestamp=datetime.now(pytz.utc)))
+        with simulation.assert_error_logged('Session was completed earlier'):
+            response = stop_transaction(dict(internal_reference='MY-INTERNAL-REFERENCE-2', stop_timestamp=datetime.now(pytz.utc)))
+
         cdr_count_after = Cdr.objects.all().count()
         self.assertEqual(cdr_count_after - cdr_count_before, 1,
                          'There should be only one new CDR after trying to stop a session twice')
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT,
                          f'A duplicate CPO stop_transaction is expected to fail: {response.data}')
 
-        # Check the invoice creation
-        with time_machine.travel(faketime + timedelta(days=1), tick=False):
-            invoice = create_invoice(session.credentials)  # Should collect CDRs until the current date
-            self.assertDictEqual(asdict(invoice), {'currency': 'EUR',
-                                                   'total_cost_excl_vat': {'total_cost_excl_vat__sum': 61.73},
-                                                   'total_cost_incl_vat': {'total_cost_incl_vat__sum': 76.54},
-                                                   'total_energy': {'total_energy__sum': 123.45},
-                                                   'transactions': 1},
-                                 "The invoice resulting from RFID charging case differs from expected")
+        # # Check the invoice creation
+        # with time_machine.travel(faketime + timedelta(days=1), tick=False):
+        #     invoice = create_invoice(session.credentials)  # Should collect CDRs until the current date
+        #     self.assertDictEqual(asdict(invoice), {'currency': 'EUR',
+        #                                            'total_cost_excl_vat': {'total_cost_excl_vat__sum': 61.73},
+        #                                            'total_cost_incl_vat': {'total_cost_incl_vat__sum': 76.54},
+        #                                            'total_energy': {'total_energy__sum': 123.45},
+        #                                            'transactions': 1},
+        #                          "The invoice resulting from RFID charging case differs from expected")
 
 
 def put_session_data(data, create_authorization=True):

@@ -5,29 +5,42 @@ import pytz
 
 from ocpi22.choices import OcpiRolesEnum, TokenType
 from ocpi22.models.cdr import Cdr
-from ocpi22.models.credentials import Credentials
+from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpiconnector.ocpi_identities import create_credentialsrole, Party
 
 
-def create_cdrs(number_of_parties: int, days: int):
+def create_credentials(start: int, number: int):
+    return [Credentials.objects.create(pk=start + x) for x in range(0, number+1)]
+
+
+def create_credentialsroles(number_of_parties: int, credentials: list[Credentials], cpo_start, msp_start) \
+        -> tuple[list[CredentialsRole], list[CredentialsRole]]:
+    cpo = [create_credentialsrole(pk=cpo_start+x, party=Party('FI', f'C{x:02d}'), business_name=f'CPO #{x}',
+                                  role=OcpiRolesEnum.CPO, credentials=credentials[x])
+           for x in range(0, number_of_parties+1)]
+    msp = [create_credentialsrole(pk=msp_start+x, party=Party('FI', f'M{x:02d}'), business_name=f'MSP #{x}',
+                                  role=OcpiRolesEnum.EMSP, credentials=credentials[x])
+           for x in range(0, number_of_parties+1)]
+    return cpo, msp
+
+
+def create_cdrs(number_of_parties: int, days: int, credentials_start=1000, cpo_start=1000, msp_start=2000):
     """Create a number of parties and CDR records between them
     :param number_of_parties: Number of parties to create
     :param days: Number of days to create CDRs for
+    :param credentials_start: The starting primary key for the credentials
+    :param cpo_start: The starting primary key for the CPOs
+    :param msp_start: The starting primary key for the MSPs
     :return: None
     """
 
     # Create the Credentials
-    credentials = [Credentials.objects.create(pk=1000+x) for x in range(0, number_of_parties+1)]
+    credentials = create_credentials(start=credentials_start, number=number_of_parties)
 
     # Create the CredentialsRoles for the CPOs and MSPs
-    cpo = [create_credentialsrole(pk=1000+x, party=Party('FI', f'C{x:02d}'), business_name=f'CPO #{x}',
-                                  role=OcpiRolesEnum.CPO, credentials=credentials[x])
-           for x in range(0, number_of_parties+1)]
-    msp = [create_credentialsrole(pk=2000+x, party=Party('FI', f'M{x:02d}'), business_name=f'MSP #{x}',
-                                  role=OcpiRolesEnum.EMSP, credentials=credentials[x])
-           for x in range(0, number_of_parties+1)]
+    cpo, msp = create_credentialsroles(number_of_parties, credentials, cpo_start, msp_start)
 
     # Create roaming agreements between the CPOs and MSPs
     for i in range(0, number_of_parties):
@@ -52,7 +65,8 @@ def create_cdrs(number_of_parties: int, days: int):
     list(map(proxy, combined_data))
 
 
-def create_cdr(number: int, d: date, cpo, msp, cost, currency='EUR', energy=50.0, duration=60.0) -> Credentials:
+def create_cdr(number: int, d: date, cpo: CredentialsRole, msp: CredentialsRole,
+               cost, currency='EUR', energy=50.0, duration=60.0) -> Credentials:
     start_date_time = datetime.combine(d, time(18, 0)).replace(tzinfo=timezone.utc)
     end_date_time = start_date_time + timedelta(minutes=duration)
     evse = Evse.objects.first()
@@ -66,7 +80,7 @@ def create_cdr(number: int, d: date, cpo, msp, cost, currency='EUR', energy=50.0
         ocpi_master=cpo,
         start_date_time=start_date_time,
         end_date_time=end_date_time,
-        billed_to=str(msp.party),
+        billed_to=msp,
         uid=f'CDR-{number}',
         session_id=f'SESSION-{number}',
         internal_reference=f'REFERENCE-{number}',

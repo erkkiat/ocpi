@@ -33,4 +33,5 @@ class InvoiceData:
     total_cost_excl_vat: Decimal
     total_cost_incl_vat: Decimal
     total_energy: Decimal
+    total_time: Decimal
     transactions: int

@@ -116,7 +116,9 @@ class OCPIAPIRequestFactory(APIRequestFactory):
         request.ocpi_party = ocpi_party
         request.version = '2.2.1'
         request.user = AnonymousUser()
-        request.versioning_scheme = 'query_parameter'
+        versioning_mock = Mock()
+        versioning_mock.reverse.return_value = 'http://dummy.url/'
+        request.versioning_scheme = versioning_mock
         request.versioning_namespace = None
         request.versioning_query_param = 'version'
         request.headers = request.META

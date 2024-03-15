@@ -242,7 +242,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                                     verbose_name=_('Credentials'))
 
     # The party who will be billed for this Session
-    billed_to = models.CharField(max_length=6, null=True, blank=True, verbose_name=_('Billed to'))
+    billed_to = models.ForeignKey("ocpi22.CredentialsRole", on_delete=models.PROTECT, related_name='billed_to_sessions',
+                                  null=True, blank=True, verbose_name=_('Billed to'))
 
     # The payment for this session (only on MSP platform)
     payment = models.ForeignKey('payment.Payment', on_delete=models.PROTECT, null=True, blank=True,

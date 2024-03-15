@@ -1314,46 +1314,10 @@
       "total_cost_incl_vat": null,
       "status": "ACTIVE",
       "credentials": null,
-      "billed_to": "FI*001",
+      "billed_to": 61,
       "last_updated": null,
       "updated" : "2022-05-05T15:59:16.062Z",
       "created" : "2022-05-05T15:58:39.833Z"
-    }
-  },
-  {
-    "model": "ocpi22.chargingperiod",
-    "pk": 8,
-    "fields": {
-      "start_date_time": "2022-05-05T15:58:39.826Z",
-      "session": 204,
-      "tariff": 9
-    }
-  },
-  {
-    "model": "ocpi22.cdrdimension",
-    "pk": 38,
-    "fields": {
-      "type": "ENERGY",
-      "volume": "23.0000",
-      "chargingperiod": 8
-    }
-  },
-  {
-    "model": "ocpi22.cdrdimension",
-    "pk": 39,
-    "fields": {
-      "type": "STATE_OF_CHARGE",
-      "volume": "45.0000",
-      "chargingperiod": 8
-    }
-  },
-  {
-    "model": "ocpi22.cdrdimension",
-    "pk": 40,
-    "fields": {
-      "type": "POWER",
-      "volume": "67.0000",
-      "chargingperiod": 8
     }
   }
 ]

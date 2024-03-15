@@ -13,9 +13,11 @@ from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES, fill_out_location_address
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer, \
     UTCDateTimeField
+from ocpiconnector.ocpi_identities import Party
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -40,6 +42,7 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     session_id = serializers.CharField(source='uid', read_only=True)
     internal_reference = serializers.CharField(read_only=True)
     token = serializers.SerializerMethodField(read_only=True)
+    billed_to = serializers.SerializerMethodField(read_only=True)
     location_id = serializers.SerializerMethodField(read_only=True)
     evse_uid = serializers.SerializerMethodField(read_only=True)
     connector_id = serializers.SerializerMethodField(read_only=True)
@@ -54,6 +57,10 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
             type=session.cdr_token_type,
             contract_id=session.cdr_token_contract_id
         ))
+
+    @staticmethod
+    def get_billed_to(session):
+        return session.billed_to.party_str() if session.billed_to else ''
 
     @staticmethod
     def get_location_id(session):
@@ -344,6 +351,21 @@ class StopTransactionSerializer(serializers.Serializer):
         return attrs
 
 
+class PartyStrField(serializers.CharField):
+    def to_internal_value(self, data):
+        from ocpi22.models.credentials import CredentialsRole
+        if isinstance(data, CredentialsRole):
+            return data
+        if isinstance(data, str):
+            return get_credentialsrole(party=Party(*data.split('*')))
+        raise ValidationError(f'Expected a party ID or CredentialsRole, got {data}')
+
+    def to_representation(self, value):
+        from ocpi22.models.credentials import CredentialsRole
+        assert isinstance(value, CredentialsRole), f'Expected a CredentialsRole, got {value}'
+        return value.party_str()
+
+
 class CpoOutboundWebhookSerializer(serializers.Serializer):
     response_url = serializers.URLField()
     token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
@@ -357,8 +379,7 @@ class CpoOutboundWebhookSerializer(serializers.Serializer):
     )
     evse_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
     connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
-    billed_to = serializers.CharField(
-        max_length=6,
+    billed_to = PartyStrField(
         help_text='The party ID of the eMSP that is responsible for paying for the session'
     )
 

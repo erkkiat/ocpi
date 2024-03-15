@@ -1426,7 +1426,7 @@ class SessionCommandsData:
                'location': {},
                'responding_party': 'FI*CPO',
                'status_text': 'The token is accepted',
-               'token': {'billed_to': 'FI*MSP',
+               'token': {'billed_to': 'FI*MSP (EMSP)',  # This is actually a CredentialsRole, we just cast it to str
                          'type': 'AD_HOC_USER',
                          'uid': 'SOME-ADHOC-TOKEN',
                          'valid': True}}
@@ -1769,3 +1769,25 @@ class AdhocTokenData:
          'url': 'http://fakehost/start/HELSINKI-3/',
          'verify': False}
     ]
+
+    start_transaction_response = {
+        'session': {'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                    'auth_method': 'COMMAND',
+                    'authorization_reference': 'FI*MSP-AUTH-REFERENCE',
+                    'billed_to': 'FI*MSP',
+                    'currency': 'EUR',
+                    'evse_uid': 'HELSINKI-3',
+                    'location_id': 'HELSINKI-1',
+                    'connector_id': '1',
+                    'session_id': 'FI*CPO*S*MOCK-1',
+                    'internal_reference': 'MY-INTERNAL-REFERENCE-2',
+                    'start_date_time': '2022-01-01T12:00:00Z',
+                    'start_kwh': 0.0,
+                    'stop_kwh': 0.0,
+                    'status': 'ACTIVE',
+                    'last_updated': '2022-01-01T12:00:00Z',
+                    'token': OrderedDict([('token_id', 'SOME-ADHOC-TOKEN'),
+                                          ('type', 'AD_HOC_USER'),
+                                          ('contract_id', 'INTERNAL')])},
+        'status_text': 'Session started'
+    }

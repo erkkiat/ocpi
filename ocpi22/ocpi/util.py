@@ -204,7 +204,7 @@ class OcpiModule:
                           f'Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties')
                 return
             self.send_subscriber_updates(*args, **kwargs)
-            to = Party(*(self.billed_to.split('*')))
+            to = self.billed_to.party
             return self.route_single_update_message(to=to, method=method, **kwargs)
         else:
             logging.error(f'Object #{self.uid} - {self} has no credentials, cannot send updates to interested parties')

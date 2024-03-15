@@ -44,10 +44,8 @@ def calculate_invoicing_periods(start_date: date, end_date: date, period_length_
     """
     if start_date > end_date:
         raise ValueError('Start date must be before end date')
-    if period_length_weeks <= 0:
-        raise ValueError('Period length must be positive')
-    if period_length_weeks > 4:
-        raise ValueError('Period length must be less than a month')
+    if period_length_weeks not in {1, 4}:
+        raise ValueError('Period length must be 1 or 4 weeks')
     if period_length_weeks < 4:
         start_date = calculate_monday(start_date)
     while start_date <= end_date:

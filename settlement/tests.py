@@ -3,12 +3,15 @@ from datetime import timedelta, datetime
 
 import pytz
 import time_machine
+from django.db.models import Min, Max
 from django.test import TestCase
+from icecream import ic
 
 from ocpi22.credentials.util import get_entity_roles
 from ocpi22.models.cdr import Cdr
 from settlement.calculate import calculate_invoice_totals, settle
 from settlement.testutil import create_cdrs
+from settlement.util import calculate_invoicing_periods
 
 
 def load_tests(_loader, tests, _ignore):
@@ -28,7 +31,7 @@ class SettlementTestCase(TestCase):
         create_cdrs(3, 3)
 
     @time_machine.travel(faketime, tick=False)
-    def test_invoice_creation(self):
+    def test_settlement(self):
         cdr_count = Cdr.objects.count()
         print(f'{cdr_count} CDR records in database.')
         start_datetime = datetime.now(pytz.utc) - timedelta(days=30)
@@ -82,3 +85,11 @@ class SettlementTestCase(TestCase):
                 (start_datetime, end_datetime, 8.68, 'EUR', 1002, 1003),
             ]
         )
+
+    @time_machine.travel(faketime, tick=False)
+    def test_invoice_date_ranges(self):
+        result = Cdr.objects.filter(invoice__isnull=True).aggregate(Min('end_date_time'), Max('end_date_time'))
+        start_datetime, end_datetime = result.values()
+        ic(start_datetime, end_datetime)
+        ic(list(calculate_invoicing_periods(start_datetime.date(), end_datetime.date(), 1)))
+        ic(list(calculate_invoicing_periods(start_datetime.date(), end_datetime.date(), 4)))
