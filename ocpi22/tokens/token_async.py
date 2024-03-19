@@ -15,6 +15,11 @@ from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import Party, get_our_party
 from util import with_trailing_slash
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    ...
+
 
 async def post_request(session, url, data, headers=None) -> (int, dict):
     headers = headers or {}

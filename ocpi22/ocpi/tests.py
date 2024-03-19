@@ -2,8 +2,8 @@ import base64
 from unittest.mock import patch
 
 import time_machine
-from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
+from rest_framework.request import Request
 
 from ocpi22.credentials.versions import get_versions_dict, get_endpoints_dict
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -36,14 +36,14 @@ class CredentialsTests(BetterTestCase):
         self.assertEqual(result.status_code, 405, 'Credentials should not be accessible without OCPI authentication')
 
     @staticmethod
-    def make_request(data: dict, token_base64=None, url_name='credentials-list') -> WSGIRequest:
+    def make_request(data: dict, token_base64=None, url_name='credentials-list') -> Request:
         assert isinstance(data, dict)
-        request: WSGIRequest = api_factory.post(
+        request: Request = api_factory.post(
             reverse(url_name),
             data=data,
             **make_headers(token_base64)
         )
-        request.data = data
+        request._full_data = data
         return request
 
     @simulate_surrounding_world
@@ -52,7 +52,9 @@ class CredentialsTests(BetterTestCase):
         token_base64 = base64.b64encode(str(token_a).encode('ascii')).decode('ascii')
 
         simulation.ocpi_requests.get.side_effect = [
+            # Response to the first GET ( /versions )
             FakeResponse(data=dict(data=get_versions_dict()), status_code=status.HTTP_200_OK),
+            # Response to the second GET ( /versions/2.2.1/endpoints )
             FakeResponse(data=dict(data=get_endpoints_dict(version='2.2.1')), status_code=status.HTTP_200_OK)
         ]
 
