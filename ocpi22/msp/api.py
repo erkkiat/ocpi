@@ -522,7 +522,7 @@ class MspSessionWebhookViewSet(WebhookViewSet):
     queryset = Session.objects.none()
     flowchart = msp_flowchart
 
-    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='session')
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='session', url_name='webhook')
     def session_webhook(self, request):
         return self.webhook(request)
 
