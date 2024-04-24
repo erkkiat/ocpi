@@ -227,10 +227,15 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
 class RolesSerializer(serializers.ModelSerializer):
     class Meta:
         model = CredentialsRole
-        # Todo: Should there be country_code and party_id here?
         fields = ('country_code', 'party_id', 'role', 'business_details')
 
     business_details = BusinessDetailsSerializer()
+
+    def create(self, validated_data):
+        business_details = validated_data.pop('business_details')
+        bd = get_or_create_business_details(**business_details)
+        role = CredentialsRole.objects.create(**validated_data, business_details=bd)
+        return role
 
 
 class CredentialsSerializer(serializers.ModelSerializer):

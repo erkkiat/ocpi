@@ -12,6 +12,7 @@ from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum
 from ocpi22.decorators import requires_sender_role, requires_credentialsrole, requires_last_updated
 from ocpi22.locations.serializers import EvseSerializer, ConnectorSerializer
 from ocpi22.messages import messages
+from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.ocpi.partners import get_partners

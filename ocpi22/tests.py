@@ -95,6 +95,7 @@ def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite('ocpi22.choices'))
     tests.addTests(doctest.DocTestSuite('ocpi22.ocpi.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.locations.location'))
+    tests.addTests(doctest.DocTestSuite('ocpi22.locations.util'))
     tests.addTests(doctest.DocTestSuite('ocpi22.locations.serializers'))
     tests.addTests(doctest.DocTestSuite('ocpi22.commands.commands'))
     tests.addTests(doctest.DocTestSuite('ocpi22.commands.serializers'))

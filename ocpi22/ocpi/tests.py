@@ -2,6 +2,7 @@ import base64
 from unittest.mock import patch
 
 import time_machine
+from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
 from rest_framework.request import Request
 
@@ -36,14 +37,12 @@ class CredentialsTests(BetterTestCase):
         self.assertEqual(result.status_code, 405, 'Credentials should not be accessible without OCPI authentication')
 
     @staticmethod
-    def make_request(data: dict, token_base64=None, url_name='credentials-list') -> Request:
+    def make_request(data: dict, token_base64=None, url_name='credentials-list') -> WSGIRequest:
         assert isinstance(data, dict)
-        request: Request = api_factory.post(
-            reverse(url_name),
-            data=data,
-            **make_headers(token_base64)
-        )
+        headers = make_headers(token_base64)
+        request: WSGIRequest = api_factory.post(reverse(url_name), data=data, **headers)
         request._full_data = data
+        setattr(request, 'data', data)
         return request
 
     @simulate_surrounding_world

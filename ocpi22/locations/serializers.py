@@ -1,11 +1,10 @@
-from django.conf import settings
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from ocpi22.choices import OcpiModuleEnum
+from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.models import Facility, Capability
 from ocpi22.models.tariff import Tariff
@@ -13,7 +12,6 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import uid_validator, fetch_object
 from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
-from ocpiconnector.ocpi_identities import Party
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -22,21 +20,10 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = ['name', 'website', 'logo']
 
     def create(self, data):
-        if isinstance(data, BusinessDetails):
+        if isinstance(data, BusinessDetails) or not data:
             return data
 
-        # Set all unset elements to ""
-        defaults = dict(zip(self.fields, ["", "", ""]))
-        defaults.update(data)
-        data = defaults
-
-        business_details, _created = BusinessDetails.objects.get_or_create(
-            name=data.get('name'), website=data.get('website', ''), defaults=dict(logo=data.get('logo', ''))
-        )
-        return business_details
-
-    def to_internal_value(self, data):
-        return self.create(data)
+        return get_or_create_business_details(**data)
 
 
 class PowerTypeSerializer(serializers.CharField):
@@ -272,8 +259,13 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             facilities = validated_data.pop('facilities', None)
             evses = validated_data.pop('evses', [])
             publish_allowed_to = validated_data.pop('publish_allowed_to', [])
+            operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
+            suboperator = BusinessDetailsSerializer().create(data=validated_data.pop('suboperator', None))
+            owner = BusinessDetailsSerializer().create(data=validated_data.pop('owner', None))
 
-            location = Location.objects.create(**validated_data)
+            location = Location.objects.create(
+                **validated_data, operator=operator, suboperator=suboperator, owner=owner
+            )
             location.publish_allowed_to.set(publish_allowed_to)
 
             for e in evses:
@@ -317,7 +309,9 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         evses = validated_data.pop('evses', [])
         facilities = validated_data.pop('facilities', [])
         publish_allowed_to = validated_data.pop('publish_allowed_to', [])
-
+        location.operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
+        location.suboperator = BusinessDetailsSerializer().create(data=validated_data.pop('suboperator', None))
+        location.owner = BusinessDetailsSerializer().create(data=validated_data.pop('owner', None))
         location.facilities.set(facilities)
         location.publish_allowed_to.set(publish_allowed_to)
 

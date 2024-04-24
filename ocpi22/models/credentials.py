@@ -22,6 +22,7 @@ from ocpi22 import choices
 from ocpi22.choices import CONNECTION_STATUS_CHOICES, \
     ENDPOINT_ROLE_CHOICES, OcpiModuleEnum, EndpointRoleEnum, ROLE_CHOICES, IDENTIFIER_CHOICES, OcpiRolesEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
+from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.ocpi.util import OcpiModule, OCPIResponse
 from ocpi22.util import ModelUtilMixin, build_absolute_uri
@@ -97,9 +98,9 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.soft_delete()
 
     def reset(self):
-        self.theirs = None
-        self.ours = None
-        self.url = None
+        self.theirs = ''
+        self.ours = ''
+        self.url = ''
         self.save(update_fields=['ours', 'theirs', 'url'])
 
     # The OCPI field writable and maintained by object owner
@@ -211,9 +212,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         if serializer.is_valid():
             data = serializer.data
             bd = data.pop('business_details')
-            business_details, _businessdetails_created = BusinessDetails.objects.get_or_create(
-                name=bd.get('name'), website=bd.get('website', ''), defaults=dict(logo=bd.get('logo', ''))
-            )
+            business_details = get_or_create_business_details(**bd)
             role, _role_created = CredentialsRole.objects.get_or_create(
                 **data, defaults=dict(country_code=data.get('country_code', ''),
                                       party_id=data.get('party_id', ''),
@@ -244,10 +243,6 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
 class CredentialsRole(models.Model, ModelUtilMixin):
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['country_code', 'party_id', 'role'], name='unique_credentialsroles'),
-            # Todo: Should we really allow multiple roles for a single country_code+party_id?
-        ]
         verbose_name = _('party')
         verbose_name_plural = _('parties')
 

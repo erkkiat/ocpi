@@ -92,6 +92,12 @@
   "operator": {
     "name": "BeCharged"
   },
+  "suboperator": {
+    "name": "BeCharged"
+  },
+  "owner": {
+    "name": "Tesla"
+  },
   "time_zone": "Europe/Brussels",
   "last_updated": "2015-06-29T20:39:09Z"
 }

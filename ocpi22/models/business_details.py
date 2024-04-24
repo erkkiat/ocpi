@@ -8,9 +8,6 @@ class BusinessDetails(models.Model, ModelUtilMixin):
     class Meta:
         verbose_name = 'roaming party'
         verbose_name_plural = 'roaming parties'
-        constraints = [
-            models.UniqueConstraint(fields=['name', 'website'], name='businessdetails_name_website'),
-        ]
 
     name = models.CharField(max_length=100)
     website = models.URLField(blank=True, default='')
