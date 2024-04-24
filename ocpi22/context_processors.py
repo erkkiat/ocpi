@@ -25,6 +25,7 @@ def _get_environment(request):
         return ''
 
     result = dict(
+        # csrf_token=get_token(request),  # This is not needed
         general_message=os.environ.get('GENERAL_MESSAGE'),
         cpo_api=settings.CPO_API,
         msp_api=settings.MSP_API,
@@ -119,6 +120,7 @@ def _get_environment(request):
         )
 
     return result
+
 
 def export_environment_variables(request):
     return _get_environment(request)
