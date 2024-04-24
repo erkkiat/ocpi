@@ -5,6 +5,7 @@ from enum import Enum
 from functools import cache
 from typing import Optional
 
+from cachetools.func import ttl_cache
 from django.conf import settings
 from django.utils.functional import cached_property
 from rest_framework import exceptions
@@ -29,6 +30,17 @@ class OcpiAuthTypes(Enum):
         return self.value == other or self is other
 
 
+@ttl_cache(maxsize=2048, ttl=2*60*60)  # 2 hours
+def find_credentials(token_ascii: str) -> Optional[Credentials]:
+    try:
+        credentials_matches = Credentials.objects.filter(ours=token_ascii, valid=True)
+        if credentials_matches.count():
+            return credentials_matches.first()
+    except (binascii.Error, UnicodeDecodeError):
+        pass
+    return None
+
+
 def check_auth_token(request, token: str) -> bool:
     @cache
     def allowed_for_token_a():
@@ -50,25 +62,23 @@ def check_auth_token(request, token: str) -> bool:
         token_ascii = base64.b64decode(token).decode('ascii')
         request.ocpi_auth = OcpiAuthTypes.NONE
         request.ocpi_party = None
-        request.registering_credentials = request.path in allowed_for_token_a()
-
-        # First check for TOKEN_A, are we still getting to know each other?
-        credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
-        if credentials_matches.count():
-            if not request.registering_credentials:
-                raise exceptions.NotAuthenticated(  # HTTP 401
-                    f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
-                )
-
-            # Don't accept TOKEN_A anymore, if tokens have been exchanged
-            # NOTE: At a given time, one party may possess all three tokens while the other has only two
-
-            credentials = credentials_matches.first()
+        credentials = find_credentials(token_ascii)  # This is the typical case, that's why it's a cached function
+        if credentials:
             request.credentials = credentials
         else:
-            # Or are we already best friends?
-            credentials_matches = Credentials.objects.filter(ours=token_ascii, valid=True)
+            request.registering_credentials = request.path in allowed_for_token_a()
+
+            # First check for TOKEN_A, are we still getting to know each other?
+            credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
             if credentials_matches.count():
+                if not request.registering_credentials:
+                    raise exceptions.NotAuthenticated(  # HTTP 401
+                        f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
+                    )
+
+                # Don't accept TOKEN_A anymore, if tokens have been exchanged
+                # NOTE: At a given time, one party may possess all three tokens while the other has only two
+
                 credentials = credentials_matches.first()
                 request.credentials = credentials
             else:
@@ -77,18 +87,21 @@ def check_auth_token(request, token: str) -> bool:
                     if settings.DEBUG else ''
                 )
 
-            sender_party = get_sender_party(request.headers)
+        sender_party = get_sender_party(request.headers)
 
-            if credentials.is_hub:
-                # Implicit trust for hubs, since there is no hub authentication in OCPI 2.x
-                request.ocpi_party = get_credentialsrole(
-                    credentials=None, party=sender_party, create=True
-                )
-            else:
-                request.ocpi_party = get_credentialsrole(request.credentials, party=sender_party)
-                if not request.ocpi_party and not request.registering_credentials:
-                    request.credentials = None
-                    raise NotAuthenticated(f'Sender party {sender_party} is not allowed for these credentials')
+        if credentials.is_hub:
+            # Implicit trust for hubs, since there is no hub authentication in OCPI 2.x
+            request.ocpi_party = get_credentialsrole(
+                credentials=None, party=sender_party, create=True
+            )
+        else:
+            # Make sure we know if the credentials is being registered or not
+            request.registering_credentials = getattr(request, 'registering_credentials', None)\
+                                              or request.path in allowed_for_token_a()
+            request.ocpi_party = get_credentialsrole(request.credentials, party=sender_party)
+            if not request.ocpi_party and not request.registering_credentials:
+                request.credentials = None
+                raise NotAuthenticated(f'Sender party {sender_party} is not allowed for these credentials')
 
         return True
 
@@ -110,7 +123,7 @@ def get_credentialsrole(credentials: Optional[Credentials] = None, party: Party 
     @return: The selected or created CredentialsRole
     """
 
-    assert party and isinstance(party, Party), 'Party needs to be a Party object'
+    # assert party and isinstance(party, Party), f'Party needs to be a Party object, not {type(party)}'
 
     def create_it():
         business_name = 'N/A'
