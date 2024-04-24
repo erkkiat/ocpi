@@ -11,4 +11,4 @@ fi
 cd .. && \
 export $(cat .env-$PORT | xargs) && \
 clear && \
-DEBUG=1 PERFORMANCE_TEST=1 gunicorn ocpiconnector.wsgi:application --bind 127.0.0.1:$PORT --reload --timeout 120 --workers 17 --log-file -
+SEND_UPDATES=0 DEBUG=1 PERFORMANCE_TEST=1 gunicorn ocpiconnector.wsgi:application --bind 127.0.0.1:$PORT --reload --timeout 120 --workers 17 --log-file -
