@@ -80,9 +80,9 @@ class SettlementTestCase(TestCase):
         self.assertEqual(
             invoices_data,
             [
-                (start_datetime, end_datetime, 24.8, 'EUR', 1001, 1000),
-                (start_datetime, end_datetime, 24.8, 'EUR', 1002, 1001),
-                (start_datetime, end_datetime, 8.68, 'EUR', 1002, 1003),
+                (start_datetime, end_datetime, 37.2, 'EUR', 1001, 1000),
+                (start_datetime, end_datetime, 37.2, 'EUR', 1002, 1001),
+                (start_datetime, end_datetime, 11.16, 'EUR', 1002, 1003),
             ]
         )
 
