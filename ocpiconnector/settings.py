@@ -143,8 +143,9 @@ def parse_jawsdb_maria_url(url):
         'PORT': port,
         'OPTIONS': {
             'sql_mode': 'traditional',
-            # "init_command": "SET GLOBAL max_connections = 100000",  # Activate for performance testing if needed
-        }
+            "init_command": "SET GLOBAL max_connections = 100000",  # Activate for performance testing if needed
+        },
+        # 'CONN_MAX_AGE': 15,
     })
 
 
@@ -321,6 +322,7 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE = [
+    # "debug_toolbar.middleware.DebugToolbarMiddleware",
     'ocpi22.middleware.ErrorLoggingMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -373,7 +375,13 @@ INSTALLED_APPS = [
     'gdpr_assist',
     'payment',
     'drf_yasg',
+    # "debug_toolbar",
 ]
+
+# For debug toolbar
+# INTERNAL_IPS = [
+#     "127.0.0.1",
+# ]
 
 #
 # CORS
