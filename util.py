@@ -3,10 +3,11 @@ import json
 import pickle
 import re
 from dataclasses import dataclass
-from datetime import time, datetime as python_datetime, timedelta
+from datetime import time, datetime as python_datetime, timedelta, date
 from functools import wraps
 from typing import List, Any, Optional, Union
 
+import pytz
 import redis
 from django.conf import settings
 
@@ -437,3 +438,35 @@ def get_message_by_language(messages: list, language: str) -> str:
         if message.get('language') == language:
             return message.get('text')
     return get_message_by_language(messages, 'EN') if language != 'EN' else messages[0].get('text')
+
+
+def convert_to_utc_midnight(d: Union[date, datetime]) -> datetime:
+    """
+    Convert the date to a datetime at midnight of that day in UTC
+
+    >>> str(convert_to_utc_midnight(datetime(2023, 1, 1)))
+    '2023-01-01 00:00:00+00:00'
+
+    @param d: A date
+    @return: A datetime object at midnight in UTC
+    """
+    return datetime(d.year, d.month, d.day, tzinfo=pytz.utc)
+
+
+def convert_to_utc_end_of_day(d: Union[date, datetime]) -> datetime:
+    """
+    Convert the date to a datetime at the end of that day in UTC
+
+    >>> str(convert_to_utc_end_of_day(datetime(2023, 1, 1)))
+    '2023-01-01 23:59:59.999999+00:00'
+
+    @param d: A date
+    @return: A datetime which represents the last moment of that day in UTC
+    """
+    return datetime(d.year, d.month, d.day, 23, 59, 59, 999999, tzinfo=pytz.utc)
+
+
+def datetime_to_date(d: Union[date, datetime]) -> date:
+    if isinstance(d, (datetime, python_datetime)):
+        return d.date()
+    return d

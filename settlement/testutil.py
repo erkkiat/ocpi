@@ -50,12 +50,12 @@ def create_cdrs(number_of_parties: int, days: int, credentials_start=1000, cpo_s
     test_data_1 = (
         (number_of_parties * n + i, date.today() - timedelta(days=n), cpo[i], msp[i + 1], n+i)
         for i in range(0, number_of_parties)
-        for n in range(1, days)
+        for n in range(0, days)
     )
     test_data_2 = (
         (10000 + number_of_parties * n + i, date.today() - timedelta(days=n), cpo[i + 1], msp[i], n+i+10)
         for i in range(0, number_of_parties-1)  # Leave out the last one on purpose to create an invoice with no pair
-        for n in range(1, days)
+        for n in range(0, days)
     )
     combined_data = chain.from_iterable([test_data_1, test_data_2])
 

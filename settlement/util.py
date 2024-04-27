@@ -1,7 +1,9 @@
 import calendar
 from dataclasses import dataclass
-from datetime import date, timedelta
-from typing import Iterable
+from datetime import date, timedelta, datetime
+from typing import Iterable, Union
+
+from util import datetime_to_date
 
 
 @dataclass
@@ -27,13 +29,14 @@ def calculate_monday(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
 
-def calculate_invoicing_periods(start_date: date, end_date: date, period_length_weeks: int) -> Iterable[DateRange]:
+def calculate_invoicing_periods(start_date: Union[date, datetime], end_date: Union[date, datetime],
+                                period_length_weeks: int) -> Iterable[DateRange]:
     """
     Calculate the invoicing periods between the given start and end dates.
     If the period length is 4 weeks, the periods will be calendar months instead of weeks.
     Includes at least one full week or month around both dates.
 
-    >>> list(calculate_invoicing_periods(date(2024, 3, 3), date(2024, 3, 3), 1))
+    >>> list(calculate_invoicing_periods(datetime(2024, 3, 3, 0, 0), datetime(2024, 3, 3, 19, 0), 1))
     [DateRange(start=datetime.date(2024, 2, 26), end=datetime.date(2024, 3, 3))]
     >>> list(calculate_invoicing_periods(date(2024, 3, 3), date(2024, 3, 3), 4))
     [DateRange(start=datetime.date(2024, 3, 1), end=datetime.date(2024, 3, 31))]
@@ -42,12 +45,15 @@ def calculate_invoicing_periods(start_date: date, end_date: date, period_length_
     >>> list(calculate_invoicing_periods(date(2024, 3, 3), date(2024, 3, 4), 1))
     [DateRange(start=datetime.date(2024, 2, 26), end=datetime.date(2024, 3, 3)), DateRange(start=datetime.date(2024, 3, 4), end=datetime.date(2024, 3, 10))]
     """
+
     if start_date > end_date:
         raise ValueError('Start date must be before end date')
     if period_length_weeks not in {1, 4}:
         raise ValueError('Period length must be 1 or 4 weeks')
     if period_length_weeks < 4:
         start_date = calculate_monday(start_date)
+    start_date = datetime_to_date(start_date)
+    end_date = datetime_to_date(end_date)
     while start_date <= end_date:
         if period_length_weeks == 4:
             # A one-month invoicing period is an exception, then we will use months instead of weeks
@@ -61,7 +67,7 @@ def calculate_invoicing_periods(start_date: date, end_date: date, period_length_
             start_date = period_end + timedelta(days=1)
 
 
-def get_first_and_last_date_for_month(d: date) -> DateRange:
+def get_first_and_last_date_for_month(d: Union[date, datetime]) -> DateRange:
     """
     Calculate the dates for the month which the given date belongs to.
 
@@ -72,9 +78,10 @@ def get_first_and_last_date_for_month(d: date) -> DateRange:
     >>> get_first_and_last_date_for_month(date(2024, 2, 29))
     DateRange(start=datetime.date(2024, 2, 1), end=datetime.date(2024, 2, 29))
     """
+    d = datetime_to_date(d)
     year = d.year
     month = d.month
-    first_day = date(year, month, 1)
+    first_day = d.replace(day=1)
     last_day_of_month = calendar.monthrange(year, month)[1]  # Get the number of days in the month
-    last_day = date(year, month, last_day_of_month)
+    last_day = d.replace(day=last_day_of_month)
     return DateRange(first_day, last_day)

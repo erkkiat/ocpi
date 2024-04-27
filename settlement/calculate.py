@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, date
 from itertools import combinations
-from typing import Optional
+from typing import Optional, Union
 
 import pytz
 from django.db.models import QuerySet, Sum
@@ -8,11 +8,10 @@ from django.utils.datetime_safe import datetime
 
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import Credentials, CredentialsRole
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpiconnector import settings
-from ocpiconnector.ocpi_identities import Party
 from settlement.dataclasses import InvoiceTotals, SettlementData, InvoiceData
 from ocpi22.credentials.util import get_entity_roles
+from util import convert_to_utc_midnight, convert_to_utc_end_of_day
 
 
 def calculate_invoice_data(credentials: Credentials, end_date: datetime, start_date: datetime = None) -> Optional[InvoiceData]:
@@ -40,9 +39,9 @@ def calculate_invoice_totals(start_date: datetime, end_date: datetime) -> list[I
     """
     Find all the CPOs who need to invoice one or more MSPs during the given time period.
 
-    @param start_date: Start date of the period
-    @param end_date: End date of the period
-    @return: A list of pairs (CPO, MSP)
+    @param start_date: Inclusive start date of the period
+    @param end_date: Exclusive end date of the period
+    @return: A list of CredentialsRoles pairs (CPO, MSP) and the total amount to be invoiced between each pair
     """
     queryset = Cdr.objects.filter(start_date_time__gte=start_date, end_date_time__lte=end_date). \
         exclude(invoice__isnull=False).select_related('ocpi_master')
@@ -58,15 +57,15 @@ def calculate_invoice_totals(start_date: datetime, end_date: datetime) -> list[I
         result))
 
 
-def settle(start_datetime: datetime, end_datetime: datetime) -> list[SettlementData]:
+def settle(start_datetime: Union[datetime, date], end_datetime: Union[datetime, date]) -> list[SettlementData]:
     """
     Calculate the settlements for the given time period.
     Create invoices and find the invoices that cancel each other out.
-    @param start_datetime: Start date of the period
-    @param end_datetime: End date of the period
+    @param start_datetime: Inclusive start date of the period
+    @param end_datetime: Exclusive end date of the period
     @return: List of SettlementData objects, which show which parties are left with something to be paid
     """
-    totals = calculate_invoice_totals(start_datetime, end_datetime)
+    totals = calculate_invoice_totals(convert_to_utc_midnight(start_datetime), convert_to_utc_end_of_day(end_datetime))
 
     def company_credentials(party1: CredentialsRole, party2: CredentialsRole) -> Optional[Credentials]:
         """
