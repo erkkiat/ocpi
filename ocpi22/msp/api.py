@@ -491,7 +491,8 @@ class MspChargePointStatusWebhookViewSet(WebhookViewSet):
     queryset = Token.objects.none()
     flowchart = msp_flowchart
 
-    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='status')
+    # msp-status-webhook
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='status', url_name='webhook')
     def status_webhook(self, request):
         return self.webhook(request)
 
@@ -551,7 +552,8 @@ class MspInvoiceWebhookViewSet(InvoiceWebhookViewSet):
     queryset = Session.objects.none()
     flowchart = msp_flowchart
 
-    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='invoice')
+    # msp-invoicing-webhook
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='invoice', url_name='webhook')
     def invoicing_webhook(self, request):
         return self.webhook(request)
 

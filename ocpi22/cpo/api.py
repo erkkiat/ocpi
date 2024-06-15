@@ -1013,7 +1013,8 @@ class CpoStartWebhookViewSet(WebhookViewSet):
     queryset = Location.objects.none()
     flowchart = msp_remote_commands_flowchart
 
-    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='start_transaction')
+    # cpo-start-transaction-webhook
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='start_transaction', url_name='transaction-webhook')
     def start_transaction_webhook(self, request):
         return self.webhook(request)
 
@@ -1043,7 +1044,8 @@ class CpoStopWebhookViewSet(WebhookViewSet):
     queryset = Location.objects.none()
     flowchart = msp_remote_commands_flowchart
 
-    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='stop_transaction')
+    # cpo-stop-transaction-webhook
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='stop_transaction', url_name='transaction-webhook')
     def stop_transaction_webhook(self, request):
         return self.webhook(request)
 
@@ -1073,7 +1075,8 @@ class InvoiceWebhookViewSet(WebhookViewSet):
     queryset = Session.objects.none()
     flowchart = msp_remote_commands_flowchart
 
-    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='invoice')
+    # cpo-invoicing-webhook
+    @action(methods=('GET', 'POST', 'PATCH'), detail=False, url_path='invoice', url_name='webhook')
     def invoicing_webhook(self, request):
         return self.webhook(request)
 
