@@ -149,24 +149,25 @@ def parse_jawsdb_maria_url(url):
     })
 
 
-JAWSDB_MARIA_URL = os.environ.get('JAWSDB_MARIA_URL',
-                                  os.environ.get('JAWSDB_URL', None))
-if JAWSDB_MARIA_URL:
-    # We're running on Heroku
-    DATABASES = parse_jawsdb_maria_url(JAWSDB_MARIA_URL)
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',  # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-            'NAME': os.environ.get('DATABASE_FILE', 'dev.sqlite3'),  # Or path to database file if using sqlite3.
-            # The following settings are not used with sqlite3:
-            'USER': '',
-            'PASSWORD': '',
-            'HOST': '',  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
-            'PORT': '',  # Set to empty string for default.
-            'ATOMIC_REQUESTS': True,
-        }
+# JAWSDB_MARIA_URL = os.environ.get('JAWSDB_MARIA_URL',
+#                                   os.environ.get('JAWSDB_URL', None))
+# if JAWSDB_MARIA_URL:
+#     # We're running on Heroku
+#     DATABASES = parse_jawsdb_maria_url(JAWSDB_MARIA_URL)
+# else:
+
+HOST, PORT = os.environ.get('HOSTNAME', ':').split(':')
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': f'ocpi{PORT}',
+        'USER': 'ocpi',
+        'PASSWORD': 'ocpiocpi',
+        'HOST': 'localhost',  # Use the service name
+        'PORT': '5432',  # Default PostgreSQL port
     }
+}
 
 # # Add a new database to log GDPR actions
 # DATABASES.update({

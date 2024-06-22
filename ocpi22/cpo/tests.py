@@ -170,7 +170,7 @@ class TestQuickLocations(TestCase):
         expected_data = {
             'id': 'EKI1', 'name': "Eki's home charger", 'address': 'Kotikatu 38', 'city': 'Espoo',
             'postal_code': '01234', 'country': 'FIN', 'time_zone': 'Europe/Helsinki', 'latitude': 60.0,
-            'longitude': 30.0,  # 'quick_url': 'http://testserver.test/api/cpo/v2/location/quick/EKI1/',
+            'longitude': 30.0,  # 'quick_url': 'http://testserver.test:8000/api/cpo/v2/location/quick/EKI1/',
             'evses':
                 [
                     OrderedDict([('uid', '1'),

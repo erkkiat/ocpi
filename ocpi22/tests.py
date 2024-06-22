@@ -567,9 +567,9 @@ class ApiPutTests(TestCase):
 
         testcases = (
             ('cdr_example', status.HTTP_201_CREATED, 1000, 1,
-             'http://testserver.test/ocpi/2.2.1/cdrs/BE/BEC/12345'),
+             'http://testserver.test:8000/ocpi/2.2.1/cdrs/BE/BEC/12345'),
             ('cdr_example2', status.HTTP_201_CREATED, 1000, 1,
-             'http://testserver.test/ocpi/2.2.1/cdrs/FI/000/8297d92ff7d047c68727750b3b8ca559'),
+             'http://testserver.test:8000/ocpi/2.2.1/cdrs/FI/000/8297d92ff7d047c68727750b3b8ca559'),
         )
 
         for filename, http_status, ocpi_status, price_component_count, cdr_url \
@@ -721,7 +721,7 @@ class ApiPutTests(TestCase):
         self.assertEqual(response.data.get('status_code'), 1000, msg='OCPI status code should be 1000 for success')
 
         detail_url = data.get('detail_url')
-        self.assertURLEqual(detail_url, 'http://testserver.test/ocpi/2.2.1/locations/FI/F1/1',
+        self.assertURLEqual(detail_url, 'http://testserver.test:8000/ocpi/2.2.1/locations/FI/F1/1',
                             'Location detail URL differs from expected')
 
         # This should fail without authentication
@@ -1091,7 +1091,7 @@ class CommandTests(TestCase):
         self.assertTrue(compare_dicts_recursively(
             kwargs.get('json'),
             {
-                'response_url': 'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/AUTH-REFERENCE/',
+                'response_url': 'http://testserver.test:8000/api/cpo/v2/chargepoint/remote_command_result/AUTH-REFERENCE/',
                 'token_id': 'FI*001*T*ADMIN*TOKEN', 'token_type': 'OTHER', 'authorization_reference': 'AUTH-REFERENCE',
                 'auth_method': 'COMMAND', 'from_party': 'FI*MSP',
                 'location_id': 'HELSINKI-1', 'evse_id': 'HELSINKI-3', 'connector_id': None, 'billed_to': 'FI*MSP',
@@ -1194,7 +1194,7 @@ class UpdatePartiesTest(TestCase):
         with time_machine.travel(faketime, tick=False):
             token = get_admin_token()
         serializer = TokenSerializer(token)
-        expected = {  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/tokens/FI/MSP/FI*MSP*T*ADMIN*TOKEN',
+        expected = {  # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/tokens/FI/MSP/FI*MSP*T*ADMIN*TOKEN',
             'contract_id': 'INTERNAL',
             'country_code': 'FI',
             'issuer': 'FI*MSP',
@@ -1900,7 +1900,7 @@ class TestCpoApi(TestCase):
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
                                    'total_kwh': Decimal('3.450')},
-                session_data={  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                session_data={  # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
                     'auth_method': 'AUTH_REQUEST',
                     'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                     'cdr_token': OrderedDict([('uid', 'EKI1'),
@@ -1949,7 +1949,7 @@ class TestCpoApi(TestCase):
                                    'start_kwh': 120.0,
                                    'status_text': 'Session updated',
                                    'total_kwh': Decimal('33.450')},
-                session_data={  # 'detail_url': 'http://testserver.test/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                session_data={  # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
                     'auth_method': 'AUTH_REQUEST',
                     'authorization_reference': 'MOCK-AUTHORIZATION-REFERENCE',
                     'cdr_token': OrderedDict([('uid', 'EKI1'),
@@ -2101,7 +2101,7 @@ class TestCpoApi(TestCase):
         # self.assertEqual(kwargs.get('url'), 'http://fakehost/start/HELSINKI-3/',
         #                  'CPO start transaction URL differs from expected')
         authorization_reference = f'{str(billed_party)}-AUTH-REFERENCE'
-        url = f'http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
+        url = f'http://testserver.test:8000/api/cpo/v2/chargepoint/remote_command_result/{authorization_reference}/'
         self.assertTrue(compare_lists_recursively(method_calls, AdhocTokenData.start_session_method_calls))
 
         data = dict(result='ACCEPTED')
@@ -2562,7 +2562,7 @@ class TestMspApi(TestCase):
     #                                    # 'connector_id': '1', # OCPI 2.2 should exclude the connector_id from remote command
     #                                    'evse_uid': 'HELSINKI-3',
     #                                    'location_id': 'HELSINKI-1',
-    #                                    'response_url': 'http://testserver.test/ocpi/2.2.1/commands/COMMAND_RESULT/start/None',
+    #                                    'response_url': 'http://testserver.test:8000/ocpi/2.2.1/commands/COMMAND_RESULT/start/None',
     #                                    'token': dict([('country_code', 'FI'),
     #                                                   ('party_id', 'MSP'),
     #                                                   ('uid', 'FI*MSP*T*APP*MOCK-1'),

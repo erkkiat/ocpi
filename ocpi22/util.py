@@ -510,7 +510,7 @@ class MyMetadata(SimpleMetadata):
 def build_absolute_uri(path) -> str:
     """
     >>> str(build_absolute_uri('my/path'))
-    'http://testserver.test/my/path'
+    'http://testserver.test:8000/my/path'
     """
     return str(Url(host=settings.HOSTNAME, path=path, scheme=settings.SCHEME))
 
