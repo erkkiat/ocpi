@@ -502,7 +502,7 @@ class TariffViewSet(OCPIListModelMixin,
     def save_or_update(self, request, credentialsrole, uid, data=None, version='2.2.1',
             logentry=None) -> OCPIResponse:
         assert uid, f'UID is a required parameter for TariffViewSet.save_or_update()'
-        tariff: Tariff = self.get_queryset().get_if_exists(uid__iexact=uid, ocpi_master=credentialsrole, archived=False)
+        tariff: Tariff = self.get_queryset().get_if_exists(uid__iexact=str(uid), ocpi_master=credentialsrole, archived=False)
         created = bool(not tariff)
         if tariff and tariff.is_ours():
             return OCPIResponse(f'Tariff {tariff} is owned by us and cannot be updated from outside.',

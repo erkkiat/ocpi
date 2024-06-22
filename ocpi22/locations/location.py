@@ -77,7 +77,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     def get(self, request, credentialsrole, uid, *_args, **_kwargs):
         """Respond to GET for a specified location"""
         serializer = self.get_serializer_class()(
-            self.get_queryset().get(uid__iexact=uid, ocpi_master=credentialsrole),
+            self.get_queryset().get(uid__iexact=str(uid), ocpi_master=credentialsrole),
             context={'version': request.version, 'request': request})
         return OCPIResponse(serializer.data)
 
