@@ -110,7 +110,8 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         serializer_class = Location.get_serializer_class(version)
         serializer = serializer_class(instance=existing_location, data=data, partial=patch,
                                       context={'version': version, 'credentials': credentials,
-                                               'party': credentialsrole.party, 'request': request})
+                                               'party': credentialsrole.party, 'request': request,
+                                               'credentialsrole': credentialsrole})
         if serializer.is_valid():
             created = bool(not existing_location)
             logging.info(f'{"Creating" if created else "Updating"}'
@@ -172,12 +173,14 @@ class ConnectorViewSet(GenericViewSet):
     @ocpi_exception_handler
     @requires_premium
     @requires_sender_role(OcpiRolesEnum.CPO)
-    def put(self, request, uid, evse_uid, connector_uid, patch=False,
+    def put(self, request, uid, evse_uid, connector_uid, patch=False, credentialsrole=None,
             *_args, **_kwargs) -> OCPIResponse:
+        credentialsrole = credentialsrole or getattr(request, 'credentialsrole', None)
+        assert credentialsrole, 'Credentials role is required for ConnectorViewSet.put()'
         if connector_uid != request.data.get('id'):
             return OCPIBadRequestResponse('Connector UID in URL does not match Connector UID in payload')
         connector: Connector = Connector.get_if_exists(uid=connector_uid, evse__uid=evse_uid, evse__location__uid=uid,
-                                        evse__location__ocpi_master=request.credentialsrole)
+                                        evse__location__ocpi_master=credentialsrole)
 
         data = request.data
 
@@ -186,10 +189,11 @@ class ConnectorViewSet(GenericViewSet):
         for f in readonly_fields:
             data.pop(f, None)
 
-        serializer = self.serializer_class(instance=connector, data=data, partial=patch, context={'request': request})
+        serializer = self.serializer_class(instance=connector, data=data, partial=patch,
+                                           context={'request': request, 'credentialsrole': credentialsrole})
         if serializer.is_valid():
             evse: Evse = get_object_or_404(Evse, location__uid=uid, uid=evse_uid,
-                                           location__ocpi_master=request.credentialsrole)
+                                           location__ocpi_master=credentialsrole)
             serializer.save(evse=evse)
             return OCPIResponse(serializer.data)
         else:
@@ -231,13 +235,16 @@ class EvseViewSet(GenericViewSet):
     @ocpi_exception_handler
     @requires_premium
     @requires_sender_role(OcpiRolesEnum.CPO)
-    def put(self, request, uid, evse_uid, patch=False,
+    def put(self, request, uid, evse_uid, patch=False, credentialsrole=None,
             *_args, **_kwargs) -> OCPIResponse:
+        credentialsrole = credentialsrole or getattr(request, 'credentialsrole', None)
+        assert credentialsrole, 'Credentialsrole is required for EvseViewSet.put()'
+
         if evse_uid != request.data.get('uid'):
             return OCPIBadRequestResponse('EVSE UID in URL does not match EVSE UID in payload')
         evse: Evse = Evse.get_if_exists(uid=evse_uid, location__uid=uid,
-                                        location__ocpi_master=request.credentialsrole)
-        location: Location = self.get_queryset().get_if_exists(uid=uid, ocpi_master=request.credentialsrole)
+                                        location__ocpi_master=credentialsrole)
+        location: Location = self.get_queryset().get_if_exists(uid=uid, ocpi_master=credentialsrole)
         if not location:
             return OCPINotFoundResponse(f'Location with UID "{uid}" not found')
 
@@ -260,7 +267,7 @@ class EvseViewSet(GenericViewSet):
                 'status': evse.status
             }
             if ocpi_platform.is_emsp:
-                send_to_webhook(data, MSPChargePointStatusCallbackSerializer, ocpi_master=request.credentialsrole)
+                send_to_webhook(data, MSPChargePointStatusCallbackSerializer, ocpi_master=credentialsrole)
             return OCPIResponse(serializer.data)
         else:
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,

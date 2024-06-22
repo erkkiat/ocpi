@@ -40,9 +40,10 @@ class PowerTypeSerializer(serializers.CharField):
 class TariffField(serializers.StringRelatedField):
     def to_internal_value(self, data):
         try:
-            request = self.context.get('request')
-            role = request.credentialsrole
-            tariff = Tariff.objects.get(uid__iexact=data, archived=False, ocpi_master=role)
+            credentialsrole = self.context.get('credentialsrole',
+                                               getattr(self.context.get('request', object), 'credentialsrole', None))
+            assert credentialsrole, 'No credentialsrole found in the context in TariffField'
+            tariff = Tariff.objects.get(uid__iexact=data, archived=False, ocpi_master=credentialsrole)
             return tariff
         except Tariff.DoesNotExist as e:
             credentials = self.context.get('credentials')
