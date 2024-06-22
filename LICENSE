@@ -1,0 +1,59 @@
+# Licenses for Dependencies
+
+- cachetools: Apache License 2.0
+- Django: BSD License
+- humanize: MIT License
+- httplib2: MIT License
+- oauthlib: BSD License
+- pip: MIT License
+- mysqlclient: GPL License
+- pymysql: MIT License
+- psycopg2-binary: LGPL License
+- requests-oauthlib: ISC License
+- requests: Apache License 2.0
+- tzlocal: MIT License
+- urllib3: MIT License
+- webencodings: BSD License
+- certifi: Mozilla Public License 2.0
+- whitenoise: MIT License
+- djangorestframework: BSD License
+- markdown: BSD License
+- django-filter: BSD License
+- icecream: MIT License
+- python-dateutil: BSD License
+- pyyaml: MIT License
+- uritemplate: BSD License
+- celery: BSD License
+- redis: MIT License
+- aiohttp: Apache License 2.0
+- gunicorn: MIT License
+- slack-logger: MIT License
+- colorama: BSD License
+- django-nested-admin: BSD License
+- cronitor: MIT License
+- time_machine: MIT License
+- django-multiselectfield: MIT License
+- moesifdjango: MIT License
+- geojson: GPL License
+- twilio: MIT License
+- django-oauth-toolkit: BSD License
+- python-dotenv: MIT License
+- sentry-sdk: BSD License
+- googletrans: MIT License
+- geopy: MIT License
+- pycountry: LGPL License
+- langcodes: MIT License
+- language_data: MIT License
+- djangorestframework-csv: MIT License
+- django-crispy-forms: MIT License
+- django-gdpr-assist: MIT License
+- stripe: MIT License
+- drf-yasg: BSD License
+- django-cors-headers: MIT License
+- newrelic: New Relic Software License
+- seaborn: BSD License
+- matplotlib: PSF License
+- pandas: BSD License
+- numpy: BSD License
+
+Please ensure to review the specific licenses for compliance.
