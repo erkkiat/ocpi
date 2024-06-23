@@ -184,7 +184,9 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
     return authorization
 
 
-@DistributedCache(expiration=15*60)  # 15 minutes cache, required by OCPI 2.2.1 spec
+# 15 minutes cache, required by OCPI 2.2.1 spec (Don't cache negative responses)
+@DistributedCache(expiration=15*60,
+                  exclude=lambda x: x.allowed != AuthorizationEnum.ALLOWED)
 def _authorize_token(token: Union[Token, str], location=None, request=None) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
