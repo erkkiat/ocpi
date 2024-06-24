@@ -34,24 +34,35 @@ class AuthorizationInfo(models.Model, ModelUtilMixin):
 # Todo: OCPI tariff_id has to contain a valid OCHP tariffId (NLEVNT12345ABC)
 
 
-class Facility(models.Model, ModelUtilMixin):
-    class Meta:
-        verbose_name_plural = 'facilities'
-    name = models.CharField(max_length=15)
-    description = models.CharField(max_length=255, blank=True, default='')
+class MultipleChoiceCharField(models.CharField):
+    def __init__(self, *args, **kwargs):
+        self.choices_enum = kwargs.pop('choices_enum', None)
+        super().__init__(*args, **kwargs)
 
-    def __str__(self):
-        return self.name
+    @staticmethod
+    def from_db_value(value, expression, connection):
+        if value is None:
+            return value
+        return value.split(',')
 
+    def to_python(self, value):
+        if isinstance(value, list):
+            return value
+        if value is None:
+            return []
+        return value.split(',')
 
-class Capability(models.Model, ModelUtilMixin):
-    class Meta:
-        verbose_name_plural = 'capabilities'
-    name = models.CharField(max_length=32)
-    description = models.CharField(max_length=255, blank=True, default='')
+    def get_prep_value(self, value):
+        if isinstance(value, list):
+            return ','.join(value)
+        return value
 
-    def __str__(self):
-        return self.name
+    def validate(self, value, model_instance):
+        if isinstance(value, list):
+            for item in value:
+                if item not in self.choices_enum.values:
+                    raise ValidationError(_('%s is not a valid choice' % item))
+        # super().validate(value, model_instance)
 
 
 # Todo: CDR.id must contain the CPO-ID (NLEVN12345ABCDEFG...) [up to 36 characters total]

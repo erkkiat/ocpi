@@ -13,14 +13,13 @@ from django.contrib.auth.models import User
 from humanize import naturaltime
 
 import widgets
-from ocpi22.choices import OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum, OCPIFacilityEnum, OCPICapabilityEnum
 from ocpi22.models.logging import LogEntry, ChildEvent
 from django.utils.html import format_html
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.dynamic_price import DynamicPrice
-from ocpi22.models.models import Facility, Capability
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
@@ -158,13 +157,38 @@ class ConnectorInline(NestedStackedInline):
         return Location.ocpi_object_owner in ocpi_identities and super().has_add_permission(request, obj)
 
 
+class LocationAdminForm(forms.ModelForm):
+    facilities = forms.MultipleChoiceField(
+        choices=OCPIFacilityEnum.choices,
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+
+    class Meta:
+        model = Location
+        fields = '__all__'
+
+
+class EvseAdminForm(forms.ModelForm):
+
+    capabilities = forms.MultipleChoiceField(
+        choices=OCPICapabilityEnum.choices,
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+
+    class Meta:
+        model = Evse
+        fields = '__all__'
+
+
 class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
     class EvseInline(NestedStackedInline):
 
         model = Evse
+        form = EvseAdminForm
         exclude = ['evse_id', 'last_updated']
         inlines = [ConnectorInline]
-        autocomplete_fields = ['capabilities']
 
         formfield_overrides = widgets.formfield_overrides
 
@@ -177,6 +201,7 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
     formfield_overrides = widgets.formfield_overrides
 
     model = Location
+    form = LocationAdminForm
     search_fields = ['ocpi_master__country_code', 'ocpi_master__party_id', 'uid', 'name', 'address', 'city',
                      'postal_code', 'state', 'country', 'parking_type']
     fieldsets = [
@@ -195,7 +220,7 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
     list_display = ['party_long', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
     inlines = [EvseInline]
-    autocomplete_fields = ['publish_allowed_to', 'facilities', 'operator', 'suboperator', 'owner']
+    autocomplete_fields = ['publish_allowed_to', 'operator', 'suboperator', 'owner']
     radio_fields = dict(
         parking_type=admin.VERTICAL
     )
@@ -242,7 +267,7 @@ class EvseAdmin(NestedModelAdmin, AdminUtilityMixin):
     inlines = [ConnectorInline]
     search_fields = ['evse_id', 'location__address', 'location__city', 'location__name', 'location__uid']
     # actions = ['start_charging', 'stop_charging']
-    autocomplete_fields = ['capabilities', 'location']
+    autocomplete_fields = ['location']
     exclude = ['last_updated']
     list_filter = ['status']
 
@@ -289,42 +314,6 @@ class BusinessDetailsAdmin(admin.ModelAdmin, AdminUtilityMixin):
     model = BusinessDetails
     list_display = ['name', 'website', 'logo', 'referenced_locations', 'referenced_credentials']
     search_fields = ['name', 'website']
-
-
-class FacilityAdmin(admin.ModelAdmin, AdminUtilityMixin):
-    model = Facility
-    list_display = ['name', 'description']
-    search_fields = ['name', 'description']
-
-    def has_delete_permission(self, request, obj=None) -> bool:
-        # Disable delete
-        return False
-
-    def has_add_permission(self, request) -> bool:
-        # Disable add
-        return False
-
-    def has_change_permission(self, request, obj=None) -> bool:
-        # Disable change
-        return False
-
-
-class CapabilityAdmin(admin.ModelAdmin, AdminUtilityMixin):
-    model = Capability
-    list_display = ['name', 'description']
-    search_fields = ['name', 'description']
-
-    def has_delete_permission(self, request, obj=None) -> bool:
-        # Disable delete
-        return False
-
-    def has_add_permission(self, request) -> bool:
-        # Disable add
-        return False
-
-    def has_change_permission(self, request, obj=None) -> bool:
-        # Disable change
-        return False
 
 
 class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
@@ -736,8 +725,6 @@ class LogEntryAdmin(NestedModelAdmin, AdminUtilityMixin):
 admin.site.register(Token, TokenAdmin)
 admin.site.register(Location, LocationAdmin)
 admin.site.register(Evse, EvseAdmin)
-admin.site.register(Facility, FacilityAdmin)
-admin.site.register(Capability, CapabilityAdmin)
 admin.site.register(Tariff, TariffAdmin)
 admin.site.register(Cdr, CdrAdmin)
 admin.site.register(Session, SessionAdmin)

@@ -2,11 +2,10 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22.choices import OcpiModuleEnum, OCPIFacilityEnum, OCPICapabilityEnum
 from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Connector, Evse, Location
-from ocpi22.models.models import Facility, Capability
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
@@ -58,31 +57,34 @@ class TariffField(serializers.StringRelatedField):
         return value.uid
 
 
-class FacilitiesSaveSerializer(serializers.StringRelatedField):
-    # noinspection PyUnresolvedReferences
+class FacilityField(serializers.ChoiceField):
+    def __init__(self, **kwargs):
+        super().__init__(choices=OCPIFacilityEnum.choices, **kwargs)
+
+    def to_representation(self, value):
+        if value in OCPIFacilityEnum.values:
+            return value
+        raise serializers.ValidationError(_("Invalid facility type"))
+
     def to_internal_value(self, data):
-        try:
-            tariff = Facility.objects.get(name=data)
-            return tariff
-        except Facility.DoesNotExist:
-            raise ValidationError(f'`{data}` is not a valid choice for Facility in OCPI 2.2. '
-                                  f'Valid choices are: {", ".join([f.name for f in Facility.objects.all()])}.')
-
-    def to_representation(self, value: Facility):
-        return value.name
+        if data in OCPIFacilityEnum.values:
+            return data
+        raise serializers.ValidationError(_("Invalid facility type"))
 
 
-class CapabilitySerializer(serializers.Serializer):
+class CapabilityField(serializers.ChoiceField):
+    def __init__(self, **kwargs):
+        super().__init__(choices=OCPICapabilityEnum.choices, **kwargs)
+
+    def to_representation(self, data):
+        if isinstance(data, str):
+            data = data.split(',')
+        return super().to_representation(data)
+
     def to_internal_value(self, data):
-        try:
-            c = Capability.objects.get(name=data)
-            return c
-        except Capability.DoesNotExist:
-            raise ValidationError(f'Capability `{data}` is not a valid choice. '
-                                  f'The options are: {", ".join([a.name for a in Capability.objects.all()])}')
-
-    def to_representation(self, instance):
-        return instance.name
+        if isinstance(data, list):
+            data = ','.join(data)
+        return super().to_internal_value(data)
 
 
 class MaxElectricPowerSerializer(serializers.IntegerField):
@@ -131,7 +133,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
 
     connectors = ConnectorSerializer(many=True, required=True)
     uid = serializers.CharField(validators=[uid_validator])
-    capabilities = CapabilitySerializer(many=True, required=False)
+    capabilities = CapabilityField(required=False)
     last_updated = UTCDateTimeField(required=False)
 
     def save(self, **kwargs):
@@ -237,7 +239,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     evses = EvseSerializer(many=True, required=False)
     coordinates = CoordinatesSerializer()
     name = serializers.CharField(required=False)
-    facilities = FacilitiesSaveSerializer(many=True, required=False)
+    facilities = FacilityField(required=False)
     owner = BusinessDetailsSerializer(required=False)
     operator = BusinessDetailsSerializer(required=False)
     suboperator = BusinessDetailsSerializer(required=False)

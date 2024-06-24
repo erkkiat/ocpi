@@ -9,6 +9,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import translation
 from django.utils.translation import gettext_noop as _
+from django.utils.translation import gettext_lazy as _lazy
 
 
 class OcpiRolesEnum(Enum):
@@ -377,24 +378,53 @@ RESERVATION_CHOICES = (
     ('RESERVATION_EXPIRES', _('Costs for a reservation that expires')),
 )
 
-# This is not in use yet
-CAPABILITY_CHOICES = (
-    ('CHARGING_PROFILE_CAPABLE', 'The EVSE supports charging profiles'),
-    ('CHARGING_PREFERENCES_CAPABLE', 'The EVSE supports charging preferences'),
-    ('CHIP_CARD_SUPPORT', 'EVSE has a payment terminal that supports chip cards'),
-    ('CONTACTLESS_CARD_SUPPORT', 'EVSE has a payment terminal that supports contactless cards'),
-    ('CREDIT_CARD_PAYABLE',
-     'EVSE has a payment terminal that makes it possible to pay for charging using a credit card'),
-    ('DEBIT_CARD_PAYABLE', 'EVSE has a payment terminal that makes it possible to pay for charging using a debit card'),
-    ('PED_TERMINAL', 'EVSE has a payment terminal with a pin-code entry device'),
-    ('REMOTE_START_STOP_CAPABLE', 'The EVSE can remotely be started / stopped'),
-    ('RESERVABLE', 'The EVSE can be reserved'),
-    ('RFID_READER', 'Charging at this EVSE can be authorized with an RFID token'),
-    ('START_SESSION_CONNECTOR_REQUIRED', 'When a StartSession is sent to this EVSE, the MSP is required to add '
-                                         'the optional connector_id field in the StartSession object.'),
-    ('TOKEN_GROUP_CAPABLE', 'This EVSE supports token groups, two or more tokens work as one'),
-    ('UNLOCK_CAPABLE', 'Connectors can be unlocked remotely'),
-)
+
+class OCPIFacilityEnum(models.TextChoices):
+    HOTEL = 'HOTEL', _lazy('Hotel')
+    RESTAURANT = 'RESTAURANT', _lazy('Restaurant')
+    CAFE = 'CAFE', _lazy('Cafe')
+    MALL = 'MALL', _lazy('Mall')
+    SUPERMARKET = 'SUPERMARKET', _lazy('Supermarket')
+    PARK = 'PARK', _lazy('Park')
+    CINEMA = 'CINEMA', _lazy('Cinema')
+    THEATER = 'THEATER', _lazy('Theater')
+    STADIUM = 'STADIUM', _lazy('Stadium')
+    CONFERENCE_CENTER = 'CONFERENCE_CENTER', _lazy('Conference Center')
+    WORKPLACE = 'WORKPLACE', _lazy('Workplace')
+    AIRPORT = 'AIRPORT', _lazy('Airport')
+    TRAIN_STATION = 'TRAIN_STATION', _lazy('Train Station')
+    METRO_STATION = 'METRO_STATION', _lazy('Metro Station')
+    BUS_STATION = 'BUS_STATION', _lazy('Bus Station')
+    TAXI_STAND = 'TAXI_STAND', _lazy('Taxi Stand')
+    GAS_STATION = 'GAS_STATION', _lazy('Gas Station')
+    PARKING_LOT = 'PARKING_LOT', _lazy('Parking Lot')
+    CHARGING_STATION = 'CHARGING_STATION', _lazy('Charging Station')
+    RESIDENTIAL_AREA = 'RESIDENTIAL_AREA', _lazy('Residential Area')
+    INDUSTRIAL_AREA = 'INDUSTRIAL_AREA', _lazy('Industrial Area')
+    HOSPITAL = 'HOSPITAL', _lazy('Hospital')
+    UNIVERSITY = 'UNIVERSITY', _lazy('University')
+    SCHOOL = 'SCHOOL', _lazy('School')
+    LIBRARY = 'LIBRARY', _lazy('Library')
+    OTHER = 'OTHER', _lazy('Other')
+
+
+class OCPICapabilityEnum(models.TextChoices):
+    CHARGING_PROFILE_CAPABLE = 'CHARGING_PROFILE_CAPABLE', _lazy('Charging profiles')
+    CHARGING_PREFERENCES_CAPABLE = 'CHARGING_PREFERENCES_CAPABLE', _lazy('Charging preferences')
+    CHIP_CARD_SUPPORT = 'CHIP_CARD_SUPPORT', _lazy('Chip cards')
+    CONTACTLESS_CARD_SUPPORT = 'CONTACTLESS_CARD_SUPPORT', _lazy('Contactless cards')
+    PED_TERMINAL = 'PED_TERMINAL', _lazy('Payment terminal with a PIN-pad')
+    REMOTE_START_STOP_CAPABLE = 'REMOTE_START_STOP_CAPABLE', _lazy('Remote start/stop')
+    RESERVABLE = 'RESERVABLE', _lazy('Reservation')
+    RFID_READER = 'RFID_READER', _lazy('RFID token reader')
+    CREDIT_CARD_PAYABLE = 'CREDIT_CARD_PAYABLE', _lazy('Credit cards')
+    DEBIT_CARD_PAYABLE = 'DEBIT_CARD_PAYABLE', _lazy('Debit cards')
+    START_SESSION_CONNECTOR_REQUIRED = 'START_SESSION_CONNECTOR_REQUIRED', \
+                                       _lazy('Connector required in StartSession')
+    TOKEN_GROUP_CAPABLE = 'TOKEN_GROUP_CAPABLE', \
+                          _lazy('Token groups')
+    UNLOCK_CAPABLE = 'UNLOCK_CAPABLE', _lazy('Remote connector unlock')
+
 
 COUNTRIES_ISO_3 = [(c.alpha_3.upper(), _(c.name)) for c in pycountry.countries]
 COUNTRIES_ISO_2 = [(c.alpha_2.upper(), _(c.name)) for c in pycountry.countries]

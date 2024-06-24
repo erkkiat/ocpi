@@ -16,8 +16,8 @@ from django.utils.translation import gettext as _
 from ocpi22 import choices
 import util
 
-from ocpi22.choices import OcpiModuleEnum
-from ocpi22.models.models import Facility, Capability
+from ocpi22.choices import OcpiModuleEnum, OCPIFacilityEnum, OCPICapabilityEnum
+from ocpi22.models.models import MultipleChoiceCharField
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import ModelUtilMixin, uid_validator, calculate_partition, build_absolute_uri
 from ocpi22.ocpi.util import OcpiModule, Ocpi
@@ -181,8 +181,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
                               null=True, blank=True, on_delete=models.PROTECT, verbose_name=_('Owner'))
 
     # Optional list of facilities this charging location directly belongs to
-    facilities = models.ManyToManyField(Facility, related_name='facility_locations', blank=True,
-                                        verbose_name=_('Facilities'))
+    facilities = MultipleChoiceCharField(max_length=284, null=True, blank=True,
+                                         choices=OCPIFacilityEnum.choices,
+                                         choices_enum=OCPIFacilityEnum,
+                                         verbose_name=_('Facilities'))
 
     # Todo: get time zone based on coordinates
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
@@ -308,7 +310,10 @@ class Evse(models.Model, ModelUtilMixin):
     )
     status = models.CharField(max_length=11, choices=STATUS_CHOICES, verbose_name=_('Status'))
 
-    capabilities = models.ManyToManyField(Capability, related_name='evses', blank=True, verbose_name=_('Capabilities'))
+    capabilities = MultipleChoiceCharField(max_length=265, null=True, blank=True,
+                                         choices=OCPICapabilityEnum.choices,
+                                         choices_enum=OCPICapabilityEnum,
+                                         verbose_name=_('Capabilities'))
 
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='evses', verbose_name=_('Location'))
 
