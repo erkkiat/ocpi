@@ -248,10 +248,7 @@ class EvseViewSet(GenericViewSet):
             return OCPIBadRequestResponse('EVSE UID in URL does not match EVSE UID in payload')
         evse: Evse = Evse.get_if_exists(uid=evse_uid, location__uid=uid,
                                         location__ocpi_master=credentialsrole)
-        location: Location = self.get_queryset().get_if_exists(uid=uid, ocpi_master=credentialsrole)
-        if not location:
-            return OCPINotFoundResponse(f'Location with UID "{uid}" not found')
-
+        location: Location = evse.location
         data = request.data
 
         # Remove readonly fields from the incoming data, but only if the EVSE already exists
