@@ -145,7 +145,8 @@ class LocationQuickViewSet(mixins.ListModelMixin,
         try:
             uid = (uid or request.data.get('id', '')).upper()
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            existing_location = Location.get_if_exists(uid__iexact=uid, ocpi_master=our_role)
+            existing_location = Location.objects.prefetch_related('evses__connectors__tariff_ids').\
+                get_if_exists(uid__iexact=str(uid), ocpi_master=our_role)
             serializer = LocationQuickSerializer(data=request.data, instance=existing_location, partial=partial)
 
             if serializer.is_valid():
@@ -190,13 +191,6 @@ class LocationQuickViewSet(mixins.ListModelMixin,
 
 
 # Todo: limit access to certain privilege holders
-
-
-def get_evse_object(evse: Union[Evse, str]) -> Evse:
-    if isinstance(evse, Evse):
-        return evse
-    assert isinstance(evse, str), f'Unknown type for Evse identification: {evse}'
-    return Evse.get_if_exists(uid=evse)
 
 
 def close_active_sessions_for_evse(evse_uid: str):
@@ -262,6 +256,8 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
     next_url = reverse('chargepoint-stop-transaction')
     timestamp = timestamp or datetime.now(pytz.utc)
     session = session or internal_reference
+
+    Session.objects.prefetch_related('chargingperiods').get(uid=session)
 
     # We found a valid Session
     if session and session.status == Session.ACTIVE:
@@ -430,9 +426,10 @@ class ChargePointViewSet(FlowchartViewSet):
                     evse.location.update_last_updated()
                     evse.save()
 
-                    if ocpi_status == Evse.AVAILABLE:
-                        # Let's free up the charger for the OCPI network, in case we are out of sync
-                        close_active_sessions_for_evse(evse.uid)
+                    # Todo: Do this periodically in the background instead
+                    # if ocpi_status == Evse.AVAILABLE:
+                    #     # Let's free up the charger for the OCPI network, in case we are out of sync
+                    #     close_active_sessions_for_evse(evse.uid)
 
                     evse.send_status_updates()
 
@@ -600,7 +597,8 @@ class ChargePointViewSet(FlowchartViewSet):
                         party = authorization.token.party
                         session = get_session_by_adhoc_token(token, max_age_minutes=14)
                         if session:
-                            session.connector = Connector.get_if_exists(uid=connector_id, evse=evse)
+                            session.connector = Connector.objects.prefetch_related('tariff_ids').\
+                                get_if_exists(uid=connector_id, evse=evse)
                             session.internal_reference = internal_reference or None
                             session.status = Session.ACTIVE
                             session.authorization_reference = authorization.authorization_reference

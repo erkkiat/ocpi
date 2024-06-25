@@ -75,9 +75,9 @@ def error(msg: str = None, request=None, *args, **kwargs) -> None:
 def info(s: str, *args, request=None, logentry=None, log_to_admin=False, admin_log={}, **kwargs):
     if request:
         messages.info(request, s)
-    if log_to_admin:
-        logentry = logentry or admin_log.pop('logentry', None) or get_default_logentry()
-        log_for_admin(logentry=logentry, text=s, level=LogLevel.INFO, **admin_log)
+    # if log_to_admin:  # Quite SQL expensive
+    #     logentry = logentry or admin_log.pop('logentry', None) or get_default_logentry()
+    #     log_for_admin(logentry=logentry, text=s, level=LogLevel.INFO, **admin_log)
     return logging.info(s, *args, **kwargs)
 
 

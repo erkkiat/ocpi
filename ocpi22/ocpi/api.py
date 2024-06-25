@@ -458,7 +458,9 @@ class TariffViewSet(OCPIListModelMixin,
         return 'Tariffs'
 
     def get_queryset(self):
-        return Tariff.objects.partner_filter(self.request).exclude(archived=True).order_by('created')
+        if ocpi_platform.is_hub and hasattr(self, 'request'):
+            return Tariff.objects.partner_filter(self.request).exclude(archived=True).order_by('created')
+        return Tariff.objects.exclude(archived=True).order_by('created')
 
     @ocpi_exception_handler
     @requires_premium

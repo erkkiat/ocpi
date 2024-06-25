@@ -439,7 +439,9 @@ class Connector(models.Model, ModelUtilMixin):
     def get_tariffs(self):
         # Fetch the Tariffs specified for this Connector or find a DefaultTariff in case no specific Tariffs
         from ocpi22.models.tariff import Tariff
-        tariffs = self.tariff_ids.all() or Tariff.get_default_tariffs(self.standard)
+        related = ('tariff_elements',)
+        tariffs = self.tariff_ids.prefetch_related(*related).all() \
+                  or Tariff.prefetch_related(*related).get_default_tariffs(self.standard)
         return tariffs
 
     def get_admin_url(self):

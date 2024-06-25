@@ -58,6 +58,7 @@ def get_credential_issues():
 
 @ttl_cache(ttl=5 * 60)
 def get_issues() -> list:
+    return []
     return get_credential_issues() + get_connector_issues()
 
 
@@ -75,13 +76,13 @@ def issue_count(issue_list) -> int:
     ])
 
 
-@receiver(pre_save)
-def object_pre_save(sender, instance, raw, **_kwargs):
-    if raw:
-        return
-    # Issues will be recompiled whenever an object changes, in case the issue has been resolved
-    get_issues.cache_clear()
-    if sender == Connector:
-        get_connector_issues.cache_clear()
-    if sender == Credentials:
-        get_credential_issues.cache_clear()
+# @receiver(pre_save)
+# def object_pre_save(sender, instance, raw, **_kwargs):
+#     if raw:
+#         return
+#     # Issues will be recompiled whenever an object changes, in case the issue has been resolved
+#     get_issues.cache_clear()
+#     if sender == Connector:
+#         get_connector_issues.cache_clear()
+#     if sender == Credentials:
+#         get_credential_issues.cache_clear()

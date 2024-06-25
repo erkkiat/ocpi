@@ -50,7 +50,10 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return 'Locations'
 
     def get_queryset(self):
-        return Location.objects.partner_filter(self.request).order_by('created')
+        related = ('evses', 'evses__connectors', 'evses__connectors__tariff_ids',)
+        if ocpi_platform.is_hub and hasattr(self, 'request'):
+            return Location.objects.prefetch_related(*related).partner_filter(self.request).order_by('created')
+        return Location.objects.prefetch_related(*related).order_by('created')
 
     @ocpi_exception_handler
     @requires_premium
@@ -118,6 +121,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                          f' Location {credentialsrole} - {uid}.', log_to_admin=True, logentry=logentry)
             saved_location = serializer.save(ocpi_master=credentialsrole)
             saved_location.send_hub_updates()
+            Location.objects.prefetch_related('evses', 'evses__connectors', 'evses__connectors__tariff_ids').get(uid=uid)
             send_to_webhook(saved_location, MSPChargePointStatusCallbackSerializer)
             http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
             return OCPIResponse(serializer.data, http_status=http_status)

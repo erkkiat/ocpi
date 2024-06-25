@@ -8,6 +8,9 @@ import ocpi22.tasks as tasks
 
 
 def send_session_update_to_analytics(session: Session):
+    if not settings.SEND_UPDATES or not tasks.zoined_token:
+        return
+
     if hasattr(session, 'analytics_sent'):
         # logging.info(f'Session {session.uid} already sent to analytics => no update')
         return
@@ -50,7 +53,6 @@ def send_session_update_to_analytics(session: Session):
 
     # ic(data)
 
-    if settings.SEND_UPDATES:
-        # Send data to analytics
-        tasks.send_data_to_analytics.delay(data, 'https://api.zoined.com/sales')
-        session.analytics_sent = True
+    # Send data to analytics
+    tasks.send_data_to_analytics.delay(data, 'https://api.zoined.com/sales')
+    session.analytics_sent = True

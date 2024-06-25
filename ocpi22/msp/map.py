@@ -52,7 +52,7 @@ class MapViewSet(viewsets.GenericViewSet):
         # You can paste the geojson output in https://geojson.io/ to visualize it.
 
         if not queryset:
-            queryset = Location.objects.all()
+            queryset = Location.objects.prefetch_related('evses__connectors__tariff_ids').all()
 
         geometry = FeatureCollection(
             [Feature(
