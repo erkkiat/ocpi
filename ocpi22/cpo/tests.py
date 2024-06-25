@@ -64,7 +64,8 @@ class TestQuickLocations(TestCase):
             response = put_location(data, reverse('quick-location-list'))
             self.assertEqual(response.status_code, status.HTTP_201_CREATED,
                              'Expecting Location to be created successfully')
-            location = Location.objects.get(uid=location_id)
+            location = Location.objects.get_if_exists(uid=location_id.upper())
+            self.assertIsNotNone(location, f'Location not found in database with key {location_id}')
             data = LocationQuickSerializer(instance=location).data
             expected = {
                 'id': location_id.upper(), 'name': location_name,
