@@ -1,5 +1,5 @@
 from django.db import models
-from django.utils import dateformat
+from django.utils import dateformat, timezone
 from django.utils.translation import gettext_lazy as _
 
 # Todo: What does the client need, Hours.is_open_now(), Hours.how_long_until_open(), Hours.how_long_until_close()?
@@ -54,13 +54,16 @@ class Hours(models.Model):
     def __str__(self):
         return _(self.get_hours_display_english())
 
-    def get_hours_display_english(self):
+    def get_hours_display_english_list(self) -> list:
         if self.twentyfourseven:
-            return "24/7"
+            return ["24/7"]
 
         regular_hours = self.regular_hours.all().order_by('weekday', 'period_begin')
-        if not regular_hours:
-            return "No regular hours"
+        exceptional_openings = self.exceptional_openings.all().order_by('period_begin')
+        exceptional_closings = self.exceptional_closings.all().order_by('period_begin')
+
+        if not regular_hours and not exceptional_openings and not exceptional_closings:
+            return ["No regular or exceptional hours"]
 
         grouped_hours = {}
         for rh in regular_hours:
@@ -72,12 +75,25 @@ class Hours(models.Model):
         parts = []
         for (begin, end), weekdays in grouped_hours.items():
             if len(weekdays) > 1:
-                part = f"{_(RegularHours.WEEKDAY_CHOICES[weekdays[0] - 1][1])[:3]}-{_(RegularHours.WEEKDAY_CHOICES[weekdays[-1] - 1][1])[:3]} {begin.strftime('%H')} - {end.strftime('%H')}"
+                part = f"{_(RegularHours.WEEKDAY_CHOICES[weekdays[0] - 1][1])[:3]}-{_(RegularHours.WEEKDAY_CHOICES[weekdays[-1] - 1][1])[:3]} {begin.strftime('%H')}-{end.strftime('%H')}"
             else:
-                part = f"{_(RegularHours.WEEKDAY_CHOICES[weekdays[0] - 1][1])[:3]} {begin.strftime('%H')} - {end.strftime('%H')}"
+                part = f"{_(RegularHours.WEEKDAY_CHOICES[weekdays[0] - 1][1])[:3]} {begin.strftime('%H')}-{end.strftime('%H')}"
             parts.append(part)
 
-        return ", ".join(parts)
+        for eo in exceptional_openings:
+            begin_formatted = dateformat.format(timezone.localtime(eo.period_begin), 'F jS G:i')
+            end_formatted = dateformat.format(timezone.localtime(eo.period_end), 'F jS G:i')
+            parts.append(f"{_('Exceptionally Open')}: {begin_formatted}-{end_formatted}")
+
+        for ec in exceptional_closings:
+            begin_formatted = dateformat.format(timezone.localtime(ec.period_begin), 'F jS G:i')
+            end_formatted = dateformat.format(timezone.localtime(ec.period_end), 'F jS G:i')
+            parts.append(f"{_('Exceptionally Closed')}: {begin_formatted}-{end_formatted}")
+
+        return parts
+
+    def get_hours_display_english(self) -> str:
+        return ", ".join(self.get_hours_display_english_list())
 
     class Meta:
         verbose_name = _("Hours")
