@@ -937,9 +937,7 @@
          "created" : "2021-06-07T19:23:49.395Z",
          "status" : "INOPERATIVE",
          "location" : 14,
-         "capabilities" : [
-            1
-         ]
+         "capabilities": ["CREDIT_CARD_PAYABLE"]
       },
       "model" : "ocpi22.evse"
    },
@@ -962,9 +960,7 @@
          "uid" : "1025",
          "created" : "2021-06-08T18:52:57.877Z",
          "last_updated" : "2021-08-09T05:26:56.19Z",
-         "capabilities" : [
-            1
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "location" : 33
       },
       "model" : "ocpi22.evse"

@@ -1,4 +1,7 @@
+from pprint import pprint
+
 from django.db import transaction
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -57,34 +60,35 @@ class TariffField(serializers.StringRelatedField):
         return value.uid
 
 
-class FacilityField(serializers.ChoiceField):
-    def __init__(self, **kwargs):
-        super().__init__(choices=OCPIFacilityEnum.choices, **kwargs)
+class CommaSeparatedChoiceField(serializers.ChoiceField):
+    def __init__(self, choices, **kwargs):
+        super().__init__(choices=choices, **kwargs)
 
     def to_representation(self, value):
-        if value in OCPIFacilityEnum.values:
-            return value
-        raise serializers.ValidationError(_("Invalid facility type"))
-
-    def to_internal_value(self, data):
-        if data in OCPIFacilityEnum.values:
-            return data
-        raise serializers.ValidationError(_("Invalid facility type"))
-
-
-class CapabilityField(serializers.ChoiceField):
-    def __init__(self, **kwargs):
-        super().__init__(choices=OCPICapabilityEnum.choices, **kwargs)
-
-    def to_representation(self, data):
-        if isinstance(data, str):
-            data = data.split(',')
-        return super().to_representation(data)
+        if isinstance(value, str):
+            values = value.split(',')
+        else:
+            values = value
+        return super().to_representation(values)
 
     def to_internal_value(self, data):
         if isinstance(data, list):
             data = ','.join(data)
-        return super().to_internal_value(data)
+        values = data.split(',')
+        for value in values:
+            if value not in self.choices:
+                raise serializers.ValidationError(_("Invalid value '%s'.") % value)
+        return data
+
+
+class FacilityField(CommaSeparatedChoiceField):
+    def __init__(self, **kwargs):
+        super().__init__(choices=OCPIFacilityEnum.choices, **kwargs)
+
+
+class CapabilityField(CommaSeparatedChoiceField):
+    def __init__(self, **kwargs):
+        super().__init__(choices=OCPICapabilityEnum.choices, **kwargs)
 
 
 class MaxElectricPowerSerializer(serializers.IntegerField):
@@ -178,9 +182,6 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
 
         connectors = validated_data.pop('connectors', [])
         self.process_connectors(evse, connectors)
-
-        capabilities = validated_data.pop('capabilities', [])
-        evse.capabilities.set(capabilities)
 
         # Todo: map() or [] instead of for loop
         for key, value in validated_data.items():
@@ -310,13 +311,17 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         # Pop out all elements which are not directly understood by Location, and process them separately
         validated_data = self.process_coordinates(validated_data)
         evses = validated_data.pop('evses', [])
-        facilities = validated_data.pop('facilities', [])
+        # facilities = validated_data.pop('facilities', [])
         publish_allowed_to = validated_data.pop('publish_allowed_to', [])
         location.operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
         location.suboperator = BusinessDetailsSerializer().create(data=validated_data.pop('suboperator', None))
         location.owner = BusinessDetailsSerializer().create(data=validated_data.pop('owner', None))
-        location.facilities.set(facilities)
+        # location.facilities.set(facilities)
         location.publish_allowed_to.set(publish_allowed_to)
+
+        facilities = validated_data.pop('facilities', None)
+        if facilities is not None:
+            location.facilities = facilities
 
         for key, value in validated_data.items():
             if key not in readonly_fields:
@@ -326,16 +331,18 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
         for e in evses:
             connectors = e.pop('connectors', [])
-            capabilities = e.pop('capabilities', [])
+            capabilities = e.pop('capabilities', None)
             try:
                 evse = Evse.objects.get(uid=e.get('uid'), location=location)
+                if capabilities is not None:
+                    evse.capabilities = capabilities
                 for key, value in e.items():
                     if key not in {'uid', 'evse_id'}:
                         setattr(evse, key, value)
                 evse.save()
             except Evse.DoesNotExist:
                 evse = Evse.objects.create(**e, location=location)
-            evse.capabilities.set(capabilities)
+            # evse.capabilities.set(capabilities)
 
             for c in connectors:
                 tariff_ids = c.pop('tariff_ids', [])

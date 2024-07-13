@@ -296,9 +296,7 @@
          "suboperator": 1,
          "latitude": 60,
          "longitude": 30,
-         "facilities": [
-            1
-         ]
+         "facilities": ["HOTEL"]
       },
       "model": "ocpi22.location",
       "pk": 6
@@ -308,9 +306,7 @@
       "pk": 7,
       "fields": {
          "created" : "2022-01-09T06:27:14.931Z",
-         "capabilities": [
-            1
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "evse_id": "FI*TSL*EHELSINKI1",
          "updated" : "2022-01-18T19:46:46.556Z",
          "last_updated": "2022-01-09T10:50:58.562Z",
@@ -327,9 +323,7 @@
          "location": 6,
          "uid": "HELSINKI-2",
          "created" : "2022-01-09T06:38:44.357Z",
-         "capabilities": [
-            3
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "evse_id": "FI*TSL*EHELSINKI2",
          "updated" : "2022-01-18T19:46:34.867Z",
          "last_updated": "2022-01-09T06:38:44.362Z"
@@ -341,9 +335,7 @@
          "status": "AVAILABLE",
          "location": 6,
          "evse_id": "FI*TSL*EHELSINKI3",
-         "capabilities": [
-            9
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "created" : "2022-01-09T06:40:43.558Z",
          "updated" : "2022-01-16T11:42:34.776Z",
          "last_updated": "2022-01-09T10:48:07.901Z"
@@ -377,7 +369,7 @@
       "model": "ocpi22.connector",
       "fields": {
          "tariff_ids": [
-            2
+            16
          ],
          "format": "CABLE",
          "max_amperage": 375,

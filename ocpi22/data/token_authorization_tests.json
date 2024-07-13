@@ -808,9 +808,7 @@
       "owner": 2,
       "latitude": 60,
       "longitude": 30,
-      "facilities": [
-        1
-      ]
+      "facilities": ["HOTEL"]
     },
     "model": "ocpi22.location",
     "pk": 6

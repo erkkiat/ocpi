@@ -1172,9 +1172,7 @@
       "pk": 4,
       "model": "ocpi22.location",
       "fields": {
-         "facilities": [
-            2
-         ],
+         "facilities": ["HOTEL"],
          "updated" : "2022-01-15T09:06:31.139Z",
          "last_updated": "2022-01-08T14:55:22.541Z",
          "owner": null,
@@ -1256,9 +1254,7 @@
          "owner": 2,
          "latitude": 60,
          "longitude": 30,
-         "facilities": [
-            1
-         ]
+         "facilities": ["HOTEL"]
       },
       "model": "ocpi22.location",
       "pk": 6
@@ -1276,9 +1272,7 @@
          "publish": true,
          "postal_code": "",
          "time_zone": "Europe/Stockholm",
-         "facilities": [
-            2
-         ],
+         "facilities": ["HOTEL"],
          "name": "Stockholm Supercharger",
          "updated" : "2022-01-15T09:06:31.139Z",
          "last_updated": "2022-01-09T08:56:12.056Z",
@@ -1316,9 +1310,7 @@
       "model": "ocpi22.evse",
       "fields": {
          "evse_id": "FI*TSL*EVM1",
-         "capabilities": [
-            7
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "created" : "2022-01-08T14:15:25.039Z",
          "updated" : "2022-01-15T09:06:31.007Z",
          "last_updated": "2022-01-08T14:15:25.972Z",
@@ -1334,9 +1326,7 @@
          "status": "AVAILABLE",
          "updated" : "2022-01-15T09:06:31.007Z",
          "last_updated": "2022-01-08T14:37:27.796Z",
-         "capabilities": [
-            2
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "created" : "2022-01-08T14:37:27.717Z",
          "evse_id": "FI*TSL*EOULU1"
       },
@@ -1349,9 +1339,7 @@
          "location": 4,
          "uid": "1",
          "evse_id": "FI*TSL*EVAASA1",
-         "capabilities": [
-            3
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "created" : "2022-01-08T14:55:22.173Z",
          "updated" : "2022-01-15T09:06:31.007Z",
          "last_updated": "2022-01-08T14:55:22.540Z"
@@ -1383,9 +1371,7 @@
       "pk": 7,
       "fields": {
          "created" : "2022-01-09T06:27:14.931Z",
-         "capabilities": [
-            1
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "evse_id": "FI*TSL*EHELSINKI1",
          "updated" : "2022-01-18T19:46:46.556Z",
          "last_updated": "2022-01-09T10:50:58.562Z",
@@ -1402,9 +1388,7 @@
          "location": 6,
          "uid": "HELSINKI-2",
          "created" : "2022-01-09T06:38:44.357Z",
-         "capabilities": [
-            3
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "evse_id": "FI*TSL*EHELSINKI2",
          "updated" : "2022-01-18T19:46:34.867Z",
          "last_updated": "2022-01-09T06:38:44.362Z"
@@ -1416,9 +1400,7 @@
          "status": "AVAILABLE",
          "location": 6,
          "evse_id": "FI*TSL*EHELSINKI3",
-         "capabilities": [
-            9
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "created" : "2022-01-09T06:40:43.558Z",
          "updated" : "2022-01-16T11:42:34.776Z",
          "last_updated": "2022-01-09T10:48:07.901Z"
@@ -1434,9 +1416,7 @@
          "updated" : "2022-01-16T11:49:19.582Z",
          "last_updated": null,
          "evse_id": "FI*TSL*EOULU2",
-         "capabilities": [
-            1
-         ],
+         "capabilities": ["CREDIT_CARD_PAYABLE"],
          "created" : "2022-01-16T11:49:19.582Z"
       },
       "pk": 10,
