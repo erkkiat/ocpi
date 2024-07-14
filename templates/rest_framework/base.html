@@ -78,8 +78,7 @@
         {% endblock %}
 
         <!-- Content -->
-        <div id="content" role="main" aria-label="{% trans " content
-        " %}">
+        <div id="content" role="main" aria-label="{% trans " content" %}">
           {% if general_message %}
           <div class="alert alert-warning">{{ general_message }}</div>
           {% endif %}
@@ -92,8 +91,7 @@
 
           {% block content %}
 
-          <div class="region" aria-label="{% trans " request form
-          " %}">
+          <div class="region" aria-label="{% trans " request form" %}">
           {% block request_forms %}
 
           {% if 'GET' in allowed_methods %}
@@ -124,15 +122,19 @@
 
           {% if options_form %}
             <form class="button-form" action="{{ request.get_full_path }}" data-method="OPTIONS">
-              <button class="btn btn-primary js-tooltip" title="Make an OPTIONS request on the {{ name }} resource">OPTIONS</button>
+              <button class="btn btn-primary js-tooltip"
+                      title="Make an OPTIONS request on the {{ name }} resource">OPTIONS</button>
             </form>
           {% endif %}
 
           {% if delete_form %}
-            <button class="btn btn-danger button-form js-tooltip" title="Make a DELETE request on the {{ name }} resource" data-toggle="modal" data-target="#deleteModal">DELETE</button>
+            <button class="btn btn-danger button-form js-tooltip"
+                    title="Make a DELETE request on the {{ name }} resource" data-toggle="modal"
+                    data-target="#deleteModal">DELETE</button>
 
             <!-- Delete Modal -->
-            <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog"
+                 aria-labelledby="myModalLabel" aria-hidden="true">
               <div class="modal-dialog">
                 <div class="modal-content">
                   <div class="modal-body">
@@ -151,7 +153,8 @@
 
           {% if extra_actions %}
             <div class="dropdown" style="float: right; margin-right: 10px">
-              <button class="btn btn-default" id="extra-actions-menu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+              <button class="btn btn-default" id="extra-actions-menu" data-toggle="dropdown"
+                      aria-haspopup="true" aria-expanded="true">
                 {% trans "Extra Actions" %}
                 <span class="caret"></span>
               </button>
@@ -164,7 +167,8 @@
           {% endif %}
 
           {% if filter_form %}
-            <button style="float: right; margin-right: 10px" data-toggle="modal" data-target="#filtersModal" class="btn btn-default">
+            <button style="float: right; margin-right: 10px" data-toggle="modal"
+                    data-target="#filtersModal" class="btn btn-default">
               <span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
               {% trans "Filters" %}
             </button>
@@ -306,19 +310,21 @@
     {% endif %}
 
     {% block script %}
-      <script>
-        window.drf = {
-          csrfHeaderName: "{{ csrf_header_name|default:'X-CSRFToken' }}",
-          csrfToken: "{% if request %}{{ csrf_token }}{% endif %}"
-        };
+      <script type="application/json" id="drf_csrf">
+        {
+          "csrfHeaderName": "{{ csrf_header_name|default:'X-CSRFToken' }}",
+          "csrfToken": "{% if request %}{{ csrf_token }}{% endif %}"
+        }
       </script>
-      <script src="{% static "rest_framework/js/jquery-3.5.1.min.js" %}"></script>
+      <script src="{% static "rest_framework/js/jquery-3.7.1.min.js" %}"></script>
       <script src="{% static "rest_framework/js/ajax-form.js" %}"></script>
       <script src="{% static "rest_framework/js/csrf.js" %}"></script>
       <script src="{% static "rest_framework/js/bootstrap.min.js" %}"></script>
       <script src="{% static "rest_framework/js/prettify-min.js" %}"></script>
       <script src="{% static "rest_framework/js/default.js" %}"></script>
+      <script src="{% static "rest_framework/js/load-ajax-form.js" %}"></script>
       <script src="https://cdn.jsdelivr.net/npm/mermaid@10.5.0/dist/mermaid.min.js"></script>
+
       <script>
         $(document).ready(function() {
           $('form').ajaxForm();
