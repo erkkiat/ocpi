@@ -1,8 +1,10 @@
 # Django settings for ocpiconnector project.
 import hashlib
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
+import environ
 import sentry_sdk
 from django.conf.locale.en import formats as locale_formats
 from django.contrib import messages
@@ -156,18 +158,50 @@ def parse_jawsdb_maria_url(url):
 #     DATABASES = parse_jawsdb_maria_url(JAWSDB_MARIA_URL)
 # else:
 
-HOST, PORT = os.environ.get('HOSTNAME', ':').split(':')
+# if ':' in HOSTNAME:
+#     HOST, PORT = HOSTNAME.split(':')
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': f'ocpi{PORT}',
-        'USER': 'ocpi',
-        'PASSWORD': 'ocpiocpi',
-        'HOST': 'localhost',  # Use the service name
-        'PORT': '5432',  # Default PostgreSQL port
+DATABASE_URL = os.environ.get('DATABASE_URL', os.environ.get('JAWSDB_URL', ''))
+
+assert DATABASE_URL, 'Please provide either a mysql or a postgres database URL'
+
+if 'postgres' in DATABASE_URL:
+    url = urlparse(DATABASE_URL)
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql' if url.scheme == 'postgres' else 'django.db.backends.mysql',
+            'NAME': url.path[1:],  # Remove the leading '/'
+            'USER': url.username,
+            'PASSWORD': url.password,
+            'HOST': url.hostname,
+            'PORT': url.port,
+        }
     }
-}
+# else:
+#     env = environ.Env()
+#     environ.Env.read_env()
+#
+#     DATABASES = {
+#         'default': env.db('JAWSDB_URL')
+#     }
+
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "dj_db_conn_pool.backends.postgresql",
+#         'NAME': f'ocpi{PORT}',
+#         'USER': 'ocpi',
+#         'PASSWORD': 'ocpiocpi',
+#         'HOST': 'localhost',  # Use the service name
+#         'PORT': '5432',
+#         'POOL_OPTIONS': {
+#             'POOL_SIZE': 100,
+#             'MAX_OVERFLOW': 1000,
+#             'RECYCLE': 24 * 60 * 60,
+#             'TIMEOUT': 30,
+#         },
+#     }
+# }
 
 # # Add a new database to log GDPR actions
 # DATABASES.update({
