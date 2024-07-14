@@ -4,7 +4,6 @@ import os
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
-import environ
 import sentry_sdk
 from django.conf.locale.en import formats as locale_formats
 from django.contrib import messages
