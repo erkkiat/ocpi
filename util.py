@@ -2,8 +2,9 @@ import hashlib
 import json
 import pickle
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import time, datetime as python_datetime, timedelta, date
+from datetime import time, datetime as python_datetime, date
 from functools import wraps
 from typing import List, Any, Optional, Union
 
@@ -202,22 +203,23 @@ class RedisStore:
             return key
         return f'{namespace}:{key}'
 
-    def store(self, key, value):
+    def store(self, key, value, expiration=None):
         """
         Store a value in Redis, with expiration specified at initialization.
         The key is preformatted with the namespace. This is to make inheritance easier.
         """
+        if isinstance(expiration, (datetime, python_datetime)):
+            expiration = expiration - datetime.utcnow()
         value = pickle.dumps(value)
-        redis_store.set(key, value, self.expiration)
+        redis_store.set(self._format_key(key), value, expiration or self.expiration)
 
     def __setitem__(self, key, value):
-        namespace_key = self._format_key(key)
-        self.store(namespace_key, value)
+        self.store(key, value)
 
-    @staticmethod
-    def retrieve(key) -> Optional[Any]:
+    def retrieve(self, key) -> Optional[Any]:
         value = ''
         try:
+            key = self._format_key(key)
             value = redis_store.get(key)
             if not value:
                 raise KeyError(f'Key {key} not found in Redis')
@@ -244,15 +246,15 @@ class RedisStore:
         raise KeyError(f'Key {key} not found in Redis')
 
     def __getitem__(self, key):
-        namespace_key = self._format_key(key)
-        return self.retrieve(namespace_key)
+        return self.retrieve(key)
 
 
 redis_store = redis.from_url(settings.REDIS_URL, decode_responses=False)
 
 
 class DistributedCache(RedisStore):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, exclude=None, **kwargs):
+        self.exclude = exclude
         super().__init__(*args, namespace=settings.HOSTNAME_SHORT, **kwargs)
 
     @dataclass
@@ -280,6 +282,8 @@ class DistributedCache(RedisStore):
             except KeyError:
                 self.misses += 1
                 value = func(*args, **kwargs)
+                if self.exclude and self.exclude(value):
+                    return value
                 self.store(key, value)
                 return value
 
