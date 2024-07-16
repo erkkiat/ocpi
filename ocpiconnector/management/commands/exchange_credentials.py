@@ -14,6 +14,7 @@ from django.core.management.base import BaseCommand
 
 from certification.decorators import certification_step
 from ocpi22.choices import OcpiModuleEnum
+from ocpiconnector.management.commands.serializers import VersionsSerializer
 from util import reverse, HashableDict
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
@@ -63,11 +64,12 @@ def select_version(url, token) -> str:
     versions_response = ocpi_credentials_get(url, token)
     if versions_response.status_code == 200:
         data = versions_response.json()
-        if not isinstance(data, dict):
-            raise OCPIProtocolError(f'Expecting a data element in response from version endpoint, '
-                                    f'got "{data}"')
-        data = data.get('data', data)
-        versions = dict(map(lambda x: (x.get('version'), x.get('url')), data))
+        ic(data)
+        serializer = VersionsSerializer(data=data)
+        if not serializer.is_valid():
+            raise ConnectionError(f'The Versions endpoint is returning invalid content: {serializer.errors}')
+        versions = dict(map(lambda x: (x.get('version'), x.get('url')), serializer.data.get('data')))
+        ic(versions)
         version_url = versions.get('2.2.1', versions.get('2.2'))
         if not version_url:
             raise NoCommonVersion('There is no common version available.')
