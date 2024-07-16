@@ -560,9 +560,10 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
         super().save_model(request, obj, form, change)
         if obj and change:
             def invalidate_current_partners_cache():
-                current_partners: [Party] = map(get_partners_by_party_as_party, roles)
-                flattened_set = set.union(*current_partners)
-                list(map(invalidate_partner_cache, flattened_set))
+                current_partners: [Party] = list(map(get_partners_by_party_as_party, roles))
+                if current_partners:
+                    flattened_set = set.union(*current_partners)
+                    list(map(invalidate_partner_cache, flattened_set))
 
             # Todo: The below code is not working fully, there is a n+1 delay in clearing the cache
             # Now the cache is cleared fully every time to compensate
