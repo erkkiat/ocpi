@@ -436,6 +436,9 @@ class CPOReserveNowWebhookSerializer(CallbacksSerializer):
 class VatSerializer(serializers.IntegerField):
     key = 'vat'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, min_value=0, max_value=100, **kwargs)
+
     def to_representation(self, tariff: Tariff) -> Union[int, str]:
         pe = tariff.tariff_elements.first()
         # Iterate through the VATs for this Tariff and check if there are multiple different ones
@@ -443,17 +446,6 @@ class VatSerializer(serializers.IntegerField):
         if len(vats) == 1:
             return vats.pop()
         return 'Multiple'
-
-    def to_internal_value(self, data) -> dict:
-        return {self.key: self.validate(data)}
-
-    def validate(self, data):
-        if data:
-            if not (0 <= data <= 100):
-                raise ValidationError(f'VAT percentage can only be between 0 and 100')
-            if 0 < data < 1:
-                raise ValidationError(f'VAT needs to be an integer value between 0 and 100')
-        return data
 
 
 class PriceSerializer(serializers.DecimalField):
@@ -500,7 +492,6 @@ class TariffQuickSerializer(SerializerCleanedUp):
         help_text='The flat price per started charging session excluding tax'
     )
     vat = VatSerializer(
-        source='*',
         required=False, allow_null=True,
         help_text='The Value Added Tax amount in percentage'
     )
