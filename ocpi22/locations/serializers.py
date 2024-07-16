@@ -260,7 +260,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         with transaction.atomic():
             # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
-            facilities = validated_data.pop('facilities', None)
+            # facilities = validated_data.pop('facilities', None)
             evses = validated_data.pop('evses', [])
             publish_allowed_to = validated_data.pop('publish_allowed_to', [])
             operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
@@ -274,12 +274,12 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
             for e in evses:
                 connectors = e.pop('connectors', [])
-                capabilities = e.pop('capabilities', [])
+                # capabilities = e.pop('capabilities', [])
 
                 evse = Evse.objects.create(**e, location=location)
 
                 # Capabilities
-                evse.capabilities.set(capabilities)
+                # evse.capabilities.set(capabilities)
 
                 # Connectors
                 for c in connectors:
@@ -301,8 +301,8 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                                 f"Tariff `{t}` for {location.ocpi_master.country_code}*"
                                 f"{location.ocpi_master.party_id} does not exist in our database")
                     connector.tariff_ids.set(tariffs)
-            if facilities:
-                location.facilities.set(facilities)
+            # if facilities:
+            #     location.facilities.set(facilities)
             return location
 
     def update(self, location: Location, validated_data: dict) -> Location:
