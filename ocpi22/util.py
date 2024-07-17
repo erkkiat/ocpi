@@ -729,7 +729,7 @@ def fetch_object(uid: str, party: Party = None, credentials=None, ocpi_module: O
     if data:
         viewset = import_string(ocpi_module.get_viewset())
         from ocpi22.ocpi.auth import get_credentialsrole
-        credentialsrole = get_credentialsrole(party, role)
+        credentialsrole = get_credentialsrole(credentials=None, party=party, role=role)
         response = viewset().put(request=None, data=data, credentialsrole=credentialsrole, version=version)
         if response.status_code in {200, 201}:
             logging.info(f'Fetched missing {ocpi_module.value} with id: "{uid}"')
