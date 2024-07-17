@@ -156,16 +156,16 @@ class TokenViewSet(OCPIListModelMixin,
         location: Optional[Location] = None
 
         try:
-            if request.data:
-                serializer = AuthorizeSerializer(data=request.data)
-                if serializer.is_valid():
-                    location: Location = serializer.validated_data.get('location')
-                else:
-                    return OCPIBadRequestResponse(data=serializer.errors)
+            # if settings.CERTIFICATION_MODE and request.data:
+            #     serializer = AuthorizeSerializer(data=request.data, context={'request': request})
+            #     if serializer.is_valid():
+            #         location: Location = serializer.validated_data.get('location')
+            #     else:
+            #         return OCPIBadRequestResponse(data=serializer.errors)
 
             if ocpi_platform.is_hub:
                 return self.hub_authorize(request, token_uid, location)
-            token: Token = Token.get_if_exists(uid=token_uid, ocpi_master=get_our_credentialsrole(OcpiRolesEnum.EMSP))
+            token: Token = Token.get_if_exists(uid__iexact=token_uid, ocpi_master=get_our_credentialsrole(OcpiRolesEnum.EMSP))
             if not token and not ocpi_platform.is_hub:
                 # OCPI 2.2: If the token is not known, the response SHALL contain the status code:
                 # 2004: Unknown Token, and no data field.

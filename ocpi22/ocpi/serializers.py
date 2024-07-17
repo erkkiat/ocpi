@@ -315,7 +315,9 @@ class LocationEvseUidSerializer(serializers.Serializer):
 
     def to_internal_value(self, evse_uid):
         location_id = self.get_location_id()
-        evse = Evse.get_if_exists(uid=evse_uid, location__uid=location_id)
+        request = self.context.get('request')
+        ic(request)
+        evse = Evse.get_if_exists(uid=evse_uid, ocpi_master=request.ocpi_party)
         if not evse:
             self.fail('location_evse_missing', evse=evse_uid, location=location_id)
         return evse
@@ -484,7 +486,7 @@ class StrictEvseUidSerializer(serializers.CharField):
                 location_id = self.parent.parent.initial_data.get('location_id')
                 if not location_id:
                     raise TypeError('Unable to read location_id')
-            evse = Evse.get_if_exists(uid=data, location__uid=location_id)
+            evse = Evse.get_if_exists(uid__iexact=data, location__uid__iexact=location_id)
         if not evse:
             raise ValidationError(f'Evse with UID {data} at location {location_id} is unknown')
         return evse
