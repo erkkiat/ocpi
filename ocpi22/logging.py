@@ -56,14 +56,12 @@ def get_default_logentry() -> LogEntry:
 
 
 def log_error(request=None, s: str = None, logentry=None, admin_log={}, **kwargs) -> None:
-    error_message = f'{s} ({str(get_sender_party(request.META)) if request else ""} ' \
+    error_message = f'{s} ({str(get_sender_party(request.META)) if request and getattr(request, "META", None) else ""} ' \
                     f'server: {settings.HOSTNAME})'
     if SLACK_WEBHOOK:
         requests.post(url=SLACK_WEBHOOK, json=dict(text=error_message))
     if request:
         messages.error(request, s)
-    logentry = logentry or admin_log.pop('logentry', None) or get_default_logentry()
-    log_for_admin(logentry=logentry, text=s, level=LogLevel.ERROR, **admin_log)
     logging.error(error_message)
 
 
