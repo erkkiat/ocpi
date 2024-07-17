@@ -261,6 +261,7 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
 
     # We found a valid Session
     if session and session.status == Session.ACTIVE:
+        Session.objects.prefetch_related('chargingperiods').get(pk=session.pk)
         if not session.connector.tariff_ids.count():
             raise RuntimeError(f'EVSE {session.evse} connector {session.connector} has no tariffs')
         session.stop_kwh = kwh
