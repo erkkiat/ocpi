@@ -6,7 +6,7 @@ from django.conf import settings
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OcppStatusChoices, TOKEN_TYPE_CHOICES
+from ocpi22.choices import OcppStatusChoices, TOKEN_TYPE_CHOICES, OcpiRolesEnum
 from ocpi22.commands.serializers import CommandResultBaseSerializer
 from ocpi22.cpo.util import _find_our_evse
 from ocpi22.models.location import Evse, Connector, Location
@@ -17,7 +17,7 @@ from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES, fill_out_location_address
 from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer, \
     UTCDateTimeField
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.ocpi_identities import Party, get_our_credentialsrole
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -205,7 +205,10 @@ class SessionIdSerializer(fields.CharField):
     """To be used only for CPO API, cannot handle overlapping IDs"""
     def to_internal_value(self, data):
         if data:
-            return Session.objects.get(uid__iexact=data, status=Session.ACTIVE)
+            session = Session.objects.get_if_exists(uid__iexact=data, status=Session.ACTIVE)
+            if not session:
+                raise ValidationError(f"Session with UID '{data}' does not exist.")
+            return session
         return None
 
 
@@ -213,7 +216,10 @@ class InternalReferenceSerializer(fields.CharField):
     """Results in a Session or None"""
     def to_internal_value(self, data) -> Optional[Session]:
         if data:
-            return Session.objects.get(internal_reference__iexact=data)
+            session = Session.objects.get_if_exists(internal_reference__iexact=data)
+            if not session:
+                raise ValidationError(f"Session with internal reference '{data}' does not exist.")
+            return session
         return None
 
 
