@@ -461,15 +461,15 @@ class LocationIdSerializer(serializers.Serializer):
 
 class StrictLocationIdSerializer(serializers.CharField):
     def to_internal_value(self, data):
-        result = Location.get_if_exists(uid=data)
+        result = Location.get_if_exists(uid__iexact=str(data), ocpi_master=request.ocpi_party)
         if not result:
             raise ValidationError(f"Location {data} cannot be found from MSP database")
         return result
 
 
-class EvseUidSerializer(serializers.Serializer):
+class EvseUidSerializer(serializers.CharField):
     def to_internal_value(self, data):
-        return Evse.get_if_exists(uid=data)
+        return Evse.get_if_exists(uid__iexact=str(data), location__ocpi_master=request.ocpi_party)
 
 
 class StrictEvseUidSerializer(serializers.CharField):
