@@ -461,6 +461,7 @@ class LocationIdSerializer(serializers.Serializer):
 
 class StrictLocationIdSerializer(serializers.CharField):
     def to_internal_value(self, data):
+        request = self.context.get('request')
         result = Location.get_if_exists(uid__iexact=str(data), ocpi_master=request.ocpi_party)
         if not result:
             raise ValidationError(f"Location {data} cannot be found from MSP database")
@@ -469,6 +470,7 @@ class StrictLocationIdSerializer(serializers.CharField):
 
 class EvseUidSerializer(serializers.CharField):
     def to_internal_value(self, data):
+        request = self.context.get('request')
         return Evse.get_if_exists(uid__iexact=str(data), location__ocpi_master=request.ocpi_party)
 
 
