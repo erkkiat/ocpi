@@ -114,6 +114,8 @@ class OcpiModule:
                 setattr(self, 'updates_sent', True)
 
     def send_all_updates(self, data=None, method='put', path_components=None, ocpi_module_name=None) -> bool:
+        if not settings.SEND_UPDATES:
+            return True
         # Todo: Use sender identity, not our HUB identity
         from ocpi22.credentials.util import find_endpoints_by_roles
         our_country_code, our_party_id = self.get_owner_identity().split('*')
@@ -123,13 +125,15 @@ class OcpiModule:
 
         ocpi_module_name = ocpi_module_name or self.ocpi_module_name
         if isinstance(self.send_updates_to, (list, tuple)):
-            for url, token_base64, country_code, party_id, credentials in find_endpoints_by_roles(
-                    self.send_updates_to, ocpi_module_name):
+            endpoints = find_endpoints_by_roles(self.send_updates_to, ocpi_module_name)
+            ic(endpoints)
+            for url, token_base64, country_code, party_id, credentials in endpoints:
                 try:
                     if path_components:
                         url = urljoin(with_trailing_slash(url), "/".join(path_components))
 
                     data = data or self.serialize(credentials.version)
+                    logging.info(f'Sending update to URL {url}')
                     self.send_background_update(data, url, token_base64, to=Party(country_code, party_id),
                                                 sender=Party(our_country_code, our_party_id), method=method)
                 except Exception as e:
