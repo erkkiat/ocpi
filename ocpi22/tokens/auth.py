@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.tokens.token_async import authorize_with_msps_sync
 from ocpi22.choices import OcpiModuleEnum, MessageTexts, AuthorizationEnum, TokenType, get_language
 from ocpi22.messages import messages
@@ -186,14 +187,14 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
 
 # 15 minutes cache, required by OCPI 2.2.1 spec (Don't cache negative responses)
 @DistributedCache(expiration=15*60,
-                  exclude=lambda x: x.allowed != AuthorizationEnum.ALLOWED)
+                  exclude=lambda x: x.allowed != AuthorizationEnum.ALLOWED if hasattr(x, 'allowed') else True)
 def _authorize_token(token: Union[Token, str], location=None, request=None) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
     (OCPI requirement)
     """
-    if not isinstance(token, Token):
-        token: Token = Token.get_if_exists(uid=token)
+    if isinstance(token, str):
+        token: Token = Token.get_if_exists(uid__iexact=token)
     if not token or not token.valid:
         return None
     if token.whitelist == Token.ALWAYS:
