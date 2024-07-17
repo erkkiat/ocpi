@@ -25,18 +25,19 @@ def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: choices.OcpiMod
 
     role: CredentialsRole
     for role in CredentialsRole.objects.filter(criteria). \
-            select_related('credentials'):
+            select_related('credentials').prefetch_related('credentials__endpoints'):
         credentials = role.credentials
         country_code = role.country_code
         party_id = role.party_id
-        result += [
-            (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
-            for endpoint in Endpoint.objects.filter(
-                identifier=ocpi_module.value.capitalize(),
-                role=choices.EndpointRoleEnum.RECEIVER.value,
-                credentials=credentials,
-            ) if credentials.valid
-        ]
+        if credentials and credentials.valid:
+            result += [
+                (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
+                for endpoint in Endpoint.objects.filter(
+                    identifier__iexact=ocpi_module.value.lower(),
+                    role__iexact=choices.EndpointRoleEnum.RECEIVER.value,
+                    credentials=credentials,
+                )
+            ]
     return result
 
 
