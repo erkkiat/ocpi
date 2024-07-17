@@ -15,7 +15,7 @@ from ocpi22.messages import messages
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
-from ocpi22.ocpi.partners import get_partners
+from ocpi22.ocpi.auth import OcpiAuthTypes
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import OCPIVersioning, OCPIListModelMixin
 from ocpi22.ocpi.util import OCPIResponse, Ocpi, OCPIPaginationAndHeaders, OCPIUrlParametersRequiredResponse, \
@@ -125,6 +125,11 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                 get(pk=saved_location.pk)
             send_to_webhook(saved_location, MSPChargePointStatusCallbackSerializer)
             http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+
+            # Was Location posted from the CPO backend using OCPI Locations endpoint, not from a roaming partner?
+            if request.ocpi_auth == OcpiAuthTypes.NONE:
+                saved_location.send_updates(data=serializer.data)
+
             return OCPIResponse(serializer.data, http_status=http_status)
         else:
             return OCPIResponse(errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST,

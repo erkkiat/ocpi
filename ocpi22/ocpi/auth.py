@@ -57,11 +57,11 @@ def check_auth_token(request, token: str) -> bool:
 
     # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
     try:
+        request.ocpi_auth = OcpiAuthTypes.NONE
+        request.ocpi_party = None
         if not token:
             return False
         token_ascii = base64.b64decode(token).decode('ascii')
-        request.ocpi_auth = OcpiAuthTypes.NONE
-        request.ocpi_party = None
         credentials = find_credentials(token_ascii)  # This is the typical case, that's why it's a cached function
         if credentials:
             request.credentials = credentials
