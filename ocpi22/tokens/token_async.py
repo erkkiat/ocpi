@@ -92,7 +92,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                     # else:
                     #     print(f'Task {task.get_name()} failed with return code {status}')
                 except Exception as e:
-                    logging.error(f"Task {task.get_name()} raised an exception:", e)
+                    logging.error(f"Task {task.get_name()} raised an exception: {e}")
 
             if not pending:
                 # No more tasks pending, break the loop
