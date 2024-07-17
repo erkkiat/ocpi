@@ -297,7 +297,8 @@ class LocationIdDictSerializer(serializers.CharField):
             return instance.uid
 
     def to_internal_value(self, data: str):
-        location = Location.get_if_exists(uid=data)
+        request = self.context.get('request')
+        location = Location.get_if_exists(uid__iexact=data, ocpi_master=request.ocpi_party)
         if not location:
             self.fail('object_missing', name='Location', uid=data)
         return dict(location=location)
@@ -314,12 +315,11 @@ class LocationEvseUidSerializer(serializers.Serializer):
         return None
 
     def to_internal_value(self, evse_uid):
-        location_id = self.get_location_id()
         request = self.context.get('request')
         ic(request)
-        evse = Evse.get_if_exists(uid=evse_uid, ocpi_master=request.ocpi_party)
+        evse = Evse.get_if_exists(uid=evse_uid, location__ocpi_master=request.ocpi_party)
         if not evse:
-            self.fail('location_evse_missing', evse=evse_uid, location=location_id)
+            self.fail('evse_owner_missing', evse=evse_uid, ocpi_master=request.ocpi_party)
         return evse
 
 
@@ -463,6 +463,7 @@ class LocationIdSerializer(serializers.Serializer):
 
 class StrictLocationIdSerializer(serializers.CharField):
     def to_internal_value(self, data):
+        ic(self.context)
         request = self.context.get('request')
         result = Location.get_if_exists(uid__iexact=str(data), ocpi_master=request.ocpi_party)
         if not result:
