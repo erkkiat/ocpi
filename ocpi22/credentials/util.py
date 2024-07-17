@@ -2,7 +2,7 @@ from itertools import groupby
 from typing import Optional
 
 from cachetools.func import ttl_cache
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 
 from ocpi22 import choices
 from util import DistributedCache
@@ -17,8 +17,14 @@ def find_endpoints_by_roles(roles: Optional[tuple], ocpi_module: choices.OcpiMod
     """
     from ocpi22.models.credentials import CredentialsRole, Endpoint
     result = []
+
+    # Combine roles in a case-insensitive query
+    criteria = Q()
+    for r in roles:
+        criteria |= Q(role__iexact=r)
+
     role: CredentialsRole
-    for role in CredentialsRole.objects.filter(role__in=roles). \
+    for role in CredentialsRole.objects.filter(criteria). \
             select_related('credentials'):
         credentials = role.credentials
         country_code = role.country_code
