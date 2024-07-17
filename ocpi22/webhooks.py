@@ -45,7 +45,7 @@ def send_to_webhook(data: Union[dict, Location, Evse] = None, serializer=None, s
             headers = {'content-type': 'application/json', 'accept': 'application/json'}
             kwargs.update(kwargs_update)
 
-            response = requests.put(
+            response = requests.post(
                 url=url,
                 json=serialized_data,
                 headers=headers,
