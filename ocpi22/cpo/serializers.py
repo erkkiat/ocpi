@@ -197,14 +197,14 @@ class EvseSerialnumberSerializer(fields.CharField):
 class TokenIdSerializer(fields.CharField):
     # Find a token with token_id or keep the token_id (for AD HOC tokens)
     def to_internal_value(self, data):
-        token = Token.get_if_exists(uid=data) or data
+        token = Token.get_if_exists(uid__iexact=data) or data
         return token
 
 
 class SessionIdSerializer(fields.CharField):
     def to_internal_value(self, data):
         if data:
-            return Session.objects.get(uid=data)
+            return Session.objects.get(uid__iexact=data)
         return None
 
 
@@ -212,7 +212,7 @@ class InternalReferenceSerializer(fields.CharField):
     """Results in a Session or None"""
     def to_internal_value(self, data) -> Optional[Session]:
         if data:
-            return Session.objects.get(internal_reference=data)
+            return Session.objects.get(internal_reference__iexact=data)
         return None
 
 
