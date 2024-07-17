@@ -89,7 +89,7 @@ class OcpiModule:
                 # Send update only once
                 setattr(self, 'update_sent', True)
 
-    def send_updates(self, method='put', path_components=None) -> None:
+    def send_updates(self, data=None, method='put', path_components=None) -> None:
         """
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
@@ -109,7 +109,7 @@ class OcpiModule:
                                                            path_components=path_components)
                 else:
                     logging.info('Sending updates to ALL connected parties')
-                    self.send_all_updates(method=method, path_components=path_components)
+                    self.send_all_updates(data=data, method=method, path_components=path_components)
 
                 setattr(self, 'updates_sent', True)
 
