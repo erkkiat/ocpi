@@ -202,9 +202,10 @@ class TokenIdSerializer(fields.CharField):
 
 
 class SessionIdSerializer(fields.CharField):
+    """To be used only for CPO API, cannot handle overlapping IDs"""
     def to_internal_value(self, data):
         if data:
-            return Session.objects.get(uid__iexact=data)
+            return Session.objects.get(uid__iexact=data, status=Session.ACTIVE)
         return None
 
 
