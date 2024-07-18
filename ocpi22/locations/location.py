@@ -250,10 +250,11 @@ class EvseViewSet(GenericViewSet):
         credentialsrole = credentialsrole or getattr(request, 'credentialsrole', None)
         assert credentialsrole, 'Credentialsrole is required for EvseViewSet.put()'
 
-        if evse_uid != request.data.get('uid'):
-            return OCPIBadRequestResponse('EVSE UID in URL does not match EVSE UID in payload')
         evse: Evse = Evse.get_if_exists(uid=evse_uid, location__uid=uid,
                                         location__ocpi_master=credentialsrole)
+        if not evse:
+            return OCPIBadRequestResponse('EVSE not found')
+
         location: Location = evse.location
         data = request.data
 
