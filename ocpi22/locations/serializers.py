@@ -69,7 +69,9 @@ class CommaSeparatedChoiceField(serializers.ChoiceField):
             values = value.split(',')
         else:
             values = value
-        return super().to_representation(values)
+        values = [v for v in values if v]  # Remove empty strings
+        result = super().to_representation(values)
+        return result
 
     def to_internal_value(self, data):
         if isinstance(data, list):
