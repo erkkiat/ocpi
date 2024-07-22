@@ -28,6 +28,7 @@ from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
 from ocpi22.views import home
 from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
+from webhooks.urls import urlpatterns as webhooks_urls
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r'credentials/', CredentialsViewSet, basename='credentials')
@@ -91,6 +92,7 @@ urlpatterns = [
     re_path(r'^ocpi/(?P<version>[1-2.]+)/', include(ocpi_router.urls), name='ocpi-22-root'),
     path('api/cpo/v2/', include(cpo_router.urls), name='cpo-interface'),
     path('api/msp/v1/', include(msp_router.urls), name='msp-interface'),
+    path('webhooks/', include(webhooks_urls)),
     path('ocpi/', include(common_router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/ocpi22/credentials/connection/new', new_connection, name='new-connection'),
