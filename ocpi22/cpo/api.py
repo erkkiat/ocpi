@@ -38,7 +38,8 @@ from ocpi22.commands.serializers import CpoCommandResultSerializer, CommandResul
 from ocpi22.cpo.serializers import CpoSessionSerializer, \
     StatusChangeSerializer, AuthorizationSerializer, MeterValuesSerializer, StartTransactionSerializer, \
     StopTransactionSerializer, EvseSerializer, LocationQuickSerializer, \
-    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer
+    CPOStartWebhookSerializer, CPOStopWebhookSerializer, CPOReserveNowWebhookSerializer, \
+    CPOAuthorizationResponseSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
@@ -503,7 +504,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         token = AdhocToken(uid=token, valid=True, billed_to=authorization.get_token_party(),
                                            type=authorization.token.get('type', ''))
 
-                    if not authorization:
+                    if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
                         token_admin = reverse('admin:ocpi22_token_changelist')
                         messages.error(request, f'The response was "{authorization.allowed}" for the Token "{token}".')
                         messages.info(request,
@@ -511,21 +512,23 @@ class ChargePointViewSet(FlowchartViewSet):
                                           f'You can <a target="tokenadmin" href="{token_admin}">browse the list of '
                                           'known Tokens in our database</a> or try one which an MSP has in their database.')
                                       )
-                        return Response(
-                            dict(
-                                status_text='Token is (temporarily) not valid',
-                                token_id=get_token_id(token),
-                            ),
-                            status=status.HTTP_401_UNAUTHORIZED
-                        )
-                    elif authorization.allowed == AuthorizationEnum.ALLOWED:
+                    else:
                         messages.success(request,
                                          mark_safe('Next, you can '
                                                    f'<a href="{next_url}">start the charging session</a>. '
                                                    f'Make sure to use the Token "{get_token_id(token)}", '
                                                    f'which has been authorized. The authorization expires in 15 minutes.'))
 
-                    return Response(dataclasses.asdict(authorization), status=authorization.get_http_status())
+                    data = dict(
+                        allowed=authorization.allowed,
+                        token=authorization.token.get('uid'),
+                        responding_party=authorization.responding_party,
+                        billed_to=authorization.billed_to,
+                        authorization_reference=authorization.authorization_reference,
+                        auth_method=authorization.auth_method,
+                    )
+                    serializer = CPOAuthorizationResponseSerializer(instance=data)
+                    return Response(serializer.data, status=authorization.get_http_status())
                 else:
                     return Response(data=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

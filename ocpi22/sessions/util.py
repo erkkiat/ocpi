@@ -53,13 +53,15 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
                    authorization_reference='', reservation_id=None, authorization_method=None, currency=None,
                    *_args, **kwargs
                    ) -> Session:
+    token: Token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
+    if not billed_to:
+        billed_to = token.ocpi_master
     if isinstance(billed_to, str):
         billed_to = get_credentialsrole(party=Party(*billed_to.split('*')))
     if isinstance(billed_to, Party):
         billed_to = get_credentialsrole(party=billed_to)
     if not uid:
         uid = generate_session_uid()
-    token: Token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
     location = location_id
     if not isinstance(location_id, Location):
         location = Location.get_if_exists(uid=location_id, raise_exception=True)

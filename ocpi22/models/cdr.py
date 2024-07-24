@@ -12,6 +12,7 @@ import util
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
 from ocpi22.grafana import metrics
+from ocpi22.models import enum
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.msp.account import check_balance
@@ -97,7 +98,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
                                              verbose_name=_('Token contract ID'))
 
     # Method used for authentication.
-    auth_method = models.CharField(max_length=12, choices=Session.AUTH_METHOD_CHOICES,
+    auth_method = models.CharField(max_length=12, choices=enum.AUTH_METHOD_CHOICES,
                                    verbose_name=_('Authentication method'))
 
     # Reference to the authorization given by the eMSP. When the eMSP provided an authorization_reference in either:

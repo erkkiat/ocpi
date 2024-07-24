@@ -64,7 +64,7 @@ def make_ocpi_response(authorization: TokenAuthorization) -> OCPIResponse:
         NO_CREDIT=Ocpi.OK,
         NOT_ALLOWED=Ocpi.OK,
     ).get(authorization.allowed, Ocpi.ServerError.GENERIC_SERVER_ERROR)
-    http_status = authorization.get_http_status()
+    http_status = status.HTTP_200_OK
     status_message = authorization.get_status_message()
 
     return OCPIResponse(
@@ -173,14 +173,16 @@ class TokenViewSet(OCPIListModelMixin,
                                     status=status.HTTP_404_NOT_FOUND,
                                     status_message=f'Unknown Token "{token_uid}"')
 
-            logging.info(f'Authorization request received for our token {token_uid} for location {location}.')
+            logging.info(f'Authorization request received for a token {token_uid} for location {location}.')
 
             if token.language:
                 user_language = token.language.lower()
 
             if not token.valid:
-                allowed = AuthorizationEnum.EXPIRED
+                allowed = AuthorizationEnum.NOT_ALLOWED
                 info = MessageTexts.get('TOKEN_NOT_VALID')
+                logging.warning(f'Token {token} is marked as invalid in our database.')
+                # Todo: Send alert to support?
             else:
                 # Todo: Update tests for internal accounting and create tests for MSP authorize callback
                 webhook_data = {'token_id': token_uid, 'location_id': location.uid if location else None}
@@ -193,8 +195,10 @@ class TokenViewSet(OCPIListModelMixin,
                     if serializer.is_valid():
                         allowed = msp_response.get('result', 'NOT_ALLOWED').upper()
                         max_price = msp_response.get('max_price')
+                        logging.info(f'MSP backend responded{serializer.data} for {token_uid} at location {location}.')
                     else:
                         allowed = 'NOT_ALLOWED'
+                        logging.error(f'Format error in response from MSP backend: {serializer.errors}')
                 else:
                     if settings.REQUIRE_WALLET_BALANCE and token.total_balance_float() < 1.0:
                         log_error(request, f'Token {token} has no balance')

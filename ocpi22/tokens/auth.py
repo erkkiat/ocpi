@@ -110,7 +110,7 @@ class TokenAuthorization:
 
     @property
     def is_billable(self):
-        return self.billed_to not in {'*', ''}
+        return self.is_positive and self.billed_to not in {'*', ''}
 
     @property
     def is_positive(self):
@@ -124,10 +124,8 @@ class TokenAuthorization:
                 return f"{self.token.get('country_code', '--')}*{self.token.get('party_id', '---')}"
         return Party()
 
-    @staticmethod
-    def get_http_status() -> int:
-        """When an OCPI message has been successfully processed, the HTTP status code 200 OK is always returned."""
-        return status.HTTP_200_OK
+    def get_http_status(self) -> int:
+        return status.HTTP_200_OK if self.allowed == AuthorizationEnum.ALLOWED else status.HTTP_401_UNAUTHORIZED
 
     def get_status_message(self) -> str:
         return dict(
@@ -142,10 +140,12 @@ class TokenAuthorization:
         return self.token.get('language', 'en') if self.token else 'en'
 
 
-def authorize_token(token: Union[str, Token], location=None, request=None) -> Optional[TokenAuthorization]:
+@silk_profile(name='authorize_token')
+def authorize_token(token: Union[str, Token], location=None, request=None, max_age=15,
+                    rfid=False) -> Optional[TokenAuthorization]:
     with Timer() as t:
-        if not isinstance(token, Token):
-            session = get_session_by_adhoc_token(token, max_age_minutes=15)
+        if not rfid and not isinstance(token, Token):
+            session = get_session_by_adhoc_token(token, max_age_minutes=max_age)
             if session:
                 # Token is AD HOC
                 logging.info(f'Pre-existing Session {session.uid} '
@@ -163,15 +163,19 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
+                    ocpi_master=session.ocpi_master
                 )
 
         # Not AD HOC, so Token should be found from database
         authorization = _authorize_token(token, location, request=request)
-        if authorization is None:
-            # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
-            messages.info(request, 'This Token is not in our database, '
-                                   'so an authorization request was sent to all MSPs connected to us.')
-            authorization = authorize_with_msps_sync(token, location)
+        if authorization.is_positive and authorization.authorization_reference:
+            messages.info(request,
+                          mark_safe(f'<b>"{authorization.get_token_party()}"</b> responded <b>"{authorization.allowed}"</b> and '
+                          f'generated the authorization reference <b>"{authorization.authorization_reference}"</b> '
+                          'for this specific session. '
+                          'It is the way to connect the record in the MSP database to the record in the CPO database. '
+                          'After the charging session is finished, the MSP will receive the Charge Detail Record, which '
+                          'has an authorization reference matching the one stored by the MSP internally.'))
     if t:
         logging.info(f'Authorization took {t}', request=request)
     if authorization.is_positive and authorization.authorization_reference:
@@ -185,7 +189,8 @@ def authorize_token(token: Union[str, Token], location=None, request=None) -> Op
     return authorization
 
 
-# 15 minutes cache, required by OCPI 2.2.1 spec (Don't cache negative responses)
+# 15 minutes cache, required by OCPI 2.2.1 spec
+# Don't cache negative responses, so that we can try again after updating payment method etc.
 @DistributedCache(expiration=15*60,
                   exclude=lambda x: x.allowed != AuthorizationEnum.ALLOWED if hasattr(x, 'allowed') else True)
 def _authorize_token(token: Union[Token, str], location=None, request=None) -> Optional[TokenAuthorization]:
@@ -193,10 +198,17 @@ def _authorize_token(token: Union[Token, str], location=None, request=None) -> O
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
     (OCPI requirement)
     """
+    token_uid = token.uid if isinstance(token, Token) else token
     if isinstance(token, str):
         token: Token = Token.get_if_exists(uid__iexact=token)
-    if not token or not token.valid:
-        return None
+    if not token:
+        # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
+        messages.info(request, 'This Token is not in our database, '
+                               'so an authorization request was sent to all MSPs connected to us.')
+        return authorize_with_msps_sync(token_uid, location)
+    if not token.valid:
+        logging.warning(f'According to the current information we have locally, the Token {token_uid} is not valid.')
+        return TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, token=token)
     if token.whitelist == Token.ALWAYS:
         logging.info(f'Token {token} is whitelisted, no authorization request sent', request=request)
         return TokenAuthorization(
@@ -205,6 +217,7 @@ def _authorize_token(token: Union[Token, str], location=None, request=None) -> O
             info=MessageTexts.get('TOKEN_ACCEPTED'),
             auth_method=Session.WHITELIST,
             billed_to=str(token.get_party()),
+            ocpi_master=token.ocpi_master
         )
 
     route: Route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)
@@ -215,14 +228,4 @@ def _authorize_token(token: Union[Token, str], location=None, request=None) -> O
     # Let's send the authorization request using the same code as when sending request to multiple MSPs
     # to keep things DRY
     parties = [(route.url, route.token_base64, route.to.country_code, route.to.party_id, route.credentials)]
-    # data = {'location_id': location.uid, 'evse_uids': [e.uid for e in location.evses.all()]}
-    # result_dict = asyncio.run(authorize_with_msps(token, data, parties))
-
-    # return TokenAuthorization(**result_dict, auth_method=Session.AUTH_REQUEST) if result_dict else None
     return authorize_with_msps_sync(token.uid, location, parties)
-
-
-    #   File "/Users/eki1/Documents/Work/Src/ocpiconnector/util.py", line 220, in retrieve
-    #     raise KeyError(f'Key {key} not found in Redis')
-    # KeyError: 'Key testserver:14d9ec0dce2fde81e53e1334eafe61dd not found in Redis'
-    # Unable to determine who to bill for Token

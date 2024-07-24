@@ -6,9 +6,10 @@ from django.conf import settings
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OcppStatusChoices, TOKEN_TYPE_CHOICES, OcpiRolesEnum
+from ocpi22.choices import OcppStatusChoices, TOKEN_TYPE_CHOICES, AuthorizationEnum
 from ocpi22.commands.serializers import CommandResultBaseSerializer
 from ocpi22.cpo.util import _find_our_evse
+from ocpi22.models import enum
 from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
@@ -380,7 +381,7 @@ class CpoOutboundWebhookSerializer(serializers.Serializer):
     authorization_reference = serializers.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True,
         help_text='Optional reference to the authorization given by the eMSP')
-    auth_method = serializers.ChoiceField(choices=Session.AUTH_METHOD_CHOICES)
+    auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
     from_party = serializers.CharField(
         help_text='The ID of the party sending the command'
     )
@@ -548,3 +549,19 @@ class TariffQuickSerializer(SerializerCleanedUp):
             te.price_components.update(vat=vat)
 
         return tariff
+
+
+class CPOAuthorizationResponseSerializer(serializers.Serializer):
+    allowed = serializers.ChoiceField(choices=AuthorizationEnum.choices)
+    token = serializers.SerializerMethodField()
+    authorization_reference = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    responding_party = serializers.CharField(max_length=5)
+    billed_to = serializers.CharField(max_length=5)
+    auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
+
+    @staticmethod
+    def get_token(authorization):
+        token = authorization.get('token')
+        if not token:
+            return ''
+        return token.uid if isinstance(token, Token) else token

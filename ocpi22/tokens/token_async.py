@@ -8,8 +8,10 @@ import asyncio
 from ocpi22 import logging
 from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, AuthorizationEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
+from ocpi22.models import enum
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
+from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import Party, get_our_party
@@ -122,7 +124,8 @@ def authorize_with_msps_sync(token: str, location: Location = None, parties: lis
     from ocpi22.ocpi.serializers import AuthorizationInfoSerializer
     from ocpi22 import logging
     # Todo: Add info texts for TokenNotAuthorized
-    TokenNotAuthorized = TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, token=None)
+    TokenNotAuthorized = TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED,
+                                            token=AdhocToken(valid=False, type='', uid=token, billed_to=Party()))
 
     # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
 
@@ -141,7 +144,8 @@ def authorize_with_msps_sync(token: str, location: Location = None, parties: lis
                 from ocpi22.models.session import Session
                 token = serializer.validated_data.get('token', {})
                 return TokenAuthorization(**serializer.validated_data, responding_party=responding_party,
-                                          auth_method=Session.AUTH_REQUEST, billed_to=token.get('party', Party()))
+                                          auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
+                                          billed_to=token.get('party', Party()))
             else:
                 logging.error('Cannot create TokenAuthorization from response from '
                               f'{serializer.validated_data.get("responding_party", "N/A")}: {serializer.errors}')

@@ -497,6 +497,10 @@ class AuthorizeSerializer(serializers.Serializer):
     location_id = StrictLocationIdSerializer(source='location', required=False)
     evse_uids = LocationEvseUidSerializer(source='evses', many=True, required=False)
 
+    class ResponseSerializer(serializers.Serializer):
+        result = serializers.ChoiceField(choices=choices.AuthorizationEnum.choices)
+        max_price = serializers.FloatField(required=False)
+
 # class MspAuthorizationResponseSerializer(serializers.Serializer):
 #     result = serializers.ChoiceField(choices=AuthorizationEnum.choices)
 

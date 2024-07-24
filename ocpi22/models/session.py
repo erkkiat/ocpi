@@ -22,6 +22,7 @@ from rest_framework.exceptions import ValidationError
 import util
 
 from ocpi22.choices import OcpiModuleEnum, CDR_DIMENSION_CHOICES, CdrDimensionEnum, TOKEN_TYPE_CHOICES
+from ocpi22.models import enum
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, \
@@ -152,24 +153,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     cdr_token_contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH,
                                              verbose_name=_('Token contract ID'))
 
-    AUTH_REQUEST = 'AUTH_REQUEST'
-    COMMAND = 'COMMAND'
-    WHITELIST = 'WHITELIST'
-
-    AUTH_METHOD_CHOICES = (
-        # Authentication request has been sent to the eMSP.
-        (AUTH_REQUEST, 'Authentication request to eMSP'),
-
-        # Command like StartSession or ReserveNow used to start the Session,
-        # the Token provided in the Command was used as authorization.
-        (COMMAND, 'Command from eMSP'),
-
-        # Whitelist used for authentication, no request to the eMSP has been performed.
-        (WHITELIST, 'Token on whitelist'),
-    )
-
     # Method used for authentication.
-    auth_method = models.CharField(max_length=12, choices=AUTH_METHOD_CHOICES, verbose_name='Authentication method')
+    auth_method = models.CharField(max_length=12, choices=enum.AUTH_METHOD_CHOICES, verbose_name='Authentication method')
 
     # Reference to the authorization given by the eMSP. Todo: When the eMSP provided an authorization_reference in either:
     # Todo: real-time authorization or StartSession, this field SHALL contain the same value.
