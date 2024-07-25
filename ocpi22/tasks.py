@@ -189,7 +189,7 @@ def exchange_credentials(token, url):
 
 
 @shared_task(max_retries=2, retry_jitter=True, retry_backoff=120)
-def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects=0, credentials_id=None, **kwargs) -> None:
+def pull_objects(object_list, limit=10, delay=2, total_objects=0, credentials_id=None, **kwargs) -> None:
     from ocpi22 import logging
     from ocpi22.models.credentials import Credentials
 
@@ -246,34 +246,34 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects
 
                         # Unwrap the decorated put function so that we can provide the suitable parameters directly
                         func = unwrap(viewset.put)
-                        response = func(viewset(), request=None, data=i, logentry=logentry_id,
-                                        credentialsrole=credentialsrole)
+                        response = func(viewset(), request=None, data=i, credentialsrole=credentialsrole)
                         if response.status_code >= status.HTTP_400_BAD_REQUEST:
                             raise Exception(response.data.get('status_message', '<no status message provided>'))
                     except Exception as e:
                         logging.error(f"Unable to update {model} using data pulled from url {url} "
-                                      f"for uid {i.get('uid', i.get('id', ''))}: {e}.", logentry=logentry_id)
+                                      f"for uid {i.get('uid', i.get('id', ''))}: {e}.")
+                        raise
                 if next_url:
                     kwargs['url'] = next_url
         # else:
         #     module_name = obj.get('model').split('.')[-1]
-        #     logging.warning(f'Party {obj.get("party")} is not a {module_name} sender, skipping', logentry=logentry_id)
+        #     logging.warning(f'Party {obj.get("party")} is not a {module_name} sender, skipping')
 
         if not next_url:
             object_list.pop(0)
             if not len(object_list):
-                logging.info(f'Total of {total_objects} objects pulled', logentry=logentry_id, log_to_admin=True)
+                logging.info(f'Total of {total_objects} objects pulled')
                 return
 
         countdown = random.randint(delay, int(1.5 * delay))
 
         if settings.BACKGROUND_SEND:
-            pull_objects.apply_async((object_list, limit, delay, logentry_id, total_objects, credentials_id),
+            pull_objects.apply_async((object_list, limit, delay, total_objects, credentials_id),
                                      kwargs=kwargs, countdown=countdown)
         else:
-            pull_objects(object_list, limit, delay, logentry_id, total_objects, credentials_id, **kwargs)
+            pull_objects(object_list, limit, delay, total_objects, credentials_id, **kwargs)
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-        logging.error(f"Unable to pull objects: {e}", logentry=logentry_id)
+        logging.error(f"Unable to pull objects: {e}")
 
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways

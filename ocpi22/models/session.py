@@ -52,6 +52,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = 'ocpi22.ocpi.serializers.SessionSerializer'
     ocpi_object_owner = 'CPO'
     send_updates_to = OcpiModule.INTERESTED_PARTIES
+    # Non-OCPI functionality for added value services
     subscribers = os.environ.get('SESSION_SUBSCRIBERS', '').upper().split(',')
 
     objects = PartnerManager()

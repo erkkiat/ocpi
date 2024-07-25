@@ -402,7 +402,7 @@ class MspTokenViewSet(TokenViewSet):
         return True
 
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, partial=None, version='2.2.1',
-            logentry=None, **_kwargs):
+            **_kwargs):
         party = get_our_party(OcpiRolesEnum.EMSP)
         data = request.data
         data['country_code'] = party.country_code

@@ -110,16 +110,15 @@ class TokenViewSet(OCPIListModelMixin,
     @certification_step(OcpiModuleEnum.TOKENS, 'PUT an individual Token',
                         subtopic='')
     def put(self, request, country_code=None, party_id=None, uid=None, data=None, patch=False, version='2.2.1',
-            logentry=None, credentialsrole=None, certification=False) -> OCPIResponse:
+            credentialsrole=None, certification=False) -> OCPIResponse:
         if request and not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse('token')
 
         uid = uid or data.get('uid')
-        return self.save_or_update(request, data, credentialsrole, uid, patch, version, logentry)
+        return self.save_or_update(request, data, credentialsrole, uid, patch, version)
 
     @staticmethod
-    def save_or_update(request, data, credentialsrole, uid, patch=False, version='2.2.1',
-            logentry=None) -> OCPIResponse:
+    def save_or_update(request, data, credentialsrole, uid, patch=False, version='2.2.1') -> OCPIResponse:
         assert uid, f'UID is a required parameter for TokenViewSet.save_or_update()'
         token: Token = Token.get_if_exists(uid__iexact=uid, ocpi_master=credentialsrole)
         created = bool(not token)
@@ -128,8 +127,7 @@ class TokenViewSet(OCPIListModelMixin,
         if serializer.is_valid():
             created_token = serializer.save(ocpi_master=credentialsrole)
             logging.info(
-                f'{"Creating" if created else "Updating"} {created_token}',
-                log_to_admin=True, logentry=logentry
+                f'{"Creating" if created else "Updating"} {created_token}'
             )
             created_token.send_hub_updates()
             return OCPIResponse(serializer.data,
@@ -494,7 +492,7 @@ class TariffViewSet(OCPIListModelMixin,
     @certification_step(OcpiModuleEnum.TARIFFS, 'PUT an individual Tariff',
                         subtopic='URL parameters are required by OCPI 2.2')
     def put(self, request, credentialsrole, uid=None, country_code=None, party_id=None, data=None, version='2.2.1',
-            logentry=None, certification=False) -> OCPIResponse:
+            certification=False) -> OCPIResponse:
         assert isinstance(data, dict) and data, \
             f'{self.__class__.__name__}: Data must be dict and have a value, not {data}'
         assert isinstance(credentialsrole, CredentialsRole) and credentialsrole
@@ -503,10 +501,9 @@ class TariffViewSet(OCPIListModelMixin,
         if request and not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse('tariff')
 
-        return self.save_or_update(request, credentialsrole, uid, data, version, logentry)
+        return self.save_or_update(request, credentialsrole, uid, data, version)
 
-    def save_or_update(self, request, credentialsrole, uid, data=None, version='2.2.1',
-            logentry=None) -> OCPIResponse:
+    def save_or_update(self, request, credentialsrole, uid, data=None, version='2.2.1') -> OCPIResponse:
         assert uid, f'UID is a required parameter for TariffViewSet.save_or_update()'
         tariff: Tariff = self.get_queryset().get_if_exists(uid__iexact=str(uid), ocpi_master=credentialsrole, archived=False)
         created = bool(not tariff)
@@ -517,8 +514,7 @@ class TariffViewSet(OCPIListModelMixin,
         serializer = TariffSerializer(instance=tariff, data=data, context={'version': version,
                                                                            'request': request})
         if serializer.is_valid():
-            logging.info(f'{"Creating" if created else "Updating"} Tariff {credentialsrole} - {uid}.',
-                         logentry=logentry, log_to_admin=True)
+            logging.info(f'{"Creating" if created else "Updating"} Tariff {credentialsrole} - {uid}.')
             created_tariff = serializer.save(ocpi_master=credentialsrole)
             created_tariff.send_hub_updates()
             return OCPIResponse(serializer.data, http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
@@ -629,7 +625,7 @@ class SessionViewSet(OCPIListModelMixin,
     @requires_sender_role(OcpiRolesEnum.CPO)
     @certification_step(OcpiModuleEnum.SESSIONS, 'PUT an individual Session with URL parameters')
     def put(cls, request, country_code=None, party_id=None, uid=None, partial=False, data=None, tryagain=False,
-            logentry=None, **kwargs) -> OCPIResponse:
+            **kwargs) -> OCPIResponse:
 
         if not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse('session')
@@ -651,7 +647,7 @@ class SessionViewSet(OCPIListModelMixin,
         )
         if serializer.is_valid():
             logging.info(f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.',
-                         log_to_admin=True, logentry=logentry)
+                         log_to_admin=True)
             session = serializer.save(ocpi_master=request.credentialsrole)
             update_authorization(request, session)
 

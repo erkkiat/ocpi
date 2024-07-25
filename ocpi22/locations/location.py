@@ -87,7 +87,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_credentialsrole
     @certification_step(OcpiModuleEnum.LOCATIONS, 'PUT a Location')
     def put(self, request, data, credentialsrole, uid=None, patch=False,
-            version='2.2.1', logentry=None, credentials=None, **_kwargs):
+            version='2.2.1', credentials=None, **_kwargs):
 
         if request and not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse('location')
@@ -97,10 +97,10 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         if not credentials and request and hasattr(request, 'credentials'):
             credentials = request.credentials
 
-        return self.save_or_update(request, data, credentialsrole, uid, patch, version, logentry, credentials)
+        return self.save_or_update(request, data, credentialsrole, uid, patch, version, credentials)
 
     def save_or_update(self, request, data, credentialsrole, uid, patch=False,
-            version='2.2.1', logentry=None, credentials=None):
+            version='2.2.1', credentials=None):
 
         assert uid, 'Location ID is a required parameter for LocationViewSet.save_or_update()'
         existing_location: Location = self.get_queryset().get_if_exists(
@@ -115,7 +115,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         if serializer.is_valid():
             created = bool(not existing_location)
             logging.info(f'{"Creating" if created else "Updating"}'
-                         f' Location {credentialsrole} - {uid}.', log_to_admin=True, logentry=logentry)
+                         f' Location {credentialsrole} - {uid}.')
             saved_location = serializer.save(ocpi_master=credentialsrole)
             saved_location.send_hub_updates()
             Location.objects.prefetch_related('evses', 'evses__connectors', 'evses__connectors__tariff_ids').\
