@@ -26,6 +26,10 @@ from ocpi22.msp.api import MSPRouter, MspRoamingViewSet, MspTokenViewSet, MspAut
     MspTariffQuickViewSet, MspChargePointStatusWebhookViewSet, MspSessionWebhookViewSet, MspInvoiceWebhookViewSet
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
 from ocpi22.views import home
+from fastapi.routers.charging import api as charging_api
+from fastapi.routers.tokens import api as tokens_api
+from fastapi.routers.jwt import api as jwt_api
+from ocpiconnector.ocpi_identities import ocpi_platform
 from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
 from webhooks.urls import urlpatterns as webhooks_urls
@@ -81,11 +85,11 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('18n/', include('django.conf.urls.i18n')),
     path('lang/', set_language, name='admin_set_language'),
+    path('api/', jwt_api.urls),
     path('', home),
     path('', include(root_router.urls), name='root-view'),
     path('hub/', include(hub_urls)),
     path('certification/', include('certification.urls')),
-    path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     re_path(r'^ocpi/(?P<version>[1-2.]+)/', include('ocpi22.locations.urls')),
     re_path(r'^ocpi/(?P<version>[1-2.]+)/', include('ocpi22.ocpi.urls')),
     re_path(r'^ocpi/(?P<version>[1-2.]+)/', include('ocpi22.commands.urls')),
@@ -95,8 +99,14 @@ urlpatterns = [
     path('webhooks/', include(webhooks_urls)),
     path('ocpi/', include(common_router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+
+    # JWT token operations
+    # path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
     path('admin/ocpi22/credentials/connection/new', new_connection, name='new-connection'),
     path('admin/', admin.site.urls),
+    path('api/cpo/v3/charging/', charging_api.urls),
     path('hubadmin/', hub_admin_site.urls),
     path('issues/', views.issues, name='issues'),
     path('_nested_admin/', include('nested_admin.urls')),

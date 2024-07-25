@@ -404,14 +404,16 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     # 'whitenoise',
     'rest_framework',
+    'rest_framework_simplejwt',
     'django_filters',
     'nested_admin',
-    'oauth2_provider',
+    # 'oauth2_provider',
     'crispy_forms',
     'gdpr_assist',
     'payment',
     'drf_yasg',
-    # "debug_toolbar",
+    'ninja_jwt',
+    'ninja_extra',
 ]
 
 # For debug toolbar
@@ -444,6 +446,7 @@ except ModuleNotFoundError:
 
 # Python dotted path to the WSGI application used by Django's runserver.
 WSGI_APPLICATION = 'ocpiconnector.wsgi.application'
+ASGI_APPLICATION = 'ocpiconnector.asgi.application'
 
 TEMPLATES = [
     {
@@ -519,9 +522,12 @@ REST_FRAMEWORK = {
         'ocpi22.ocpi.auth.OCPIPermission'
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        # Fortunately this is compatible with the NinjaAPI JWT
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
-        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+        # 'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
     ),
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend'
@@ -544,6 +550,25 @@ CELERY_WORKER_CANCEL_LONG_RUNNING_TASKS_ON_CONNECTION_LOSS = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = os.environ.get('CELERY_QUEUE', 'default')
 CELERY_TASK_IGNORE_RESULTS = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# JWT authentication
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=48) if PERFORMANCE_TEST else timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7) if PERFORMANCE_TEST else timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': 'SolidRoam',
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+}
 
 if TEST:
     CELERY_TASK_ALWAYS_EAGER = True
