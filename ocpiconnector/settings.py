@@ -395,6 +395,7 @@ INSTALLED_APPS = [
     # 'django.contrib.admindocs',
     'ocpi22',
     'ocpiconnector',
+    'webhooks',
     'certification',
     'hub',
     'cars',
