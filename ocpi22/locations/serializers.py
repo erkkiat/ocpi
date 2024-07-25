@@ -262,7 +262,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         with transaction.atomic():
             # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
-            # facilities = validated_data.pop('facilities', None)
             evses = validated_data.pop('evses', [])
             publish_allowed_to = validated_data.pop('publish_allowed_to', [])
             operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
@@ -276,8 +275,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
             for e in evses:
                 connectors = e.pop('connectors', [])
-                # capabilities = e.pop('capabilities', [])
-
                 evse = Evse.objects.create(**e, location=location)
 
                 # Capabilities
@@ -318,12 +315,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         location.operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
         location.suboperator = BusinessDetailsSerializer().create(data=validated_data.pop('suboperator', None))
         location.owner = BusinessDetailsSerializer().create(data=validated_data.pop('owner', None))
-        # location.facilities.set(facilities)
         location.publish_allowed_to.set(publish_allowed_to)
-
-        facilities = validated_data.pop('facilities', None)
-        if facilities is not None:
-            location.facilities = facilities
 
         for key, value in validated_data.items():
             if key not in readonly_fields:
@@ -344,7 +336,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 evse.save()
             except Evse.DoesNotExist:
                 evse = Evse.objects.create(**e, location=location)
-            # evse.capabilities.set(capabilities)
 
             for c in connectors:
                 tariff_ids = c.pop('tariff_ids', [])

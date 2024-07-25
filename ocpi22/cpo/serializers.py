@@ -181,7 +181,7 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             for connector_dict in connectors:
                 tariff_ids = connector_dict.pop('tariff_ids', None)
                 connector, created = Connector.objects.get_or_create(evse=evse,
-                                                                     uid=connector_dict.pop('uid'),
+                                                                     uid=connector_dict.pop('id'),
                                                                      defaults=connector_dict)
                 if not created:
                     Connector.objects.filter(uid__iexact=connector.uid, evse=evse).update(**connector_dict)
