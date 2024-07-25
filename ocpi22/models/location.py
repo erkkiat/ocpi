@@ -192,6 +192,8 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     time_zone = models.CharField(max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH, validators=[validate_timezone],
                                  verbose_name=_('Time zone'), choices=choices.TIMEZONE_CHOICES)
 
+    charging_when_closed = models.BooleanField(default=True, verbose_name=_('Charging when closed'))
+
     def get_timezone(self):
         return tz.gettz(str(self.time_zone))
 

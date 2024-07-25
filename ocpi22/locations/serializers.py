@@ -12,6 +12,7 @@ from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
+from ocpi22.serializers.hours import HoursSerializer
 from ocpi22.util import uid_validator, fetch_object
 from ocpi22.serializers.util import HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
 
@@ -230,7 +231,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                   'coordinates', 'parking_type',
                   'evses',
                   'operator', 'suboperator', 'owner',
-                  'facilities',
+                  'facilities', 'opening_times', 'charging_when_closed',
                   'time_zone', 'last_updated']
 
     lookup_field = 'uid'
@@ -248,6 +249,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     suboperator = BusinessDetailsSerializer(required=False)
     last_updated = UTCDateTimeField(required=False)
     publish_allowed_to = PublishAllowedToSerializer(many=True, required=False)
+    opening_times = HoursSerializer(required=False)
 
     @staticmethod
     def process_coordinates(validated_data: dict):
@@ -263,6 +265,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
             evses = validated_data.pop('evses', [])
+            opening_times = validated_data.pop('opening_times', None)
             publish_allowed_to = validated_data.pop('publish_allowed_to', [])
             operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
             suboperator = BusinessDetailsSerializer().create(data=validated_data.pop('suboperator', None))
@@ -300,8 +303,16 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                                 f"Tariff `{t}` for {location.ocpi_master.country_code}*"
                                 f"{location.ocpi_master.party_id} does not exist in our database")
                     connector.tariff_ids.set(tariffs)
-            # if facilities:
-            #     location.facilities.set(facilities)
+
+            # Opening times
+            if opening_times:
+                serializer = HoursSerializer(data=opening_times)
+                if serializer.is_valid():
+                    hours = serializer.save()
+                    location.opening_times = hours
+                else:
+                    raise ValidationError(serializer.errors)
+
             return location
 
     def update(self, location: Location, validated_data: dict) -> Location:
@@ -310,7 +321,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         # Pop out all elements which are not directly understood by Location, and process them separately
         validated_data = self.process_coordinates(validated_data)
         evses = validated_data.pop('evses', [])
-        # facilities = validated_data.pop('facilities', [])
+        opening_times = validated_data.pop('opening_times', None)
         publish_allowed_to = validated_data.pop('publish_allowed_to', [])
         location.operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
         location.suboperator = BusinessDetailsSerializer().create(data=validated_data.pop('suboperator', None))
@@ -349,7 +360,34 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                     connector = Connector.objects.create(**c, evse=evse)
                 connector.tariff_ids.set(tariff_ids)
 
+        if opening_times:
+            if hasattr(location, 'opening_times'):
+                HoursSerializer().update(location.opening_times, opening_times)
+            else:
+                opening_times_instance = HoursSerializer().create(opening_times, location=location)
+                # location.opening_times = opening_times_instance
+                # location.save()
+
+        # # Opening times
+        # if opening_times:
+        #     if location.opening_times:
+        #         location.opening_times.all().delete()
+        #     serializer = HoursSerializer(data=opening_times)
+        #     if serializer.is_valid():
+        #         hours = serializer.save()
+        #         location.opening_times = hours
+        #         location.save(update_fields=['opening_times'])
+        #     else:
+        #         raise ValidationError(serializer.errors)
+
         return location
+
+    # def to_representation(self, value):
+    #     if hasattr(value, 'opening_times'):
+    #         ic(value.opening_times.all())
+    #         # ic(value.opening_times.first().regular_hours.all())
+    #     ic(value.pk)
+    #     return super().to_representation(value)
 
 
 class LocationSerializer(LocationSerializer221):

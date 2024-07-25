@@ -5,54 +5,17 @@ from django.utils.translation import gettext_lazy as _
 # Todo: What does the client need, Hours.is_open_now(), Hours.how_long_until_open(), Hours.how_long_until_close()?
 
 
-class RegularHours(models.Model):
-    WEEKDAY_CHOICES = [
-        (1, 'Monday'),
-        (2, 'Tuesday'),
-        (3, 'Wednesday'),
-        (4, 'Thursday'),
-        (5, 'Friday'),
-        (6, 'Saturday'),
-        (7, 'Sunday'),
-    ]
-
-    weekday = models.PositiveSmallIntegerField(choices=WEEKDAY_CHOICES)
-    period_begin = models.TimeField()
-    period_end = models.TimeField()
-
-    def __str__(self):
-        return f"{self.get_weekday_display()}: {self.period_begin}-{self.period_end}"
-
-    class Meta:
-        verbose_name = _("Regular Hours")
-        verbose_name_plural = _("Regular Hours")
-
-
-class ExceptionalPeriod(models.Model):
-    period_begin = models.DateTimeField()
-    period_end = models.DateTimeField()
-
-    def __str__(self):
-        # Format period_begin and period_end using Django's dateformat utility
-        begin_formatted = dateformat.format(self.period_begin, 'F jS G:i')
-        end_formatted = dateformat.format(self.period_end, 'F jS G:i')
-        return f"{begin_formatted} - {end_formatted}"
-
-    class Meta:
-        verbose_name = _("Exceptional Period")
-        verbose_name_plural = _("Exceptional Periods")
-
-
 class Hours(models.Model):
-    regular_hours = models.ManyToManyField("ocpi22.RegularHours", blank=True)
+    class Meta:
+        verbose_name = _("Hours")
+        verbose_name_plural = _("Hours")
+
     twentyfourseven = models.BooleanField()
-    exceptional_openings = models.ManyToManyField("ocpi22.ExceptionalPeriod", related_name='exceptional_openings',
-                                                  blank=True)
-    exceptional_closings = models.ManyToManyField("ocpi22.ExceptionalPeriod", related_name='exceptional_closings',
-                                                  blank=True)
+    location = models.OneToOneField('ocpi22.Location', on_delete=models.CASCADE, null=True, blank=True,
+                                    verbose_name=_('Location'), related_name='opening_times')
 
     def __str__(self):
-        return _(self.get_hours_display_english())
+        return self.get_hours_display_english()
 
     def get_hours_display_english_list(self) -> list:
         if self.twentyfourseven:
@@ -95,6 +58,53 @@ class Hours(models.Model):
     def get_hours_display_english(self) -> str:
         return ", ".join(self.get_hours_display_english_list())
 
+
+class RegularHours(models.Model):
+    WEEKDAY_CHOICES = [
+        (1, 'Monday'),
+        (2, 'Tuesday'),
+        (3, 'Wednesday'),
+        (4, 'Thursday'),
+        (5, 'Friday'),
+        (6, 'Saturday'),
+        (7, 'Sunday'),
+    ]
+
+    weekday = models.PositiveSmallIntegerField(choices=WEEKDAY_CHOICES)
+    period_begin = models.TimeField()
+    period_end = models.TimeField()
+    hours = models.ForeignKey(Hours, null=True, on_delete=models.CASCADE, related_name='regular_hours')
+
+    def __str__(self):
+        return f"{self.get_weekday_display()}: {self.period_begin}-{self.period_end}"
+
     class Meta:
-        verbose_name = _("Hours")
-        verbose_name_plural = _("Hours")
+        verbose_name = _("Regular Hours")
+        verbose_name_plural = _("Regular Hours")
+
+
+class ExceptionalPeriod(models.Model):
+    period_begin = models.DateTimeField()
+    period_end = models.DateTimeField()
+
+    def __str__(self):
+        # Format period_begin and period_end using Django's dateformat utility
+        begin_formatted = dateformat.format(self.period_begin, 'F jS G:i')
+        end_formatted = dateformat.format(self.period_end, 'F jS G:i')
+        return f"{begin_formatted} - {end_formatted}"
+
+
+class ExceptionalOpening(ExceptionalPeriod):
+    class Meta:
+        verbose_name = _("Exceptional Period")
+        verbose_name_plural = _("Exceptional Periods")
+
+    hours = models.ForeignKey(Hours, null=True, on_delete=models.CASCADE, related_name='exceptional_openings')
+
+
+class ExceptionalClosing(ExceptionalPeriod):
+    class Meta:
+        verbose_name = _("Exceptional Closing")
+        verbose_name_plural = _("Exceptional Closings")
+
+    hours = models.ForeignKey(Hours, null=True, on_delete=models.CASCADE, related_name='exceptional_closings')
