@@ -70,10 +70,9 @@ class OcpiModule:
         return ocpi_identities.get(cls.ocpi_object_owner, default='*')
 
     def update_last_updated(self):
-        """Set the current date and time to last_updated (not to be used for incoming OCPI objects)"""
-        if hasattr(self, 'last_updated'):
-            if self.is_ours():
-                setattr(self, 'last_updated', datetime.now(pytz.utc))
+        """For objects owned by us, set the current date and time to last_updated"""
+        if self.is_ours():
+            recursive_update_last_updated(self)
 
     def atomic_post_save(self, *_args, **_kwargs) -> None:
         assert hasattr(self, 'ocpi_serializer_class') and hasattr(self, 'ocpi_module_name') \
@@ -81,7 +80,8 @@ class OcpiModule:
             f'OCPI object class {type(self)} must have an ocpi_serializer_class (str), ' \
             f'ocpi_module_name (str) and send_updates_to (roles list) specified.'
 
-        self.update_last_updated()
+        if hasattr(self, 'is_ours') and self.is_ours():
+            recursive_update_last_updated(self)
 
         if not hasattr(self, 'update_sent') and self.is_ours():
             if not hasattr(self, 'archived') or not self.archived:
@@ -126,7 +126,6 @@ class OcpiModule:
         ocpi_module_name = ocpi_module_name or self.ocpi_module_name
         if isinstance(self.send_updates_to, (list, tuple)):
             endpoints = find_endpoints_by_roles(self.send_updates_to, ocpi_module_name)
-            ic(endpoints)
             for url, token_base64, country_code, party_id, credentials in endpoints:
                 try:
                     if path_components:
@@ -510,3 +509,15 @@ def ocpi_credentials_get(*args, **kwargs):
 
 def ocpi_credentials_post(*args, **kwargs):
     return ocpi_credentials_request(*args, method='post', **kwargs)
+
+
+def recursive_update_last_updated(obj):
+    """Update the last_updated field of a Location, Evse or Connector
+    and all its possible Evses and Connectors recursively"""
+    if hasattr(obj, 'last_updated'):
+        obj.last_updated = datetime.now(pytz.utc)
+        obj.save()
+    if hasattr(obj, 'evses'):
+        list(map(lambda x: recursive_update_last_updated(x), (x for x in obj.evses.all())))
+    if hasattr(obj, 'connectors'):
+        list(map(lambda x: recursive_update_last_updated(x), (x for x in obj.connectors.all())))

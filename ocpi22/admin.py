@@ -247,7 +247,9 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
         except Location.ocpi_master.RelatedObjectDoesNotExist:
             pass
         obj.ocpi_master = our_cpo_credentialsrole
-        obj.last_updated = datetime.utcnow
+        if hasattr(obj, 'update_last_updated'):
+            obj.update_last_updated()
+
         super().save_model(request, obj, form, change)
 
 

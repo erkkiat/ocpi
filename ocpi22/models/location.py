@@ -473,24 +473,8 @@ def connector_pre_save(sender, instance, *_args, raw, **_kwargs):
     if raw:
         return
     connector: Connector = instance
+    connector.last_updated = datetime.now(pytz.utc)
     if not connector.uid:
         connector.uid = uuid.uuid4().hex
     if not connector.power_type:
         connector.power_type = Ocpi.POWERTYPES.get(connector.standard, 'AC_3_PHASE')
-
-
-@receiver(post_save, sender=Connector)
-def connector_post_save(sender, instance, *_args, raw, **kwargs):
-    if raw:
-        return
-    # ic()
-    # ic(kwargs)
-    connector: Connector = instance
-    evse = connector.evse
-    # ic('connector_post_save is updating Evse.last_updated')
-    evse.last_updated = connector.last_updated
-    evse.save(update_fields=['last_updated'])
-    # ic('connector_post_save is updating Location.last_updated')
-    location = connector.evse.location
-    location.last_updated = connector.last_updated
-    location.save(update_fields=['last_updated'])
