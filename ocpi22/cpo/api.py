@@ -14,6 +14,7 @@ from django.dispatch import receiver
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 from rest_framework.fields import DateTimeField
+from rest_framework.permissions import IsAdminUser
 
 import ocpi22.logging as logging
 from typing import Union, Optional
@@ -79,6 +80,7 @@ class CpoEvseViewSet(mixins.RetrieveModelMixin,
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status']
     pagination_class = LimitOffsetPagination
+    permission_classes = [IsAdminUser]
 
     @staticmethod
     def put(request, evse_id=None):
@@ -373,6 +375,7 @@ class ChargePointViewSet(FlowchartViewSet):
 
     queryset = Location.objects.all()  # Todo: A CPO instance can have locations from other partners as well
     lookup_field = 'uid'
+    permission_classes = [IsAdminUser]
 
     flowchart = dict(
         steps=(
