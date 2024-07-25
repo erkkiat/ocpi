@@ -13,6 +13,8 @@ from rest_framework.generics import get_object_or_404
 
 from typing import TYPE_CHECKING
 
+from ocpi22.models import enum
+
 if TYPE_CHECKING:
     from ocpi22.models.credentials import CredentialsRole
 

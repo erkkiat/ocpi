@@ -4,6 +4,7 @@ from django.utils.safestring import mark_safe
 from rest_framework import status
 from django.conf import settings
 from rest_framework.utils.serializer_helpers import ReturnDict
+# from silk.profiling.profiler import silk_profile
 
 import ocpi22.logging as logging
 from dataclasses import dataclass, field
