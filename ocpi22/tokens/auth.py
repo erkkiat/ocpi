@@ -142,7 +142,7 @@ class TokenAuthorization:
         return self.token.get('language', 'en') if self.token else 'en'
 
 
-@silk_profile(name='authorize_token')
+# @silk_profile(name='authorize_token')
 def authorize_token(token: Union[str, Token], location=None, request=None, max_age=15,
                     rfid=False) -> Optional[TokenAuthorization]:
     with Timer() as t:
