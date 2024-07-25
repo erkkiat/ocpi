@@ -35,15 +35,15 @@ echo "Creating app $HEROKU_APP..."
 
 (heroku create --region eu "$HEROKU_APP" \
  && heroku addons:create rediscloud:100 \
- && heroku addons:create jawsdb-maria \
- && heroku config:set HOSTNAME=$HOST.ocpiconnector.com \
+ && heroku addons:create heroku-postgresql:essential-0 \
+ && sleep 60 \
+ && heroku config:set HOSTNAME="$HOST".ocpiconnector.com \
  SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` "$4" "$5" "$6" "$ROLE1" "$ROLE2" \
  SLACK_WEBHOOK="$SLACK_WEBHOOK" DJANGO_SETTINGS_MODULE="$DJANGO_SETTINGS_MODULE" SCHEME=http PREMIUM=1 \
  && echo "Let's give the Redis installer a moment to settle down..." \
  && sleep 15 \
  && heroku pipelines:add ocpi-connector --stage=production \
  && heroku pipelines:promote --app=cpo-ocpi --to="$HEROKU_APP" \
- && heroku run ./manage.py loaddata ocpi22/data/initial.json \
  && heroku run ./manage.py createsuperuser --username eki --email erkki.tapola@pohdinto.com \
  && echo "======================================================" \
  && echo "URL: http://$HOST.ocpiconnector.com/" \
