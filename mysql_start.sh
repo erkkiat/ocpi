@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-mysql.server start
+brew services start mariadb
+#mysql.server start
