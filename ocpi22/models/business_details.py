@@ -8,6 +8,9 @@ class BusinessDetails(models.Model, ModelUtilMixin):
     class Meta:
         verbose_name = 'roaming party'
         verbose_name_plural = 'roaming parties'
+        indexes = [
+            models.Index(fields=['name', 'website']),
+        ]
 
     name = models.CharField(max_length=100)
     website = models.URLField(blank=True, default='')

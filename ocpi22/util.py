@@ -11,6 +11,7 @@ from functools import lru_cache
 from typing import Optional, Any, Union
 
 import pytz
+from cachetools.keys import hashkey
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.utils.translation import gettext as _
@@ -135,17 +136,14 @@ def check_ownership(request, ocpi_master, check_operator_id_from_request_data=Tr
     return bool(request.credentials == ocpi_master.credentials)
 
 
-def matching_operator(request, country_code, party_id) -> bool:
+@cachetools.cached(cache=cachetools.TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=60 * 60 * 24),
+                   key=lambda request, country_code, party_id: hashkey(request.credentials.pk, country_code, party_id))
+def matching_operator(request, country_code: str, party_id: str) -> bool:
     """
     Check that the request matches the given country_code and party_id
     """
-    if not hasattr(request, 'credentials'):
-        return False
-    if hasattr(request, 'user') and request.user.is_staff:
-        return True
     # We trust staff and hubs implicitly
-    return (getattr(request, 'credentials', None) and (request.credentials.is_hub or
-           bool(request.credentials.roles.filter(country_code__iexact=country_code, party_id__iexact=party_id))))
+    return bool(request.credentials.roles.filter(country_code__iexact=country_code, party_id__iexact=party_id).exists())
 
 
 CURRENCY_CHOICES = (
@@ -348,6 +346,7 @@ class ModelUtilMixin:
         return self.party()
     party_long.short_description = _('Owner')
 
+    @cachetools.cached(cache=cachetools.Cache(maxsize=0), key=lambda self: hashkey(self.__class__.__name__, self.pk))
     def get_party(self) -> Party:
         """ Get the party from the OCPI object as a Party object, e.g. Party('FI', 'CPO') """
         try:

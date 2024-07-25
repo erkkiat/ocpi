@@ -1,4 +1,5 @@
 import pytz
+from cachetools import cached, TTLCache
 from django.utils.datetime_safe import datetime
 
 import ocpi22.logging as logging
@@ -7,7 +8,6 @@ from collections import namedtuple
 from typing import Union
 
 from django.conf import settings
-from django.db.models import QuerySet
 from rest_framework import exceptions
 from rest_framework.generics import get_object_or_404
 
@@ -84,13 +84,14 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     else:
         authorization_method = authorization_method or enum.AuthMethodChoices.COMMAND
 
-    # Make sure there are no active Sessions in progress
-    active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
-    if active_sessions.exists():
-        logging.error(f'Cannot start a new Session because there are {active_sessions.count()} '
-                      f'active sessions at EVSE {evse.evse_id}: {",".join([s.uid for s in active_sessions])}')
-        raise EvseOccupied('Cannot start a new session because there is an active charging session '
-                           f'{active_sessions.first().uid} in progress.')
+    # Too expensive to check this every time
+    # # Make sure there are no active Sessions in progress
+    # active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
+    # if active_sessions.exists():
+    #     logging.error(f'Cannot start a new Session because there are {active_sessions.count()} '
+    #                   f'active sessions at EVSE {evse.evse_id}: {",".join([s.uid for s in active_sessions])}')
+    #     raise EvseOccupied('Cannot start a new session because there is an active charging session '
+    #                        f'{active_sessions.first().uid} in progress.')
 
     assert billed_to, 'Unable to bill session without billed_to'
 
@@ -133,7 +134,15 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     return session
 
 
-def get_active_sessions(evse) -> QuerySet:
-    from ocpi22.models.session import Session
-    # noinspection PyUnresolvedReferences
-    return Session.objects.filter(evse=evse, status=Session.ACTIVE)
+@cached(cache=TTLCache(maxsize=0, ttl=60*60))
+def get_ocpi_token(session_id: str) -> str:
+    """
+    Get the OCPI token for the given session_id, which is the only token
+    that is allowed to modify the data for this Session.
+    """
+    session = Session.objects.select_related('ocpi_master', 'ocpi_master__credentials').get(uid=session_id)
+    ic(session)
+    from ocpi22.models.credentials import CredentialsRole
+    ocpi_master = CredentialsRole.objects.get(pk=session.ocpi_master_id)
+    ic(ocpi_master)
+    return ocpi_master.credentials.ours if getattr(ocpi_master, 'credentials', None) else ''

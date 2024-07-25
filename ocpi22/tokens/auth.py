@@ -51,10 +51,7 @@ def get_session_by_adhoc_token(token_uid: str, max_age_minutes,
     sessions = Session.objects.filter(
         Q(cdr_token_uid=token_uid) & Q(status__in=statuses) & Q(created__gte=time_start)
     ).order_by('-created')
-    if sessions.exists():
-        most_recent_session = sessions.first()
-        return most_recent_session
-    return None
+    return sessions.first()
 
 
 @DistributedCache(expiration=60)  # One minute cache, to make sure the query is made before 15-16 minutes has passed

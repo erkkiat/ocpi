@@ -126,7 +126,7 @@ def send_ocpi_request(data, url: str, token_base64: str,
         )
 
         # Log the message to Sentry
-        sentry_sdk.set_context('data', data)
+        # sentry_sdk.set_context('data', data)
 
         if isinstance(data, dict):
             kwargs.update(dict(url=url, json=data, headers=headers))
@@ -153,10 +153,10 @@ def send_ocpi_request(data, url: str, token_base64: str,
             if credentials:
                 credentials.update_last_connection()
 
-        # Log the response to Sentry
-        if hasattr(result, 'data') and result.data:
-            # ic(result.data, result.json())
-            sentry_sdk.set_context('result', result.json())
+        # # Log the response to Sentry
+        # if hasattr(result, 'data') and result.data:
+        #     # ic(result.data, result.json())
+        #     sentry_sdk.set_context('result', result.json())
 
         try:
             result_json = result.json()
@@ -220,7 +220,7 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects
                         request.party_specified_in_url = True
                         party = Party(i.get('country_code'), i.get('party_id'))
                         if not party:
-                            logging.error(f'Trying to pull data from {credentials}, ' \
+                            logging.error(f'Trying to pull data from {credentials}, '
                                       f'but unable to determine party for {i}')
                             continue
                         if credentials.is_hub:
@@ -255,9 +255,9 @@ def pull_objects(object_list, limit=10, delay=2, logentry_id=None, total_objects
                                       f"for uid {i.get('uid', i.get('id', ''))}: {e}.", logentry=logentry_id)
                 if next_url:
                     kwargs['url'] = next_url
-        else:
-            module_name = obj.get('model').split('.')[-1]
-            logging.warning(f'Party {obj.get("party")} is not a {module_name} sender, skipping', logentry=logentry_id)
+        # else:
+        #     module_name = obj.get('model').split('.')[-1]
+        #     logging.warning(f'Party {obj.get("party")} is not a {module_name} sender, skipping', logentry=logentry_id)
 
         if not next_url:
             object_list.pop(0)

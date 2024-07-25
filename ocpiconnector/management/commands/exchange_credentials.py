@@ -64,12 +64,10 @@ def select_version(url, token) -> str:
     versions_response = ocpi_credentials_get(url, token)
     if versions_response.status_code == 200:
         data = versions_response.json()
-        ic(data)
         serializer = VersionsSerializer(data=data)
         if not serializer.is_valid():
             raise ConnectionError(f'The Versions endpoint is returning invalid content: {serializer.errors}')
         versions = dict(map(lambda x: (x.get('version'), x.get('url')), serializer.data.get('data')))
-        ic(versions)
         version_url = versions.get('2.2.1', versions.get('2.2'))
         if not version_url:
             raise NoCommonVersion('There is no common version available.')

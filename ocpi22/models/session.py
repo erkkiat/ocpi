@@ -44,6 +44,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     class Meta:
         verbose_name = _('session')
         verbose_name_plural = _('sessions')
+        indexes = [
+            models.Index(fields=['created', 'status', 'cdr_token_uid']),
+        ]
 
     ocpi_module_name = OcpiModuleEnum.SESSIONS
     ocpi_serializer_class = 'ocpi22.ocpi.serializers.SessionSerializer'

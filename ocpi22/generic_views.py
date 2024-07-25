@@ -38,13 +38,11 @@ class WebhookViewSet(FlowchartViewSet):
         return serializer.data
 
     def webhook(self, request):
-        if settings.PERFORMANCE_TEST:
-            return Response(dict(status_text='OK'), status=status.HTTP_200_OK)
         try:
             if request.method == 'GET':
                 result = self._get_callbacks()
                 return Response(result)
-            if request.method in {'POST', 'PATCH'}:  # Todo: Change POST to PUT
+            if request.method in {'POST', 'PATCH'}:
                 partial = bool(request.method == 'PATCH')
                 serializer = self.serializer_class(data=request.data, partial=partial)
                 if serializer.is_valid():

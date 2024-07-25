@@ -1,3 +1,4 @@
+from cachetools import TTLCache, cached
 from django.db import models
 from rest_framework.exceptions import ValidationError
 
@@ -32,17 +33,30 @@ class PartnerQuerySet(models.QuerySet):
         @param kwargs: Keyword arguments for Manager.filter(), the criteria to filter the objects with
         @return: The first object found or None
         """
-        objects = self.filter(*args, **kwargs)
-        if multiple_is_ok_just_get_the_first_one or objects.count() == 1:
-            return objects.first()
-        if objects.count() > 1:
+        # ic(args, kwargs)
+        queryset = self.filter(*args, **kwargs)
+
+        if multiple_is_ok_just_get_the_first_one:
+            return queryset.first()
+
+        count = queryset.count()
+
+        if count == 1:
+            return queryset.first()
+
+        if count > 1:
             raise ValidationError(f'There are more than one {self.model.__name__} with the criteria {kwargs} '
                                   'in the database')
+
         if raise_exception:
             error_message = f"{self.model.__name__} with UID " \
                             f"{kwargs.get('uid', 'N/A')} doesn't exist in the database"
             raise self.model.DoesNotExist(error_message)
+
         return None
+
+
+parther_manager_cache = TTLCache(maxsize=100, ttl=300)
 
 
 class PartnerManager(models.Manager):
@@ -54,3 +68,7 @@ class PartnerManager(models.Manager):
 
     def get_if_exists(self, *args, **kwargs):
         return self.get_queryset().get_if_exists(*args, **kwargs)
+
+    @cached(cache=parther_manager_cache)
+    def get_cached(self, *args, **kwargs):
+        return self.get(*args, **kwargs)

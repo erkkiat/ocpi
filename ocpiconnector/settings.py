@@ -31,12 +31,12 @@ RENDER_ONLY_JSON = _env_bool('RENDER_ONLY_JSON', False)
 DEBUG = _env_bool('DEBUG', False)
 TEST = _env_bool('TEST', False)
 
-if not DEBUG:
-    sentry_sdk.init(
-        dsn=os.environ.get('SENTRY_DSN'),
-        integrations=[DjangoIntegration(), CeleryIntegration()],
-        traces_sample_rate=0.2,
-    )
+# if not DEBUG:
+#     sentry_sdk.init(
+#         dsn=os.environ.get('SENTRY_DSN'),
+#         integrations=[DjangoIntegration(), CeleryIntegration()],
+#         traces_sample_rate=0.2,
+#     )
 
 DATETIME_FORMAT = os.environ.get('DATETIME_FORMAT', "%d.%m.%Y %H:%M")
 DATE_FORMAT = os.environ.get('DATE_FORMAT', "%d.%m.%Y")
@@ -86,6 +86,7 @@ REDIS_URL = next((url for url in REDIS_URLS if url), None)
 SEND_UPDATES = _env_bool('SEND_UPDATES', True)
 UPDATES_DISABLED = 'Updates have been disabled using one of the environment variables SEND_UPDATES or PREMIUM.'
 SERVE_STATIC_FILES = _env_bool('SERVE_STATIC_FILES', True)
+MAX_NUMBER_OF_PARTNERS = os.environ.get('MAX_NUMBER_OF_PARTNERS', 1000)
 
 REMOTE_COMMAND_EXPIRATION = os.environ.get('REMOTE_COMMAND_EXPIRATION', 2 * 60)
 
@@ -361,7 +362,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',  # Make sure this stays above OCPIHubMiddleware
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',

@@ -2,6 +2,7 @@ import base64
 from datetime import datetime
 
 import pytz
+from cachetools import cached, TTLCache
 from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
 
@@ -32,6 +33,9 @@ from ocpiconnector.manager import PartnerManager
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
 from ocpiconnector.ocpi_identities import get_our_party, Party
+
+
+is_hub_cache = TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24*60*60)
 
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
@@ -202,6 +206,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return [r.party for r in self.roles.all()]
 
     @property
+    @cached(is_hub_cache)
     def is_hub(self) -> bool:
         return bool(self.get_party_for_role(OcpiRolesEnum.HUB))
 
@@ -228,6 +233,8 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return build_absolute_uri(reverse('admin:ocpi22_credentials_change', args=[self.pk]))
 
     @property
+    @cached(cache=TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24*60*60),
+            key=lambda self: hash(self.pk))
     def name(self):
         return " / ".join([role.business_details.name for role in self.roles.all()]) or 'N/A'
 

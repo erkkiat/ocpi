@@ -457,12 +457,12 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
 
 def generate_reference(separator: str, role: OcpiRolesEnum) -> str:
     """
-    >>> len(generate_reference('-', OcpiRolesEnum.CPO)) <= 36
+    >>> len(generate_reference('-', OcpiRolesEnum.CPO)) <= settings.OCPI_22_MAX_UID_LENGTH
     True
     >>> generate_reference('-', OcpiRolesEnum.CPO) != generate_reference('-', OcpiRolesEnum.CPO)
     True
     """
-    return f'{get_our_party(role)}*{separator}{uuid.uuid4().hex}'[:36].upper()
+    return f'{get_our_party(role)}*{separator}{uuid.uuid4().hex}'[:settings.OCPI_22_MAX_UID_LENGTH].upper()
 
 
 def generate_auth_reference():

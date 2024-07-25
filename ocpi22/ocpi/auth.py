@@ -5,7 +5,9 @@ from enum import Enum
 from functools import cache
 from typing import Optional
 
+from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
+from cachetools.keys import hashkey
 from django.conf import settings
 from django.utils.functional import cached_property
 from rest_framework import exceptions
@@ -30,7 +32,7 @@ class OcpiAuthTypes(Enum):
         return self.value == other or self is other
 
 
-@ttl_cache(maxsize=2048, ttl=2*60*60)  # 2 hours
+@ttl_cache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=2*60*60)  # 2 hours
 def find_credentials(token_ascii: str) -> Optional[Credentials]:
     try:
         return Credentials.objects.filter(ours__iexact=token_ascii, valid=True).first()
@@ -68,7 +70,7 @@ def check_auth_token(request, token: str) -> bool:
 
             # First check for TOKEN_A, are we still getting to know each other?
             credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
-            if credentials_matches.count():
+            if credentials_matches.exists():
                 if not request.registering_credentials:
                     raise exceptions.NotAuthenticated(  # HTTP 401
                         f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
@@ -107,6 +109,9 @@ def check_auth_token(request, token: str) -> bool:
         raise NotAuthenticated(f'Authentication token: {e}')
 
 
+@cached(cache=TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24*60*60),
+        key=lambda credentials=None, party=None, create=False, role=None:
+            hashkey(credentials.pk if credentials else None, party, role))  # Ignore the create flag
 def get_credentialsrole(credentials: Optional[Credentials] = None, party: Party = None,
                         create=False, role=None) -> Optional[CredentialsRole]:
     """
@@ -120,9 +125,6 @@ def get_credentialsrole(credentials: Optional[Credentials] = None, party: Party 
     @param create: Should we create the CredentialsRole if it doesn't exist yet?
     @return: The selected or created CredentialsRole
     """
-
-    # assert party and isinstance(party, Party), f'Party needs to be a Party object, not {type(party)}'
-
     def create_it():
         business_name = 'N/A'
         website = ''
