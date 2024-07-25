@@ -206,9 +206,9 @@ class SessionIdSerializer(fields.CharField):
     """To be used only for CPO API, cannot handle overlapping IDs"""
     def to_internal_value(self, data):
         if data:
-            session = Session.objects.get_if_exists(uid__iexact=data, status=Session.ACTIVE)
-            if not session:
-                raise ValidationError(f"Session with UID '{data}' does not exist.")
+            session = Session.objects.get(uid=data.upper())
+            if session.status != Session.ACTIVE:
+                raise ValidationError(f"Session with UID '{data}' is no longer active.")
             return session
         return None
 

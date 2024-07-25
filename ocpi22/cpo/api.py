@@ -810,18 +810,15 @@ class ChargePointViewSet(FlowchartViewSet):
                     from ocpi22.models.cdr import Cdr
                     cdr = Cdr.create_based_on_session(session)
 
-                    cdr_json = CdrSerializer(instance=cdr, context={'version': request.version, 'request': request})
-                    session_serializer = CpoSessionSerializer(instance=session,
-                                                              context={'version': request.version, 'request': request})
-
                     return Response(
                         dict(
                             status_text='Session finished',
                             session_id=session.uid,
                             internal_reference=session.internal_reference,
                             kwh_total=session.kwh,
-                            session=session_serializer.data,
-                            charge_detail_record=cdr_json.data
+                            total_cost_incl_vat=session.total_cost_incl_vat,
+                            total_cost_excl_vat=session.total_cost_excl_vat,
+                            currency=session.currency
                         )
                     )
                 else:
