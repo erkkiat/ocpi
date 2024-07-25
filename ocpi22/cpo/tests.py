@@ -219,7 +219,8 @@ class TestQuickLocations(TestCase):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
                 expected_result={
-                    'vat': [ErrorDetail(string='VAT needs to be an integer value between 0 and 100', code='invalid')]
+                    'vat': [ErrorDetail(string='VAT should be the percentage (0-100), not the decimal presentation',
+                                        code='invalid')]
                 }
             ),
             dict(
