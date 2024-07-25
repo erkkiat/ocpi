@@ -31,6 +31,7 @@ from ocpi22.msp.models import Authorization
 from ocpi22.ocpi.partners import invalidate_partner_cache, get_partners_by_party_as_party
 from ocpi22.pull import admin_pull_all
 from ocpiconnector.ocpi_identities import ocpi_identities, ocpi_platform, get_our_credentialsrole, Party
+from webhooks.models import Webhook
 from payment.models import Payment
 
 admin.site.site_header = 'Roaming Admin'
@@ -721,6 +722,13 @@ class LogEntryAdmin(NestedModelAdmin, AdminUtilityMixin):
 
     def has_delete_permission(self, request, obj=None):
         return True
+
+
+@admin.register(Webhook)
+class WebhookAdmin(admin.ModelAdmin):
+    model = Webhook
+    list_display = ['event', 'url', 'created_at', 'updated_at']
+    search_fields = ['event', 'url']
 
 
 admin.site.register(Token, TokenAdmin)
