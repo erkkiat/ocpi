@@ -666,7 +666,7 @@ class CiStringField(serializers.CharField):
         super().__init__(**kwargs)
 
     def to_internal_value(self, data):
-        return data.upper()
+        return super().to_internal_value(data.upper())
 
 
 class CiStringChoiceField(serializers.ChoiceField):
@@ -690,7 +690,7 @@ class CountryCodeField(CiStringChoiceField):
 
 class PartyIdField(CiStringField):
     def __init__(self, *args, **kwargs):
-        super().__init__(required=True, max_length=3, *args, **kwargs)
+        super().__init__(required=True, max_length=3, **kwargs)
 
 
 def fetch_object(uid: str, party: Party = None, credentials=None, ocpi_module: OcpiModuleEnum = None) -> bool:

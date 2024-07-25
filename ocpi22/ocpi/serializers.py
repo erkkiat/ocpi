@@ -381,7 +381,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
                   'location_id', 'evse_uid', 'connector_id', 'meter_id', 'currency', 'total_cost',
                   'status', 'last_updated']
 
-    id = serializers.CharField(source='uid', max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    id = CiStringField(source='uid', max_length=settings.OCPI_22_MAX_UID_LENGTH)
     country_code = CiStringField(source='ocpi_master.country_code')
     party_id = CiStringField(source='ocpi_master.party_id')
 

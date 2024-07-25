@@ -5,9 +5,7 @@ from typing import Union
 
 import pytz
 import requests
-from cachetools.func import ttl_cache
 from django.conf import settings
-from django.utils import timezone
 
 from ocpi22.messages import messages
 from ocpi22.ocpi.util_party import get_sender_party

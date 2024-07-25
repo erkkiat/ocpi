@@ -267,7 +267,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # Needed for running self.clean() when doing a save() or create()
         self.stop_kwh = Decimal(round(self.stop_kwh, 3))
         self.start_kwh = Decimal(round(self.start_kwh, 3))
-        self.full_clean()
+        # self.full_clean()
         return super().save(*args, **kwargs)
 
     # def set_status(self, status: str):
@@ -354,7 +354,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return True
 
     def __str__(self):
-        return f'{round(self.kwh, 1)} kWh in {self.location.city}, updated {naturaltime(self.updated)}'
+        return f'{round(self.kwh, 1)} kWh, updated {naturaltime(self.updated)}'
 
     def get_absolute_url(self, version=None):
         return util.reverse(
