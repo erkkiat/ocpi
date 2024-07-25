@@ -27,7 +27,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.util import ModelUtilMixin, hours_minutes, format_cost, CURRENCY_CHOICES, apply_min_and_max, \
     apply_step_size, str_to_deterministic_int, build_absolute_uri
-from ocpi22.serializers import SerializerCleanedUp, UTCDateTimeField
+from ocpi22.serializers.util import SerializerCleanedUp, UTCDateTimeField
 from ocpi22.ocpi.util import OcpiModule
 from ocpiconnector.manager import PartnerManager
 

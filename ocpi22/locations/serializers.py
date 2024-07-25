@@ -13,7 +13,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import uid_validator, fetch_object
-from ocpi22.serializers import HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
+from ocpi22.serializers.util import HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):

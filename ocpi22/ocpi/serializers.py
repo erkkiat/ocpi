@@ -17,7 +17,7 @@ from ocpi22.models.session import Session, ChargingPeriod, CdrDimension, Chargin
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
-from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, UTCDateTimeField, \
+from ocpi22.serializers.util import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, UTCDateTimeField, \
     CallbacksSerializer
 from ocpi22.util import base64_to_ascii, CiStringChoiceField, MultipleChoiceFieldList, CiStringField
 from ocpiconnector.ocpi_identities import Party

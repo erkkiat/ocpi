@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 
 from ocpi22 import logging as logging
 from ocpi22.models.location import Location, Evse
-from ocpi22.serializers import CallbacksSerializer
+from ocpi22.serializers.util import CallbacksSerializer
 from ocpi22.util import build_callback_request
 
 

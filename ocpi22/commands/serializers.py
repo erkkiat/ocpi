@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from ocpi22 import choices
 from ocpi22.ocpi.serializers import LocationIdDictSerializer, StrictEvseUidSerializer
-from ocpi22.serializers import SerializerCleanedUp, UTCDateTimeField
+from ocpi22.serializers.util import SerializerCleanedUp, UTCDateTimeField
 from ocpi22.util import CiStringChoiceField
 
 pp = pprint.PrettyPrinter(indent=4).pprint

@@ -16,7 +16,7 @@ from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES, fill_out_location_address
-from ocpi22.serializers import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer, \
+from ocpi22.serializers.util import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer, \
     UTCDateTimeField
 from ocpiconnector.ocpi_identities import Party, get_our_credentialsrole
 

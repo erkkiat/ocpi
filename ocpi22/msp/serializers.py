@@ -9,7 +9,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.serializers import SessionSerializer, StrictEvseUidSerializer, StrictLocationIdSerializer, \
     LocationIdSerializer
-from ocpi22.serializers import CallbacksSerializer
+from ocpi22.serializers.util import CallbacksSerializer
 
 
 class TokenIdSerializer(fields.CharField):
