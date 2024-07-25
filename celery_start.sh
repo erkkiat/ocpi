@@ -13,7 +13,6 @@ QUEUE=localhost$PORT
 
 source venv/bin/activate || exit 1
 pip install -r requirements.txt || exit 1
-brew services start redis || exit 1
 
 echo "Reading ENV from file $FILENAME"
 export $(cat $FILENAME | xargs) || (echo "Unable to read ENV file $FILENAME" && exit 1)
