@@ -116,7 +116,7 @@ class CommandsViewSet(GenericViewSet):
             dict(
                 ad_hoc_token=token,
                 billed_to=billed_to,
-                authorization_method=Session.COMMAND,
+                authorization_method=enum.AuthMethodChoices.COMMAND,
                 credentials=request.credentials,
                 connector_id=connector_id,
             )
@@ -239,7 +239,7 @@ class CommandsViewSet(GenericViewSet):
                 token_id=token_id,
                 token_type=session.cdr_token_type if session else get_token_type(token, TokenType.APP_USER),
                 authorization_reference=session.authorization_reference if session else authorization_reference,
-                auth_method=Session.COMMAND,
+                auth_method=enum.AuthMethodChoices.COMMAND,
                 from_party=str(request.ocpi_party.party),  # HUB or eMSP
                 evse_id=evse_uid,
                 connector_id=connector_id,

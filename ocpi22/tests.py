@@ -34,6 +34,7 @@ from django.test import TestCase, Client
 from rest_framework import status
 
 from ocpi22.locations.serializers import LocationSerializer
+from ocpi22.models import enum
 from ocpi22.msp.account import Account
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
 from ocpi22.ocpi.dataclasses import AdhocToken
@@ -442,7 +443,6 @@ class ApiPutTests(TestCase):
 
                 # Verify the saved data
                 uid = data.get('id')
-                # noinspection PyUnresolvedReferences
                 tariff = Tariff.objects.get(uid=uid, archived=False)
                 saved_data = TariffSerializer(tariff).data
                 # ic(saved_data)
@@ -861,7 +861,7 @@ class CdrTests(TestCase):
             cdr_token_uid='TOKEN1',
             cdr_token_type='RFID',
             cdr_token_contract_id='CONTRACT1',
-            auth_method=Session.COMMAND,
+            auth_method=enum.AuthMethodChoices.COMMAND,
             authorization_reference='1234567890',
             location=location,
             evse=evse,
@@ -2732,7 +2732,7 @@ class TestMspUserApi(TestCase):
                     token=AdhocToken(True, party, self.token_uid, TokenType.AD_HOC_USER),
                     billed_to=str(party),
                     authorization_reference='1234567890',
-                    auth_method=Session.AUTH_REQUEST,
+                    auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
                 )
             session = create_session(
                 uid=uid, evse_uid=evse, location_id=evse.location, connector_id=evse.connectors.all().first().uid,

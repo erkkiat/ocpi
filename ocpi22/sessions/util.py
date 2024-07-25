@@ -80,7 +80,7 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
             raise exceptions.PermissionDenied(msg)
         authorization_method, authorization_reference = authorization.auth_method, authorization.authorization_reference
     else:
-        authorization_method = authorization_method or Session.COMMAND
+        authorization_method = authorization_method or enum.AuthMethodChoices.COMMAND
 
     # Make sure there are no active Sessions in progress
     active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))

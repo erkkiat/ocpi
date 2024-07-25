@@ -4,6 +4,7 @@ from itertools import chain
 import pytz
 
 from ocpi22.choices import OcpiRolesEnum, TokenType
+from ocpi22.models import enum
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Evse
@@ -87,7 +88,7 @@ def create_cdr(number: int, d: date, cpo: CredentialsRole, msp: CredentialsRole,
         cdr_token_uid='TOKEN1',
         cdr_token_type=TokenType.RFID,
         cdr_token_contract_id='12345',
-        auth_method=Session.AUTH_REQUEST,
+        auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
         authorization_reference=f'AUTH-{number}',
         cdr_location_id=location.uid,
         cdr_location_address=location.address,

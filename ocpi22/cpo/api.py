@@ -28,6 +28,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 
+from ocpi22.models import enum
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse, url_link, redis_store, time_lte, time_lt, ErrorLoggingResponse as Response
@@ -620,7 +621,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             session = create_session(
                                 evse.location.uid, evse.uid, connector_id, party,
                                 credentials, internal_reference, authorization.token, session_status=Session.ACTIVE,
-                                authorization_method=Session.AUTH_REQUEST,  # Already authorized above
+                                authorization_method=enum.AuthMethodChoices.AUTH_REQUEST,  # Already authorized above
                                 authorization_reference=authorization.authorization_reference
                             )
                         logging.info(f'New session {session.uid} active at {evse.evse_id}')
@@ -642,12 +643,12 @@ class ChargePointViewSet(FlowchartViewSet):
                     messages.info(
                         request,
                         {
-                            Session.COMMAND:
+                            enum.AuthMethodChoices.COMMAND:
                                 'This Session is based on an authorization which was '
                                 f'implied when receiving the remote command from MSP {session.billed_to}.',
-                            Session.AUTH_REQUEST:
+                            enum.AuthMethodChoices.AUTH_REQUEST:
                                 f'This Session was authorized by MSP {session.billed_to}.',
-                            Session.WHITELIST:
+                            enum.AuthMethodChoices.WHITELIST:
                                 'No authorization was requested from an MSP, because the Token '
                                 'is whitelisted and hence no authorization is to be done.'
                         }.get(session.auth_method, '')
@@ -786,10 +787,10 @@ class ChargePointViewSet(FlowchartViewSet):
                                  f'cost {session.total_cost_incl_vat} {session.currency}')
 
                     extra_information = {
-                        Session.COMMAND:
+                        enum.AuthMethodChoices.COMMAND:
                             '<div>This session was started by using the MSP mobile application, '
                             'but the flow is mostly the same with RFID token charging.</div>',
-                        Session.AUTH_REQUEST:
+                        enum.AuthMethodChoices.AUTH_REQUEST:
                             '<div>This session was started by using an RFID token, '
                             'but the flow is mostly the same when the driver starts the charging session '
                             'using an MSP mobile application.</div>',
