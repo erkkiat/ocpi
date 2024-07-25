@@ -18,7 +18,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser
 
 from ocpi22.cpo.api import InvoiceWebhookViewSet
 from ocpi22.viewsets import FlowchartViewSet
@@ -154,7 +154,7 @@ class MspRoamingViewSet(FlowchartViewSet):
     """
     queryset = Token.objects.all()
     lookup_field = 'uid'
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
     publicly_visible = True  # Don't use the OCPI authentication, just require basic auth or OAuth2
     flowchart = msp_flowchart
 
@@ -244,7 +244,7 @@ class MspRoamingViewSet(FlowchartViewSet):
 
         try:
             if request.method == 'POST':
-                serializer = StartChargingSerializer(data=request.data)
+                serializer = StartChargingSerializer(data=request.data, context={'request': request})
                 if serializer.is_valid():
                     return process_start_charging(request, serializer, **serializer.validated_data)
                 else:
@@ -282,7 +282,7 @@ class MspRoamingViewSet(FlowchartViewSet):
         * `HTTP_404_NOT_FOUND` when the Session doesn't exist or status is not yet available
         """
         try:
-            serializer = SessionStatusSerializer(data=request.data)
+            serializer = SessionStatusSerializer(data=request.data, context={'request': request})
             if serializer.is_valid():
                 session = serializer.validated_data.get('session')
                 token_id = serializer.validated_data.get('token_id')
@@ -338,7 +338,7 @@ class MspRoamingViewSet(FlowchartViewSet):
         """
         try:
             if request.method == 'POST':
-                serializer = StopChargingSerializer(data=request.data)
+                serializer = StopChargingSerializer(data=request.data, context={'request': request})
                 if serializer.is_valid():
                     session = serializer.validated_data.get('session')
                     token_id = serializer.validated_data.get('token_id')
@@ -531,7 +531,6 @@ class MspSessionWebhookViewSet(WebhookViewSet):
 class MspInvoiceWebhookViewSet(InvoiceWebhookViewSet):
     """
     This is where you tell the system where to send the invoicing lines (Charge Detail Records).
-
 
     {{flowchart}}
 
