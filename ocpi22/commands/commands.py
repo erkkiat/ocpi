@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from certification.decorators import certification_step
 from ocpi22.commands.cpo_simulator import start_simulated_session
 from ocpi22.decorators import requires_sender_role
+from ocpi22.models import enum
 from ocpi22.msp.models import Authorization
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.exception_handler import ocpi_exception_handler
