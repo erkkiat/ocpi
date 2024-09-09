@@ -1,57 +1,252 @@
-  version: '3'
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ocpi
+      MONGO_INITDB_ROOT_PASSWORD: ocpiocpi
+      MONGO_INITDB_DATABASE: ocpi8000
+    volumes:
+      - mongodata:/data/db
+      - ./mongo-init/:/docker-entrypoint-initdb.d/
+    networks:
+      - db-network
+    ports:
+      - "27017:27017"
 
-  services:
-    db:
-      image: mysql
-      command: --default-authentication-plugin=mysql_native_password
-      restart: always
-      environment:
-        MYSQL_ROOT_PASSWORD: char462coal
-        MYSQL_DATABASE: electrip
-        MYSQL_USER: electrip
-        MYSQL_PASSWORD: electrip-pw
-      ports:
-        - 3306:3306
-#    adminer:
-#      image: adminer
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ocpi
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ocpiocpi
+      ME_CONFIG_MONGODB_SERVER: mongodb
+    depends_on:
+      - mongodb
+    networks:
+      - db-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    volumes:
+      - ./grafana/data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+
+  db:
+    image: postgres
+    container_name: ocpi-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ocpi
+      POSTGRES_PASSWORD: ocpiocpi
+      POSTGRES_DB: ocpi8000
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+#      networks:
+#        - app-network
+    ports:
+      - 5432:5432
+#      network_mode: "host"
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/var/lib/redis
+    restart: unless-stopped
+
+  emqx:
+    image: emqx/emqx:latest
+    container_name: emqx
+    ports:
+      - "1883:1883"  # MQTT port
+      - "8083:8083"  # WebSocket port
+      - "8081:8081"  # Dashboard port
+    environment:
+      - EMQX_NAME=emqx
+      - EMQX_HOST=node1
+      - EMQX_NODE__COOKIE=secretcookie
+      - EMQX_LOADED_PLUGINS=emqx_management,emqx_recon,emqx_retainer,emqx_dashboard
+    volumes:
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+
+networks:
+  db-network:
+
+volumes:
+  redis-data:
+  mongodata:
+  pgdata:
+  emqx_data:
+  emqx_log:
+
+#
+#
+#    mongodb:
+#      image: mongo:latest
+#      restart: always
+#      container_name: mongodb
+#      environment:
+#        MONGO_INITDB_ROOT_USERNAME: ocpi
+#        MONGO_INITDB_ROOT_PASSWORD: ocpiocpi
+#        MONGO_INITDB_DATABASE: ocpi8000
+#      volumes:
+#        - mongodata:/data/db
+#        - ./mongo-init/:/docker-entrypoint-initdb.d/
+#      networks:
+#        - db-network
+#      ports:
+#        - "27017:27017"
+#
+#    mongo-express:
+#      image: mongo-express:latest
+#      container_name: mongo-express
 #      restart: always
 #      ports:
-#        - 8050:8080
-    web:
-      restart: always
-      build: .
-      entrypoint: /code/entrypoint.sh
-      command: gunicorn electrip.wsgi:application --bind 0.0.0.0:8080 --reload --timeout 240
-      env_file:
-        - .env
-      volumes:
-        - .:/code
-      ports:
-        - "8000:8080"
-      depends_on:
-        - db
-
-    db-test:
-      image: mysql
-      command: --default-authentication-plugin=mysql_native_password
-      restart: always
-      environment:
-        MYSQL_ROOT_PASSWORD: char462coal
-        MYSQL_DATABASE: test_electrip
-        MYSQL_USER: electrip
-        MYSQL_PASSWORD: electrip-pw
-      ports:
-        - 3307:3306
-
-    test:
-      restart: always
-      build: .
-      command: bash -c 'export TEST=1 && python manage.py test --noinput'
-      env_file:
-        - .env
-      volumes:
-        - .:/code
-      ports:
-        - "8001:8080"
-      depends_on:
-        - db-test
+#        - 8081:8081
+#      environment:
+#        ME_CONFIG_MONGODB_ADMINUSERNAME: ocpi
+#        ME_CONFIG_MONGODB_ADMINPASSWORD: ocpiocpi
+#        ME_CONFIG_MONGODB_SERVER: localhost
+#      depends_on:
+#        - mongodb
+#      networks:
+#        - db-network
+#
+##    adminer:
+##      image: adminer
+##      restart: always
+##      network_mode: "host"
+###      ports:
+###        - 8081:8080
+###      networks:
+###        - app-network
+##      depends_on:
+##        - db
+#
+#  #    db:
+##      image: mysql
+##      command: --default-authentication-plugin=mysql_native_password
+##      restart: always
+##      environment:
+##        MYSQL_ROOT_PASSWORD: char462coal
+##        MYSQL_DATABASE: electrip
+##        MYSQL_USER: electrip
+##        MYSQL_PASSWORD: electrip-pw
+##      ports:
+##        - 3306:3306
+##    adminer:
+##      image: adminer
+##      restart: always
+##      ports:
+##        - 8050:8080
+##    cpo1:
+##      restart: always
+##      build: .
+##      entrypoint: /code/entrypoint.sh
+##      command: gunicorn ocpiconnector.wsgi:application --bind 127.0.0.1:8080 --reload --timeout 120 --workers 17 --log-file -
+##      env_file:
+##        - .env-8000
+##      volumes:
+##        - .:/code
+##      networks:
+##        - app-network
+##      ports:
+##        - "8000:8080"
+##        - "5432:5432"
+##      depends_on:
+##        - db
+#
+##    hub:
+##      restart: always
+##      build: .
+##      entrypoint: /code/entrypoint.sh
+##      command: gunicorn ocpiconnector.wsgi:application --bind 127.0.0.1:8080 --reload --timeout 120 --workers 17 --log-file -
+##      env_file:
+##        - .env-8001
+##      volumes:
+##        - .:/code
+##      networks:
+##        - app-network
+##      ports:
+##        - "8001:8080"
+##        - "5432:5432"
+##      depends_on:
+##        - db
+##
+##    msp1:
+##      restart: always
+##      build: .
+##      entrypoint: /code/entrypoint.sh
+##      command: gunicorn ocpiconnector.wsgi:application --bind 127.0.0.1:8002 --reload --timeout 120 --workers 17 --log-file -
+##      env_file:
+##        - .env-8002
+##      volumes:
+##        - .:/code
+###      networks:
+###        - app-network
+##      network_mode: "host"
+###      ports:
+###        - "8002:8080"
+###        - "5432:5432"
+##      depends_on:
+##        - db
+#
+##    db-test:
+##      image: mysql
+##      command: --default-authentication-plugin=mysql_native_password
+##      restart: always
+##      environment:
+##        MYSQL_ROOT_PASSWORD: char462coal
+##        MYSQL_DATABASE: test_electrip
+##        MYSQL_USER: electrip
+##        MYSQL_PASSWORD: electrip-pw
+##      ports:
+##        - 3307:3306
+##
+##    test:
+##      restart: always
+##      build: .
+##      command: bash -c 'export TEST=1 && python manage.py test --noinput'
+##      env_file:
+##        - .env
+##      volumes:
+##        - .:/code
+##      ports:
+##        - "8001:8080"
+##      depends_on:
+##        - db-test
+#
+#  networks:
+#    app-network:
+#      driver: bridge
+#    db-network:
+#
+#  volumes:
+#    pgdata:
+#    mongodata:
