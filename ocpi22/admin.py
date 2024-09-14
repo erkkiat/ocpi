@@ -14,7 +14,7 @@ from humanize import naturaltime
 
 import widgets
 from ocpi22.choices import OcpiRolesEnum, OCPIFacilityEnum, OCPICapabilityEnum
-from ocpi22.models.logging import LogEntry, ChildEvent
+from ocpi22.models.hours import Hours, RegularHours
 from django.utils.html import format_html
 from nested_admin.nested import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 
@@ -199,6 +199,26 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
         def has_add_permission(self, request, obj=None) -> bool:
             return Location.ocpi_object_owner in ocpi_identities and super().has_add_permission(request, obj)
 
+    # The below doesn't work, need more time to work on it
+    #
+    # class OpeningTimesInline(NestedTabularInline):
+    #     class RegularHoursInline(NestedTabularInline):
+    #         model = RegularHours
+    #         fields = ['weekday', 'period_begin', 'period_end']
+    #
+    #     model = Hours
+    #
+    #     fields = ['twentyfourseven', 'regular_hours', 'exceptional_openings', 'exceptional_closings']
+    #
+    #     formfield_overrides = widgets.formfield_overrides
+    #     inlines = [RegularHoursInline]
+    #
+    #     def has_change_permission(self, request, obj=None) -> bool:
+    #         return obj and obj.is_ours() and super().has_change_permission(request, obj)
+    #
+    #     def has_add_permission(self, request, obj=None) -> bool:
+    #         return Location.ocpi_object_owner in ocpi_identities and super().has_add_permission(request, obj)
+
     formfield_overrides = widgets.formfield_overrides
 
     model = Location
@@ -220,7 +240,7 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
     ]
     list_display = ['party_long', 'uid', 'publish', 'name', 'street_address', 'evse_list']
     list_display_links = ['uid']
-    inlines = [EvseInline]
+    inlines = [EvseInline]  # [OpeningTimesInline, EvseInline]
     autocomplete_fields = ['publish_allowed_to', 'operator', 'suboperator', 'owner']
     radio_fields = dict(
         parking_type=admin.VERTICAL
