@@ -8,7 +8,6 @@ from ninja_jwt.authentication import JWTAuth
 from rest_framework.decorators import permission_classes
 
 from fastapi.celery.tasks import activate_session
-from fastapi.mongodb.connection import meter_values_col
 from ocpi22.models.location import Connector
 from fastapi.schemas.charging import MeterValuesSchema, StopSchema, StartSchema
 from ocpi22.tokens.auth import get_session_by_adhoc_token, authorize_token
@@ -25,8 +24,6 @@ def chargepoint_meter_values(request, payload: MeterValuesSchema):
     # ic(data)
     data['datestamp'] = int((payload.datestamp or datetime.utcnow()).timestamp())
     # ic(data)
-    x = meter_values_col.insert_one(data)
-    ic(x.inserted_id)
     return {"status": "success"}
 
 
@@ -61,6 +58,5 @@ def chargepoint_start_transaction(request, payload: StartSchema):
 @permission_classes([IsAdminUser])
 def chargepoint_stop_transaction(request, payload: StopSchema):
     # ic(request.user, payload)
-    # ic(list(meter_values_col.find(dict(session_id=payload.session_id))))
     print(f'Stopping session {payload.session_id} with {payload.stop_kwh} kWh')
     return {"status": "success"}
