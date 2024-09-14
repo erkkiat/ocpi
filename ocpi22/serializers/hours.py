@@ -7,6 +7,11 @@ class CustomTimeField(serializers.TimeField):
         # Format the time to HH:MM
         if value is None:
             return value
+        if isinstance(value, str):
+            # check that the format matches HH:MM
+            if len(value) == 5 and value[2] == ':':
+                return value
+            raise ValueError('Time has to be in HH:MM format')
         return value.strftime('%H:%M')
 
 
