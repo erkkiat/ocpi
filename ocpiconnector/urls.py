@@ -116,5 +116,11 @@ urlpatterns = [
     # path("__debug__/", include("debug_toolbar.urls")),
 ]
 
+if settings.PROMETHEUS:
+    from prometheus_metrics.middleware import PrometheusMiddleware
+    urlpatterns.append(
+        path('metrics/', PrometheusMiddleware.metrics_view)
+    )
+
 if settings.SERVE_STATIC_FILES or settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()
