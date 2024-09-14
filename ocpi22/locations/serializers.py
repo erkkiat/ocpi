@@ -46,7 +46,7 @@ class TariffField(serializers.StringRelatedField):
             credentialsrole = self.context.get('credentialsrole',
                                                getattr(self.context.get('request', object), 'credentialsrole', None))
             assert credentialsrole, 'No credentialsrole found in the context in TariffField'
-            tariff = Tariff.objects.get(uid__iexact=data, archived=False, ocpi_master=credentialsrole)
+            tariff = Tariff.objects.get_cached(uid__iexact=data, archived=False, ocpi_master=credentialsrole)
             return tariff
         except Tariff.DoesNotExist as e:
             credentials = self.context.get('credentials')
