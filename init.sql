@@ -1,0 +1,20 @@
+SELECT 'CREATE DATABASE ocpi8000'
+       WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'ocpi8000')\gexec
+
+SELECT 'CREATE DATABASE ocpi8001'
+       WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'ocpi8001')\gexec
+
+SELECT 'CREATE DATABASE ocpi8002'
+       WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'ocpi8002')\gexec
+
+--CREATE DATABASE IF NOT EXISTS `ocpi8000` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+--CREATE DATABASE IF NOT EXISTS `ocpi8001` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+--CREATE DATABASE IF NOT EXISTS `ocpi8002` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+
+-- Create a user with necessary permissions
+CREATE USER ocpi WITH PASSWORD 'ocpiocpi';
+
+-- Grant permissions to the user for the databases
+GRANT ALL PRIVILEGES ON DATABASE ocpi8000 TO ocpi;
+GRANT ALL PRIVILEGES ON DATABASE ocpi8001 TO ocpi;
+GRANT ALL PRIVILEGES ON DATABASE ocpi8002 TO ocpi;
