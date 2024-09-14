@@ -1,0 +1,1269 @@
+{
+	"info": {
+		"_postman_id": "7722b038-24f9-4ebd-9c03-23cd31e4c08f",
+		"name": "OCPI 2.2.1",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "33039938",
+		"_collection_link": "https://solidroam.postman.co/workspace/SolidRoam-Workspace~d9ad7207-88eb-4722-bccb-44119b6aa7fc/collection/33039938-7722b038-24f9-4ebd-9c03-23cd31e4c08f?action=share&source=collection_link&creator=33039938"
+	},
+	"item": [
+		{
+			"name": "Tariff",
+			"item": [
+				{
+					"name": "Simple PUT Tariff SMP1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response status code is 200 or 201\", function () {",
+									"    pm.response.to.have.status([200, 201]);",
+									"});",
+									"",
+									"",
+									"pm.test(\"Response has the required fields - id, currency, price_per_kwh, and price_per_min\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData).to.have.property('id');",
+									"    pm.expect(responseData).to.have.property('currency');",
+									"    pm.expect(responseData).to.have.property('price_per_kwh');",
+									"    pm.expect(responseData).to.have.property('price_per_min');",
+									"});",
+									"",
+									"",
+									"pm.test(\"Price_per_min, price_per_kwh, and price_flat are non-negative numbers\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData.price_per_min).to.be.a('number').and.to.be.at.least(0);",
+									"    pm.expect(responseData.price_per_kwh).to.be.a('number').and.to.be.at.least(0);",
+									"    pm.expect(responseData.price_flat).to.be.a('number').and.to.be.at.least(0);",
+									"});",
+									"",
+									"",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"var template = `",
+									"<style type=\"text/css\">",
+									"    .tftable {font-size:14px;color:#333333;width:100%;border-width: 1px;border-color: #87ceeb;border-collapse: collapse;}",
+									"    .tftable th {font-size:18px;background-color:#87ceeb;border-width: 1px;padding: 8px;border-style: solid;border-color: #87ceeb;text-align:left;}",
+									"    .tftable tr {background-color:#ffffff;}",
+									"    .tftable td {font-size:14px;border-width: 1px;padding: 8px;border-style: solid;border-color: #87ceeb;}",
+									"    .tftable tr:hover {background-color:#e0ffff;}",
+									"</style>",
+									"",
+									"<table class=\"tftable\" border=\"1\">",
+									"    <tr>",
+									"        <th>ID</th>",
+									"        <th>Currency</th>",
+									"        <th>Price Per kWh</th>",
+									"        <th>Price Per Min</th>",
+									"        <th>Price Flat</th>",
+									"    </tr>",
+									"    <tr>",
+									"        <td>{{response.id}}</td>",
+									"        <td>{{response.currency}}</td>",
+									"        <td>{{response.price_per_kwh}}</td>",
+									"        <td>{{response.price_per_min}}</td>",
+									"        <td>{{response.price_flat}}</td>",
+									"    </tr>",
+									"</table>",
+									"`;",
+									"",
+									"function constructVisualizerPayload() {",
+									"    return {response: pm.response.json()}",
+									"}",
+									"",
+									"pm.visualizer.set(template, constructVisualizerPayload());",
+									"// Print the response code in the test script",
+									"pm.test(\"Print the response code\", function () {",
+									"    console.log(\"The response status code is: \" + pm.response.code);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": \"SMP1\",\n    \"currency\": \"EUR\",\n    \"price_per_kwh\": 0.51,\n    \"price_per_min\": 0.42,\n    \"price_flat\": 0.3,\n    \"vat\": 20.0\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/api/cpo/v2/tariff/quick/",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"api",
+								"cpo",
+								"v2",
+								"tariff",
+								"quick",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Simple PUT Tariff SMP2",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response status code is 200\", function () {",
+									"    pm.response.to.have.status([200, 201]);",
+									"});",
+									"",
+									"",
+									"pm.test(\"Response time is within an acceptable range\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(300);",
+									"});",
+									"",
+									"",
+									"pm.test(\"Response has the required fields\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData).to.have.property('id');",
+									"    pm.expect(responseData).to.have.property('currency');",
+									"    pm.expect(responseData).to.have.property('price_per_kwh');",
+									"    pm.expect(responseData).to.have.property('price_per_min');",
+									"    pm.expect(responseData).to.have.property('price_flat');",
+									"});",
+									"",
+									"",
+									"pm.test(\"Id should be a non-empty string\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData.id).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Id should not be empty\");",
+									"});",
+									"",
+									"",
+									"pm.test(\"Price_per_kwh, price_per_min, and price_flat are non-negative numbers\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData.price_per_kwh).to.be.at.least(0);",
+									"    pm.expect(responseData.price_per_min).to.be.at.least(0);",
+									"    pm.expect(responseData.price_flat).to.be.at.least(0);",
+									"});",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": \"SMP2\",\n    \"currency\": \"EUR\",\n    \"price_per_kwh\": 0.41,\n    \"price_per_min\": 0.3,\n    \"price_flat\": 0.2,\n    \"vat\": 20.0\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{HOST}}/api/cpo/v2/tariff/quick/",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"api",
+								"cpo",
+								"v2",
+								"tariff",
+								"quick",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET OCPI Tariff SMP1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response status code is 200\", function () {",
+									"    pm.response.to.have.status([200, 201]);",
+									"});",
+									"",
+									"",
+									"pm.test(\"Response has the required fields\", function () {",
+									"    const responseData = pm.response.json();",
+									"",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData.id).to.exist;",
+									"    pm.expect(responseData.country_code).to.exist;",
+									"    pm.expect(responseData.party_id).to.exist;",
+									"    pm.expect(responseData.elements).to.exist;",
+									"    pm.expect(responseData.tariff_alt_text).to.exist;",
+									"    pm.expect(responseData.last_updated).to.exist;",
+									"    pm.expect(responseData.currency).to.exist;",
+									"});",
+									"",
+									"",
+									"pm.test(\"Price, VAT, and step_size are non-negative numbers\", function () {",
+									"  const responseData = pm.response.json();",
+									"  ",
+									"  pm.expect(responseData).to.be.an('object');",
+									"  pm.expect(responseData.data).to.exist.and.to.be.an('object');",
+									"  pm.expect(responseData.data.elements).to.exist.and.to.be.an('array');",
+									"",
+									"  responseData.data.elements.forEach(element => {",
+									"    pm.expect(element.price_components).to.exist.and.to.be.an('array');",
+									"",
+									"    element.price_components.forEach(priceComponent => {",
+									"      pm.expect(priceComponent.price).to.be.at.least(0);",
+									"      pm.expect(priceComponent.vat).to.be.at.least(0);",
+									"      pm.expect(priceComponent.step_size).to.be.at.least(0);",
+									"    });",
+									"  });",
+									"});",
+									"",
+									"",
+									"pm.test(\"Timestamp is in a valid date format\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData.timestamp).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/, \"Timestamp should be in valid date format\");",
+									"});",
+									"",
+									"",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/ocpi/2.2.1/tariffs/{{COUNTRY_CODE}}/{{PARTY_ID}}/SMP1",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"ocpi",
+								"2.2.1",
+								"tariffs",
+								"{{COUNTRY_CODE}}",
+								"{{PARTY_ID}}",
+								"SMP1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET all OCPI Tariffs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response status code is 200\", function () {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});",
+									"",
+									"",
+									"pm.test(\"Response has the required fields\", function () {",
+									"    const responseData = pm.response.json();",
+									"",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData.id).to.exist;",
+									"    pm.expect(responseData.country_code).to.exist;",
+									"    pm.expect(responseData.party_id).to.exist;",
+									"    pm.expect(responseData.elements).to.exist;",
+									"    pm.expect(responseData.tariff_alt_text).to.exist;",
+									"    pm.expect(responseData.last_updated).to.exist;",
+									"    pm.expect(responseData.currency).to.exist;",
+									"});",
+									"",
+									"",
+									"pm.test(\"Each element in the 'price_components' array has valid type, price, vat, and step_size\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData.data).to.be.an('array').that.is.not.empty;",
+									"    ",
+									"    responseData.data.forEach(tariff => {",
+									"        tariff.elements.forEach(element => {",
+									"            element.price_components.forEach(priceComponent => {",
+									"                pm.expect(priceComponent).to.have.property('type').that.is.a('string');",
+									"                pm.expect(priceComponent).to.have.property('price').that.is.a('number');",
+									"                pm.expect(priceComponent).to.have.property('vat').that.is.a('number');",
+									"                pm.expect(priceComponent).to.have.property('step_size').that.is.a('number');",
+									"            });",
+									"        });",
+									"    });",
+									"});",
+									"",
+									"",
+									"pm.test(\"Timestamp is in a valid date format\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData.timestamp).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/);",
+									"});",
+									"",
+									"",
+									"pm.test(\"Content-Type header is application/json\", function () {",
+									"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{HOST}}/ocpi/2.2.1/tariffs/",
+							"host": [
+								"{{HOST}}"
+							],
+							"path": [
+								"ocpi",
+								"2.2.1",
+								"tariffs",
+								""
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Add, modify and view the OCPI Tariff objects."
+		},
+		{
+			"name": "Location",
+			"item": [
+				{
+					"name": "Create",
+					"item": [
+						{
+							"name": "PUT OCPI Location PC1",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.expect(pm.response.code).to.equal(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Content-Type is application/json\", function () {",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+											"});",
+											"",
+											"",
+											"pm.test(\"Validate the data object\", function () {",
+											"  const responseData = pm.response.json();",
+											"  ",
+											"  pm.expect(responseData).to.be.an('object');",
+											"  pm.expect(responseData.data).to.exist.and.to.be.an('object');",
+											"});",
+											"",
+											"",
+											"pm.test(\"Validate the structure of evses array\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.evses).to.be.an('array').that.is.not.empty;",
+											"    ",
+											"    responseData.evses.forEach(function(evse) {",
+											"        pm.expect(evse).to.be.an('object');",
+											"        pm.expect(evse.uid).to.exist.and.to.be.a('string');",
+											"        pm.expect(evse.evse_id).to.exist.and.to.be.a('string');",
+											"        pm.expect(evse.status).to.exist.and.to.be.a('string');",
+											"        pm.expect(evse.last_updated).to.exist.and.to.be.a('string');",
+											"        pm.expect(evse.connectors).to.be.an('array').that.is.not.empty;",
+											"        ",
+											"        evse.connectors.forEach(function(connector) {",
+											"            pm.expect(connector).to.be.an('object');",
+											"            pm.expect(connector.id).to.exist.and.to.be.a('string');",
+											"            pm.expect(connector.standard).to.exist.and.to.be.a('string');",
+											"            pm.expect(connector.format).to.exist.and.to.be.a('string');",
+											"            pm.expect(connector.power_type).to.exist.and.to.be.a('string');",
+											"            pm.expect(connector.max_voltage).to.exist.and.to.be.a('number');",
+											"            pm.expect(connector.max_amperage).to.exist.and.to.be.a('number');",
+											"            pm.expect(connector.max_electric_power).to.exist.and.to.be.a('number');",
+											"            pm.expect(connector.tariff_ids).to.be.an('array');",
+											"            pm.expect(connector.last_updated).to.exist.and.to.be.a('string');",
+											"        });",
+											"    });",
+											"});",
+											"",
+											"",
+											"pm.test(\"Coordinates object contains latitude and longitude properties\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.coordinates).to.be.an('object');",
+											"    pm.expect(responseData.coordinates).to.include.all.keys('latitude', 'longitude');",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n        \"country_code\": \"BE\",\n        \"party_id\": \"SMP\",\n        \"id\": \"PC1\",\n        \"publish\": true,\n        \"address\": \"Rue de Paris 21\",\n        \"city\": \"Paris\",\n        \"country\": \"FRA\",\n        \"coordinates\": {\n            \"latitude\": \"50.000000\",\n            \"longitude\": \"40.000000\"\n        },\n        \"evses\": [\n            {\n                \"uid\": \"C1\",\n                \"evse_id\": \"BE*SMP*EC1\",\n                \"status\": \"AVAILABLE\",\n                \"last_updated\": \"2024-07-16T08:17:44Z\",\n                \"connectors\": [\n                    {\n                        \"id\": \"1\",\n                        \"standard\": \"IEC_62196_T2_COMBO\",\n                        \"format\": \"CABLE\",\n                        \"power_type\": \"DC\",\n                        \"max_voltage\": 400,\n                        \"max_amperage\": 96,\n                        \"max_electric_power\": 115200,\n                        \"tariff_ids\": [\n                            \"SMP1\"\n                        ], \"last_updated\": \"2024-07-16T08:20:20Z\"\n\n                    }\n                ],\n                \"capabilities\": [\n                    \"RFID_READER\"\n                ]\n            }\n        ],\n        \"time_zone\": \"Europe/Paris\",\n        \"last_updated\": \"2024-07-16T08:17:44Z\"\n    }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/ocpi/2.2.1/locations/{{COUNTRY_CODE}}/{{PARTY_ID}}/PC1",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"ocpi",
+										"2.2.1",
+										"locations",
+										"{{COUNTRY_CODE}}",
+										"{{PARTY_ID}}",
+										"PC1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "PUT OCPI Location Smappee",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.expect(pm.response.code).to.equal(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Content-Type header is application/json\", function () {",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+											"});",
+											"",
+											"",
+											"pm.test(\"Data object contains required fields\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.data).to.include.all.keys(",
+											"        'country_code', 'party_id', 'id', 'publish', 'address', 'city', 'country', 'coordinates', 'evses', 'time_zone', 'last_updated'",
+											"    );",
+											"});",
+											"",
+											"",
+											"pm.test(\"Coordinates object contains valid latitude and longitude\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.coordinates).to.exist;",
+											"    pm.expect(responseData.coordinates.latitude).to.be.a('string').and.to.not.be.empty;",
+											"    pm.expect(responseData.coordinates.longitude).to.be.a('string').and.to.not.be.empty;",
+											"});",
+											"",
+											"",
+											"pm.test(\"Evses array is present and contains at least one element\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData.evses).to.exist.and.to.be.an('array').that.is.not.empty;",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"country_code\": \"{{COUNTRY_CODE}}\",\n    \"party_id\": \"{{PARTY_ID}}\",\n    \"publish\": true,\n    \"address\": \"Teststreet 20\",\n    \"city\": \"Harelbeke\",\n    \"country\": \"BEL\",\n    \"coordinates\": {\n        \"latitude\": \"50.8231154\",\n        \"longitude\": \"3.3108106\"\n    },\n    \"id\": \"e89584de-f3db-44d0-aac6-88cb99378339\",\n    \"evses\": [\n        {\n            \"uid\": \"SMP61210000011\",\n            \"evse_id\": \"BE*SMP*6121000001*C1\",\n            \"status\": \"AVAILABLE\",\n            \"last_updated\": \"2024-07-16T13:07:55Z\",\n            \"capability\": [\n                \"RFID_READER\"\n            ],\n            \"connectors\": [\n                {\n                    \"id\": 1,\n                    \"standard\": \"IEC_62196_T2\",\n                    \"format\": \"SOCKET\",\n                    \"power_type\": \"AC\",\n                    \"max_voltage\": 400,\n                    \"max_amperage\": 32,\n                    \"max_electric_power\": 220000,\n                    \"tariff_ids\": [\n                        \"SMP1\"\n                    ],\n                    \"last_updated\": \"2024-07-16T13:07:55Z\"\n                }\n            ]\n        }\n    ],\n    \"time_zone\": \"Europe/Brussels\",\n    \"last_updated\": \"2024-07-16T13:07:55Z\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/ocpi/2.2.1/locations/{{COUNTRY_CODE}}/{{PARTY_ID}}/e89584de-f3db-44d0-aac6-88cb99378339",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"ocpi",
+										"2.2.1",
+										"locations",
+										"{{COUNTRY_CODE}}",
+										"{{PARTY_ID}}",
+										"e89584de-f3db-44d0-aac6-88cb99378339"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Parking garage with opening times",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.have.status([200, 201]);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Content-Type header is application/json\", function () {",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+											"});",
+											"",
+											"",
+											"pm.test(\"Data object contains required fields\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.data).to.include.all.keys(",
+											"        'country_code', 'party_id', 'id', 'publish', 'address', 'city', 'country', 'coordinates', 'evses', 'time_zone', 'last_updated'",
+											"    );",
+											"});",
+											"",
+											"",
+											"pm.test(\"Coordinates object contains valid latitude and longitude\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.coordinates).to.exist;",
+											"    pm.expect(responseData.coordinates.latitude).to.be.a('string').and.to.not.be.empty;",
+											"    pm.expect(responseData.coordinates.longitude).to.be.a('string').and.to.not.be.empty;",
+											"});",
+											"",
+											"",
+											"pm.test(\"Evses array is present and contains at least one element\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData.evses).to.exist.and.to.be.an('array').that.is.not.empty;",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"country_code\": \"{{COUNTRY_CODE}}\",\n    \"party_id\": \"{{PARTY_ID}}\",\n  \"id\": \"cbb0df21-d17d-40ba-a4aa-dc588c8f98cb\",\n  \"publish\": true,\n  \"name\": \"P-Huset Leonard\",\n  \"address\": \"Claesgatan 9\",\n  \"city\": \"Malmö\",\n  \"postal_code\": \"214 26\",\n  \"country\": \"SWE\",\n  \"coordinates\": {\n    \"latitude\": \"55.590325\",\n    \"longitude\": \"13.008307\"\n  },\n  \"parking_type\": \"PARKING_GARAGE\",\n  \"evses\": [{\n    \"uid\": \"eccb8dd9-4189-433e-b100-cc0945dd17dc\",\n    \"evse_id\": \"SE*EVC*E000000123\",\n    \"status\": \"AVAILABLE\",\n    \"connectors\": [{\n      \"id\": \"1\",\n      \"standard\": \"IEC_62196_T2\",\n      \"format\": \"SOCKET\",\n      \"power_type\": \"AC_3_PHASE\",\n      \"max_voltage\": 230,\n      \"max_amperage\": 32,\n      \"last_updated\": \"2017-03-07T02:21:22Z\"\n    }],\n    \"last_updated\": \"2017-03-07T02:21:22Z\"\n  }],\n  \"time_zone\": \"Europe/Stockholm\",\n  \"opening_times\": {\n    \"twentyfourseven\": false,\n    \"regular_hours\": [{\n      \"weekday\": 1,\n      \"period_begin\": \"07:00\",\n      \"period_end\": \"18:00\"\n    }, {\n      \"weekday\": 2,\n      \"period_begin\": \"07:00\",\n      \"period_end\": \"18:00\"\n    },{\n      \"weekday\": 3,\n      \"period_begin\": \"07:00\",\n      \"period_end\": \"18:00\"\n    },{\n      \"weekday\": 4,\n      \"period_begin\": \"07:00\",\n      \"period_end\": \"18:00\"\n    },{\n      \"weekday\": 5,\n      \"period_begin\": \"07:00\",\n      \"period_end\": \"18:00\"\n    },{\n      \"weekday\": 6,\n      \"period_begin\": \"07:00\",\n      \"period_end\": \"18:00\"\n    },{\n      \"weekday\": 7,\n      \"period_begin\": \"07:00\",\n      \"period_end\": \"18:00\"\n    }]\n  },\n  \"charging_when_closed\": true,\n  \"last_updated\": \"2017-03-07T02:21:22Z\"\n}\n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/ocpi/2.2.1/locations/{{COUNTRY_CODE}}/{{PARTY_ID}}/cbb0df21-d17d-40ba-a4aa-dc588c8f98cb",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"ocpi",
+										"2.2.1",
+										"locations",
+										"{{COUNTRY_CODE}}",
+										"{{PARTY_ID}}",
+										"cbb0df21-d17d-40ba-a4aa-dc588c8f98cb"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Change Status",
+					"item": [
+						{
+							"name": "AVAILABLE",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response time is less than 200ms\", function () {",
+											"  pm.expect(pm.response.responseTime).to.be.below(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response has the required fields\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData).to.have.property('status_text');",
+											"    pm.expect(responseData).to.have.property('evse');",
+											"    pm.expect(responseData).to.have.property('ocpi_status');",
+											"    pm.expect(responseData).to.have.property('ocpp_status');",
+											"});",
+											"",
+											"",
+											"pm.test(\"Status properties are non-empty strings\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData.status_text).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");",
+											"    pm.expect(responseData.evse).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");",
+											"    pm.expect(responseData.ocpi_status).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");",
+											"    pm.expect(responseData.ocpp_status).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"evse_uid\": \"SMP61210000011\",\n    \"status\": \"AVAILABLE\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/api/cpo/v2/chargepoint/status_change/",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"api",
+										"cpo",
+										"v2",
+										"chargepoint",
+										"status_change",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "CHARGING",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.expect(pm.response.code).to.equal(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response has the required fields\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData).to.include.all.keys('status_text', 'evse', 'ocpi_status', 'ocpp_status');",
+											"});",
+											"",
+											"",
+											"pm.test(\"Status text is a non-empty string\", function () {",
+											"    const responseData = pm.response.json();",
+											"",
+											"    pm.expect(responseData.status_text).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Status text should not be empty\");",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response time is less than 200ms\", function () {",
+											"  pm.expect(pm.response.responseTime).to.be.below(200);",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"evse_uid\": \"SMP61210000011\",\n    \"status\": \"CHARGING\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/api/cpo/v2/chargepoint/status_change/",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"api",
+										"cpo",
+										"v2",
+										"chargepoint",
+										"status_change",
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Charging",
+					"item": [
+						{
+							"name": "Authorize",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response time is less than 200ms\", function () {",
+											"  pm.expect(pm.response.responseTime).to.be.below(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Token object has the expected structure and keys\", function () {",
+											"  const responseData = pm.response.json();",
+											"  ",
+											"  pm.expect(responseData.token).to.be.an('object');",
+											"  pm.expect(responseData.token).to.have.property('country_code');",
+											"  pm.expect(responseData.token).to.have.property('party_id');",
+											"  pm.expect(responseData.token).to.have.property('uid');",
+											"  pm.expect(responseData.token).to.have.property('type');",
+											"  pm.expect(responseData.token).to.have.property('contract_id');",
+											"  pm.expect(responseData.token).to.have.property('visual_number');",
+											"  pm.expect(responseData.token).to.have.property('issuer');",
+											"  pm.expect(responseData.token).to.have.property('valid');",
+											"  pm.expect(responseData.token).to.have.property('whitelist');",
+											"  pm.expect(responseData.token).to.have.property('language');",
+											"  pm.expect(responseData.token).to.have.property('last_updated');",
+											"});",
+											"",
+											"",
+											"pm.test(\"Allowed property is present and has a valid value\", function () {",
+											"    const responseData = pm.response.json();",
+											"",
+											"    pm.expect(responseData).to.have.property('allowed');",
+											"    pm.expect(responseData.allowed).to.be.oneOf([true, false]);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Location is an object and not empty\", function () {",
+											"  const responseData = pm.response.json();",
+											"  ",
+											"  pm.expect(responseData).to.be.an('object');",
+											"  pm.expect(responseData.location).to.be.an('object').and.to.not.be.empty;",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"evse_id\": \"SMP61210000011\",\n    \"token_id\": \"EKI1\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/api/cpo/v2/chargepoint/authorize/",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"api",
+										"cpo",
+										"v2",
+										"chargepoint",
+										"authorize",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Authorize INVALID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"  pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response time is less than 200ms\", function () {",
+											"  pm.expect(pm.response.responseTime).to.be.below(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Token object structure is valid\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.token).to.be.an('object');",
+											"    pm.expect(responseData.token).to.have.property('country_code').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('party_id').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('uid').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('type').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('contract_id').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('visual_number').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('issuer').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('valid').that.is.a('boolean');",
+											"    pm.expect(responseData.token).to.have.property('whitelist').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('language').that.is.a('string');",
+											"    pm.expect(responseData.token).to.have.property('last_updated').that.is.a('string');",
+											"});",
+											"",
+											"",
+											"pm.test(\"Location object is present in the response\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData.location).to.exist;",
+											"});",
+											"",
+											"",
+											"pm.test(\"Auth method, authorization reference, responding party, info, and billed to fields are present and in the expected format\", function () {",
+											"    const responseData = pm.response.json();",
+											"",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData.auth_method).to.exist.and.to.be.a('string');",
+											"    pm.expect(responseData.authorization_reference).to.exist.and.to.be.a('string');",
+											"    pm.expect(responseData.responding_party).to.exist.and.to.be.an('object');",
+											"    pm.expect(responseData.info).to.exist.and.to.be.an('array');",
+											"    pm.expect(responseData.billed_to).to.exist.and.to.be.a('string');",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"evse_id\": \"SMP61210000011\",\n    \"token_id\": \"1F0B70E7\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/api/cpo/v2/chargepoint/authorize/",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"api",
+										"cpo",
+										"v2",
+										"chargepoint",
+										"authorize",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Start Transaction",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"  pm.expect(pm.response.code).to.equal(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response time is less than 200ms\", function () {",
+											"  pm.expect(pm.response.responseTime).to.be.below(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Validate the structure of the session object\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData.session).to.exist.and.to.be.an('object');",
+											"    ",
+											"    pm.expect(responseData.session.session_id).to.exist;",
+											"    pm.expect(responseData.session.start_date_time).to.exist;",
+											"    pm.expect(responseData.session.token).to.exist.and.to.be.an('object');",
+											"    pm.expect(responseData.session.location_id).to.exist;",
+											"    pm.expect(responseData.session.currency).to.exist;",
+											"});",
+											"",
+											"",
+											"pm.test(\"Start_kwh and stop_kwh are non-negative numbers\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.start_kwh).to.be.a('number').and.to.be.at.least(0);",
+											"    pm.expect(responseData.stop_kwh).to.be.a('number').and.to.be.at.least(0);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Token object structure is valid\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.token).to.be.an('object');",
+											"    pm.expect(responseData.token.token_id).to.exist;",
+											"    pm.expect(responseData.token.type).to.exist;",
+											"    pm.expect(responseData.token.contract_id).to.exist;",
+											"});",
+											"",
+											"// Stores the session_id in an environment",
+											"var sessionId = pm.response.json().session.session_id;",
+											"pm.environment.set(\"SESSION_ID\", sessionId);"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"evse_uid\": \"SMP61210000011\",\n    \"connector_id\": \"1\",\n    \"token_id\": \"EKI1\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/api/cpo/v2/chargepoint/start_transaction/",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"api",
+										"cpo",
+										"v2",
+										"chargepoint",
+										"start_transaction",
+										""
+									]
+								},
+								"description": "\n# Chargepoint Start Transaction\n\nThis endpoint is used to start a transaction for a charge point.\n\n## Request Body\n- `evse_uid` (string): The unique identifier for the EVSE.\n- `connector_id` (string): The identifier for the connector.\n- `token_id` (string): The identifier for the token.\n\n## Response\n- `status_text` (string): The status of the transaction.\n- `session` (object): Details of the session.\n  - `session_id` (string): The unique identifier for the session.\n  - `billed_to` (string): The entity to be billed for the session.\n  - `start_date_time` (string): The date and time when the session started.\n  - `start_kwh` (number): The amount of energy at the start of the session.\n  - `stop_kwh` (number): The amount of energy at the end of the session.\n  - `token` (object): Details of the token used for the session.\n    - `token_id` (string): The identifier for the token.\n    - `type` (string): The type of the token.\n    - `contract_id` (string): The identifier for the contract associated with the token.\n  - `auth_method` (string): The method of authentication for the session.\n  - `authorization_reference` (string): The reference for the authorization of the session.\n  - `location_id` (string): The identifier for the location of the charge point.\n  - `evse_uid` (string): The unique identifier for the EVSE.\n  - `connector_id` (string): The identifier for the connector.\n  - `currency` (string): The currency used for billing.\n  - `status` (string): The status of the session.\n  - `last_updated` (string): The date and time when the session was last updated.\n\nAfter a successful request, save the `session_id` in the environment as a variable named `sessionId`.\n\n"
+							},
+							"response": []
+						},
+						{
+							"name": "Meter Values",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response Content-Type is application/json\", function () {",
+											"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response has the required fields\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData).to.include.all.keys('status_text', 'session_id', 'start_kwh', 'now_kwh', 'total_kwh', 'price');",
+											"});",
+											"",
+											"",
+											"pm.test(\"Validate the session object and its properties\", function () {",
+											"    const responseData = pm.response.json();",
+											"",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData.session).to.exist.and.to.be.an('object');",
+											"    pm.expect(responseData.session.session_id).to.be.a('string');",
+											"    pm.expect(responseData.session.billed_to).to.be.a('string');",
+											"    pm.expect(responseData.session.start_date_time).to.be.a('string');",
+											"    pm.expect(responseData.session.start_kwh).to.be.a('number');",
+											"    pm.expect(responseData.session.stop_kwh).to.be.a('number');",
+											"    pm.expect(responseData.session.token).to.exist.and.to.be.an('object');",
+											"    pm.expect(responseData.session.token.token_id).to.be.a('string');",
+											"    pm.expect(responseData.session.token.type).to.be.a('string');",
+											"    pm.expect(responseData.session.token.contract_id).to.be.a('string');",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response time is in an acceptable range\", function () {",
+											"  pm.expect(pm.response.responseTime).to.be.below(200);",
+											"});",
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"session_id\": \"{{SESSION_ID}}\",\n    \"kwh\": \"5\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/api/cpo/v2/chargepoint/meter_values/",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"api",
+										"cpo",
+										"v2",
+										"chargepoint",
+										"meter_values",
+										""
+									]
+								},
+								"description": "\n# Chargepoint Start Transaction\n\nThis endpoint is used to start a transaction for a charge point.\n\n## Request Body\n- `evse_uid` (string): The unique identifier for the EVSE.\n- `connector_id` (string): The identifier for the connector.\n- `token_id` (string): The identifier for the token.\n\n## Response\n- `status_text` (string): The status of the transaction.\n- `session` (object): Details of the session.\n  - `session_id` (string): The unique identifier for the session.\n  - `billed_to` (string): The entity to be billed for the session.\n  - `start_date_time` (string): The date and time when the session started.\n  - `start_kwh` (number): The amount of energy at the start of the session.\n  - `stop_kwh` (number): The amount of energy at the end of the session.\n  - `token` (object): Details of the token used for the session.\n    - `token_id` (string): The identifier for the token.\n    - `type` (string): The type of the token.\n    - `contract_id` (string): The identifier for the contract associated with the token.\n  - `auth_method` (string): The method of authentication for the session.\n  - `authorization_reference` (string): The reference for the authorization of the session.\n  - `location_id` (string): The identifier for the location of the charge point.\n  - `evse_uid` (string): The unique identifier for the EVSE.\n  - `connector_id` (string): The identifier for the connector.\n  - `currency` (string): The currency used for billing.\n  - `status` (string): The status of the session.\n  - `last_updated` (string): The date and time when the session was last updated.\n\nAfter a successful request, save the `session_id` in the environment as a variable named `sessionId`.\n\n"
+							},
+							"response": []
+						},
+						{
+							"name": "Stop Transaction",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status code is 200\", function () {",
+											"  pm.expect(pm.response.code).to.equal(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Response time is less than 200ms\", function () {",
+											"  pm.expect(pm.response.responseTime).to.be.below(200);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Validate the structure of the session object\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData.session).to.exist.and.to.be.an('object');",
+											"    ",
+											"    pm.expect(responseData.session.session_id).to.exist;",
+											"    pm.expect(responseData.session.start_date_time).to.exist;",
+											"    pm.expect(responseData.session.token).to.exist.and.to.be.an('object');",
+											"    pm.expect(responseData.session.location_id).to.exist;",
+											"    pm.expect(responseData.session.currency).to.exist;",
+											"});",
+											"",
+											"",
+											"pm.test(\"Start_kwh and stop_kwh are non-negative numbers\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.start_kwh).to.be.a('number').and.to.be.at.least(0);",
+											"    pm.expect(responseData.stop_kwh).to.be.a('number').and.to.be.at.least(0);",
+											"});",
+											"",
+											"",
+											"pm.test(\"Token object structure is valid\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData.token).to.be.an('object');",
+											"    pm.expect(responseData.token.token_id).to.exist;",
+											"    pm.expect(responseData.token.type).to.exist;",
+											"    pm.expect(responseData.token.contract_id).to.exist;",
+											"});",
+											"",
+											"pm.environment.unset(\"{{SESSION_ID}}\")"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"session_id\": \"{{SESSION_ID}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{HOST}}/api/cpo/v2/chargepoint/stop_transaction/",
+									"host": [
+										"{{HOST}}"
+									],
+									"path": [
+										"api",
+										"cpo",
+										"v2",
+										"chargepoint",
+										"stop_transaction",
+										""
+									]
+								},
+								"description": "\n# Chargepoint Start Transaction\n\nThis endpoint is used to start a transaction for a charge point.\n\n## Request Body\n- `evse_uid` (string): The unique identifier for the EVSE.\n- `connector_id` (string): The identifier for the connector.\n- `token_id` (string): The identifier for the token.\n\n## Response\n- `status_text` (string): The status of the transaction.\n- `session` (object): Details of the session.\n  - `session_id` (string): The unique identifier for the session.\n  - `billed_to` (string): The entity to be billed for the session.\n  - `start_date_time` (string): The date and time when the session started.\n  - `start_kwh` (number): The amount of energy at the start of the session.\n  - `stop_kwh` (number): The amount of energy at the end of the session.\n  - `token` (object): Details of the token used for the session.\n    - `token_id` (string): The identifier for the token.\n    - `type` (string): The type of the token.\n    - `contract_id` (string): The identifier for the contract associated with the token.\n  - `auth_method` (string): The method of authentication for the session.\n  - `authorization_reference` (string): The reference for the authorization of the session.\n  - `location_id` (string): The identifier for the location of the charge point.\n  - `evse_uid` (string): The unique identifier for the EVSE.\n  - `connector_id` (string): The identifier for the connector.\n  - `currency` (string): The currency used for billing.\n  - `status` (string): The status of the session.\n  - `last_updated` (string): The date and time when the session was last updated.\n\nAfter a successful request, save the `session_id` in the environment as a variable named `sessionId`.\n\n"
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "username",
+				"value": "{{USERNAME}}",
+				"type": "string"
+			},
+			{
+				"key": "password",
+				"value": "{{PASSWORD}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "SESSION_UID",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
