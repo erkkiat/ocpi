@@ -12,6 +12,11 @@ from pprint import pprint
 from django.http import JsonResponse
 from rest_framework import status
 
+# Prometheus
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from django.http import HttpResponse
+from prometheus_client import Histogram
+
 from ocpi22.ocpi.auth import OCPIPermission, check_auth_token
 from ocpi22.ocpi.util import format_ocpi_response
 from ocpi22.ocpi.util_party import get_sender_party, get_to_party
