@@ -339,7 +339,8 @@ class HashableDict(dict):
     """
 
     def __hash__(self):
-        return hash(tuple(sorted(super().items())))
+        # ic(super().items())
+        return hash(tuple(sorted(make_hashable(super().items()))))
 
     def __setitem__(self, key, value):
         raise RuntimeError('HashableDict is immutable')
@@ -474,3 +475,11 @@ def datetime_to_date(d: Union[date, datetime]) -> date:
     if isinstance(d, (datetime, python_datetime)):
         return d.date()
     return d
+
+
+def make_hashable(x):
+    if isinstance(x, dict):
+        return HashableDict(x)
+    if isinstance(x, Iterable) and not isinstance(x, (tuple, str)):
+        return tuple([make_hashable(v) for v in x])
+    return x
