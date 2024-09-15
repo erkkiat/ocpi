@@ -369,6 +369,8 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'ocpi22.middleware.UserActivityMiddleware',
+    'ocpi22.middleware.ProfilerMiddleware',
+    'silk.middleware.SilkyMiddleware',
 ]
 
 if PROMETHEUS:
@@ -376,6 +378,20 @@ if PROMETHEUS:
 
 if 'MOESIF_APPLICATION_ID' in os.environ:
     MIDDLEWARE.append('moesifdjango.middleware.moesif_middleware')
+
+# Silk settings
+
+SILKY_MAX_REQUEST_BODY_SIZE = -1  # Silk logs request body regardless of size
+SILKY_MAX_RESPONSE_BODY_SIZE = -1  # Silk logs response body regardless of size
+SILKY_META = True  # Silk will log request and response meta
+SILKY_PYTHON_PROFILER = True
+
+# Adjust the number of requests Silk keeps before performing garbage collection
+SILKY_MAX_RECORDED_REQUESTS = 1000
+
+# Disable Silk in production
+if not DEBUG:
+    MIDDLEWARE = [mw for mw in MIDDLEWARE if 'silk.middleware.SilkyMiddleware' not in mw]
 
 if EXPIRES_ON:
     MIDDLEWARE.append('ocpi22.middleware.EnabledUntilMiddleware')
@@ -415,6 +431,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'gdpr_assist',
     'payment',
+    'silk',  # Todo: Disable silk in production
     'drf_yasg',
     'ninja_jwt',
     'ninja_extra',

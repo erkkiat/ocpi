@@ -15,6 +15,7 @@ from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import IsAdminUser
+from silk.profiling.profiler import silk_profile
 
 import ocpi22.logging as logging
 from typing import Union, Optional
@@ -744,6 +745,7 @@ class ChargePointViewSet(FlowchartViewSet):
 
     @action(methods=('GET', 'POST'), detail=False)
     @requires_premium
+    # @silk_profile(name='stop_transaction')
     def stop_transaction(self, request):
         """
         This call will end the OCPI Session. Call it after the cable has been disconnected from the vehicle.
