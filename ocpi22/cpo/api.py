@@ -1,5 +1,6 @@
 import json
 from datetime import time, date
+from decimal import Decimal
 from functools import reduce
 
 from django.urls import reverse_lazy
@@ -275,7 +276,7 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
 
         # with Timer() as t:
         # store_meter_values(request, session, serializer.validated_data)
-        session.update_charging_periods(kwh - session.start_kwh, soc, power, timestamp)
+        session.update_charging_periods(Decimal(kwh) - session.start_kwh, soc, power, timestamp)
         # logging.info(f'Meter values stored and fetched in {float(t):.2f} seconds', request)
 
         session.calculate_price()
