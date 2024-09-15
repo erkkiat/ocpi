@@ -16,7 +16,8 @@ from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.test_data import CredentialsData
 from ocpi22.tests import faketime, BetterTestCase
 from ocpiconnector.ocpi_identities import Party
-from ocpiconnector.testutil import OCPIAPIRequestFactory, simulate_surrounding_world, FakeResponse
+from ocpiconnector.testutil import OCPIAPIRequestFactory, simulate_surrounding_world, FakeResponse, \
+    compare_dicts_recursively
 from util import reverse
 
 api_factory = OCPIAPIRequestFactory()
@@ -73,7 +74,7 @@ class CredentialsTests(BetterTestCase):
 
         serializer = CredentialsSerializer(data=result.data.get('data'))
         self.assertTrue(serializer.is_valid(), f'Credentials POST response should be valid: {serializer.errors}')
-        self.assertDictEqual(result.data, CredentialsData.credentials_post_response)
+        self.assertTrue(compare_dicts_recursively(result.data, CredentialsData.credentials_post_response))
 
         self.assertEqual(result.status_code, status.HTTP_201_CREATED,
                          'Credentials should be POSTable using token_a')

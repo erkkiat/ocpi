@@ -128,6 +128,7 @@ class TestQuickLocations(TestCase):
                                                   ('max_voltage', 233),
                                                   ('max_amperage', 32),
                                                   ('max_electric_power', 22200),
+                                                  ('last_updated', '2022-01-01T12:00:00Z'),
                                                   ('tariff_ids', ['EKI1'])])]),
                                    ('last_updated', '2022-01-01T12:00:00Z')]),
                       OrderedDict([('uid', '2'),
@@ -135,6 +136,7 @@ class TestQuickLocations(TestCase):
                                     [OrderedDict([('uid', '1'),
                                                   ('standard', 'IEC_62196_T2'),
                                                   ('format', 'SOCKET'),
+                                                  ('last_updated', '2022-01-01T12:00:00Z'),
                                                   ('max_voltage', 232),
                                                   ('max_amperage', 32)])]),
                                    ('last_updated', '2022-01-01T12:00:00Z')]),
@@ -143,6 +145,7 @@ class TestQuickLocations(TestCase):
                                     [OrderedDict([('uid', '1'),
                                                   ('standard', 'IEC_62196_T2'),
                                                   ('format', 'CABLE'),
+                                                  ('last_updated', '2022-01-01T12:00:00Z'),
                                                   ('max_voltage', 233),
                                                   ('max_amperage', 32),
                                                   ('tariff_ids', ['DC50'])])]),
@@ -177,17 +180,20 @@ class TestQuickLocations(TestCase):
                     OrderedDict([('uid', '1'),
                                  ('connectors', [OrderedDict(
                                      [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'),
+                                      ('last_updated', '2022-01-01T12:00:00Z'),
                                       ('max_voltage', 233),
                                       ('max_amperage', 32), ('max_electric_power', 11000),
                                       ('tariff_ids', ['DC50'])])]),
                                  ('last_updated', '2022-06-19T12:13:14Z')]),
                     OrderedDict(
                         [('uid', '2'), ('connectors', [OrderedDict(
-                            [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 232),
+                            [('uid', '1'), ('last_updated', '2022-01-01T12:00:00Z'),
+                             ('standard', 'IEC_62196_T2'), ('format', 'SOCKET'), ('max_voltage', 232),
                              ('max_amperage', 32)])]),
                          ('last_updated', '2022-01-01T12:00:00Z')]),
                     OrderedDict([('uid', '12321'), ('connectors', [OrderedDict(
-                        [('uid', '1'), ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
+                        [('uid', '1'), ('last_updated', '2022-01-01T12:00:00Z'),
+                         ('standard', 'IEC_62196_T2'), ('format', 'CABLE'), ('max_voltage', 233),
                          ('max_amperage', 32), ('tariff_ids', ['DC50'])])]),
                                  ('last_updated', '2022-01-01T12:00:00Z')])
                 ]
@@ -285,8 +291,8 @@ class TestQuickLocations(TestCase):
                     response = put(data, reverse('quick-tariff-list'), TariffQuickViewSet)
                 self.assertEqual(response.status_code, case.get('status', status.HTTP_200_OK),
                                  'Quick Tariff creation/update response status differs from expected')
-                self.assertDictEqual(response.data, case.get('expected_result', data),
-                                     'Quick Tariff creation/update response data differs from expected')
+                self.assertTrue(compare_dicts_recursively(response.data, case.get('expected_result', data)),
+                                'Quick Tariff creation/update response data differs from expected')
 
         # The below needs some work
         # response = get(reverse('quick-tariff-list'), TariffQuickViewSet)
