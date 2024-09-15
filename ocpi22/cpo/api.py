@@ -1,4 +1,3 @@
-import dataclasses
 import json
 from datetime import time, date
 from functools import reduce
@@ -339,18 +338,6 @@ def process_meter_values(request, serializer, kwh, power=None, soc=None, session
         )
 
 
-session_key = 'session:{session.uid}'
-
-# We should use Redis append-only lists for storing the meter values
-# def store_meter_values(_request, session, data):
-#     data.pop('session', None)
-#     if 'timestamp' not in data:
-#         data['timestamp'] = datetime.now(pytz.utc)
-#     key = session_key.format(session=session)
-#     assert 'timestamp' in data
-#     redis_store.rpush(key, json.dumps(data, default=str))
-
-
 class MeterValuesStorageSerializer(MeterValuesSerializer):
     session_id = None
     internal_reference = None
@@ -509,6 +496,8 @@ class ChargePointViewSet(FlowchartViewSet):
                         token = AdhocToken(uid=token, valid=True, billed_to=authorization.get_token_party(),
                                            type=authorization.token.get('type', ''))
 
+                    session = None
+
                     if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
                         token_admin = reverse('admin:ocpi22_token_changelist')
                         messages.error(request, f'The response was "{authorization.allowed}" for the Token "{token}".')
@@ -518,6 +507,11 @@ class ChargePointViewSet(FlowchartViewSet):
                                           'known Tokens in our database</a> or try one which an MSP has in their database.')
                                       )
                     else:
+                        session = create_session(  # credentials=authorization.ocpi_master.credentials,
+                                                 authorization_reference=authorization.authorization_reference,
+                                                 authorization_method=authorization.auth_method,
+                                                 billed_to=authorization.billed_to, token=token, status=Session.PENDING,
+                                                 evse_uid=evse.uid, connector_id=None, location_id=evse.location.pk,)
                         messages.success(request,
                                          mark_safe('Next, you can '
                                                    f'<a href="{next_url}">start the charging session</a>. '
@@ -531,6 +525,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         billed_to=authorization.billed_to,
                         authorization_reference=authorization.authorization_reference,
                         auth_method=authorization.auth_method,
+                        session=session.uid if session else None,
                     )
                     serializer = CPOAuthorizationResponseSerializer(instance=data)
                     return Response(serializer.data, status=authorization.get_http_status())
