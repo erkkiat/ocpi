@@ -145,7 +145,7 @@ def authorize_with_msps_sync(token: str, location: Location = None, parties: lis
                 token = serializer.validated_data.get('token', {})
                 return TokenAuthorization(**serializer.validated_data, responding_party=responding_party,
                                           auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-                                          billed_to=token.get('party', Party()))
+                                          billed_to=token.get('party', Party()), ocpi_master=...)
             else:
                 logging.error('Cannot create TokenAuthorization from response from '
                               f'{serializer.validated_data.get("responding_party", "N/A")}: {serializer.errors}')
