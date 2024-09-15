@@ -220,14 +220,14 @@ DATABASES.update(
 # DATABASE_ROUTERS = ['gdpr_assist.routers.EventLogRouter']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-if os.environ.get('_system_arch') == 'arm64':  # This is an M1 or M2 chip, need to hack mysql to work
-    print("*** Looks like this is an Apple M1/M2, let's hack the MySQL connection to work")
-    import pymysql
-
-    # Fake PyMySQL's version and install as MySQLdb
-    # https://adamj.eu/tech/2020/02/04/how-to-use-pymysql-with-django/
-    pymysql.version_info = (2, 2, 0, "final", 0)
-    pymysql.install_as_MySQLdb()
+# if os.environ.get('_system_arch') == 'arm64':  # This is an M1 or M2 chip, need to hack mysql to work
+#     print("*** Looks like this is an Apple M1/M2, let's hack the MySQL connection to work")
+#     import pymysql
+#
+#     # Fake PyMySQL's version and install as MySQLdb
+#     # https://adamj.eu/tech/2020/02/04/how-to-use-pymysql-with-django/
+#     pymysql.version_info = (2, 2, 0, "final", 0)
+#     pymysql.install_as_MySQLdb()
 
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
@@ -247,7 +247,6 @@ def hostname_variants(hostname):
         for x in ['herokuapp.com', 'ocpiconnector.com', 'roamingconnector.com', 'ocpiguide.com', 'chargerhub.eu',
                   'solidroam.com']
     ]
-
 
 ALLOWED_HOSTS = [
                     'localhost', '127.0.0.1', 'testserver.test',
@@ -422,13 +421,12 @@ INSTALLED_APPS = [
     'cars',
     'settlement',
     'django.contrib.admin',
-    # 'whitenoise',
+    'whitenoise',
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
     'nested_admin',
     # 'oauth2_provider',
-    'crispy_forms',
     'gdpr_assist',
     'payment',
     'silk',  # Todo: Disable silk in production
