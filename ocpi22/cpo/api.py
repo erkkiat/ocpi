@@ -419,8 +419,8 @@ class ChargePointViewSet(FlowchartViewSet):
 
                     evse.status = ocpi_status
                     evse.last_updated = datetime.now(pytz.utc)
-                    evse.location.update_last_updated()
-                    evse.save()
+                    # Todo: update Location
+                    evse.save(update_fields=['status', 'last_updated'])
 
                     # Todo: Do this periodically in the background instead
                     # if ocpi_status == Evse.AVAILABLE:
