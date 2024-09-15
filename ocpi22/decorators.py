@@ -86,9 +86,12 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
                 criteria = Q(country_code__iexact=country_code, party_id__iexact=party_id)
                 if roles:  # A specific role is required
                     criteria &= Q(role__in=roles)
-                if hasattr(request, 'credentials') and request.credentials:
-                    request.credentialsrole = request.credentials.roles.filter(criteria).first()
-                if not matching_operator(request, country_code, party_id):
+                credentials = getattr(request, 'credentials', None)
+                if not credentials:
+                    return OCPINotOwnerResponse()
+                request.credentialsrole = request.credentials.roles.filter(criteria).first()
+                if not request.credentials.is_hub and not matching_operator(request, country_code, party_id) \
+                        and not request.user.is_superuser:
                     return OCPINotOwnerResponse()
             if not hasattr(request, 'credentialsrole') or not request.credentialsrole:
                 return OCPIBadRequestResponse(
