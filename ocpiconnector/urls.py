@@ -122,6 +122,9 @@ if settings.PROMETHEUS:
         path('metrics/', PrometheusMiddleware.metrics_view)
     )
 
+if ocpi_platform.is_emsp:
+    urlpatterns.append(path('api/cpo/v3/token/', tokens_api.urls))
+
 if settings.SERVE_STATIC_FILES or settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()
 
