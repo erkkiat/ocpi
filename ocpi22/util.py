@@ -350,9 +350,9 @@ class ModelUtilMixin:
     def get_party(self) -> Party:
         """ Get the party from the OCPI object as a Party object, e.g. Party('FI', 'CPO') """
         try:
-            if hasattr(self, 'ocpi_master') and self.ocpi_master is not None:
+            if getattr(self, 'ocpi_master', None):
                 return self.ocpi_master.party
-            if hasattr(self, 'location') and self.location and self.location.ocpi_master:
+            if getattr(self, 'location', None) and self.location.ocpi_master:
                 return self.location.ocpi_master.party
         except ObjectDoesNotExist as e:
             print(f'get_party() failed for {self}: {e}')
