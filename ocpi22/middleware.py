@@ -12,11 +12,22 @@ from pprint import pprint
 from django.http import JsonResponse
 from rest_framework import status
 
+# Prometheus
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from django.http import HttpResponse
+from prometheus_client import Histogram
+
 from ocpi22.ocpi.auth import OCPIPermission, check_auth_token
 from ocpi22.ocpi.util import format_ocpi_response
 from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
+
+# For profiling
+import cProfile
+import pstats
+import io
+from django.utils.deprecation import MiddlewareMixin
 
 
 class OCPIHubMiddleware:
@@ -133,6 +144,22 @@ class ErrorLoggingMiddleware:
             raise
 
 
+class ProfilerMiddleware(MiddlewareMixin):
+    def process_request(self, request):
+        setattr(self, 'pr', cProfile.Profile())
+        self.pr.enable()
+
+    def process_response(self, request, response):
+        self.pr.disable()
+        self.pr.dump_stats('profile_output.prof')
+        # s = io.StringIO()
+        # sortby = pstats.SortKey.CUMULATIVE
+        # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
+        # ps.print_stats()
+        # print(s.getvalue())
+        return response
+
+
 class EnabledUntilMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -145,3 +172,23 @@ class EnabledUntilMiddleware:
             return render(request, 'expired.html', {'expires_on': settings.EXPIRES_ON})
         response = self.get_response(request)
         return response
+
+
+REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP Requests', ['method', 'endpoint', 'status_code'])
+REQUEST_LATENCY = Histogram('http_request_latency_seconds', 'HTTP request latency', ['method', 'endpoint'])
+
+
+class PrometheusMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        REQUEST_COUNT.labels(request.method, request.path, response.status_code).inc()
+        REQUEST_LATENCY.labels(request.method, request.path).observe(response.elapsed.total_seconds() if hasattr(response, 'elapsed') else 0)
+        return response
+
+    @staticmethod
+    def metrics_view(request):
+        metrics_page = generate_latest()
+        return HttpResponse(metrics_page, content_type=CONTENT_TYPE_LATEST)

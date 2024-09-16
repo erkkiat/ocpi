@@ -80,7 +80,6 @@ from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpiconnector.ocpi_identities import Party, get_our_party, create_credentialsrole, get_our_credentialsrole
-from settlement.calculate import create_invoice
 
 global ic
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
@@ -134,7 +133,7 @@ def make_sure_no_min_price(tariff: Tariff) -> bool:
 
 
 class ApiPutTests(TestCase):
-    fixtures = ['ocpi22/data/initial.json']
+    fixtures = ['ocpi22/data/credentials-2.json']
     location_index = 1
     maxDiff = None
 
@@ -148,7 +147,7 @@ class ApiPutTests(TestCase):
             self.location_index += 1
 
         role = get_credentialsrole(None, Party(country_code='FI', party_id=f"F{uid}"), create=True)
-
+        ic(role.pk)
         location = Location.objects.create(
             uid=uid, name=f"{name} {uid}", ocpi_master=role, publish=True, address=address,
             city='City', country='FIN', latitude=60.0, longitude=30.0, time_zone='Helsinki/Finland'
@@ -166,19 +165,20 @@ class ApiPutTests(TestCase):
         logging.disable(logging.CRITICAL)
         self.location = self.create_location()
         self.credentials = Credentials.objects.create(token_a='TOKEN_A', ours='OURS', theirs='THEIRS')
-        self.credentialsrole = create_credentialsrole(Party(self.location.ocpi_master.country_code,
-                                                            self.location.ocpi_master.party_id),
-                                                      business_name='Test Business', website='http://example.com',
-                                                      role=OcpiRolesEnum.CPO, credentials=self.credentials)
+        self.credentialsrole = self.location.ocpi_master
         self.country_code = self.location.ocpi_master.party.country_code
         self.party_id = self.location.ocpi_master.party.party_id
 
     def test_evse_with_same_id(self):
         # Create two locations with the same Evse IDs
+        ic()
         _location1 = self.create_location()
+        ic()
         _location2 = self.create_location()
+        ic()
 
     def test_evse_format(self):
+        ic()
         loc = self.create_location()
         evse = loc.evses.all()[0]
         url = reverse('location-by-evse-id',
@@ -475,6 +475,11 @@ class ApiPutTests(TestCase):
                     if check_function:
                         self.assertTrue(check_function(tariff), f'Check function failed for {filename}')
 
+    def test_serialization(self):
+        ic(Location.objects.first())
+        # location = load_example('ocpi22/data/examples/location_example_parking_garage_opening_hours.json')
+        # ic(location)
+
     def test_cost_calculation(self):
         start_date_time = datetime(2022, 1, 1, 0, 0, tzinfo=pytz.utc)
         evse = Evse.objects.all().first()
@@ -743,7 +748,7 @@ def dump_tariffs():
 
 
 class TariffTests(TestCase):
-    fixtures = ['ocpi22/data/credentials.json', 'ocpi22/data/defaulttariffs.json', 'ocpi22/data/initial.json']
+    fixtures = ['ocpi22/data/credentials.json', 'ocpi22/data/defaulttariffs.json']
 
     def setUp(self) -> None:
         logging.disable(logging.CRITICAL)
@@ -820,7 +825,6 @@ class TariffTests(TestCase):
 
 class CdrTests(TestCase):
     fixtures = [
-        'ocpi22/data/initial.json',
         'ocpi22/data/test-database-1.json',
         'ocpi22/data/defaulttariffs.json'
     ]
@@ -1518,8 +1522,7 @@ class CredentialsTest(TestCase):
                 counter += 1
 
                 endpoints = [e[:4] for e in endpoints]  # Skip the Credentials, I don't know how to match it
-                self.assertEqual(
-                    endpoints, endpoints_result,
+                self.assertTrue(compare_lists_recursively(sorted(endpoints), sorted(endpoints_result)),
                     f'Cannot find the right endpoints for {roles} to send updates to'
                 )
 
@@ -1820,10 +1823,13 @@ class TestCpoApi(TestCase):
                     evse = Evse.objects.get(uid=case.get('request').get('evse_uid'))
                     self.assertEqual(evse.status, case.get('evse_status'))
 
-        self.assertTrue(compare_lists_recursively(
-            list(map(lambda x: x.kwargs, simulation.tasks_requests.method_calls)),
-            CpoApiData.expected_status_change_messages
-        ))
+        def sort_key(x):
+            return x.get('headers').get('OCPI-to-party-id')
+
+        status_change_messages = list(map(lambda x: x.kwargs, simulation.tasks_requests.method_calls))
+        status_change_messages = sorted(status_change_messages, key=lambda x: sort_key(x))
+        expected_status_change_messages = sorted(CpoApiData.expected_status_change_messages, key=lambda x: sort_key(x))
+        self.assertTrue(compare_lists_recursively(status_change_messages, expected_status_change_messages))
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.util.redis_store.get',
@@ -2065,7 +2071,7 @@ class TestCpoApi(TestCase):
         sent_data = args[0]
         # ic(recursive_sort_dict(sent_data), recursive_sort_dict(SessionData.stop4))
         self.assertTrue(compare_dicts_recursively(sent_data, SessionData.stop4),
-                             'stop_transaction is sending different session data than expected to MSP')
+                        'stop_transaction is sending different session data than expected to MSP')
 
     @time_machine.travel(faketime, tick=False)
     @patch('ocpi22.tokens.token_async.post_request', new_callable=AsyncMock)

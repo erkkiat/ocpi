@@ -11,7 +11,6 @@ from django.utils.html import format_html
 import util
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
-from ocpi22.grafana import metrics
 from ocpi22.models import enum
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
@@ -294,12 +293,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         cdr.tariffs.set(cdr_tariffs)
 
         cdr.send_update_to_interested_parties(method='POST')
-
-        try:
-            metrics('charging.total_power', session.kwh)
-            metrics('charging.total_cost_excluding_vat', session.total_cost_excl_vat)
-        except Exception as e:
-            logging.error(f'Unable to record metrics: {e}')
 
         return cdr
 

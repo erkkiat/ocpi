@@ -24,6 +24,7 @@ default_error_messages = dict(
     object_missing='There is no {name} with UID `{uid}` in our database',
     no_connector_in_evse='There is no connector with UID `{uid}` in EVSE `{evse}`.',
     location_evse_missing='There is no EVSE with UID `{evse}` in location `{location}`.',
+    evse_owner_missing='There is no EVSE with UID `{evse}` owned by `{ocpi_master}`.',
 )
 
 
@@ -339,7 +340,8 @@ class HashableDict(dict):
     """
 
     def __hash__(self):
-        return hash(tuple(sorted(super().items())))
+        # ic(super().items())
+        return hash(tuple(sorted(make_hashable(super().items()))))
 
     def __setitem__(self, key, value):
         raise RuntimeError('HashableDict is immutable')
@@ -474,3 +476,11 @@ def datetime_to_date(d: Union[date, datetime]) -> date:
     if isinstance(d, (datetime, python_datetime)):
         return d.date()
     return d
+
+
+def make_hashable(x):
+    if isinstance(x, dict):
+        return HashableDict(x)
+    if isinstance(x, Iterable) and not isinstance(x, (tuple, str)):
+        return tuple([make_hashable(v) for v in x])
+    return x

@@ -28,6 +28,9 @@ client = Client()
 
 
 def compare_lists_recursively(received, expected, path='', label1='received', label2='expected', swapped=False) -> bool:
+    # received = sorted(received, key=lambda x: hash(make_hashable(x))) if isinstance(received, list) else received
+    # expected = sorted(expected, key=lambda x: hash(make_hashable(x))) if isinstance(expected, list) else expected
+
     assert isinstance(received, (list, tuple)) and isinstance(expected, (list, tuple)), \
         f'Not expecting {type(received)=} {type(expected)=} {received=} {expected=}'
     result = True

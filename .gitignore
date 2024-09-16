@@ -6,3 +6,5 @@ terraform.tfstate
 terraform.tfstate.backup
 env.sh
 .env*
+prometheus/data/*
+prometheus/alertmanager/data/*

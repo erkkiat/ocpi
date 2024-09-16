@@ -352,10 +352,9 @@ def send_simulated_cpo_response(session, response_url):
     username = 'simulator'
     password = 'simulator'
     from django.contrib.auth.models import User
-    user = User.objects.get(username=username)
-    if user:
-        print(f'{user.pk=}, {user.username=}')
-    else:
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
         print(f'Creating user {username}...')
         user = User.objects.create_superuser(username=username)
     user.set_password(password)

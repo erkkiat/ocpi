@@ -95,6 +95,7 @@ class OcpiModule:
         To disable updates, set env SEND_UPDATES to false
         """
         if not getattr(self, 'updates_sent', None):
+            # The URL for this specific location has URL parameters, for example .../BE/SMP/1234
             path_components = path_components or [self.ocpi_master.country_code, self.ocpi_master.party_id, self.uid]
 
             if settings.SEND_UPDATES and settings.PREMIUM:
@@ -206,7 +207,7 @@ class OcpiModule:
                 log_error(None,
                           f'Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties')
                 return
-            self.send_subscriber_updates(*args, **kwargs)
+            # self.send_subscriber_updates(*args, **kwargs)  # This was used by a Dutch startup, no longer a customer
             to = self.billed_to.party
             return self.route_single_update_message(to=to, method=method, **kwargs)
         else:

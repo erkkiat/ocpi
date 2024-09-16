@@ -100,6 +100,7 @@ OCPI_221_URL = '/ocpi/2.2.1/'
 VERSION_URLS = {OCPI_22_URL, OCPI_221_URL}
 VERSIONS = {'2.2', '2.2.1'}
 
+PROMETHEUS = _env_bool('PROMETHEUS', False)
 # How often to check that other party is alive
 STILL_ALIVE_FREQUENCY = os.environ.get('STILL_ALIVE_FREQUENCY', 60 * 5)
 
@@ -219,14 +220,14 @@ DATABASES.update(
 # DATABASE_ROUTERS = ['gdpr_assist.routers.EventLogRouter']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-if os.environ.get('_system_arch') == 'arm64':  # This is an M1 or M2 chip, need to hack mysql to work
-    print("*** Looks like this is an Apple M1/M2, let's hack the MySQL connection to work")
-    import pymysql
-
-    # Fake PyMySQL's version and install as MySQLdb
-    # https://adamj.eu/tech/2020/02/04/how-to-use-pymysql-with-django/
-    pymysql.version_info = (2, 2, 0, "final", 0)
-    pymysql.install_as_MySQLdb()
+# if os.environ.get('_system_arch') == 'arm64':  # This is an M1 or M2 chip, need to hack mysql to work
+#     print("*** Looks like this is an Apple M1/M2, let's hack the MySQL connection to work")
+#     import pymysql
+#
+#     # Fake PyMySQL's version and install as MySQLdb
+#     # https://adamj.eu/tech/2020/02/04/how-to-use-pymysql-with-django/
+#     pymysql.version_info = (2, 2, 0, "final", 0)
+#     pymysql.install_as_MySQLdb()
 
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
@@ -246,7 +247,6 @@ def hostname_variants(hostname):
         for x in ['herokuapp.com', 'ocpiconnector.com', 'roamingconnector.com', 'ocpiguide.com', 'chargerhub.eu',
                   'solidroam.com']
     ]
-
 
 ALLOWED_HOSTS = [
                     'localhost', '127.0.0.1', 'testserver.test',
@@ -368,10 +368,29 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'ocpi22.middleware.UserActivityMiddleware',
+    'ocpi22.middleware.ProfilerMiddleware',
+    'silk.middleware.SilkyMiddleware',
 ]
+
+if PROMETHEUS:
+    MIDDLEWARE.append('prometheus_metrics.middleware.PrometheusBeforeMiddleware')
 
 if 'MOESIF_APPLICATION_ID' in os.environ:
     MIDDLEWARE.append('moesifdjango.middleware.moesif_middleware')
+
+# Silk settings
+
+SILKY_MAX_REQUEST_BODY_SIZE = -1  # Silk logs request body regardless of size
+SILKY_MAX_RESPONSE_BODY_SIZE = -1  # Silk logs response body regardless of size
+SILKY_META = True  # Silk will log request and response meta
+SILKY_PYTHON_PROFILER = True
+
+# Adjust the number of requests Silk keeps before performing garbage collection
+SILKY_MAX_RECORDED_REQUESTS = 1000
+
+# Disable Silk in production
+if not DEBUG:
+    MIDDLEWARE = [mw for mw in MIDDLEWARE if 'silk.middleware.SilkyMiddleware' not in mw]
 
 if EXPIRES_ON:
     MIDDLEWARE.append('ocpi22.middleware.EnabledUntilMiddleware')
@@ -402,15 +421,15 @@ INSTALLED_APPS = [
     'cars',
     'settlement',
     'django.contrib.admin',
-    # 'whitenoise',
+    'whitenoise',
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
     'nested_admin',
     # 'oauth2_provider',
-    'crispy_forms',
     'gdpr_assist',
     'payment',
+    'silk',  # Todo: Disable silk in production
     'drf_yasg',
     'ninja_jwt',
     'ninja_extra',

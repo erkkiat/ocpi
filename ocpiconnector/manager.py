@@ -60,6 +60,9 @@ parther_manager_cache = TTLCache(maxsize=100, ttl=300)
 
 
 class PartnerManager(models.Manager):
+    """
+    This is a custom manager used by the OCPI objects
+    """
     def get_queryset(self):
         return PartnerQuerySet(self.model, using=self._db)
 
