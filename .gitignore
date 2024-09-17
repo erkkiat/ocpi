@@ -8,3 +8,4 @@ env.sh
 .env*
 prometheus/data/*
 prometheus/alertmanager/data/*
+.idea
