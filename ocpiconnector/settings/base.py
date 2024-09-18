@@ -62,8 +62,6 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Allow more than 1000 fields in POST req
 TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get("SECRET_KEY")
-if not SECRET_KEY and DEBUG:
-    SECRET_KEY = "1234567890"
 assert SECRET_KEY, "Please set a SECRET_KEY in environment"
 SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT")
 TWILIO_API_KEY = os.environ.get("TWILIO_API_KEY")
