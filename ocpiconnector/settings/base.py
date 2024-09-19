@@ -11,10 +11,13 @@ from django.utils.translation import gettext_lazy as _
 # Install icecream globally, no need for local imports
 from icecream import install, ic
 
+from dotenv import load_dotenv
+
+load_dotenv()  # let's move to django-environ later on
+
 install()
 
 ic.configureOutput(includeContext=True)
-# ic.disable()
 
 TRUE_OPTIONS = (1, "1", True, "True", "true")
 
