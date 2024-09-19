@@ -107,6 +107,9 @@ STILL_ALIVE_FREQUENCY = os.environ.get('STILL_ALIVE_FREQUENCY', 60 * 5)
 # How long can a charger be reserved
 MAXIMUM_RESERVATION = os.environ.get('MAXIMUM_RESERVATION', 60 * 30)
 
+# Hotline phone number of Smappee
+HOTLINE = os.environ.get('HOTLINE', '+3292771111')
+
 # Send updates asynchronously using Celery
 BACKGROUND_SEND = _env_bool('BACKGROUND_SEND', True)
 
