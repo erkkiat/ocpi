@@ -9,8 +9,6 @@ from ocpi22 import choices
 from ocpi22.choices import ROLE_OPTIONS, OcpiRolesEnum
 from django.conf import settings
 
-from ocpi22.models.credentials import CredentialsRole
-
 
 @dataclass(eq=True, frozen=True)
 class Party:
@@ -222,7 +220,7 @@ def create_credentialsrole(
     role=OcpiRolesEnum.UNKNO,
     credentials=None,
     pk=None,
-) -> Optional["CredentialsRole"]:
+) -> Optional["CredentialsRole"]:  # noqa: F821
     """
     Create a CredentialsRole object for the given party, business name, website and role.
     Use only for creating our own CredentialsRole objects. If you use this for other parties, they will not have
@@ -250,11 +248,15 @@ def create_credentialsrole(
 
 
 @cached(cache=cachetools.Cache(maxsize=len(ROLE_OPTIONS)))
-def get_our_credentialsrole(role: OcpiRolesEnum) -> "CredentialsRole":
+def get_our_credentialsrole(
+    role: OcpiRolesEnum,
+) -> "CredentialsRole":  # noqa: F821
     """
     Get the CredentialsRole object which corresponds to our OCPI roles set in environment variables,
     creating it if necessary
     """
+    from ocpi22.models.credentials import CredentialsRole
+
     our_party = get_our_party(role)
     try:
         return CredentialsRole.objects.get(
