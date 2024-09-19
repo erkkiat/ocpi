@@ -5,7 +5,7 @@ version.txt
 terraform.tfstate
 terraform.tfstate.backup
 env.sh
-.env*
+.env
 prometheus/data/*
 prometheus/alertmanager/data/*
 .idea
