@@ -498,6 +498,7 @@ class ChargingFacility(BaseModel):
     Power: conint(ge=0, le=999) = Field(
         ..., description='Charging Facility power in kW'
     )
+    # todo: get this information from smappee
     ChargingModes: Optional[List[ChargingMode]] = Field(
         None, description='List of charging modes that are supported.'
     )
