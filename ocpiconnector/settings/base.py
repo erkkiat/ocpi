@@ -13,7 +13,9 @@ from icecream import install, ic
 
 from dotenv import load_dotenv
 
-load_dotenv()  # let's move to django-environ later on
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(env_path)  # let's move to django-environ later on
 
 install()
 
