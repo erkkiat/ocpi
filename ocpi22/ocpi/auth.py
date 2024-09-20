@@ -20,7 +20,6 @@ from ocpiconnector.ocpi_identities import Party, create_credentialsrole, ocpi_id
 from util import reverse
 
 from ocpi22.models.credentials import Credentials, CredentialsRole
-from ocpiconnector.settings import PUBLIC_VIEWS
 
 
 class OcpiAuthTypes(Enum):
@@ -32,7 +31,7 @@ class OcpiAuthTypes(Enum):
         return self.value == other or self is other
 
 
-@ttl_cache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=2*60*60)  # 2 hours
+@ttl_cache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=2 * 60 * 60)  # 2 hours
 def find_credentials(token_ascii: str) -> Optional[Credentials]:
     try:
         return Credentials.objects.filter(ours__iexact=token_ascii, valid=True).first()
@@ -46,13 +45,15 @@ def check_auth_token(request, token: str) -> bool:
     def allowed_for_token_a():
         # ('/ocpi/versions/', '/ocpi/2.2/credentials/', '/ocpi/2.2.1/credentials/', '/ocpi/2.2/', '/ocpi/2.2.1/', '/')
         result = {
-            reverse('base-versions'),  # The "Versions" endpoint
+            reverse("base-versions"),  # The "Versions" endpoint
             # reverse('credentials-list', args=['2.2']),  # Getting the Credentials
             # reverse('credentials-list', args=['2.2.1']),  # Getting the Credentials
-            '/',  # The front page, which serves as HTML page and versions endpoint
+            "/",  # The front page, which serves as HTML page and versions endpoint
         }
         result.update(settings.VERSION_URLS)
-        result.update(reverse('credentials-list', args=[version]) for version in settings.VERSIONS)
+        result.update(
+            reverse("credentials-list", args=[version]) for version in settings.VERSIONS
+        )
         return result
 
     # Only certain endpoints can be accessed using TOKEN_A during the credentials exchange
@@ -61,15 +62,19 @@ def check_auth_token(request, token: str) -> bool:
         request.ocpi_party = None
         if not token:
             return False
-        token_ascii = base64.b64decode(token).decode('ascii')
-        credentials = find_credentials(token_ascii)  # This is the typical case, that's why it's a cached function
+        token_ascii = base64.b64decode(token).decode("ascii")
+        credentials = find_credentials(
+            token_ascii
+        )  # This is the typical case, that's why it's a cached function
         if credentials:
             request.credentials = credentials
         else:
             request.registering_credentials = request.path in allowed_for_token_a()
 
             # First check for TOKEN_A, are we still getting to know each other?
-            credentials_matches = Credentials.objects.filter(token_a=token_ascii, valid=True)
+            credentials_matches = Credentials.objects.filter(
+                token_a=token_ascii, valid=True
+            )
             if credentials_matches.exists():
                 if not request.registering_credentials:
                     raise exceptions.NotAuthenticated(  # HTTP 401
@@ -84,7 +89,8 @@ def check_auth_token(request, token: str) -> bool:
             else:
                 raise NotAuthenticated(  # HTTP 401
                     f'The token "{token}" (ascii {token_ascii}) doesn\'t match any of our current credentials'
-                    if settings.DEBUG else ''
+                    if settings.DEBUG
+                    else ""
                 )
 
         sender_party = get_sender_party(request.headers)
@@ -96,24 +102,37 @@ def check_auth_token(request, token: str) -> bool:
             )
         else:
             # Make sure we know if the credentials is being registered or not
-            request.registering_credentials = getattr(request, 'registering_credentials', None)\
-                                              or request.path in allowed_for_token_a()
-            request.ocpi_party = get_credentialsrole(request.credentials, party=sender_party)
+            request.registering_credentials = (
+                getattr(request, "registering_credentials", None)
+                or request.path in allowed_for_token_a()
+            )
+            request.ocpi_party = get_credentialsrole(
+                request.credentials, party=sender_party
+            )
             if not request.ocpi_party and not request.registering_credentials:
                 request.credentials = None
-                raise NotAuthenticated(f'Sender party {sender_party} is not allowed for these credentials')
+                raise NotAuthenticated(
+                    f"Sender party {sender_party} is not allowed for these credentials"
+                )
 
         return True
 
     except (binascii.Error, UnicodeDecodeError) as e:
-        raise NotAuthenticated(f'Authentication token: {e}')
+        raise NotAuthenticated(f"Authentication token: {e}")
 
 
-@cached(cache=TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24*60*60),
-        key=lambda credentials=None, party=None, create=False, role=None:
-            hashkey(credentials.pk if credentials else None, party, role))  # Ignore the create flag
-def get_credentialsrole(credentials: Optional[Credentials] = None, party: Party = None,
-                        create=False, role=None) -> Optional[CredentialsRole]:
+@cached(
+    cache=TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24 * 60 * 60),
+    key=lambda credentials=None, party=None, create=False, role=None: hashkey(
+        credentials.pk if credentials else None, party, role
+    ),
+)  # Ignore the create flag
+def get_credentialsrole(
+    credentials: Optional[Credentials] = None,
+    party: Party = None,
+    create=False,
+    role=None,
+) -> Optional[CredentialsRole]:
     """
     Find the CredentialsRole for the given party and credentials
     If we received a message through a hub, we may not know the sender yet, so we need to create a CredentialsRole to
@@ -125,23 +144,32 @@ def get_credentialsrole(credentials: Optional[Credentials] = None, party: Party 
     @param create: Should we create the CredentialsRole if it doesn't exist yet?
     @return: The selected or created CredentialsRole
     """
+
     def create_it():
-        business_name = 'N/A'
-        website = ''
+        business_name = "N/A"
+        website = ""
         # Is this (one of) our identity?
         if str(party) in ocpi_identities:
-            business_name = os.environ.get('BUSINESS_NAME', 'N/A')
-            website = os.environ.get('BUSINESS_WEBSITE', '')
+            business_name = os.environ.get("BUSINESS_NAME", "N/A")
+            website = os.environ.get("BUSINESS_WEBSITE", "")
         credentialsrole = create_credentialsrole(
-            Party(country_code=party.country_code.upper(), party_id=party.party_id.upper()),
-            business_name=business_name, website=website, role=role or OcpiRolesEnum.OTHER, credentials=credentials
+            Party(
+                country_code=party.country_code.upper(), party_id=party.party_id.upper()
+            ),
+            business_name=business_name,
+            website=website,
+            role=role or OcpiRolesEnum.OTHER,
+            credentials=credentials,
         )
         return credentialsrole
 
     try:
-        query = credentials.roles.all() if credentials else CredentialsRole.objects.all()
-        result = query.filter(country_code__iexact=party.country_code,
-                            party_id__iexact=party.party_id).first()
+        query = (
+            credentials.roles.all() if credentials else CredentialsRole.objects.all()
+        )
+        result = query.filter(
+            country_code__iexact=party.country_code, party_id__iexact=party.party_id
+        ).first()
         return result or (create and create_it())
     except CredentialsRole.DoesNotExist:
         if create:
@@ -155,27 +183,28 @@ class OCPIPermission(DjangoModelPermissions):
     """
 
     perms_map = {
-        'GET': ['%(app_label)s.view_%(model_name)s'],
-        'OPTIONS': [],
-        'HEAD': [],
-        'POST': ['%(app_label)s.add_%(model_name)s'],
-        'PUT': ['%(app_label)s.change_%(model_name)s'],
-        'PATCH': ['%(app_label)s.change_%(model_name)s'],
-        'DELETE': ['%(app_label)s.delete_%(model_name)s'],
+        "GET": ["%(app_label)s.view_%(model_name)s"],
+        "OPTIONS": [],
+        "HEAD": [],
+        "POST": ["%(app_label)s.add_%(model_name)s"],
+        "PUT": ["%(app_label)s.change_%(model_name)s"],
+        "PATCH": ["%(app_label)s.change_%(model_name)s"],
+        "DELETE": ["%(app_label)s.delete_%(model_name)s"],
     }
 
     @staticmethod
     def get_token(request) -> str:
-        authorization = request.META.get('HTTP_AUTHORIZATION',
-                                         request.META.get('Authorization',
-                                                          request.GET.get('auth-test', '')))
+        authorization = request.META.get(
+            "HTTP_AUTHORIZATION",
+            request.META.get("Authorization", request.GET.get("auth-test", "")),
+        )
         if authorization.startswith("Token "):
             return authorization[6:]
-        return ''
+        return ""
 
     @cached_property
     def public_views(self):
-        return {reverse(i) for i in PUBLIC_VIEWS}
+        return {reverse(i) for i in settings.PUBLIC_VIEWS}
 
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
@@ -183,11 +212,15 @@ class OCPIPermission(DjangoModelPermissions):
         token = self.get_token(request)
 
         # Check for token authentication
-        if check_auth_token(request, token) and (request.registering_credentials or request.ocpi_party):
+        if check_auth_token(request, token) and (
+            request.registering_credentials or request.ocpi_party
+        ):
             return True
 
         # Check for basic authentication
-        if view and (hasattr(view, 'publicly_visible') or super().has_permission(request, view)):
+        if view and (
+            hasattr(view, "publicly_visible") or super().has_permission(request, view)
+        ):
             return True
 
         # Allow access to public views
@@ -195,5 +228,6 @@ class OCPIPermission(DjangoModelPermissions):
             return True
 
         from ocpi22 import logging
-        logging.warning(f'No valid authentication for {request.path} (token: {token})')
+
+        logging.warning(f"No valid authentication for {request.path} (token: {token})")
         raise exceptions.NotAuthenticated

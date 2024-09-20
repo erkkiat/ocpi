@@ -8,12 +8,11 @@ from django.utils.datetime_safe import datetime
 from rest_framework import status
 
 from ocpi22.choices import OcpiModuleEnum
-from ocpi22.messages import messages
 from util import RedisStore, reverse
-from ocpiconnector import settings
+from django.conf import settings
 
 certification_step_list = defaultdict(list)
-persistent_storage = RedisStore(namespace='certify')
+persistent_storage = RedisStore(namespace="certify")
 
 
 @dataclass
@@ -22,7 +21,7 @@ class CertificationStep:
     action: str  # The description
     customer_initiates: bool
     subtopic: str
-    view: str = field(default='')  # Used for getting the URL using reverse()
+    view: str = field(default="")  # Used for getting the URL using reverse()
     result_reported: bool = field(default=False)
     result: bool = field(default=None)
     passed_at: datetime = field(default=None)
@@ -30,8 +29,9 @@ class CertificationStep:
     def __bool__(self):
         return self.result_reported and self.result
 
-    def passed(self, reason='OK', result=True):
+    def passed(self, reason="OK", result=True):
         from ocpi22 import logging as logging
+
         logging.info(
             f'Certification step {self.topic} / {self.action} {"succeeded" if result else "failed"}: {reason}'
         )
@@ -40,12 +40,12 @@ class CertificationStep:
         self.passed_at = datetime.now(pytz.utc)
         self.store()
 
-    def failed(self, reason='No details available'):
+    def failed(self, reason="No details available"):
         self.passed(reason=reason, result=False)
 
     def store(self):
         global persistent_storage
-        fields = ('result_reported', 'result', 'passed_at')
+        fields = ("result_reported", "result", "passed_at")
         data = {x: getattr(self, x) for x in fields}
         persistent_storage[hash(self)] = data
 
@@ -55,25 +55,30 @@ class CertificationStep:
             data = persistent_storage[hash(self)]
             self.__dict__.update(data)
             if isinstance(self.passed_at, str):
-                self.passed_at = datetime.fromisoformat(data['passed_at'])
+                self.passed_at = datetime.fromisoformat(data["passed_at"])
         except KeyError:
             pass
 
     def __hash__(self):
-        key = f'{self.topic}{self.action}'
+        key = f"{self.topic}{self.action}"
         hexdata = hashlib.md5(str(key).encode()).hexdigest()
         return int(hexdata, 16)
 
     def url(self):
-        return reverse(self.view, version='2.2.1') if self.view else '#'
+        return reverse(self.view, version="2.2.1") if self.view else "#"
 
     @property
     def has_link(self) -> bool:
         return bool(self.view)
 
 
-def register_certification_step(topic, action: str,
-                                customer_initiates: bool = True, subtopic: str = None, view: str = None):
+def register_certification_step(
+    topic,
+    action: str,
+    customer_initiates: bool = True,
+    subtopic: str = None,
+    view: str = None,
+):
     """
     Register a certification step so that we can show the certification progress to the user
     """
@@ -87,7 +92,13 @@ def register_certification_step(topic, action: str,
     return step
 
 
-def certification_step(topic, action: str, customer_initiates: bool = True, subtopic: str = None, view: str = None):
+def certification_step(
+    topic,
+    action: str,
+    customer_initiates: bool = True,
+    subtopic: str = None,
+    view: str = None,
+):
     """
     Decorator which notes the response from each action
     so that we can track and show the certification progress to the user
@@ -95,7 +106,11 @@ def certification_step(topic, action: str, customer_initiates: bool = True, subt
 
     if settings.CERTIFICATION_MODE:
         step = register_certification_step(
-            topic, action, customer_initiates=customer_initiates, subtopic=subtopic, view=view
+            topic,
+            action,
+            customer_initiates=customer_initiates,
+            subtopic=subtopic,
+            view=view,
         )
     else:
         return lambda func: func
@@ -104,14 +119,17 @@ def certification_step(topic, action: str, customer_initiates: bool = True, subt
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            kwargs['certification'] = step
+            kwargs["certification"] = step
             ocpi_response = func(*args, **kwargs)
             if not settings.CERTIFICATION_MODE:
                 return ocpi_response
-            success = ocpi_response is True or \
-                getattr(ocpi_response, 'status_code', None) in {status.HTTP_200_OK, status.HTTP_201_CREATED}
+            success = ocpi_response is True or getattr(
+                ocpi_response, "status_code", None
+            ) in {status.HTTP_200_OK, status.HTTP_201_CREATED}
             step.passed(result=success)
             # Todo: Show recently passed steps as a chronological list on home page
             return ocpi_response
+
         return wrapper
+
     return decorator

@@ -7,27 +7,35 @@ from cachetools import cached
 
 from ocpi22 import choices
 from ocpi22.choices import ROLE_OPTIONS, OcpiRolesEnum
-from ocpiconnector import settings
+from django.conf import settings
 
 
 @dataclass(eq=True, frozen=True)
 class Party:
-    country_code: str = field(default='')
-    party_id: str = field(default='')
+    country_code: str = field(default="")
+    party_id: str = field(default="")
 
     def __post_init__(self):
-        if self.country_code and self.country_code.upper() not in choices.COUNTRIES_ISO_2_SET:
-            raise ValueError(f'Country code {self.country_code} is not a valid ISO 3166-1 alpha-2 code')
+        if (
+            self.country_code
+            and self.country_code.upper() not in choices.COUNTRIES_ISO_2_SET
+        ):
+            raise ValueError(
+                f"Country code {self.country_code} is not a valid ISO 3166-1 alpha-2 code"
+            )
 
     def __str__(self):
-        return f'{self.country_code}*{self.party_id}'
+        return f"{self.country_code}*{self.party_id}"
 
     def __bool__(self):
         return bool(self.country_code and self.party_id)
 
     def get_role_if_exists(self):
         from ocpi22.models.credentials import CredentialsRole
-        return CredentialsRole.get_if_exists(country_code__iexact=self.country_code, party_id__iexact=self.party_id)
+
+        return CredentialsRole.get_if_exists(
+            country_code__iexact=self.country_code, party_id__iexact=self.party_id
+        )
 
 
 class Singleton(type):
@@ -59,11 +67,14 @@ class OCPIIdentities(metaclass=Singleton):
     >>> 'BBB' in ocpi_identities
     False
     """
+
     _identities_list = []
     _identities_dict = dict()
 
     def __init__(self, source: dict = os.environ):
-        self._identities_list = list([source.get(i) for i in ROLE_OPTIONS if source.get(i)])
+        self._identities_list = list(
+            [source.get(i) for i in ROLE_OPTIONS if source.get(i)]
+        )
         for n in ROLE_OPTIONS:
             item = source.get(n)
             if item:
@@ -102,7 +113,7 @@ class OCPIIdentities(metaclass=Singleton):
     def items(self):
         return self._identities_dict.items()
 
-    def get(self, item, default='*') -> str:
+    def get(self, item, default="*") -> str:
         return self._identities_dict[item] if item in self._identities_dict else default
 
     @property
@@ -114,15 +125,17 @@ ocpi_identities = OCPIIdentities()
 
 
 class OCPIPlatform(metaclass=Singleton):
-    is_hub = bool('HUB' in ocpi_identities)
-    is_cpo = bool('CPO' in ocpi_identities)
-    is_emsp = bool('EMSP' in ocpi_identities)
+    is_hub = bool("HUB" in ocpi_identities)
+    is_cpo = bool("CPO" in ocpi_identities)
+    is_emsp = bool("EMSP" in ocpi_identities)
 
 
 ocpi_platform = OCPIPlatform()
 if len(ocpi_identities) > 1 and not settings.TEST:
-    raise ValueError('This platform cannot handle multiple roles, '
-                     'since the object IDs can overlap when receiving objects from other platforms')
+    raise ValueError(
+        "This platform cannot handle multiple roles, "
+        "since the object IDs can overlap when receiving objects from other platforms"
+    )
 
 
 @cached(cache=dict())
@@ -158,7 +171,7 @@ def get_our_country_code(role: str = None, identities=ocpi_identities) -> str:
     >>> get_our_country_code(None)  # Return the first one (for Credentials DELETE)
     'FI'
     """
-    country_code, _party_id = get_our_identity(role, identities).split('*')
+    country_code, _party_id = get_our_identity(role, identities).split("*")
     return country_code
 
 
@@ -174,7 +187,7 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
     >>> get_our_party_id(None)  # Return the first one (for Credentials DELETE)
     'CPO'
     """
-    _country_code, party_id = get_our_identity(role, identities).split('*')
+    _country_code, party_id = get_our_identity(role, identities).split("*")
     return party_id
 
 
@@ -194,12 +207,20 @@ def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Par
     Party(country_code='FI', party_id='CPO')
     """
     role = role.value if role else None
-    country_code, party_id = get_our_identity(role if role else '', identities).split('*')
+    country_code, party_id = get_our_identity(role if role else "", identities).split(
+        "*"
+    )
     return Party(country_code, party_id)
 
 
-def create_credentialsrole(party: Party, business_name: str, website='', role=OcpiRolesEnum.UNKNO,
-                           credentials=None, pk=None) -> Optional['CredentialsRole']:
+def create_credentialsrole(
+    party: Party,
+    business_name: str,
+    website="",
+    role=OcpiRolesEnum.UNKNO,
+    credentials=None,
+    pk=None,
+) -> Optional["CredentialsRole"]:  # noqa: F821
     """
     Create a CredentialsRole object for the given party, business name, website and role.
     Use only for creating our own CredentialsRole objects. If you use this for other parties, they will not have
@@ -207,28 +228,42 @@ def create_credentialsrole(party: Party, business_name: str, website='', role=Oc
     """
     from ocpi22.models.business_details import BusinessDetails
     from ocpi22.models.credentials import CredentialsRole
-    bt, _created = BusinessDetails.objects.get_or_create(name__iexact=business_name,
-                                                         defaults=dict(name=business_name, website=website))
+
+    bt, _created = BusinessDetails.objects.get_or_create(
+        name__iexact=business_name, defaults=dict(name=business_name, website=website)
+    )
     credentialsrole, _created = CredentialsRole.objects.get_or_create(
-        country_code__iexact=party.country_code, party_id__iexact=party.party_id, credentials=credentials,
-        defaults=dict(country_code=party.country_code, party_id=party.party_id,
-                      business_details=bt, role=role, pk=pk)
+        country_code__iexact=party.country_code,
+        party_id__iexact=party.party_id,
+        credentials=credentials,
+        defaults=dict(
+            country_code=party.country_code,
+            party_id=party.party_id,
+            business_details=bt,
+            role=role,
+            pk=pk,
+        ),
     )
     return credentialsrole
 
 
 @cached(cache=cachetools.Cache(maxsize=len(ROLE_OPTIONS)))
-def get_our_credentialsrole(role: OcpiRolesEnum) -> "CredentialsRole":
+def get_our_credentialsrole(
+    role: OcpiRolesEnum,
+) -> "CredentialsRole":  # noqa: F821
     """
     Get the CredentialsRole object which corresponds to our OCPI roles set in environment variables,
     creating it if necessary
     """
     from ocpi22.models.credentials import CredentialsRole
+
     our_party = get_our_party(role)
     try:
-        return CredentialsRole.objects.get(country_code__iexact=our_party.country_code,
-                                           party_id__iexact=our_party.party_id)
+        return CredentialsRole.objects.get(
+            country_code__iexact=our_party.country_code,
+            party_id__iexact=our_party.party_id,
+        )
     except CredentialsRole.DoesNotExist:
-        business_name = os.environ.get('BUSINESS_NAME', 'N/A')
-        website = os.environ.get('BUSINESS_WEBSITE', '')
+        business_name = os.environ.get("BUSINESS_NAME", "N/A")
+        website = os.environ.get("BUSINESS_WEBSITE", "")
         return create_credentialsrole(our_party, business_name, website, role)

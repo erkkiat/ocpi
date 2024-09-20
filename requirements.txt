@@ -50,4 +50,6 @@ django-test-without-migrations
 starlette~=0.38.5
 whitenoise~=6.7.0
 pre-commit==3.8.0
+django-cors-headers==4.4.0
+pytest-django==4.9.0
 factory-boy==3.3.1
