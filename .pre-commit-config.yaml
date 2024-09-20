@@ -2,8 +2,18 @@ repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.6.5
   hooks:
-    # Run the linter.
     - id: ruff
       args: [ --fix ]
-    # Run the formatter.
     - id: ruff-format
+- repo: local
+  hooks:
+    - id: check-missing-migrations
+      name: Checking missing Django migrations
+      description: This hook checks if changes has been made into models but not reflected into a migration.
+      entry: python manage.py makemigrations
+      args: [ --check, --dry-run ]
+      language: system
+      types_or: [ python, directory ]
+      files: 'models'
+      require_serial: true
+      pass_filenames: false
