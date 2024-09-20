@@ -124,6 +124,8 @@ OCPI_22_MAX_UID_LENGTH = 36
 
 PUBLIC_VIEWS = ["user-register"]
 
+HOTLINE = os.environ.get("HOTLINE", "+3256380211")
+
 
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split("://")
