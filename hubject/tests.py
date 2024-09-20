@@ -51,7 +51,7 @@ class TestMappings(TestCase):
             ),
             Connector(
                 power_type=["DC"],
-                max_voltage=400,
+                max_voltage=401,
                 max_amperage=45,
                 max_electric_power=50,
             ),
@@ -61,7 +61,7 @@ class TestMappings(TestCase):
                 PowerType=PowerType.AC_1_PHASE, Voltage=230, Amperage=16, Power=37
             ),
             ChargingFacility(
-                PowerType=PowerType.DC, Voltage=400, Amperage=45, Power=50
+                PowerType=PowerType.DC, Voltage=401, Amperage=45, Power=50
             ),
         ]
         self.assertEqual(
