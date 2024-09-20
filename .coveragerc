@@ -1,0 +1,32 @@
+[run]
+omit = */migrations/*
+       */tests/*
+       wsgi.py
+       */conftest.py
+       .venv/*
+       venv/*
+       manage.py
+       prod.py
+       dev.py
+
+[report]
+omit = */migrations/*
+       */tests/*
+       wsgi.py
+       */conftest.py
+       root_fixtures.py
+       */admin.py
+       */__init__.py
+       .venv/*
+       venv/*
+       manage.py
+       prod.py
+       dev.py
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+
+
+
+
+
