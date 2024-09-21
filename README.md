@@ -7,16 +7,18 @@ A simple roaming module @erkkiat to add more here
 * Create a virtualenv by following running `python3 -m venv venv`
 * Activate the virtualenv by running `source venv/bin/activate`
 * Install the dependencies by running `pip install -r requirements.txt`
-* Make sure you have docker install
+* Install pre-commit hooks by running `pre-commit install`
+* Make sure migrations are included if any model has been changed. Pre-commit hook will let you know if any migrations are missing
 
 ### Running the server locally
+* Make sure you have docker installed
 * Start the docker container by running `docker-compose up`
 * Rename `env.example` to `.env` current one should be fine but update the values if needed, 
 * Run the server by running `python manage.py runserver`
 
 ## Development Guidelines
 * For python let's follow the patterns https://docs.quantifiedcode.com/python-anti-patterns/index
-* For the code design and practice, let's follow the d[omain design pattern](https://martinfowler.com/tags/domain%20driven%20design.html) as much as applicable
+* For the code design and practice, let's follow the [domain design pattern](https://martinfowler.com/tags/domain%20driven%20design.html) as much as applicable
 * For structuring the code abd separating the business logic and db logic, Let's try to do the following
   * `models.py` - Should contain the database models
   * `services` - Should contain the business logic
