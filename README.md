@@ -1,6 +1,9 @@
 # ocpiconnector
-A simple roaming module @erkkiat to add more here
 
+The OCPI Connector provides a simple restful API for connecting an existing EV platforms
+to roaming partners and networks. The API is proprietary and the result of three years of work with
+multiple MSPs and CPOs. The API was built on the Open Charge Point Interface (OCPI) standard,
+but it accommodates OCPI as well.
 
 ## Development Setup
 * Clone the repository
@@ -15,6 +18,7 @@ A simple roaming module @erkkiat to add more here
 * Start the docker container by running `docker-compose up`
 * Rename `env.example` to `.env` current one should be fine but update the values if needed, 
 * Run the server by running `python manage.py runserver`
+* For performance testing you can use `performancetest/gunicorn-run.sh`
 
 ## Development Guidelines
 * For python let's follow the patterns https://docs.quantifiedcode.com/python-anti-patterns/index
