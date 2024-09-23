@@ -11,12 +11,6 @@ from django.utils.translation import gettext_lazy as _
 # Install icecream globally, no need for local imports
 from icecream import install, ic
 
-from dotenv import load_dotenv
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-env_path = os.path.join(BASE_DIR, ".env")
-load_dotenv(env_path)  # let's move to django-environ later on
-
 install()
 
 ic.configureOutput(includeContext=True)
