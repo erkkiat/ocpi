@@ -25,6 +25,7 @@ exclude = [
     "dist",
     "site-packages",
     "venv",
+    "migrations",
 ]
 
 # Same as Black.
