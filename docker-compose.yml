@@ -94,3 +94,14 @@ services:
     volumes:
       - emqx_data:/opt/emqx/data
       - emqx_log:/opt/emqx/log
+
+
+networks:
+  db-network:
+
+volumes:
+  redis-data:
+  mongodata:
+  pgdata:
+  emqx_data:
+  emqx_log:
