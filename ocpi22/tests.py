@@ -3781,12 +3781,8 @@ class TestMspUserApi(TestCase):
         confirm="qwerty",
     )
 
-    @staticmethod
-    def _create_user(**data):
-        return send_create_user(data)
-
     def setUp(self):
-        os.environ["TEST"] = "1"  # Moved from duplicate setup
+        os.environ["TEST"] = "1"
         params = dict(email="rich@money.com", password="hello", confirm="hello")
         initial_balance = 70
         response = self._create_user(**params)
@@ -3845,6 +3841,10 @@ class TestMspUserApi(TestCase):
         self.account = account
         self.initial_balance = initial_balance
         self.session = session
+
+    @staticmethod
+    def _create_user(**data):
+        return send_create_user(data)
 
     def test_create_user(self, _get_json_mock: Mock):
         userdata = self.userdata
