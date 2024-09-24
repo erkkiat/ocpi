@@ -9,3 +9,4 @@ prometheus/data/*
 prometheus/alertmanager/data/*
 .idea
 .env
+*.prof
