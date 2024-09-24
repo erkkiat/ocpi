@@ -30,15 +30,14 @@ from rest_framework.exceptions import ValidationError
 def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushEvseData:
     evse_data_records = []
     for evse in location.evses.all():
-        address_info = split_address_into_street_and_house_number(location.address)
         evse_data_record = EvseDataRecord(
             EvseID=EvseID(evse.evse_id),
             Address=Address(
                 Country=location.country,
                 City=location.city,
-                Street=address_info.get("street", "-"),
+                Street=get_street(location.address),
                 PostalCode=location.postal_code,
-                HouseNum=address_info.get("house", "-"),
+                HouseNum=get_house_number(location.address),
                 # todo : Floor missing in ocpi22,
                 # todo : Region missing in ocpi22,
                 ParkingFacility=True if location.parking_type else False,
@@ -184,35 +183,51 @@ def get_all_charging_facilities(connectors: List[Connector]) -> List[ChargingFac
     ]
 
 
-address_patterns = [
-    re.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)"),  # Belgium
-    re.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)"),  # Netherlands
-    re.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)"),  # France
-    re.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)"),  # Germany
-]
+address_pattern = re.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
 
 
-def split_address_into_street_and_house_number(address: str) -> dict[str, str]:
+def get_street(address: str) -> str:
     """
-    >>> split_address_into_street_and_house_number("Oulu 1")
-    {'street': 'Oulu', 'house': '1'}
-    >>> split_address_into_street_and_house_number("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
-    {'street': 'Weteringstraat', 'house': '34'}
-    >>> split_address_into_street_and_house_number("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
-    {'street': 'Mme Marie PAGE,', 'house': '23'}
-    >>> split_address_into_street_and_house_number("Mrs F Meier, Weberstr. 2, 53113 BONN 1, Germany")
-    {'street': 'Mrs F Meier, Weberstr.', 'house': '2'}
-    >>> split_address_into_street_and_house_number("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
-    {'street': 'Alfred Nobellaan', 'house': '22'}
-    >>> split_address_into_street_and_house_number("Kandintie E 4, 00430 Helsinki, FIN")
-    {'street': 'Kandintie E', 'house': '4'}
+    >>> get_street("Oulu 1")
+    'Oulu'
+    >>> get_street("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
+    'Weteringstraat'
+    >>> get_street("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
+    'Mme Marie PAGE,'
+    >>> get_street("Mrs F Meier, Weberstr. 2, 53113 BONN 1, Germany")
+    'Mrs F Meier, Weberstr.'
+    >>> get_street("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
+    'Alfred Nobellaan'
     """
-    for pattern in address_patterns:
-        match = pattern.search(address)
-        if match:
-            result = {k: v.strip() for k, v in match.groupdict().items() if v}
-            return result
-    return {"street": "-", "house": "-"}
+    match = address_pattern.search(address)
+    if match:
+        result = {k: v.strip() for k, v in match.groupdict().items() if v}
+        return result.get("street", "-")
+    return "-"
+
+
+"""
+>>> get_house_number("Oulu 1")
+'1'
+>>> get_house_number("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
+'34'
+>>> get_house_number("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
+'23'
+>>> get_house_number("Mrs F Meier, Weberstr. 2, 53113 BONN 1, Germany")
+'2'
+>>> get_house_number("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
+'22'
+>>> get_house_number("Kandintie E 4, 00430 Helsinki, FIN")
+'4'
+"""
+
+
+def get_house_number(address: str) -> str:
+    match = address_pattern.search(address)
+    if match:
+        result = {k: v.strip() for k, v in match.groupdict().items() if v}
+        return result.get("house", "-")
+    return "-"
 
 
 def map_capability_to_authentication_mode(

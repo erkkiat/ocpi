@@ -9,9 +9,10 @@ from hubject.mappings import (
     get_all_charging_facilities,
     map_location_to_eroaming_push_evse_data,
     get_all_authentication_modes,
-    split_address_into_street_and_house_number,
     get_all_value_added_services,
     map_ocpi_parking_types_to_accessibility_locations,
+    get_street,
+    get_house_number,
 )
 from hubject.models import Plug, PowerType, ChargingFacility, AuthenticationMode
 from ocpi22.choices import OCPICapabilityEnum
@@ -92,15 +93,11 @@ class TestMappings(TestCase):
         self.assertEqual(fake_evse_data.Address.PostalCode, fake_location.postal_code)
         self.assertEqual(
             fake_evse_data.Address.Street,
-            split_address_into_street_and_house_number(fake_location.address).get(
-                "street", "-"
-            ),
+            get_street(fake_location.address),
         )
         self.assertEqual(
             fake_evse_data.Address.HouseNum,
-            split_address_into_street_and_house_number(fake_location.address).get(
-                "house", "-"
-            ),
+            get_house_number(fake_location.address),
         )
         self.assertEqual(
             fake_evse_data.Address.ParkingFacility,
@@ -165,15 +162,11 @@ class TestMappings(TestCase):
         self.assertEqual(fake_evse_data.Address.PostalCode, helsinki.postal_code)
         self.assertEqual(
             fake_evse_data.Address.Street,
-            split_address_into_street_and_house_number(helsinki.address).get(
-                "street", "-"
-            ),
+            get_street(helsinki.address),
         )
         self.assertEqual(
             fake_evse_data.Address.HouseNum,
-            split_address_into_street_and_house_number(helsinki.address).get(
-                "house", "-"
-            ),
+            get_house_number(helsinki.address),
         )
         self.assertEqual(
             fake_evse_data.Address.ParkingFacility,
