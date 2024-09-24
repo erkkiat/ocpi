@@ -11,7 +11,7 @@ from hubject.mappings import (
     get_all_authentication_modes,
     split_address_into_street_and_house_number,
     get_all_value_added_services,
-    map_parking_types_to_accessibility_locations,
+    map_ocpi_parking_types_to_accessibility_locations,
 )
 from hubject.models import Plug, PowerType, ChargingFacility, AuthenticationMode
 from ocpi22.choices import OCPICapabilityEnum
@@ -133,7 +133,9 @@ class TestMappings(TestCase):
         )
         self.assertEqual(
             fake_evse_data.AccessibilityLocation,
-            map_parking_types_to_accessibility_locations(fake_location.parking_type),
+            map_ocpi_parking_types_to_accessibility_locations(
+                fake_location.parking_type
+            ),
         )
         self.assertEqual(fake_evse_data.HotlinePhoneNumber, settings.HOTLINE)
         self.assertEqual(
@@ -204,7 +206,7 @@ class TestMappings(TestCase):
         )
         self.assertEqual(
             fake_evse_data.AccessibilityLocation,
-            map_parking_types_to_accessibility_locations(helsinki.parking_type),
+            map_ocpi_parking_types_to_accessibility_locations(helsinki.parking_type),
         )
         self.assertEqual(fake_evse_data.HotlinePhoneNumber, settings.HOTLINE)
         self.assertEqual(

@@ -67,7 +67,7 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
             ValueAddedServices=get_all_value_added_services(evse.capabilities),
             # todo : Accessibility missing in ocpi22, default to free, discuss with smappee
             Accessibility=Accessibility.Free_publicly_accessible,
-            AccessibilityLocation=map_parking_types_to_accessibility_locations(
+            AccessibilityLocation=map_ocpi_parking_types_to_accessibility_locations(
                 location.parking_type
             ),
             # todo : HotlinePhoneNumber missing in ocpi22, we have msp phone not CPO.
@@ -120,8 +120,8 @@ def map_connector_to_plug(connector_std: str) -> Plug:
     >>> map_connector_to_plug('TESLA_S')
     <Plug.Tesla_Connector: 'Tesla Connector'>
 
-    @param connector_std: OCPI 2.2.1 Connector Standard Choice
-    @return: Corresponding Plug enum for the given connector standard choice
+    @param connector_std: OCPI 2.2.1 Connector Standard, This describes the connector standard/type, e.g. CHADEMO, Tesla, etc.
+    @return: Corresponding Plug enum for the given connector standard/type choice
     """
     mapping = {
         "IEC_62196_T2": Plug.Type_2_Outlet,
@@ -141,7 +141,7 @@ def map_connector_to_plug(connector_std: str) -> Plug:
         "TESLA_S": Plug.Tesla_Connector,
     }.get(connector_std.upper(), None)
     if not mapping:
-        raise ValidationError(f"'{connector_std}' is not a known STANDARD Choice.")
+        raise ValidationError(f"'{connector_std}' is not a known connector type.")
     return mapping
 
 
@@ -167,7 +167,7 @@ def map_power_type_choices_221_to_power_type(power_type_choice_221: str) -> Powe
     }.get(power_type_choice_221.upper())
     if not mapping:
         raise ValidationError(
-            f"'{power_type_choice_221}' is not a known POWERTYPE_221 Choice."
+            f"'{power_type_choice_221}' is not a known POWERTYPE_221."
         )
     return mapping
 
@@ -285,13 +285,13 @@ def get_all_value_added_services(
     ]
 
 
-def map_parking_types_to_accessibility_locations(
+def map_ocpi_parking_types_to_accessibility_locations(
     parking_type: str,
 ) -> AccessibilityLocation:
     """
-    >>> map_parking_types_to_accessibility_locations('PARKING_GARAGE')
+    >>> map_ocpi_parking_types_to_accessibility_locations('PARKING_GARAGE')
     <AccessibilityLocation.ParkingGarage: 'ParkingGarage'>
-    >>> map_parking_types_to_accessibility_locations('PARKING_LOT')
+    >>> map_ocpi_parking_types_to_accessibility_locations('PARKING_LOT')
     <AccessibilityLocation.ParkingLot: 'ParkingLot'>
     """
 
