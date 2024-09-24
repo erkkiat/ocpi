@@ -17,7 +17,7 @@ from hubject.mappings import (
 from hubject.models import Plug, PowerType, ChargingFacility, AuthenticationMode
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
-from ocpiconnector import settings
+import ocpiconnector.settings.base as settings
 import doctest
 
 
