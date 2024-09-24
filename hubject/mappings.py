@@ -111,13 +111,13 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
     return eroaming_push_evse_data
 
 
-def map_connector_std_choices_to_plug(connector_std: str) -> Plug:
+def map_connector_to_plug(connector_std: str) -> Plug:
     """
-    >>> map_connector_std_choices_to_plug('IEC_62196_T2')
+    >>> map_connector_to_plug('IEC_62196_T2')
     <Plug.Type_2_Outlet: 'Type 2 Outlet'>
-    >>> map_connector_std_choices_to_plug('CHADEMO')
+    >>> map_connector_to_plug('CHADEMO')
     <Plug.CHAdeMO: 'CHAdeMO'>
-    >>> map_connector_std_choices_to_plug('TESLA_S')
+    >>> map_connector_to_plug('TESLA_S')
     <Plug.Tesla_Connector: 'Tesla Connector'>
 
     @param connector_std: OCPI 2.2.1 Connector Standard Choice
@@ -146,10 +146,7 @@ def map_connector_std_choices_to_plug(connector_std: str) -> Plug:
 
 
 def get_distinct_plugs(connectors: List[Connector]) -> List[Plug]:
-    plugs = {
-        map_connector_std_choices_to_plug(connector.standard)
-        for connector in connectors
-    }
+    plugs = {map_connector_to_plug(connector.standard) for connector in connectors}
     return list(plugs)
 
 

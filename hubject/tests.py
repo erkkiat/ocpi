@@ -3,7 +3,7 @@ from rest_framework.exceptions import ValidationError
 
 from hubject.factories import LocationFactory
 from hubject.mappings import (
-    map_connector_std_choices_to_plug,
+    map_connector_to_plug,
     get_distinct_plugs,
     map_power_type_choices_221_to_power_type,
     get_all_charging_facilities,
@@ -28,7 +28,7 @@ def load_tests(_loader, tests, _ignore):
 class TestMappings(TestCase):
     def test_map_connector_std_choices_to_plug_unknown(self):
         with self.assertRaises(ValidationError):
-            map_connector_std_choices_to_plug("UNKNOWN_PLUG")
+            map_connector_to_plug("UNKNOWN_PLUG")
 
     def test_get_distinct_plugs_from_connector_std_choices(self):
         connectors = [Connector(standard="CHADEMO"), Connector(standard="IEC_62196_T2")]
