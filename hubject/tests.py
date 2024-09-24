@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
-from hubject.factories import LocationFactory
+from ocpi22.tests.factories import LocationFactory
 from hubject.mappings import (
     map_connector_to_plug,
     get_distinct_plugs,
