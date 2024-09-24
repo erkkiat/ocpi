@@ -2497,7 +2497,7 @@ class TestSession(TestCase):
                 ):
                     mock_get.return_value = "http://localhost/session/"
                     response = SessionViewSet().patch(
-                        request, certification=Mock(), **kwargs
+                        request, **kwargs
                     )
 
                 calls = webhook_post_mock.call_args_list

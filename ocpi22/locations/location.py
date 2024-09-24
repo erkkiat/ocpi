@@ -5,7 +5,6 @@ from rest_framework import status
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.generics import get_object_or_404
 
-from certification.decorators import certification_step
 from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum
 from ocpi22.decorators import requires_sender_role, requires_credentialsrole, requires_last_updated
 from ocpi22.locations.serializers import EvseSerializer, ConnectorSerializer
@@ -67,7 +66,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
     @requires_last_updated
-    @certification_step(OcpiModuleEnum.LOCATIONS, 'PATCH a Location')
     def patch(self, *args, **kwargs):
         return self.put(*args, patch=True, **kwargs)
 
@@ -85,7 +83,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_credentialsrole
-    @certification_step(OcpiModuleEnum.LOCATIONS, 'PUT a Location')
     def put(self, request, data, credentialsrole, uid=None, patch=False,
             version='2.2.1', credentials=None, **_kwargs):
 

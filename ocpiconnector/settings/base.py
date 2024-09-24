@@ -40,7 +40,6 @@ MSP_API = _env_bool("MSP_API", False)
 
 PERFORMANCE_TEST = _env_bool("PERFORMANCE_TEST", False)
 CPO_SIMULATOR = _env_bool("CPO_SIMULATOR", False)
-CERTIFICATION_MODE = _env_bool("CERTIFICATION_MODE", False)
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = _env_bool("ALLOW_ADMIN_DELETE_AND_CHANGE", False)
 
@@ -412,7 +411,6 @@ INSTALLED_APPS = [
     "ocpi22",
     "ocpiconnector",
     "webhooks",
-    "certification",
     "hub",
     "settlement",
     "django.contrib.admin",

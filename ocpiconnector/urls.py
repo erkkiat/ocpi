@@ -110,7 +110,6 @@ urlpatterns = [
     path("", home),
     path("", include(root_router.urls), name="root-view"),
     path("hub/", include(hub_urls)),
-    path("certification/", include("certification.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.locations.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.ocpi.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.commands.urls")),

@@ -29,7 +29,6 @@ def _get_environment(request):
         general_message=os.environ.get('GENERAL_MESSAGE'),
         cpo_api=settings.CPO_API,
         msp_api=settings.MSP_API,
-        certification_mode=settings.CERTIFICATION_MODE,
         ocpi_platform=ocpi_platform,
         recent_activity=Session.objects.all().order_by('-start_date_time'),
         expiration_alert=settings.EXPIRES_ON
