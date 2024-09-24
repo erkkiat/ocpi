@@ -73,7 +73,9 @@ class OCPIIdentities(metaclass=Singleton):
 
     def __init__(self, source: dict = os.environ):
         self._identities_list = list(
-            [source.get(i) for i in ROLE_OPTIONS if source.get(i)]
+            [
+                source.get(i) for i in ROLE_OPTIONS if source.get(i)
+            ]  # Todo: ignore a false value in the source
         )
         for n in ROLE_OPTIONS:
             item = source.get(n)
