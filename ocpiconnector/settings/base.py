@@ -412,7 +412,6 @@ INSTALLED_APPS = [
     "webhooks",
     "certification",
     "hub",
-    "cars",
     "settlement",
     "django.contrib.admin",
     "whitenoise",
