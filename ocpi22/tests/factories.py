@@ -49,7 +49,7 @@ class LocationFactory(factory.django.DjangoModelFactory):
     uid = factory.Faker("uuid4")
     publish = factory.Faker("boolean")
     name = factory.Faker("company")
-    address = "Alfred Nobellaan 22 App 150Z, BEL"
+    address = "Alfred Nobellaan 22 App 150Z"
     city = factory.Faker("city")
     postal_code = factory.Faker("postcode")
     state = factory.Faker("state")

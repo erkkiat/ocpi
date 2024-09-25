@@ -31,7 +31,7 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
     evse_data_records = []
     for evse in location.evses.all():
         evse_data_record = EvseDataRecord(
-            EvseID=EvseID(evse.evse_id),
+            EvseID=EvseID(evse.uid),
             Address=Address(
                 Country=location.country,
                 City=location.city,
@@ -145,6 +145,15 @@ def map_connector_to_plug(connector_std: str) -> Plug:
 
 
 def get_distinct_plugs(connectors: List[Connector]) -> List[Plug]:
+    """
+    >>> connectors = [Connector(standard="CHADEMO"), Connector(standard="IEC_62196")]
+    >>> get_distinct_plugs(connectors)
+    [<Plug.CHAdeMO: 'CHAdeMO'>, <Plug.Type_2_Outlet: 'Type 2 Outlet'>]
+
+    This function collects only the distinct plugs from the given list of OCPI 2.2.1 Connectors.
+    @param connectors: List of OCPI 2.2.1 Connectors
+    @return: List of corresponding Plug enums
+    """
     plugs = {map_connector_to_plug(connector.standard) for connector in connectors}
     return list(plugs)
 
@@ -190,11 +199,11 @@ def get_street(address: str) -> str:
     """
     >>> get_street("Oulu 1")
     'Oulu'
-    >>> get_street("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
+    >>> get_street("Weteringstraat 34-1, 1017 SP Amsterdam")
     'Weteringstraat'
     >>> get_street("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
     'Mme Marie PAGE,'
-    >>> get_street("Mrs F Meier, Weberstr. 2, 53113 BONN 1, Germany")
+    >>> get_street("Mrs F Meier, Weberstr. 2, 53113 BONN 1")
     'Mrs F Meier, Weberstr.'
     >>> get_street("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
     'Alfred Nobellaan'
@@ -253,6 +262,10 @@ def get_all_authentication_modes(
     [<AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>]
     >>> get_all_authentication_modes([OCPICapabilityEnum.UNLOCK_CAPABLE])
     []
+
+    This function collects all of the matching AuthenticationModes for the given list of OCPI 2.2.1 Capabilities.
+    @param capabilities: List of OCPI 2.2.1 Capabilities
+    @return: List of corresponding AuthenticationMode enums
     """
 
     # todo : Item AuthenticationModes cannot map all modes directly to OICP
@@ -287,6 +300,10 @@ def get_all_value_added_services(
     []
     >>> get_all_value_added_services([OCPICapabilityEnum.RESERVABLE])
     [<ValueAddedService.Reservation: 'Reservation'>]
+
+    This function collects all of the matching ValueAddedServices for the given list of OCPI 2.2.1 Capabilities.
+    @param capabilities: List of OCPI 2.2.1 Capabilities
+    @return: List of corresponding ValueAddedService enums
     """
 
     # todo : Item AuthenticationModes cannot map other modes directly to OICP
