@@ -2,7 +2,7 @@ import re
 
 from typing import List
 
-from hubject.models import (
+from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     EvseDataRecord,
     EvseID,

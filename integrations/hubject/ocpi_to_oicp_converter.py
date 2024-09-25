@@ -1,6 +1,6 @@
 from typing import List, Any
 
-from hubject.models import ERoamingPushEvseData
+from integrations.hubject.schemas import ERoamingPushEvseData
 from ocpi22.models.location import Location
 
 

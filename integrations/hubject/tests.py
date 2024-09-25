@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
 from ocpi22.tests.factories import LocationFactory
-from hubject.mappings import (
+from integrations.hubject.mappings import (
     map_connector_to_plug,
     get_distinct_plugs,
     map_power_type_choices_221_to_power_type,
@@ -14,7 +14,12 @@ from hubject.mappings import (
     get_street,
     get_house_number,
 )
-from hubject.models import Plug, PowerType, ChargingFacility, AuthenticationMode
+from integrations.hubject.schemas import (
+    Plug,
+    PowerType,
+    ChargingFacility,
+    AuthenticationMode,
+)
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
 from ocpiconnector import testutil
