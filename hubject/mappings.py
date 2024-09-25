@@ -22,7 +22,7 @@ from hubject.models import (
     DynamicInfoAvailable,
 )
 from ocpi22.choices import OCPICapabilityEnum
-from ocpiconnector import settings
+import ocpiconnector.settings.base as settings
 from ocpi22.models.location import Location, Connector
 from rest_framework.exceptions import ValidationError
 
