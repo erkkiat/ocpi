@@ -18,13 +18,12 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse as django_reverse
 
 from ocpi22 import choices
-from ocpi22.choices import MessageTexts
 
 default_error_messages = dict(
-    object_missing='There is no {name} with UID `{uid}` in our database',
-    no_connector_in_evse='There is no connector with UID `{uid}` in EVSE `{evse}`.',
-    location_evse_missing='There is no EVSE with UID `{evse}` in location `{location}`.',
-    evse_owner_missing='There is no EVSE with UID `{evse}` owned by `{ocpi_master}`.',
+    object_missing="There is no {name} with UID `{uid}` in our database",
+    no_connector_in_evse="There is no connector with UID `{uid}` in EVSE `{evse}`.",
+    location_evse_missing="There is no EVSE with UID `{evse}` in location `{location}`.",
+    evse_owner_missing="There is no EVSE with UID `{evse}` owned by `{ocpi_master}`.",
 )
 
 
@@ -59,13 +58,13 @@ class OCPIVersion:
             version = choices.VERSION_CHOICES_DICT[version]
         else:
             options = [str(x) for x in choices.VERSION_CHOICES_DICT.keys()]
-            raise ValueError(f'Invalid version number {version}, options are {options}')
+            raise ValueError(f"Invalid version number {version}, options are {options}")
         self.version = str(version)
         self.pure_number = self.remove_dots(version)
 
     @staticmethod
     def remove_dots(s: str) -> str:
-        return s.replace('.', '') if s else ''
+        return s.replace(".", "") if s else ""
 
     def __str__(self):
         return self.version
@@ -91,7 +90,7 @@ class OCPIVersion:
         elif isinstance(other, OCPIVersion):
             return self.pure_number == other.pure_number
         else:
-            raise ValueError(f'Cannot compare OCPIVersion with {type(other)}')
+            raise ValueError(f"Cannot compare OCPIVersion with {type(other)}")
 
     def __hash__(self):
         return hash(self.pure_number)
@@ -110,11 +109,11 @@ def reverse(s, args=None, request=None, version=None, kwargs=None) -> str:
     @return:
     """
     args = args or []
-    version = OCPIVersion(version or request.version or '2.2.1' if request else '2.2.1')
+    version = OCPIVersion(version or request.version or "2.2.1" if request else "2.2.1")
     version_args = None
     # Handle versioning wether args or kwargs is used (can't use both with reverse())
     if kwargs:
-        kwargs['version'] = version
+        kwargs["version"] = version
     else:
         version_args = [version, *args]
     try:
@@ -123,12 +122,12 @@ def reverse(s, args=None, request=None, version=None, kwargs=None) -> str:
         return django_reverse(s, args=args, request=request)
 
 
-def url_link(href, text, target='') -> str:
+def url_link(href, text, target="") -> str:
     """
     >>> url_link('https://www.google.com', 'Google')
     '<a href="https://www.google.com">Google</a>'
     """
-    target = f' target="{target}" ' if target else ''
+    target = f' target="{target}" ' if target else ""
     return f'<a{target} href="{href}">{text}</a>'
 
 
@@ -145,7 +144,8 @@ def format_url(url, **kwargs) -> str:
         return url.format(**kwargs)
     except KeyError as e:
         from ocpi22 import logging
-        logging.error(f'Unknown URL variable in format_url: {e}')
+
+        logging.error(f"Unknown URL variable in format_url: {e}")
         return url
 
 
@@ -179,7 +179,7 @@ def member_hash(obj: Any) -> int:
     """
     attr_dict = vars(obj)
     attr_dict = attr_dict.copy()
-    attr_dict.pop('_state', None)
+    attr_dict.pop("_state", None)
     # Convert the dictionary to a string and hash it
     attr_str = json.dumps(attr_dict, sort_keys=True, default=str)
     thehash = int(hashlib.sha256(attr_str.encode()).hexdigest(), 16)
@@ -202,7 +202,7 @@ class RedisStore:
         namespace = namespace or self.namespace
         if not namespace:
             return key
-        return f'{namespace}:{key}'
+        return f"{namespace}:{key}"
 
     def store(self, key, value, expiration=None):
         """
@@ -218,13 +218,13 @@ class RedisStore:
         self.store(key, value)
 
     def retrieve(self, key) -> Optional[Any]:
-        value = ''
+        value = ""
         try:
             key = self._format_key(key)
             value = redis_store.get(key)
             if not value:
-                raise KeyError(f'Key {key} not found in Redis')
-            if isinstance(value, str) and value.startswith('{'):
+                raise KeyError(f"Key {key} not found in Redis")
+            if isinstance(value, str) and value.startswith("{"):
                 # print(f'Parsing {value} as JSON')
                 value = json.loads(value)
             else:
@@ -233,18 +233,25 @@ class RedisStore:
             return value
         except pickle.UnpicklingError as e:
             from ocpi22 import logging
-            logging.error(f'Error retrieving and decoding Redis key {key} as pickled: {e}')
+
+            logging.error(
+                f"Error retrieving and decoding Redis key {key} as pickled: {e}"
+            )
             # print(f'Error retrieving Redis key {key} as pickled: {e}')
         except (TypeError, UnicodeDecodeError) as e:
             from ocpi22 import logging
-            logging.error(f'Error decoding value {value} from Redis with key {key}: {e}')
+
+            logging.error(
+                f"Error decoding value {value} from Redis with key {key}: {e}"
+            )
             # print(f'Error decoding value from Redis with key {key}: {e}')
         except json.JSONDecodeError as e:
             from ocpi22 import logging
-            logging.error(f'Error decoding Redis key {key} value {value} as JSON: {e}')
+
+            logging.error(f"Error decoding Redis key {key} value {value} as JSON: {e}")
             # print(f'Error decoding Redis key {key} value {value} as JSON: {e}')
         # If reading the stored data fails, there is not much we can do, but for caching this is ok
-        raise KeyError(f'Key {key} not found in Redis')
+        raise KeyError(f"Key {key} not found in Redis")
 
     def __getitem__(self, key):
         return self.retrieve(key)
@@ -266,11 +273,11 @@ class DistributedCache(RedisStore):
         currsize: int  # Not supported due to performance issues
 
         def __repr__(self):
-            return f'CacheInfo(hits={self.hits}, misses={self.misses}, maxsize={self.maxsize}, currsize={self.currsize})'
+            return f"CacheInfo(hits={self.hits}, misses={self.misses}, maxsize={self.maxsize}, currsize={self.currsize})"
 
     def generate_cache_key(self, func, args, kwargs):
         key = f"{func.__module__}.{func.__name__}:{args}:{kwargs}"
-        return f'{self.namespace}:{hashlib.md5(pickle.dumps(key)).hexdigest()}'
+        return f"{self.namespace}:{hashlib.md5(pickle.dumps(key)).hexdigest()}"
 
     def __call__(self, func):
         @wraps(func)
@@ -290,13 +297,14 @@ class DistributedCache(RedisStore):
 
         def clear_cache_item(*args, **kwargs):
             key = self.generate_cache_key(func, args, kwargs)
-            redis_store.delete(f'{self.namespace}:{key}')
+            redis_store.delete(f"{self.namespace}:{key}")
 
         def cache_clear():
             for key in redis_store.scan_iter(f"{self.namespace}:*"):
                 if not redis_store.delete(key):
                     from ocpi22 import logging
-                    logging.warning(f'Could not delete key {key} from Redis')
+
+                    logging.warning(f"Could not delete key {key} from Redis")
             self.hits = 0
             self.misses = 0
 
@@ -305,7 +313,7 @@ class DistributedCache(RedisStore):
 
         self.hits = 0
         self.misses = 0
-        self.namespace = self.namespace or f'{func.__module__}.{func.__name__}'
+        self.namespace = self.namespace or f"{func.__module__}.{func.__name__}"
 
         wrapper.clear_cache_item = clear_cache_item  # Attach the methods to the wrapper
         wrapper.cache_clear = cache_clear
@@ -344,16 +352,16 @@ class HashableDict(dict):
         return hash(tuple(sorted(make_hashable(super().items()))))
 
     def __setitem__(self, key, value):
-        raise RuntimeError('HashableDict is immutable')
+        raise RuntimeError("HashableDict is immutable")
 
     def __delitem__(self, key):
-        raise RuntimeError('HashableDict is immutable')
+        raise RuntimeError("HashableDict is immutable")
 
     def update(self, **new_kwargs):
-        raise RuntimeError('HashableDict is immutable')
+        raise RuntimeError("HashableDict is immutable")
 
     def clear(self):
-        raise RuntimeError('HashableDict is immutable')
+        raise RuntimeError("HashableDict is immutable")
 
 
 def with_trailing_slash(url):
@@ -363,26 +371,30 @@ def with_trailing_slash(url):
     >>> with_trailing_slash('https://fakehost/start/')
     'https://fakehost/start/'
     """
-    if url.endswith('/'):
+    if url.endswith("/"):
         return url
-    return f'{url}/'
+    return f"{url}/"
 
 
 def convert_to_time(t) -> time:
     if isinstance(t, str):
-        return time(*t.split(':'))
+        return time(*t.split(":"))
     if isinstance(t, (datetime, python_datetime)):
         return t.time()
     return t
 
 
-def time_lte(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
+def time_lte(
+    time1: Union[time, str, datetime], time2: Union[time, str, datetime]
+) -> bool:
     time1 = convert_to_time(time1)
     time2 = convert_to_time(time2)
     return time1 <= time2
 
 
-def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]) -> bool:
+def time_lt(
+    time1: Union[time, str, datetime], time2: Union[time, str, datetime]
+) -> bool:
     time1 = convert_to_time(time1)
     time2 = convert_to_time(time2)
     return time1 < time2
@@ -390,7 +402,7 @@ def time_lt(time1: Union[time, str, datetime], time2: Union[time, str, datetime]
 
 def title_case(name: str) -> str:
     """Convert a name to title case"""
-    return name.replace('-', ' ').replace('_', ' ').title()
+    return name.replace("-", " ").replace("_", " ").title()
 
 
 def replace_links(result):
@@ -403,7 +415,7 @@ def replace_links(result):
         view_name = match.group(1)  # Extract the view name from the matched string.
         return f'<a href="{reverse(view_name)}">{title_case(view_name)}</a>'  # Reverse the URL for that view.
 
-    pattern = r'\[([\w-]+)\]'  # Regular expression to match "[something]"
+    pattern = r"\[([\w-]+)\]"  # Regular expression to match "[something]"
     return re.sub(pattern, replacer, result)
 
 
@@ -413,15 +425,24 @@ def unwrap(func):
     @param func: A function decorated with one or more decorators
     @return: Unwrapped (undecorated) function
     """
-    if hasattr(func, '__wrapped__'):
+    if hasattr(func, "__wrapped__"):
         return unwrap(func.__wrapped__)
     return func
 
 
 class ErrorLoggingResponse(Response):
-    def __init__(self, data=None, status=200, template_name=None, headers=None, exception=False, content_type=None):
+    def __init__(
+        self,
+        data=None,
+        status=200,
+        template_name=None,
+        headers=None,
+        exception=False,
+        content_type=None,
+    ):
         if status >= 400:
             from ocpi22 import logging
+
             logging.error(f"Error {status}: {data}")
         super().__init__(data, status, template_name, headers, exception, content_type)
 
@@ -438,12 +459,16 @@ def get_message_by_language(messages: list, language: str) -> str:
     'Stopping charging session'
     """
     if not messages:
-        return ''
+        return ""
     language = language.upper()
     for message in messages:
-        if message.get('language') == language:
-            return message.get('text')
-    return get_message_by_language(messages, 'EN') if language != 'EN' else messages[0].get('text')
+        if message.get("language") == language:
+            return message.get("text")
+    return (
+        get_message_by_language(messages, "EN")
+        if language != "EN"
+        else messages[0].get("text")
+    )
 
 
 def convert_to_utc_midnight(d: Union[date, datetime]) -> datetime:

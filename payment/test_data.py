@@ -3,10 +3,7 @@ session = {
     "allow_promotion_codes": None,
     "amount_subtotal": None,
     "amount_total": None,
-    "automatic_tax": {
-        "enabled": False,
-        "status": None
-    },
+    "automatic_tax": {"enabled": False, "status": None},
     "billing_address_collection": None,
     "cancel_url": "http://localhost:8002/api/msp/v1/payment/cancel/",
     "client_reference_id": None,
@@ -14,10 +11,7 @@ session = {
     "consent_collection": None,
     "created": 1668943166,
     "currency": None,
-    "custom_text": {
-        "shipping_address": None,
-        "submit": None
-    },
+    "custom_text": {"shipping_address": None, "submit": None},
     "customer": "cus_MpaqQOHTYhC7q4",
     "customer_creation": None,
     "customer_details": {
@@ -26,7 +20,7 @@ session = {
         "name": None,
         "phone": None,
         "tax_exempt": None,
-        "tax_ids": None
+        "tax_ids": None,
     },
     "customer_email": None,
     "expires_at": 1669029566,
@@ -40,13 +34,9 @@ session = {
     "payment_link": None,
     "payment_method_collection": "always",
     "payment_method_options": {},
-    "payment_method_types": [
-        "card"
-    ],
+    "payment_method_types": ["card"],
     "payment_status": "no_payment_required",
-    "phone_number_collection": {
-        "enabled": False
-    },
+    "phone_number_collection": {"enabled": False},
     "recovered_from": None,
     "setup_intent": "seti_1M6BYYBsWTl6iWOLaXR2CbHl",
     "shipping": None,
@@ -58,7 +48,7 @@ session = {
     "subscription": None,
     "success_url": "http://localhost:8002/api/msp/v1/payment/success/?session_id={CHECKOUT_SESSION_ID}",
     "total_details": None,
-    "url": None
+    "url": None,
 }
 
 setup_intent = {
@@ -83,23 +73,19 @@ setup_intent = {
         "card": {
             "mandate_options": None,
             "network": None,
-            "request_three_d_secure": "automatic"
+            "request_three_d_secure": "automatic",
         }
     },
-    "payment_method_types": [
-        "card"
-    ],
+    "payment_method_types": ["card"],
     "single_use_mandate": None,
     "status": "succeeded",
-    "usage": "off_session"
+    "usage": "off_session",
 }
 
 payment_intent = {
     "amount": 3000,
     "amount_capturable": 3000,
-    "amount_details": {
-        "tip": {}
-    },
+    "amount_details": {"tip": {}},
     "amount_received": 0,
     "application": None,
     "application_fee_amount": None,
@@ -124,11 +110,11 @@ payment_intent = {
                         "line1": None,
                         "line2": None,
                         "postal_code": None,
-                        "state": None
+                        "state": None,
                     },
                     "email": "erkki.tapola@iki.fi",
                     "name": "1",
-                    "phone": None
+                    "phone": None,
                 },
                 "calculated_statement_descriptor": "OCPIGUIDE.COM",
                 "captured": False,
@@ -156,7 +142,7 @@ payment_intent = {
                     "risk_level": "normal",
                     "risk_score": 60,
                     "seller_message": "Payment complete.",
-                    "type": "authorized"
+                    "type": "authorized",
                 },
                 "paid": True,
                 "payment_intent": "pi_3M6BYrBsWTl6iWOL3mOrPFEt",
@@ -167,7 +153,7 @@ payment_intent = {
                         "checks": {
                             "address_line1_check": None,
                             "address_postal_code_check": None,
-                            "cvc_check": "pass"
+                            "cvc_check": "pass",
                         },
                         "country": "US",
                         "exp_month": 12,
@@ -179,9 +165,9 @@ payment_intent = {
                         "mandate": None,
                         "network": "visa",
                         "three_d_secure": None,
-                        "wallet": None
+                        "wallet": None,
                     },
-                    "type": "card"
+                    "type": "card",
                 },
                 "receipt_email": None,
                 "receipt_number": None,
@@ -192,7 +178,7 @@ payment_intent = {
                     "has_more": False,
                     "object": "list",
                     "total_count": 0,
-                    "url": "/v1/charges/ch_3M6BYrBsWTl6iWOL3LuLGj3W/refunds"
+                    "url": "/v1/charges/ch_3M6BYrBsWTl6iWOL3LuLGj3W/refunds",
                 },
                 "review": None,
                 "shipping": None,
@@ -202,13 +188,13 @@ payment_intent = {
                 "statement_descriptor_suffix": None,
                 "status": "succeeded",
                 "transfer_data": None,
-                "transfer_group": None
+                "transfer_group": None,
             }
         ],
         "has_more": False,
         "object": "list",
         "total_count": 1,
-        "url": "/v1/charges?payment_intent=pi_3M6BYrBsWTl6iWOL3mOrPFEt"
+        "url": "/v1/charges?payment_intent=pi_3M6BYrBsWTl6iWOL3mOrPFEt",
     },
     "client_secret": "pi_3M6BYrBsWTl6iWOL3mOrPFEt_secret_8GL1iZGRlkoBRGibAj68gP3hI",
     "confirmation_method": "automatic",
@@ -230,12 +216,10 @@ payment_intent = {
             "installments": None,
             "mandate_options": None,
             "network": None,
-            "request_three_d_secure": "automatic"
+            "request_three_d_secure": "automatic",
         }
     },
-    "payment_method_types": [
-        "card"
-    ],
+    "payment_method_types": ["card"],
     "processing": None,
     "receipt_email": None,
     "review": None,
@@ -246,15 +230,13 @@ payment_intent = {
     "statement_descriptor_suffix": None,
     "status": "requires_capture",
     "transfer_data": None,
-    "transfer_group": None
+    "transfer_group": None,
 }
 
 captured = {
     "amount": 3000,
     "amount_capturable": 0,
-    "amount_details": {
-        "tip": {}
-    },
+    "amount_details": {"tip": {}},
     "amount_received": 1500,
     "application": None,
     "application_fee_amount": None,
@@ -279,11 +261,11 @@ captured = {
                         "line1": None,
                         "line2": None,
                         "postal_code": None,
-                        "state": None
+                        "state": None,
                     },
                     "email": "erkki.tapola@iki.fi",
                     "name": "1",
-                    "phone": None
+                    "phone": None,
                 },
                 "calculated_statement_descriptor": "OCPIGUIDE.COM",
                 "captured": True,
@@ -311,7 +293,7 @@ captured = {
                     "risk_level": "normal",
                     "risk_score": 60,
                     "seller_message": "Payment complete.",
-                    "type": "authorized"
+                    "type": "authorized",
                 },
                 "paid": True,
                 "payment_intent": "pi_3M6BYrBsWTl6iWOL3mOrPFEt",
@@ -322,7 +304,7 @@ captured = {
                         "checks": {
                             "address_line1_check": None,
                             "address_postal_code_check": None,
-                            "cvc_check": "pass"
+                            "cvc_check": "pass",
                         },
                         "country": "US",
                         "exp_month": 12,
@@ -334,9 +316,9 @@ captured = {
                         "mandate": None,
                         "network": "visa",
                         "three_d_secure": None,
-                        "wallet": None
+                        "wallet": None,
                     },
-                    "type": "card"
+                    "type": "card",
                 },
                 "receipt_email": None,
                 "receipt_number": None,
@@ -358,13 +340,13 @@ captured = {
                             "receipt_number": None,
                             "source_transfer_reversal": None,
                             "status": "succeeded",
-                            "transfer_reversal": None
+                            "transfer_reversal": None,
                         }
                     ],
                     "has_more": False,
                     "object": "list",
                     "total_count": 1,
-                    "url": "/v1/charges/ch_3M6BYrBsWTl6iWOL3LuLGj3W/refunds"
+                    "url": "/v1/charges/ch_3M6BYrBsWTl6iWOL3LuLGj3W/refunds",
                 },
                 "review": None,
                 "shipping": None,
@@ -374,13 +356,13 @@ captured = {
                 "statement_descriptor_suffix": None,
                 "status": "succeeded",
                 "transfer_data": None,
-                "transfer_group": None
+                "transfer_group": None,
             }
         ],
         "has_more": False,
         "object": "list",
         "total_count": 1,
-        "url": "/v1/charges?payment_intent=pi_3M6BYrBsWTl6iWOL3mOrPFEt"
+        "url": "/v1/charges?payment_intent=pi_3M6BYrBsWTl6iWOL3mOrPFEt",
     },
     "client_secret": "pi_3M6BYrBsWTl6iWOL3mOrPFEt_secret_8GL1iZGRlkoBRGibAj68gP3hI",
     "confirmation_method": "automatic",
@@ -402,12 +384,10 @@ captured = {
             "installments": None,
             "mandate_options": None,
             "network": None,
-            "request_three_d_secure": "automatic"
+            "request_three_d_secure": "automatic",
         }
     },
-    "payment_method_types": [
-        "card"
-    ],
+    "payment_method_types": ["card"],
     "processing": None,
     "receipt_email": None,
     "review": None,
@@ -418,5 +398,5 @@ captured = {
     "statement_descriptor_suffix": None,
     "status": "succeeded",
     "transfer_data": None,
-    "transfer_group": None
+    "transfer_group": None,
 }

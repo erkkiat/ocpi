@@ -5,8 +5,11 @@ from rest_framework.renderers import BrowsableAPIRenderer
 class Messages:
     @staticmethod
     def is_browsable(request) -> bool:
-        return bool(request and hasattr(request, 'accepted_renderer') and
-                    isinstance(request.accepted_renderer, BrowsableAPIRenderer))
+        return bool(
+            request
+            and hasattr(request, "accepted_renderer")
+            and isinstance(request.accepted_renderer, BrowsableAPIRenderer)
+        )
 
     def error(self, request, msg, **kwargs):
         if self.is_browsable(request):

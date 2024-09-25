@@ -12,7 +12,6 @@ import requests
 from django.conf import settings
 from django.db.models import QuerySet
 from django.utils.module_loading import import_string
-from requests import Response
 from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
 

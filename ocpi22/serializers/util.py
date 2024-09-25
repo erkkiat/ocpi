@@ -25,9 +25,9 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         return result
 
     def is_browser(self):
-        request = self.context.get('request')
-        if request and hasattr(request, 'accepted_media_type'):
-            return bool('text/html' in request.accepted_media_type)
+        request = self.context.get("request")
+        if request and hasattr(request, "accepted_media_type"):
+            return bool("text/html" in request.accepted_media_type)
 
     def get_detail_url(self, obj) -> str:
         """
@@ -35,10 +35,14 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_absolute_url') or not self.is_browser() or self.context.get('exclude_urls'):
-            return ''
-        version = self.context.get('version')
-        return f'{build_absolute_uri(obj.get_absolute_url(version))}'
+        if (
+            not hasattr(obj, "get_absolute_url")
+            or not self.is_browser()
+            or self.context.get("exclude_urls")
+        ):
+            return ""
+        version = self.context.get("version")
+        return f"{build_absolute_uri(obj.get_absolute_url(version))}"
 
     def get_url(self, obj) -> str:
         """
@@ -46,9 +50,9 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_cpo_url') or not self.is_browser():
-            return ''
-        return f'{build_absolute_uri(obj.get_cpo_url())}'
+        if not hasattr(obj, "get_cpo_url") or not self.is_browser():
+            return ""
+        return f"{build_absolute_uri(obj.get_cpo_url())}"
 
     def get_quick_url(self, obj) -> str:
         """
@@ -56,9 +60,9 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_quick_url') or not self.is_browser():
-            return ''
-        return f'{build_absolute_uri(obj.get_quick_url())}'
+        if not hasattr(obj, "get_quick_url") or not self.is_browser():
+            return ""
+        return f"{build_absolute_uri(obj.get_quick_url())}"
 
     def get_status_url(self, obj) -> str:
         """
@@ -66,24 +70,21 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         :param obj: The object we need the instance view for
         :return: The URL string to the instance view
         """
-        if not hasattr(obj, 'get_status_url') or not self.is_browser():
-            return ''
+        if not hasattr(obj, "get_status_url") or not self.is_browser():
+            return ""
         url = obj.get_status_url()
         if url:
-            return f'{build_absolute_uri(url)}'
+            return f"{build_absolute_uri(url)}"
 
     detail_url = serializers.SerializerMethodField(
-        read_only=True,
-        help_text='This non-OCPI field exists for educational purposes'
+        read_only=True, help_text="This non-OCPI field exists for educational purposes"
     )
     url = serializers.SerializerMethodField(read_only=True)
     quick_url = serializers.SerializerMethodField(
-        read_only=True,
-        help_text='This non-OCPI field exists for educational purposes'
+        read_only=True, help_text="This non-OCPI field exists for educational purposes"
     )
     status_url = serializers.SerializerMethodField(
-        read_only=True,
-        help_text='This non-OCPI field exists for educational purposes'
+        read_only=True, help_text="This non-OCPI field exists for educational purposes"
     )
 
 
@@ -105,10 +106,13 @@ class UTCDateTimeField(serializers.DateTimeField):
     def to_internal_value(self, value: Union[str, datetime]):
         if isinstance(value, datetime):
             return value
-        assert isinstance(value, str), f'Expected a string, got type {type(value)} with value {value}'
+        assert isinstance(
+            value, str
+        ), f"Expected a string, got type {type(value)} with value {value}"
         value: datetime = parser.parse(value)
         if value and isinstance(value.tzinfo, tzoffset):
             raise serializers.ValidationError(
-                'according to OCPI specification, datetimes should be in UTC timezone', code='invalid'
+                "according to OCPI specification, datetimes should be in UTC timezone",
+                code="invalid",
             )
         return value

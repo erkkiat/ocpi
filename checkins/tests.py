@@ -1,9 +1,3 @@
-import gzip
-import json
-
-from django.test import TestCase
-from icecream import ic
-
 # class LocationMatchTest(TestCase):
 #     def test_location_matching(self):
 #         with gzip.open('checkins/data/location-examples/plugshare.json.gz', 'r') as fin:

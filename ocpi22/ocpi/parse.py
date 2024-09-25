@@ -19,10 +19,10 @@ def parse_ocpi_url(url: str) -> OCPIUrlComponents:
     >>> parse_ocpi_url('/ocpi/2.2.1/sessions/FI/000/FI*000*S*54FED8A974E942A4BC82165D867')
     OCPIUrlComponents(path='/ocpi/2.2.1/sessions/', module=<OcpiModuleEnum.SESSIONS: 'sessions'>, parameters='FI/000/FI*000*S*54FED8A974E942A4BC82165D867')
     """
-    url = url.rstrip('/')
-    path = ''
-    module = ''
-    parameters = ''
+    url = url.rstrip("/")
+    path = ""
+    module = ""
+    parameters = ""
 
     # Figure out the OCPI module
     for m in ocpi_modules:
@@ -34,7 +34,7 @@ def parse_ocpi_url(url: str) -> OCPIUrlComponents:
     for module_url in get_module_urls():
         if module_url in url:
             path = module_url
-            parameters = url.replace(module_url, '').strip('/')
+            parameters = url.replace(module_url, "").strip("/")
             break
 
     return OCPIUrlComponents(path, OcpiModuleEnum(module), parameters)
