@@ -5,6 +5,7 @@ import cachetools
 from django.http import HttpRequest
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from ocpi22.models.credentials import CredentialsRole
 
@@ -12,11 +13,11 @@ from ocpi22.ocpi.util_party import get_sender_party
 from ocpiconnector.ocpi_identities import Party
 
 
-partners_cache = cachetools.TTLCache(maxsize=1024, ttl=60*60*4)
+partners_cache = cachetools.TTLCache(maxsize=1024, ttl=60 * 60 * 4)
 
 
 @cachetools.cached(cache=partners_cache)
-def get_partners_by_party(party: Union[Party, 'CredentialsRole']) -> set[int]:
+def get_partners_by_party(party: Union[Party, "CredentialsRole"]) -> set[int]:
     """
     Get the partners of a party from the database. If the party is not found in the database, it is created.
     This function returns a set of primary keys of the partners of the given party, because that is used
@@ -28,12 +29,15 @@ def get_partners_by_party(party: Union[Party, 'CredentialsRole']) -> set[int]:
         return set()
     if isinstance(party, Party):
         from ocpi22.ocpi.auth import get_credentialsrole
+
         role = get_credentialsrole(None, party, create=True)
     else:
         role = party
     if role:
-        our_partners = role.agreed_parties.all().values_list('id', flat=True)
-        we_are_partners_to = role.agreed_parties_backwards.all().values_list('id', flat=True)
+        our_partners = role.agreed_parties.all().values_list("id", flat=True)
+        we_are_partners_to = role.agreed_parties_backwards.all().values_list(
+            "id", flat=True
+        )
         return set.union(set(our_partners), set(we_are_partners_to))
     return set()  # This should not happen
 
@@ -41,12 +45,13 @@ def get_partners_by_party(party: Union[Party, 'CredentialsRole']) -> set[int]:
 def get_partners_by_party_as_party(party: Party) -> set[Party]:
     primary_keys = get_partners_by_party(party)
     from ocpi22.models.credentials import CredentialsRole
+
     roles = CredentialsRole.objects.filter(pk__in=primary_keys)
     return set(role.party for role in roles)
 
 
 def get_partners(request: HttpRequest) -> set[int]:
-    if request and hasattr(request, 'headers'):
+    if request and hasattr(request, "headers"):
         party = get_sender_party(request.headers)
         return get_partners_by_party(party)
     return set()
@@ -60,7 +65,9 @@ def add_partner(party: Party, partner: Party) -> bool:
         invalidate_partner_cache(party)
         invalidate_partner_cache(partner)
         return True
-    raise ValueError(f'Parties {party} and {partner} are not both found in the database')
+    raise ValueError(
+        f"Parties {party} and {partner} are not both found in the database"
+    )
 
 
 def remove_partner(party: Party, partner: Party) -> bool:
@@ -71,10 +78,12 @@ def remove_partner(party: Party, partner: Party) -> bool:
         invalidate_partner_cache(party)
         invalidate_partner_cache(partner)
         return True
-    raise ValueError(f'Parties {party} and {partner} are not both found in the database')
+    raise ValueError(
+        f"Parties {party} and {partner} are not both found in the database"
+    )
 
 
-def invalidate_partner_cache(party: Union[Party, 'CredentialsRole']) -> bool:
+def invalidate_partner_cache(party: Union[Party, "CredentialsRole"]) -> bool:
     partners_cache.clear()
     return True
 

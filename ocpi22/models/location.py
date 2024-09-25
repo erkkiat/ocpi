@@ -150,7 +150,9 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     # Postal code of the location, may only be omitted when the location has no postal code:
     # in some countries charging locations at highways don’t have postal codes.
     postal_code = models.CharField(
-        max_length=OCPI_22_MAX_ADDRESS_LENGTH, blank=True, verbose_name=_("Postal code")
+        max_length=OCPI_22_MAX_ADDRESS_LENGTH,
+        blank=True,
+        verbose_name=_("Postal code"),
     )
 
     # State or province of the location, only to be used when relevant
@@ -351,7 +353,9 @@ class Evse(models.Model, ModelUtilMixin):
     # use the field evse_id for that.
     # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
     uid = models.CharField(
-        max_length=OCPI_22_MAX_UID_LENGTH, validators=[uid_validator], db_index=True
+        max_length=OCPI_22_MAX_UID_LENGTH,
+        validators=[uid_validator],
+        db_index=True,
     )
 
     # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"

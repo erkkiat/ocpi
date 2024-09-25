@@ -1,13 +1,13 @@
 import pytz
 from cachetools import cached, TTLCache
 from django.utils.datetime_safe import datetime
+from icecream import ic
 
 import ocpi22.logging as logging
 import os
 from collections import namedtuple
 from typing import Union
 
-from django.conf import settings
 from rest_framework import exceptions
 from rest_framework.generics import get_object_or_404
 
@@ -34,32 +34,54 @@ def get_token(token_id, ad_hoc_token):
     if token_id:
         token = get_object_or_404(Token, uid=token_id)
         return token
-    CdrToken = namedtuple('CdrToken', ad_hoc_token)
+    CdrToken = namedtuple("CdrToken", ad_hoc_token)
     return CdrToken(**ad_hoc_token)
 
 
-def get_session(token: Union[Token, str], statuses=(Session.PENDING, Session.ACTIVE)) -> Session:
+def get_session(
+    token: Union[Token, str], statuses=(Session.PENDING, Session.ACTIVE)
+) -> Session:
     token_id = get_token_id(token)
-    return get_session_by_adhoc_token(token_id,
-                                      max_age_minutes=365 * 24 * 60,  # Maximum charge time: 1 year :)
-                                      statuses=statuses)
+    return get_session_by_adhoc_token(
+        token_id,
+        max_age_minutes=365 * 24 * 60,  # Maximum charge time: 1 year :)
+        statuses=statuses,
+    )
 
 
 class EvseOccupied(RuntimeError):
     pass
 
 
-def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, str, "CredentialsRole"], credentials,
-                   internal_reference=None, token_id: Union[Token, str] = None, ad_hoc_token=None,
-                   uid=None, start_kwh=0.0, stop_kwh=0.0, session_status=Session.PENDING,
-                   authorization_reference='', reservation_id=None, authorization_method=None, currency=None,
-                   *_args, **kwargs
-                   ) -> Session:
-    token: Token = get_token(token_id, ad_hoc_token) if not isinstance(token_id, Token) else token_id
+def create_session(
+    location_id,
+    evse_uid,
+    connector_id,
+    billed_to: Union[Party, str, "CredentialsRole"],
+    credentials,
+    internal_reference=None,
+    token_id: Union[Token, str] = None,
+    ad_hoc_token=None,
+    uid=None,
+    start_kwh=0.0,
+    stop_kwh=0.0,
+    session_status=Session.PENDING,
+    authorization_reference="",
+    reservation_id=None,
+    authorization_method=None,
+    currency=None,
+    *_args,
+    **kwargs,
+) -> Session:
+    token: Token = (
+        get_token(token_id, ad_hoc_token)
+        if not isinstance(token_id, Token)
+        else token_id
+    )
     if not billed_to:
         billed_to = token.ocpi_master
     if isinstance(billed_to, str):
-        billed_to = get_credentialsrole(party=Party(*billed_to.split('*')))
+        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
     if isinstance(billed_to, Party):
         billed_to = get_credentialsrole(party=billed_to)
     if not uid:
@@ -71,16 +93,26 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     if not isinstance(evse_uid, Evse):
         evse = Evse.get_if_exists(uid=evse_uid, location=location, raise_exception=True)
     # The Connector may be selected later and the information gotten from the charger
-    connector = Connector.get_if_exists(uid=connector_id, evse=evse, raise_exception=True) if connector_id else None
+    connector = (
+        Connector.get_if_exists(uid=connector_id, evse=evse, raise_exception=True)
+        if connector_id
+        else None
+    )
     if not authorization_method:
         from ocpi22.tokens.auth import authorize_token
+
         authorization: TokenAuthorization = authorize_token(token.uid, location)
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
-            msg = f'Token {token} is not authorized for use by MSP at this time: ' \
-                  f'{authorization.info if authorization else ""}'
+            msg = (
+                f'Token {token} is not authorized for use by MSP at this time: '
+                f'{authorization.info if authorization else ""}'
+            )
             logging.error(msg)
             raise exceptions.PermissionDenied(msg)
-        authorization_method, authorization_reference = authorization.auth_method, authorization.authorization_reference
+        authorization_method, authorization_reference = (
+            authorization.auth_method,
+            authorization.authorization_reference,
+        )
     else:
         authorization_method = authorization_method or enum.AuthMethodChoices.COMMAND
 
@@ -93,9 +125,9 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
     #     raise EvseOccupied('Cannot start a new session because there is an active charging session '
     #                        f'{active_sessions.first().uid} in progress.')
 
-    assert billed_to, 'Unable to bill session without billed_to'
+    assert billed_to, "Unable to bill session without billed_to"
 
-    currency = currency or os.environ.get('CPO_CURRENCY', 'EUR')
+    currency = currency or os.environ.get("CPO_CURRENCY", "EUR")
     if connector and connector.tariff_ids:
         # Is there some other currency specified in the Tariff for this Connector?
         first_tariff = connector.tariff_ids.first()
@@ -115,34 +147,41 @@ def create_session(location_id, evse_uid, connector_id, billed_to: Union[Party, 
         cdr_token_type=token.type,
         cdr_token_contract_id=token.contract_id,
         auth_method=authorization_method,
-        authorization_reference=authorization_reference or '',
+        authorization_reference=authorization_reference or "",
         location=location,
         evse=evse,
         connector=connector,
         currency=currency,
         billed_to=billed_to,
         credentials=credentials,
-        ocpi_master=get_our_credentialsrole(OcpiRolesEnum.CPO)
+        ocpi_master=get_our_credentialsrole(OcpiRolesEnum.CPO),
     )
     params.update(kwargs)
-    params.pop('expiry_date', None)  # Todo: Finish implementing reservations
+    params.pop("expiry_date", None)  # Todo: Finish implementing reservations
 
     session = Session.objects.create(**params)
     # No use to do session.send_update() yet, since pending sessions are not sent to the MSP
 
-    logging.info(f'New session {session.uid} pending at {evse.evse_id}')
+    logging.info(f"New session {session.uid} pending at {evse.evse_id}")
     return session
 
 
-@cached(cache=TTLCache(maxsize=0, ttl=60*60))
+@cached(cache=TTLCache(maxsize=0, ttl=60 * 60))
 def get_ocpi_token(session_id: str) -> str:
     """
     Get the OCPI token for the given session_id, which is the only token
     that is allowed to modify the data for this Session.
     """
-    session = Session.objects.select_related('ocpi_master', 'ocpi_master__credentials').get(uid=session_id)
+    session = Session.objects.select_related(
+        "ocpi_master", "ocpi_master__credentials"
+    ).get(uid=session_id)
     ic(session)
     from ocpi22.models.credentials import CredentialsRole
+
     ocpi_master = CredentialsRole.objects.get(pk=session.ocpi_master_id)
     ic(ocpi_master)
-    return ocpi_master.credentials.ours if getattr(ocpi_master, 'credentials', None) else ''
+    return (
+        ocpi_master.credentials.ours
+        if getattr(ocpi_master, "credentials", None)
+        else ""
+    )

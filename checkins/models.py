@@ -6,7 +6,13 @@ from ocpi22.models.location import Connector
 
 
 class Checkin(models.Model):
-    connector = models.ForeignKey(Connector, related_name='checkins', on_delete=models.SET_NULL, blank=True, null=True)
+    connector = models.ForeignKey(
+        Connector,
+        related_name="checkins",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+    )
 
     # evse_id = models.CharField(max_length=48, blank=True, null=True)
 
@@ -23,18 +29,21 @@ class Checkin(models.Model):
     # longitude = models.FloatField()
 
     class StatusChoices(models.TextChoices):
-        SUCCESS = 'OK', _('Charging was successful')
-        BLOCKED = 'BL', _('Another vehicle is not charging, but blocks access')
-        INOPERATIVE = 'IN', _('Charge point seems inoperative')
-        NO_AUTHORIZATION = 'AU', _('Charging is not authorized with my RFID or application')
-        PREMATURE_STOP = 'PR', _('Charging stopped prematurely')
-        OTHER = 'OT', _('Some other problem')
+        SUCCESS = "OK", _("Charging was successful")
+        BLOCKED = "BL", _("Another vehicle is not charging, but blocks access")
+        INOPERATIVE = "IN", _("Charge point seems inoperative")
+        NO_AUTHORIZATION = (
+            "AU",
+            _("Charging is not authorized with my RFID or application"),
+        )
+        PREMATURE_STOP = "PR", _("Charging stopped prematurely")
+        OTHER = "OT", _("Some other problem")
 
     datetime = models.DateTimeField()
     status = models.CharField(max_length=2, choices=StatusChoices.choices)
     comment = models.TextField(null=True, blank=True)
 
-    original_json = models.JSONField('Original submission')
+    original_json = models.JSONField("Original submission")
 
     source = models.ForeignKey(User, on_delete=models.PROTECT)
 

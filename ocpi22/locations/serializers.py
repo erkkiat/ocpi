@@ -1,5 +1,3 @@
-from pprint import pprint
-
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -14,13 +12,16 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.serializers.hours import HoursSerializer
 from ocpi22.util import uid_validator, fetch_object
-from ocpi22.serializers.util import HyperlinkedModelSerializerCleanedUp, UTCDateTimeField
+from ocpi22.serializers.util import (
+    HyperlinkedModelSerializerCleanedUp,
+    UTCDateTimeField,
+)
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = BusinessDetails
-        fields = ['name', 'website', 'logo']
+        fields = ["name", "website", "logo"]
 
     def create(self, data):
         if isinstance(data, BusinessDetails) or not data:
@@ -31,11 +32,11 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
 
 class PowerTypeSerializer(serializers.CharField):
     def to_representation(self, power_type):
-        version = self.context.get('version', None)  # Action required only for OCPI 2.2
-        if version == '2.2':
+        version = self.context.get("version", None)  # Action required only for OCPI 2.2
+        if version == "2.2":
             power_type = dict(
-                AC_2_PHASE='AC_1_PHASE',
-                AC_2_PHASE_SPLIT='AC_1_PHASE',
+                AC_2_PHASE="AC_1_PHASE",
+                AC_2_PHASE_SPLIT="AC_1_PHASE",
             ).get(power_type, power_type)
         return power_type
 
@@ -43,19 +44,29 @@ class PowerTypeSerializer(serializers.CharField):
 class TariffField(serializers.StringRelatedField):
     def to_internal_value(self, data):
         try:
-            credentialsrole = self.context.get('credentialsrole',
-                                               getattr(self.context.get('request', object), 'credentialsrole', None))
-            assert credentialsrole, 'No credentialsrole found in the context in TariffField'
-            tariff = Tariff.objects.get_cached(uid__iexact=data, archived=False, ocpi_master=credentialsrole)
+            credentialsrole = self.context.get(
+                "credentialsrole",
+                getattr(self.context.get("request", object), "credentialsrole", None),
+            )
+            assert (
+                credentialsrole
+            ), "No credentialsrole found in the context in TariffField"
+            tariff = Tariff.objects.get_cached(
+                uid__iexact=data, archived=False, ocpi_master=credentialsrole
+            )
             return tariff
         except Tariff.DoesNotExist as e:
-            credentials = self.context.get('credentials')
+            credentials = self.context.get("credentials")
             if credentials:
-                if fetch_object(uid=data, ocpi_module=OcpiModuleEnum.TARIFFS, credentials=credentials):
+                if fetch_object(
+                    uid=data,
+                    ocpi_module=OcpiModuleEnum.TARIFFS,
+                    credentials=credentials,
+                ):
                     return self.to_internal_value(data)
-            raise ValidationError(f'Tariff with UID `{data}` cannot be fetched: {e}')
+            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched: {e}")
         except Tariff.MultipleObjectsReturned as e:
-            raise ValidationError(f'Tariff with UID `{data}` cannot be fetched: {e}')
+            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched: {e}")
 
     def to_representation(self, value: Tariff):
         return value.uid
@@ -67,7 +78,7 @@ class CommaSeparatedChoiceField(serializers.ChoiceField):
 
     def to_representation(self, value):
         if isinstance(value, str):
-            values = value.split(',')
+            values = value.split(",")
         else:
             values = value
         values = [v for v in values if v]  # Remove empty strings
@@ -76,8 +87,8 @@ class CommaSeparatedChoiceField(serializers.ChoiceField):
 
     def to_internal_value(self, data):
         if isinstance(data, list):
-            data = ','.join(data)
-        values = data.split(',')
+            data = ",".join(data)
+        values = data.split(",")
         for value in values:
             if value not in self.choices:
                 raise serializers.ValidationError(_("Invalid value '%s'.") % value)
@@ -98,7 +109,10 @@ class MaxElectricPowerSerializer(serializers.IntegerField):
     def to_representation(self, connector):
         assert isinstance(connector, Connector)  # Must use source='*'
         phases = Ocpi.POWERTYPE_PHASES.get(connector.power_type, 1)
-        return connector.max_electric_power or connector.max_voltage * connector.max_amperage * phases
+        return (
+            connector.max_electric_power
+            or connector.max_voltage * connector.max_amperage * phases
+        )
 
     def to_internal_value(self, data):
         return dict(max_electric_power=data)
@@ -109,34 +123,51 @@ class UpdateMixin:
         if instance:
             instance.last_updated = last_updated
             instance.save()
-            if instance and hasattr(instance, 'parent'):
+            if instance and hasattr(instance, "parent"):
                 self.update_last_updated(instance.parent, last_updated)
 
 
 class ConnectorSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
     class Meta:
         model = Connector
-        fields = ['id', 'standard', 'format',
-                  'power_type', 'max_voltage', 'max_amperage', 'max_electric_power',
-                  'tariff_ids', 'terms_and_conditions', 'last_updated']
+        fields = [
+            "id",
+            "standard",
+            "format",
+            "power_type",
+            "max_voltage",
+            "max_amperage",
+            "max_electric_power",
+            "tariff_ids",
+            "terms_and_conditions",
+            "last_updated",
+        ]
 
-    id = serializers.CharField(source='uid')
+    id = serializers.CharField(source="uid")
     tariff_ids = TariffField(many=True, required=False)
     last_updated = UTCDateTimeField()
     power_type = PowerTypeSerializer()
-    max_electric_power = MaxElectricPowerSerializer(source='*', required=False)
+    max_electric_power = MaxElectricPowerSerializer(source="*", required=False)
 
     def save(self, **kwargs):
-        self.update_last_updated(self.instance, self.validated_data.get('last_updated'))
+        self.update_last_updated(self.instance, self.validated_data.get("last_updated"))
         return super().save(**kwargs)
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
     class Meta:
         model = Evse
-        fields = ['detail_url', 'uid', 'evse_id', 'status', 'last_updated', 'connectors', 'capabilities']
+        fields = [
+            "detail_url",
+            "uid",
+            "evse_id",
+            "status",
+            "last_updated",
+            "connectors",
+            "capabilities",
+        ]
 
-    lookup_field = 'uid'
+    lookup_field = "uid"
 
     connectors = ConnectorSerializer(many=True, required=True)
     uid = serializers.CharField(validators=[uid_validator])
@@ -144,15 +175,17 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
     last_updated = UTCDateTimeField(required=False)
 
     def save(self, **kwargs):
-        self.update_last_updated(self.instance, self.validated_data.get('last_updated'))
+        self.update_last_updated(self.instance, self.validated_data.get("last_updated"))
         return super().save(**kwargs)
 
     def to_representation(self, evse: Evse):
         result = super().to_representation(evse)
-        version = self.context.get('version', None)
-        if version == '2.2' and 'capabilities' in result:
+        version = self.context.get("version", None)
+        if version == "2.2" and "capabilities" in result:
             try:
-                result['capabilities'].remove('START_SESSION_CONNECTOR_REQUIRED')  # Not supported in OCPI 2.2
+                result["capabilities"].remove(
+                    "START_SESSION_CONNECTOR_REQUIRED"
+                )  # Not supported in OCPI 2.2
             except ValueError:
                 pass  # Ok, no such capability in this EVSE anyway
         return result
@@ -160,11 +193,11 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
     @staticmethod
     def process_connectors(evse: Evse, connectors: dict) -> None:
         for c in connectors:
-            tariff_ids = c.pop('tariff_ids', [])
+            tariff_ids = c.pop("tariff_ids", [])
             try:
-                connector = Connector.objects.get(uid=c.get('uid'), evse=evse)
+                connector = Connector.objects.get(uid=c.get("uid"), evse=evse)
                 for key, value in c.items():
-                    if key != 'uid':
+                    if key != "uid":
                         setattr(connector, key, value)
                 connector.tariff_ids.set(tariff_ids)
                 connector.save()
@@ -173,17 +206,17 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
                 connector.tariff_ids.set(tariff_ids)
 
     def create(self, validated_data):
-        connectors = validated_data.pop('connectors', [])
-        capabilities = validated_data.pop('capabilities', [])
+        connectors = validated_data.pop("connectors", [])
+        capabilities = validated_data.pop("capabilities", [])
         evse = Evse.objects.create(**validated_data)
         evse.capabilities.set(capabilities)
         self.process_connectors(evse, connectors)
         return evse
 
     def update(self, evse: Evse, validated_data: dict) -> Evse:
-        skip_fields = {'evse_id', 'uid'}
+        skip_fields = {"evse_id", "uid"}
 
-        connectors = validated_data.pop('connectors', [])
+        connectors = validated_data.pop("connectors", [])
         self.process_connectors(evse, connectors)
 
         # Todo: map() or [] instead of for loop
@@ -215,7 +248,9 @@ class PublishAllowedToSerializer(serializers.Serializer):
     def to_internal_value(self, data) -> Token:
         token = Token.get_if_exists(**data)
         if not token:
-            raise ValidationError(f'Unable to find token with {str(data)}. Try to send the Token to us first.')
+            raise ValidationError(
+                f"Unable to find token with {str(data)}. Try to send the Token to us first."
+            )
         return token
 
     def to_representation(self, token: Token) -> dict:
@@ -225,20 +260,37 @@ class PublishAllowedToSerializer(serializers.Serializer):
 class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
-        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish',
-                  'publish_allowed_to',
-                  'name', 'address', 'city', 'postal_code', 'state', 'country',
-                  'coordinates', 'parking_type',
-                  'evses',
-                  'operator', 'suboperator', 'owner',
-                  'facilities', 'opening_times', 'charging_when_closed',
-                  'time_zone', 'last_updated']
+        fields = [
+            "detail_url",
+            "country_code",
+            "party_id",
+            "id",
+            "publish",
+            "publish_allowed_to",
+            "name",
+            "address",
+            "city",
+            "postal_code",
+            "state",
+            "country",
+            "coordinates",
+            "parking_type",
+            "evses",
+            "operator",
+            "suboperator",
+            "owner",
+            "facilities",
+            "opening_times",
+            "charging_when_closed",
+            "time_zone",
+            "last_updated",
+        ]
 
-    lookup_field = 'uid'
+    lookup_field = "uid"
 
-    id = serializers.CharField(source='uid')
-    country_code = serializers.CharField(source='ocpi_master.country_code')
-    party_id = serializers.CharField(source='ocpi_master.party_id')
+    id = serializers.CharField(source="uid")
+    country_code = serializers.CharField(source="ocpi_master.country_code")
+    party_id = serializers.CharField(source="ocpi_master.party_id")
 
     evses = EvseSerializer(many=True, required=False)
     coordinates = CoordinatesSerializer()
@@ -254,30 +306,39 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     @staticmethod
     def process_coordinates(validated_data: dict):
         """Handle manually all subobjects the Location cannot handle"""
-        coordinates = validated_data.pop('coordinates', None)
+        coordinates = validated_data.pop("coordinates", None)
         if coordinates:
-            validated_data['latitude'] = coordinates.get('latitude')
-            validated_data['longitude'] = coordinates.get('longitude')
+            validated_data["latitude"] = coordinates.get("latitude")
+            validated_data["longitude"] = coordinates.get("longitude")
         return validated_data
 
     def create(self, validated_data: dict):
         with transaction.atomic():
             # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
-            evses = validated_data.pop('evses', [])
-            opening_times = validated_data.pop('opening_times', None)
-            publish_allowed_to = validated_data.pop('publish_allowed_to', [])
-            operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
-            suboperator = BusinessDetailsSerializer().create(data=validated_data.pop('suboperator', None))
-            owner = BusinessDetailsSerializer().create(data=validated_data.pop('owner', None))
+            evses = validated_data.pop("evses", [])
+            opening_times = validated_data.pop("opening_times", None)
+            publish_allowed_to = validated_data.pop("publish_allowed_to", [])
+            operator = BusinessDetailsSerializer().create(
+                data=validated_data.pop("operator", None)
+            )
+            suboperator = BusinessDetailsSerializer().create(
+                data=validated_data.pop("suboperator", None)
+            )
+            owner = BusinessDetailsSerializer().create(
+                data=validated_data.pop("owner", None)
+            )
 
             location = Location.objects.create(
-                **validated_data, operator=operator, suboperator=suboperator, owner=owner
+                **validated_data,
+                operator=operator,
+                suboperator=suboperator,
+                owner=owner,
             )
             location.publish_allowed_to.set(publish_allowed_to)
 
             for e in evses:
-                connectors = e.pop('connectors', [])
+                connectors = e.pop("connectors", [])
                 evse = Evse.objects.create(**e, location=location)
 
                 # Capabilities
@@ -285,23 +346,26 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
                 # Connectors
                 for c in connectors:
-                    tariff_ids = c.pop('tariff_ids', [])
+                    tariff_ids = c.pop("tariff_ids", [])
                     connector = Connector.objects.create(**c, evse=evse)
 
                     # Tariffs
                     tariffs = []
                     for t in tariff_ids:
                         try:
-                            tariff = Tariff.objects.get(uid=t,
-                                                        ocpi_master__country_code=location.ocpi_master.country_code,
-                                                        ocpi_master__party_id=location.ocpi_master.party_id,
-                                                        archived=False)
+                            tariff = Tariff.objects.get(
+                                uid=t,
+                                ocpi_master__country_code=location.ocpi_master.country_code,
+                                ocpi_master__party_id=location.ocpi_master.party_id,
+                                archived=False,
+                            )
                             tariffs.append(tariff)
                         except Tariff.DoesNotExist:
                             # Todo: Fetch Tariffs from other party
                             raise ValidationError(
                                 f"Tariff `{t}` for {location.ocpi_master.country_code}*"
-                                f"{location.ocpi_master.party_id} does not exist in our database")
+                                f"{location.ocpi_master.party_id} does not exist in our database"
+                            )
                     connector.tariff_ids.set(tariffs)
 
             # Opening times
@@ -316,16 +380,26 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             return location
 
     def update(self, location: Location, validated_data: dict) -> Location:
-        readonly_fields = {'country_code', 'party_id', 'uid'}  # Lookups in set are faster
+        readonly_fields = {
+            "country_code",
+            "party_id",
+            "uid",
+        }  # Lookups in set are faster
 
         # Pop out all elements which are not directly understood by Location, and process them separately
         validated_data = self.process_coordinates(validated_data)
-        evses = validated_data.pop('evses', [])
-        opening_times = validated_data.pop('opening_times', None)
-        publish_allowed_to = validated_data.pop('publish_allowed_to', [])
-        location.operator = BusinessDetailsSerializer().create(data=validated_data.pop('operator', None))
-        location.suboperator = BusinessDetailsSerializer().create(data=validated_data.pop('suboperator', None))
-        location.owner = BusinessDetailsSerializer().create(data=validated_data.pop('owner', None))
+        evses = validated_data.pop("evses", [])
+        opening_times = validated_data.pop("opening_times", None)
+        publish_allowed_to = validated_data.pop("publish_allowed_to", [])
+        location.operator = BusinessDetailsSerializer().create(
+            data=validated_data.pop("operator", None)
+        )
+        location.suboperator = BusinessDetailsSerializer().create(
+            data=validated_data.pop("suboperator", None)
+        )
+        location.owner = BusinessDetailsSerializer().create(
+            data=validated_data.pop("owner", None)
+        )
         location.publish_allowed_to.set(publish_allowed_to)
 
         for key, value in validated_data.items():
@@ -335,25 +409,25 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         location.save()
 
         for e in evses:
-            connectors = e.pop('connectors', [])
-            capabilities = e.pop('capabilities', None)
+            connectors = e.pop("connectors", [])
+            capabilities = e.pop("capabilities", None)
             try:
-                evse = Evse.objects.get(uid=e.get('uid'), location=location)
+                evse = Evse.objects.get(uid=e.get("uid"), location=location)
                 if capabilities is not None:
                     evse.capabilities = capabilities
                 for key, value in e.items():
-                    if key not in {'uid', 'evse_id'}:
+                    if key not in {"uid", "evse_id"}:
                         setattr(evse, key, value)
                 evse.save()
             except Evse.DoesNotExist:
                 evse = Evse.objects.create(**e, location=location)
 
             for c in connectors:
-                tariff_ids = c.pop('tariff_ids', [])
+                tariff_ids = c.pop("tariff_ids", [])
                 try:
-                    connector = Connector.objects.get(uid=c.get('uid'), evse=evse)
+                    connector = Connector.objects.get(uid=c.get("uid"), evse=evse)
                     for key, value in c.items():
-                        if key != 'uid':
+                        if key != "uid":
                             setattr(connector, key, value)
                     connector.save()
                 except Connector.DoesNotExist:
@@ -361,10 +435,10 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 connector.tariff_ids.set(tariff_ids)
 
         if opening_times:
-            if hasattr(location, 'opening_times'):
+            if hasattr(location, "opening_times"):
                 HoursSerializer().update(location.opening_times, opening_times)
             else:
-                opening_times_instance = HoursSerializer().create(opening_times, location=location)
+                HoursSerializer().create(opening_times, location=location)
                 # location.opening_times = opening_times_instance
                 # location.save()
 
@@ -393,8 +467,25 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 class LocationSerializer(LocationSerializer221):
     class Meta:
         model = Location
-        fields = ['detail_url', 'country_code', 'party_id', 'id', 'publish', 'publish_allowed_to',
-                  'name', 'address', 'city', 'postal_code', 'country',
-                  'coordinates', 'parking_type', 'evses',
-                  'operator', 'suboperator', 'owner',
-                  'facilities', 'time_zone', 'last_updated']
+        fields = [
+            "detail_url",
+            "country_code",
+            "party_id",
+            "id",
+            "publish",
+            "publish_allowed_to",
+            "name",
+            "address",
+            "city",
+            "postal_code",
+            "country",
+            "coordinates",
+            "parking_type",
+            "evses",
+            "operator",
+            "suboperator",
+            "owner",
+            "facilities",
+            "time_zone",
+            "last_updated",
+        ]

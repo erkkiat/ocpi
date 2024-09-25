@@ -11,8 +11,14 @@ class Hours(models.Model):
         verbose_name_plural = _("Hours")
 
     twentyfourseven = models.BooleanField()
-    location = models.OneToOneField('ocpi22.Location', on_delete=models.CASCADE, null=True, blank=True,
-                                    verbose_name=_('Location'), related_name='opening_times')
+    location = models.OneToOneField(
+        "ocpi22.Location",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name=_("Location"),
+        related_name="opening_times",
+    )
 
     def __str__(self):
         return self.get_hours_display_english()
@@ -21,9 +27,9 @@ class Hours(models.Model):
         if self.twentyfourseven:
             return ["24/7"]
 
-        regular_hours = self.regular_hours.all().order_by('weekday', 'period_begin')
-        exceptional_openings = self.exceptional_openings.all().order_by('period_begin')
-        exceptional_closings = self.exceptional_closings.all().order_by('period_begin')
+        regular_hours = self.regular_hours.all().order_by("weekday", "period_begin")
+        exceptional_openings = self.exceptional_openings.all().order_by("period_begin")
+        exceptional_closings = self.exceptional_closings.all().order_by("period_begin")
 
         if not regular_hours and not exceptional_openings and not exceptional_closings:
             return ["No regular or exceptional hours"]
@@ -44,14 +50,26 @@ class Hours(models.Model):
             parts.append(part)
 
         for eo in exceptional_openings:
-            begin_formatted = dateformat.format(timezone.localtime(eo.period_begin), 'F jS G:i')
-            end_formatted = dateformat.format(timezone.localtime(eo.period_end), 'F jS G:i')
-            parts.append(f"{_('Exceptionally Open')}: {begin_formatted}-{end_formatted}")
+            begin_formatted = dateformat.format(
+                timezone.localtime(eo.period_begin), "F jS G:i"
+            )
+            end_formatted = dateformat.format(
+                timezone.localtime(eo.period_end), "F jS G:i"
+            )
+            parts.append(
+                f"{_('Exceptionally Open')}: {begin_formatted}-{end_formatted}"
+            )
 
         for ec in exceptional_closings:
-            begin_formatted = dateformat.format(timezone.localtime(ec.period_begin), 'F jS G:i')
-            end_formatted = dateformat.format(timezone.localtime(ec.period_end), 'F jS G:i')
-            parts.append(f"{_('Exceptionally Closed')}: {begin_formatted}-{end_formatted}")
+            begin_formatted = dateformat.format(
+                timezone.localtime(ec.period_begin), "F jS G:i"
+            )
+            end_formatted = dateformat.format(
+                timezone.localtime(ec.period_end), "F jS G:i"
+            )
+            parts.append(
+                f"{_('Exceptionally Closed')}: {begin_formatted}-{end_formatted}"
+            )
 
         return parts
 
@@ -61,19 +79,21 @@ class Hours(models.Model):
 
 class RegularHours(models.Model):
     WEEKDAY_CHOICES = [
-        (1, 'Monday'),
-        (2, 'Tuesday'),
-        (3, 'Wednesday'),
-        (4, 'Thursday'),
-        (5, 'Friday'),
-        (6, 'Saturday'),
-        (7, 'Sunday'),
+        (1, "Monday"),
+        (2, "Tuesday"),
+        (3, "Wednesday"),
+        (4, "Thursday"),
+        (5, "Friday"),
+        (6, "Saturday"),
+        (7, "Sunday"),
     ]
 
     weekday = models.PositiveSmallIntegerField(choices=WEEKDAY_CHOICES)
     period_begin = models.TimeField()
     period_end = models.TimeField()
-    hours = models.ForeignKey(Hours, null=True, on_delete=models.CASCADE, related_name='regular_hours')
+    hours = models.ForeignKey(
+        Hours, null=True, on_delete=models.CASCADE, related_name="regular_hours"
+    )
 
     def __str__(self):
         return f"{self.get_weekday_display()}: {self.period_begin}-{self.period_end}"
@@ -89,8 +109,8 @@ class ExceptionalPeriod(models.Model):
 
     def __str__(self):
         # Format period_begin and period_end using Django's dateformat utility
-        begin_formatted = dateformat.format(self.period_begin, 'F jS G:i')
-        end_formatted = dateformat.format(self.period_end, 'F jS G:i')
+        begin_formatted = dateformat.format(self.period_begin, "F jS G:i")
+        end_formatted = dateformat.format(self.period_end, "F jS G:i")
         return f"{begin_formatted} - {end_formatted}"
 
 
@@ -99,7 +119,9 @@ class ExceptionalOpening(ExceptionalPeriod):
         verbose_name = _("Exceptional Period")
         verbose_name_plural = _("Exceptional Periods")
 
-    hours = models.ForeignKey(Hours, null=True, on_delete=models.CASCADE, related_name='exceptional_openings')
+    hours = models.ForeignKey(
+        Hours, null=True, on_delete=models.CASCADE, related_name="exceptional_openings"
+    )
 
 
 class ExceptionalClosing(ExceptionalPeriod):
@@ -107,4 +129,6 @@ class ExceptionalClosing(ExceptionalPeriod):
         verbose_name = _("Exceptional Closing")
         verbose_name_plural = _("Exceptional Closings")
 
-    hours = models.ForeignKey(Hours, null=True, on_delete=models.CASCADE, related_name='exceptional_closings')
+    hours = models.ForeignKey(
+        Hours, null=True, on_delete=models.CASCADE, related_name="exceptional_closings"
+    )

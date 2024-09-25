@@ -6,7 +6,7 @@ from django.core.wsgi import get_wsgi_application
 from fastapi import FastAPI
 from asgiref.wsgi import WsgiToAsgi
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = FastAPI()
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ocpiconnector.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings")
 
 django_wsgi_app = get_wsgi_application()
 django_asgi_app = WsgiToAsgi(django_wsgi_app)
@@ -46,11 +46,6 @@ def read_item(item_id: int, q: Union[str, None] = None):
 app.mount("/static", StaticFiles(directory="staticfiles"), name="static")
 
 
-@app.get("/fastapi")
-async def read_root():
-    return {"Hello": "World"}
-
-
 class FastAPIFirstMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, fastapi_app: ASGIApp, django_app: ASGIApp):
         super().__init__(app)
@@ -68,11 +63,17 @@ class FastAPIFirstMiddleware(BaseHTTPMiddleware):
             await send(message)
 
         ic(scope)
-        send = scope['send']
+        send = scope["send"]
 
         await self.fastapi_app(scope, receive, send_wrapper)
-        if response and response["type"] == "http.response.start" and response["status"] != 404:
-            return Response(None, status_code=response["status"], headers=response["headers"])
+        if (
+            response
+            and response["type"] == "http.response.start"
+            and response["status"] != 404
+        ):
+            return Response(
+                None, status_code=response["status"], headers=response["headers"]
+            )
 
         await self.django_app(scope, receive, send)
         return await call_next(request)
@@ -85,3 +86,6 @@ middleware = [
 ]
 
 application = Starlette(middleware=middleware)
+
+
+# TODO: Let's check this whole file, some parts or maybe whole thing is not needed

@@ -1,7 +1,7 @@
 import socket
 import os
 
-apikey = os.environ.get('HOSTEDGRAPHITE_APIKEY')
+apikey = os.environ.get("HOSTEDGRAPHITE_APIKEY")
 if apikey:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 

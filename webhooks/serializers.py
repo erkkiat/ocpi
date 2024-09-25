@@ -5,7 +5,7 @@ from .models import Webhook
 class WebhookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Webhook
-        fields = ['detail_url', 'url']
+        fields = ["detail_url", "url"]
 
     detail_url = serializers.SerializerMethodField(read_only=True)
 

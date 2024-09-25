@@ -18,11 +18,13 @@ from django.db.models import TimeField
 
 def timer(func):
     """Timer wrapper function to be used as a decorator. Prints out the time it took to execute the function."""
+
     def wrapper(*args, **kwargs):
         start = datetime.now()
         result = func(*args, **kwargs)
-        print(f'Function {func.__name__} took {datetime.now() - start}')
+        print(f"Function {func.__name__} took {datetime.now() - start}")
         return result
+
     return wrapper
 
 
@@ -114,7 +116,7 @@ def weekday_range_to_str(weekday_list: tuple[int]) -> str:
     'Mon-Tue, Thu-Fri, Sun'
     """
     if not weekday_list:
-        return ''
+        return ""
     weekdays = list(calendar.day_abbr)
     results = []
     ranges = consecutive_ranges(sorted(weekday_list))
@@ -123,26 +125,26 @@ def weekday_range_to_str(weekday_list: tuple[int]) -> str:
         if start == stop:
             results.append(_(weekdays[start]))
         elif start == 5 and stop == 6:
-            results.append(_('weekends'))
+            results.append(_("weekends"))
         elif start == 0 and stop == 4:
-            results.append(_('weekdays'))
+            results.append(_("weekdays"))
         elif start == 0 and stop == 6:
             pass
         else:
-            results.append(f'{_(weekdays[start])}-{_(weekdays[stop])}')
+            results.append(f"{_(weekdays[start])}-{_(weekdays[stop])}")
 
     if not results:
-        return ''
+        return ""
 
-    result = ', '.join(results)
+    result = ", ".join(results)
     # Capitalize the first letter, leave the rest alone
-    return f'{result[0].upper()}{result[1:]}'
+    return f"{result[0].upper()}{result[1:]}"
 
 
 def humanize_time(t: Union[datetime.time, TimeField]) -> str:
     if not t.minute:
         return str(t.hour)
-    return f'{t.hour}:{t.minute:02d}'
+    return f"{t.hour}:{t.minute:02d}"
 
 
 class DedupMessageMixin(object):
@@ -159,7 +161,7 @@ class SessionDedupStorage(DedupMessageMixin, SessionStorage):
 
 
 def date_to_str(d: datetime.date) -> str:
-    return d.strftime(settings.DATE_FORMAT) if d else ''
+    return d.strftime(settings.DATE_FORMAT) if d else ""
 
 
 def humanize_date_range(d1: date, d2: date) -> str:
@@ -181,28 +183,28 @@ def humanize_date_range(d1: date, d2: date) -> str:
     """
 
     def format_date(d: date) -> str:
-        return f'{d.day}.{d.month}.{d.year}'
+        return f"{d.day}.{d.month}.{d.year}"
 
     if not d1 and not d2:
-        return ''
+        return ""
     if d1 == d2:
         return format_date(d1)
     if d1 and not d2:
-        return f'{format_date(d1)}-'
+        return f"{format_date(d1)}-"
     if not d1 and d2:
-        return f'-{format_date(d2)}'
+        return f"-{format_date(d2)}"
     if d1.year != d2.year:
-        return f'{format_date(d1)}-{format_date(d2)}'
+        return f"{format_date(d1)}-{format_date(d2)}"
     if d1.month == d2.month:
-        return f'{d1.day}.-{format_date(d2)}'
-    return f'{d1.day}.{d1.month}.-{format_date(d2)}'
+        return f"{d1.day}.-{format_date(d2)}"
+    return f"{d1.day}.{d1.month}.-{format_date(d2)}"
 
 
 def validate_iso2_country(c: str):
     if not pycountry.countries.get(alpha_2=c):
         raise ValidationError(
             _('Country code "%(value)s" is unknown.'),
-            params={'value': c},
+            params={"value": c},
         )
 
 
@@ -216,4 +218,6 @@ def build_item_url(base_url, country_code, party_id, uid):
     >>> build_item_url('http://example.com/tariffs//', 'NL', '123', '456')
     'http://example.com/tariffs/NL/123/456'
     """
-    return urljoin(f'{base_url}/', f'{country_code}/{party_id}/{uid}', allow_fragments=True)
+    return urljoin(
+        f"{base_url}/", f"{country_code}/{party_id}/{uid}", allow_fragments=True
+    )

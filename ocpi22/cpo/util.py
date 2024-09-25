@@ -9,8 +9,14 @@ def _find_our_evse(evse_uid) -> Evse:
     This function gets expensive with a large number of EVSEs, consider simplifying the query or preloading the data
     """
     party = get_our_party(OcpiRolesEnum.CPO)
-    evses = Evse.objects.filter(uid__iexact=evse_uid).select_related('location'). \
-        filter(location__ocpi_master__country_code__iexact=party.country_code,
-               location__ocpi_master__party_id__iexact=party.party_id).order_by('-created')
+    evses = (
+        Evse.objects.filter(uid__iexact=evse_uid)
+        .select_related("location")
+        .filter(
+            location__ocpi_master__country_code__iexact=party.country_code,
+            location__ocpi_master__party_id__iexact=party.party_id,
+        )
+        .order_by("-created")
+    )
     # Todo: Check daily for overlapping Evse.uid in the background
     return evses.first()

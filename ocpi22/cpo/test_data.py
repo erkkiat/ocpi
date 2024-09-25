@@ -22,12 +22,10 @@ class LocationData:
                         "max_voltage": 233,
                         "max_amperage": 32,
                         "max_electric_power": 22200,
-                        "tariff_ids": [
-                            "EKI1"
-                        ]
+                        "tariff_ids": ["EKI1"],
                     }
                 ],
-                "last_updated": "2022-06-18T11:08:03.102160Z"
+                "last_updated": "2022-06-18T11:08:03.102160Z",
             },
             {
                 "status_url": "http://localhost:8000/api/cpo/v2/location/quick/EKI1/",
@@ -38,10 +36,10 @@ class LocationData:
                         "standard": "IEC_62196_T2",
                         "format": "SOCKET",
                         "max_voltage": 232,
-                        "max_amperage": 32
+                        "max_amperage": 32,
                     }
                 ],
-                "last_updated": "2022-06-18T11:08:03.102160Z"
+                "last_updated": "2022-06-18T11:08:03.102160Z",
             },
             {
                 "status_url": "http://localhost:8000/api/cpo/v2/location/quick/EKI1/",
@@ -53,14 +51,12 @@ class LocationData:
                         "format": "CABLE",
                         "max_voltage": 233,
                         "max_amperage": 32,
-                        "tariff_ids": [
-                            "DC50"
-                        ]
+                        "tariff_ids": ["DC50"],
                     }
                 ],
-                "last_updated": "2022-06-18T11:08:03.102160Z"
-            }
-        ]
+                "last_updated": "2022-06-18T11:08:03.102160Z",
+            },
+        ],
     }
 
     location_update1 = {
@@ -73,12 +69,10 @@ class LocationData:
                         "uid": "1",
                         "format": "SOCKET",
                         "max_electric_power": 11000,
-                        "tariff_ids": [
-                            "DC50"
-                        ]
+                        "tariff_ids": ["DC50"],
                     }
                 ],
-                "last_updated": "2022-06-19T12:13:14"
+                "last_updated": "2022-06-19T12:13:14",
             }
-        ]
+        ],
     }

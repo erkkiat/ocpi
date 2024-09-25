@@ -1,11 +1,6 @@
 from ninja import NinjaAPI
 
-from django.conf import settings
-from ninja_extra.permissions import IsAdminUser
-from ninja_jwt.authentication import JWTAuth
 from pymongo import UpdateOne
-from rest_framework.decorators import permission_classes
-from silk.profiling.profiler import silk_profile
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
@@ -14,8 +9,8 @@ from ocpi22.choices import OcpiRolesEnum
 from ocpiconnector.ocpi_identities import get_our_party
 from util import RedisStore
 
-api = NinjaAPI(urls_namespace='token')
-token_store = RedisStore(namespace='tokenallow')
+api = NinjaAPI(urls_namespace="token")
+token_store = RedisStore(namespace="tokenallow")
 
 """
 The original idea here was to have a quick cache for Tokens of the customer using our MSP API.
@@ -31,7 +26,7 @@ Feel free to remove this file.
 async def token_upsert(request: Request, payload: TokenSchema):
     data = payload.dict()  # Convert the payload to a dictionary
     data = fill_token_info(data)
-    _id = data.pop('id')  # Use 'id' as the MongoDB '_id'
+    _id = data.pop("id")  # Use 'id' as the MongoDB '_id'
 
     # result = tokens_col.update_one(
     #     {'_id': _id},  # Match criteria
@@ -49,22 +44,24 @@ async def token_upsert(request: Request, payload: TokenSchema):
     # else:
     #     status = "no changes made"
 
-    return {"status": status}
+    # TODO: There is no status here put back later after adding the logic
+
+    return {"status": "TOBECHECKED"}
 
 
 def fill_token_info(data):
     our_party = get_our_party(OcpiRolesEnum.EMSP)
-    data['token'] = dict(
+    data["token"] = dict(
         country_code=our_party.country_code,
         party_id=our_party.party_id,
-        type='RFID',
-        contract_id='N/A',
-        uid=data['id'],
-        valid=bool(data['allowed'] == 'ALLOWED'),
-        issuer='N/A',
-        whitelist='NEVER'
+        type="RFID",
+        contract_id="N/A",
+        uid=data["id"],
+        valid=bool(data["allowed"] == "ALLOWED"),
+        issuer="N/A",
+        whitelist="NEVER",
     )
-    data.pop('next_update', None)
+    data.pop("next_update", None)
     return data
 
 
@@ -74,13 +71,13 @@ async def bulk_token_upsert(request: Request, payload: TokenListSchema):
     for token in payload.tokens:
         data = token.dict()
         data = fill_token_info(data)
-        _id = data.pop('id')  # Use 'id' as the MongoDB '_id'
+        _id = data.pop("id")  # Use 'id' as the MongoDB '_id'
 
         operations.append(
             UpdateOne(
-                {'_id': _id},  # Match criteria
-                {'$set': data},  # Data to update
-                upsert=True  # Insert if no document matches the criteria
+                {"_id": _id},  # Match criteria
+                {"$set": data},  # Data to update
+                upsert=True,  # Insert if no document matches the criteria
             )
         )
         token_store.store(_id, data, expiration=token.next_update)
