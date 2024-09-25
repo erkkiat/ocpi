@@ -2,19 +2,19 @@ from django.db import models
 
 
 class OCPIEnergySourceCategory(models.TextChoices):
-    NUCLEAR = 'NUCLEAR'
-    GENERAL_FOSSIL = 'GENERAL_FOSSIL'
-    COAL = 'COAL'
-    GAS = 'GAS'
-    GENERAL_GREEN = 'GENERAL_GREEN'
-    SOLAR = 'SOLAR'
-    WIND = 'WIND'
-    WATER = 'WATER'
+    NUCLEAR = "NUCLEAR"
+    GENERAL_FOSSIL = "GENERAL_FOSSIL"
+    COAL = "COAL"
+    GAS = "GAS"
+    GENERAL_GREEN = "GENERAL_GREEN"
+    SOLAR = "SOLAR"
+    WIND = "WIND"
+    WATER = "WATER"
 
 
 class OCPIEnvironmentalImpactCategory(models.TextChoices):
-    NUCLEAR_WASTE = 'NUCLEAR_WASTE'
-    CARBON_DIOXIDE = 'CARBON_DIOXIDE'
+    NUCLEAR_WASTE = "NUCLEAR_WASTE"
+    CARBON_DIOXIDE = "CARBON_DIOXIDE"
 
 
 class OCPIEnvironmentalImpact(models.Model):

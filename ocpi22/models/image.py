@@ -2,13 +2,13 @@ from django.db import models
 
 
 class OCPIImageCategory(models.TextChoices):
-    CHARGER = 'CHARGER'
-    ENTRANCE = 'ENTRANCE'
-    LOCATION = 'LOCATION'
-    NETWORK = 'NETWORK'
-    OPERATOR = 'OPERATOR'
-    OTHER = 'OTHER'
-    OWNER = 'OWNER'
+    CHARGER = "CHARGER"
+    ENTRANCE = "ENTRANCE"
+    LOCATION = "LOCATION"
+    NETWORK = "NETWORK"
+    OPERATOR = "OPERATOR"
+    OTHER = "OTHER"
+    OWNER = "OWNER"
 
 
 class OCPIImage(models.Model):

@@ -9,4 +9,14 @@ ocpi_modules = [x.value for x in OcpiModuleEnum]
 @lru_cache(maxsize=0)
 def get_module_urls() -> Generator:
     from util import reverse
-    return (reverse(name) for name in ('location-list', 'commands-list', 'token-list', 'session-list', 'cdr-list'))
+
+    return (
+        reverse(name)
+        for name in (
+            "location-list",
+            "commands-list",
+            "token-list",
+            "session-list",
+            "cdr-list",
+        )
+    )

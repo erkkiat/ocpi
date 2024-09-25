@@ -13,12 +13,17 @@ from ocpi22.ocpi.util import OCPIResponse
 
 
 def premium_message(request):
-    payment_link = os.environ.get('PAYMENT_LINK', 'https://buy.stripe.com/3cs8zZ6HS56048g00b')
-    messages.info(request, mark_safe(
-        'This is a Premium feature. You can activate all functionality by '
-        '<a class="alert-link" target="subscribe" '
-        f'href="{payment_link}">subscribing to Premium</a>.'
-    ))
+    payment_link = os.environ.get(
+        "PAYMENT_LINK", "https://buy.stripe.com/3cs8zZ6HS56048g00b"
+    )
+    messages.info(
+        request,
+        mark_safe(
+            "This is a Premium feature. You can activate all functionality by "
+            '<a class="alert-link" target="subscribe" '
+            f'href="{payment_link}">subscribing to Premium</a>.'
+        ),
+    )
 
 
 def requires_premium(func):
@@ -37,7 +42,7 @@ class NoPremiumViewSet(ViewSet):
     queryset = Location.objects.none()
 
     def get_view_name(self):
-        return 'This is a Premium Feature'
+        return "This is a Premium Feature"
 
     def put(self, request):
         premium_message(request)
@@ -56,9 +61,8 @@ class NoPremiumViewSet(ViewSet):
         return OCPIResponse(PREMIUM_RESPONSE, status=status.HTTP_426_UPGRADE_REQUIRED)
 
 
-PREMIUM_MESSAGE = 'This feature is available in the Premium subscription. ' \
-                  'You can upgrade at http://ocpi.guide/compare/'
-PREMIUM_RESPONSE = dict(
-    status_message=PREMIUM_MESSAGE,
-    status_code=2999
+PREMIUM_MESSAGE = (
+    "This feature is available in the Premium subscription. "
+    "You can upgrade at http://ocpi.guide/compare/"
 )
+PREMIUM_RESPONSE = dict(status_message=PREMIUM_MESSAGE, status_code=2999)

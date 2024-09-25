@@ -38,8 +38,8 @@ the charge point location due to the need for time based charging fees.
 
 
 class AuthorizationStatus(Enum):
-    Authorized = 'Authorized'
-    NotAuthorized = 'NotAuthorized'
+    Authorized = "Authorized"
+    NotAuthorized = "NotAuthorized"
 
 
 class MeterValueInBetween(BaseModel):
@@ -47,15 +47,15 @@ class MeterValueInBetween(BaseModel):
 
 
 class MeteringStatus(Enum):
-    Start = 'Start'
-    Progress = 'Progress'
-    End = 'End'
+    Start = "Start"
+    Progress = "Progress"
+    End = "End"
 
 
 class SignedMeteringValue(BaseModel):
     SignedMeteringValue: Optional[str] = Field(
         None,
-        description='Metering signature value (in the Transparency software format)\n\nSignedMeteringValue SHOULD be always sent in following order\n1. SignedMeteringValue for Metering Status “Start”\n2. SignedMeteringValue for Metering Status “Progress1”\n3. SignedMeteringValue for Metering Status “Progress2”\n4. …\n5. SignedMeteringValue for Metering Status “Progress8”\n6. SignedMeteringValue for Metering Status “End”\n\nNote:\n\n1. This field `MUST` be provided when the EVSEID in the ChargeDetailRecord contains the \"External\" value in the CalibrationLawDataAvailability field.\n2. The MeteringSignatureValue format provided `MUST` be supported by the Transparency Software used by the CPO\n',
+        description='Metering signature value (in the Transparency software format)\n\nSignedMeteringValue SHOULD be always sent in following order\n1. SignedMeteringValue for Metering Status “Start”\n2. SignedMeteringValue for Metering Status “Progress1”\n3. SignedMeteringValue for Metering Status “Progress2”\n4. …\n5. SignedMeteringValue for Metering Status “Progress8”\n6. SignedMeteringValue for Metering Status “End”\n\nNote:\n\n1. This field `MUST` be provided when the EVSEID in the ChargeDetailRecord contains the "External" value in the CalibrationLawDataAvailability field.\n2. The MeteringSignatureValue format provided `MUST` be supported by the Transparency Software used by the CPO\n',
     )
     MeteringStatus: Optional[MeteringStatus]
 
@@ -63,89 +63,89 @@ class SignedMeteringValue(BaseModel):
 class CalibrationLawVerificationInfo(BaseModel):
     CalibrationLawCertificateID: Optional[str] = Field(
         None,
-        description='The Calibration Law Compliance ID from respective authority along with the revision and issueing date (Compliance ID : Revision : Date) For eg PTB - X-X-XXXX : V1 : 01Jan2020',
+        description="The Calibration Law Compliance ID from respective authority along with the revision and issueing date (Compliance ID : Revision : Date) For eg PTB - X-X-XXXX : V1 : 01Jan2020",
     )
     PublicKey: Optional[str] = Field(
-        None, description='Unique PublicKey for EVSEID can be provided here'
+        None, description="Unique PublicKey for EVSEID can be provided here"
     )
     MeteringSignatureUrl: Optional[str] = Field(
         None,
-        description='In this field CPO can also provide a url for xml file. This xml file can give the compiled Calibration Law Data information which can be simply added to invoices for Customer of EMP.\n\nThe information can contain for eg Charging Station Details, Charging Session Date/Time, SignedMeteringValues (Transparency Software format), SignedMeterValuesVerificationInstruction etc.\n',
+        description="In this field CPO can also provide a url for xml file. This xml file can give the compiled Calibration Law Data information which can be simply added to invoices for Customer of EMP.\n\nThe information can contain for eg Charging Station Details, Charging Session Date/Time, SignedMeteringValues (Transparency Software format), SignedMeterValuesVerificationInstruction etc.\n",
     )
     MeteringSignatureEncodingFormat: Optional[str] = Field(
         None,
-        description='Encoding format of the metering signature data as well as the version (e.g. EDL40 Mennekes: V1)',
+        description="Encoding format of the metering signature data as well as the version (e.g. EDL40 Mennekes: V1)",
     )
     SignedMeteringValuesVerificationInstruction: Optional[str] = Field(
         None,
-        description='Additional information (e.g. instruction on how to use the transparency software)',
+        description="Additional information (e.g. instruction on how to use the transparency software)",
     )
 
 
 class ErrorType(Enum):
-    ConnectorError = 'ConnectorError'
-    CriticalError = 'CriticalError'
+    ConnectorError = "ConnectorError"
+    CriticalError = "CriticalError"
 
 
 class ActionType(Enum):
-    fullLoad = 'fullLoad'
-    update = 'update'
-    insert = 'insert'
-    delete = 'delete'
+    fullLoad = "fullLoad"
+    update = "update"
+    insert = "insert"
+    delete = "delete"
 
 
 class EvseStatus(Enum):
-    Available = 'Available'
-    Reserved = 'Reserved'
-    Occupied = 'Occupied'
-    OutOfService = 'OutOfService'
-    EvseNotFound = 'EvseNotFound'
-    Unknown = 'Unknown'
+    Available = "Available"
+    Reserved = "Reserved"
+    Occupied = "Occupied"
+    OutOfService = "OutOfService"
+    EvseNotFound = "EvseNotFound"
+    Unknown = "Unknown"
 
 
 class EvcoID(RootModel):
     root: str = Field(
         ...,
-        pattern=r'^(([A-Za-z]{2}\-?[A-Za-z0-9]{3}\-?C[A-Za-z0-9]{8}\-?[\d|A-Za-z])|([A-Za-z]{2}[\*|\-]?[A-Za-z0-9]{3}[\*|\-]?[A-Za-z0-9]{6}[\*|\-]?[\d|X]))$',
-        description='A string that `MUST` be valid with respect to the following regular expression: ISO | DIN.\n\n^(([A-Za-z]{2}\\-?[A-Za-z0-9]{3}\\-?C[A-Za-z0-9]{8}\\-?[\\d|A-Za-z])|([A-Za-z]{2}[\\*|\\-]?[A-Za-z0-9]{3}[\\*|\\-]?[A-Za-z0-9]{6}[\\*|\\-]?[\\d|X]))$\nThe expression validates the string as EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the EvcoID is provided corresponding to ISO, the instance part MUST be eight characters long and MUST be provided with a prepended “C”. The optional separating character MUST be “-“.\n\nIn case the EvcoID is provided corresponding to DIN, the instance part MUST be six characters long. The optional separating character can either be “*” or “-“.\n\nExamples ISO: “DE-8EO-CAet5e4XY-3”, “DE8EOCAet5e43X1”\n\nExamples DIN: “DE*8EO*Aet5e4*3”, “DE-8EO-Aet5e4-3”, “DE8EOAet5e43”\n',
-        example='DE*8EO*Aet5e4*3',
+        pattern=r"^(([A-Za-z]{2}\-?[A-Za-z0-9]{3}\-?C[A-Za-z0-9]{8}\-?[\d|A-Za-z])|([A-Za-z]{2}[\*|\-]?[A-Za-z0-9]{3}[\*|\-]?[A-Za-z0-9]{6}[\*|\-]?[\d|X]))$",
+        description="A string that `MUST` be valid with respect to the following regular expression: ISO | DIN.\n\n^(([A-Za-z]{2}\\-?[A-Za-z0-9]{3}\\-?C[A-Za-z0-9]{8}\\-?[\\d|A-Za-z])|([A-Za-z]{2}[\\*|\\-]?[A-Za-z0-9]{3}[\\*|\\-]?[A-Za-z0-9]{6}[\\*|\\-]?[\\d|X]))$\nThe expression validates the string as EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the EvcoID is provided corresponding to ISO, the instance part MUST be eight characters long and MUST be provided with a prepended “C”. The optional separating character MUST be “-“.\n\nIn case the EvcoID is provided corresponding to DIN, the instance part MUST be six characters long. The optional separating character can either be “*” or “-“.\n\nExamples ISO: “DE-8EO-CAet5e4XY-3”, “DE8EOCAet5e43X1”\n\nExamples DIN: “DE*8EO*Aet5e4*3”, “DE-8EO-Aet5e4-3”, “DE8EOAet5e43”\n",
+        example="DE*8EO*Aet5e4*3",
     )
 
 
 class Google(BaseModel):
     Coordinates: str = Field(
         ...,
-        pattern=r'^-?1?\d{1,2}\.\d{1,6}\s*\,?\s*-?1?\d{1,2}\.\d{1,6}$',
-        description='A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}\\s*\\,?\\s*-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as geo coordinates with respect to the Google standard. The string contains latitude and longitude (in this sequence) separated by a space.\n\nExample: “47.662249 9.360922”\n',
-        example='47.662249 9.360922',
+        pattern=r"^-?1?\d{1,2}\.\d{1,6}\s*\,?\s*-?1?\d{1,2}\.\d{1,6}$",
+        description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}\\s*\\,?\\s*-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as geo coordinates with respect to the Google standard. The string contains latitude and longitude (in this sequence) separated by a space.\n\nExample: “47.662249 9.360922”\n",
+        example="47.662249 9.360922",
     )
 
 
 class DecimalDegree(BaseModel):
     Longitude: str = Field(
         ...,
-        pattern=r'^-?1?\d{1,2}\.\d{1,6}$',
-        description='A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as a geo coordinate (longitude or latitude) with decimal degree syntax.\n\nExamples: “9.360922”, “-21.568201”\n',
-        example='9.360922',
+        pattern=r"^-?1?\d{1,2}\.\d{1,6}$",
+        description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as a geo coordinate (longitude or latitude) with decimal degree syntax.\n\nExamples: “9.360922”, “-21.568201”\n",
+        example="9.360922",
     )
     Latitude: str = Field(
         ...,
-        pattern=r'^-?1?\d{1,2}\.\d{1,6}$',
-        description='A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as a geo coordinate (longitude or latitude) with decimal degree syntax.\n\nExamples: “9.360922”, “-21.568201”\n',
-        example='9.360922',
+        pattern=r"^-?1?\d{1,2}\.\d{1,6}$",
+        description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as a geo coordinate (longitude or latitude) with decimal degree syntax.\n\nExamples: “9.360922”, “-21.568201”\n",
+        example="9.360922",
     )
 
 
 class DegreeMinuteSeconds(BaseModel):
     Longitude: str = Field(
         ...,
-        pattern=r'^-?1?\d{1,2}°[ ]?\d{1,2}\'[ ]?\d{1,2}\.\d+\'\'$',
+        pattern=r"^-?1?\d{1,2}°[ ]?\d{1,2}\'[ ]?\d{1,2}\.\d+\'\'$",
         description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}°[ ]?\\d{1,2}'[ ]?\\d{1,2}\\.\\d+''$`\nThe expression validates the string as a geo coordinate (longitude or latitude) consisting of degree, minutes, and seconds\n\nExamples: “9°21'39.32''”, “-21°34'23.16''\n",
         example="9°21'39.32''",
     )
     Latitude: str = Field(
         ...,
-        pattern=r'^-?1?\d{1,2}°[ ]?\d{1,2}\'[ ]?\d{1,2}\.\d+\'\'$',
+        pattern=r"^-?1?\d{1,2}°[ ]?\d{1,2}\'[ ]?\d{1,2}\.\d+\'\'$",
         description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}°[ ]?\\d{1,2}'[ ]?\\d{1,2}\\.\\d+''$`\nThe expression validates the string as a geo coordinate (longitude or latitude) consisting of degree, minutes, and seconds\n\nExamples: “9°21'39.32''”, “-21°34'23.16''\n",
         example="9°21'39.32''",
     )
@@ -164,23 +164,23 @@ class PlugAndChargeIdentification(BaseModel):
 class CurrencyID(RootModel):
     root: str = Field(
         ...,
-        description='The ProductPriceCurrencyType allows for the list of active codes of the official ISO 4217 currency names.\n\nFor the full list of active codes of the official ISO 4217 currencies, see: [https://www.iso.org/iso-4217-currency-codes.html](https://www.iso.org/iso-4217-currency-codes.html)\n\nExamples:\n\n| Option | Description |\n| ------ | ----------- |\n| EUR | Euro |\n| CHF | Swiss franc |\n| CAD | Canadian Dollar |\n| GBP | Pound sterling\n',
-        example='EUR',
+        description="The ProductPriceCurrencyType allows for the list of active codes of the official ISO 4217 currency names.\n\nFor the full list of active codes of the official ISO 4217 currencies, see: [https://www.iso.org/iso-4217-currency-codes.html](https://www.iso.org/iso-4217-currency-codes.html)\n\nExamples:\n\n| Option | Description |\n| ------ | ----------- |\n| EUR | Euro |\n| CHF | Swiss franc |\n| CAD | Canadian Dollar |\n| GBP | Pound sterling\n",
+        example="EUR",
     )
 
 
 class ChargingNotificationType(Enum):
-    Start = 'Start'
-    Progress = 'Progress'
-    End = 'End'
-    Error = 'Error'
+    Start = "Start"
+    Progress = "Progress"
+    End = "End"
+    Error = "Error"
 
 
 class ProductID(RootModel):
     root: str = Field(
         ...,
-        description='The ProductIDType defines some standard values (see below). The type however also supports custom ProductIDs that can be specified by partners (as a string of 50 characters maximum length).\n| Option | Description |\n|--------|-------------|\n| Standard Price | Standard Price |\n| AC1 | Product for AC 1 Phase charging |\n| AC3 | Product for AC 3 Phase charging |\n| DC | Product for DC charging |\n| CustomProductID | There is no option “CustomProductID”, this sample option is meant to indicates that custom product ID specifications by partners (as a string of 50 characters maximum length) are allowed as well.|\n',
-        example='AC1',
+        description="The ProductIDType defines some standard values (see below). The type however also supports custom ProductIDs that can be specified by partners (as a string of 50 characters maximum length).\n| Option | Description |\n|--------|-------------|\n| Standard Price | Standard Price |\n| AC1 | Product for AC 1 Phase charging |\n| AC3 | Product for AC 3 Phase charging |\n| DC | Product for DC charging |\n| CustomProductID | There is no option “CustomProductID”, this sample option is meant to indicates that custom product ID specifications by partners (as a string of 50 characters maximum length) are allowed as well.|\n",
+        example="AC1",
     )
 
 
@@ -189,98 +189,98 @@ class RemoteIdentification(BaseModel):
 
 
 class SessionID(RootModel):
-    root: constr(pattern=r'^[A-Za-z0-9]{8}(-[A-Za-z0-9]{4}){3}-[A-Za-z0-9]{12}$') = (
+    root: constr(pattern=r"^[A-Za-z0-9]{8}(-[A-Za-z0-9]{4}){3}-[A-Za-z0-9]{12}$") = (
         Field(
             ...,
-            description='The Hubject SessionID that identifies the process\n\nA string that `MUST` be valid with respect to the following regular expression:\n\n`^[A-Za-z0-9]{8}(-[A-Za-z0-9]{4}){3}-[A-Za-z0-9]{12}$`\n\nThe expression validates the string as a GUID.\n\nExample: “b2688855-7f00-0002-6d8e-48d883f6abb6”\n',
-            example='b2688855-7f00-0002-6d8e-48d883f6abb6',
+            description="The Hubject SessionID that identifies the process\n\nA string that `MUST` be valid with respect to the following regular expression:\n\n`^[A-Za-z0-9]{8}(-[A-Za-z0-9]{4}){3}-[A-Za-z0-9]{12}$`\n\nThe expression validates the string as a GUID.\n\nExample: “b2688855-7f00-0002-6d8e-48d883f6abb6”\n",
+            example="b2688855-7f00-0002-6d8e-48d883f6abb6",
         )
     )
 
 
 class RFID(Enum):
-    mifareCls = 'mifareCls'
-    mifareDes = 'mifareDes'
-    calypso = 'calypso'
-    nfc = 'nfc'
-    mifareFamily = 'mifareFamily'
+    mifareCls = "mifareCls"
+    mifareDes = "mifareDes"
+    calypso = "calypso"
+    nfc = "nfc"
+    mifareFamily = "mifareFamily"
 
 
 class StatusCode(BaseModel):
     Code: str = Field(
         # I wonder why this is not an enum
         ...,
-        description='| Option | Description | Area of Usage |'
-                    '| -------|-------------|---------------|'
-                    '| 000 | Success. | General codes |'
-                    '| 001 | Hubject system error. | Internal system codes |'
-                    '| 002 | Hubject database error. |Internal system codes|'
-                    '| 009 |Data transaction error. | Internal system codes|'
-                    '|017 |Unauthorized Access. |Internal system codes |'
-                    '|018 |Inconsistent EvseID. |Internal system codes |'
-                    '|019 |Inconsistent EvcoID. |Internal system codes |'
-                    '|021 |System error. |General codes |'
-                    '|022 |Data error. |General codes |'
-                    '|101 |QR Code Authentication failed – Invalid Credentials. |Authentication codes |'
-                    '|102 |RFID Authentication failed – invalid UID. |Authentication codes |'
-                    '|103 |RFID Authentication failed – card not readable. |Authentication codes |'
-                    '|105 |PLC Authentication failed - invalid EvcoID. |Authentication codes |'
-                    '|106 |No positive authentication response. |Authentication codes / Internal system codes |'
-                    '|110 |QR Code App Authentication failed – time out error. |Authentication codes |'
-                    '|120 |PLC (ISO/ IEC 15118) Authentication failed – invalid underlying EvcoID. |Authentication codes |'
-                    '|121 |PLC (ISO/ IEC 15118) Authentication failed – invalid certificate. |Authentication codes |'
-                    '|122 |PLC (ISO/ IEC 15118) Authentication failed – time out error. |Authentication codes |'
-                    '|200 |EvcoID locked. |Authentication codes |'
-                    '|210 |No valid contract. |Session codes |'
-                    '|300 |Partner not found. |Session codes |'
-                    '|310 |Partner did not respond. |Session codes |'
-                    '|320 |Service not available. |Session codes |'
-                    '|400 |Session is invalid. |Session codes |'
-                    '|501 |Communication to EVSE failed. |EVSE codes |'
-                    '|510 |No EV connected to EVSE. |EVSE codes |'
-                    '|601 |EVSE already reserved. |EVSE codes |'
-                    '|602 |EVSE already in use/ wrong token. |EVSE codes |'
-                    '|603 |Unknown EVSE ID. |EVSE codes |'
-                    '|604 |EVSE ID is not Hubject compatible. |EVSE codes |'
-                    '|700 |EVSE out of service. |EVSE codes |',
+        description="| Option | Description | Area of Usage |"
+        "| -------|-------------|---------------|"
+        "| 000 | Success. | General codes |"
+        "| 001 | Hubject system error. | Internal system codes |"
+        "| 002 | Hubject database error. |Internal system codes|"
+        "| 009 |Data transaction error. | Internal system codes|"
+        "|017 |Unauthorized Access. |Internal system codes |"
+        "|018 |Inconsistent EvseID. |Internal system codes |"
+        "|019 |Inconsistent EvcoID. |Internal system codes |"
+        "|021 |System error. |General codes |"
+        "|022 |Data error. |General codes |"
+        "|101 |QR Code Authentication failed – Invalid Credentials. |Authentication codes |"
+        "|102 |RFID Authentication failed – invalid UID. |Authentication codes |"
+        "|103 |RFID Authentication failed – card not readable. |Authentication codes |"
+        "|105 |PLC Authentication failed - invalid EvcoID. |Authentication codes |"
+        "|106 |No positive authentication response. |Authentication codes / Internal system codes |"
+        "|110 |QR Code App Authentication failed – time out error. |Authentication codes |"
+        "|120 |PLC (ISO/ IEC 15118) Authentication failed – invalid underlying EvcoID. |Authentication codes |"
+        "|121 |PLC (ISO/ IEC 15118) Authentication failed – invalid certificate. |Authentication codes |"
+        "|122 |PLC (ISO/ IEC 15118) Authentication failed – time out error. |Authentication codes |"
+        "|200 |EvcoID locked. |Authentication codes |"
+        "|210 |No valid contract. |Session codes |"
+        "|300 |Partner not found. |Session codes |"
+        "|310 |Partner did not respond. |Session codes |"
+        "|320 |Service not available. |Session codes |"
+        "|400 |Session is invalid. |Session codes |"
+        "|501 |Communication to EVSE failed. |EVSE codes |"
+        "|510 |No EV connected to EVSE. |EVSE codes |"
+        "|601 |EVSE already reserved. |EVSE codes |"
+        "|602 |EVSE already in use/ wrong token. |EVSE codes |"
+        "|603 |Unknown EVSE ID. |EVSE codes |"
+        "|604 |EVSE ID is not Hubject compatible. |EVSE codes |"
+        "|700 |EVSE out of service. |EVSE codes |",
     )
-    Description: Optional[str] = Field(None, description='description')
+    Description: Optional[str] = Field(None, description="description")
     AdditionalInfo: Optional[str] = Field(
-        None, description='More information can be provided here'
+        None, description="More information can be provided here"
     )
 
 
 class Function(Enum):
-    Bcrypt = 'Bcrypt'
+    Bcrypt = "Bcrypt"
 
 
 class Function1(Enum):
-    MD5 = 'MD5'
-    SHA_1 = 'SHA-1'
+    MD5 = "MD5"
+    SHA_1 = "SHA-1"
 
 
 class LegacyHashData(BaseModel):
     Function: Function1 = Field(
         ...,
-        description='Function used for hashing of the PIN at the partner.',
-        example='SHA-1',
+        description="Function used for hashing of the PIN at the partner.",
+        example="SHA-1",
     )
     Salt: Optional[str] = Field(
         None,
-        description='The salt value used by the partner for hashing the PIN.',
-        example='example-salt',
+        description="The salt value used by the partner for hashing the PIN.",
+        example="example-salt",
     )
     Value: Optional[str] = Field(
-        None, description='PIN hash at the partner.', example='a5ghdhf73h'
+        None, description="PIN hash at the partner.", example="a5ghdhf73h"
     )
 
 
 class HashedPIN(BaseModel):
     Value: str = Field(
         ...,
-        pattern=r'^[0-9A-Za-z\\.+/=\\$]{10,100}$',
-        description='Hash value created by partner\n\nThe expression validates the string as a hash function result value with a length between 10 and 100 characters\n\nExample: “a5ghdhf73h”\n',
-        example='a5ghdhf73h',
+        pattern=r"^[0-9A-Za-z\\.+/=\\$]{10,100}$",
+        description="Hash value created by partner\n\nThe expression validates the string as a hash function result value with a length between 10 and 100 characters\n\nExample: “a5ghdhf73h”\n",
+        example="a5ghdhf73h",
     )
     Function: Function
     LegacyHashData: Optional[LegacyHashData] = None
@@ -295,115 +295,108 @@ class QRCodeIdentification(BaseModel):
 class ProviderID(RootModel):
     root: str = Field(
         ...,
-        pattern=r'^([A-Za-z]{2}\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\*|-]?[A-Za-z0-9]{3})$',
-        description='The ProviderID is defined by Hubject and is used to identify the EMP\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN\n\n`^([A-Za-z]{2}\\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\\*|-]?[A-Za-z0-9]{3})$`\n\nThe expression validates the string as ProviderID including the preceding country code, which is part of EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the ProviderID is provided corresponding to ISO, the country code `MUST` be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “-” is optional.\n\nExamples ISO: “DE8EO”, “DE-8EO”\n\nExamples DIN: “DE8EO”, “DE*8EO”, “DE-8EO”\n',
-        example='DE-8EO',
+        pattern=r"^([A-Za-z]{2}\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\*|-]?[A-Za-z0-9]{3})$",
+        description="The ProviderID is defined by Hubject and is used to identify the EMP\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN\n\n`^([A-Za-z]{2}\\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\\*|-]?[A-Za-z0-9]{3})$`\n\nThe expression validates the string as ProviderID including the preceding country code, which is part of EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the ProviderID is provided corresponding to ISO, the country code `MUST` be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “-” is optional.\n\nExamples ISO: “DE8EO”, “DE-8EO”\n\nExamples DIN: “DE8EO”, “DE*8EO”, “DE-8EO”\n",
+        example="DE-8EO",
     )
 
 
 class OperatorID(RootModel):
     root: str = Field(
         ...,
-        pattern=r'^(([A-Za-z]{2}\*?[A-Za-z0-9]{3})|(\+?[0-9]{1,3}\*[0-9]{3}))$',
-        description='A string that MUST be valid with respect to the following regular expression: ISO | DIN\n\n^(([A-Za-z]{2}\\*?[A-Za-z0-9]{3})|(\\+?[0-9]{1,3}\\*[0-9]{3}))$\nThe expression validates the string as OperatorID including the preceding country code, which is part of EvseID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118. In case the OperatorID is provided corresponding to ISO, the country code MUST be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “*” is optional.\n\nIn case the OperatorID is provided corresponding to DIN, the country code MUST be provided according to the international telecommunication numbering plan (ITU-T E.164:11/2010) and the separator character “*” is mandatory.\n\nExamples ISO: “DE*A36”, “DEA36”\n\nExample DIN: “+49*536”\n',
-        example='+49*536',
+        pattern=r"^(([A-Za-z]{2}\*?[A-Za-z0-9]{3})|(\+?[0-9]{1,3}\*[0-9]{3}))$",
+        description="A string that MUST be valid with respect to the following regular expression: ISO | DIN\n\n^(([A-Za-z]{2}\\*?[A-Za-z0-9]{3})|(\\+?[0-9]{1,3}\\*[0-9]{3}))$\nThe expression validates the string as OperatorID including the preceding country code, which is part of EvseID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118. In case the OperatorID is provided corresponding to ISO, the country code MUST be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “*” is optional.\n\nIn case the OperatorID is provided corresponding to DIN, the country code MUST be provided according to the international telecommunication numbering plan (ITU-T E.164:11/2010) and the separator character “*” is mandatory.\n\nExamples ISO: “DE*A36”, “DEA36”\n\nExample DIN: “+49*536”\n",
+        example="+49*536",
     )
 
 
 class EvseID(RootModel):
     root: str = Field(
         ...,
-        pattern=r'^(([A-Za-z]{2}\*?[A-Za-z0-9]{3}\*?E[A-Za-z0-9\*]{1,30})|(\+?[0-9]{1,3}\*[0-9]{3}\*[0-9\*]{1,32}))$',
-        description='The ID that identifies the charging spot.\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN.\n\n`^(([A-Za-z]{2}\\*?[A-Za-z0-9]{3}\\*?E[A-Za-z0-9\\*]{1,30})|(\\+?[0-9]{1,3}\\*[0-9]{3}\\*[0-9\\*]{1,32}))$`\nThe expression validates the string as EvseID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the EvseID is provided corresponding to ISO, the country code MUST be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “*” is optional. Furthermore the ID MUST provide an “E” after the OperatorID in order to identify the ID as ISO EvseID without doubt.\n\nIn case the EvseID is provided corresponding to DIN, the country code MUST be provided according to the international telecommunication numbering plan (ITU-T E.164:11/2010) and the separator character “*” is mandatory.\n\nExamples ISO: “DE*AB7*E840*6487”, “DEAB7E8406487”\n\nExample DIN: “+49*810*000*438”\n',
-        example='+49*810*000*438',
+        pattern=r"^(([A-Za-z]{2}\*?[A-Za-z0-9]{3}\*?E[A-Za-z0-9\*]{1,30})|(\+?[0-9]{1,3}\*[0-9]{3}\*[0-9\*]{1,32}))$",
+        description="The ID that identifies the charging spot.\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN.\n\n`^(([A-Za-z]{2}\\*?[A-Za-z0-9]{3}\\*?E[A-Za-z0-9\\*]{1,30})|(\\+?[0-9]{1,3}\\*[0-9]{3}\\*[0-9\\*]{1,32}))$`\nThe expression validates the string as EvseID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the EvseID is provided corresponding to ISO, the country code MUST be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “*” is optional. Furthermore the ID MUST provide an “E” after the OperatorID in order to identify the ID as ISO EvseID without doubt.\n\nIn case the EvseID is provided corresponding to DIN, the country code MUST be provided according to the international telecommunication numbering plan (ITU-T E.164:11/2010) and the separator character “*” is mandatory.\n\nExamples ISO: “DE*AB7*E840*6487”, “DEAB7E8406487”\n\nExample DIN: “+49*810*000*438”\n",
+        example="+49*810*000*438",
     )
 
 
 class UID(RootModel):
-    root: constr(pattern=r'^([0-9A-F]{8,8}|[0-9A-F]{14,14}|[0-9A-F]{20,20})$') = (
-        Field(
-            ...,
-            description='Authentication data details. The data structure differs depending on the authentication technology\n\nThe expression validates the string as a unique RFID with a length of 8, 14 or 20 characters.\n\nExamples: “7568290FFF765F”\n',
-            example='7568290FFF765F',
-        )
+    root: constr(pattern=r"^([0-9A-F]{8,8}|[0-9A-F]{14,14}|[0-9A-F]{20,20})$") = Field(
+        ...,
+        description="Authentication data details. The data structure differs depending on the authentication technology\n\nThe expression validates the string as a unique RFID with a length of 8, 14 or 20 characters.\n\nExamples: “7568290FFF765F”\n",
+        example="7568290FFF765F",
     )
 
 
 class ReferenceUnit(RootModel):
     root: str = Field(
         ...,
-        description='Default Reference Unit in time or kWh\n\n| Option | Description |\n| ------ | ----------- |\n| HOUR | Defined Reference Unit Type |\n| KILOWATT_HOUR | Defined Reference Unit Type |\n| MINUTE | Defined Reference Unit Type |\n',
-        example='HOUR',
+        description="Default Reference Unit in time or kWh\n\n| Option | Description |\n| ------ | ----------- |\n| HOUR | Defined Reference Unit Type |\n| KILOWATT_HOUR | Defined Reference Unit Type |\n| MINUTE | Defined Reference Unit Type |\n",
+        example="HOUR",
     )
 
 
 class InfoTextType(BaseModel):
     lang: str = Field(
         ...,
-        pattern=r'^[a-z]{2,3}(?:-[A-Z]{2,3}(?:-[a-zA-Z]{4})?)?(?:-x-[a-zA-Z0-9]{1,8})?$',
-        description='`^[a-z]{2,3}(?:-[A-Z]{2,3}(?:-[a-zA-Z]{4})?)?(?:-x-[a-zA-Z0-9]{1,8})?$`\n\nThe language in which the additional info text is provided\n\nThe expression validates the string as a language code as per ISO-639-1 or ISO-639-2/T\n\nThe LanguageCodeType is used in the AdditionalInfo field, which is part of the EvseDataRecordType.\n',
+        pattern=r"^[a-z]{2,3}(?:-[A-Z]{2,3}(?:-[a-zA-Z]{4})?)?(?:-x-[a-zA-Z0-9]{1,8})?$",
+        description="`^[a-z]{2,3}(?:-[A-Z]{2,3}(?:-[a-zA-Z]{4})?)?(?:-x-[a-zA-Z0-9]{1,8})?$`\n\nThe language in which the additional info text is provided\n\nThe expression validates the string as a language code as per ISO-639-1 or ISO-639-2/T\n\nThe LanguageCodeType is used in the AdditionalInfo field, which is part of the EvseDataRecordType.\n",
     )
-    value: str = Field(..., description='The Additional Info text')
+    value: str = Field(..., description="The Additional Info text")
 
 
 class ProviderIDAsterisk(RootModel):
     root: str = Field(
         ...,
-        pattern=r'^([A-Za-z]{2}\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\*|-]?[A-Za-z0-9]{3})|\*$',
-        description='The ProviderID is defined by Hubject and is used to identify the EMP\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN\n\n`^([A-Za-z]{2}\\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\\*|-]?[A-Za-z0-9]{3})$`\n\nThe expression validates the string as ProviderID including the preceding country code, which is part of EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the ProviderID is provided corresponding to ISO, the country code `MUST` be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “-” is optional.\n\nExamples ISO: “DE8EO”, “DE-8EO”\n\nExamples DIN: “DE8EO”, “DE*8EO”, “DE-8EO”\n\n In case the data is to be made available for all EMPs (e.g. for Offer-to-All prices), the asterix character (*) can be set as the value in this field.\n \n',
-        example='DE-8EO',
+        pattern=r"^([A-Za-z]{2}\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\*|-]?[A-Za-z0-9]{3})|\*$",
+        description="The ProviderID is defined by Hubject and is used to identify the EMP\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN\n\n`^([A-Za-z]{2}\\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\\*|-]?[A-Za-z0-9]{3})$`\n\nThe expression validates the string as ProviderID including the preceding country code, which is part of EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the ProviderID is provided corresponding to ISO, the country code `MUST` be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “-” is optional.\n\nExamples ISO: “DE8EO”, “DE-8EO”\n\nExamples DIN: “DE8EO”, “DE*8EO”, “DE-8EO”\n\n In case the data is to be made available for all EMPs (e.g. for Offer-to-All prices), the asterix character (*) can be set as the value in this field.\n \n",
+        example="DE-8EO",
     )
 
 
 class Period(BaseModel):
     begin: str = Field(
-        ...,
-        pattern=r'[0-9]{2}:[0-9]{2}',
-        description='The opening time'
+        ..., pattern=r"[0-9]{2}:[0-9]{2}", description="The opening time"
     )
-    end: str = Field(
-        ...,
-        pattern=r'[0-9]{2}:[0-9]{2}',
-        description='The closing time')
+    end: str = Field(..., pattern=r"[0-9]{2}:[0-9]{2}", description="The closing time")
 
 
 class On(Enum):
-    Everyday = 'Everyday'
-    Workdays = 'Workdays'
-    Weekend = 'Weekend'
-    Monday = 'Monday'
-    Tuesday = 'Tuesday'
-    Wednesday = 'Wednesday'
-    Thursday = 'Thursday'
-    Friday = 'Friday'
-    Saturday = 'Saturday'
-    Sunday = 'Sunday'
+    Everyday = "Everyday"
+    Workdays = "Workdays"
+    Weekend = "Weekend"
+    Monday = "Monday"
+    Tuesday = "Tuesday"
+    Wednesday = "Wednesday"
+    Thursday = "Thursday"
+    Friday = "Friday"
+    Saturday = "Saturday"
+    Sunday = "Sunday"
 
 
 class ProductAvailabilityTime(BaseModel):
     Periods: List[Period]
     on: On = Field(
         ...,
-        description='Day values to be used in specifying periods on which the product is available. Workdays = Monday – Friday, Weekend = Saturday – Sunday',
+        description="Day values to be used in specifying periods on which the product is available. Workdays = Monday – Friday, Weekend = Saturday – Sunday",
     )
 
 
 class AdditionalReference1(Enum):
-    START_FEE = 'START FEE'
-    FIXED_FEE = 'FIXED FEE'
-    PARKING_FEE = 'PARKING FEE'
-    MINIMUM_FEE = 'MINIMUM FEE'
-    MAXIMUM_FEE = 'MAXIMUM FEE'
+    START_FEE = "START FEE"
+    FIXED_FEE = "FIXED FEE"
+    PARKING_FEE = "PARKING FEE"
+    MINIMUM_FEE = "MINIMUM FEE"
+    MAXIMUM_FEE = "MAXIMUM FEE"
 
 
 class AdditionalReference(BaseModel):
     AdditionalReference: AdditionalReference1 = Field(
         ...,
-        description='Additional pricing components to be considered in addition to the base pricing\n\n| Option | Description |\n| ------ | ----------- |\n| START FEE | Can be used in case a fixed fee is charged for the initiation of the charging session. This is a fee charged on top of the main base price defined in the field \"PricePerReferenceUnit\" for any particular pricing product. |\n| FIXED FEE | Can be used if a single price is charged irrespective of charging duration or energy consumption (for instance if all sessions are to be charged a single fixed fee). When used, the value set in the field \"PricePerReferenceUnit\" for the main base price of respective pricing product SHOULD be set to zero. |\n| PARKING FEE | Can be used in case sessions are to be charged for both parking and charging. When used, it needs to be specified in the corresponding service offer on the HBS Portal when parking applies (e.g. from session start to charging start and charging end to session end or for the entire session duration, or x-minutes after charging end, etc) |\n| MINIMUM FEE | Can be used in case there is a minimum fee to be paid for all charging sessions. When used, this implies that the eventual price to be paid cannot be less than this minimum fee but can however be a price above/greater than the minimum fee. |\n| MAXIMUM FEE | Can be used in case there is a maximum fee to be charged for all charging sessions. When used, this implies that the eventual price to be paid cannot be more than this maximum fee but can however be a price below/lower than the maximum fee. |\n',
+        description='Additional pricing components to be considered in addition to the base pricing\n\n| Option | Description |\n| ------ | ----------- |\n| START FEE | Can be used in case a fixed fee is charged for the initiation of the charging session. This is a fee charged on top of the main base price defined in the field "PricePerReferenceUnit" for any particular pricing product. |\n| FIXED FEE | Can be used if a single price is charged irrespective of charging duration or energy consumption (for instance if all sessions are to be charged a single fixed fee). When used, the value set in the field "PricePerReferenceUnit" for the main base price of respective pricing product SHOULD be set to zero. |\n| PARKING FEE | Can be used in case sessions are to be charged for both parking and charging. When used, it needs to be specified in the corresponding service offer on the HBS Portal when parking applies (e.g. from session start to charging start and charging end to session end or for the entire session duration, or x-minutes after charging end, etc) |\n| MINIMUM FEE | Can be used in case there is a minimum fee to be paid for all charging sessions. When used, this implies that the eventual price to be paid cannot be less than this minimum fee but can however be a price above/greater than the minimum fee. |\n| MAXIMUM FEE | Can be used in case there is a maximum fee to be charged for all charging sessions. When used, this implies that the eventual price to be paid cannot be more than this maximum fee but can however be a price below/lower than the maximum fee. |\n',
     )
     AdditionalReferenceUnit: ReferenceUnit
     PricePerAdditionalReferenceUnit: float = Field(
-        ..., description='A price in the given currency'
+        ..., description="A price in the given currency"
     )
 
 
@@ -411,31 +404,31 @@ class PricingProductDataRecord(BaseModel):
     ProductID: ProductID
     ReferenceUnit: ReferenceUnit
     ProductPriceCurrency: CurrencyID
-    PricePerReferenceUnit: float = Field(..., description='A price per reference unit')
-    MaximumProductChargingPower: float = Field(..., description='A value in kWh')
+    PricePerReferenceUnit: float = Field(..., description="A price per reference unit")
+    MaximumProductChargingPower: float = Field(..., description="A value in kWh")
     IsValid24hours: bool = Field(
         ...,
-        description='Set to TRUE if the respective pricing product is applicable 24 hours a day.\nIf FALSE, the respective applicability times `SHOULD` be provided in the field “ProductAvailabilityTimes”.\n',
+        description="Set to TRUE if the respective pricing product is applicable 24 hours a day.\nIf FALSE, the respective applicability times `SHOULD` be provided in the field “ProductAvailabilityTimes”.\n",
     )
     ProductAvailabilityTimes: List[ProductAvailabilityTime] = Field(
-        ..., description='A list indicating when the pricing product is applicable'
+        ..., description="A list indicating when the pricing product is applicable"
     )
     AdditionalReferences: Optional[List[AdditionalReference]] = Field(
         None,
-        description='A list of additional reference units and their respective prices',
+        description="A list of additional reference units and their respective prices",
     )
 
 
 class DeltaType(Enum):
-    update = 'update'
-    insert = 'insert'
-    delete = 'delete'
+    update = "update"
+    insert = "insert"
+    delete = "delete"
 
 
 class Address(BaseModel):
     Country: str = Field(
         ...,
-        description='The CountryCodeType allows for Alpha-3 country codes only as of OICP 2.2 and OICP 2.3\n\nFor Alpha-3 (three-letter) country codes as defined in ISO 3166-1.\n\n__Examples:__\n\n| Option | Description |\n| ------ | ----------- |\n| AUT | Austria |\n| DEU | Germany |\n| FRA | France |\n| USA | United States |\n',
+        description="The CountryCodeType allows for Alpha-3 country codes only as of OICP 2.2 and OICP 2.3\n\nFor Alpha-3 (three-letter) country codes as defined in ISO 3166-1.\n\n__Examples:__\n\n| Option | Description |\n| ------ | ----------- |\n| AUT | Austria |\n| DEU | Germany |\n| FRA | France |\n| USA | United States |\n",
     )
     City: str
     Street: str
@@ -445,183 +438,180 @@ class Address(BaseModel):
     Region: Optional[str] = None
     ParkingFacility: Optional[bool] = None
     ParkingSpot: Optional[str] = None
-    TimeZone: Optional[constr(pattern=r'[U][T][C][+,-][0-9][0-9][:][0-9][0-9]')] = Field(
-        None,
-        description='`[U][T][C][+,-][0-9][0-9][:][0-9][0-9]`\nThe expression validates a string as a Time zone with UTC offset.\n\nExamples:\n\nUTC+01:00\n\nUTC-05:00\n',
-        example='UTC-05:00',
+    TimeZone: Optional[constr(pattern=r"[U][T][C][+,-][0-9][0-9][:][0-9][0-9]")] = (
+        Field(
+            None,
+            description="`[U][T][C][+,-][0-9][0-9][:][0-9][0-9]`\nThe expression validates a string as a Time zone with UTC offset.\n\nExamples:\n\nUTC+01:00\n\nUTC-05:00\n",
+            example="UTC-05:00",
+        )
     )
 
 
 class Plug(Enum):
-    Small_Paddle_Inductive = 'Small Paddle Inductive'
-    Large_Paddle_Inductive = 'Large Paddle Inductive'
-    AVCON_Connector = 'AVCON Connector'
-    Tesla_Connector = 'Tesla Connector'
-    NEMA_5_20 = 'NEMA 5-20'
-    Type_E_French_Standard = 'Type E French Standard'
-    Type_F_Schuko = 'Type F Schuko'
-    Type_G_British_Standard = 'Type G British Standard'
-    Type_J_Swiss_Standard = 'Type J Swiss Standard'
-    Type_1_Connector__Cable_Attached_ = 'Type 1 Connector (Cable Attached)'
-    Type_2_Outlet = 'Type 2 Outlet'
-    Type_2_Connector__Cable_Attached_ = 'Type 2 Connector (Cable Attached)'
-    Type_3_Outlet = 'Type 3 Outlet'
-    IEC_60309_Single_Phase = 'IEC 60309 Single Phase'
-    IEC_60309_Three_Phase = 'IEC 60309 Three Phase'
-    CCS_Combo_2_Plug__Cable_Attached_ = 'CCS Combo 2 Plug (Cable Attached)'
-    CCS_Combo_1_Plug__Cable_Attached_ = 'CCS Combo 1 Plug (Cable Attached)'
-    CHAdeMO = 'CHAdeMO'
+    Small_Paddle_Inductive = "Small Paddle Inductive"
+    Large_Paddle_Inductive = "Large Paddle Inductive"
+    AVCON_Connector = "AVCON Connector"
+    Tesla_Connector = "Tesla Connector"
+    NEMA_5_20 = "NEMA 5-20"
+    Type_E_French_Standard = "Type E French Standard"
+    Type_F_Schuko = "Type F Schuko"
+    Type_G_British_Standard = "Type G British Standard"
+    Type_J_Swiss_Standard = "Type J Swiss Standard"
+    Type_1_Connector__Cable_Attached_ = "Type 1 Connector (Cable Attached)"
+    Type_2_Outlet = "Type 2 Outlet"
+    Type_2_Connector__Cable_Attached_ = "Type 2 Connector (Cable Attached)"
+    Type_3_Outlet = "Type 3 Outlet"
+    IEC_60309_Single_Phase = "IEC 60309 Single Phase"
+    IEC_60309_Three_Phase = "IEC 60309 Three Phase"
+    CCS_Combo_2_Plug__Cable_Attached_ = "CCS Combo 2 Plug (Cable Attached)"
+    CCS_Combo_1_Plug__Cable_Attached_ = "CCS Combo 1 Plug (Cable Attached)"
+    CHAdeMO = "CHAdeMO"
 
 
 class PowerType(Enum):
-    AC_1_PHASE = 'AC_1_PHASE'
-    AC_3_PHASE = 'AC_3_PHASE'
-    DC = 'DC'
+    AC_1_PHASE = "AC_1_PHASE"
+    AC_3_PHASE = "AC_3_PHASE"
+    DC = "DC"
 
 
 class ChargingMode(Enum):
-    Mode_1 = 'Mode_1'
-    Mode_2 = 'Mode_2'
-    Mode_3 = 'Mode_3'
-    Mode_4 = 'Mode_4'
-    CHAdeMO = 'CHAdeMO'
+    Mode_1 = "Mode_1"
+    Mode_2 = "Mode_2"
+    Mode_3 = "Mode_3"
+    Mode_4 = "Mode_4"
+    CHAdeMO = "CHAdeMO"
 
 
 class ChargingFacility(BaseModel):
     PowerType: PowerType
     Voltage: Optional[conint(ge=0, le=999)] = Field(
-        None, description='Voltage (Line to Neutral) of the Charging Facility'
+        None, description="Voltage (Line to Neutral) of the Charging Facility"
     )
     Amperage: Optional[conint(ge=0, le=99)] = Field(
-        None, description='Amperage of the Charging Facility'
+        None, description="Amperage of the Charging Facility"
     )
     Power: conint(ge=0, le=999) = Field(
-        ..., description='Charging Facility power in kW'
+        ..., description="Charging Facility power in kW"
     )
     ChargingModes: Optional[List[ChargingMode]] = Field(
-        None, description='List of charging modes that are supported.'
+        None, description="List of charging modes that are supported."
     )
 
 
 class Energy(Enum):
-    Solar = 'Solar'
-    Wind = 'Wind'
-    HydroPower = 'HydroPower'
-    GeothermalEnergy = 'GeothermalEnergy'
-    Biomass = 'Biomass'
-    Coal = 'Coal'
-    NuclearEnergy = 'NuclearEnergy'
-    Petroleum = 'Petroleum'
-    NaturalGas = 'NaturalGas'
+    Solar = "Solar"
+    Wind = "Wind"
+    HydroPower = "HydroPower"
+    GeothermalEnergy = "GeothermalEnergy"
+    Biomass = "Biomass"
+    Coal = "Coal"
+    NuclearEnergy = "NuclearEnergy"
+    Petroleum = "Petroleum"
+    NaturalGas = "NaturalGas"
 
 
 class EnergySourceItem(BaseModel):
     Energy: Optional[Energy]
     Percentage: Optional[conint(ge=0, le=99)] = Field(
-        None, description='Percentage of EnergyType being used by the charging stations'
+        None, description="Percentage of EnergyType being used by the charging stations"
     )
 
 
 class EnvironmentalImpact(BaseModel):
     CO2Emission: Optional[confloat(le=99999.0)] = Field(
         None,
-        description='Total CO2 emited by the energy source being used by this charging station to supply energy to EV. Units are in g/kWh',
+        description="Total CO2 emited by the energy source being used by this charging station to supply energy to EV. Units are in g/kWh",
     )
     NuclearWaste: Optional[confloat(le=99999.0)] = Field(
         None,
-        description='Total NuclearWaste emited by the energy source being used by this charging station to supply energy to EV. Units are in g/kWh',
+        description="Total NuclearWaste emited by the energy source being used by this charging station to supply energy to EV. Units are in g/kWh",
     )
 
 
 class CalibrationLawDataAvailability(Enum):
-    Local = 'Local'
-    External = 'External'
-    Not_Available = 'Not Available'
+    Local = "Local"
+    External = "External"
+    Not_Available = "Not Available"
 
 
 class AuthenticationMode(Enum):
-    NFC_RFID_Classic = 'NFC RFID Classic'
-    NFC_RFID_DESFire = 'NFC RFID DESFire'
-    PnC = 'PnC'
-    REMOTE = 'REMOTE'
-    Direct_Payment = 'Direct Payment'
-    No_Authentication_Required = 'No Authentication Required'
+    NFC_RFID_Classic = "NFC RFID Classic"
+    NFC_RFID_DESFire = "NFC RFID DESFire"
+    PnC = "PnC"
+    REMOTE = "REMOTE"
+    Direct_Payment = "Direct Payment"
+    No_Authentication_Required = "No Authentication Required"
 
 
 class PaymentOption(Enum):
-    No_Payment = 'No Payment'
-    Direct = 'Direct'
-    Contract = 'Contract'
+    No_Payment = "No Payment"
+    Direct = "Direct"
+    Contract = "Contract"
 
 
 class ValueAddedService(Enum):
-    Reservation = 'Reservation'
-    DynamicPricing = 'DynamicPricing'
-    ParkingSensors = 'ParkingSensors'
-    MaximumPowerCharging = 'MaximumPowerCharging'
-    PredictiveChargePointUsage = 'PredictiveChargePointUsage'
-    ChargingPlans = 'ChargingPlans'
-    RoofProvided = 'RoofProvided'
-    None_ = 'None'
+    Reservation = "Reservation"
+    DynamicPricing = "DynamicPricing"
+    ParkingSensors = "ParkingSensors"
+    MaximumPowerCharging = "MaximumPowerCharging"
+    PredictiveChargePointUsage = "PredictiveChargePointUsage"
+    ChargingPlans = "ChargingPlans"
+    RoofProvided = "RoofProvided"
+    None_ = "None"
 
 
 class Accessibility(Enum):
-    Free_publicly_accessible = 'Free publicly accessible'
-    Restricted_access = 'Restricted access'
-    Paying_publicly_accessible = 'Paying publicly accessible'
-    Test_Station = 'Test Station'
+    Free_publicly_accessible = "Free publicly accessible"
+    Restricted_access = "Restricted access"
+    Paying_publicly_accessible = "Paying publicly accessible"
+    Test_Station = "Test Station"
 
 
 class AccessibilityLocation(Enum):
-    OnStreet = 'OnStreet'
-    ParkingLot = 'ParkingLot'
-    ParkingGarage = 'ParkingGarage'
-    UndergroundParkingGarage = 'UndergroundParkingGarage'
+    OnStreet = "OnStreet"
+    ParkingLot = "ParkingLot"
+    ParkingGarage = "ParkingGarage"
+    UndergroundParkingGarage = "UndergroundParkingGarage"
 
 
 class DynamicInfoAvailable(Enum):
-    true = 'true'
-    false = 'false'
-    auto = 'auto'
+    true = "true"
+    false = "false"
+    auto = "auto"
 
 
 class PeriodItem(BaseModel):
     begin: str = Field(
-        ...,
-        pattern=r'[0-9]{2}:[0-9]{2}',
-        description='The opening time'
+        ..., pattern=r"[0-9]{2}:[0-9]{2}", description="The opening time"
     )
-    end: str = Field(
-        ...,
-        pattern=r'[0-9]{2}:[0-9]{2}',
-        description='The closing time')
+    end: str = Field(..., pattern=r"[0-9]{2}:[0-9]{2}", description="The closing time")
 
 
 class OpeningTimes(BaseModel):
     Period: List[PeriodItem] = Field(
         ...,
-        description='The starting and end time for pricing product applicability in the specified period\n',
+        description="The starting and end time for pricing product applicability in the specified period\n",
     )
     on: On = Field(
         ...,
-        description='Day values to be used in specifying periods on which the product is available. Workdays = Monday – Friday, Weekend = Saturday – Sunday',
+        description="Day values to be used in specifying periods on which the product is available. Workdays = Monday – Friday, Weekend = Saturday – Sunday",
     )
 
 
 class ERoamingAcknowledgment(BaseModel):
     Result: bool = Field(
         ...,
-        description='If result is true, the message was received and the respective operation was performed successfully.\n\nIf result is false, the message was received and the respective operation was not performed successfully.\n',
+        description="If result is true, the message was received and the respective operation was performed successfully.\n\nIf result is false, the message was received and the respective operation was not performed successfully.\n",
     )
     StatusCode: StatusCode
     SessionID: Optional[SessionID] = None
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation.',
+        description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation.',
+        description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
 
 
@@ -629,11 +619,11 @@ class ERoamingAuthorizationStop(BaseModel):
     SessionID: Optional[SessionID] = None
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation.',
+        description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation.',
+        description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
     ProviderID: Optional[ProviderID] = None
     AuthorizationStatus: AuthorizationStatus
@@ -644,11 +634,11 @@ class ERoamingAuthorizeRemoteReservationStop(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation. Partner systems can use this field to link their own session handling to HBS processes.',
+        description="Optional field containing the session id assigned by the CPO to the related operation. Partner systems can use this field to link their own session handling to HBS processes.",
     )
     EMPPartnerSessionId: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation. Partner systems can use this field to link their own session handling to HBS processes.',
+        description="Optional field containing the session id assigned by an EMP to the related operation. Partner systems can use this field to link their own session handling to HBS processes.",
     )
     ProviderID: ProviderID
     EvseID: EvseID
@@ -658,11 +648,11 @@ class ERoamingAuthorizeRemoteStop(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation.',
+        description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation.',
+        description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
     ProviderID: ProviderID
     EvseID: EvseID
@@ -672,14 +662,14 @@ class EVSEPricingItem(BaseModel):
     EvseID: EvseID
     ProviderID: ProviderIDAsterisk
     EvseIDProductList: List[ProductID] = Field(
-        ..., description='A list of pricing products applicable per EvseID'
+        ..., description="A list of pricing products applicable per EvseID"
     )
 
 
 class ERoamingPushEVSEPricing(BaseModel):
     ActionType: ActionType
     EVSEPricing: List[EVSEPricingItem] = Field(
-        ..., description='A list of EVSEs and their respective pricing product relation'
+        ..., description="A list of EVSEs and their respective pricing product relation"
     )
 
 
@@ -690,9 +680,9 @@ class EvseStatusRecordItem(BaseModel):
 
 class OperatorEvseStatus(BaseModel):
     OperatorID: OperatorID
-    OperatorName: Optional[str] = Field(None, description='Free text for operator')
+    OperatorName: Optional[str] = Field(None, description="Free text for operator")
     EvseStatusRecord: List[EvseStatusRecordItem] = Field(
-        ..., description='EvseStatus list'
+        ..., description="EvseStatus list"
     )
 
 
@@ -703,15 +693,15 @@ class ERoamingPushEvseStatus(BaseModel):
 
 class PricingProductData(BaseModel):
     OperatorID: OperatorID
-    OperatorName: Optional[str] = Field(None, description='Free text for operator')
+    OperatorName: Optional[str] = Field(None, description="Free text for operator")
     ProviderID: ProviderIDAsterisk
     PricingDefaultPrice: float = Field(
-        ..., description='A default price for pricing sessions at undefined EVSEs'
+        ..., description="A default price for pricing sessions at undefined EVSEs"
     )
     PricingDefaultPriceCurrency: CurrencyID
     PricingDefaultReferenceUnit: ReferenceUnit
     PricingProductDataRecords: List[PricingProductDataRecord] = Field(
-        ..., description='A list of pricing products'
+        ..., description="A list of pricing products"
     )
 
 
@@ -730,11 +720,11 @@ class RFIDIdentification(BaseModel):
     RFID: RFID
     PrintedNumber: Optional[str] = Field(
         None,
-        description='A number printed on a customer’s card for manual authorization (e.q. via a call center)',
+        description="A number printed on a customer’s card for manual authorization (e.q. via a call center)",
     )
     ExpiryDate: Optional[str] = Field(
         None,
-        description='Until when this card is valid. Should not be set if card does not have an expiration',
+        description="Until when this card is valid. Should not be set if card does not have an expiration",
     )
 
 
@@ -749,94 +739,94 @@ class Identification(BaseModel):
 class EvseDataRecord(BaseModel):
     deltaType: Optional[DeltaType] = Field(
         None,
-        description='In case that the operation “PullEvseData” is performed with the parameter “LastCall”, Hubject assigns this attribute to every response EVSE record in order to return the changes compared to the last call.',
+        description="In case that the operation “PullEvseData” is performed with the parameter “LastCall”, Hubject assigns this attribute to every response EVSE record in order to return the changes compared to the last call.",
     )
     lastUpdate: Optional[datetime] = Field(
         None,
-        description='The attribute indicates the date and time of the last update of the record. Hubject assigns this attribute to every response EVSE record.',
+        description="The attribute indicates the date and time of the last update of the record. Hubject assigns this attribute to every response EVSE record.",
     )
     EvseID: EvseID
     ChargingPoolID: Optional[
-        constr(pattern=r'([A-Za-z]{2}\*?[A-Za-z0-9]{3}\*?P[A-Za-z0-9\*]{1,30})')
+        constr(pattern=r"([A-Za-z]{2}\*?[A-Za-z0-9]{3}\*?P[A-Za-z0-9\*]{1,30})")
     ] = Field(
         None,
-        description='VSEs may be grouped by using a charging pool id according to emi³ standard definition. The Evse Pool ID MUST match the following structure (the notation corresponds to the augmented Backus-Naur Form (ABNF) as defined in RFC5234):\n<Evse Pool ID> = <Country Code> <S> <Spot Operator ID> <S> <ID Type> <Pool ID>\n\nwith:\n\n<Country Code> = 2 ALPHA ; two character country code according to ISO-3166-1 (Alpha-2-Code).\n\n<Spot Operator ID> = 3 (ALPHA / DIGIT); three alphanumeric characters.\n\n<ID Type> = “P”; one character “P” indicating that this ID represents a “Pool”.\n\n<Pool Instance> = (ALPHA / DIGIT) 1 * 30 ( 1*(ALPHA / DIGIT) [/ <S>] ); between 1 and 31sequence of alphanumeric characters, including additional optional separators. Starts with alphanumeric character referring to a specific Pool in EVSE Operator data system.\n\nALPHA = %x41-5A / %x61-7A; according to RFC 5234 (7-Bit ASCII).\n\nDIGIT = %x30-39; according to RFC 5234 (7-Bit ASCII).\n\n<S> = *1 ( “*” ); optional separator\n\nAn example for a valid Evse Pool ID is “IT*123*P456*AB789” with :\n\n“IT” indicating Italy,\n\n“123” representing a particular Spot Operator,\n\n“P” indicating the Pool, and\n\n“456*AB789” representing one of its POOL.\n\nNote\n\nIn contrast to the eMA ID, no check digit is specified for the Evse Pool ID in this document. Alpha characters SHALL be interpreted case insensitively. emi³ strongly recommends that implementations SHOULD - use the separator between Country Code and Spot Operator ID - use the separator between Spot Operator ID and ID type\nThis leads to the following regular expression:\n\n`([A-Za-z]{2}\\*?[A-Za-z0-9]{3}\\*?P[A-Za-z0-9\\*]{1,30})`\n\nThis regular expression is similar to that of the ISO EvseIDType but E is replaced with P to indicate a pool.\n',
-        example='IT*123*P456*AB789',
+        description="VSEs may be grouped by using a charging pool id according to emi³ standard definition. The Evse Pool ID MUST match the following structure (the notation corresponds to the augmented Backus-Naur Form (ABNF) as defined in RFC5234):\n<Evse Pool ID> = <Country Code> <S> <Spot Operator ID> <S> <ID Type> <Pool ID>\n\nwith:\n\n<Country Code> = 2 ALPHA ; two character country code according to ISO-3166-1 (Alpha-2-Code).\n\n<Spot Operator ID> = 3 (ALPHA / DIGIT); three alphanumeric characters.\n\n<ID Type> = “P”; one character “P” indicating that this ID represents a “Pool”.\n\n<Pool Instance> = (ALPHA / DIGIT) 1 * 30 ( 1*(ALPHA / DIGIT) [/ <S>] ); between 1 and 31sequence of alphanumeric characters, including additional optional separators. Starts with alphanumeric character referring to a specific Pool in EVSE Operator data system.\n\nALPHA = %x41-5A / %x61-7A; according to RFC 5234 (7-Bit ASCII).\n\nDIGIT = %x30-39; according to RFC 5234 (7-Bit ASCII).\n\n<S> = *1 ( “*” ); optional separator\n\nAn example for a valid Evse Pool ID is “IT*123*P456*AB789” with :\n\n“IT” indicating Italy,\n\n“123” representing a particular Spot Operator,\n\n“P” indicating the Pool, and\n\n“456*AB789” representing one of its POOL.\n\nNote\n\nIn contrast to the eMA ID, no check digit is specified for the Evse Pool ID in this document. Alpha characters SHALL be interpreted case insensitively. emi³ strongly recommends that implementations SHOULD - use the separator between Country Code and Spot Operator ID - use the separator between Spot Operator ID and ID type\nThis leads to the following regular expression:\n\n`([A-Za-z]{2}\\*?[A-Za-z0-9]{3}\\*?P[A-Za-z0-9\\*]{1,30})`\n\nThis regular expression is similar to that of the ISO EvseIDType but E is replaced with P to indicate a pool.\n",
+        example="IT*123*P456*AB789",
     )
     ChargingStationId: Optional[str] = Field(
-        None, description='The ID that identifies the charging station.'
+        None, description="The ID that identifies the charging station."
     )
     ChargingStationNames: List[InfoTextType] = Field(
-        ..., description='Name of the charging station'
+        ..., description="Name of the charging station"
     )
     HardwareManufacturer: Optional[str] = Field(
-        None, description='Name of the charging point manufacturer'
+        None, description="Name of the charging point manufacturer"
     )
     ChargingStationImage: Optional[str] = Field(
-        None, description='URL that redirect to an online image of the related EVSEID'
+        None, description="URL that redirect to an online image of the related EVSEID"
     )
     SubOperatorName: Optional[str] = Field(
-        None, description='Name of the Sub Operator owning the Charging Station'
+        None, description="Name of the Sub Operator owning the Charging Station"
     )
     Address: Address
     GeoCoordinates: GeoCoordinates
-    Plugs: List[Plug] = Field(..., description='List of plugs that are supported.')
+    Plugs: List[Plug] = Field(..., description="List of plugs that are supported.")
     DynamicPowerLevel: Optional[bool] = Field(
-        None, description='Informs is able to deliver different power outputs.'
+        None, description="Informs is able to deliver different power outputs."
     )
     ChargingFacilities: List[ChargingFacility] = Field(
-        ..., description='List of facilities that are supported.'
+        ..., description="List of facilities that are supported."
     )
     RenewableEnergy: bool = Field(
         ...,
-        description='If the Charging Station provides only renewable energy then the value `MUST` be ”true”, if it use grey energy then value `MUST` be “false”.\n',
+        description="If the Charging Station provides only renewable energy then the value `MUST` be ”true”, if it use grey energy then value `MUST` be “false”.\n",
     )
     EnergySource: Optional[List[EnergySourceItem]] = Field(
         None,
-        description='List of energy source that the charging station uses to supply electric energy.',
+        description="List of energy source that the charging station uses to supply electric energy.",
     )
     EnvironmentalImpact: Optional[EnvironmentalImpact] = None
     CalibrationLawDataAvailability: CalibrationLawDataAvailability
     AuthenticationModes: List[AuthenticationMode] = Field(
-        ..., description='List of authentication modes that are supported.'
+        ..., description="List of authentication modes that are supported."
     )
     MaxCapacity: Optional[int] = Field(
         None,
-        description='This field is used if the EVSE has a limited capacity (e.g. built-in battery). Values must be given in kWh.',
+        description="This field is used if the EVSE has a limited capacity (e.g. built-in battery). Values must be given in kWh.",
     )
     PaymentOptions: List[PaymentOption] = Field(
-        ..., description='List of payment options that are supported.'
+        ..., description="List of payment options that are supported."
     )
     ValueAddedServices: List[ValueAddedService] = Field(
-        ..., description='List of value added services that are supported.'
+        ..., description="List of value added services that are supported."
     )
     Accessibility: Accessibility
     AccessibilityLocation: Optional[AccessibilityLocation]
     HotlinePhoneNumber: str = Field(
         ...,
-        pattern=r'^\+[0-9]{5,15}$',
-        description='`^\\+[0-9]{5,15}$`\nThe expression validates the string as a telephone number starting with “+” and containing only numbers.\n\nExample: “+0305132787”\n',
+        pattern=r"^\+[0-9]{5,15}$",
+        description="`^\\+[0-9]{5,15}$`\nThe expression validates the string as a telephone number starting with “+” and containing only numbers.\n\nExample: “+0305132787”\n",
     )
     AdditionalInfo: Optional[List[InfoTextType]] = Field(
-        None, description='Optional information.'
+        None, description="Optional information."
     )
     ChargingStationLocationReference: Optional[List[InfoTextType]] = Field(
         None,
-        description='Inform the EV driver where the ChargingPoint could be accessed.',
+        description="Inform the EV driver where the ChargingPoint could be accessed.",
     )
     GeoChargingPointEntrance: Optional[GeoCoordinates] = None
     IsOpen24Hours: bool = Field(
-        ..., description='Set in case the charging spot is open 24 hours.'
+        ..., description="Set in case the charging spot is open 24 hours."
     )
     OpeningTimes: Optional[List[OpeningTimes]]
     HubOperatorID: Optional[OperatorID] = None
     ClearinghouseID: Optional[str] = Field(
         None,
-        description='Identification of the corresponding clearing house in the event that roaming between different clearing houses `MUST` be processed in the future.\n',
+        description="Identification of the corresponding clearing house in the event that roaming between different clearing houses `MUST` be processed in the future.\n",
     )
     IsHubjectCompatible: bool = Field(
         ...,
-        description='Is eRoaming via intercharge at this charging station possible? If set to \"false\" the charge spot will not be started/stopped remotely via Hubject.',
+        description='Is eRoaming via intercharge at this charging station possible? If set to "false" the charge spot will not be started/stopped remotely via Hubject.',
     )
     DynamicInfoAvailable: DynamicInfoAvailable
 
@@ -854,14 +844,15 @@ class ERoamingAuthorizationStart(BaseModel):
     Hubject => CPO
     https://hubject.github.io/oicp-cpo-2.3-api-doc/#tag/eRoamingAuthorization/operation/eRoamingAuthorizeStart_v2.1
     """
+
     SessionID: Optional[SessionID] = None
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation.',
+        description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation.',
+        description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
     ProviderID: Optional[ProviderID] = None
     AuthorizationStatus: AuthorizationStatus
@@ -870,7 +861,7 @@ class ERoamingAuthorizationStart(BaseModel):
         List[AuthorizationStopIdentification]
     ] = Field(
         None,
-        description='A list of Identification data that is authorized to stop the charging process.',
+        description="A list of Identification data that is authorized to stop the charging process.",
     )
 
 
@@ -878,18 +869,18 @@ class ERoamingAuthorizeRemoteReservationStart(BaseModel):
     SessionID: Optional[SessionID] = None
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation. Partner systems can use this field to link their own session handling to HBS processes.',
+        description="Optional field containing the session id assigned by the CPO to the related operation. Partner systems can use this field to link their own session handling to HBS processes.",
     )
     EMPPartnerSessionId: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation. Partner systems can use this field to link their own session handling to HBS processes.',
+        description="Optional field containing the session id assigned by an EMP to the related operation. Partner systems can use this field to link their own session handling to HBS processes.",
     )
     ProviderID: ProviderID
     EvseID: EvseID
     Identification: Identification
     PartnerProductID: Optional[ProductID] = None
     Duration: Optional[conint(ge=1, le=99)] = Field(
-        None, description='Duration of reservation in minutes', example=10
+        None, description="Duration of reservation in minutes", example=10
     )
 
 
@@ -897,11 +888,11 @@ class ERoamingAuthorizeRemoteStart(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation.',
+        description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation.',
+        description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
     ProviderID: ProviderID
     EvseID: EvseID
@@ -913,11 +904,11 @@ class ERoamingAuthorizeStart(BaseModel):
     SessionID: Optional[SessionID] = None
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation.',
+        description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation.',
+        description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
     OperatorID: OperatorID
     EvseID: Optional[EvseID] = None
@@ -929,11 +920,11 @@ class ERoamingAuthorizeStop(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation.',
+        description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation.',
+        description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
     OperatorID: OperatorID
     EvseID: Optional[EvseID] = None
@@ -944,43 +935,43 @@ class ERoamingChargeDetailRecord(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by the CPO to the related operation.',
+        description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session id assigned by an EMP to the related operation.',
+        description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
     PartnerProductID: Optional[ProductID] = None
     EvseID: EvseID
     Identification: Identification
     ChargingStart: datetime = Field(
-        ..., description='The date and time at which the charging process started.'
+        ..., description="The date and time at which the charging process started."
     )
     ChargingEnd: datetime = Field(
-        ..., description='The date and time at which the charging process stoped.'
+        ..., description="The date and time at which the charging process stoped."
     )
     SessionStart: datetime = Field(
         ...,
-        description='The date and time at which the session started, e.g. swipe of RFID or cable connected.',
+        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
     SessionEnd: datetime = Field(
         ...,
-        description='The date and time at which the session started, e.g. swipe of RFID or cable connected.',
+        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
     MeterValueStart: Optional[float] = Field(
-        None, description='The starting meter value in kWh.'
+        None, description="The starting meter value in kWh."
     )
     MeterValueEnd: Optional[float] = Field(
-        None, description='The ending meter value in kWh.'
+        None, description="The ending meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetween]
     ConsumedEnergy: float = Field(
         ...,
-        description='The difference between MeterValueEnd and MeterValueStart in kWh.',
+        description="The difference between MeterValueEnd and MeterValueStart in kWh.",
     )
     SignedMeteringValues: Optional[List[SignedMeteringValue]] = Field(
         None,
-        description='Metering Signature basically contains all metering signature values (these values should be in Transparency software format) for different status of charging session for eg start, end or progress. In total you can provide maximum 10 metering signature values',
+        description="Metering Signature basically contains all metering signature values (these values should be in Transparency software format) for different status of charging session for eg start, end or progress. In total you can provide maximum 10 metering signature values",
     )
     CalibrationLawVerificationInfo: Optional[CalibrationLawVerificationInfo]
     HubOperatorID: Optional[OperatorID] = None
@@ -992,44 +983,44 @@ class ERoamingChargingNotificationEnd(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n',
+        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n',
+        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
     Identification: Optional[Identification] = None
     EvseID: EvseID
     ChargingStart: Optional[datetime] = Field(
-        None, description='The date and time at which the charging process started.'
+        None, description="The date and time at which the charging process started."
     )
     ChargingEnd: datetime = Field(
-        ..., description='The date and time at which the charging process stoped.'
+        ..., description="The date and time at which the charging process stoped."
     )
     SessionStart: Optional[datetime] = Field(
         None,
-        description='The date and time at which the session started, e.g. swipe of RFID or cable connected.',
+        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
     SessionEnd: Optional[datetime] = Field(
         None,
-        description='The date and time at which the session started, e.g. swipe of RFID or cable connected.',
+        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
     ConsumedEnergy: Optional[float] = Field(
         None,
-        description='The difference between MeterValueEnd and MeterValueStart in kWh.',
+        description="The difference between MeterValueEnd and MeterValueStart in kWh.",
     )
     MeterValueStart: Optional[float] = Field(
-        None, description='The starting meter value in kWh.'
+        None, description="The starting meter value in kWh."
     )
     MeterValueEnd: Optional[float] = Field(
-        None, description='The ending meter value in kWh.'
+        None, description="The ending meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetween]
     OperatorID: OperatorID
     PartnerProductID: Optional[ProductID] = None
     PenaltyTimeStart: Optional[datetime] = Field(
         None,
-        description='The date and time at which the penalty time start after the grace period.',
+        description="The date and time at which the penalty time start after the grace period.",
     )
 
 
@@ -1038,11 +1029,11 @@ class ERoamingChargingNotificationError(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n',
+        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n',
+        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
     Identification: Optional[Identification] = None
     OperatorID: OperatorID
@@ -1050,7 +1041,7 @@ class ERoamingChargingNotificationError(BaseModel):
     ErrorType: ErrorType
     ErrorAdditionalInfo: Optional[str] = Field(
         None,
-        description='The CPO can put in the additional information about the error',
+        description="The CPO can put in the additional information about the error",
     )
 
 
@@ -1059,35 +1050,35 @@ class ERoamingChargingNotificationProgress(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n',
+        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n',
+        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
     Identification: Optional[Identification] = None
     EvseID: EvseID
     ChargingStart: datetime = Field(
-        ..., description='The date and time at which the charging process started.'
+        ..., description="The date and time at which the charging process started."
     )
     EventOccurred: datetime = Field(
         ...,
-        description='The date and time at which the charging progress parameters are captured.',
+        description="The date and time at which the charging progress parameters are captured.",
     )
     ChargingDuration: Optional[int] = Field(
         None,
-        description='Charging Duration = EventOccurred - ChargingStart. It is a time in millisecond.\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n',
+        description="Charging Duration = EventOccurred - ChargingStart. It is a time in millisecond.\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
     )
     SessionStart: Optional[datetime] = Field(
         None,
-        description='The date and time at which the session started, e.g. swipe of RFID or cable connected.',
+        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
     ConsumedEnergyProgress: Optional[float] = Field(
         None,
-        description='This represents the consumed energy in kWh from the start of the charging process until the charging progress notification is generated (EventOccurred).\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n',
+        description="This represents the consumed energy in kWh from the start of the charging process until the charging progress notification is generated (EventOccurred).\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
     )
     MeterValueStart: Optional[float] = Field(
-        None, description='The starting meter value in kWh.'
+        None, description="The starting meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetween]
     OperatorID: OperatorID
@@ -1099,23 +1090,23 @@ class ERoamingChargingNotificationStart(BaseModel):
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n',
+        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
     EMPPartnerSessionID: Optional[str] = Field(
         None,
-        description='Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n',
+        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
     Identification: Optional[Identification] = None
     EvseID: EvseID
     ChargingStart: datetime = Field(
-        ..., description='The date and time at which the charging process started.'
+        ..., description="The date and time at which the charging process started."
     )
     SessionStart: Optional[datetime] = Field(
         None,
-        description='The date and time at which the session started, e.g. swipe of RFID or cable connected.',
+        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
     MeterValueStart: Optional[float] = Field(
-        None, description='The starting meter value in kWh.'
+        None, description="The starting meter value in kWh."
     )
     OperatorID: OperatorID
     PartnerProductID: Optional[ProductID] = None
@@ -1123,7 +1114,7 @@ class ERoamingChargingNotificationStart(BaseModel):
 
 class OperatorEvseData(BaseModel):
     OperatorID: OperatorID
-    OperatorName: str = Field(..., description='Free text for operator')
+    OperatorName: str = Field(..., description="Free text for operator")
     EvseDataRecord: List[EvseDataRecord]
 
 
@@ -1133,7 +1124,7 @@ class ERoamingPushEvseData(BaseModel):
 
 
 # start this file from command line
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
     import json
     from pydantic import ValidationError

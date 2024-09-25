@@ -15,16 +15,25 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
-from ocpi22.util import clear_empty, uid_validator, CURRENCY_CHOICES, fill_out_location_address
-from ocpi22.serializers.util import SerializerCleanedUp, HyperlinkedModelSerializerCleanedUp, CallbacksSerializer, \
-    UTCDateTimeField
-from ocpiconnector.ocpi_identities import Party, get_our_credentialsrole
+from ocpi22.util import (
+    clear_empty,
+    uid_validator,
+    CURRENCY_CHOICES,
+    fill_out_location_address,
+)
+from ocpi22.serializers.util import (
+    SerializerCleanedUp,
+    HyperlinkedModelSerializerCleanedUp,
+    CallbacksSerializer,
+    UTCDateTimeField,
+)
+from ocpiconnector.ocpi_identities import Party
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Evse
-        fields = ['url', 'uid', 'status', 'last_updated']
+        fields = ["url", "uid", "status", "last_updated"]
 
     uid = serializers.CharField(read_only=True)
     last_updated = UTCDateTimeField(required=False)
@@ -33,14 +42,29 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
 class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Session
-        fields = ['detail_url', 'session_id', 'internal_reference', 'billed_to',
-                  'start_date_time', 'end_date_time', 'start_kwh', 'stop_kwh',
-                  'token', 'auth_method', 'authorization_reference',
-                  'location_id', 'evse_uid', 'connector_id', 'currency',
-                  'total_cost_incl_vat', 'total_cost_excl_vat',
-                  'status', 'last_updated']
+        fields = [
+            "detail_url",
+            "session_id",
+            "internal_reference",
+            "billed_to",
+            "start_date_time",
+            "end_date_time",
+            "start_kwh",
+            "stop_kwh",
+            "token",
+            "auth_method",
+            "authorization_reference",
+            "location_id",
+            "evse_uid",
+            "connector_id",
+            "currency",
+            "total_cost_incl_vat",
+            "total_cost_excl_vat",
+            "status",
+            "last_updated",
+        ]
 
-    session_id = serializers.CharField(source='uid', read_only=True)
+    session_id = serializers.CharField(source="uid", read_only=True)
     internal_reference = serializers.CharField(read_only=True)
     token = serializers.SerializerMethodField(read_only=True)
     billed_to = serializers.SerializerMethodField(read_only=True)
@@ -53,15 +77,17 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     @staticmethod
     def get_token(session):
-        return clear_empty(dict(
-            token_id=session.cdr_token_uid,
-            type=session.cdr_token_type,
-            contract_id=session.cdr_token_contract_id
-        ))
+        return clear_empty(
+            dict(
+                token_id=session.cdr_token_uid,
+                type=session.cdr_token_type,
+                contract_id=session.cdr_token_contract_id,
+            )
+        )
 
     @staticmethod
     def get_billed_to(session):
-        return session.billed_to.party_str() if session.billed_to else ''
+        return session.billed_to.party_str() if session.billed_to else ""
 
     @staticmethod
     def get_location_id(session):
@@ -73,8 +99,11 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     @staticmethod
     def get_connector_id(session):
-        return session.connector.uid \
-            if session and hasattr(session, 'connector') and session.connector else ''
+        return (
+            session.connector.uid
+            if session and hasattr(session, "connector") and session.connector
+            else ""
+        )
 
 
 class ConnectorTariffIdSerializer(serializers.Serializer):
@@ -84,18 +113,29 @@ class ConnectorTariffIdSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         tariff = Tariff.objects.filter(uid=data).first()
         if not tariff:
-            raise ValidationError(f'Tariff {data} is not in the database, please create it before adding Locations')
+            raise ValidationError(
+                f"Tariff {data} is not in the database, please create it before adding Locations"
+            )
         return tariff
 
 
 class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Connector
-        fields = ['uid', 'standard', 'format',
-                  'max_voltage', 'max_amperage', 'max_electric_power',
-                  'tariff_ids', 'last_updated']
+        fields = [
+            "uid",
+            "standard",
+            "format",
+            "max_voltage",
+            "max_amperage",
+            "max_electric_power",
+            "tariff_ids",
+            "last_updated",
+        ]
 
-    uid = serializers.CharField(validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    uid = serializers.CharField(
+        validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH
+    )
     tariff_ids = ConnectorTariffIdSerializer(required=False, many=True)
     last_updated = UTCDateTimeField(required=False)
 
@@ -103,9 +143,11 @@ class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
 class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Evse
-        fields = ['status_url', 'uid', 'connectors', 'last_updated']
+        fields = ["status_url", "uid", "connectors", "last_updated"]
 
-    uid = serializers.CharField(validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    uid = serializers.CharField(
+        validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH
+    )
     connectors = ConnectorQuickSerializer(many=True)
 
 
@@ -113,50 +155,69 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
         fields = [
-            'quick_url', 'id',
-            'name', 'language', 'address', 'city', 'postal_code', 'state', 'country', 'time_zone',
-            'latitude', 'longitude', 'evses'
+            "quick_url",
+            "id",
+            "name",
+            "language",
+            "address",
+            "city",
+            "postal_code",
+            "state",
+            "country",
+            "time_zone",
+            "latitude",
+            "longitude",
+            "evses",
         ]
 
-    id = serializers.CharField(source='uid', validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    id = serializers.CharField(
+        source="uid",
+        validators=[uid_validator],
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+    )
     evses = EvseQuickSerializer(many=True, required=False)
     language = serializers.CharField(
-        required=False, max_length=6,
-        help_text='Optional language of the location address, if address is determined based on coordinates'
+        required=False,
+        max_length=6,
+        help_text="Optional language of the location address, if address is determined based on coordinates",
     )
     address = serializers.CharField(
-        required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
-        help_text='If omitted, street address will be determined automatically based on coordinates'
+        required=False,
+        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
+        help_text="If omitted, street address will be determined automatically based on coordinates",
     )
     city = serializers.CharField(
-        required=False, max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
-        help_text='If omitted, city will be determined automatically based on coordinates'
+        required=False,
+        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
+        help_text="If omitted, city will be determined automatically based on coordinates",
     )
     country = serializers.CharField(
-        required=False, max_length=3,
-        help_text='If omitted, country will be determined automatically based on coordinates'
+        required=False,
+        max_length=3,
+        help_text="If omitted, country will be determined automatically based on coordinates",
     )
     latitude = serializers.FloatField(required=False)
     longitude = serializers.FloatField(required=False)
     time_zone = serializers.CharField(
-        required=False, max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
-        help_text='If omitted, time zone will be determined automatically based on coordinates'
+        required=False,
+        max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
+        help_text="If omitted, time zone will be determined automatically based on coordinates",
     )
-    lookup_field = 'uid'
+    lookup_field = "uid"
 
     def create(self, validated_data, *args, **kwargs):
-        evses = validated_data.pop('evses', [])
+        evses = validated_data.pop("evses", [])
         validated_data = fill_out_location_address(
             validated_data,
-            validated_data.get('latitude'),
-            validated_data.get('longitude')
+            validated_data.get("latitude"),
+            validated_data.get("longitude"),
         )
         location = Location.objects.create(**validated_data)
         for evse_dict in evses:
-            connectors = evse_dict.pop('connectors', [])
+            connectors = evse_dict.pop("connectors", [])
             evse = Evse.objects.create(location=location, **evse_dict)
             for connector_dict in connectors:
-                tariff_ids = connector_dict.pop('tariff_ids', None)
+                tariff_ids = connector_dict.pop("tariff_ids", None)
                 connector = Connector.objects.create(evse=evse, **connector_dict)
                 if tariff_ids:
                     connector.tariff_ids.set(tariff_ids)
@@ -165,26 +226,29 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         return location
 
     def update(self, location, validated_data, *args, **kwargs):
-        evses = validated_data.pop('evses', [])
+        evses = validated_data.pop("evses", [])
         validated_data = fill_out_location_address(
             validated_data,
-            validated_data.get('latitude'),
-            validated_data.get('longitude')
+            validated_data.get("latitude"),
+            validated_data.get("longitude"),
         )
         Location.objects.filter(uid__iexact=location.uid).update(**validated_data)
         for evse_dict in evses:
-            connectors = evse_dict.pop('connectors', [])
-            evse, created = Evse.objects.get_or_create(location=location, uid__iexact=evse_dict.get('uid'),
-                                                       defaults=evse_dict)
+            connectors = evse_dict.pop("connectors", [])
+            evse, created = Evse.objects.get_or_create(
+                location=location, uid__iexact=evse_dict.get("uid"), defaults=evse_dict
+            )
             if not created:
                 Evse.objects.filter(uid__iexact=evse.uid).update(**evse_dict)
             for connector_dict in connectors:
-                tariff_ids = connector_dict.pop('tariff_ids', None)
-                connector, created = Connector.objects.get_or_create(evse=evse,
-                                                                     uid=connector_dict.pop('uid'),
-                                                                     defaults=connector_dict)
+                tariff_ids = connector_dict.pop("tariff_ids", None)
+                connector, created = Connector.objects.get_or_create(
+                    evse=evse, uid=connector_dict.pop("uid"), defaults=connector_dict
+                )
                 if not created:
-                    Connector.objects.filter(uid__iexact=connector.uid, evse=evse).update(**connector_dict)
+                    Connector.objects.filter(
+                        uid__iexact=connector.uid, evse=evse
+                    ).update(**connector_dict)
                 if tariff_ids:
                     connector.tariff_ids.set(tariff_ids)
         return location
@@ -204,6 +268,7 @@ class TokenIdSerializer(fields.CharField):
 
 class SessionIdSerializer(fields.CharField):
     """To be used only for CPO API, cannot handle overlapping IDs"""
+
     def to_internal_value(self, data):
         if data:
             session = Session.objects.get(uid=data.upper())
@@ -215,11 +280,14 @@ class SessionIdSerializer(fields.CharField):
 
 class InternalReferenceSerializer(fields.CharField):
     """Results in a Session or None"""
+
     def to_internal_value(self, data) -> Optional[Session]:
         if data:
             session = Session.objects.get_if_exists(internal_reference__iexact=data)
             if not session:
-                raise ValidationError(f"Session with internal reference '{data}' does not exist.")
+                raise ValidationError(
+                    f"Session with internal reference '{data}' does not exist."
+                )
             return session
         return None
 
@@ -230,37 +298,39 @@ class OcppStatusSerializer(fields.ChoiceField):
 
     def to_internal_value(self, data):
         result = {
-            OcppStatusChoices.AVAILABLE: 'AVAILABLE',
-            OcppStatusChoices.PREPARING: 'CHARGING',
-            OcppStatusChoices.CHARGING: 'CHARGING',
-            OcppStatusChoices.SUSPENDEDEV: 'CHARGING',
-            OcppStatusChoices.SUSPENDEDEVSE: 'CHARGING',
-            OcppStatusChoices.FINISHING: 'CHARGING',
-            OcppStatusChoices.RESERVED: 'RESERVED',
-            OcppStatusChoices.UNAVAILABLE: 'CHARGING',
-            OcppStatusChoices.FAULTED: 'OUTOFORDER',
+            OcppStatusChoices.AVAILABLE: "AVAILABLE",
+            OcppStatusChoices.PREPARING: "CHARGING",
+            OcppStatusChoices.CHARGING: "CHARGING",
+            OcppStatusChoices.SUSPENDEDEV: "CHARGING",
+            OcppStatusChoices.SUSPENDEDEVSE: "CHARGING",
+            OcppStatusChoices.FINISHING: "CHARGING",
+            OcppStatusChoices.RESERVED: "RESERVED",
+            OcppStatusChoices.UNAVAILABLE: "CHARGING",
+            OcppStatusChoices.FAULTED: "OUTOFORDER",
         }.get(data.upper())
         if not result:
-            raise ValidationError(f"'{data}' is not a known OCPP status. Options are: {OcppStatusChoices.values}.")
+            raise ValidationError(
+                f"'{data}' is not a known OCPP status. Options are: {OcppStatusChoices.values}."
+            )
         return result
 
 
 class StatusChangeSerializer(serializers.Serializer):
     evse_uid = EvseSerialnumberSerializer(
-        source='evse',
-        help_text='The identifier of the device which provides electricity to one or more connectors'
+        source="evse",
+        help_text="The identifier of the device which provides electricity to one or more connectors",
     )
     status = OcppStatusSerializer()
 
 
 class AuthorizationSerializer(serializers.Serializer):
     evse_id = EvseSerialnumberSerializer(
-        source='evse',
-        help_text='The identifier of the device which provides electricity to one or more connectors'
+        source="evse",
+        help_text="The identifier of the device which provides electricity to one or more connectors",
     )
     token_id = TokenIdSerializer(
-        source='token',
-        help_text='The hidden ID of the RFID token, separate from the visual one'
+        source="token",
+        help_text="The hidden ID of the RFID token, separate from the visual one",
     )
 
 
@@ -268,109 +338,127 @@ class MeterValuesSerializer(serializers.Serializer):
     """
     The session start and end time are recorded by the system
     """
+
     session_id = SessionIdSerializer(
-        source='session', required=False,
-        help_text='The optional OCPI session ID (from the response of the start_transaction endpoint)',
+        source="session",
+        required=False,
+        help_text="The optional OCPI session ID (from the response of the start_transaction endpoint)",
     )
     internal_reference = InternalReferenceSerializer(
         required=False,
-        help_text='The optional internal reference on the CPO platform '
-                  '(for example order number from the billing system)',
+        help_text="The optional internal reference on the CPO platform "
+        "(for example order number from the billing system)",
     )
     kwh = serializers.FloatField(
-        help_text='The kWh measurement at the time of this message',
+        help_text="The kWh measurement at the time of this message",
     )
     soc = serializers.FloatField(
-        required=False, min_value=0, max_value=100,
-        help_text='The optional State of Charge for the vehicle, if provided by the charge point',
+        required=False,
+        min_value=0,
+        max_value=100,
+        help_text="The optional State of Charge for the vehicle, if provided by the charge point",
     )
     power = serializers.FloatField(
         required=False,
-        help_text='Optional total amount of energy (dis-)charged during this ChargingPeriod: defined in kWh. '
-                  'When negative, more energy was feed into the grid then charged into the EV. '
-                  'Default step_size is 1.',
+        help_text="Optional total amount of energy (dis-)charged during this ChargingPeriod: defined in kWh. "
+        "When negative, more energy was feed into the grid then charged into the EV. "
+        "Default step_size is 1.",
     )
     timestamp = UTCDateTimeField(
         required=False,
         help_text="Optional timestamp for the meter values. Using this field is highly recommended, so that "
-                  "disruptions in connectivity won't distort cost calculation."
+        "disruptions in connectivity won't distort cost calculation.",
     )
 
     def validate(self, attrs):
-        if 'session' not in attrs and 'internal_reference' not in attrs:
-            raise ValidationError('Please specify either the session_id or the internal_reference')
+        if "session" not in attrs and "internal_reference" not in attrs:
+            raise ValidationError(
+                "Please specify either the session_id or the internal_reference"
+            )
         return attrs
 
 
 class StartTransactionSerializer(serializers.Serializer):
     evse_uid = EvseSerialnumberSerializer(
-        source='evse',
-        help_text='The identifier of the device which provides electricity to one or more connectors'
+        source="evse",
+        help_text="The identifier of the device which provides electricity to one or more connectors",
     )
     connector_id = serializers.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        help_text='The connector number used for charging during this transaction'
+        help_text="The connector number used for charging during this transaction",
     )
     token_id = TokenIdSerializer(
-        source='token',
-        help_text='The hidden ID of the RFID token, separate from the visual one'
+        source="token",
+        help_text="The hidden ID of the RFID token, separate from the visual one",
     )
     internal_reference = serializers.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        help_text='The session ID on the CPO platform or order number from the CPO billing system',
-        required=False, allow_null=True
+        help_text="The session ID on the CPO platform or order number from the CPO billing system",
+        required=False,
+        allow_null=True,
     )
     start_kwh = serializers.FloatField(
         required=False,
         default=0.0,
-        help_text='The optional kWh measurement at the meter at start of the transaction, can start from zero '
-                  'or start from where the previous charging session ended or some other value'
+        help_text="The optional kWh measurement at the meter at start of the transaction, can start from zero "
+        "or start from where the previous charging session ended or some other value",
     )
 
     def is_adhoc_token(self) -> bool:
-        return isinstance(self.validated_data.get('token'), str)
+        return isinstance(self.validated_data.get("token"), str)
 
 
 class StopTransactionSerializer(serializers.Serializer):
     """
     The session ends with a specific meter value
     """
+
     session_id = SessionIdSerializer(
-        source='session', required=False,
-        help_text='The optional OCPI session ID (from the response of the start_transaction endpoint)',
+        source="session",
+        required=False,
+        help_text="The optional OCPI session ID (from the response of the start_transaction endpoint)",
     )
     internal_reference = InternalReferenceSerializer(
         required=False,
-        help_text='The optional internal reference on the CPO platform '
-                  '(for example order number from the billing system)',
+        help_text="The optional internal reference on the CPO platform "
+        "(for example order number from the billing system)",
     )
     stop_kwh = serializers.DecimalField(
-        max_digits=8, decimal_places=4, required=False,
-        help_text='Optionally, the final kWh reading from the charger',
+        max_digits=8,
+        decimal_places=4,
+        required=False,
+        help_text="Optionally, the final kWh reading from the charger",
     )
     stop_timestamp = UTCDateTimeField(
-        required=False, default_timezone=pytz.UTC,
-        help_text='The timestamp of the moment when the driver has unplugged the vehicle, defaults to UTC timezone'
+        required=False,
+        default_timezone=pytz.UTC,
+        help_text="The timestamp of the moment when the driver has unplugged the vehicle, defaults to UTC timezone",
     )
 
     def validate(self, attrs):
-        if 'session' not in attrs and 'internal_reference' not in attrs:
-            raise ValidationError('Please specify either the session_id or the internal_reference')
+        if "session" not in attrs and "internal_reference" not in attrs:
+            raise ValidationError(
+                "Please specify either the session_id or the internal_reference"
+            )
         return attrs
 
 
 class PartyStrField(serializers.CharField):
     def to_internal_value(self, data):
         from ocpi22.models.credentials import CredentialsRole
+
         if isinstance(data, CredentialsRole):
             return data
         if isinstance(data, str):
-            return get_credentialsrole(party=Party(*data.split('*')))
-        raise ValidationError(f'Expected a party ID or CredentialsRole, got {data}')
+            return get_credentialsrole(party=Party(*data.split("*")))
+        raise ValidationError(f"Expected a party ID or CredentialsRole, got {data}")
 
     def to_representation(self, value):
         from ocpi22.models.credentials import CredentialsRole
-        assert isinstance(value, CredentialsRole), f'Expected a CredentialsRole, got {value}'
+
+        assert isinstance(
+            value, CredentialsRole
+        ), f"Expected a CredentialsRole, got {value}"
         return value.party_str()
 
 
@@ -379,85 +467,99 @@ class CpoOutboundWebhookSerializer(serializers.Serializer):
     token_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
     token_type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES)
     authorization_reference = serializers.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True,
-        help_text='Optional reference to the authorization given by the eMSP')
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        required=False,
+        allow_null=True,
+        help_text="Optional reference to the authorization given by the eMSP",
+    )
     auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
     from_party = serializers.CharField(
-        help_text='The ID of the party sending the command'
+        help_text="The ID of the party sending the command"
     )
-    evse_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
-    connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True)
+    evse_id = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True
+    )
+    connector_id = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True
+    )
     billed_to = PartyStrField(
-        help_text='The party ID of the eMSP that is responsible for paying for the session'
+        help_text="The party ID of the eMSP that is responsible for paying for the session"
     )
 
 
 class CommandResponseSerializer(serializers.Serializer):
     timeout = serializers.IntegerField(
-        required=False, allow_null=True,
-        help_text='Timeout for this ChargingProfile request in seconds. '
-                  'When the Result is not received within this timeout, '
-                  'the eMSP can assume that the message might never be sent.'
+        required=False,
+        allow_null=True,
+        help_text="Timeout for this ChargingProfile request in seconds. "
+        "When the Result is not received within this timeout, "
+        "the eMSP can assume that the message might never be sent.",
     )
     result = serializers.ChoiceField(
         choices=CommandResultBaseSerializer.RESULT_OPTIONS,
-        help_text='The result of the remote command.'
+        help_text="The result of the remote command.",
     )
 
 
 class CPOStartWebhookSerializer(CallbacksSerializer):
-    URL = 'start_transaction_url'
+    URL = "start_transaction_url"
     start_transaction_url = serializers.URLField()
 
     class OutboundSerializer(CpoOutboundWebhookSerializer):
         token_type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES)
-        connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
-                                             allow_null=True)
+        connector_id = serializers.CharField(
+            max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True
+        )
 
     ResponseSerializer = CommandResponseSerializer
 
 
 class CPOStopWebhookSerializer(CallbacksSerializer):
-    URL = 'stop_transaction_url'
+    URL = "stop_transaction_url"
     stop_transaction_url = serializers.URLField()
 
     class OutboundSerializer(CpoOutboundWebhookSerializer):
         token_type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES)
-        connector_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False,
-                                             allow_null=True)
+        connector_id = serializers.CharField(
+            max_length=settings.OCPI_22_MAX_UID_LENGTH, required=False, allow_null=True
+        )
 
     ResponseSerializer = CommandResponseSerializer
 
 
 class CPOReserveNowWebhookSerializer(CallbacksSerializer):
-    URL = 'reserve_now_url'
+    URL = "reserve_now_url"
     reserve_now_url = serializers.URLField()
 
     class OutboundSerializer(CpoOutboundWebhookSerializer):
         expiry_date = UTCDateTimeField()
         location_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
-        reservation_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+        reservation_id = serializers.CharField(
+            max_length=settings.OCPI_22_MAX_UID_LENGTH
+        )
 
     ResponseSerializer = CommandResponseSerializer
 
 
 class VatSerializer(serializers.FloatField):
-    key = 'vat'
+    key = "vat"
 
     def to_representation(self, tariff: Tariff) -> Union[int, str]:
         pe = tariff.tariff_elements.first()
         # Iterate through the VATs for this Tariff and check if there are multiple different ones
-        vats = set(pe.price_components.values_list('vat', flat=True))
+        vats = set(pe.price_components.values_list("vat", flat=True))
         if len(vats) == 1:
             return vats.pop()
-        return 'Multiple'
+        return "Multiple"
 
     def to_internal_value(self, data):
         if isinstance(data, (float, int)):
             if 0 < data < 1:
-                raise ValidationError('VAT should be the percentage (0-100), not the decimal presentation')
+                raise ValidationError(
+                    "VAT should be the percentage (0-100), not the decimal presentation"
+                )
             if not 0 <= data <= 100:
-                raise ValidationError('VAT should be a percentage between 0 and 100')
+                raise ValidationError("VAT should be a percentage between 0 and 100")
         return {self.key: data}
 
 
@@ -472,46 +574,59 @@ class PriceSerializer(serializers.DecimalField):
 
 
 class PriceKwhSerializer(PriceSerializer):
-    tariff_type = 'ENERGY'
-    key = 'price_per_kwh'
+    tariff_type = "ENERGY"
+    key = "price_per_kwh"
 
 
 class PriceMinSerializer(PriceSerializer):
-    tariff_type = 'TIME'
-    key = 'price_per_min'
+    tariff_type = "TIME"
+    key = "price_per_min"
 
 
 class PriceFlatSerializer(PriceSerializer):
-    tariff_type = 'FLAT'
-    key = 'price_flat'
+    tariff_type = "FLAT"
+    key = "price_flat"
 
 
 class TariffQuickSerializer(SerializerCleanedUp):
-    id = serializers.CharField(source='uid', validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH)
-    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES, default='EUR')
+    id = serializers.CharField(
+        source="uid",
+        validators=[uid_validator],
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+    )
+    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES, default="EUR")
     price_per_kwh = PriceKwhSerializer(
-        source='*',
-        max_digits=8, decimal_places=4, required=False,
-        help_text='The price per kWh of electricity charged excluding tax'
+        source="*",
+        max_digits=8,
+        decimal_places=4,
+        required=False,
+        help_text="The price per kWh of electricity charged excluding tax",
     )
     price_per_min = PriceMinSerializer(
-        source='*',
-        max_digits=8, decimal_places=4, required=False,
-        help_text='The price per minute of charging, excluding parking and tax'
+        source="*",
+        max_digits=8,
+        decimal_places=4,
+        required=False,
+        help_text="The price per minute of charging, excluding parking and tax",
     )
     price_flat = PriceFlatSerializer(
-        source='*',
-        max_digits=8, decimal_places=4, required=False,
-        help_text='The flat price per started charging session excluding tax'
+        source="*",
+        max_digits=8,
+        decimal_places=4,
+        required=False,
+        help_text="The flat price per started charging session excluding tax",
     )
     vat = VatSerializer(
-        source='*',
-        required=False, allow_null=True,
-        help_text='The Value Added Tax amount in percentage'
+        source="*",
+        required=False,
+        allow_null=True,
+        help_text="The Value Added Tax amount in percentage",
     )
 
     def create(self, validated_data):
-        tariff = Tariff.objects.create(uid=validated_data.get('uid'), ocpi_master=validated_data.get('ocpi_master'))
+        tariff = Tariff.objects.create(
+            uid=validated_data.get("uid"), ocpi_master=validated_data.get("ocpi_master")
+        )
         te = TariffElement.objects.create(tariff=tariff)
         per_kwh = validated_data.get(PriceKwhSerializer.key)
         per_min = validated_data.get(PriceMinSerializer.key)
@@ -519,17 +634,25 @@ class TariffQuickSerializer(SerializerCleanedUp):
         vat = validated_data.get(VatSerializer.key)
 
         if per_kwh:
-            PriceComponent.objects.create(tariff_element=te, type='ENERGY', price=per_kwh, vat=vat, step_size=1)
+            PriceComponent.objects.create(
+                tariff_element=te, type="ENERGY", price=per_kwh, vat=vat, step_size=1
+            )
         if per_min:
-            PriceComponent.objects.create(tariff_element=te, type='TIME', price=per_min, vat=vat, step_size=1)
+            PriceComponent.objects.create(
+                tariff_element=te, type="TIME", price=per_min, vat=vat, step_size=1
+            )
         if flat:
-            PriceComponent.objects.create(tariff_element=te, type='FLAT', price=flat, vat=vat, step_size=1)
+            PriceComponent.objects.create(
+                tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
+            )
         return tariff
 
     def update(self, tariff: Tariff, validated_data: dict):
         def update_price_components(price, tariff_type) -> None:
             data = dict(price=price, vat=vat, step_size=1)
-            pc, created = PriceComponent.objects.get_or_create(tariff_element=te, type=tariff_type, defaults=data)
+            pc, created = PriceComponent.objects.get_or_create(
+                tariff_element=te, type=tariff_type, defaults=data
+            )
             if not created:
                 for key, value in data.items():
                     if value is not None:
@@ -543,9 +666,9 @@ class TariffQuickSerializer(SerializerCleanedUp):
         vat = validated_data.get(VatSerializer.key)
 
         price_components = (
-            (per_kwh, 'ENERGY'),
-            (per_min, 'TIME'),
-            (flat, 'FLAT'),
+            (per_kwh, "ENERGY"),
+            (per_min, "TIME"),
+            (flat, "FLAT"),
         )
         for price, tariff_type in price_components:
             if price is not None:
@@ -560,14 +683,16 @@ class TariffQuickSerializer(SerializerCleanedUp):
 class CPOAuthorizationResponseSerializer(serializers.Serializer):
     allowed = serializers.ChoiceField(choices=AuthorizationEnum.choices)
     token = serializers.SerializerMethodField()
-    authorization_reference = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    authorization_reference = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH
+    )
     responding_party = serializers.CharField(max_length=5)
     billed_to = serializers.CharField(max_length=5)
     auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
 
     @staticmethod
     def get_token(authorization):
-        token = authorization.get('token')
+        token = authorization.get("token")
         if not token:
-            return ''
+            return ""
         return token.uid if isinstance(token, Token) else token

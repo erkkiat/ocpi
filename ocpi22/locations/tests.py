@@ -1,36 +1,15 @@
-import base64
-import doctest
 import json
 import os
-from typing import Optional, Mapping, Any
-from urllib.parse import urljoin
 
-import requests
-from rest_framework.exceptions import NotAuthenticated
 
-import ocpi22.logging as logging
-import uuid
-from collections import OrderedDict
-from dataclasses import asdict, dataclass
-
-from datetime import timedelta, datetime
-from decimal import Decimal
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
+from datetime import datetime
 
 import pytz
-import redis.exceptions
-import time_machine
-from django.conf import settings
-from django.http import HttpResponse
 
-from django.contrib.auth.models import AnonymousUser, User
-from django.test import TestCase, Client
+from django.test import Client
 
-import json
-from datetime import datetime
 from unittest import TestCase
 
-import pytz
 from icecream import ic
 
 from ocpi22.locations.serializers import LocationSerializer221
@@ -50,5 +29,8 @@ def load_json(filename, serializer):
 
 class TestLocations(TestCase):
     def test_serialization(self):
-        location = load_json('ocpi22/data/examples/location_example_parking_garage_opening_hours.json', LocationSerializer221)
+        location = load_json(
+            "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
+            LocationSerializer221,
+        )
         ic(location)

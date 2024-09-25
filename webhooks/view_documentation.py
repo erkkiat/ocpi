@@ -1,6 +1,5 @@
 documentation = dict(
-    INVOICING=
-    """
+    INVOICING="""
 This is where you tell the system where to send the invoicing records (Charge Detail Records).
 
 {{flowchart}}
@@ -17,9 +16,7 @@ for example `https://user:password@example.com:1234/path/to/my/endpoint/`.
 * `HTTP_200_OK` when the webhook was set successfully
 * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """,
-
-    TOKEN_AUTH=
-    """
+    TOKEN_AUTH="""
 When an RFID issued by you is tapped on a charger, this webhook will be called to authorize the token.
 
 {{flowchart}}
@@ -32,9 +29,7 @@ the corresponding parameter from the data sent to this URL.
 * `HTTP_200_OK` when the webhook was set successfully
 * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """,
-
-    SESSION=
-    """
+    SESSION="""
 This is where you tell the system where to send Session updates.
 
 {{flowchart}}
@@ -47,9 +42,7 @@ the corresponding parameter from the data sent to this URL.
 * `HTTP_200_OK` when the webhook was set successfully
 * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
     """,
-
-    CP_STATUS=
-    """
+    CP_STATUS="""
 This is where you tell the system where to send charge point status updates.
 When a charge point changes status, the system pushes the new status to your webhook URL.
 
@@ -62,7 +55,7 @@ the corresponding parameter from the data sent to this URL.
 ## Status Codes
 * `HTTP_200_OK` when the webhook was set successfully
 * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
-    """
+    """,
 )
 
 common_documentation = """

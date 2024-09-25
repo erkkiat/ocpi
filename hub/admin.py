@@ -14,25 +14,52 @@ from ocpi22.pull import admin_pull_all
 
 class CredentialsAdmin(admin.ModelAdmin):
     model = Credentials
-    list_display = ['name', 'party', 'valid', 'responding']
-    readonly_fields = ['theirs_base64', 'ours_base64', 'last_updated', 'created', 'last_connection']
-    search_fields = ['roles__party_id', 'roles__country_code', 'ours', 'theirs', 'token_a',
-                     'roles__business_details__name']
-    list_display_links = ['name']
+    list_display = ["name", "party", "valid", "responding"]
+    readonly_fields = [
+        "theirs_base64",
+        "ours_base64",
+        "last_updated",
+        "created",
+        "last_connection",
+    ]
+    search_fields = [
+        "roles__party_id",
+        "roles__country_code",
+        "ours",
+        "theirs",
+        "token_a",
+        "roles__business_details__name",
+    ]
+    list_display_links = ["name"]
     change_form_template = credentials_change_form_template
     formfield_overrides = widgets.formfield_overrides
     actions = [admin_pull_all]
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         if not request.user.has_perms(["ocpi22.can_change_roaming_partners"]):
-            return HttpResponse(_("You do not have permission to change the partners of a roaming agreement."),
-                                status=403)
+            return HttpResponse(
+                _(
+                    "You do not have permission to change the partners of a roaming agreement."
+                ),
+                status=403,
+            )
         extra_context = extra_context or {}
         credentials = get_object_or_404(Credentials, pk=object_id)
-        roles = credentials.roles.exclude(credentials__isnull=True).exclude(credentials__pk__isnull=True)
+        roles = credentials.roles.exclude(credentials__isnull=True).exclude(
+            credentials__pk__isnull=True
+        )
         extra_context.update(dict(roles=roles))
-        partners = dict((role, set(chain(role.agreed_parties.all(), role.agreed_parties_backwards.all())))
-                        for role in roles)
+        partners = dict(
+            (
+                role,
+                set(
+                    chain(
+                        role.agreed_parties.all(), role.agreed_parties_backwards.all()
+                    )
+                ),
+            )
+            for role in roles
+        )
         extra_context.update(dict(partners=partners))
 
         return super().change_view(
