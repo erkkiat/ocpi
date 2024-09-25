@@ -124,7 +124,7 @@ def map_connector_to_plug(connector_std: str) -> Plug:
     """
     mapping = {
         "IEC_62196_T2": Plug.Type_2_Outlet,
-        "IEC_62196_T2_COMBO": Plug.Type_2_Outlet,
+        "IEC_62196_T2_COMBO": Plug.CCS_Combo_2_Plug__Cable_Attached_,
         "CHADEMO": Plug.CHAdeMO,
         "IEC_62196_T1": Plug.Type_1_Connector__Cable_Attached_,
         "IEC_62196_T1_COMBO": Plug.CCS_Combo_1_Plug__Cable_Attached_,
@@ -134,7 +134,7 @@ def map_connector_to_plug(connector_std: str) -> Plug:
         "DOMESTIC_G": Plug.Type_G_British_Standard,
         "DOMESTIC_J": Plug.Type_J_Swiss_Standard,
         "IEC_60309_2_single_16": Plug.IEC_60309_Single_Phase,
-        "IEC_60309_2_three_16": Plug.IEC_60309_Single_Phase,
+        "IEC_60309_2_three_16": Plug.IEC_60309_Three_Phase,
         "IEC_60309_2_three_32": Plug.IEC_60309_Three_Phase,
         "IEC_60309_2_three_64": Plug.IEC_60309_Three_Phase,
         "TESLA_S": Plug.Tesla_Connector,

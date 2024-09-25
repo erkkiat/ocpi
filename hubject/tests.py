@@ -17,6 +17,7 @@ from hubject.mappings import (
 from hubject.models import Plug, PowerType, ChargingFacility, AuthenticationMode
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
+from ocpiconnector import testutil
 import ocpiconnector.settings.base as settings
 import doctest
 
@@ -35,8 +36,9 @@ class TestMappings(TestCase):
         connectors = [Connector(standard="CHADEMO"), Connector(standard="IEC_62196_T2")]
         expected_plugs = [Plug.CHAdeMO, Plug.Type_2_Outlet]
         mapped_plugs = get_distinct_plugs(connectors)
-        self.assertTrue(expected_plugs[0] in mapped_plugs)
-        self.assertTrue(expected_plugs[1] in mapped_plugs)
+
+        result = testutil.compare_lists_recursively(mapped_plugs, expected_plugs)
+        self.assertTrue(result, "The mapped plugs do not match the expected plugs.")
 
     def test_map_power_type_choices_221_to_power_type_unknown(self):
         with self.assertRaises(ValidationError):
