@@ -1,7 +1,7 @@
 import doctest
 import os
 from unittest import TestCase
-from unittest.mock import Mock
+from unittest.mock import patch, Mock
 
 from django.contrib.auth.models import AnonymousUser, User
 
@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from util import reverse
 from rest_framework.test import APIRequestFactory
 
+from cars import test_data
 from ocpi22.msp.user import UserViewSet
 
 api_factory = APIRequestFactory()
@@ -30,6 +31,7 @@ def send_request(data, function, url, user=AnonymousUser) -> Response:
     return function(request)
 
 
+@patch("cars.cars.get_json", return_value=test_data.cars_json)  # This is not working
 class TestUserApi(TestCase):
     def test_user_lifecycle(self, get_json_mock: Mock):
         os.environ["TEST"] = "1"
