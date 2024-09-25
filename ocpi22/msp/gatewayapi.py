@@ -8,10 +8,7 @@ def send_sms(sender: str, msg_content: str, recipients: list):
     payload = {
         "sender": sender,
         "message": msg_content,
-        "recipients": [
-            {"msisdn": recipient_number}
-            for recipient_number in recipients
-        ],
+        "recipients": [{"msisdn": recipient_number} for recipient_number in recipients],
     }
 
     resp = requests.post(
@@ -27,9 +24,11 @@ def send_sms(sender: str, msg_content: str, recipients: list):
 def message_user(phone, charger_name, price, url):
     ic(phone, charger_name, price, url)
 
-    data = f'Please approve charging at "{charger_name}". ' \
-           f'The price is {price}. Respond "Ok" to start charging, ' \
-           f'"cancel" to decline or "report" if you suspect fraud. ' \
-           f'For real-time charging status, go to <URL>.'
+    data = (
+        f'Please approve charging at "{charger_name}". '
+        f'The price is {price}. Respond "Ok" to start charging, '
+        f'"cancel" to decline or "report" if you suspect fraud. '
+        f"For real-time charging status, go to <URL>."
+    )
 
-    send_sms('ChargerHub.EU', data, ['+358405480238'])
+    send_sms("ChargerHub.EU", data, ["+358405480238"])

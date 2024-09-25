@@ -25,8 +25,6 @@ from ocpi22.util import is_our_identifier
 
 # For profiling
 import cProfile
-import pstats
-import io
 from django.utils.deprecation import MiddlewareMixin
 
 
@@ -36,7 +34,7 @@ class OCPIHubMiddleware:
         # One-time configuration and initialization.
 
     def __call__(self, request):
-        if hasattr(request, 'body'):
+        if hasattr(request, "body"):
             to = None
             try:
                 headers = request.META
@@ -52,13 +50,15 @@ class OCPIHubMiddleware:
                             return route_ocpi_request(request, to)
                         else:
                             return JsonResponse(
-                                data=format_ocpi_response(status_message=f'Token "{token}" not recognized',
-                                                          status_code=2000),
-                                status=status.HTTP_401_UNAUTHORIZED
+                                data=format_ocpi_response(
+                                    status_message=f'Token "{token}" not recognized',
+                                    status_code=2000,
+                                ),
+                                status=status.HTTP_401_UNAUTHORIZED,
                             )
                     else:
                         # No routing needed, message is for us
-                        logging.info(f'{to} is ours, no routing done')
+                        logging.info(f"{to} is ours, no routing done")
 
             except JSONDecodeError:
                 # Ok, it's not JSON, we can't route it over OCPI
@@ -66,9 +66,11 @@ class OCPIHubMiddleware:
             except Exception as e:
                 logging.error(f'Unable to route to {to if to else ""}: {e}')
                 return JsonResponse(
-                    data=format_ocpi_response(status_message=f'Unable to route this message due to unknown reason',
-                                              status_code=2000),
-                    status=status.HTTP_400_BAD_REQUEST
+                    data=format_ocpi_response(
+                        status_message="Unable to route this message due to unknown reason",
+                        status_code=2000,
+                    ),
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
         response = self.get_response(request)
@@ -86,13 +88,14 @@ class DebugMiddleware:
 
         logging.info(request, request.headers)
 
-        if hasattr(request, 'body'):
+        if hasattr(request, "body"):
             try:
                 if request and request.body:
+                    # TODO: let's not use print/pprint we will log them
                     pprint(request.headers)
                     pprint(json.loads(request.body))
-            except:
-                print('Cannot print request.body as json')
+            except Exception as e:  # noqa
+                print("Cannot print request.body as json")
 
         response = self.get_response(request)
 
@@ -128,30 +131,34 @@ class ErrorLoggingMiddleware:
             if response.status_code >= 405:
                 party = get_sender_party(request.META)
                 if party:
-                    logging.error(f'Returning status code {response.status_code} for party {str(party)}.')
+                    logging.error(
+                        f"Returning status code {response.status_code} for party {str(party)}."
+                    )
                 else:
-                    logging.error(f'Returning status code {response.status_code} for user {request.user}.')
+                    logging.error(
+                        f"Returning status code {response.status_code} for user {request.user}."
+                    )
 
             return response
         except redis.exceptions.ConnectionError as e:
-            logging.error(f'Unable to connect to Redis: {e}', request)
+            logging.error(f"Unable to connect to Redis: {e}", request)
             raise
         except ConnectionRefusedError as e:
-            logging.error(f'An external connection was refused: {e}', request)
+            logging.error(f"An external connection was refused: {e}", request)
             raise
         except Exception as e:
-            logging.error(f'An exception occured: {e}', request)
+            logging.error(f"An exception occured: {e}", request)
             raise
 
 
 class ProfilerMiddleware(MiddlewareMixin):
     def process_request(self, request):
-        setattr(self, 'pr', cProfile.Profile())
+        setattr(self, "pr", cProfile.Profile())
         self.pr.enable()
 
     def process_response(self, request, response):
         self.pr.disable()
-        self.pr.dump_stats('profile_output.prof')
+        self.pr.dump_stats("profile_output.prof")
         # s = io.StringIO()
         # sortby = pstats.SortKey.CUMULATIVE
         # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
@@ -167,15 +174,21 @@ class EnabledUntilMiddleware:
     def __call__(self, request):
         now = datetime.now()
         if now > settings.EXPIRES_ON:
-            logging.error(f'Someone is trying to access an expired instance, expired since {settings.EXPIRES_ON}',
-                          request)
-            return render(request, 'expired.html', {'expires_on': settings.EXPIRES_ON})
+            logging.error(
+                f"Someone is trying to access an expired instance, expired since {settings.EXPIRES_ON}",
+                request,
+            )
+            return render(request, "expired.html", {"expires_on": settings.EXPIRES_ON})
         response = self.get_response(request)
         return response
 
 
-REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP Requests', ['method', 'endpoint', 'status_code'])
-REQUEST_LATENCY = Histogram('http_request_latency_seconds', 'HTTP request latency', ['method', 'endpoint'])
+REQUEST_COUNT = Counter(
+    "http_requests_total", "Total HTTP Requests", ["method", "endpoint", "status_code"]
+)
+REQUEST_LATENCY = Histogram(
+    "http_request_latency_seconds", "HTTP request latency", ["method", "endpoint"]
+)
 
 
 class PrometheusMiddleware:
@@ -185,7 +198,9 @@ class PrometheusMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         REQUEST_COUNT.labels(request.method, request.path, response.status_code).inc()
-        REQUEST_LATENCY.labels(request.method, request.path).observe(response.elapsed.total_seconds() if hasattr(response, 'elapsed') else 0)
+        REQUEST_LATENCY.labels(request.method, request.path).observe(
+            response.elapsed.total_seconds() if hasattr(response, "elapsed") else 0
+        )
         return response
 
     @staticmethod

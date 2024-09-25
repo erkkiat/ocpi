@@ -1,7 +1,5 @@
 import cachetools
 from cachetools.func import ttl_cache
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
 
 from ocpi22 import choices
 from ocpi22.models.credentials import Credentials
@@ -12,7 +10,9 @@ issues_cache = dict()
 
 @cachetools.cached(cache=issues_cache)
 def get_connector_issues():
-    connectors_with_overlapping_tariffs = Connector.objects.filter(tariff_ids__isnull=False).distinct()
+    connectors_with_overlapping_tariffs = Connector.objects.filter(
+        tariff_ids__isnull=False
+    ).distinct()
     tariffs_overlap_list = []
     for connector in connectors_with_overlapping_tariffs:
         if connector.tariff_ids.count() > 1:
@@ -20,19 +20,19 @@ def get_connector_issues():
 
     results = [
         dict(
-            heading='Connectors without a Tariff',
-            help_text='When a Tariff is not specified, it is not possible to calculate price and to create an invoice. '
-                      'Please use the below links to access the corresponding EVSE and <b>select a Tariff, '
-                      'then save the connector</b>.',
-            items=Connector.objects.filter(tariff_ids=None)
+            heading="Connectors without a Tariff",
+            help_text="When a Tariff is not specified, it is not possible to calculate price and to create an invoice. "
+            "Please use the below links to access the corresponding EVSE and <b>select a Tariff, "
+            "then save the connector</b>.",
+            items=Connector.objects.filter(tariff_ids=None),
         ),
         dict(
-            heading='Connectors with overlapping Tariffs',
-            help_text='When Tariffs overlap, it also prevents from calculating price and creating an invoice. '
-                      'Please use the below links to access the corresponding EVSE and <b>select only one Tariff, '
-                      'then save the connector</b>.',
-            items=tariffs_overlap_list
-        )
+            heading="Connectors with overlapping Tariffs",
+            help_text="When Tariffs overlap, it also prevents from calculating price and creating an invoice. "
+            "Please use the below links to access the corresponding EVSE and <b>select only one Tariff, "
+            "then save the connector</b>.",
+            items=tariffs_overlap_list,
+        ),
     ]
 
     return results
@@ -42,14 +42,14 @@ def get_connector_issues():
 def get_credential_issues():
     results = [
         dict(
-            heading='Parties Offline',
-            help_text='These are parties with active Credentials, but who are unreachable. '
-                      'You can remove this warning by <b>editing the Credentials and '
-                      'changing the connection status to "suspended"</b>, '
-                      'or by contacting the party and asking them to fix the situation. '
-                      '<p><i>This warning updates every 5 minutes, '
-                      'so the connection may have been restored already</i>.</p>',
-            items=Credentials.objects.filter(connection_status=choices.OFFLINE)
+            heading="Parties Offline",
+            help_text="These are parties with active Credentials, but who are unreachable. "
+            "You can remove this warning by <b>editing the Credentials and "
+            'changing the connection status to "suspended"</b>, '
+            "or by contacting the party and asking them to fix the situation. "
+            "<p><i>This warning updates every 5 minutes, "
+            "so the connection may have been restored already</i>.</p>",
+            items=Credentials.objects.filter(connection_status=choices.OFFLINE),
         ),
     ]
 
@@ -71,9 +71,7 @@ def get_issues() -> list:
 
 
 def issue_count(issue_list) -> int:
-    return sum([
-        len(i.get('items')) for i in issue_list
-    ])
+    return sum([len(i.get("items")) for i in issue_list])
 
 
 # @receiver(pre_save)

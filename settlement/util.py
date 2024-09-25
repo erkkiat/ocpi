@@ -29,8 +29,11 @@ def calculate_monday(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
 
-def calculate_invoicing_periods(start_date: Union[date, datetime], end_date: Union[date, datetime],
-                                period_length_weeks: int) -> Iterable[DateRange]:
+def calculate_invoicing_periods(
+    start_date: Union[date, datetime],
+    end_date: Union[date, datetime],
+    period_length_weeks: int,
+) -> Iterable[DateRange]:
     """
     Calculate the invoicing periods between the given start and end dates.
     If the period length is 4 weeks, the periods will be calendar months instead of weeks.
@@ -47,9 +50,9 @@ def calculate_invoicing_periods(start_date: Union[date, datetime], end_date: Uni
     """
 
     if start_date > end_date:
-        raise ValueError('Start date must be before end date')
+        raise ValueError("Start date must be before end date")
     if period_length_weeks not in {1, 4}:
-        raise ValueError('Period length must be 1 or 4 weeks')
+        raise ValueError("Period length must be 1 or 4 weeks")
     if period_length_weeks < 4:
         start_date = calculate_monday(start_date)
     start_date = datetime_to_date(start_date)
@@ -62,7 +65,7 @@ def calculate_invoicing_periods(start_date: Union[date, datetime], end_date: Uni
             start_date = date_range.end + timedelta(days=1)
         else:
             # The period length is less than a month
-            period_end = start_date + timedelta(days=7*period_length_weeks-1)
+            period_end = start_date + timedelta(days=7 * period_length_weeks - 1)
             yield DateRange(start_date, period_end)
             start_date = period_end + timedelta(days=1)
 
@@ -82,6 +85,8 @@ def get_first_and_last_date_for_month(d: Union[date, datetime]) -> DateRange:
     year = d.year
     month = d.month
     first_day = d.replace(day=1)
-    last_day_of_month = calendar.monthrange(year, month)[1]  # Get the number of days in the month
+    last_day_of_month = calendar.monthrange(year, month)[
+        1
+    ]  # Get the number of days in the month
     last_day = d.replace(day=last_day_of_month)
     return DateRange(first_day, last_day)

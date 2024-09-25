@@ -18,16 +18,16 @@ def flatten_for_geojson(elements: dict, name=None) -> dict:
     result = {}
     for element in elements:
         if name:
-            full_name = f'{name}:{element}'
+            full_name = f"{name}:{element}"
         else:
             full_name = element
         if isinstance(elements[element], dict):
             result.update(flatten_for_geojson(elements[element], full_name))
         elif isinstance(elements[element], list):
             for index, item in enumerate(elements[element]):
-                result.update(flatten_for_geojson(item, f'{full_name}:{index}'))
+                result.update(flatten_for_geojson(item, f"{full_name}:{index}"))
         else:
-            result[f'{full_name}'] = elements.get(element)
+            result[f"{full_name}"] = elements.get(element)
     return result
 
 
@@ -37,49 +37,60 @@ class MapViewSet(viewsets.GenericViewSet):
     serializer_class = LocationSerializer
 
     def options(self, _request, **kwargs):
-        return Response(dict(
-            status='Please see https://tools.ietf.org/html/rfc7946.')
-        )
+        return Response(dict(status="Please see https://tools.ietf.org/html/rfc7946."))
 
-    @action(methods=['GET'], detail=False)
+    @action(methods=["GET"], detail=False)
     def ocpi(self, _request, queryset=None):
         queryset = queryset or Location.objects.all()
         serializer = LocationSerializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(methods=['GET'], detail=False)
+    @action(methods=["GET"], detail=False)
     def locations(self, _request, queryset=None):
         # You can paste the geojson output in https://geojson.io/ to visualize it.
 
         if not queryset:
-            queryset = Location.objects.prefetch_related('evses__connectors__tariff_ids').all()
+            queryset = Location.objects.prefetch_related(
+                "evses__connectors__tariff_ids"
+            ).all()
 
         geometry = FeatureCollection(
-            [Feature(
-                geometry=Point((location.longitude, location.latitude)),
-                properties=flatten_for_geojson(dict(
-                    location=dict(
-                        uid=location.uid,
-                        name=location.name,
-                        address=location.address,
-                        city=location.city,
-                        country=location.country,
-                        connectors_available=location.available(),
-                    ),
-                    evses=[
+            [
+                Feature(
+                    geometry=Point((location.longitude, location.latitude)),
+                    properties=flatten_for_geojson(
                         dict(
-                            uid=evse.uid,
-                            evse_id=evse.evse_id,
-                            status=evse.status,
-                            connectors=[dict(
-                                uid=connector.uid,
-                                standard=connector.standard,
-                                power=connector.max_electric_power,
-                                price=connector.tariff(),
-                            ) for connector in evse.connectors.all()]
-                        ) for evse in location.evses.all()
-                    ],
+                            location=dict(
+                                uid=location.uid,
+                                name=location.name,
+                                address=location.address,
+                                city=location.city,
+                                country=location.country,
+                                connectors_available=location.available(),
+                            ),
+                            evses=[
+                                dict(
+                                    uid=evse.uid,
+                                    evse_id=evse.evse_id,
+                                    status=evse.status,
+                                    connectors=[
+                                        dict(
+                                            uid=connector.uid,
+                                            standard=connector.standard,
+                                            power=connector.max_electric_power,
+                                            price=connector.tariff(),
+                                        )
+                                        for connector in evse.connectors.all()
+                                    ],
+                                )
+                                for evse in location.evses.all()
+                            ],
+                        )
+                    ),
                 )
-            )) for location in queryset]
+                for location in queryset
+            ]
         )
-        return Response(geometry, headers={'content-type': 'application/json; charset=UTF-8'})
+        return Response(
+            geometry, headers={"content-type": "application/json; charset=UTF-8"}
+        )

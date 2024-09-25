@@ -6,20 +6,30 @@ from rest_framework.exceptions import ValidationError
 class PartnerQuerySet(models.QuerySet):
     """When running as HUB, limit the visibility of roaming partners
     to the ones that have an agreement with the current party"""
+
     def partner_filter(self, request):
         from ocpiconnector.ocpi_identities import ocpi_platform
         from ocpi22.models.credentials import CredentialsRole
-        assert hasattr(self.model, 'ocpi_master'), \
-            f'The model {self.model} must have an ocpi_master field in order to use partner_filter()'
-        if ocpi_platform.is_hub and hasattr(request, 'credentials'):
+
+        assert hasattr(
+            self.model, "ocpi_master"
+        ), f"The model {self.model} must have an ocpi_master field in order to use partner_filter()"
+        if ocpi_platform.is_hub and hasattr(request, "credentials"):
             from ocpi22.ocpi.partners import get_partners
+
             agreed_parties = get_partners(request)
             if self.model is CredentialsRole:
                 return self.filter(pk__in=agreed_parties)
             return self.filter(ocpi_master__in=agreed_parties)
         return self
 
-    def get_if_exists(self, *args, raise_exception=False, multiple_is_ok_just_get_the_first_one=False, **kwargs) -> any:
+    def get_if_exists(
+        self,
+        *args,
+        raise_exception=False,
+        multiple_is_ok_just_get_the_first_one=False,
+        **kwargs,
+    ) -> any:
         """
         Like Manager.get() but doesn't raise an exception if the object doesn't exist.
         If there are more than one object with the given criteria, raises an exception.
@@ -45,12 +55,16 @@ class PartnerQuerySet(models.QuerySet):
             return queryset.first()
 
         if count > 1:
-            raise ValidationError(f'There are more than one {self.model.__name__} with the criteria {kwargs} '
-                                  'in the database')
+            raise ValidationError(
+                f"There are more than one {self.model.__name__} with the criteria {kwargs} "
+                "in the database"
+            )
 
         if raise_exception:
-            error_message = f"{self.model.__name__} with UID " \
-                            f"{kwargs.get('uid', 'N/A')} doesn't exist in the database"
+            error_message = (
+                f"{self.model.__name__} with UID "
+                f"{kwargs.get('uid', 'N/A')} doesn't exist in the database"
+            )
             raise self.model.DoesNotExist(error_message)
 
         return None
@@ -63,6 +77,7 @@ class PartnerManager(models.Manager):
     """
     This is a custom manager used by the OCPI objects
     """
+
     def get_queryset(self):
         return PartnerQuerySet(self.model, using=self._db)
 

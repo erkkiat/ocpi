@@ -30,21 +30,23 @@ from ..models.cdr import Cdr
 class ChargingSessionsReport(SlickReportView):
     report_model = Cdr
     # form_class = ChargingSessionsReportForm
-    date_field = 'start_date_time'
-    group_by = 'billed_to'
+    date_field = "start_date_time"
+    group_by = "billed_to"
 
     columns = [
-        'billed_to',
-        SlickReportField.create(Sum, 'total_energy', name='sum__total_energy'),
-        SlickReportField.create(Sum, 'total_cost_excl_vat', name='sum__total_cost_excl_vat'),
+        "billed_to",
+        SlickReportField.create(Sum, "total_energy", name="sum__total_energy"),
+        SlickReportField.create(
+            Sum, "total_cost_excl_vat", name="sum__total_cost_excl_vat"
+        ),
     ]
 
     chart_settings = [
         {
-            'type': 'column',
-            'data_source': ['sum__total_cost_excl_vat'],
-            'plot_total': True,
-            'title_source': 'billed_to',
-            'title': 'Total revenue',
+            "type": "column",
+            "data_source": ["sum__total_cost_excl_vat"],
+            "plot_total": True,
+            "title_source": "billed_to",
+            "title": "Total revenue",
         },
     ]

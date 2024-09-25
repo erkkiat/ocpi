@@ -4,10 +4,11 @@ from typing import Optional
 from ocpiconnector.ocpi_identities import Party
 
 
-def get_sender_party(headers,
-                     country_code_key='HTTP_OCPI_FROM_COUNTRY_CODE',
-                     party_id_key='HTTP_OCPI_FROM_PARTY_ID'
-                     ) -> Party:
+def get_sender_party(
+    headers,
+    country_code_key="HTTP_OCPI_FROM_COUNTRY_CODE",
+    party_id_key="HTTP_OCPI_FROM_PARTY_ID",
+) -> Party:
     """
     >>> get_sender_party({'Ocpi-From-Country-Code': 'FI', 'Ocpi-From-Party-Id': 'EON'})
     Party(country_code='FI', party_id='EON')
@@ -20,13 +21,17 @@ def get_sender_party(headers,
     """
     if not headers:
         from ocpi22 import logging
-        logging.error(f'No headers from sender')
-        return Party('', '')
-    headers = dict_keys_to_lower_and_filter(headers, 'ocpi')
-    country_code = headers.get(country_code_key.lower(),
-                               headers.get(_secondary_header_name(country_code_key), '')).upper()
-    party_id = headers.get(party_id_key.lower(),
-                           headers.get(_secondary_header_name(party_id_key), '')).upper()
+
+        logging.error("No headers from sender")
+        return Party("", "")
+    headers = dict_keys_to_lower_and_filter(headers, "ocpi")
+    country_code = headers.get(
+        country_code_key.lower(),
+        headers.get(_secondary_header_name(country_code_key), ""),
+    ).upper()
+    party_id = headers.get(
+        party_id_key.lower(), headers.get(_secondary_header_name(party_id_key), "")
+    ).upper()
     return Party(country_code, party_id)
 
 
@@ -37,7 +42,9 @@ def get_to_party(headers) -> Party:
     >>> get_to_party({'HTTP_OCPI_TO_COUNTRY_CODE': 'FI', 'HTTP_OCPI_TO_PARTY_ID': 'EON'})
     Party(country_code='FI', party_id='EON')
     """
-    return get_sender_party(headers, 'HTTP_OCPI_TO_COUNTRY_CODE', 'HTTP_OCPI_TO_PARTY_ID')
+    return get_sender_party(
+        headers, "HTTP_OCPI_TO_COUNTRY_CODE", "HTTP_OCPI_TO_PARTY_ID"
+    )
 
 
 def dict_keys_to_lower_and_filter(d: dict, filter_word: str) -> Optional[dict]:
@@ -47,7 +54,9 @@ def dict_keys_to_lower_and_filter(d: dict, filter_word: str) -> Optional[dict]:
     """
     if not d:
         return None
-    return dict((key.lower(), value) for key, value in d.items() if filter_word in key.lower())
+    return dict(
+        (key.lower(), value) for key, value in d.items() if filter_word in key.lower()
+    )
 
 
 @lru_cache(maxsize=None)
@@ -58,4 +67,4 @@ def _secondary_header_name(header_name: str) -> str:
     >>> _secondary_header_name('http_ocpi_to_party_id')
     'ocpi-to-party-id'
     """
-    return header_name.replace('_', '-').lower().replace('http-', '')
+    return header_name.replace("_", "-").lower().replace("http-", "")

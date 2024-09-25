@@ -19,12 +19,14 @@ def get_date_range(params: dict) -> tuple[date, date]:
     def calculate_first_and_last_day(month, year):
         start_date = datetime(year, month, 1, 0, 0)
         end_date: datetime = start_date + relativedelta(months=1)
-        end_date = datetime(end_date.year, end_date.month, 1, 0, 0) - relativedelta(seconds=1)
+        end_date = datetime(end_date.year, end_date.month, 1, 0, 0) - relativedelta(
+            seconds=1
+        )
         return start_date, end_date
 
     month_ago = date.today() - relativedelta(months=1)
-    month = int(params.get('month', month_ago.month))
-    year = int(params.get('year', month_ago.year))
+    month = int(params.get("month", month_ago.month))
+    year = int(params.get("year", month_ago.year))
     return calculate_first_and_last_day(month, year)
 
 
@@ -33,22 +35,28 @@ class InvoiceReportViews(viewsets.GenericViewSet):
 
     model = Cdr
     queryset = Cdr.objects.all()
-    lookup_field = 'uid'
+    lookup_field = "uid"
     serializer_class = CdrSerializer
     csv_serializer_class = CsvCdrSerializer
     pagination_class = StandardResultsSetPagination
-    renderer_classes = (renderers.JSONRenderer, renderers.BrowsableAPIRenderer, CSVRenderer)
+    renderer_classes = (
+        renderers.JSONRenderer,
+        renderers.BrowsableAPIRenderer,
+        CSVRenderer,
+    )
 
     def get_cdrs_in_date_range(self, request) -> QuerySet:
         queryset = Cdr.objects.all()
         date_range = get_date_range(request.GET)
         if not date_range:
-            raise ValidationError('A range of dates is needed for the billing report')
-        queryset = queryset.filter(start_date_time__range=date_range)  # This is inclusive
+            raise ValidationError("A range of dates is needed for the billing report")
+        queryset = queryset.filter(
+            start_date_time__range=date_range
+        )  # This is inclusive
         self.start_date, self.end_date = date_range
         return queryset
 
-    @action(methods=['GET'], detail=False)
+    @action(methods=["GET"], detail=False)
     def summary(self, request) -> Response:
         """
         This is the monthly summary of charge sessions per CPO.
@@ -60,21 +68,32 @@ class InvoiceReportViews(viewsets.GenericViewSet):
         For example, /api/cpo/v2/reports/billing/summary/?month=5&year=2022.
         To output in CSV format, append URL with "?format=csv".
         """
-        result = self.get_cdrs_in_date_range(request). \
-            values('billed_to').order_by('billed_to')
+        result = (
+            self.get_cdrs_in_date_range(request)
+            .values("billed_to")
+            .order_by("billed_to")
+        )
         paginator = self.pagination_class()
-        result = result.annotate(Sum('total_cost_excl_vat')).annotate(Sum('total_energy'))
+        result = result.annotate(Sum("total_cost_excl_vat")).annotate(
+            Sum("total_energy")
+        )
 
         # ic(str(result.query))
 
-        if request.GET.get('format', '').lower() == 'csv':
+        if request.GET.get("format", "").lower() == "csv":
             return Response(list(result))  # Not paginated on purpose
         result = paginator.paginate_queryset(result, request)
         return paginator.get_paginated_response(
             data=dict(start_date=self.start_date, end_date=self.end_date, data=result)
         )
 
-    @action(methods=['GET'], detail=False, url_name='list', name='Charging session list', url_path='list')
+    @action(
+        methods=["GET"],
+        detail=False,
+        url_name="list",
+        name="Charging session list",
+        url_path="list",
+    )
     @requires_premium
     def session_list(self, request) -> Response:
         """
@@ -109,7 +128,7 @@ class InvoiceReportViews(viewsets.GenericViewSet):
         # ic(str(result.query))
 
         paginator = self.pagination_class()
-        if request.GET.get('format', '').lower() == 'csv':
+        if request.GET.get("format", "").lower() == "csv":
             serializer = self.csv_serializer_class(instance=result, many=True)
             return Response(serializer.data)
         result = paginator.paginate_queryset(result, request)

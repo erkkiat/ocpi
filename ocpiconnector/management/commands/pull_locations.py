@@ -17,28 +17,36 @@ class Command(BaseCommand):
         pass
 
     def ocpi_get(self, url, token_base64):
-        self.stdout.write(f'Getting {url}')
-        response = requests.get(url, headers=dict(Authorization=f'Token {token_base64}'), timeout=20)
+        self.stdout.write(f"Getting {url}")
+        response = requests.get(
+            url, headers=dict(Authorization=f"Token {token_base64}"), timeout=20
+        )
         if response.status_code != 200:
-            self.stdout.write(f'*** Got response: {response.status_code} - {response.reason}')
+            self.stdout.write(
+                f"*** Got response: {response.status_code} - {response.reason}"
+            )
             self.stdout.write(response.text)
-            raise self.ProtocolError(f'Got response for {url}: {response.status_code} - {response.reason}')
+            raise self.ProtocolError(
+                f"Got response for {url}: {response.status_code} - {response.reason}"
+            )
         return response
 
     def add_arguments(self, parser: ArgumentParser):
         # Positional arguments
-        parser.add_argument('--clear',
-                            help='Clear the Locations before pull (NOT for use in production!)')
+        parser.add_argument(
+            "--clear",
+            help="Clear the Locations before pull (NOT for use in production!)",
+        )
 
     def handle(self, *args, **options):
         ic(args, options)
         # clear = options['clear']
-        endpoints = Endpoint.objects.filter(identifier='locations', role='SENDER')
+        endpoints = Endpoint.objects.filter(identifier="locations", role="SENDER")
         for endpoint in endpoints:
             url = endpoint.url
             token = endpoint.get_token_base64()
             response: Response = self.ocpi_get(url, token)
-            data = response.json()['data']
+            data = response.json()["data"]
             # ic(response.json())
             for location in data:
                 ic(location)
@@ -49,5 +57,7 @@ class Command(BaseCommand):
                     ic(serializer.data)
                     # serializer.save()
                 else:
-                    logging.warning(f'Parsing error from {endpoint.credentials.party()} {url}'
-                                    f'{serializer.errors}')
+                    logging.warning(
+                        f"Parsing error from {endpoint.credentials.party()} {url}"
+                        f"{serializer.errors}"
+                    )

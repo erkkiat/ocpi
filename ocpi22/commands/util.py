@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from random import randint
 
-import pytz
 from django.conf import settings
 from django.utils.datetime_safe import datetime
 
@@ -17,7 +16,7 @@ class Reservation:
     expiry_date: datetime
 
 
-reservation_store = RedisStore('rsv', expiration=settings.REMOTE_COMMAND_EXPIRATION)
+reservation_store = RedisStore("rsv", expiration=settings.REMOTE_COMMAND_EXPIRATION)
 
 
 def store_reservation(reservation: Reservation):
@@ -32,9 +31,7 @@ def store_reservation(reservation: Reservation):
     """
     if not reservation.ocpp_reservation_id:
         reservation.ocpp_reservation_id = randint(1, 2 << 31)
-    assert all(
-        (reservation.ocpi_reservation_id, bool(reservation.expiry_date))
-    )
+    assert all((reservation.ocpi_reservation_id, bool(reservation.expiry_date)))
     reservation_store[reservation.ocpi_reservation_id] = reservation
     reservation_store[reservation.ocpp_reservation_id] = reservation
 

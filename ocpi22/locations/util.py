@@ -24,6 +24,8 @@ def get_or_create_business_details(*_args, **kwargs) -> Optional[BusinessDetails
     if not kwargs:
         return None
 
-    logo = kwargs.pop('logo', '')
-    business_details, _created = BusinessDetails.objects.get_or_create(**kwargs, defaults=dict(logo=logo))
+    logo = kwargs.pop("logo", "")
+    business_details, _created = BusinessDetails.objects.get_or_create(
+        **kwargs, defaults=dict(logo=logo)
+    )
     return business_details
