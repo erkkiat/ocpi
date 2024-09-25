@@ -146,10 +146,6 @@ def map_connector_to_plug(connector_std: str) -> Plug:
 
 def get_distinct_plugs(connectors: List[Connector]) -> List[Plug]:
     """
-    >>> connectors = [Connector(standard="CHADEMO"), Connector(standard="IEC_62196")]
-    >>> get_distinct_plugs(connectors)
-    [<Plug.CHAdeMO: 'CHAdeMO'>, <Plug.Type_2_Outlet: 'Type 2 Outlet'>]
-
     This function collects only the distinct plugs from the given list of OCPI 2.2.1 Connectors.
     @param connectors: List of OCPI 2.2.1 Connectors
     @return: List of corresponding Plug enums

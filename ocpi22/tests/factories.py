@@ -67,7 +67,7 @@ class LocationFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(BusinessDetailsFactory)
     charging_when_closed = factory.Faker("boolean")
     evses = factory.RelatedFactoryList(
-        "hubject.factories.EvseFactory", "location", size=3
+        "ocpi22.tests.factories.EvseFactory", "location", size=3
     )
 
 
