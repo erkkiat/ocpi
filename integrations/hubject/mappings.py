@@ -1,6 +1,9 @@
 import re
+from datetime import datetime
 
 from typing import List
+
+import pytz
 
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
@@ -31,7 +34,15 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
     evse_data_records = []
     for evse in location.evses.all():
         evse_data_record = EvseDataRecord(
-            EvseID=EvseID(evse.uid),
+            # todo : deltaTyoe missing in ocpi22
+            deltaType=None,
+            lastUpdate=evse.last_updated,
+            EvseID=EvseID(evse.evse_id),
+            ChargingPoolID=None,
+            ChargingStationId=None,
+            HardwareManufacturer=None,
+            ChargingStationImage=None,
+            SubOperatorName=None,
             Address=Address(
                 Country=location.country,
                 City=location.city,
@@ -42,7 +53,7 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
                 # todo : Region missing in ocpi22,
                 ParkingFacility=True if location.parking_type else False,
                 # todo : ParkingSpot missing in ocpi22,
-                TimeZone=location.time_zone,
+                TimeZone=get_timezone(location.time_zone),
             ),
             GeoCoordinates=GeoCoordinates(
                 Google=None,
@@ -52,15 +63,19 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
                 DegreeMinuteSeconds=None,
             ),
             Plugs=get_distinct_plugs(evse.connectors.all()),
+            DynamicPowerLevel=None,
             ChargingFacilities=get_all_charging_facilities(evse.connectors.all()),
             # todo : RenewableEnergy check with smappee, default to False
             RenewableEnergy=False,
             # todo : EnergySource missing in ocpi22 location model, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
+            EnergySource=None,
             # todo : EnvironmentalImpact missing in ocpi22, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
+            EnvironmentalImpact=None,
             # todo : CalibrationLawDataAvailability missing in ocpi22, required, defaulted to Local
             CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
             AuthenticationModes=get_all_authentication_modes(evse.capabilities),
             # todo : MaxCapacity missing in ocpi22,
+            MaxCapacity=None,
             # todo : PaymentOptions missing in ocpi22,
             PaymentOptions=[],
             ValueAddedServices=get_all_value_added_services(evse.capabilities),
@@ -179,7 +194,7 @@ def map_power_type_choices_221_to_power_type(power_type_choice_221: str) -> Powe
 def get_all_charging_facilities(connectors: List[Connector]) -> List[ChargingFacility]:
     return [
         ChargingFacility(
-            PowerType=map_power_type_choices_221_to_power_type(connector.power_type[0]),
+            PowerType=map_power_type_choices_221_to_power_type(connector.power_type),
             Voltage=connector.max_voltage,
             Amperage=connector.max_amperage,
             Power=connector.max_electric_power,
@@ -329,3 +344,8 @@ def map_ocpi_parking_types_to_accessibility_locations(
         "ON_STREET": AccessibilityLocation.OnStreet,
         "UNDERGROUND_GARAGE": AccessibilityLocation.UndergroundParkingGarage,
     }.get(parking_type, None)
+
+
+def get_timezone(timezone: str):
+    tz = datetime.now(pytz.timezone(timezone))
+    return tz.strftime("UTC%z")[:6] + ":" + tz.strftime("UTC%z")[6:]
