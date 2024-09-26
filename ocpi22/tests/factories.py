@@ -4,8 +4,9 @@ import factory
 import pytz
 
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.location import Location, Evse
+from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.credentials import CredentialsRole, Credentials
+from ocpi22.models.tariff import Tariff
 
 
 class BusinessDetailsFactory(factory.django.DjangoModelFactory):
@@ -66,6 +67,7 @@ class LocationFactory(factory.django.DjangoModelFactory):
     suboperator = factory.SubFactory(BusinessDetailsFactory)
     owner = factory.SubFactory(BusinessDetailsFactory)
     charging_when_closed = factory.Faker("boolean")
+    parking_type = "ON_STREET"
     evses = factory.RelatedFactoryList(
         "ocpi22.tests.factories.EvseFactory", "location", size=3
     )
@@ -83,3 +85,39 @@ class EvseFactory(factory.django.DjangoModelFactory):
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     created = factory.Faker("date_time", tzinfo=pytz.UTC)
     capabilities = ["RFID_READER", "RESERVABLE"]
+
+
+class TariffFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Tariff
+
+    uid = factory.Faker("uuid4")
+    currency = "EUR"
+    type = "AD_HOC_PAYMENT"
+    tariff_alt_url = factory.Faker("url")
+    min_price_excl_vat = factory.Faker("Float", positive=True)
+    min_price_incl_vat = factory.Faker("Float", positive=True)
+    max_price_excl_vat = factory.Faker("Float", positive=True)
+    max_price_incl_vat = factory.Faker("Float", positive=True)
+
+    last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
+    updated = factory.Faker("date_time", tzinfo=pytz.UTC)
+    created = factory.Faker("date_time", tzinfo=pytz.UTC)
+
+
+class ConnectorFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Connector
+
+    uid = factory.Faker("uuid4")
+    evse = factory.SubFactory(EvseFactory)
+    standard = "IEC_62196_T2"
+    format = "CABLE"
+    power_type = ["AC_3_PHASE"]
+    max_voltage = 400
+    max_amperage = 32
+    max_electric_power = 22
+    terms_and_conditions = factory.Faker("url")
+    last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
+    updated = factory.Faker("date_time", tzinfo=pytz.UTC)
+    created = factory.Faker("date_time", tzinfo=pytz.UTC)
