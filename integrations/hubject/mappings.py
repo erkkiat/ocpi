@@ -23,25 +23,32 @@ from integrations.hubject.schemas import (
     DecimalDegree,
     CalibrationLawDataAvailability,
     DynamicInfoAvailable,
+    InfoTextType,
+    PaymentOption,
 )
 from ocpi22.choices import OCPICapabilityEnum
 import ocpiconnector.settings.base as settings
 from ocpi22.models.location import Location, Connector
-from rest_framework.exceptions import ValidationError
+from django.core.exceptions import ValidationError
 
 
 def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushEvseData:
     evse_data_records = []
     for evse in location.evses.all():
         evse_data_record = EvseDataRecord(
-            # todo : deltaTyoe missing in ocpi22
+            # todo : deltaType missing in ocpi22
             deltaType=None,
             lastUpdate=evse.last_updated,
             EvseID=EvseID(evse.evse_id),
+            # todo : ChargingPoolID missing in ocpi22
             ChargingPoolID=None,
+            # todo : ChargingStationID missing in ocpi22
             ChargingStationId=None,
+            # todo : HardwareManufacturer missing in ocpi22
             HardwareManufacturer=None,
+            # todo : ChargingStationImage missing in ocpi22
             ChargingStationImage=None,
+            # todo : SubOperatorName missing in ocpi22
             SubOperatorName=None,
             Address=Address(
                 Country=location.country,
@@ -77,7 +84,7 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
             # todo : MaxCapacity missing in ocpi22,
             MaxCapacity=None,
             # todo : PaymentOptions missing in ocpi22,
-            PaymentOptions=[],
+            PaymentOptions=get_payment_options(evse.capabilities),
             ValueAddedServices=get_all_value_added_services(evse.capabilities),
             # todo : Accessibility missing in ocpi22, default to free, discuss with smappee
             Accessibility=Accessibility.Free_publicly_accessible,
@@ -89,7 +96,7 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
             # todo : AdditionalInfo missing in ocpi22,
             # todo : ChargingStationLocationReference missing in ocpi22,
             # todo : ChargingStationNames missing in ocpi22
-            ChargingStationNames=[],
+            ChargingStationNames=[InfoTextType(lang="en", value=location.name)],
             GeoChargingPointEntrance=GeoCoordinates(
                 Google=None,
                 DecimalDegree=DecimalDegree(
@@ -226,23 +233,22 @@ def get_street(address: str) -> str:
     return "-"
 
 
-"""
->>> get_house_number("Oulu 1")
-'1'
->>> get_house_number("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
-'34'
->>> get_house_number("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
-'23'
->>> get_house_number("Mrs F Meier, Weberstr. 2, 53113 BONN 1, Germany")
-'2'
->>> get_house_number("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
-'22'
->>> get_house_number("Kandintie E 4, 00430 Helsinki, FIN")
-'4'
-"""
-
-
 def get_house_number(address: str) -> str:
+    """
+    >>> get_house_number("Oulu 1")
+    '1'
+    >>> get_house_number("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
+    '34'
+    >>> get_house_number("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
+    '23'
+    >>> get_house_number("Mrs F Meier, Weberstr. 2, 53113 BONN 1, Germany")
+    '2'
+    >>> get_house_number("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
+    '22'
+    >>> get_house_number("Kandintie E 4, 00430 Helsinki, FIN")
+    '4'
+    """
+
     match = address_pattern.search(address)
     if match:
         result = {k: v.strip() for k, v in match.groupdict().items() if v}
@@ -336,6 +342,8 @@ def map_ocpi_parking_types_to_accessibility_locations(
     <AccessibilityLocation.ParkingGarage: 'ParkingGarage'>
     >>> map_ocpi_parking_types_to_accessibility_locations('PARKING_LOT')
     <AccessibilityLocation.ParkingLot: 'ParkingLot'>
+    >>> map_ocpi_parking_types_to_accessibility_locations('UNKNOWN')
+
     """
 
     return {
@@ -347,5 +355,55 @@ def map_ocpi_parking_types_to_accessibility_locations(
 
 
 def get_timezone(timezone: str):
-    tz = datetime.now(pytz.timezone(timezone))
-    return tz.strftime("UTC%z")[:6] + ":" + tz.strftime("UTC%z")[6:]
+    """
+    >>> get_timezone('Europe/Helsinki')
+    'UTC+03:00'
+    >>> get_timezone('Asia/Colombo')
+    'UTC+05:30'
+    >>> get_timezone('Asia/Kathmandu')
+    'UTC+05:45'
+    >>> get_timezone('Unknown')
+    Traceback (most recent call last):
+          ...
+    django.core.exceptions.ValidationError: ['Unknown timezone: Unknown']
+    """
+    try:
+        tz = datetime.now(pytz.timezone(timezone))
+        return tz.strftime("UTC%z")[:6] + ":" + tz.strftime("UTC%z")[6:]
+    except pytz.exceptions.UnknownTimeZoneError:
+        raise ValidationError(f"Unknown timezone: {timezone}")
+
+
+def get_payment_options(
+    capabilities: List[OCPICapabilityEnum],
+) -> list[PaymentOption]:
+    """
+    >>> get_payment_options([OCPICapabilityEnum.CHIP_CARD_SUPPORT, OCPICapabilityEnum.CONTACTLESS_CARD_SUPPORT, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
+    [<PaymentOption.Direct: 'Direct'>]
+    >>> get_payment_options([OCPICapabilityEnum.RFID_READER])
+    [<PaymentOption.Contract: 'Contract'>]
+    >>> get_payment_options([OCPICapabilityEnum.PED_TERMINAL, OCPICapabilityEnum.RESERVABLE])
+    []
+    """
+
+    capability_map = {
+        PaymentOption.Direct: [
+            OCPICapabilityEnum.CHIP_CARD_SUPPORT,
+            OCPICapabilityEnum.CONTACTLESS_CARD_SUPPORT,
+            OCPICapabilityEnum.CREDIT_CARD_PAYABLE,
+            OCPICapabilityEnum.DEBIT_CARD_PAYABLE,
+        ],
+        PaymentOption.Contract: [
+            OCPICapabilityEnum.RFID_READER,
+        ],
+    }
+
+    # Build the payment options list based on capabilities
+    payment_options = [
+        option
+        for option, required_capabilities in capability_map.items()
+        if any(capability in capabilities for capability in required_capabilities)
+    ]
+
+    # TODO: No Payment will be determined separately with tariffs
+    return payment_options

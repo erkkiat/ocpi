@@ -61,7 +61,7 @@ class LocationFactory(factory.django.DjangoModelFactory):
     longitude = factory.LazyAttribute(
         lambda x: round(random.uniform(-180, 180), random.randint(1, 6))
     )
-    time_zone = "UTC+02:00"
+    time_zone = "Europe/Helsinki"
     ocpi_master = factory.SubFactory(CredentialsRoleFactory)
     operator = factory.SubFactory(BusinessDetailsFactory)
     suboperator = factory.SubFactory(BusinessDetailsFactory)
@@ -78,7 +78,7 @@ class EvseFactory(factory.django.DjangoModelFactory):
         model = Evse
 
     uid = factory.Faker("uuid4")
-    evse_id = "AB*123*EXYZ"
+    evse_id = "FI*ABC*E1234*5678"
     status = "RESERVED"
     location = factory.SubFactory(LocationFactory)
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)

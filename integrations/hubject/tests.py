@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.utils.datetime_safe import datetime
-from rest_framework.exceptions import ValidationError
+from django.core.exceptions import ValidationError
 from ocpi22.tests.factories import (
     LocationFactory,
     CredentialsRoleFactory,
@@ -141,7 +141,7 @@ class TestMappings(TestCase):
         )
 
         helsinki_evse_data = EvseFactory(
-            evse_id="AB*123*EXJZ",
+            evse_id="FI*ABC*E1234*5678",
             status="RESERVED",
             location=helsinki,
             last_updated=pytz.utc.localize(datetime.now()),
@@ -201,6 +201,12 @@ class TestMappings(TestCase):
                                 "Voltage": 230,
                                 "Amperage": 16,
                                 "Power": 37,
+                            },
+                        ],
+                        "ChargingStationNames": [
+                            {
+                                "lang": "EN",
+                                "value": helsinki.name,
                             },
                         ],
                         "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
@@ -268,6 +274,12 @@ def get_hubject_eroaming_evse_data_dict(
                             "Voltage": evse_data.ChargingFacilities[0].Voltage,
                             "Amperage": evse_data.ChargingFacilities[0].Amperage,
                             "Power": evse_data.ChargingFacilities[0].Power,
+                        },
+                    ],
+                    "ChargingStationNames": [
+                        {
+                            "lang": "EN",
+                            "value": evse_data.ChargingStationNames[0].value,
                         },
                     ],
                     "AuthenticationModes": evse_data.AuthenticationModes,
