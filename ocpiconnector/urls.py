@@ -144,11 +144,6 @@ urlpatterns = [
     # path("__debug__/", include("debug_toolbar.urls")),
 ]
 
-if settings.PROMETHEUS:
-    from prometheus_metrics.middleware import PrometheusMiddleware
-
-    urlpatterns.append(path("metrics/", PrometheusMiddleware.metrics_view))
-
 if ocpi_platform.is_emsp:
     urlpatterns.append(path("api/cpo/v3/token/", tokens_api.urls))
 
