@@ -89,7 +89,6 @@ OCPI_221_URL = "/ocpi/2.2.1/"
 VERSION_URLS = {OCPI_22_URL, OCPI_221_URL}
 VERSIONS = {"2.2", "2.2.1"}
 
-PROMETHEUS = _env_bool("PROMETHEUS", False)
 # How often to check that other party is alive
 STILL_ALIVE_FREQUENCY = os.environ.get("STILL_ALIVE_FREQUENCY", 60 * 5)
 
@@ -368,9 +367,6 @@ MIDDLEWARE = [
     "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.ProfilerMiddleware",
 ]
-
-if PROMETHEUS:
-    MIDDLEWARE.append("prometheus_metrics.middleware.PrometheusBeforeMiddleware")
 
 if "MOESIF_APPLICATION_ID" in os.environ:
     MIDDLEWARE.append("moesifdjango.middleware.moesif_middleware")
