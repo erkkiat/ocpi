@@ -1,6 +1,8 @@
 from django.test import TestCase
 from django.utils.datetime_safe import datetime
 from django.core.exceptions import ValidationError
+
+from integrations.oicp_to_ocpi_converter import OCPIToOICPConverter
 from ocpi22.tests.factories import (
     LocationFactory,
     CredentialsRoleFactory,
@@ -9,17 +11,17 @@ from ocpi22.tests.factories import (
     ConnectorFactory,
 )
 
-from integrations.hubject.mappings import (
-    map_connector_to_plug,
-    get_distinct_plugs,
-    map_power_type_choices_221_to_power_type,
-    get_all_charging_facilities,
-    get_all_authentication_modes,
-    get_street,
-    get_house_number,
-    get_timezone,
-    map_location_to_operator_evse_data,
-)
+# from integrations.hubject.mappings import (
+#     map_connector_to_plug,
+#     get_distinct_plugs,
+#     map_power_type_choices_221_to_power_type,
+#     get_all_charging_facilities,
+#     get_all_authentication_modes,
+#     get_street,
+#     get_house_number,
+#     get_timezone,
+#     map_location_to_operator_evse_data,
+# )
 from integrations.hubject.schemas import (
     Plug,
     PowerType,
@@ -40,18 +42,24 @@ import pytz
 
 
 def load_tests(_loader, tests, _ignore):
-    tests.addTests(doctest.DocTestSuite("integrations.hubject.mappings"))
+    tests.addTests(doctest.DocTestSuite("integrations.oicp_to_ocpi_converter"))
     return tests
 
 
 class TestMappings(TestCase):
+    def setUp(self):
+        self.ocpi_2_oicp_converter = OCPIToOICPConverter(
+            oicp_version="2.2.1",
+            ocpi_version="2.2",
+        )
+
     def test_map_connector_std_choices_to_plug_unknown(self):
         with self.assertRaises(ValidationError):
-            map_connector_to_plug("UNKNOWN_PLUG")
+            self.ocpi_2_oicp_converter.map_connector_to_plug("UNKNOWN_PLUG")
 
     def test_get_distinct_plugs_from_connector_std_choices(self):
         connectors = [Connector(standard="CHADEMO"), Connector(standard="IEC_62196_T2")]
-        mapped_plugs = get_distinct_plugs(connectors)
+        mapped_plugs = self.ocpi_2_oicp_converter.get_distinct_plugs(connectors)
 
         self.assertTrue(
             Plug.CHAdeMO in mapped_plugs, "The CHAdeMO plug is not in the mapped plugs."
@@ -63,7 +71,9 @@ class TestMappings(TestCase):
 
     def test_map_power_type_choices_221_to_power_type_unknown(self):
         with self.assertRaises(ValidationError):
-            map_power_type_choices_221_to_power_type("UNKNOWN_POWER_TYPE")
+            self.ocpi_2_oicp_converter.map_power_type_choices_221_to_power_type(
+                "UNKNOWN_POWER_TYPE"
+            )
 
     def test_get_all_charging_facilities_from_connectors(self):
         connectors = [
@@ -88,14 +98,17 @@ class TestMappings(TestCase):
                 PowerType=PowerType.DC, Voltage=401, Amperage=45, Power=50
             ),
         ]
-        self.assertEqual(get_all_charging_facilities(connectors), expected_facilities)
+        self.assertEqual(
+            self.ocpi_2_oicp_converter.get_all_charging_facilities(connectors),
+            expected_facilities,
+        )
 
     def test_get_all_authentication_modes_from_capabilities(self):
         capabilities = [OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.RESERVABLE]
 
         authentication_modes = [AuthenticationMode.NFC_RFID_Classic]
         self.assertEqual(
-            get_all_authentication_modes(capabilities),
+            self.ocpi_2_oicp_converter.get_all_authentication_modes(capabilities),
             authentication_modes,
         )
 
@@ -167,7 +180,9 @@ class TestMappings(TestCase):
 
         helsinki_hubject_evse_data = ERoamingPushEvseData(
             ActionType=ActionType.insert,
-            OperatorEvseData=map_location_to_operator_evse_data(helsinki),
+            OperatorEvseData=self.ocpi_2_oicp_converter.convert_to_operator_evse_data(
+                helsinki
+            ),
         )
 
         expected_data = {
@@ -186,10 +201,16 @@ class TestMappings(TestCase):
                             "Country": helsinki.country,
                             "City": helsinki.city,
                             "PostalCode": helsinki.postal_code,
-                            "Street": get_street(helsinki.address),
-                            "HouseNum": get_house_number(helsinki.address),
+                            "Street": self.ocpi_2_oicp_converter.get_street(
+                                helsinki.address
+                            ),
+                            "HouseNum": self.ocpi_2_oicp_converter.get_house_number(
+                                helsinki.address
+                            ),
                             "ParkingFacility": True,
-                            "TimeZone": get_timezone(helsinki.time_zone),
+                            "TimeZone": self.ocpi_2_oicp_converter.get_timezone(
+                                helsinki.time_zone
+                            ),
                         },
                         "GeoCoordinates": {
                             "DecimalDegree": {
