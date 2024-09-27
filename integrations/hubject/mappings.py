@@ -6,13 +6,11 @@ from typing import List
 import pytz
 
 from integrations.hubject.schemas import (
-    ERoamingPushEvseData,
     EvseDataRecord,
     EvseID,
     Address,
     GeoCoordinates,
     OperatorEvseData,
-    ActionType,
     Plug,
     ChargingFacility,
     PowerType,
@@ -32,7 +30,15 @@ from ocpi22.models.location import Location, Connector
 from django.core.exceptions import ValidationError
 
 
-def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushEvseData:
+def map_location_to_operator_evse_data(location: Location) -> OperatorEvseData:
+    return OperatorEvseData(
+        OperatorID=location.party(),
+        OperatorName=location.owner.name,
+        EvseDataRecord=map_location_to_evse_data_records(location),
+    )
+
+
+def map_location_to_evse_data_records(location: Location) -> List[EvseDataRecord]:
     evse_data_records = []
     for evse in location.evses.all():
         evse_data_record = EvseDataRecord(
@@ -116,20 +122,7 @@ def map_location_to_eroaming_push_evse_data(location: Location) -> ERoamingPushE
             DynamicInfoAvailable=DynamicInfoAvailable.true,
         )
         evse_data_records.append(evse_data_record)
-
-    operator_evse_data = OperatorEvseData(
-        OperatorID=location.party(),
-        OperatorName=location.owner.name,
-        EvseDataRecord=evse_data_records,
-    )
-
-    eroaming_push_evse_data = ERoamingPushEvseData(
-        # todo : Action missing in ocpi22, required, defaulted to insert
-        ActionType=ActionType.insert,
-        OperatorEvseData=operator_evse_data,
-    )
-
-    return eroaming_push_evse_data
+    return evse_data_records
 
 
 def map_connector_to_plug(connector_std: str) -> Plug:

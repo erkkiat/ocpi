@@ -14,11 +14,11 @@ from integrations.hubject.mappings import (
     get_distinct_plugs,
     map_power_type_choices_221_to_power_type,
     get_all_charging_facilities,
-    map_location_to_eroaming_push_evse_data,
     get_all_authentication_modes,
     get_street,
     get_house_number,
     get_timezone,
+    map_location_to_operator_evse_data,
 )
 from integrations.hubject.schemas import (
     Plug,
@@ -141,7 +141,7 @@ class TestMappings(TestCase):
         )
 
         helsinki_evse_data = EvseFactory(
-            evse_id="FI*ABC*E1234*5678",
+            evse_id="FI*ABC*E1234*5668",
             status="RESERVED",
             location=helsinki,
             last_updated=pytz.utc.localize(datetime.now()),
@@ -165,7 +165,10 @@ class TestMappings(TestCase):
             created=pytz.utc.localize(datetime.now()),
         )
 
-        helsinki_hubject_evse_data = map_location_to_eroaming_push_evse_data(helsinki)
+        helsinki_hubject_evse_data = ERoamingPushEvseData(
+            ActionType=ActionType.insert,
+            OperatorEvseData=map_location_to_operator_evse_data(helsinki),
+        )
 
         expected_data = {
             "ActionType": ActionType.insert,
