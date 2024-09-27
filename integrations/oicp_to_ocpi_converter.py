@@ -7,7 +7,6 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from integrations.hubject.schemas import (
-    ERoamingPushEvseData,
     OperatorEvseData,
     EvseDataRecord,
     Plug,
@@ -129,10 +128,6 @@ class OCPIToOICPConverter:
             # todo : DynamicInfoAvailable missing in ocpi22, required, Default to True
             DynamicInfoAvailable=DynamicInfoAvailable.true,
         )
-
-    def convert(self): ...
-
-    def construct_ocpi_format(self) -> List[ERoamingPushEvseData]: ...
 
     def map_connector_to_plug(self, connector_std: str) -> Plug:
         """
