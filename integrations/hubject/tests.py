@@ -34,7 +34,7 @@ from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
 from ocpiconnector import testutil
 
-import ocpiconnector.settings.base as settings
+from django.conf import settings
 import doctest
 import pytz
 

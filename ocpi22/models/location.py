@@ -4,6 +4,7 @@ from django.utils.datetime_safe import datetime
 
 import pytz
 from dateutil import tz
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import pre_save
@@ -26,12 +27,6 @@ from ocpi22.util import (
 )
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.manager import PartnerManager
-
-from ocpiconnector.settings.base import (
-    OCPI_22_MAX_UID_LENGTH,
-    OCPI_22_MAX_ADDRESS_LENGTH,
-    OCPI_22_MAX_TIME_ZONE_LENGTH,
-)
 
 
 def validate_timezone(t: str):
@@ -113,7 +108,7 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
     uid = models.CharField(
-        max_length=OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
+        max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
 
     # Defines if a Location may be published on an website or app etc.
@@ -139,18 +134,18 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     # Street/block name and house number if available.
     address = models.CharField(
-        max_length=OCPI_22_MAX_ADDRESS_LENGTH, verbose_name=_("Address")
+        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, verbose_name=_("Address")
     )
 
     # City or town
     city = models.CharField(
-        max_length=OCPI_22_MAX_ADDRESS_LENGTH, verbose_name=_("City")
+        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, verbose_name=_("City")
     )
 
     # Postal code of the location, may only be omitted when the location has no postal code:
     # in some countries charging locations at highways don’t have postal codes.
     postal_code = models.CharField(
-        max_length=OCPI_22_MAX_ADDRESS_LENGTH,
+        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
         blank=True,
         verbose_name=_("Postal code"),
     )
@@ -246,7 +241,7 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     # One of IANA tzdata’s TZ-values representing the time zone of the location.
     # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
     time_zone = models.CharField(
-        max_length=OCPI_22_MAX_TIME_ZONE_LENGTH,
+        max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
         validators=[validate_timezone],
         verbose_name=_("Time zone"),
         choices=choices.TIMEZONE_CHOICES,
@@ -353,7 +348,7 @@ class Evse(models.Model, ModelUtilMixin):
     # use the field evse_id for that.
     # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
     uid = models.CharField(
-        max_length=OCPI_22_MAX_UID_LENGTH,
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
         validators=[uid_validator],
         db_index=True,
     )
@@ -506,7 +501,7 @@ class Connector(models.Model, ModelUtilMixin):
 
     objects = PartnerManager()
 
-    uid = models.CharField(max_length=OCPI_22_MAX_UID_LENGTH, db_index=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True)
 
     evse = models.ForeignKey(Evse, on_delete=models.CASCADE, related_name="connectors")
 

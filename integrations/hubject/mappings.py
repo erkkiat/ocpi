@@ -25,7 +25,7 @@ from integrations.hubject.schemas import (
     PaymentOption,
 )
 from ocpi22.choices import OCPICapabilityEnum
-import ocpiconnector.settings.base as settings
+from django.conf import settings
 from ocpi22.models.location import Location, Connector
 from django.core.exceptions import ValidationError
 
