@@ -344,7 +344,7 @@ class Evse(models.Model, ModelUtilMixin):
 
     # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
     # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.
-    # This is the 'technical' identification of the EVSE, not to be used as 'human readable' identification,
+    # This is the 'technical' identification of the EVSE, not to be used as 'human-readable' identification,
     # use the field evse_id for that.
     # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
     uid = models.CharField(
