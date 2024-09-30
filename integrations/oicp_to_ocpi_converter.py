@@ -158,10 +158,11 @@ class OCPIToOICPConverter:
             "IEC_60309_2_three_32": Plug.IEC_60309_Three_Phase,
             "IEC_60309_2_three_64": Plug.IEC_60309_Three_Phase,
             "TESLA_S": Plug.Tesla_Connector,
-        }.get(connector_std.upper(), None)
-        if not mapping:
+        }
+        plug = mapping.get(connector_std.upper())
+        if not plug:
             raise ValidationError(f"'{connector_std}' is not a known connector type.")
-        return mapping
+        return plug
 
     def get_distinct_plugs(self, connectors: List[Connector]) -> List[Plug]:
         """
@@ -187,12 +188,16 @@ class OCPIToOICPConverter:
             "AC_1_PHASE": PowerType.AC_1_PHASE,
             "AC_3_PHASE": PowerType.AC_3_PHASE,
             "DC": PowerType.DC,
-        }.get(power_type_choice_221.upper())
-        if not mapping:
+        }
+
+        power_type = mapping.get(power_type_choice_221.upper())
+
+        if not power_type:
             raise ValidationError(
                 f"'{power_type_choice_221}' is not a known POWERTYPE_221."
             )
-        return mapping
+
+        return power_type
 
     def get_charging_facilities(
         self, connectors: List[Connector]
@@ -260,9 +265,14 @@ class OCPIToOICPConverter:
         <AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>
         """
 
-        return {
+        mapping = {
             OCPICapabilityEnum.RFID_READER: AuthenticationMode.NFC_RFID_Classic,
-        }.get(capability, None)
+        }
+        auth_mode = mapping.get(capability)
+
+        if not auth_mode:
+            raise ValidationError(f"'{capability}' is not a known capability.")
+        return auth_mode
 
     def get_all_authentication_modes(
         self,
@@ -301,9 +311,14 @@ class OCPIToOICPConverter:
         <ValueAddedService.Reservation: 'Reservation'>
         """
 
-        return {
+        mapping = {
             OCPICapabilityEnum.RESERVABLE: ValueAddedService.Reservation,
-        }.get(capability, None)
+        }
+        vas = mapping.get(capability)
+
+        if not vas:
+            raise ValidationError(f"'{capability}' is not a known capability.")
+        return vas
 
     def get_value_added_services_list(
         self,
@@ -344,12 +359,17 @@ class OCPIToOICPConverter:
 
         """
 
-        return {
+        mapping = {
             "PARKING_GARAGE": AccessibilityLocation.ParkingGarage,
             "PARKING_LOT": AccessibilityLocation.ParkingLot,
             "ON_STREET": AccessibilityLocation.OnStreet,
             "UNDERGROUND_GARAGE": AccessibilityLocation.UndergroundParkingGarage,
-        }.get(parking_type, None)
+        }
+        accessibility_locations = mapping.get(parking_type)
+
+        if not accessibility_locations:
+            raise ValidationError(f"'{parking_type}' is not a known parking type.")
+        return accessibility_locations
 
     def get_timezone(self, timezone: str):
         """
