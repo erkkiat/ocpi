@@ -1,10 +1,26 @@
+import os
 import uuid
 
 import paho.mqtt.client as mqtt
+from django.conf import settings
+from dotenv import load_dotenv
+from pydantic import ValidationError
 
-# Define the MQTT broker details
-broker = "localhost"
-port = 1883
+
+def _load_envs():
+    base_dir = os.getcwd()
+    env_path = os.path.join(base_dir, "../../../.env")
+    load_dotenv(env_path)
+
+
+_load_envs()
+
+from schemas import MeterValues
+
+broker = settings.MQTT_BROKER
+port = settings.MQTT_PORT
+
+# Todo: should this be a process ID or something? Cannot overlap between processes
 client_id = f"ocpiconnector_{uuid.uuid4()}"
 
 # Shared subscription topic with wildcard to capture all session_ids
@@ -12,8 +28,15 @@ topic = "$share/session_group/session/+/metervalues"
 
 
 def on_message(client, userdata, msg):
+    from ocpi22.cpo.mqtt.tasks import process_meter_values
+
     # Callback when the client receives a message
-    print(f"Received message on topic {msg.topic}: {msg.payload.decode()}")
+    # print(f"Received message on topic {msg.topic}: {msg.payload.decode()}")
+    try:
+        meter_values = MeterValues.parse_raw(msg.payload.decode())
+        process_meter_values(**meter_values.model_dump())
+    except ValidationError as e:
+        print(f"Failed to parse message: {e}")
 
 
 def on_connect(client, userdata, flags, rc, properties=None):

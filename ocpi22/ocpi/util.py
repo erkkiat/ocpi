@@ -27,9 +27,9 @@ from ocpiconnector.ocpi_identities import (
     ocpi_identities,
     ocpi_platform,
     get_our_identity,
-    Party,
     get_our_party,
 )
+from ocpiconnector.party import Party
 from util import OCPIVersion, with_trailing_slash
 
 

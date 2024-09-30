@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from ocpi22.choices import OcpiModuleEnum
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 
 
 @dataclass(eq=True, frozen=True)

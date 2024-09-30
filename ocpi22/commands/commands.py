@@ -60,7 +60,8 @@ from ocpi22.ocpi.util import (
 from ocpi22.ocpi.util_party import get_sender_party
 
 from ocpi22.tokens.util import construct_adhoc_token, get_token_id, get_token_type
-from ocpiconnector.ocpi_identities import get_our_party, Party, ocpi_platform
+from ocpiconnector.ocpi_identities import get_our_party, ocpi_platform
+from ocpiconnector.party import Party
 from ocpi22.util import build_absolute_uri, command_store
 from ocpi22.logging import log_error
 

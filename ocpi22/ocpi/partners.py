@@ -10,8 +10,7 @@ if TYPE_CHECKING:
     from ocpi22.models.credentials import CredentialsRole
 
 from ocpi22.ocpi.util_party import get_sender_party
-from ocpiconnector.ocpi_identities import Party
-
+from ocpiconnector.party import Party
 
 partners_cache = cachetools.TTLCache(maxsize=1024, ttl=60 * 60 * 4)
 

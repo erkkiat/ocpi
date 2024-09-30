@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Optional
 
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 
 
 def get_sender_party(

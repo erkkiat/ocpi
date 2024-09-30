@@ -57,6 +57,22 @@ services:
       - emqx_data:/opt/emqx/data
       - emqx_log:/opt/emqx/log
 
+  mqtt-subscriber:
+    build:
+      context: ./ocpi22/cpo/mqtt
+    volumes:
+      - ./ocpi22/cpo/mqtt:/app  # Mount local code for easier development
+    network_mode: "host"
+
+  celery:
+    build: .
+    command: celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - mqtt-subscriber
+    network_mode: "host"
 
 networks:
   db-network:

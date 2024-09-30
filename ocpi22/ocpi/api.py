@@ -86,10 +86,10 @@ from ocpiconnector.management.commands.exchange_credentials import (
 )
 from ocpiconnector.ocpi_identities import (
     ocpi_platform,
-    Party,
     get_our_party,
     get_our_credentialsrole,
 )
+from ocpiconnector.party import Party
 from premium import requires_premium
 
 

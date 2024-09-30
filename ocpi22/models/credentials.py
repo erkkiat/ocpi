@@ -6,6 +6,7 @@ from cachetools import cached, TTLCache
 from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
 
+import generic.countries
 import ocpi22.logging as logging
 from typing import Optional, List
 
@@ -39,8 +40,8 @@ from ocpiconnector.manager import PartnerManager
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
-from ocpiconnector.ocpi_identities import get_our_party, Party
-
+from ocpiconnector.ocpi_identities import get_our_party
+from ocpiconnector.party import Party
 
 is_hub_cache = TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24 * 60 * 60)
 
@@ -314,7 +315,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
     # ISO-3166 alpha-2 country code
     country_code = models.CharField(
-        max_length=2, choices=choices.COUNTRY_CHOICES, verbose_name=_("Country code")
+        max_length=2, choices=generic.countries.COUNTRY_CHOICES, verbose_name=_("Country code")
     )
 
     # ID of the party
