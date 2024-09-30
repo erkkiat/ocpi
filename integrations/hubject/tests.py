@@ -55,7 +55,7 @@ class TestMappings(TestCase):
 
     def test_map_connector_std_choices_to_plug_unknown(self):
         with self.assertRaises(ValidationError):
-            self.ocpi_2_oicp_converter.map_connector_to_plug("UNKNOWN_PLUG")
+            self.ocpi_2_oicp_converter.get_plug("UNKNOWN_PLUG")
 
     def test_get_distinct_plugs_from_connector_std_choices(self):
         connectors = [Connector(standard="CHADEMO"), Connector(standard="IEC_62196_T2")]
@@ -71,9 +71,7 @@ class TestMappings(TestCase):
 
     def test_map_power_type_choices_221_to_power_type_unknown(self):
         with self.assertRaises(ValidationError):
-            self.ocpi_2_oicp_converter.map_power_type_choices_221_to_power_type(
-                "UNKNOWN_POWER_TYPE"
-            )
+            self.ocpi_2_oicp_converter.get_power_type("UNKNOWN_POWER_TYPE")
 
     def test_get_all_charging_facilities_from_connectors(self):
         connectors = [
@@ -99,7 +97,7 @@ class TestMappings(TestCase):
             ),
         ]
         self.assertEqual(
-            self.ocpi_2_oicp_converter.get_all_charging_facilities(connectors),
+            self.ocpi_2_oicp_converter.get_charging_facilities(connectors),
             expected_facilities,
         )
 

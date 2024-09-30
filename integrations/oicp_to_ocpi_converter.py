@@ -84,7 +84,7 @@ class OCPIToOICPConverter:
             ),
             Plugs=self.get_distinct_plugs(evse.connectors.all()),
             DynamicPowerLevel=None,
-            ChargingFacilities=self.get_all_charging_facilities(evse.connectors.all()),
+            ChargingFacilities=self.get_charging_facilities(evse.connectors.all()),
             # todo : RenewableEnergy check with smappee, default to False
             RenewableEnergy=False,
             # todo : EnergySource missing in ocpi22 location model, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
@@ -98,10 +98,10 @@ class OCPIToOICPConverter:
             MaxCapacity=None,
             # todo : PaymentOptions missing in ocpi22,
             PaymentOptions=self.get_payment_options(evse.capabilities),
-            ValueAddedServices=self.get_all_value_added_services(evse.capabilities),
+            ValueAddedServices=self.get_value_added_services_list(evse.capabilities),
             # todo : Accessibility missing in ocpi22, default to free, discuss with smappee
             Accessibility=Accessibility.Free_publicly_accessible,
-            AccessibilityLocation=self.map_ocpi_parking_types_to_accessibility_locations(
+            AccessibilityLocation=self.get_accessibility_locations(
                 location.parking_type
             ),
             # todo : HotlinePhoneNumber missing in ocpi22, we have msp phone not CPO.
@@ -129,14 +129,14 @@ class OCPIToOICPConverter:
             DynamicInfoAvailable=DynamicInfoAvailable.true,
         )
 
-    def map_connector_to_plug(self, connector_std: str) -> Plug:
+    def get_plug(self, connector_std: str) -> Plug:
         """
         >>> oicp_converter = OCPIToOICPConverter('2.2.1', '2.2')
-        >>> oicp_converter.map_connector_to_plug('IEC_62196_T2')
+        >>> oicp_converter.get_plug('IEC_62196_T2')
         <Plug.Type_2_Outlet: 'Type 2 Outlet'>
-        >>> oicp_converter.map_connector_to_plug('CHADEMO')
+        >>> oicp_converter.get_plug('CHADEMO')
         <Plug.CHAdeMO: 'CHAdeMO'>
-        >>> oicp_converter.map_connector_to_plug('TESLA_S')
+        >>> oicp_converter.get_plug('TESLA_S')
         <Plug.Tesla_Connector: 'Tesla Connector'>
 
         @param connector_std: OCPI 2.2.1 Connector Standard, This describes the connector standard/type, e.g. CHADEMO, Tesla, etc.
@@ -169,19 +169,15 @@ class OCPIToOICPConverter:
         @param connectors: List of OCPI 2.2.1 Connectors
         @return: List of corresponding Plug enums
         """
-        plugs = {
-            self.map_connector_to_plug(connector.standard) for connector in connectors
-        }
+        plugs = {self.get_plug(connector.standard) for connector in connectors}
         return list(plugs)
 
-    def map_power_type_choices_221_to_power_type(
-        self, power_type_choice_221: str
-    ) -> PowerType:
+    def get_power_type(self, power_type_choice_221: str) -> PowerType:
         """
         >>> oicp_converter = OCPIToOICPConverter('2.2.1', '2.2')
-        >>> oicp_converter.map_power_type_choices_221_to_power_type('AC_1_PHASE')
+        >>> oicp_converter.get_power_type('AC_1_PHASE')
         <PowerType.AC_1_PHASE: 'AC_1_PHASE'>
-        >>> oicp_converter.map_power_type_choices_221_to_power_type('DC')
+        >>> oicp_converter.get_power_type('DC')
         <PowerType.DC: 'DC'>
 
         @param power_type_choice_221: OCPI 2.2.1 PowerType Choice
@@ -198,14 +194,12 @@ class OCPIToOICPConverter:
             )
         return mapping
 
-    def get_all_charging_facilities(
+    def get_charging_facilities(
         self, connectors: List[Connector]
     ) -> List[ChargingFacility]:
         return [
             ChargingFacility(
-                PowerType=self.map_power_type_choices_221_to_power_type(
-                    connector.power_type
-                ),
+                PowerType=self.get_power_type(connector.power_type),
                 Voltage=connector.max_voltage,
                 Amperage=connector.max_amperage,
                 Power=connector.max_electric_power,
@@ -256,13 +250,13 @@ class OCPIToOICPConverter:
             return result.get("house", "-")
         return "-"
 
-    def map_capability_to_authentication_mode(
+    def get_authentication_mode(
         self,
         capability: OCPICapabilityEnum,
     ) -> AuthenticationMode:
         """
         >>> oicp_converter = OCPIToOICPConverter('2.2.1', '2.2')
-        >>> oicp_converter.map_capability_to_authentication_mode(OCPICapabilityEnum.RFID_READER)
+        >>> oicp_converter.get_authentication_mode(OCPICapabilityEnum.RFID_READER)
         <AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>
         """
 
@@ -292,19 +286,18 @@ class OCPIToOICPConverter:
         return [
             mode
             for mode in (
-                self.map_capability_to_authentication_mode(capability)
-                for capability in capabilities
+                self.get_authentication_mode(capability) for capability in capabilities
             )
             if mode
         ]
 
-    def map_capability_to_value_added_services(
+    def get_value_added_services(
         self,
         capability: OCPICapabilityEnum,
     ) -> ValueAddedService:
         """
         >>> oicp_converter = OCPIToOICPConverter('2.2.1', '2.2')
-        >>> oicp_converter.map_capability_to_value_added_services(OCPICapabilityEnum.RESERVABLE)
+        >>> oicp_converter.get_value_added_services(OCPICapabilityEnum.RESERVABLE)
         <ValueAddedService.Reservation: 'Reservation'>
         """
 
@@ -312,15 +305,15 @@ class OCPIToOICPConverter:
             OCPICapabilityEnum.RESERVABLE: ValueAddedService.Reservation,
         }.get(capability, None)
 
-    def get_all_value_added_services(
+    def get_value_added_services_list(
         self,
         capabilities: List[OCPICapabilityEnum],
     ) -> list[ValueAddedService]:
         """
         >>> oicp_converter = OCPIToOICPConverter('2.2.1', '2.2')
-        >>> oicp_converter.get_all_value_added_services([OCPICapabilityEnum.CHARGING_PROFILE_CAPABLE])
+        >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.CHARGING_PROFILE_CAPABLE])
         []
-        >>> oicp_converter.get_all_value_added_services([OCPICapabilityEnum.RESERVABLE])
+        >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.RESERVABLE])
         [<ValueAddedService.Reservation: 'Reservation'>]
 
         This function collects all of the matching ValueAddedServices for the given list of OCPI 2.2.1 Capabilities.
@@ -332,23 +325,22 @@ class OCPIToOICPConverter:
         return [
             vas
             for vas in (
-                self.map_capability_to_value_added_services(capability)
-                for capability in capabilities
+                self.get_value_added_services(capability) for capability in capabilities
             )
             if vas
         ]
 
-    def map_ocpi_parking_types_to_accessibility_locations(
+    def get_accessibility_locations(
         self,
         parking_type: str,
     ) -> AccessibilityLocation:
         """
         >>> oicp_converter = OCPIToOICPConverter('2.2.1', '2.2')
-        >>> oicp_converter.map_ocpi_parking_types_to_accessibility_locations('PARKING_GARAGE')
+        >>> oicp_converter.get_accessibility_locations('PARKING_GARAGE')
         <AccessibilityLocation.ParkingGarage: 'ParkingGarage'>
-        >>> oicp_converter.map_ocpi_parking_types_to_accessibility_locations('PARKING_LOT')
+        >>> oicp_converter.get_accessibility_locations('PARKING_LOT')
         <AccessibilityLocation.ParkingLot: 'ParkingLot'>
-        >>> oicp_converter.map_ocpi_parking_types_to_accessibility_locations('UNKNOWN')
+        >>> oicp_converter.get_accessibility_locations('UNKNOWN')
 
         """
 
