@@ -54,6 +54,7 @@ class OCPItoOICPConverter:
             evse_data_record = locations_evse_map[location_hash_key][0]
             locations.append(
                 Location(
+                    # todo: Add an identifier for hubject
                     # ocpi_master=,
                     # uid=,
                     # todo: OICP cannot be converted to publish field directly
@@ -83,9 +84,10 @@ class OCPItoOICPConverter:
                     # todo : OICP cannot be directly converted to facilities
                     # facilities=
                     charging_when_closed=evse_data_record.IsOpen24Hours,
+                    # todo: Ask from hubject
                     # operator=,
                     # suboperator=,
-                    owner=BusinessDetails.objects.get(
+                    owner=BusinessDetails.objects.get_or_create(
                         name=operator_evse_data.OperatorName
                     ),
                     evses=[
@@ -102,7 +104,7 @@ class OCPItoOICPConverter:
     def get_location_evse_map(self, evses: List[EvseDataRecord]) -> dict:
         location_map = defaultdict(list)
         for evse in evses:
-            address = f"{evse.address.street}, {evse.address.city}, {evse.address.postal_code}, {evse.address.state}, {evse.address.country}"
+            address = f"{evse.address.street}{evse.address.city}{evse.address.postal_code}{evse.address.state}{evse.address.country}"
             location_map[hash(address)].append(evse)
         return location_map
 
