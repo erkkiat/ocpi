@@ -93,7 +93,7 @@ class OCPIToHubjectConverter:
             EnvironmentalImpact=None,
             # todo : CalibrationLawDataAvailability missing in ocpi22, required, defaulted to Local
             CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
-            AuthenticationModes=self.get_all_authentication_modes(evse.capabilities),
+            AuthenticationModes=self.get_authentication_modes_list(evse.capabilities),
             # todo : MaxCapacity missing in ocpi22,
             MaxCapacity=None,
             # todo : PaymentOptions missing in ocpi22,
@@ -268,23 +268,19 @@ class OCPIToHubjectConverter:
         mapping = {
             OCPICapabilityEnum.RFID_READER: AuthenticationMode.NFC_RFID_Classic,
         }
-        auth_mode = mapping.get(capability)
+        return mapping.get(capability)
 
-        if not auth_mode:
-            raise ValidationError(f"'{capability}' is not a known capability.")
-        return auth_mode
-
-    def get_all_authentication_modes(
+    def get_authentication_modes_list(
         self,
         capabilities: List[OCPICapabilityEnum],
     ) -> list[AuthenticationMode]:
         """
         >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
-        >>> oicp_converter.get_all_authentication_modes([OCPICapabilityEnum.RFID_READER])
+        >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.RFID_READER])
         [<AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>]
-        >>> oicp_converter.get_all_authentication_modes([OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
+        >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
         [<AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>]
-        >>> oicp_converter.get_all_authentication_modes([OCPICapabilityEnum.UNLOCK_CAPABLE])
+        >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.UNLOCK_CAPABLE])
         []
 
         This function collects all of the matching AuthenticationModes for the given list of OCPI 2.2.1 Capabilities.
@@ -314,11 +310,7 @@ class OCPIToHubjectConverter:
         mapping = {
             OCPICapabilityEnum.RESERVABLE: ValueAddedService.Reservation,
         }
-        vas = mapping.get(capability)
-
-        if not vas:
-            raise ValidationError(f"'{capability}' is not a known capability.")
-        return vas
+        return mapping.get(capability)
 
     def get_value_added_services_list(
         self,
@@ -365,11 +357,7 @@ class OCPIToHubjectConverter:
             "ON_STREET": AccessibilityLocation.OnStreet,
             "UNDERGROUND_GARAGE": AccessibilityLocation.UndergroundParkingGarage,
         }
-        accessibility_locations = mapping.get(parking_type)
-
-        if not accessibility_locations:
-            raise ValidationError(f"'{parking_type}' is not a known parking type.")
-        return accessibility_locations
+        return mapping.get(parking_type)
 
     def get_timezone(self, timezone: str):
         """

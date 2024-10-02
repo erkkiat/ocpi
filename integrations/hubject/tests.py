@@ -94,7 +94,7 @@ class TestMappings(TestCase):
 
         authentication_modes = [AuthenticationMode.NFC_RFID_Classic]
         self.assertEqual(
-            self.ocpi_2_oicp_converter.get_all_authentication_modes(capabilities),
+            self.ocpi_2_oicp_converter.get_authentication_modes_list(capabilities),
             authentication_modes,
         )
 
