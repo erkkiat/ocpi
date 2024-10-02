@@ -131,7 +131,7 @@ class OCPIToHubjectConverter:
 
     def get_plug(self, connector_std: str) -> Plug:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_plug('IEC_62196_T2')
         <Plug.Type_2_Outlet: 'Type 2 Outlet'>
         >>> oicp_converter.get_plug('CHADEMO')
@@ -175,7 +175,7 @@ class OCPIToHubjectConverter:
 
     def get_power_type(self, power_type_choice_221: str) -> PowerType:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_power_type('AC_1_PHASE')
         <PowerType.AC_1_PHASE: 'AC_1_PHASE'>
         >>> oicp_converter.get_power_type('DC')
@@ -214,7 +214,7 @@ class OCPIToHubjectConverter:
 
     def get_street(self, address: str) -> str:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_street("Oulu 1")
         'Oulu'
         >>> oicp_converter.get_street("Weteringstraat 34-1, 1017 SP Amsterdam")
@@ -234,7 +234,7 @@ class OCPIToHubjectConverter:
 
     def get_house_number(self, address: str) -> str:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_house_number("Oulu 1")
         '1'
         >>> oicp_converter.get_house_number("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
@@ -260,7 +260,7 @@ class OCPIToHubjectConverter:
         capability: OCPICapabilityEnum,
     ) -> AuthenticationMode:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_authentication_mode(OCPICapabilityEnum.RFID_READER)
         <AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>
         """
@@ -279,7 +279,7 @@ class OCPIToHubjectConverter:
         capabilities: List[OCPICapabilityEnum],
     ) -> list[AuthenticationMode]:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_all_authentication_modes([OCPICapabilityEnum.RFID_READER])
         [<AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>]
         >>> oicp_converter.get_all_authentication_modes([OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
@@ -306,7 +306,7 @@ class OCPIToHubjectConverter:
         capability: OCPICapabilityEnum,
     ) -> ValueAddedService:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_value_added_services(OCPICapabilityEnum.RESERVABLE)
         <ValueAddedService.Reservation: 'Reservation'>
         """
@@ -325,7 +325,7 @@ class OCPIToHubjectConverter:
         capabilities: List[OCPICapabilityEnum],
     ) -> list[ValueAddedService]:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.CHARGING_PROFILE_CAPABLE])
         []
         >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.RESERVABLE])
@@ -350,7 +350,7 @@ class OCPIToHubjectConverter:
         parking_type: str,
     ) -> AccessibilityLocation:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_accessibility_locations('PARKING_GARAGE')
         <AccessibilityLocation.ParkingGarage: 'ParkingGarage'>
         >>> oicp_converter.get_accessibility_locations('PARKING_LOT')
@@ -373,7 +373,7 @@ class OCPIToHubjectConverter:
 
     def get_timezone(self, timezone: str):
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_timezone('Europe/Helsinki')
         'UTC+03:00'
         >>> oicp_converter.get_timezone('Asia/Colombo')
@@ -387,7 +387,7 @@ class OCPIToHubjectConverter:
         """
         try:
             tz = datetime.now(pytz.timezone(timezone))
-            return tz.strftime("UTC%z")[:6] + ":" + tz.strftime("UTC%z")[6:]
+            return f"{tz.strftime('UTC%z')[:6]}:{tz.strftime('UTC%z')[6:]}"
         except pytz.exceptions.UnknownTimeZoneError:
             raise ValidationError(f"Unknown timezone: {timezone}")
 
@@ -396,7 +396,7 @@ class OCPIToHubjectConverter:
         capabilities: List[OCPICapabilityEnum],
     ) -> list[PaymentOption]:
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.2')
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
         >>> oicp_converter.get_payment_options([OCPICapabilityEnum.CHIP_CARD_SUPPORT, OCPICapabilityEnum.CONTACTLESS_CARD_SUPPORT, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
         [<PaymentOption.Direct: 'Direct'>]
         >>> oicp_converter.get_payment_options([OCPICapabilityEnum.RFID_READER])
