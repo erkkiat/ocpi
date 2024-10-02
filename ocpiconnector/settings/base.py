@@ -40,7 +40,6 @@ MSP_API = _env_bool("MSP_API", False)
 
 PERFORMANCE_TEST = _env_bool("PERFORMANCE_TEST", False)
 CPO_SIMULATOR = _env_bool("CPO_SIMULATOR", False)
-CERTIFICATION_MODE = _env_bool("CERTIFICATION_MODE", False)
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = _env_bool("ALLOW_ADMIN_DELETE_AND_CHANGE", False)
 
@@ -90,7 +89,6 @@ OCPI_221_URL = "/ocpi/2.2.1/"
 VERSION_URLS = {OCPI_22_URL, OCPI_221_URL}
 VERSIONS = {"2.2", "2.2.1"}
 
-PROMETHEUS = _env_bool("PROMETHEUS", False)
 # How often to check that other party is alive
 STILL_ALIVE_FREQUENCY = os.environ.get("STILL_ALIVE_FREQUENCY", 60 * 5)
 
@@ -370,9 +368,6 @@ MIDDLEWARE = [
     "ocpi22.middleware.ProfilerMiddleware",
 ]
 
-if PROMETHEUS:
-    MIDDLEWARE.append("prometheus_metrics.middleware.PrometheusBeforeMiddleware")
-
 if "MOESIF_APPLICATION_ID" in os.environ:
     MIDDLEWARE.append("moesifdjango.middleware.moesif_middleware")
 
@@ -412,7 +407,6 @@ INSTALLED_APPS = [
     "ocpi22",
     "ocpiconnector",
     "webhooks",
-    "certification",
     "hub",
     "settlement",
     "django.contrib.admin",

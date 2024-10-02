@@ -12,8 +12,6 @@ from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
 
-from certification.decorators import certification_step
-from ocpi22.choices import OcpiModuleEnum
 from ocpiconnector.management.commands.serializers import VersionsSerializer
 from util import reverse
 
@@ -118,9 +116,6 @@ class Command(BaseCommand):
             help="The versions URL provided by the other party",
         )
 
-    @certification_step(
-        OcpiModuleEnum.CREDENTIALS, "Establish new Credentials as a sender"
-    )
     def handle(self, *args, **options) -> bool:
         def heading(s):
             logging.info(f"\n\n{Style.BRIGHT}{s}\n{Style.RESET_ALL}")

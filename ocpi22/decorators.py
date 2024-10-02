@@ -12,7 +12,6 @@ from ocpi22.ocpi.util import OCPIBadRequestResponse, OCPINotOwnerResponse
 from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.util import matching_operator
 from ocpiconnector.ocpi_identities import Party
-from ocpi22.certification import certification_steps
 
 
 def certify_check_ocpi_headers(headers):
@@ -64,13 +63,6 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
                 request, "META", None
             )
             sender_party = get_sender_party(headers)
-
-            if (
-                certification_steps
-                and not certification_steps.headers
-                and certify_check_ocpi_headers(headers)
-            ):
-                certification_steps.headers.passed()
 
             if request:
                 setattr(

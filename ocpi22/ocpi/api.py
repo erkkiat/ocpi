@@ -15,7 +15,6 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from certification.decorators import certification_step
 from ocpi22.decorators import (
     requires_sender_role,
     requires_credentialsrole,
@@ -152,7 +151,6 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
     @requires_credentialsrole
-    @certification_step(OcpiModuleEnum.TOKENS, "PUT an individual Token", subtopic="")
     def put(
         self,
         request,
@@ -163,7 +161,6 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         patch=False,
         version="2.2.1",
         credentialsrole=None,
-        certification=False,
     ) -> OCPIResponse:
         if request and not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse("token")
@@ -196,15 +193,11 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
     @requires_last_updated
-    @certification_step(OcpiModuleEnum.TOKENS, "PATCH a Token", subtopic="")
     def patch(self, *args, **kwargs):
         return self.put(*args, patch=True, **kwargs)
 
     @ocpi_exception_handler
     @csrf_exempt
-    @certification_step(
-        OcpiModuleEnum.TOKENS, "Send authorization request", subtopic=""
-    )
     def authorize(self, request: Request, token_uid: str, **kwargs) -> OCPIResponse:
         info = None
         user_language = "en"
@@ -328,7 +321,6 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
 
     @ocpi_exception_handler
     @requires_credentialsrole
-    @certification_step(OcpiModuleEnum.TOKENS, "GET an individual Token", subtopic="")
     def get(self, request, credentialsrole, uid=None, **_kwargs):
         """Respond to a GET which has parameters"""
 
@@ -400,11 +392,6 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_sender_role(
         OcpiRolesEnum.EMSP
     )  # CPO should have the specific URL, no need to fetch using this endpoint
-    @certification_step(
-        OcpiModuleEnum.CDRS,
-        "GET a CDR which belongs to you",
-        subtopic="URL parameters are required by OCPI 2.2",
-    )
     def get(self, request, uid=None, **_kwargs) -> Response:
         cdr = Cdr.objects.get(ocpi_master=request.credentialsrole, uid=uid)
         serializer = CdrSerializer(
@@ -415,7 +402,6 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
     @requires_premium
-    @certification_step(OcpiModuleEnum.CDRS, "POST a new CDR", subtopic="")
     def post(self, request, data, **_kwargs) -> OCPIResponse:
         serializer = CdrSerializer(data=data, context={"version": request.version})
         if serializer.is_valid():
@@ -619,11 +605,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_premium
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_credentialsrole
-    @certification_step(
-        OcpiModuleEnum.TARIFFS,
-        "PUT an individual Tariff",
-        subtopic="URL parameters are required by OCPI 2.2",
-    )
     def put(
         self,
         request,
@@ -633,7 +614,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
         party_id=None,
         data=None,
         version="2.2.1",
-        certification=False,
     ) -> OCPIResponse:
         assert (
             isinstance(data, dict) and data
@@ -680,9 +660,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_premium
     @requires_credentialsrole
-    @certification_step(
-        OcpiModuleEnum.TARIFFS, "DELETE an individual Tariff", subtopic=""
-    )
     def delete(self, request, credentialsrole, uid, *_args, **_kwargs) -> OCPIResponse:
         """Process a DELETE rest call for a Tariff"""
         tariff = self.get_queryset().get(uid__iexact=uid, ocpi_master=credentialsrole)
@@ -801,7 +778,6 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
 
     @ocpi_exception_handler
     @requires_credentialsrole
-    @certification_step(OcpiModuleEnum.SESSIONS, "GET a Session which belongs to you")
     def get(self, request, credentialsrole, uid, **_kwargs):
         session = Session.objects.get(uid=uid, ocpi_master=credentialsrole)
         serializer = SessionSerializer(
@@ -814,9 +790,6 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     @classmethod
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
-    @certification_step(
-        OcpiModuleEnum.SESSIONS, "PUT an individual Session with URL parameters"
-    )
     def put(
         cls,
         request,
@@ -912,16 +885,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
     @requires_last_updated
-    @certification_step(
-        OcpiModuleEnum.SESSIONS,
-        "PATCH an individual Session",
-        subtopic="Include at least the kwh and last_updated fields",
-    )
-    def patch(self, request, data, certification=None, *args, **kwargs):
-        if "kwh" not in data:
-            certification.failed(
-                "You need to PATCH at least the kwh and the last_updated fields."
-            )
+    def patch(self, request, data, *args, **kwargs):
         return self.put(request, *args, partial=True, **kwargs)
 
 
@@ -954,18 +918,12 @@ class ClientInfoViewSet(mixins.ListModelMixin, GenericViewSet):
         if object_id:
             return get_object_or_404(CredentialsRole, pk=object_id)
 
-    @certification_step(
-        OcpiModuleEnum.HUBCLIENTINFO, "GET a list of HubClientInfos", subtopic=""
-    )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.HUB)
     @requires_credentialsrole  # Are you sure?
-    @certification_step(
-        OcpiModuleEnum.HUBCLIENTINFO, "PUT a HubClientInfo", subtopic=""
-    )
     def put(self, request, credentialsrole, *_args, **_kwargs):
         serializer = ClientInfoSerializer(
             data=request.data, context={"request": request, "version": request.version}

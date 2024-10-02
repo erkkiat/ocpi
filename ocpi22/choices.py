@@ -484,19 +484,3 @@ DYNAMIC_PRICE_SOURCE_CHOICES = (
     ("NPFR", "Nordpool France"),
     ("NPNL", "Nordpool Netherlands"),
 )
-
-CERTIFICATION_TOPIC_CHOICES = list(IDENTIFIER_CHOICES)
-CERTIFICATION_TOPIC_CHOICES += (
-    ("HEADERS", "OCPI Headers"),
-    ("FILTERING", "OCPI Filtering"),
-    ("PAGING", "OCPI Paging"),
-)
-
-
-class CertificationEnum(Enum):
-    HEADERS = "HEADERS"
-    PAGING = "PAGING"
-    FILTERING = "FILTERING"
-
-
-CERTIFICATION_TOPIC_DICT = dict(CERTIFICATION_TOPIC_CHOICES)

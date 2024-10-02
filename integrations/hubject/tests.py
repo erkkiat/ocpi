@@ -3,6 +3,8 @@ from django.utils.datetime_safe import datetime
 from django.core.exceptions import ValidationError
 
 from integrations.oicp_to_ocpi_converter import OCPIToOICPConverter
+
+from integrations.hubject.test_data import ERoamingPushTestData
 from ocpi22.tests.factories import (
     LocationFactory,
     CredentialsRoleFactory,
@@ -11,17 +13,6 @@ from ocpi22.tests.factories import (
     ConnectorFactory,
 )
 
-# from integrations.hubject.mappings import (
-#     map_connector_to_plug,
-#     get_distinct_plugs,
-#     map_power_type_choices_221_to_power_type,
-#     get_all_charging_facilities,
-#     get_all_authentication_modes,
-#     get_street,
-#     get_house_number,
-#     get_timezone,
-#     map_location_to_operator_evse_data,
-# )
 from integrations.hubject.schemas import (
     Plug,
     PowerType,
@@ -29,14 +20,11 @@ from integrations.hubject.schemas import (
     AuthenticationMode,
     ActionType,
     ERoamingPushEvseData,
-    AccessibilityLocation,
-    ValueAddedService,
 )
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
 from ocpiconnector import testutil
 
-from django.conf import settings
 import doctest
 import pytz
 
@@ -155,9 +143,9 @@ class TestMappings(TestCase):
             evse_id="FI*ABC*E1234*5668",
             status="RESERVED",
             location=helsinki,
-            last_updated=pytz.utc.localize(datetime.now()),
-            updated=pytz.utc.localize(datetime.now()),
-            created=pytz.utc.localize(datetime.now()),
+            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
             capabilities=["RFID_READER", "RESERVABLE"],
         )
 
@@ -171,9 +159,9 @@ class TestMappings(TestCase):
             max_amperage=16,
             max_electric_power=37,
             terms_and_conditions="https://www.helsinki-supercharger.com/terms-and-conditions",
-            last_updated=pytz.utc.localize(datetime.now()),
-            updated=pytz.utc.localize(datetime.now()),
-            created=pytz.utc.localize(datetime.now()),
+            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         )
 
         helsinki_hubject_evse_data = ERoamingPushEvseData(
@@ -183,139 +171,16 @@ class TestMappings(TestCase):
             ),
         )
 
-        expected_data = {
-            "ActionType": ActionType.insert,
-            "OperatorEvseData": {
-                "OperatorID": {
-                    "root": helsinki.party(),
-                },
-                "OperatorName": helsinki_supercharger_owner_business_details.name,
-                "EvseDataRecord": [
-                    {
-                        "EvseID": {
-                            "root": helsinki_evse_data.evse_id,
-                        },
-                        "Address": {
-                            "Country": helsinki.country,
-                            "City": helsinki.city,
-                            "PostalCode": helsinki.postal_code,
-                            "Street": self.ocpi_2_oicp_converter.get_street(
-                                helsinki.address
-                            ),
-                            "HouseNum": self.ocpi_2_oicp_converter.get_house_number(
-                                helsinki.address
-                            ),
-                            "ParkingFacility": True,
-                            "TimeZone": self.ocpi_2_oicp_converter.get_timezone(
-                                helsinki.time_zone
-                            ),
-                        },
-                        "GeoCoordinates": {
-                            "DecimalDegree": {
-                                "Latitude": "60.1695",
-                                "Longitude": "24.9354",
-                            },
-                        },
-                        "Plugs": [Plug.Type_2_Outlet],
-                        "ChargingFacilities": [
-                            {
-                                "PowerType": PowerType.DC,
-                                "Voltage": 230,
-                                "Amperage": 16,
-                                "Power": 37,
-                            },
-                        ],
-                        "ChargingStationNames": [
-                            {
-                                "lang": "EN",
-                                "value": helsinki.name,
-                            },
-                        ],
-                        "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
-                        "ValueAddedServices": [
-                            ValueAddedService.Reservation,
-                        ],
-                        "AccessibilityLocation": AccessibilityLocation.OnStreet,
-                        "HotlinePhoneNumber": settings.HOTLINE,
-                        "GeoChargingPointEntrance": {
-                            "DecimalDegree": {
-                                "Latitude": "60.1695",
-                                "Longitude": "24.9354",
-                            },
-                        },
-                        "IsOpen24Hours": True,
-                    },
-                ],
-            },
-        }
+        # Remove automatically generated EVSE data
+        helsinki_hubject_evse_data.OperatorEvseData.EvseDataRecord = [
+            helsinki_hubject_evse_data.OperatorEvseData.EvseDataRecord[-1]
+        ]
 
-        mapped_dict = get_hubject_eroaming_evse_data_dict(helsinki_hubject_evse_data)
-        result = testutil.compare_dicts_recursively(mapped_dict, expected_data)
+        result = testutil.compare_dicts_recursively(
+            helsinki_hubject_evse_data.model_dump(),
+            ERoamingPushTestData.helsinki_eroaming_push_data,
+        )
         self.assertTrue(
             result,
             "The mapped OCPI Location data does not match the expected OICP data.",
         )
-
-
-def get_hubject_eroaming_evse_data_dict(
-    eroaming_evse_data: ERoamingPushEvseData,
-) -> dict:
-    operator_data = eroaming_evse_data.OperatorEvseData
-    evse_data = eroaming_evse_data.OperatorEvseData.EvseDataRecord[-1]
-    return {
-        "ActionType": eroaming_evse_data.ActionType,
-        "OperatorEvseData": {
-            "OperatorID": {
-                "root": operator_data.OperatorID.root,
-            },
-            "OperatorName": operator_data.OperatorName,
-            "EvseDataRecord": [
-                {
-                    "EvseID": {
-                        "root": evse_data.EvseID.root,
-                    },
-                    "Address": {
-                        "Country": evse_data.Address.Country,
-                        "City": evse_data.Address.City,
-                        "PostalCode": evse_data.Address.PostalCode,
-                        "Street": evse_data.Address.Street,
-                        "HouseNum": evse_data.Address.HouseNum,
-                        "ParkingFacility": evse_data.Address.ParkingFacility,
-                        "TimeZone": evse_data.Address.TimeZone,
-                    },
-                    "GeoCoordinates": {
-                        "DecimalDegree": {
-                            "Latitude": evse_data.GeoCoordinates.DecimalDegree.Latitude,
-                            "Longitude": evse_data.GeoCoordinates.DecimalDegree.Longitude,
-                        },
-                    },
-                    "Plugs": evse_data.Plugs,
-                    "ChargingFacilities": [
-                        {
-                            "PowerType": evse_data.ChargingFacilities[0].PowerType,
-                            "Voltage": evse_data.ChargingFacilities[0].Voltage,
-                            "Amperage": evse_data.ChargingFacilities[0].Amperage,
-                            "Power": evse_data.ChargingFacilities[0].Power,
-                        },
-                    ],
-                    "ChargingStationNames": [
-                        {
-                            "lang": "EN",
-                            "value": evse_data.ChargingStationNames[0].value,
-                        },
-                    ],
-                    "AuthenticationModes": evse_data.AuthenticationModes,
-                    "ValueAddedServices": evse_data.ValueAddedServices,
-                    "AccessibilityLocation": evse_data.AccessibilityLocation,
-                    "HotlinePhoneNumber": evse_data.HotlinePhoneNumber,
-                    "GeoChargingPointEntrance": {
-                        "DecimalDegree": {
-                            "Latitude": evse_data.GeoChargingPointEntrance.DecimalDegree.Latitude,
-                            "Longitude": evse_data.GeoChargingPointEntrance.DecimalDegree.Longitude,
-                        },
-                    },
-                    "IsOpen24Hours": evse_data.IsOpen24Hours,
-                },
-            ],
-        },
-    }

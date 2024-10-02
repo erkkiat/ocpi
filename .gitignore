@@ -5,8 +5,6 @@ version.txt
 terraform.tfstate
 terraform.tfstate.backup
 env.sh
-prometheus/data/*
-prometheus/alertmanager/data/*
 .idea
 .env
 *.prof

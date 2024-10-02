@@ -110,7 +110,6 @@ urlpatterns = [
     path("", home),
     path("", include(root_router.urls), name="root-view"),
     path("hub/", include(hub_urls)),
-    path("certification/", include("certification.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.locations.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.ocpi.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.commands.urls")),
@@ -144,11 +143,6 @@ urlpatterns = [
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
     # path("__debug__/", include("debug_toolbar.urls")),
 ]
-
-if settings.PROMETHEUS:
-    from prometheus_metrics.middleware import PrometheusMiddleware
-
-    urlpatterns.append(path("metrics/", PrometheusMiddleware.metrics_view))
 
 if ocpi_platform.is_emsp:
     urlpatterns.append(path("api/cpo/v3/token/", tokens_api.urls))

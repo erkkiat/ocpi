@@ -135,11 +135,6 @@
                                                                 <i class="fa fa-code mr-2"></i>
                                                                 {% trans 'Developer Central' %}
                                                             </a></li>
-                                                            <li><a class="dropdown-item"
-                                                                   href="{% url 'certification-status' %}">
-                                                                <i class="fa fa-award mr-2"></i>
-                                                                {% trans 'Certification Central' %}
-                                                            </a></li>
                                                             {% if user.has_usable_password %}
                                                             <li><a class="dropdown-item"
                                                                    href="{% url 'admin:password_change' %}">
