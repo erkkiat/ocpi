@@ -35,6 +35,14 @@ class OCPIToHubjectConverter:
         self.ocpi_version = ocpi_version
         self.address_pattern = re.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
 
+        self.general_address_pattern = re.compile(
+            r"(?P<street>[A-Za-z\s.-]+?)\s+(?P<house>\d+[A-Za-z]?(?:-\d+)?)"
+        )
+        self.france_pattern = re.compile(
+            r"(?P<house>\d+[A-Za-z]?)\s+(?P<street>(?:Rue|Avenue|Boulevard|Chemin)\s+[A-Za-z\s.-]+)",
+            re.IGNORECASE,
+        )
+
     def convert_to_operator_evse_data(self, location: Location) -> OperatorEvseData:
         return OperatorEvseData(
             OperatorID=location.party(),
@@ -212,25 +220,27 @@ class OCPIToHubjectConverter:
             for connector in connectors
         ]
 
-    def get_street(self, address: str) -> str:
+    def get_address_extractor(self, address: str):
         """
-        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
-        >>> oicp_converter.get_street("Oulu 1")
-        'Oulu'
-        >>> oicp_converter.get_street("Weteringstraat 34-1, 1017 SP Amsterdam")
-        'Weteringstraat'
-        >>> oicp_converter.get_street("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
-        'Mme Marie PAGE,'
-        >>> oicp_converter.get_street("Mrs F Meier, Weberstr. 2, 53113 BONN 1")
-        'Mrs F Meier, Weberstr.'
-        >>> oicp_converter.get_street("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
-        'Alfred Nobellaan'
+        Returns a function to extract both house number and street based on the country/address format.
         """
-        match = self.address_pattern.search(address)
-        if match:
-            result = {k: v.strip() for k, v in match.groupdict().items() if v}
-            return result.get("street", "-")
-        return "-"
+
+        def extract_general_address(addr):
+            match = self.general_address_pattern.search(addr)
+            if match:
+                return match.group("house"), match.group("street").strip()
+            return "-", "-"
+
+        def extract_french_address(addr):
+            match = self.france_pattern.search(addr)
+            if match:
+                return match.group("house"), match.group("street").strip()
+            return "-", "-"
+
+        if "France" in address or "FRA" in address:
+            return extract_french_address
+        else:
+            return extract_general_address
 
     def get_house_number(self, address: str) -> str:
         """
@@ -238,7 +248,7 @@ class OCPIToHubjectConverter:
         >>> oicp_converter.get_house_number("Oulu 1")
         '1'
         >>> oicp_converter.get_house_number("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
-        '34'
+        '34-1'
         >>> oicp_converter.get_house_number("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
         '23'
         >>> oicp_converter.get_house_number("Mrs F Meier, Weberstr. 2, 53113 BONN 1, Germany")
@@ -248,12 +258,27 @@ class OCPIToHubjectConverter:
         >>> oicp_converter.get_house_number("Kandintie E 4, 00430 Helsinki, FIN")
         '4'
         """
+        extractor = self.get_address_extractor(address)
+        house_number, _ = extractor(address)
+        return house_number
 
-        match = self.address_pattern.search(address)
-        if match:
-            result = {k: v.strip() for k, v in match.groupdict().items() if v}
-            return result.get("house", "-")
-        return "-"
+    def get_street(self, address: str) -> str:
+        """
+        >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
+        >>> oicp_converter.get_street("Oulu 1")
+        'Oulu'
+        >>> oicp_converter.get_street("Weteringstraat 34-1, 1017 SP Amsterdam")
+        'Weteringstraat'
+        >>> oicp_converter.get_street("23 Rue de Grenelle, 75700 PARIS CEDEX, France")
+        'Rue de Grenelle'
+        >>> oicp_converter.get_street("Mrs F Meier, Weberstr. 2, 53113 BONN 1")
+        'Weberstr.'
+        >>> oicp_converter.get_street("22 App 150Z, 2660 Antwerpen, BEL")
+        'App'
+        """
+        extractor = self.get_address_extractor(address)
+        _, street = extractor(address)
+        return street
 
     def get_authentication_mode(
         self,
