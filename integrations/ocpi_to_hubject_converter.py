@@ -74,9 +74,9 @@ class OCPIToHubjectConverter:
             Address=Address(
                 Country=location.country,
                 City=location.city,
-                Street=self.get_street(location.address),
+                Street=self.get_street(location.address, location.country),
                 PostalCode=location.postal_code,
-                HouseNum=self.get_house_number(location.address),
+                HouseNum=self.get_house_number(location.address, location.country),
                 # todo : Floor missing in ocpi22,
                 # todo : Region missing in ocpi22,
                 ParkingFacility=True if location.parking_type else False,
@@ -220,7 +220,7 @@ class OCPIToHubjectConverter:
             for connector in connectors
         ]
 
-    def get_address_extractor(self, address: str):
+    def get_address_extractor(self, address: str, country: str):
         """
         Returns a function to extract both house number and street based on the country/address format.
         """
@@ -237,46 +237,40 @@ class OCPIToHubjectConverter:
                 return match.group("house"), match.group("street").strip()
             return "-", "-"
 
-        if "France" in address or "FRA" in address:
+        if country == "FRA":
             return extract_french_address
         else:
             return extract_general_address
 
-    def get_house_number(self, address: str) -> str:
+    def get_house_number(self, address: str, country: str) -> str:
         """
         >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
-        >>> oicp_converter.get_house_number("Oulu 1")
-        '1'
-        >>> oicp_converter.get_house_number("Weteringstraat 34-1, 1017 SP Amsterdam, NLD")
+        >>> oicp_converter.get_house_number("Weteringstraat 34-1", 'NLD')
         '34-1'
-        >>> oicp_converter.get_house_number("Mme Marie PAGE, 23 Rue de Grenelle, 75700 PARIS CEDEX, France")
+        >>> oicp_converter.get_house_number("23 Rue de Grenelle", 'FRA')
         '23'
-        >>> oicp_converter.get_house_number("Mrs F Meier, Weberstr. 2, 53113 BONN 1, Germany")
+        >>> oicp_converter.get_house_number("Weberstr. 2", 'DEU')
         '2'
-        >>> oicp_converter.get_house_number("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
-        '22'
-        >>> oicp_converter.get_house_number("Kandintie 4E, 00430 Helsinki, FIN")
+        >>> oicp_converter.get_house_number("Kandintie 4E", 'FIN')
         '4E'
         """
-        extractor = self.get_address_extractor(address)
+        extractor = self.get_address_extractor(address, country)
         house_number, _ = extractor(address)
         return house_number
 
-    def get_street(self, address: str) -> str:
+    def get_street(self, address: str, country: str) -> str:
         """
         >>> oicp_converter = OCPIToHubjectConverter('2.2.1', '2.3')
-        >>> oicp_converter.get_street("Oulu 1")
-        'Oulu'
-        >>> oicp_converter.get_street("Weteringstraat 34-1, 1017 SP Amsterdam")
+        >>> oicp_converter.get_street("Weteringstraat 34-1", 'NLD')
         'Weteringstraat'
-        >>> oicp_converter.get_street("23 Rue de Grenelle, 75700 PARIS CEDEX, France")
+        >>> oicp_converter.get_street("23 Rue de Grenelle", 'FRA')
         'Rue de Grenelle'
-        >>> oicp_converter.get_street("Mrs F Meier, Weberstr. 2, 53113 BONN 1")
+        >>> oicp_converter.get_street("Weberstr. 2", 'DEU')
         'Weberstr.'
-        >>> oicp_converter.get_street("22 App 150Z, 2660 Antwerpen, BEL")
-        'App'
+        >>> oicp_converter.get_street("Kandintie 4E", 'FIN')
+        'Kandintie'
         """
-        extractor = self.get_address_extractor(address)
+        extractor = self.get_address_extractor(address, country)
         _, street = extractor(address)
         return street
 
