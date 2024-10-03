@@ -255,8 +255,8 @@ class OCPIToHubjectConverter:
         '2'
         >>> oicp_converter.get_house_number("Alfred Nobellaan 22 App 150Z, 2660 Antwerpen, BEL")
         '22'
-        >>> oicp_converter.get_house_number("Kandintie E 4, 00430 Helsinki, FIN")
-        '4'
+        >>> oicp_converter.get_house_number("Kandintie 4E, 00430 Helsinki, FIN")
+        '4E'
         """
         extractor = self.get_address_extractor(address)
         house_number, _ = extractor(address)
