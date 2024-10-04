@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import List
 
 from django.core.exceptions import ValidationError
+from pydantic import UUID4
 
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
@@ -14,7 +15,7 @@ from integrations.hubject.schemas import (
 )
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.location import Location, Evse
+from ocpi22.models.location import Location, Evse, Connector
 from datetime import datetime
 
 from ocpi22.util import calculate_partition, get_time_zone
@@ -27,6 +28,30 @@ class OCPItoOICPConverter:
         self.oicp_version = oicp_version
         self.ocpi_version = ocpi_version
 
+    def __convert_to_connectors(self, evse: EvseDataRecord) -> List[Connector]:
+        hubject_connectors = evse.CHARGING_FACILITIES
+        ocpi_connectors = []
+        for c in hubject_connectors:
+            ocpi_connectors.append(
+                Connector(
+                    # uid=evse.EvseID,
+                    evse=evse,
+                    standard=evse.Plugs[0].value,
+                    # format=,
+                    # tariff_ids=[],
+                    power_type=c.PowerType.value,
+                    max_voltage=c.Voltage,
+                    max_amperage=c.Amperage,
+                    max_electric_power=c.Power,
+                    # terms_and_conditions="",
+                    last_updated=evse.lastUpdate,
+                    created=evse.lastUpdate,
+                    updated=evse.lastUpdate,
+                )
+            )
+
+        return ocpi_connectors
+
     def __convert_to_evse(self, evse: EvseDataRecord) -> Evse:
         return Evse(
             # uid=,
@@ -38,6 +63,7 @@ class OCPItoOICPConverter:
             capabilities=self.get_capabilities(
                 evse.AuthenticationModes, evse.ValueAddedServices, evse.PaymentOptions
             ),
+            connectors=self.__convert_to_connectors(evse),
         )
 
     def convert_eroaming_to_locations(
@@ -56,7 +82,7 @@ class OCPItoOICPConverter:
                 Location(
                     # todo: Add an identifier for hubject
                     # ocpi_master=,
-                    # uid=,
+                    uid=UUID4,
                     # todo: OICP cannot be converted to publish field directly
                     # publish=,
                     name=evse_data_record.ChargingStationNames[0].value
