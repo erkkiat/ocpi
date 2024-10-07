@@ -262,7 +262,7 @@ class TestMappings(TestCase):
         )
 
         berlin_operator = OperatorEvseDataFactory(
-            OperatorID="FI*SMP",
+            OperatorID="FR*SMP",
             OperatorName="Smappee Pvt Ltd.",
             EvseDataRecord=[
                 berlin_operator_evse_data,
