@@ -33,6 +33,8 @@ We should not build up a queue of messages to make everyone wait for the slowest
 
 Thoughts from GPT o1:
 
+-----------
+
 ### Conclusion:
 
 By configuring Celery to use separate queues and dedicated workers for each MSP, you ensure that tasks are processed independently. This prevents slow responses from one MSP from affecting the overall system performance and allows faster MSPs to operate efficiently without unnecessary delays.
@@ -43,16 +45,26 @@ By configuring Celery to use separate queues and dedicated workers for each MSP,
 - Timeouts and Retries: Implement timeouts and retry mechanisms for tasks communicating with slow MSPs to handle potential failures gracefully.
 - Load Balancing: If possible, distribute tasks evenly and consider scaling your worker processes based on the load and response times of each MSP.
 
+-----------
+
 ### Problem with maintaining a thousand queues
 
-The problem with maintaining a thousand queues is that it can lead to increased complexity and resource consumption. Each queue requires resources to manage and process tasks, and having a large number of queues can strain the system and make it harder to maintain and scale.
+The problem with maintaining a thousand queues is that it can lead to increased complexity and resource consumption. 
+Each queue requires resources to manage and process tasks, and having a large number of queues can strain the system 
+and make it harder to maintain and scale. Monitoring individual workers to make sure all MSPs
+have at least one worker available can be challenging.
 
 ### Solution:
 
-One solution is to use a single queue with multiple workers and implement a load balancing mechanism to distribute tasks evenly among the workers. This approach can help reduce complexity and resource consumption while ensuring that tasks are processed efficiently.
-We could limit the number of concurrent tasks per MSP to prevent one MSP from monopolizing the resources and slowing down the system.
-Also, we could analyse the performance of each MSP and adjust the number of workers and resources allocated to each queue accordingly.
-This may be too complex to implement and maintain, but it could be a more scalable and efficient solution in the long run when we have thousands of MSPs.
+One solution is to use a single queue with multiple workers and implement a load balancing mechanism to distribute
+tasks evenly among the workers. This approach can help reduce complexity and resource consumption while ensuring that
+tasks are processed efficiently.
+We could limit the number of concurrent tasks per MSP to prevent one MSP from monopolizing the resources and slowing
+down the system.
+Also, we could analyse the performance of each MSP and adjust the number of workers and resources allocated to each
+queue accordingly.
+This may be too complex to implement and maintain, but it could be a more scalable and efficient solution in the long
+run when we have thousands of MSPs.
 
 Please take a look at possible_concurrency_solution.py.
 

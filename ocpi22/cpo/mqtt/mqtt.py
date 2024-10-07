@@ -34,7 +34,8 @@ def on_message(client, userdata, msg):
     # print(f"Received message on topic {msg.topic}: {msg.payload.decode()}")
     try:
         meter_values = MeterValues.parse_raw(msg.payload.decode())
-        process_meter_values(**meter_values.model_dump())
+        process_meter_values(**meter_values.model_dump())  # Switch to the below call after setting up celery
+        # process_meter_values.apply_async(kwargs=meter_values.model_dump(), expires=35)
     except ValidationError as e:
         print(f"Failed to parse message: {e}")
 

@@ -82,12 +82,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         max_length=64, blank=True, default="", verbose_name=_("Token A")
     )
 
-    # Our credentials token used for the actual communication
+    # Our credentials token used for the actual communication, "TOKEN_B" in the OCPI specification
     ours = models.CharField(
         max_length=64, blank=True, default="", verbose_name=_("Our token")
     )
 
-    # The other party's credentials token used for the actual communication
+    # The other party's credentials token used for the actual communication, "TOKEN_C" in the OCPI specification
     theirs = models.CharField(
         max_length=64, blank=True, default="", verbose_name=_("Their token")
     )

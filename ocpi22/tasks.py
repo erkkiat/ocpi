@@ -161,12 +161,15 @@ def send_ocpi_request(
                 f"Sending {method.upper()} {title} request to {url}, "
                 f"response {result.status_code} (time {result.elapsed})"
             )
-        if credentials_id:
-            from ocpi22.models.credentials import Credentials
 
-            credentials = Credentials.get_if_exists(pk=credentials_id)
-            if credentials:
-                credentials.update_last_connection()
+        # Todo: This needs to be done some other way than starting the Django logic
+        #       We want to refresh the last connection time, but only if the request was successful
+        # if credentials_id:
+        #     from ocpi22.models.credentials import Credentials
+        #
+        #     credentials = Credentials.get_if_exists(pk=credentials_id)
+        #     if credentials:
+        #         credentials.update_last_connection()
 
         # # Log the response to Sentry
         # if hasattr(result, 'data') and result.data:
@@ -189,12 +192,14 @@ def send_ocpi_request(
         logging.error(
             f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}: {e}"
         )
-        from ocpi22.models.credentials import Credentials
 
-        if credentials_id:
-            Credentials.objects.filter(
-                pk=credentials_id, connection_status=choices.CONNECTED
-            ).update(connection_status=choices.OFFLINE)
+        # Todo: This also needs to be done some other way than starting the Django logic
+        # from ocpi22.models.credentials import Credentials
+        #
+        # if credentials_id:
+        #     Credentials.objects.filter(
+        #         pk=credentials_id, connection_status=choices.CONNECTED
+        #     ).update(connection_status=choices.OFFLINE)
         capture_exception(e)
         return None
 

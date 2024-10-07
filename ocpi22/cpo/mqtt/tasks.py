@@ -3,26 +3,27 @@ from datetime import datetime
 from typing import Optional
 
 from cachetools import cached, TTLCache
-import pytz
 from celery import shared_task, Celery
+from django.conf import settings
 
 from ocpi22 import logging
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo.mqtt.schemas import CachedSession
 from ocpi22.routing import Route
-from ocpiconnector.party import Party
-from util import OCPIVersion
+from ocpi22.tasks import send_ocpi_request
+from ocpiconnector.ocpi_identities import get_our_party
+from util import RedisStore
 
+
+# Todo: The tasks should be independent of Django, so we can run them in a separate process
 
 class CeleryConfig:
     broker_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    # result_backend = "redis://localhost:6379/0"
+    result_backend = broker_url
     task_serializer = "orjson"
     accept_content = ["json"]
     result_expires = 1
     worker_concurrency = 4
-
-    # Todo: @Aurora Should we have one celery thread per partner? Then the slower ones would not block the faster ones
     task_time_limit = 15
     task_soft_time_limit = 10
 
@@ -30,15 +31,12 @@ class CeleryConfig:
 app = Celery('mqtt_tasks')
 app.config_from_object(CeleryConfig)
 
+session_cache = RedisStore(namespace="sessioncache")
+
 
 def get_cached_session(session_id) -> CachedSession:
     # Todo: Implement session caching in start_session
-    route = Route(to=Party("BE", "SMP"), identifier=OcpiModuleEnum.SESSIONS, token_base64="1234567890",
-                  url="http://localhost:8002/ocpi/cpo/2.2/sessions/1234567890",
-                  credentials_id=1, alive=True, direct=True, version=OCPIVersion("221"))
-    return CachedSession(session_id=session_id,
-                         kwh=10, timestamp=datetime.now(pytz.utc),
-                         route_to_msp=route)
+    return session_cache.retrieve(session_id)
 
 
 @cached(cache=TTLCache(maxsize=0, ttl=4*60*60))
@@ -62,5 +60,27 @@ def process_meter_values(session_id, internal_reference, kwh, soc, power, timest
         logging.error(f"Route not found for session {session_id}")
         return
     # print(f"{route=}, {session_id=}, {timestamp=}, {meter_values=}")
-    print(f"{kwh=}")
-    # We may or may not have time to update the session on Redis or SQL, let's do some perfomance testing first
+    print(f"{kwh=} {route=}")
+    data = dict(
+        kwh=kwh,
+        last_updated=timestamp,
+        total_cost=123,  # Todo: Calculate the cost
+        # charging_periods=...,  # Needed for power and soc
+    )
+
+    our_party = get_our_party(role=OcpiRolesEnum.CPO)
+
+    # Todo: Should we send the request async and update the session to the database while we wait?
+    #   We need it if the MSP tries to pull the full session objects
+
+    # send_ocpi_request.delay(data, url=route.url, token_base64=route.token_base64,
+    send_ocpi_request(data, url=route.url, token_base64=route.token_base64,
+                      to_country_code=route.to.country_code, to_party_id=route.to.party_id,
+                      from_country_code=our_party.party_id, from_party_id=our_party.party_id,
+                      credentials_id=route.credentials_id,
+                      method='patch')
+
+    # To write Django model instances to the database asynchronously, you can leverage
+    # the asynchronous capabilities introduced in Django 4.1 and later versions.
+    # Django’s ORM now provides asynchronous methods like acreate(), asave(), and aupdate()
+    # for performing database operations without blocking the event loop.
