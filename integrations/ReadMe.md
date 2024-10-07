@@ -9,10 +9,12 @@ This is useful when we get information about Location from either formats.
 ```mermaid
 
 graph TD
-    A[OCPI] --> B[OCPI to Hubject Converter]
+    A[Smappee OCPI Location] -->|Put request| B[SolidRoam]
     B --> C[Hubject]
-    C --> D[Hubject to OCPI Converter]
+    C --> D[Hubject to <h1 style='color: red'> OCPI </h1> Converter]
     D --> E[OCPI]
+    E --> db[(Location)]
+    
     
 ```
 

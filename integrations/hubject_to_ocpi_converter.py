@@ -14,59 +14,58 @@ from integrations.hubject.schemas import (
     OperatorID,
 )
 from ocpi22.choices import OCPICapabilityEnum
-from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Location, Evse, Connector
 from datetime import datetime
 
-from ocpi22.util import calculate_partition, get_time_zone
+from ocpi22.util import calculate_partition
 
 import pytz
 
 
-class OCPItoOICPConverter:
+class HubjectToOCPIConverter:
     def __init__(self, oicp_version: str, ocpi_version: str):
         self.oicp_version = oicp_version
         self.ocpi_version = ocpi_version
 
-    def __convert_to_connectors(self, evse: EvseDataRecord) -> List[Connector]:
-        hubject_connectors = evse.CHARGING_FACILITIES
+    def __convert_to_connectors(
+        self, evse_data_record: EvseDataRecord, ocpi_evse: Evse
+    ) -> List[Connector]:
+        hubject_connectors = evse_data_record.ChargingFacilities
         ocpi_connectors = []
         for c in hubject_connectors:
             ocpi_connectors.append(
                 Connector(
                     # uid=evse.EvseID,
-                    evse=evse,
-                    standard=evse.Plugs[0].value,
+                    evse=ocpi_evse,
+                    # standard=,
                     # format=,
-                    # tariff_ids=[],
+                    # tariff_ids=,
                     power_type=c.PowerType.value,
                     max_voltage=c.Voltage,
                     max_amperage=c.Amperage,
                     max_electric_power=c.Power,
                     # terms_and_conditions="",
-                    last_updated=evse.lastUpdate,
-                    created=evse.lastUpdate,
-                    updated=evse.lastUpdate,
+                    last_updated=evse_data_record.lastUpdate,
                 )
             )
 
         return ocpi_connectors
 
     def __convert_to_evse(self, evse: EvseDataRecord) -> Evse:
-        return Evse(
+        ocpi_evse = Evse(
             # uid=,
-            evse_id=evse.EvseID,
+            evse_id=evse.EvseID.root,
             # status=
             last_updated=evse.lastUpdate,
-            # updated=
-            # created=
             capabilities=self.get_capabilities(
                 evse.AuthenticationModes, evse.ValueAddedServices, evse.PaymentOptions
             ),
-            connectors=self.__convert_to_connectors(evse),
+            # connectors=self.__convert_to_connectors(evse),
         )
+        ocpi_evse.connectors.set(self.__convert_to_connectors(evse, ocpi_evse))
+        return ocpi_evse
 
-    def convert_eroaming_to_locations(
+    def convert_to_locations(
         self, eroaming_data: ERoamingPushEvseData
     ) -> List[Location]:
         operator_evse_data = eroaming_data.OperatorEvseData
@@ -89,21 +88,21 @@ class OCPItoOICPConverter:
                     if evse_data_record.ChargingStationNames
                     else "",
                     address=self.get_address(evse_data_record.Address),
-                    city=evse_data_record.Address.city,
-                    postal_code=evse_data_record.Address.postal_code,
-                    state=evse_data_record.Address.state,
-                    country=evse_data_record.Address.country,
-                    latitude=evse_data_record.GeoCoordinates.latitude,
-                    longitude=evse_data_record.GeoCoordinates.longitude,
+                    city=evse_data_record.Address.City,
+                    postal_code=evse_data_record.Address.PostalCode,
+                    state=evse_data_record.Address.Region,
+                    country=evse_data_record.Address.Country,
+                    latitude=evse_data_record.GeoCoordinates.DecimalDegree.Latitude,
+                    longitude=evse_data_record.GeoCoordinates.DecimalDegree.Longitude,
                     lat_partition=calculate_partition(
-                        evse_data_record.GeoCoordinates.latitude
+                        evse_data_record.GeoCoordinates.DecimalDegree.Latitude
                     ),
                     long_partition=calculate_partition(
-                        evse_data_record.GeoCoordinates.longitude
+                        evse_data_record.GeoCoordinates.DecimalDegree.Longitude
                     ),
                     # todo OICP has a boolean for parking_type
                     # parking_type=
-                    time_zone=get_time_zone(evse_data_record.TimeZone),
+                    time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
                     last_updated=datetime.now(pytz.utc),
                     updated=datetime.now(pytz.utc),
                     created=datetime.now(pytz.utc),
@@ -113,9 +112,9 @@ class OCPItoOICPConverter:
                     # todo: Ask from hubject
                     # operator=,
                     # suboperator=,
-                    owner=BusinessDetails.objects.get_or_create(
-                        name=operator_evse_data.OperatorName
-                    ),
+                    # owner=BusinessDetails.objects.get_or_create(
+                    #     name=operator_evse_data.OperatorName
+                    # ),
                     evses=[
                         self.__convert_to_evse(evse)
                         for evse in locations_evse_map[location_hash_key]
@@ -130,13 +129,13 @@ class OCPItoOICPConverter:
     def get_location_evse_map(self, evses: List[EvseDataRecord]) -> dict:
         location_map = defaultdict(list)
         for evse in evses:
-            address = f"{evse.address.street}{evse.address.city}{evse.address.postal_code}{evse.address.state}{evse.address.country}"
+            address = f"{evse.Address.Street}{evse.Address.City}{evse.Address.PostalCode}{evse.Address.Region}{evse.Address.Country}"
             location_map[hash(address)].append(evse)
         return location_map
 
     def get_timezone(self, utc_offset: str):
         """
-        >>> oicp_to_ocpi = OCPItoOICPConverter()
+        >>> oicp_to_ocpi = HubjectToOCPIConverter()
         >>> oicp_to_ocpi.get_timezone('UTC+03:00')
         'Europe/Helsinki'
         >>> oicp_to_ocpi.get_timezone('UTC+05:30')
