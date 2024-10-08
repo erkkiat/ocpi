@@ -36,10 +36,7 @@ def load_tests(_loader, tests, _ignore):
 
 class TestMappings(TestCase):
     def setUp(self):
-        self.ocpi_2_oicp_converter = OCPIToHubjectConverter(
-            oicp_version="2.2.1",
-            ocpi_version="2.3",
-        )
+        self.ocpi_2_oicp_converter = OCPIToHubjectConverter()
 
     def test_map_connector_std_choices_to_plug_unknown(self):
         with self.assertRaises(ValidationError):
@@ -96,6 +93,12 @@ class TestMappings(TestCase):
         self.assertEqual(
             self.ocpi_2_oicp_converter.get_authentication_modes_list(capabilities),
             authentication_modes,
+        )
+
+    def test_accessibility_locations_when_parking_type_none(self):
+        self.assertEqual(
+            self.ocpi_2_oicp_converter.get_accessibility_locations(None),
+            None,
         )
 
     def test_map_location_to_eroaming_push_evse_data(self):
