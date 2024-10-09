@@ -1,7 +1,7 @@
 import functools
 import re
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
 import pytz
 from django.conf import settings
@@ -173,14 +173,13 @@ class OCPIToHubjectConverter:
             raise ValidationError(f"'{connector_std}' is not a known connector type.")
         return plug
 
-    def get_distinct_plugs(self, connectors: List[Connector]) -> List[Plug]:
+    def get_distinct_plugs(self, connectors: list[Connector]) -> set[Plug]:
         """
         This function collects only the distinct plugs from the given list of OCPI 2.2.1 Connectors.
         @param connectors: List of OCPI 2.2.1 Connectors
-        @return: List of corresponding Plug enums
+        @return: Set of corresponding Plug enums
         """
-        plugs = {self.get_plug(connector.standard) for connector in connectors}
-        return list(plugs)
+        return {self.get_plug(connector.standard) for connector in connectors}
 
     def get_power_type(self, power_type_choice_221: str) -> PowerType:
         """
@@ -209,8 +208,8 @@ class OCPIToHubjectConverter:
         return power_type
 
     def get_charging_facilities(
-        self, connectors: List[Connector]
-    ) -> List[ChargingFacility]:
+        self, connectors: list[Connector]
+    ) -> list[ChargingFacility]:
         return [
             ChargingFacility(
                 PowerType=self.get_power_type(connector.power_type),
@@ -290,7 +289,7 @@ class OCPIToHubjectConverter:
 
     def get_authentication_modes_list(
         self,
-        capabilities: List[OCPICapabilityEnum],
+        capabilities: list[OCPICapabilityEnum],
     ) -> list[AuthenticationMode]:
         """
         >>> oicp_converter = OCPIToHubjectConverter()
@@ -331,7 +330,7 @@ class OCPIToHubjectConverter:
 
     def get_value_added_services_list(
         self,
-        capabilities: List[OCPICapabilityEnum],
+        capabilities: list[OCPICapabilityEnum],
     ) -> list[ValueAddedService]:
         """
         >>> oicp_converter = OCPIToHubjectConverter()
@@ -396,7 +395,7 @@ class OCPIToHubjectConverter:
 
     def get_payment_options(
         self,
-        capabilities: List[OCPICapabilityEnum],
+        capabilities: list[OCPICapabilityEnum],
     ) -> list[PaymentOption]:
         """
         >>> oicp_converter = OCPIToHubjectConverter()
