@@ -132,10 +132,8 @@ class OCPIToHubjectConverter:
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
-            # todo : IsHubjectCompatible missing in ocpi22, used a default value True
-            IsHubjectCompatible=True,
-            # todo : DynamicInfoAvailable missing in ocpi22, required, Default to True
-            DynamicInfoAvailable=DynamicInfoAvailable.true,
+            IsHubjectCompatible=DynamicInfoAvailable.true,
+            DynamicInfoAvailable=DynamicInfoAvailable.auto,
         )
 
     def get_plug(self, connector_std: str) -> Plug:
