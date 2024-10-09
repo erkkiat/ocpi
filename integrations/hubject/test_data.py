@@ -57,7 +57,7 @@ class ERoamingPushTestData:
                         {"lang": "en", "value": "Helsinki Supercharger"}
                     ],
                     "ClearinghouseID": None,
-                    "DynamicInfoAvailable": DynamicInfoAvailable.true,
+                    "DynamicInfoAvailable": DynamicInfoAvailable.auto,
                     "DynamicPowerLevel": None,
                     "EnergySource": None,
                     "EnvironmentalImpact": None,
