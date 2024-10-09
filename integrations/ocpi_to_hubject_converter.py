@@ -132,7 +132,7 @@ class OCPIToHubjectConverter:
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
-            IsHubjectCompatible=DynamicInfoAvailable.true,
+            IsHubjectCompatible=True,
             DynamicInfoAvailable=DynamicInfoAvailable.auto,
         )
 
