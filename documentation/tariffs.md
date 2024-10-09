@@ -8,22 +8,28 @@ We receive the data through our Roaming API, which is the main entry point for a
 
 ## Goal Architecture
 
-To reach this, we need conversion from QuickTariff to both OCPI and OICP. See [ST-33](https://solidroam.agilemaximum.com/item/33/refine/).
+To reach this, we need conversion from QuickTariff to both OCPI and OICP. OCPI conversion already exists. 
+See [ST-33](https://solidroam.agilemaximum.com/item/33/refine/) for Hubject OICP conversion.
 
 ```mermaid
 graph TD
     CPO(CPO customer) -- QuickTariff --> API(Roaming API)
-    API -- QuickTariff --> DB[(Persisted <br/> Database)]
-    API -- OCPI Tariff --> CACHE[(Cache)]
-    API -- Hubject OICP <br/> PricingProductData --> CACHE
+    API -- QuickTariff --> DB[(Database)]
+    DB -- QuickTariff --> F1(OCPI Converter)
+    DB -- QuickTariff --> F2(OICP Converter <br/> ST-33)
+    F1 -- OCPI Tariff --> CACHE[(Fast <br/> Cache)]
+    F2 -- Hubject OICP <br/> PricingProductData --> CACHE
     CACHE -- OCPI Tariff --> G(Gireve)
     CACHE -- PricingProductData --> H(Hubject)
     
     style CPO fill:green,stroke:darkgreen,stroke-width:2px
     style G fill:slateblue,stroke:blue,stroke-width:2px,color:black
     style H fill:slateblue,stroke:blue,stroke-width:2px,color:black
+    style F2 fill:white,stroke:black,stroke-width:2px,color:black
 
 ```
+
+Redis may be expensive to be used as a fast cache here, but we may not have a choice.
 
 You can see below that OCPI and OICP have different ways of structuring tariffs.
 To be able to cater to future needs, we need to store the data in its original form, as we receive it from the CPO.
