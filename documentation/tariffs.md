@@ -2,8 +2,30 @@
 
 ## CPO API
 
-The QuickTariff endpoint allows the CPO to provide us with pricing information, which we reformat and restructure for
-the roaming networks. You can see below that OCPI and OICP have different ways of structuring tariffs.
+The QuickTariff object and endpoint allows the CPO to provide us with pricing information, 
+which we reformat and restructure for the roaming networks. 
+We receive the data through our Roaming API, which is the main entry point for all data from our customer.
+
+## Goal Architecture
+
+To reach this, we need conversion from QuickTariff to both OCPI and OICP. See [ST-33](https://solidroam.agilemaximum.com/item/33/refine/).
+
+```mermaid
+graph TD
+    CPO(CPO customer) -- QuickTariff --> API(Roaming API)
+    API -- QuickTariff --> DB[(Persisted <br/> Database)]
+    API -- OCPI Tariff --> CACHE[(Cache)]
+    API -- Hubject OICP <br/> PricingProductData --> CACHE
+    CACHE -- OCPI Tariff --> G(Gireve)
+    CACHE -- PricingProductData --> H(Hubject)
+    
+    style CPO fill:green,stroke:darkgreen,stroke-width:2px
+    style G fill:slateblue,stroke:blue,stroke-width:2px,color:black
+    style H fill:slateblue,stroke:blue,stroke-width:2px,color:black
+
+```
+
+You can see below that OCPI and OICP have different ways of structuring tariffs.
 To be able to cater to future needs, we need to store the data in its original form, as we receive it from the CPO.
 
 ### CPO API QuickTariff structure
