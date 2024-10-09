@@ -1,8 +1,9 @@
+import uuid
 from collections import defaultdict
 from typing import List
 
 from django.core.exceptions import ValidationError
-from pydantic import UUID4
+from icecream import ic
 
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
@@ -14,6 +15,7 @@ from integrations.hubject.schemas import (
     OperatorID,
 )
 from ocpi22.choices import OCPICapabilityEnum
+from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Location, Evse, Connector
 from datetime import datetime
 
@@ -33,36 +35,36 @@ class HubjectToOCPIConverter:
         hubject_connectors = evse_data_record.ChargingFacilities
         ocpi_connectors = []
         for c in hubject_connectors:
-            ocpi_connectors.append(
-                Connector(
-                    # uid=evse.EvseID,
-                    evse=ocpi_evse,
-                    # standard=,
-                    # format=,
-                    # tariff_ids=,
-                    power_type=c.PowerType.value,
-                    max_voltage=c.Voltage,
-                    max_amperage=c.Amperage,
-                    max_electric_power=c.Power,
-                    # terms_and_conditions="",
-                    last_updated=evse_data_record.lastUpdate,
-                )
+            new_connector = Connector(
+                # uid=uuid.uuid4(),
+                evse=ocpi_evse,
+                # standard=,
+                # format=,
+                # tariff_ids=,
+                power_type=c.PowerType.value,
+                max_voltage=c.Voltage,
+                max_amperage=c.Amperage,
+                max_electric_power=c.Power,
+                # terms_and_conditions="",
+                last_updated=evse_data_record.lastUpdate,
             )
+            ocpi_connectors.append(new_connector)
 
         return ocpi_connectors
 
-    def __convert_to_evse(self, evse: EvseDataRecord) -> Evse:
+    def __convert_to_evse(self, evse: EvseDataRecord, location: Location) -> Evse:
         ocpi_evse = Evse(
-            # uid=,
             evse_id=evse.EvseID.root,
             # status=
             last_updated=evse.lastUpdate,
             capabilities=self.get_capabilities(
                 evse.AuthenticationModes, evse.ValueAddedServices, evse.PaymentOptions
             ),
+            location=location,
             # connectors=self.__convert_to_connectors(evse),
         )
-        ocpi_evse.connectors.set(self.__convert_to_connectors(evse, ocpi_evse))
+        ocpi_saved = ocpi_evse.save()
+        ocpi_evse.connectors.set(self.__convert_to_connectors(evse, ocpi_saved))
         return ocpi_evse
 
     def convert_to_locations(
@@ -74,53 +76,62 @@ class HubjectToOCPIConverter:
         )
         locations = []
 
+        ic()
         for location_hash_key in locations_evse_map.keys():
             # If the evses are in the same location, data related to the location will be the same
             evse_data_record = locations_evse_map[location_hash_key][0]
-            locations.append(
-                Location(
-                    # todo: Add an identifier for hubject
-                    # ocpi_master=,
-                    uid=UUID4,
-                    # todo: OICP cannot be converted to publish field directly
-                    # publish=,
-                    name=evse_data_record.ChargingStationNames[0].value
-                    if evse_data_record.ChargingStationNames
-                    else "",
-                    address=self.get_address(evse_data_record.Address),
-                    city=evse_data_record.Address.City,
-                    postal_code=evse_data_record.Address.PostalCode,
-                    state=evse_data_record.Address.Region,
-                    country=evse_data_record.Address.Country,
-                    latitude=evse_data_record.GeoCoordinates.DecimalDegree.Latitude,
-                    longitude=evse_data_record.GeoCoordinates.DecimalDegree.Longitude,
-                    lat_partition=calculate_partition(
-                        evse_data_record.GeoCoordinates.DecimalDegree.Latitude
-                    ),
-                    long_partition=calculate_partition(
-                        evse_data_record.GeoCoordinates.DecimalDegree.Longitude
-                    ),
-                    # todo OICP has a boolean for parking_type
-                    # parking_type=
-                    time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
-                    last_updated=datetime.now(pytz.utc),
-                    updated=datetime.now(pytz.utc),
-                    created=datetime.now(pytz.utc),
-                    # todo : OICP cannot be directly converted to facilities
-                    # facilities=
-                    charging_when_closed=evse_data_record.IsOpen24Hours,
-                    # todo: Ask from hubject
-                    # operator=,
-                    # suboperator=,
-                    # owner=BusinessDetails.objects.get_or_create(
-                    #     name=operator_evse_data.OperatorName
-                    # ),
-                    evses=[
-                        self.__convert_to_evse(evse)
-                        for evse in locations_evse_map[location_hash_key]
-                    ],
-                )
+            ic(evse_data_record, location_hash_key)
+            owner, _ = BusinessDetails.objects.get_or_create(
+                name=operator_evse_data.OperatorName
             )
+            location = Location(
+                # todo: Add an identifier for hubject
+                # ocpi_master=,
+                uid=uuid.uuid4(),
+                # todo: OICP cannot be converted to publish field directly
+                # publish=,
+                name=evse_data_record.ChargingStationNames[0].value
+                if evse_data_record.ChargingStationNames
+                else "",
+                address=self.get_address(evse_data_record.Address),
+                city=evse_data_record.Address.City,
+                postal_code=evse_data_record.Address.PostalCode,
+                state=evse_data_record.Address.Region,
+                country=evse_data_record.Address.Country,
+                time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
+                latitude=evse_data_record.GeoCoordinates.DecimalDegree.Latitude,
+                longitude=evse_data_record.GeoCoordinates.DecimalDegree.Longitude,
+                lat_partition=calculate_partition(
+                    evse_data_record.GeoCoordinates.DecimalDegree.Latitude
+                ),
+                long_partition=calculate_partition(
+                    evse_data_record.GeoCoordinates.DecimalDegree.Longitude
+                ),
+                # todo OICP has a boolean for parking_type
+                # parking_type=
+                last_updated=datetime.now(pytz.utc),
+                updated=datetime.now(pytz.utc),
+                created=datetime.now(pytz.utc),
+                # todo : OICP cannot be directly converted to facilities
+                # facilities=
+                charging_when_closed=evse_data_record.IsOpen24Hours,
+                # todo: Ask from hubject
+                # operator=,
+                # suboperator=,
+                owner=owner,
+                # evses=[
+                #     self.__convert_to_evse(evse)
+                #     for evse in locations_evse_map[location_hash_key]
+                # ],
+            )
+            location_saved = location.save()
+            evses = [
+                self.__convert_to_evse(evse)
+                for evse in locations_evse_map[location_hash_key]
+            ]
+            location.evses.set(evses)
+            locations.append(location_saved)
+        ic()
 
         return locations
 
@@ -161,9 +172,7 @@ class HubjectToOCPIConverter:
                 raise ValidationError(f"Unknown UTC offset: {utc_offset}")
 
     def get_address(self, address: Address) -> str:
-        # todo finalize address format
-        # return f"{address.street}, {address.city}, {address.postal_code}, {address.state}, {address.country}"
-        ...
+        return f"{address.Street}, {address.HouseNum}"
 
     def get_operator(self, operator: OperatorID): ...
 

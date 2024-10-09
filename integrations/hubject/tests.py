@@ -232,6 +232,8 @@ class TestMappings(TestCase):
                 Street="Alexanderplatz",
                 PostalCode="10178",
                 HouseNum="1",
+                Region="Berlin",
+                TimeZone="UTC+02:00",
             ),
             GeoCoordinates=GeoCoordinates(
                 Google=Google(

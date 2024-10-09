@@ -203,9 +203,9 @@ class ChargingFacilityFactory(factory.Factory):
         elements=[PowerType.AC_1_PHASE, PowerType.DC, PowerType.AC_3_PHASE],
     )
     Voltage = factory.Faker("random_int", min=0, max=999)
-    Amperage = factory.Faker("random_int", min=0, max=999)
+    Amperage = factory.Faker("random_int", min=0, max=99)
     Power = factory.Faker("random_int", min=0, max=999)
-    ChargingMode = ChargingMode.Mode_1
+    ChargingMode = [ChargingMode.Mode_1]
 
 
 class EvseDataRecordFactory(factory.Factory):
