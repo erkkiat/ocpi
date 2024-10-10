@@ -15,17 +15,16 @@ See [ST-33](https://solidroam.agilemaximum.com/item/33/refine/) for Hubject OICP
 graph TD
     CPO(CPO customer) -- QuickTariff --> API(Roaming API)
     API -- QuickTariff --> DB[(Database)]
-    DB -- QuickTariff --> F1(OCPI Converter)
-    DB -- QuickTariff --> F2(OICP Converter <br/> ST-33)
+    DB -- QuickTariff --> F1(Generic <br/> OCPI Converter)
+    DB -- QuickTariff --> F2(Hubject <br/> OICP Converter)
     F1 -- OCPI Tariff --> CACHE[(Fast <br/> Cache)]
     F2 -- Hubject OICP <br/> PricingProductData --> CACHE
     CACHE -- OCPI Tariff --> G(Gireve)
     CACHE -- PricingProductData --> H(Hubject)
-    
+
     style CPO fill:green,stroke:darkgreen,stroke-width:2px
     style G fill:slateblue,stroke:blue,stroke-width:2px,color:black
     style H fill:slateblue,stroke:blue,stroke-width:2px,color:black
-    style F2 fill:white,stroke:black,stroke-width:2px,color:black
 
 ```
 
@@ -42,7 +41,7 @@ From this simple structure we form the OCPI and OICP pricing structures.
 
 ```mermaid
 erDiagram
-    Tariff {
+    QuickTariff {
         String id PK
         String currency FK
         Decimal price_per_kwh
@@ -55,7 +54,7 @@ erDiagram
         String display_name
     }
 
-    Tariff }o--|| Currency : "uses"
+    QuickTariff }o--|| Currency : "uses"
 ```
 
 ## OCPI Tariffs
