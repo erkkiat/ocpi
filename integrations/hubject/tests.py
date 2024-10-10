@@ -2,6 +2,8 @@ from django.test import TestCase
 from django.utils.datetime_safe import datetime
 from django.core.exceptions import ValidationError
 
+from integrations.ocpi_to_hubject_converter import OCPIToHubjectConverter
+
 from integrations.hubject.test_data import ERoamingPushTestData
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -11,14 +13,6 @@ from ocpi22.tests.factories import (
     ConnectorFactory,
 )
 
-from integrations.hubject.mappings import (
-    map_connector_to_plug,
-    get_distinct_plugs,
-    map_power_type_choices_221_to_power_type,
-    get_all_charging_facilities,
-    get_all_authentication_modes,
-    map_location_to_operator_evse_data,
-)
 from integrations.hubject.schemas import (
     Plug,
     PowerType,
@@ -36,18 +30,21 @@ import pytz
 
 
 def load_tests(_loader, tests, _ignore):
-    tests.addTests(doctest.DocTestSuite("integrations.hubject.mappings"))
+    tests.addTests(doctest.DocTestSuite("integrations.ocpi_to_hubject_converter"))
     return tests
 
 
 class TestMappings(TestCase):
+    def setUp(self):
+        self.ocpi_2_oicp_converter = OCPIToHubjectConverter()
+
     def test_map_connector_std_choices_to_plug_unknown(self):
         with self.assertRaises(ValidationError):
-            map_connector_to_plug("UNKNOWN_PLUG")
+            self.ocpi_2_oicp_converter.get_plug("UNKNOWN_PLUG")
 
     def test_get_distinct_plugs_from_connector_std_choices(self):
         connectors = [Connector(standard="CHADEMO"), Connector(standard="IEC_62196_T2")]
-        mapped_plugs = get_distinct_plugs(connectors)
+        mapped_plugs = self.ocpi_2_oicp_converter.get_distinct_plugs(connectors)
 
         self.assertTrue(
             Plug.CHAdeMO in mapped_plugs, "The CHAdeMO plug is not in the mapped plugs."
@@ -59,7 +56,7 @@ class TestMappings(TestCase):
 
     def test_map_power_type_choices_221_to_power_type_unknown(self):
         with self.assertRaises(ValidationError):
-            map_power_type_choices_221_to_power_type("UNKNOWN_POWER_TYPE")
+            self.ocpi_2_oicp_converter.get_power_type("UNKNOWN_POWER_TYPE")
 
     def test_get_all_charging_facilities_from_connectors(self):
         connectors = [
@@ -84,15 +81,24 @@ class TestMappings(TestCase):
                 PowerType=PowerType.DC, Voltage=401, Amperage=45, Power=50
             ),
         ]
-        self.assertEqual(get_all_charging_facilities(connectors), expected_facilities)
+        self.assertEqual(
+            self.ocpi_2_oicp_converter.get_charging_facilities(connectors),
+            expected_facilities,
+        )
 
     def test_get_all_authentication_modes_from_capabilities(self):
         capabilities = [OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.RESERVABLE]
 
         authentication_modes = [AuthenticationMode.NFC_RFID_Classic]
         self.assertEqual(
-            get_all_authentication_modes(capabilities),
+            self.ocpi_2_oicp_converter.get_authentication_modes_list(capabilities),
             authentication_modes,
+        )
+
+    def test_accessibility_locations_when_parking_type_none(self):
+        self.assertEqual(
+            self.ocpi_2_oicp_converter.get_accessibility_locations(None),
+            None,
         )
 
     def test_map_location_to_eroaming_push_evse_data(self):
@@ -163,7 +169,9 @@ class TestMappings(TestCase):
 
         helsinki_hubject_evse_data = ERoamingPushEvseData(
             ActionType=ActionType.insert,
-            OperatorEvseData=map_location_to_operator_evse_data(helsinki),
+            OperatorEvseData=self.ocpi_2_oicp_converter.convert_to_operator_evse_data(
+                helsinki
+            ),
         )
 
         # Remove automatically generated EVSE data
