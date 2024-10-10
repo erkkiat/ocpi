@@ -57,6 +57,9 @@ class OCPIToHubjectConverter:
     def _convert_to_evse_data_record(
         self, evse: Evse, location: Location
     ) -> EvseDataRecord:
+        street, house_number = self.get_address_components(
+            location.address, location.country
+        )
         return EvseDataRecord(
             # todo : deltaType missing in ocpi22
             deltaType=None,
@@ -75,9 +78,9 @@ class OCPIToHubjectConverter:
             Address=Address(
                 Country=location.country,
                 City=location.city,
-                Street=self.get_street(location.address, location.country),
+                Street=street,
                 PostalCode=location.postal_code,
-                HouseNum=self.get_house_number(location.address, location.country),
+                HouseNum=house_number,
                 # todo : Floor missing in ocpi22,
                 # todo : Region missing in ocpi22,
                 ParkingFacility=True if location.parking_type else False,
@@ -238,37 +241,21 @@ class OCPIToHubjectConverter:
 
         return dict(FRA=extract_french_address).get(country, extract_general_address)
 
-    def get_house_number(self, address: str, country: str) -> str:
+    def get_address_components(self, address: str, country: str) -> (str, str):
         """
         >>> oicp_converter = OCPIToHubjectConverter()
-        >>> oicp_converter.get_house_number("Weteringstraat 34-1", 'NLD')
-        '34-1'
-        >>> oicp_converter.get_house_number("23 Rue de Grenelle", 'FRA')
-        '23'
-        >>> oicp_converter.get_house_number("Weberstr. 2", 'DEU')
-        '2'
-        >>> oicp_converter.get_house_number("Kandintie 4E", 'FIN')
-        '4E'
+        >>> oicp_converter.get_address_components("Weteringstraat 34-1", 'NLD')
+        ('Weteringstraat', '34-1')
+        >>> oicp_converter.get_address_components("23 Rue de Grenelle", 'FRA')
+        ('Rue de Grenelle', '23')
+        >>> oicp_converter.get_address_components("Weberstr. 2", 'DEU')
+        ('Weberstr.', '2')
+        >>> oicp_converter.get_address_components("Kandintie 4E", 'FIN')
+        ('Kandintie', '4E')
         """
         extractor = self.get_address_extractor(country)
-        house_number, _ = extractor(address)
-        return house_number
-
-    def get_street(self, address: str, country: str) -> str:
-        """
-        >>> oicp_converter = OCPIToHubjectConverter()
-        >>> oicp_converter.get_street("Weteringstraat 34-1", 'NLD')
-        'Weteringstraat'
-        >>> oicp_converter.get_street("23 Rue de Grenelle", 'FRA')
-        'Rue de Grenelle'
-        >>> oicp_converter.get_street("Weberstr. 2", 'DEU')
-        'Weberstr.'
-        >>> oicp_converter.get_street("Kandintie 4E", 'FIN')
-        'Kandintie'
-        """
-        extractor = self.get_address_extractor(country)
-        _, street = extractor(address)
-        return street
+        house_number, street = extractor(address)
+        return street, house_number
 
     def get_authentication_mode(
         self,
