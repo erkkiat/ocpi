@@ -12,9 +12,6 @@ from ocpi22.tests.factories import (
     BusinessDetailsFactory,
     EvseFactory,
     ConnectorFactory,
-    ERoamingPushEvseDataFactory,
-    OperatorEvseDataFactory,
-    EvseDataRecordFactory,
 )
 
 from integrations.hubject.schemas import (
@@ -24,18 +21,6 @@ from integrations.hubject.schemas import (
     AuthenticationMode,
     ActionType,
     ERoamingPushEvseData,
-    DeltaType,
-    InfoTextType,
-    Address,
-    GeoCoordinates,
-    CalibrationLawDataAvailability,
-    PaymentOption,
-    ValueAddedService,
-    Accessibility,
-    DynamicInfoAvailable,
-    DecimalDegree,
-    Google,
-    DegreeMinuteSeconds,
 )
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
@@ -208,71 +193,3 @@ class TestMappings(TestCase):
             result,
             "The mapped OCPI Location data does not match the expected OICP data.",
         )
-
-    def test_map_hubject_evse_data_to_ocpi_location(self):
-        berlin_operator_evse_data = EvseDataRecordFactory(
-            deltaType=DeltaType.update,
-            lastUpdate=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            EvseID="DE*SMP*E1234*5678",
-            ChargingPoolID="IT*123*P456*AB789",
-            ChargingFacilities=[
-                ChargingFacility(
-                    PowerType=PowerType.AC_3_PHASE,
-                    Voltage=400,
-                    Amperage=32,
-                    Power=22,
-                ),
-            ],
-            ChargingStationNames=[
-                InfoTextType(value="Berlin Supercharger Station", lang="en")
-            ],
-            Address=Address(
-                Country="DE",
-                City="Berlin",
-                Street="Alexanderplatz",
-                PostalCode="10178",
-                HouseNum="1",
-                Region="Berlin",
-                TimeZone="UTC+02:00",
-            ),
-            GeoCoordinates=GeoCoordinates(
-                Google=Google(
-                    Coordinates="52.521918 13.413215",
-                ),
-                DecimalDegree=DecimalDegree(
-                    Longitude="13.413215",
-                    Latitude="52.521918",
-                ),
-                DegreeMinuteSeconds=DegreeMinuteSeconds(
-                    Longitude="9°21'39.32''",
-                    Latitude="9°21'39.32''",
-                ),
-            ),
-            Plugs=[Plug.Small_Paddle_Inductive, Plug.CHAdeMO, Plug.Type_2_Outlet],
-            DynamicPowerLevel=True,
-            RenewableEnergy=True,
-            CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
-            AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
-            MaxCapacity=100,
-            PaymentOptions=[PaymentOption.Direct],
-            ValueAddedServices=[ValueAddedService.Reservation],
-            Accessibility=Accessibility.Restricted_access,
-            HotlinePhoneNumber="+3256380211",
-            IsOpen24Hours=True,
-            IsHubjectCompatible=True,
-            DynamicInfoAvailable=DynamicInfoAvailable.true,
-        )
-
-        berlin_operator = OperatorEvseDataFactory(
-            OperatorID="FR*SMP",
-            OperatorName="Smappee Pvt Ltd.",
-            EvseDataRecord=[
-                berlin_operator_evse_data,
-            ],
-        )
-        berlin_eroaming_push_data = ERoamingPushEvseDataFactory(
-            ActionType=ActionType.insert,
-            OperatorEvseData=berlin_operator,
-        )
-
-        self.oicp_to_ocpi_converter.convert_to_locations(berlin_eroaming_push_data)

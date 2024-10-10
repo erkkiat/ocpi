@@ -3,7 +3,6 @@ from collections import defaultdict
 from typing import List
 
 from django.core.exceptions import ValidationError
-from icecream import ic
 
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
@@ -22,6 +21,7 @@ from datetime import datetime
 from ocpi22.util import calculate_partition
 
 import pytz
+import hashlib
 
 
 class HubjectToOCPIConverter:
@@ -30,23 +30,26 @@ class HubjectToOCPIConverter:
         self.ocpi_version = ocpi_version
 
     def __convert_to_connectors(
-        self, evse_data_record: EvseDataRecord, ocpi_evse: Evse
+        self, hubject_evse: EvseDataRecord, ocpi_evse: Evse
     ) -> List[Connector]:
-        hubject_connectors = evse_data_record.ChargingFacilities
+        hubject_connectors = hubject_evse.ChargingFacilities
         ocpi_connectors = []
         for c in hubject_connectors:
             new_connector = Connector(
-                # uid=uuid.uuid4(),
+                uid=uuid.uuid4(),
                 evse=ocpi_evse,
+                # todo - standard cannot be directly converted from hubject
                 # standard=,
+                # todo - format cannot be directly converted from hubject
                 # format=,
                 # tariff_ids=,
                 power_type=c.PowerType.value,
                 max_voltage=c.Voltage,
                 max_amperage=c.Amperage,
                 max_electric_power=c.Power,
+                # todo - terms_and_conditions cannot be directly converted from hubject
                 # terms_and_conditions="",
-                last_updated=evse_data_record.lastUpdate,
+                last_updated=hubject_evse.lastUpdate,
             )
             ocpi_connectors.append(new_connector)
 
@@ -55,16 +58,14 @@ class HubjectToOCPIConverter:
     def __convert_to_evse(self, evse: EvseDataRecord, location: Location) -> Evse:
         ocpi_evse = Evse(
             evse_id=evse.EvseID.root,
+            # todo status cannot be directly convert from hubject
             # status=
             last_updated=evse.lastUpdate,
             capabilities=self.get_capabilities(
                 evse.AuthenticationModes, evse.ValueAddedServices, evse.PaymentOptions
             ),
             location=location,
-            # connectors=self.__convert_to_connectors(evse),
         )
-        ocpi_saved = ocpi_evse.save()
-        ocpi_evse.connectors.set(self.__convert_to_connectors(evse, ocpi_saved))
         return ocpi_evse
 
     def convert_to_locations(
@@ -76,11 +77,9 @@ class HubjectToOCPIConverter:
         )
         locations = []
 
-        ic()
         for location_hash_key in locations_evse_map.keys():
             # If the evses are in the same location, data related to the location will be the same
             evse_data_record = locations_evse_map[location_hash_key][0]
-            ic(evse_data_record, location_hash_key)
             owner, _ = BusinessDetails.objects.get_or_create(
                 name=operator_evse_data.OperatorName
             )
@@ -110,38 +109,27 @@ class HubjectToOCPIConverter:
                 # todo OICP has a boolean for parking_type
                 # parking_type=
                 last_updated=datetime.now(pytz.utc),
-                updated=datetime.now(pytz.utc),
-                created=datetime.now(pytz.utc),
                 # todo : OICP cannot be directly converted to facilities
                 # facilities=
                 charging_when_closed=evse_data_record.IsOpen24Hours,
-                # todo: Ask from hubject
+                # todo: Ask from hubject about operator, suboperator
                 # operator=,
                 # suboperator=,
                 owner=owner,
-                # evses=[
-                #     self.__convert_to_evse(evse)
-                #     for evse in locations_evse_map[location_hash_key]
-                # ],
             )
-            location_saved = location.save()
-            evses = [
-                self.__convert_to_evse(evse)
-                for evse in locations_evse_map[location_hash_key]
-            ]
-            location.evses.set(evses)
-            locations.append(location_saved)
-        ic()
+            locations.append(location)
 
         return locations
-
-    def convert(self, ocpi_message: dict) -> dict: ...
 
     def get_location_evse_map(self, evses: List[EvseDataRecord]) -> dict:
         location_map = defaultdict(list)
         for evse in evses:
-            address = f"{evse.Address.Street}{evse.Address.City}{evse.Address.PostalCode}{evse.Address.Region}{evse.Address.Country}"
-            location_map[hash(address)].append(evse)
+            address_hash = hashlib.sha256(
+                f"{evse.Address.Street}{evse.Address.HouseNum}{evse.Address.PostalCode}{evse.Address.City}{evse.Address.Country}".encode(
+                    "utf-8"
+                )
+            ).hexdigest()
+            location_map[address_hash].append(evse)
         return location_map
 
     def get_timezone(self, utc_offset: str):
