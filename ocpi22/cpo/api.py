@@ -86,7 +86,8 @@ from ocpi22.logging import log_error
 from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
-from ocpiconnector.ocpi_identities import Party, get_our_party, get_our_credentialsrole
+from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
+from ocpiconnector.party import Party
 from premium import requires_premium
 
 pp = PrettyPrinter(indent=4).pprint

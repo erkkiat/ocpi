@@ -14,7 +14,8 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.tokens.util import get_token_id
-from ocpiconnector.ocpi_identities import Party, get_our_party
+from ocpiconnector.ocpi_identities import get_our_party
+from ocpiconnector.party import Party
 from util import with_trailing_slash
 
 from typing import TYPE_CHECKING

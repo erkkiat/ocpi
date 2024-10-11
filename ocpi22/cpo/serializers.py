@@ -27,7 +27,7 @@ from ocpi22.serializers.util import (
     CallbacksSerializer,
     UTCDateTimeField,
 )
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):

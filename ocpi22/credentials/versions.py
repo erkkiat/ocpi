@@ -103,11 +103,6 @@ def get_endpoints_dict(request=None, version=None) -> dict:
         result["endpoints"] += [
             # This is for authorize Token
             dict(
-                identifier="tokens",
-                role=R,
-                url=build_absolute_uri(reverse("token-list", args=[version])),
-            ),
-            dict(
                 identifier="locations",
                 role=R,
                 url=build_absolute_uri(reverse("location-list", args=[version])),

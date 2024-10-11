@@ -215,12 +215,14 @@ class RedisStore:
         redis_store.set(self._format_key(key), value, expiration or self.expiration)
 
     def __setitem__(self, key, value):
+        ic(key, value)
         self.store(key, value)
 
     def retrieve(self, key) -> Optional[Any]:
         value = ""
         try:
             key = self._format_key(key)
+            ic(key)
             value = redis_store.get(key)
             if not value:
                 raise KeyError(f"Key {key} not found in Redis")
@@ -261,9 +263,10 @@ redis_store = redis.from_url(settings.REDIS_URL, decode_responses=False)
 
 
 class DistributedCache(RedisStore):
-    def __init__(self, *args, exclude=None, **kwargs):
+    def __init__(self, *args, exclude=None, namespace=None, **kwargs):
         self.exclude = exclude
-        super().__init__(*args, namespace=settings.HOSTNAME_SHORT, **kwargs)
+        namespace = namespace or settings.HOSTNAME_SHORT
+        super().__init__(*args, namespace=namespace, **kwargs)
 
     @dataclass
     class CacheInfo:

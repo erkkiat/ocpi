@@ -26,7 +26,8 @@ from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
 from ocpi22.tokens.util import get_token_id
-from ocpiconnector.ocpi_identities import Party, get_our_credentialsrole
+from ocpiconnector.ocpi_identities import get_our_credentialsrole
+from ocpiconnector.party import Party
 
 
 def get_token(token_id, ad_hoc_token):

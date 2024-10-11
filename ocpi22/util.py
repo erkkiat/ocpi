@@ -31,6 +31,7 @@ from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 from urllib.parse import urljoin
 
+import generic.countries
 from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
 from ocpi22.ocpi.partners import get_partners
@@ -39,10 +40,10 @@ from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
-    Party,
     get_our_party,
     ocpi_platform,
 )
+from ocpiconnector.party import Party
 from util import format_url, RedisStore, redis_store, with_trailing_slash
 
 
@@ -740,7 +741,7 @@ class MultipleChoiceFieldList(serializers.MultipleChoiceField):
 class CountryCodeField(CiStringChoiceField):
     def __init__(self, *args, **kwargs):
         super().__init__(
-            choices=choices.COUNTRY_CHOICES, required=True, *args, **kwargs
+            choices=generic.countries.COUNTRY_CHOICES, required=True, *args, **kwargs
         )
 
 

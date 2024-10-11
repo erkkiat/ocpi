@@ -1,6 +1,6 @@
 import cachetools
 
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 
 
 @cachetools.cached(cache=cachetools.Cache(maxsize=1))

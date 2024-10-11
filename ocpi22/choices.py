@@ -3,7 +3,6 @@ from typing import Optional
 
 import cachetools
 import langcodes
-import pycountry
 import pytz
 from django.conf import settings
 from django.db import models
@@ -443,12 +442,6 @@ class OCPICapabilityEnum(models.TextChoices):
     TOKEN_GROUP_CAPABLE = "TOKEN_GROUP_CAPABLE", _lazy("Token groups")
     UNLOCK_CAPABLE = "UNLOCK_CAPABLE", _lazy("Remote connector unlock")
 
-
-COUNTRIES_ISO_3 = [(c.alpha_3.upper(), _(c.name)) for c in pycountry.countries]
-COUNTRIES_ISO_2 = [(c.alpha_2.upper(), _(c.name)) for c in pycountry.countries]
-COUNTRIES_ISO_2_SET = {c.alpha_2.upper() for c in pycountry.countries}
-
-COUNTRY_CHOICES = COUNTRIES_ISO_2
 
 LANGUAGES_ISO_2 = {
     iso2[:2].upper() for iso2, iso3 in langcodes.data_dicts.LANGUAGE_ALPHA3.items()

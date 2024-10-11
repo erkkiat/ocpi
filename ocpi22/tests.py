@@ -116,12 +116,11 @@ from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpiconnector.ocpi_identities import (
-    Party,
     get_our_party,
     create_credentialsrole,
     get_our_credentialsrole,
 )
-
+from ocpiconnector.party import Party
 
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
