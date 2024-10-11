@@ -3813,7 +3813,7 @@ class TestMspUserApi(TestCase):
             authorize_token_mock.return_value = TokenAuthorization(
                 allowed="ALLOWED",
                 info=MessageTexts.get("TOKEN_ACCEPTED"),
-                token=AdhocToken(True, party, self.token_uid, TokenType.AD_HOC_USER),
+                token=AdhocToken(True, party, self.token_uid, TokenType.AD_HOC_USER, credentials.roles.first()),
                 billed_to=str(party),
                 authorization_reference="1234567890",
                 auth_method=enum.AuthMethodChoices.AUTH_REQUEST,

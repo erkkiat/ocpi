@@ -259,10 +259,13 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                             f"MSP backend responded{serializer.data} for {token_uid} at location {location}."
                         )
                     else:
-                        allowed = "NOT_ALLOWED"
+                        allowed = AuthorizationEnum.NOT_ALLOWED
                         logging.error(
                             f"Format error in response from MSP backend: {serializer.errors}"
                         )
+                elif token.whitelist in (Token.ALWAYS, Token.ALLOWED, Token.ALLOWED_OFFLINE):
+                    allowed = AuthorizationEnum.ALLOWED
+                    info = MessageTexts.get(AuthorizationEnum.ALLOWED)
                 else:
                     if (
                         settings.REQUIRE_WALLET_BALANCE

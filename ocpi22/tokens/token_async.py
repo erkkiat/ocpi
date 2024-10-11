@@ -5,6 +5,8 @@ from urllib.parse import urljoin
 import aiohttp
 import asyncio
 
+from asgiref.sync import sync_to_async
+
 from ocpi22 import logging
 from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, AuthorizationEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
@@ -24,7 +26,7 @@ if TYPE_CHECKING:
     ...
 
 
-async def post_request(session, url, data, headers=None) -> (int, dict):
+async def post_request(session, url, data, ocpi_master, headers=None) -> (int, dict):
     headers = headers or {}
     headers.update({"Content-Type": "application/json", "Accept:": "application/json"})
     async with session.post(url, json=data, headers=headers) as response:
@@ -35,13 +37,15 @@ async def post_request(session, url, data, headers=None) -> (int, dict):
             logging.error(f"Cannot decode JSON response from url {url}")
             json_data = None
 
-        return status, json_data
+        return status, json_data, ocpi_master
 
 
 def process_task_result(successful_task):
     # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
     try:
-        status_code, json_data = successful_task.result()
+        status_code, json_data, ocpi_master = successful_task.result()
+        if status_code != 200:
+            return None
         if isinstance(json_data, dict):
             json_data = json_data.get("data")
             # If content is a Token authorize response, then break, otherwise continue
@@ -50,6 +54,7 @@ def process_task_result(successful_task):
                     f"Received authorization from {successful_task.get_name()}"
                 )
                 json_data["responding_party"] = successful_task.get_name()
+                json_data["ocpi_master"] = ocpi_master
                 return json_data
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
         # Handle the case where response is not JSON or cannot be decoded
@@ -82,10 +87,11 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
         tasks = [
             asyncio.create_task(
                 post_request(
-                    session,
-                    make_url(url, token_id),
-                    data,
-                    make_headers(
+                    session=session,
+                    url=make_url(url, token_id),
+                    data=data,
+                    ocpi_master=await sync_to_async(credentials.get_role)(Party(country_code, party_id)),
+                    headers=make_headers(
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
                 ),
@@ -102,14 +108,9 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
             for task in done:
                 try:
-                    status, data = task.result()
-                    # ic(task.get_name(), status, data)
-                    if status == 200:
-                        result = process_task_result(task)
-                        if result:
-                            break
-                    # else:
-                    #     print(f'Task {task.get_name()} failed with return code {status}')
+                    result = process_task_result(task)
+                    if result:
+                        break
                 except Exception as e:
                     logging.error(f"Task {task.get_name()} raised an exception: {e}")
 
@@ -146,7 +147,7 @@ def authorize_with_msps_sync(
     # Todo: Add info texts for TokenNotAuthorized
     TokenNotAuthorized = TokenAuthorization(
         allowed=AuthorizationEnum.NOT_ALLOWED,
-        token=AdhocToken(valid=False, type="", uid=token, billed_to=Party()),
+        token=AdhocToken(valid=False, type="", uid=token, billed_to=Party(), ocpi_master=None),
     )
 
     # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
@@ -176,7 +177,7 @@ def authorize_with_msps_sync(
                     responding_party=responding_party,
                     auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
                     billed_to=token.get("party", Party()),
-                    ocpi_master=...,
+                    ocpi_master=response.get("ocpi_master"),
                 )
             else:
                 logging.error(

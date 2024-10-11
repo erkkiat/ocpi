@@ -14,6 +14,7 @@ from rest_framework.generics import get_object_or_404
 from typing import TYPE_CHECKING
 
 from ocpi22.models import enum
+from ocpi22.ocpi.dataclasses import AdhocToken
 
 if TYPE_CHECKING:
     from ocpi22.models.credentials import CredentialsRole
@@ -30,13 +31,12 @@ from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
 
 
-def get_token(token_id, ad_hoc_token):
+def get_token(token_id, ad_hoc_token) -> Union[Token, AdhocToken]:
     assert token_id or ad_hoc_token
     if token_id:
         token = get_object_or_404(Token, uid=token_id)
         return token
-    CdrToken = namedtuple("CdrToken", ad_hoc_token)
-    return CdrToken(**ad_hoc_token)
+    return ad_hoc_token
 
 
 def get_session(
@@ -71,6 +71,7 @@ def create_session(
     reservation_id=None,
     authorization_method=None,
     currency=None,
+    ocpi_master=None,
     *_args,
     **kwargs,
 ) -> Session:
@@ -79,12 +80,15 @@ def create_session(
         if not isinstance(token_id, Token)
         else token_id
     )
-    if not billed_to:
-        billed_to = token.ocpi_master
-    if isinstance(billed_to, str):
-        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
-    if isinstance(billed_to, Party):
-        billed_to = get_credentialsrole(party=billed_to)
+    if ocpi_master:
+        billed_to = ocpi_master
+    else:
+        if not billed_to:
+            billed_to = token.ocpi_master
+        if isinstance(billed_to, str):
+            billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
+        if isinstance(billed_to, Party):
+            billed_to = get_credentialsrole(party=billed_to)
     if not uid:
         uid = generate_session_uid()
     location = location_id

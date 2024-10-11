@@ -227,7 +227,7 @@ def authorize_token(
                     allowed="ALLOWED",
                     info=MessageTexts.get("TOKEN_ACCEPTED"),
                     token=AdhocToken(
-                        True, session.billed_to, token, TokenType.AD_HOC_USER
+                        True, session.billed_to, token, TokenType.AD_HOC_USER, session.ocpi_master
                     ),
                     responding_party=str(session.get_party()),
                     authorization_reference=session.authorization_reference,

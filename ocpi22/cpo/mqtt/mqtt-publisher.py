@@ -35,8 +35,8 @@ broker = "localhost"
 port = 1883
 client_id = f"test_publisher_client_{uuid.uuid4()}"
 
-session_id = "BE*SMP*S*ABCDEF1234567890"
-kwh = 10
+session_id = "FI*CPO*S*AADDFDAA1AB24BE885305FB396E"
+kwh = 0.5
 
 topic = f"session/{session_id}/metervalues"
 messages_per_second = 10
@@ -50,7 +50,8 @@ route = Route(to=Party("BE", "SMP"), identifier='sessions', token_base64="123456
 cs = CachedSession(session_id=session_id,
                      kwh=10, timestamp=datetime.now(pytz.utc),
                      route_to_msp=route)
-token_store.store(session_id, cs)
+if not token_store.retrieve(session_id):
+    token_store.store(session_id, cs)
 
 
 # Callback when the client connects to the broker

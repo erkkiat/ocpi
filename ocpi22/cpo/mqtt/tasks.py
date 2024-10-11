@@ -31,7 +31,7 @@ class CeleryConfig:
 app = Celery('mqtt_tasks')
 app.config_from_object(CeleryConfig)
 
-session_cache = RedisStore(namespace="sessioncache")
+session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
 
 
 def get_cached_session(session_id) -> CachedSession:

@@ -29,6 +29,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 
+from ocpi22.cpo.mqtt.schemas import CachedSession
 from ocpi22.models import enum
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
@@ -38,11 +39,11 @@ from util import (
     redis_store,
     time_lte,
     time_lt,
-    ErrorLoggingResponse as Response,
+    ErrorLoggingResponse as Response, RedisStore,
 )
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum
+from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum, OcpiModuleEnum
 from ocpi22.commands.serializers import (
     CpoCommandResultSerializer,
     CommandResultSerializer,
@@ -65,7 +66,7 @@ from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.tariff import TariffElement
-from ocpi22.routing import find_credentials
+from ocpi22.routing import find_credentials, find_route_from_credentials
 from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -91,6 +92,7 @@ from ocpiconnector.party import Party
 from premium import requires_premium
 
 pp = PrettyPrinter(indent=4).pprint
+session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
 
 
 class CpoEvseViewSet(
@@ -470,6 +472,20 @@ def get_meter_values(session):
     return serializer.validated_data
 
 
+def save_to_session_cache(credentialsrole, session, token):
+    # Kokeile toimiiko jo authorize => mqtt metervalues
+    ic(credentialsrole, session, token)
+    cached_session = CachedSession(
+        session_id=session.uid,
+        kwh=session.kwh,
+        timestamp=session.last_updated,
+        route_to_msp=find_route_from_credentials(credentialsrole.credentials, OcpiModuleEnum.SESSIONS),
+        # ValueError: Endpoint `sessions` not found for party None
+    )
+    ic(cached_session)
+    session_cache.store(session.uid, cached_session, expiration=settings.MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS)
+
+
 class ChargePointViewSet(FlowchartViewSet):
     """
     The charge point is connected to roaming networks through this API. It interprets the OCPP
@@ -639,22 +655,12 @@ class ChargePointViewSet(FlowchartViewSet):
                     authorization: TokenAuthorization = authorize_token(
                         token, evse.location, request=request
                     )
-                    if isinstance(token, str) and authorization:
-                        # This is an AD_HOC_USER or APP_USER Token
-                        # eMSP has already authorized this AD HOC token for 15 minutes
-                        token = AdhocToken(
-                            uid=token,
-                            valid=True,
-                            billed_to=authorization.get_token_party(),
-                            type=authorization.token.get("type", ""),
-                        )
-
-                    session = None
 
                     if (
                         not authorization
                         or authorization.allowed != AuthorizationEnum.ALLOWED
                     ):
+                        session = None
                         token_admin = reverse("admin:ocpi22_token_changelist")
                         messages.error(
                             request,
@@ -668,16 +674,30 @@ class ChargePointViewSet(FlowchartViewSet):
                             ),
                         )
                     else:
-                        session = create_session(  # credentials=authorization.ocpi_master.credentials,
+                        token_dict=authorization.token
+                        ad_hoc_token = AdhocToken(
+                            uid=token_dict.get("uid"),
+                            valid=token_dict.get("valid"),
+                            billed_to=authorization.get_token_party(),
+                            type=token_dict.get("type"),
+                            ocpi_master=authorization.ocpi_master,
+                            contract_id=authorization.token.get('contract_id', '-')
+                        )
+                        assert authorization.ocpi_master and authorization.ocpi_master.credentials, \
+                            f"No OCPI Master or Credentials found: {authorization.ocpi_master}"
+                        session = create_session(
+                            credentials=authorization.ocpi_master.credentials,
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
-                            billed_to=authorization.billed_to,
-                            token=token,
+                            billed_to=authorization.ocpi_master,
+                            ad_hoc_token=ad_hoc_token,
                             status=Session.PENDING,
                             evse_uid=evse.uid,
                             connector_id=None,
-                            location_id=evse.location.pk,
+                            location_id=evse.location.uid,
+                            ocpi_master=authorization.ocpi_master
                         )
+                        save_to_session_cache(credentialsrole=authorization.ocpi_master, session=session, token=token)
                         messages.success(
                             request,
                             mark_safe(
@@ -712,6 +732,7 @@ class ChargePointViewSet(FlowchartViewSet):
             )
 
         except (Evse.DoesNotExist, Token.DoesNotExist, ValueError, OSError) as e:
+            raise
             logging.error(f"Exception in CPO authorize(): {e}")
             evse_admin = reverse("admin:ocpi22_evse_changelist")
             token_admin = reverse("admin:ocpi22_token_changelist")

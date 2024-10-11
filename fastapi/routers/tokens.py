@@ -93,10 +93,3 @@ async def bulk_token_upsert(request: Request, payload: TokenListSchema):
         # }
     else:
         raise HTTPException(status_code=400, detail="No tokens to upsert")
-
-
-@api.post("{token_id}/authorize", url_name="token-authorize")
-# @silk_profile(name='token_authorize')
-def authorize(request: Request, payload: TokenListSchema, token_id):
-    response = token_store.retrieve(token_id)
-    return response

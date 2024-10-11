@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, Field, field
+from typing import Any
 
 from ocpi22.choices import OcpiModuleEnum
 from ocpiconnector.party import Party
@@ -17,6 +18,8 @@ class AdhocToken:
     billed_to: Party
     uid: str
     type: str
+    ocpi_master: Any  # To avoid importing CredentialsRole
+    contract_id: str=field(default='-')
 
     def party(self):
         return str(self.billed_to)
