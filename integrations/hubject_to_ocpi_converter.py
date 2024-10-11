@@ -28,6 +28,9 @@ class HubjectToOCPIConverter:
     def __init__(self, oicp_version: str, ocpi_version: str):
         self.oicp_version = oicp_version
         self.ocpi_version = ocpi_version
+        self.locations = []
+        self.ocpi_evses = []
+        self.connectors = []
 
     def __convert_to_connectors(
         self, hubject_evse: EvseDataRecord, ocpi_evse: Evse
@@ -56,7 +59,7 @@ class HubjectToOCPIConverter:
         return ocpi_connectors
 
     def __convert_to_evse(self, evse: EvseDataRecord, location: Location) -> Evse:
-        ocpi_evse = Evse(
+        return Evse(
             evse_id=evse.EvseID.root,
             # todo status cannot be directly convert from hubject
             # status=
@@ -66,60 +69,66 @@ class HubjectToOCPIConverter:
             ),
             location=location,
         )
-        return ocpi_evse
 
     def convert_to_locations(
-        self, eroaming_data: ERoamingPushEvseData
-    ) -> List[Location]:
+        self, evse_data_record: EvseDataRecord, owner: str
+    ) -> Location:
+        return Location(
+            # todo: Add an identifier for hubject
+            # ocpi_master=,
+            uid=uuid.uuid4(),
+            # todo: OICP cannot be converted to publish field directly
+            # publish=,
+            name=evse_data_record.ChargingStationNames[0].value
+            if evse_data_record.ChargingStationNames
+            else "",
+            address=self.get_address(evse_data_record.Address),
+            city=evse_data_record.Address.City,
+            postal_code=evse_data_record.Address.PostalCode,
+            state=evse_data_record.Address.Region,
+            country=evse_data_record.Address.Country,
+            time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
+            latitude=evse_data_record.GeoCoordinates.DecimalDegree.Latitude,
+            longitude=evse_data_record.GeoCoordinates.DecimalDegree.Longitude,
+            lat_partition=calculate_partition(
+                evse_data_record.GeoCoordinates.DecimalDegree.Latitude
+            ),
+            long_partition=calculate_partition(
+                evse_data_record.GeoCoordinates.DecimalDegree.Longitude
+            ),
+            # todo OICP has a boolean for parking_type
+            # parking_type=
+            last_updated=datetime.now(pytz.utc),
+            # todo : OICP cannot be directly converted to facilities
+            # facilities=
+            charging_when_closed=evse_data_record.IsOpen24Hours,
+            # todo: Ask from hubject about operator, suboperator
+            # operator=,
+            # suboperator=,
+            owner=owner,
+        )
+
+    def convert(self, eroaming_data: ERoamingPushEvseData):
         operator_evse_data = eroaming_data.OperatorEvseData
         locations_evse_map = self.get_location_evse_map(
             operator_evse_data.EvseDataRecord
         )
-        locations = []
-
+        owner, _ = BusinessDetails.objects.get_or_create(
+            name=operator_evse_data.OperatorName
+        )
         for location_hash_key in locations_evse_map.keys():
             # If the evses are in the same location, data related to the location will be the same
             evse_data_record = locations_evse_map[location_hash_key][0]
-            owner, _ = BusinessDetails.objects.get_or_create(
-                name=operator_evse_data.OperatorName
-            )
-            location = Location(
-                # todo: Add an identifier for hubject
-                # ocpi_master=,
-                uid=uuid.uuid4(),
-                # todo: OICP cannot be converted to publish field directly
-                # publish=,
-                name=evse_data_record.ChargingStationNames[0].value
-                if evse_data_record.ChargingStationNames
-                else "",
-                address=self.get_address(evse_data_record.Address),
-                city=evse_data_record.Address.City,
-                postal_code=evse_data_record.Address.PostalCode,
-                state=evse_data_record.Address.Region,
-                country=evse_data_record.Address.Country,
-                time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
-                latitude=evse_data_record.GeoCoordinates.DecimalDegree.Latitude,
-                longitude=evse_data_record.GeoCoordinates.DecimalDegree.Longitude,
-                lat_partition=calculate_partition(
-                    evse_data_record.GeoCoordinates.DecimalDegree.Latitude
-                ),
-                long_partition=calculate_partition(
-                    evse_data_record.GeoCoordinates.DecimalDegree.Longitude
-                ),
-                # todo OICP has a boolean for parking_type
-                # parking_type=
-                last_updated=datetime.now(pytz.utc),
-                # todo : OICP cannot be directly converted to facilities
-                # facilities=
-                charging_when_closed=evse_data_record.IsOpen24Hours,
-                # todo: Ask from hubject about operator, suboperator
-                # operator=,
-                # suboperator=,
-                owner=owner,
-            )
-            locations.append(location)
+            location = self.convert_to_locations(evse_data_record, owner)
+            self.locations.append(location)
 
-        return locations
+            for evse_data_record in locations_evse_map[location_hash_key]:
+                tmp_evse = self.__convert_to_evse(evse_data_record, location)
+                tmp_connectors = self.__convert_to_connectors(
+                    evse_data_record, tmp_evse
+                )
+                self.ocpi_evses.append(tmp_evse)
+                self.connectors.extend(tmp_connectors)
 
     def get_location_evse_map(self, evses: List[EvseDataRecord]) -> dict:
         location_map = defaultdict(list)
