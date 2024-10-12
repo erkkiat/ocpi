@@ -42,6 +42,8 @@ Depending on which hub the MSP is connected to, we send the message over OCPI or
 4. If the RFID Token is authorized, we create an OCPI Session with status PENDING. 
 4. The CPO calls the start_session endpoint, and we send the new OCPI Session to the HUB.
 
+## Starting a charging session
+
 Here we have the Gireve hub as an example, but it could be e-Clearing.net, Mobi-e or our own hub product.
 
 ```mermaid
