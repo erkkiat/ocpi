@@ -39,8 +39,8 @@ graph TD
     D --> Evse[Get OCPI EVSE]
     Evse --> Connectors[Get OCPI Connector]
     D --> Increment[i++]
-    Evse --> Increment[i++]
-    Connectors --> Increment[i++]
+    Evse --> Increment
+    Connectors --> Increment
     
     Increment --> |Continue loop|C
     C -->|No| E[End Loop]
