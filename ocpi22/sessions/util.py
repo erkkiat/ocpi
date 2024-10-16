@@ -25,7 +25,7 @@ from ocpi22.models.token import Token
 from ocpi22.choices import AuthorizationEnum, OcpiRolesEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid
-from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
+from ocpi22.tokens.auth import TokenAuthorization, get_session_by_token_uid
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -43,11 +43,7 @@ def get_session(
     token: Union[Token, str], statuses=(Session.PENDING, Session.ACTIVE)
 ) -> Session:
     token_id = get_token_id(token)
-    return get_session_by_adhoc_token(
-        token_id,
-        max_age_minutes=365 * 24 * 60,  # Maximum charge time: 1 year :)
-        statuses=statuses,
-    )
+    return get_session_by_token_uid(token_id, max_age_minutes=365 * 24 * 60, statuses=statuses)
 
 
 class EvseOccupied(RuntimeError):
@@ -130,7 +126,7 @@ def create_session(
     #     raise EvseOccupied('Cannot start a new session because there is an active charging session '
     #                        f'{active_sessions.first().uid} in progress.')
 
-    assert billed_to, "Unable to bill session without billed_to"
+    assert billed_to and billed_to != '*', "Unable to bill session without billed_to"
 
     currency = currency or os.environ.get("CPO_CURRENCY", "EUR")
     if connector and connector.tariff_ids:

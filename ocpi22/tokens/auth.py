@@ -31,7 +31,7 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.routing import find_route, Route
 from ocpiconnector.party import Party
 from ocpiconnector.util import Timer
-from util import DistributedCache
+from util import DistributedCache, markdown_escape
 
 
 @receiver(post_save, sender=Token)
@@ -79,7 +79,7 @@ def get_or_create_session_by_token_uid(
     return session
 
 
-def get_session_by_adhoc_token(
+def get_session_by_token_uid(
     token_uid: str, max_age_minutes, statuses=(Session.PENDING, Session.ACTIVE)
 ) -> Optional[Session]:
     """
@@ -102,7 +102,7 @@ def get_session_by_adhoc_token(
     expiration=60
 )  # One minute cache, to make sure the query is made before 15-16 minutes has passed
 def _get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
-    session = get_session_by_adhoc_token(token_uid, max_age_minutes=15)
+    session = get_session_by_token_uid(token_uid, max_age_minutes=15)
     if session:
         return (
             session.auth_method,
@@ -203,7 +203,7 @@ def authorize_token(
 ) -> Optional[TokenAuthorization]:
     with Timer() as t:
         if not rfid and not isinstance(token, Token):
-            session = get_session_by_adhoc_token(token, max_age_minutes=max_age)
+            session = get_session_by_token_uid(token, max_age_minutes=max_age)
             if session:
                 # Token is AD HOC
                 logging.info(
@@ -225,17 +225,17 @@ def authorize_token(
                     allowed="ALLOWED",
                     info=MessageTexts.get("TOKEN_ACCEPTED"),
                     token=AdhocToken(
-                        True, session.billed_to, token, TokenType.AD_HOC_USER, session.ocpi_master
+                        True, session.billed_to, token, TokenType.AD_HOC_USER, session.billed_to
                     ),
-                    responding_party=str(session.get_party()),
+                    responding_party=session.billed_to.party_str(),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
-                    ocpi_master=session.ocpi_master,
+                    ocpi_master=session.billed_to
                 )
 
         # Not AD HOC, so Token should be found from database
-        authorization = _authorize_token(token, location, request=request)
+        authorization: TokenAuthorization = _authorize_token(token, location, request=request)
         if authorization.is_positive and authorization.authorization_reference:
             messages.info(
                 request,
@@ -277,6 +277,7 @@ def _authorize_token(
             "so an authorization request was sent to all MSPs connected to us.",
         )
         return authorize_with_msps_sync(token_uid, location)
+    assert isinstance(token, (Token, AdhocToken))
     if not token.valid:
         logging.warning(
             f"According to the current information we have locally, the Token {token_uid} is not valid."

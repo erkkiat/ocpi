@@ -79,7 +79,7 @@ from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import (
     authorize_token,
     TokenAuthorization,
-    get_session_by_adhoc_token,
+    get_session_by_token_uid,
 )
 from ocpi22.tokens.util import get_token_id
 from ocpi22.logging import log_error
@@ -796,7 +796,7 @@ class ChargePointViewSet(FlowchartViewSet):
                                 status=status.HTTP_401_UNAUTHORIZED,
                             )
                         party = authorization.token.party
-                        session = get_session_by_adhoc_token(token, max_age_minutes=14)
+                        session = get_session_by_token_uid(get_token_id(token), max_age_minutes=14)
                         if session:
                             session.connector = Connector.objects.prefetch_related(
                                 "tariff_ids"
@@ -1057,7 +1057,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
 
-                    Cdr.create_based_on_session(session)
+                    Cdr.create_based_on_session(session)  # Todo: Do this in a celery task
 
                     session_serializer = CpoSessionSerializer(
                         instance=session,
@@ -1125,7 +1125,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 if serializer.is_valid():
                     token_element = command.get("token") or command.get("ad_hoc_token")
                     token_id = token_element.get("uid") if token_element else ""
-                    session = get_session_by_adhoc_token(token_id, max_age_minutes=15)
+                    session = get_session_by_token_uid(token_id, max_age_minutes=15)
                     if not session:
                         return Response(
                             dict(
