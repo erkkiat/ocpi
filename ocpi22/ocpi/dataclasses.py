@@ -1,4 +1,5 @@
-from dataclasses import dataclass, Field, field
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from ocpi22.choices import OcpiModuleEnum
@@ -18,8 +19,20 @@ class AdhocToken:
     billed_to: Party
     uid: str
     type: str
-    ocpi_master: Any  # To avoid importing CredentialsRole
+    ocpi_master: Any  # "Any" to avoid importing CredentialsRole
+
+    # Optional fields
+    country_code: str=field(default='')
+    party_id: str=field(default='')
+    whitelist: str=field(default='NEVER')
+    visual_number: str=field(default='')
+    issuer: str=field(default='')
+    group_id: str=field(default='')
+    language: str=field(default='en')
+    default_profile_type: str=field(default='REGULAR')
+    energy_contract: str=field(default='')
     contract_id: str=field(default='-')
+    last_updated: datetime=field(default=None)
 
     def party(self):
         return str(self.billed_to)

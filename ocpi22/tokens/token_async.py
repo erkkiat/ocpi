@@ -160,7 +160,8 @@ def authorize_with_msps_sync(
     data = {
         "location_id": location.uid,
         "evse_uids": [e.uid for e in location.evses.all()],
-    }
+    } if location else {}
+
     response = asyncio.run(authorize_with_msps(token, data, parties))
     if response:
         responding_party = response.get(
@@ -171,13 +172,18 @@ def authorize_with_msps_sync(
         try:
             serializer = AuthorizationInfoSerializer(data=response)
             if serializer.is_valid():
-                token = serializer.validated_data.get("token", {})
+                token = serializer.validated_data.pop("token", {})
+                ocpi_master = response.get("ocpi_master")
+                token["ocpi_master"] = ocpi_master
+                token["billed_to"] = ocpi_master
+                ic(token)
                 return TokenAuthorization(
                     **serializer.validated_data,
+                    token=AdhocToken(**token),
                     responding_party=responding_party,
                     auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-                    billed_to=token.get("party", Party()),
-                    ocpi_master=response.get("ocpi_master"),
+                    billed_to=ocpi_master.party,
+                    ocpi_master=ocpi_master,
                 )
             else:
                 logging.error(
