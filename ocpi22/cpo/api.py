@@ -803,9 +803,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             ).get_if_exists(uid=connector_id, evse=evse)
                             session.internal_reference = internal_reference or None
                             session.status = Session.ACTIVE
-                            session.authorization_reference = (
-                                authorization.authorization_reference
-                            )
+                            session.authorization_reference = authorization.authorization_reference
                             if session.connector and session.connector.tariff_ids:
                                 first_tariff = session.connector.tariff_ids.first()
                                 if first_tariff:
