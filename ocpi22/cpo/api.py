@@ -1066,12 +1066,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     return Response(
                         dict(
                             status_text="Session finished",
-                            session_id=session.uid,
-                            internal_reference=session.internal_reference,
-                            kwh_total=session.kwh,
-                            total_cost_incl_vat=session.total_cost_incl_vat,
-                            total_cost_excl_vat=session.total_cost_excl_vat,
-                            currency=session.currency,
+                            session=session_serializer.data,
                         )
                     )
                 else:
