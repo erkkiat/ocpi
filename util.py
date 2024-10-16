@@ -512,3 +512,7 @@ def make_hashable(x):
     if isinstance(x, Iterable) and not isinstance(x, (tuple, str)):
         return tuple([make_hashable(v) for v in x])
     return x
+
+
+def markdown_escape(s: str) -> str:
+    return s.replace('*', '\\*').replace('_', '\\_')

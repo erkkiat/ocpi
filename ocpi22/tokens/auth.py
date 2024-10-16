@@ -207,17 +207,15 @@ def authorize_token(
             if session:
                 # Token is AD HOC
                 logging.info(
-                    f"Pre-existing Session {session.uid} "
-                    f"with authorization {session.authorization_reference}",
+                    f"Pre-existing Session **{markdown_escape(session.uid)}** "
+                    f"with authorization **{markdown_escape(session.authorization_reference)}**",
                     request=request,
                 )
                 messages.success(
                     request,
-                    mark_safe(
-                        f"This Token, <b>{token}</b> has been authorized "
-                        f"earlier by MSP {session.billed_to} and the "
-                        f"authorization was cached in the system."
-                    ),
+                    f"This Token, **{markdown_escape(str(token))}** has been authorized "
+                    f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
+                    f"authorization was cached in the system."
                 )
                 if not session.authorization_reference:
                     raise ValueError(
@@ -241,29 +239,15 @@ def authorize_token(
         if authorization.is_positive and authorization.authorization_reference:
             messages.info(
                 request,
-                mark_safe(
-                    f'<b>"{authorization.get_token_party()}"</b> responded <b>"{authorization.allowed}"</b> and '
-                    f'generated the authorization reference <b>"{authorization.authorization_reference}"</b> '
-                    "for this specific session. "
-                    "It is the way to connect the record in the MSP database to the record in the CPO database. "
-                    "After the charging session is finished, the MSP will receive the Charge Detail Record, which "
-                    "has an authorization reference matching the one stored by the MSP internally."
-                ),
-            )
-    if t:
-        logging.info(f"Authorization took {t}", request=request)
-    if authorization.is_positive and authorization.authorization_reference:
-        messages.info(
-            request,
-            mark_safe(
-                f'<b>"{authorization.get_token_party()}"</b> responded <b>"{authorization.allowed}"</b> and '
-                f'generated the authorization reference <b>"{authorization.authorization_reference}"</b> '
+                f'**{markdown_escape(str(authorization.billed_to))}** responded **"{authorization.allowed}"** and '
+                f'generated the authorization reference **"{markdown_escape(authorization.authorization_reference)}"** '
                 "for this specific session. "
                 "It is the way to connect the record in the MSP database to the record in the CPO database. "
                 "After the charging session is finished, the MSP will receive the Charge Detail Record, which "
                 "has an authorization reference matching the one stored by the MSP internally."
-            ),
-        )
+            )
+    if t:
+        logging.info(f"Authorization took {t}", request=request)
     return authorization
 
 

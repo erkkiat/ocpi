@@ -205,13 +205,6 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         location: Optional[Location] = None
 
         try:
-            # if settings.CERTIFICATION_MODE and request.data:
-            #     serializer = AuthorizeSerializer(data=request.data, context={'request': request})
-            #     if serializer.is_valid():
-            #         location: Location = serializer.validated_data.get('location')
-            #     else:
-            #         return OCPIBadRequestResponse(data=serializer.errors)
-
             if ocpi_platform.is_hub:
                 return self.hub_authorize(request, token_uid, location)
             token: Token = Token.get_if_exists(
