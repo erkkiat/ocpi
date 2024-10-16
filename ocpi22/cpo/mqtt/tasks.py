@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urljoin
 
 from cachetools import cached, TTLCache
 from celery import shared_task, Celery
@@ -73,8 +74,10 @@ def process_meter_values(session_id, internal_reference, kwh, soc, power, timest
     # Todo: Should we send the request async and update the session to the database while we wait?
     #   We need it if the MSP tries to pull the full session objects
 
+    url = urljoin(route.url, session_id)
+
     # send_ocpi_request.delay(data, url=route.url, token_base64=route.token_base64,
-    send_ocpi_request(data, url=route.url, token_base64=route.token_base64,
+    send_ocpi_request(data, url=url, token_base64=route.token_base64,
                       to_country_code=route.to.country_code, to_party_id=route.to.party_id,
                       from_country_code=our_party.party_id, from_party_id=our_party.party_id,
                       credentials_id=route.credentials_id,
