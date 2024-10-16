@@ -210,7 +210,7 @@ class RedisStore:
         The key is preformatted with the namespace. This is to make inheritance easier.
         """
         if isinstance(expiration, (datetime, python_datetime)):
-            expiration = expiration - datetime.utcnow()
+            expiration = expiration - datetime.now(pytz.utc)
         value = pickle.dumps(value)
         redis_store.set(self._format_key(key), value, expiration or self.expiration)
 
