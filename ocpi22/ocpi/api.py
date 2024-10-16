@@ -32,7 +32,7 @@ from ocpi22.choices import (
     get_language,
     AuthorizationEnum,
     OcpiModuleEnum,
-    OcpiRolesEnum,
+    OcpiRolesEnum, EndpointRoleEnum,
 )
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
@@ -706,7 +706,7 @@ def stop_session_if_money_runs_out(request, session):
 
 def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
     party = Party(country_code, party_id)
-    route = find_route(to=party, ocpi_module=OcpiModuleEnum.LOCATIONS)
+    route = find_route(to=party, ocpi_module=OcpiModuleEnum.LOCATIONS, role=EndpointRoleEnum.SENDER)
     if not route:
         return False
     url = urljoin(
@@ -724,7 +724,7 @@ def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
         from_party_id=we.party_id,
         method="GET",
     )
-    ic(response)
+    # Todo: Store the location in our database
     return bool(response and response.get("status_code") == status.HTTP_200_OK)
 
 
