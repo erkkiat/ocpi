@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import time, datetime as python_datetime, date
 from functools import wraps
 from typing import List, Any, Optional, Union
+from urllib.parse import urljoin
 
 import pytz
 import redis
@@ -516,3 +517,9 @@ def make_hashable(x):
 
 def markdown_escape(s: str) -> str:
     return s.replace('*', '\\*').replace('_', '\\_')
+
+
+def format_session_url(base_url, country_code, party_id, session_id):
+    return urljoin(
+        with_trailing_slash(base_url), "/".join([country_code, party_id, session_id])
+    )

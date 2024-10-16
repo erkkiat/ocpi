@@ -819,8 +819,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             logging.info(
-                f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.',
-                log_to_admin=True,
+                f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.'
             )
             session = serializer.save(ocpi_master=request.credentialsrole)
             update_authorization(request, session)

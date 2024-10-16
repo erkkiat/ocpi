@@ -32,7 +32,6 @@ from urllib3.util import Url
 from urllib.parse import urljoin
 
 import generic.countries
-from ocpi22 import choices
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.ocpi.util import OCPIResponse
