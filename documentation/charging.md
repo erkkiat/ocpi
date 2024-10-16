@@ -11,7 +11,9 @@
 
 ## The Charging Process
 
-Authorize, Start Session and Meter Values are the endpoints, which rely on data stored in Redis.
+These endpoints are a part of the `CPO API`, which is called by a CPO which is our customer and who we provide 
+roaming capabilities to. Authorize, Start Session and Meter Values are the endpoints, 
+which rely on data stored in Redis.
 Meter values is called hundreds of times during a charging session, the others only once per session.
 
 ```mermaid
@@ -51,12 +53,17 @@ sequenceDiagram
     actor Driver
 
     alt RFID Token process
-    Driver->>CPO: Tap RFID Token <br/> on the charging station
+        Driver->>CPO: Tap RFID Token <br/> on the charging station
         CPO->>SolidRoam: call "authorize" endpoint
+        SolidRoam->>SolidRoam: Do we already have a cached authorization?
+        SolidRoam-->>CPO: Cached authorization response
         SolidRoam->>Gireve: OCPI Authorize
-        Gireve->>MSP: Authorize Token
+        Gireve->>MSP: OCPI Authorize
+        MSP->>MSP: Generate authorization_reference
         MSP->>Gireve: Authorization response
         Gireve->>SolidRoam: Authorization response
+        SolidRoam->>SolidRoam: Generate session_id
+        SolidRoam->>SolidRoam: Cache authorization for 15 minutes
         SolidRoam->>CPO: Authorization response
     else Mobile app process
         Driver->>MSP: Click "Start charging" on a charging station on the map
@@ -67,7 +74,7 @@ sequenceDiagram
     end
     
     CPO->>SolidRoam: Call start_transaction endpoint
-    SolidRoam->>Gireve: New OCPI Session
+    SolidRoam->>Gireve: New OCPI Session <br/>session_id
     Gireve->>MSP: New OCPI Session
 ```
 
@@ -88,8 +95,8 @@ sequenceDiagram
     
     loop Repeats until Session is finished
         CPO->>SolidRoam: Meter Values <br/> over MQTT <br/> (kWh, power, SoC)
-        SolidRoam->>Gireve: OCPI Meter Values
-        Gireve->>MSP: OCPI Meter Values
+        SolidRoam->>Gireve: PATCH OCPI Session
+        Gireve->>MSP: PATCH OCPI Session
         MSP-->>Driver: Show charging status
     end
 ```
@@ -113,8 +120,8 @@ sequenceDiagram
         Gireve->>SolidRoam: OCPI STOP_SESSION
         SolidRoam->>CPO: Stop Session webhook
     end
-    SolidRoam->>Gireve: Final OCPI Session
-    Gireve->>MSP: Final OCPI Session
+    SolidRoam->>Gireve: PATCH OCPI Session <br/> (final)
+    Gireve->>MSP: PATCH OCPI Session <br/> (final)
     SolidRoam->>CPO: CDR webhook <br/> (invoicing data)
     SolidRoam->>Gireve: CDR
     Gireve->>MSP: CDR
