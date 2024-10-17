@@ -19,12 +19,13 @@ from ocpi22.ocpi.headers import make_headers
 from ocpi22.ocpi.parse import parse_ocpi_url
 from ocpiconnector.exceptions import WrongRole
 
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 from util import OCPIVersion, reverse, with_trailing_slash, DistributedCache
 
 
 @dataclass
 class Route:
+    # The OCPI route information
     url: str
     identifier: OcpiModuleEnum
     credentials_id: int
@@ -32,7 +33,7 @@ class Route:
     alive: bool
     direct: bool
     version: OCPIVersion
-    to: Party
+    to: Party  # For example BE*SMP
 
     @property
     def through_hub(self) -> bool:
@@ -93,7 +94,7 @@ def find_route_from_credentials(
     if endpoint_count:
         if endpoint_count > 1:
             logging.error(
-                f"Multiple Endpoints for {credentials.party()} in the database"
+                f"Multiple Endpoints for {credentials.party_str()} in the database"
             )
         endpoint = endpoints.first()
         return Route(
@@ -146,6 +147,10 @@ def find_route(
     add_path=None,
     role: EndpointRoleEnum = EndpointRoleEnum.RECEIVER,
 ) -> Optional[Route]:
+    """
+    Find the route to the given OCPI roaming party or credentials for the given OCPI module.
+    It can be a direct route between peers or going through an OCPI hub.
+    """
     if not to:
         return None
     from ocpi22.models.credentials import Credentials

@@ -11,7 +11,7 @@ from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import OCPIBadRequestResponse, OCPINotOwnerResponse
 from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.util import matching_operator
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 
 
 def certify_check_ocpi_headers(headers):

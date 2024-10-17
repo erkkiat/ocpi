@@ -10,8 +10,7 @@ if TYPE_CHECKING:
     from ocpi22.models.credentials import CredentialsRole
 
 from ocpi22.ocpi.util_party import get_sender_party
-from ocpiconnector.ocpi_identities import Party
-
+from ocpiconnector.party import Party
 
 partners_cache = cachetools.TTLCache(maxsize=1024, ttl=60 * 60 * 4)
 
@@ -47,7 +46,7 @@ def get_partners_by_party_as_party(party: Party) -> set[Party]:
     from ocpi22.models.credentials import CredentialsRole
 
     roles = CredentialsRole.objects.filter(pk__in=primary_keys)
-    return set(role.party for role in roles)
+    return set(role.get_party() for role in roles)
 
 
 def get_partners(request: HttpRequest) -> set[int]:

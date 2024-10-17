@@ -16,7 +16,8 @@ from rest_framework.permissions import DjangoModelPermissions
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.ocpi.util_party import get_sender_party
-from ocpiconnector.ocpi_identities import Party, create_credentialsrole, ocpi_identities
+from ocpiconnector.ocpi_identities import create_credentialsrole, ocpi_identities
+from ocpiconnector.party import Party
 from util import reverse
 
 from ocpi22.models.credentials import Credentials, CredentialsRole

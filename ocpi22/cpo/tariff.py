@@ -9,7 +9,8 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo.serializers import TariffQuickSerializer
 from ocpi22.models.tariff import Tariff
-from ocpiconnector.ocpi_identities import Party, get_our_credentialsrole
+from ocpiconnector.ocpi_identities import get_our_credentialsrole
+from ocpiconnector.party import Party
 
 
 class TariffQuickViewSet(

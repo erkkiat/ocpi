@@ -23,7 +23,7 @@ from sentry_sdk import capture_exception
 
 from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 from util import unwrap
 
 pp = pprint.PrettyPrinter(indent=4).pprint
@@ -161,12 +161,15 @@ def send_ocpi_request(
                 f"Sending {method.upper()} {title} request to {url}, "
                 f"response {result.status_code} (time {result.elapsed})"
             )
-        if credentials_id:
-            from ocpi22.models.credentials import Credentials
 
-            credentials = Credentials.get_if_exists(pk=credentials_id)
-            if credentials:
-                credentials.update_last_connection()
+        # Todo: This needs to be done some other way than starting the Django logic
+        #       We want to refresh the last connection time, but only if the request was successful
+        # if credentials_id:
+        #     from ocpi22.models.credentials import Credentials
+        #
+        #     credentials = Credentials.get_if_exists(pk=credentials_id)
+        #     if credentials:
+        #         credentials.update_last_connection()
 
         # # Log the response to Sentry
         # if hasattr(result, 'data') and result.data:
@@ -189,12 +192,14 @@ def send_ocpi_request(
         logging.error(
             f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}: {e}"
         )
-        from ocpi22.models.credentials import Credentials
 
-        if credentials_id:
-            Credentials.objects.filter(
-                pk=credentials_id, connection_status=choices.CONNECTED
-            ).update(connection_status=choices.OFFLINE)
+        # Todo: This also needs to be done some other way than starting the Django logic
+        # from ocpi22.models.credentials import Credentials
+        #
+        # if credentials_id:
+        #     Credentials.objects.filter(
+        #         pk=credentials_id, connection_status=choices.CONNECTED
+        #     ).update(connection_status=choices.OFFLINE)
         capture_exception(e)
         return None
 
@@ -261,10 +266,10 @@ def pull_objects(
                             # Not pulling from a hub, so the Credentials party must match
                             credentialsrole = credentials.roles.first()
                             # ic(credentialsrole, credentialsrole.party)
-                            if credentialsrole.party != party:
+                            if credentialsrole.get_party() != party:
                                 logging.error(
-                                    f"Party {party} in the pulled data doesn not match party "
-                                    f"{credentialsrole.party} in the credentialsrole. "
+                                    f"Party {party} in the pulled data doesn't match party "
+                                    f"{credentialsrole.party_str()} in the credentialsrole. "
                                     "The other party may be spoofing a location of another operator."
                                 )
                                 continue
@@ -300,9 +305,6 @@ def pull_objects(
                         raise
                 if next_url:
                     kwargs["url"] = next_url
-        # else:
-        #     module_name = obj.get('model').split('.')[-1]
-        #     logging.warning(f'Party {obj.get("party")} is not a {module_name} sender, skipping')
 
         if not next_url:
             object_list.pop(0)

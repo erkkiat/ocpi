@@ -1,3 +1,5 @@
+from django.core.exceptions import ValidationError
+
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Evse
 from ocpiconnector.ocpi_identities import get_our_party
@@ -19,4 +21,6 @@ def _find_our_evse(evse_uid) -> Evse:
         .order_by("-created")
     )
     # Todo: Check daily for overlapping Evse.uid in the background
+    if not evses:
+        raise ValidationError(f"EVSE {evse_uid} not found")
     return evses.first()

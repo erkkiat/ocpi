@@ -6,6 +6,7 @@ from cachetools import cached, TTLCache
 from django.utils.translation import gettext as _
 from rest_framework.exceptions import ValidationError
 
+import generic.countries
 import ocpi22.logging as logging
 from typing import Optional, List
 
@@ -39,8 +40,8 @@ from ocpiconnector.manager import PartnerManager
 
 # Todo: A PUT will switch to the version that contains this credentials endpoint if it’s different from
 #  the current version. The server must fetch the client’s endpoints again, even if the version has not changed.
-from ocpiconnector.ocpi_identities import get_our_party, Party
-
+from ocpiconnector.ocpi_identities import get_our_party
+from ocpiconnector.party import Party
 
 is_hub_cache = TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24 * 60 * 60)
 
@@ -81,12 +82,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         max_length=64, blank=True, default="", verbose_name=_("Token A")
     )
 
-    # Our credentials token used for the actual communication
+    # Our credentials token used for the actual communication, "TOKEN_B" in the OCPI specification
     ours = models.CharField(
         max_length=64, blank=True, default="", verbose_name=_("Our token")
     )
 
-    # The other party's credentials token used for the actual communication
+    # The other party's credentials token used for the actual communication, "TOKEN_C" in the OCPI specification
     theirs = models.CharField(
         max_length=64, blank=True, default="", verbose_name=_("Their token")
     )
@@ -157,12 +158,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         # if ocpi_platform.is_hub:
         #     self.send_all_updates(ocpi_module_name=OcpiModuleEnum.HUBCLIENTINFO)
 
-    def party(self) -> str:
+    def party_str(self) -> str:
         return ", ".join(
             [f"{r.country_code}*{r.party_id} ({r.role})" for r in self.roles.all()]
         )
 
-    party.short_description = _("Parties")  # For admin UI
+    party_str.short_description = _("Parties")  # For admin UI
 
     @staticmethod
     def base64(token: models.CharField):
@@ -220,7 +221,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     def get_party_for_role(self, role: OcpiRolesEnum) -> Optional[Party]:
         credentialsrole = self.roles.filter(role=role.value).first()
         if credentialsrole:
-            return credentialsrole.party
+            return credentialsrole.get_party()
 
     def get_role(self, party: Party):
         """
@@ -236,7 +237,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return None
 
     def get_parties(self) -> List[Party]:
-        return [r.party for r in self.roles.all()]
+        return [r.party_str() for r in self.roles.all()]
 
     @property
     @cached(is_hub_cache)
@@ -314,7 +315,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
     # ISO-3166 alpha-2 country code
     country_code = models.CharField(
-        max_length=2, choices=choices.COUNTRY_CHOICES, verbose_name=_("Country code")
+        max_length=2, choices=generic.countries.COUNTRY_CHOICES, verbose_name=_("Country code")
     )
 
     # ID of the party
@@ -350,8 +351,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
             return f"{self.country_code}*{self.party_id} ({self.role})"
         return f"{self.country_code}*{self.party_id}"
 
-    @property
-    def party(self) -> Party:
+    def get_party(self) -> Party:
         return Party(str(self.country_code), str(self.party_id))
 
     def party_str(self) -> str:

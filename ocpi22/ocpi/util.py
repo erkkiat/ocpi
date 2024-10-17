@@ -27,9 +27,9 @@ from ocpiconnector.ocpi_identities import (
     ocpi_identities,
     ocpi_platform,
     get_our_identity,
-    Party,
     get_our_party,
 )
+from ocpiconnector.party import Party
 from util import OCPIVersion, with_trailing_slash
 
 
@@ -268,7 +268,7 @@ class OcpiModule:
                 )
                 return
             # self.send_subscriber_updates(*args, **kwargs)  # This was used by a Dutch startup, no longer a customer
-            to = self.billed_to.party
+            to = self.billed_to.get_party()
             return self.route_single_update_message(to=to, method=method, **kwargs)
         else:
             logging.error(

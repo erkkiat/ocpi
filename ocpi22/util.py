@@ -31,7 +31,7 @@ from rest_framework.renderers import BrowsableAPIRenderer
 from urllib3.util import Url
 from urllib.parse import urljoin
 
-from ocpi22 import choices
+import generic.countries
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.ocpi.util import OCPIResponse
@@ -39,10 +39,10 @@ from ocpi22.routing import find_route
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
-    Party,
     get_our_party,
     ocpi_platform,
 )
+from ocpiconnector.party import Party
 from util import format_url, RedisStore, redis_store, with_trailing_slash
 
 
@@ -351,11 +351,11 @@ class ModelUtilMixin:
     def get_if_exists(cls, *args, **kwargs) -> any:
         return cls.objects.get_if_exists(*args, **kwargs)
 
-    def party(self) -> str:  # Todo: rename to party_str, but be careful
+    def party_str(self) -> str:
         """Get the party from the OCPI object as a string, e.g. "FI*CPO" """
         return str(self.get_party())
 
-    party.short_description = _("Owner")
+    party_str.short_description = _("Owner")
 
     def party_long(self) -> str:
         if hasattr(self, "ocpi_master") and self.ocpi_master:
@@ -363,7 +363,7 @@ class ModelUtilMixin:
                 f"{self.ocpi_master.business_details.name}"
                 f" ({self.ocpi_master.country_code}*{self.ocpi_master.party_id})"
             )
-        return self.party()
+        return self.party_str()
 
     party_long.short_description = _("Owner")
 
@@ -375,9 +375,9 @@ class ModelUtilMixin:
         """Get the party from the OCPI object as a Party object, e.g. Party('FI', 'CPO')"""
         try:
             if getattr(self, "ocpi_master", None):
-                return self.ocpi_master.party
+                return self.ocpi_master.get_party()
             if getattr(self, "location", None) and self.location.ocpi_master:
-                return self.location.ocpi_master.party
+                return self.location.ocpi_master.get_party()
         except ObjectDoesNotExist as e:
             print(f"get_party() failed for {self}: {e}")
             raise
@@ -385,7 +385,7 @@ class ModelUtilMixin:
 
     def object_owner(self) -> str:
         """For admin UI"""
-        return self.party()
+        return self.party_str()
 
     def is_ours(self) -> bool:
         """Returns true if we hold the master data for this object"""
@@ -740,7 +740,7 @@ class MultipleChoiceFieldList(serializers.MultipleChoiceField):
 class CountryCodeField(CiStringChoiceField):
     def __init__(self, *args, **kwargs):
         super().__init__(
-            choices=choices.COUNTRY_CHOICES, required=True, *args, **kwargs
+            choices=generic.countries.COUNTRY_CHOICES, required=True, *args, **kwargs
         )
 
 

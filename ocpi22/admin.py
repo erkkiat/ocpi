@@ -39,8 +39,8 @@ from ocpiconnector.ocpi_identities import (
     ocpi_identities,
     ocpi_platform,
     get_our_credentialsrole,
-    Party,
 )
+from ocpiconnector.party import Party
 from webhooks.models import Webhook
 from payment.models import Payment
 
@@ -760,7 +760,7 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
         model = Endpoint
 
     model = Credentials
-    list_display = ["name", "party", "valid", "responding", "last_update"]
+    list_display = ["name", "party_str", "valid", "responding", "last_update"]
     readonly_fields = [
         "theirs_base64",
         "ours_base64",
@@ -805,7 +805,7 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
             # Now the cache is cleared fully every time to compensate
 
             # List all the roles of the changed Credentials
-            roles = {role.party for role in obj.roles.all()}
+            roles = {role.party_str() for role in obj.roles.all()}
 
             # Invalidate the agreed partners cache to enable the new roles and disable the old ones
             list(map(invalidate_partner_cache, roles))

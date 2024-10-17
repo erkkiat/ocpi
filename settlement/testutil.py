@@ -8,7 +8,8 @@ from ocpi22.models import enum
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Evse
-from ocpiconnector.ocpi_identities import create_credentialsrole, Party
+from ocpiconnector.ocpi_identities import create_credentialsrole
+from ocpiconnector.party import Party
 
 
 def create_credentials(start: int, number: int):
