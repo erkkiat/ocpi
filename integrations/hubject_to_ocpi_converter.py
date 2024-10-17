@@ -161,7 +161,7 @@ class HubjectToOCPIConverter:
             try:
                 now = datetime.now(pytz.timezone(tz))
                 if (
-                    now.strftime("UTC%z")[:6] + ":" + now.strftime("UTC%z")[6:]
+                    f"{now.strftime('UTC%z')[:6]}:{now.strftime('UTC%z')[6:]}"
                     == utc_offset
                 ):
                     return tz

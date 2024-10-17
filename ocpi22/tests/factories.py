@@ -23,6 +23,7 @@ from integrations.hubject.schemas import (
     PaymentOption,
     ValueAddedService,
     AccessibilityLocation,
+    ActionType,
 )
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Location, Evse, Connector
@@ -50,7 +51,7 @@ class CredentialsFactory(factory.django.DjangoModelFactory):
     connection_status = "CONNECTED"
     last_connection = factory.Faker("date_time", tzinfo=pytz.UTC)
     version = "22"
-    valid = factory.Faker("boolean")
+    valid = True
 
 
 class CredentialsRoleFactory(factory.django.DjangoModelFactory):
@@ -69,12 +70,12 @@ class LocationFactory(factory.django.DjangoModelFactory):
         model = Location
 
     uid = factory.Faker("uuid4")
-    publish = factory.Faker("boolean")
-    name = factory.Faker("company")
+    publish = True
+    name = "Location A"
     address = "Alfred Nobellaan 22 App 150Z"
-    city = factory.Faker("city")
-    postal_code = factory.Faker("postcode")
-    state = factory.Faker("state")
+    city = "Harelbeke"
+    postal_code = "8530"
+    state = ""
     country = "FIN"
     latitude = factory.LazyAttribute(
         lambda x: round(random.uniform(-90, 90), random.randint(1, 6))
@@ -115,11 +116,11 @@ class TariffFactory(factory.django.DjangoModelFactory):
     uid = factory.Faker("uuid4")
     currency = "EUR"
     type = "AD_HOC_PAYMENT"
-    tariff_alt_url = factory.Faker("url")
-    min_price_excl_vat = factory.Faker("Float", positive=True)
-    min_price_incl_vat = factory.Faker("Float", positive=True)
-    max_price_excl_vat = factory.Faker("Float", positive=True)
-    max_price_incl_vat = factory.Faker("Float", positive=True)
+    tariff_alt_url = "https://smappee.com/tariffs/"
+    min_price_excl_vat = 0.1
+    min_price_incl_vat = 0.2
+    max_price_excl_vat = 0.8
+    max_price_incl_vat = 0.9
 
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -138,7 +139,7 @@ class ConnectorFactory(factory.django.DjangoModelFactory):
     max_voltage = 400
     max_amperage = 32
     max_electric_power = 22
-    terms_and_conditions = factory.Faker("url")
+    terms_and_conditions = "https://smappee.com/terms-and-conditions/"
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     created = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -148,16 +149,16 @@ class AddressFactory(factory.Factory):
     class Meta:
         model = Address
 
-    Country = factory.Faker("country_code", representation="alpha-3")
-    City = factory.Faker("city")
-    Street = factory.Faker("street_address")
-    PostalCode = factory.Faker("postcode")
-    HouseNum = "1"
-    Floor = "2"
-    Region = factory.Faker("state")
-    ParkingFacility = factory.Faker("boolean")
-    ParkingSpot = factory.Faker("word")
-    TimeZone = "UTC-05:00"
+    Country = "BEL"
+    City = "Harelbeke"
+    Street = "Evolis"
+    PostalCode = "8530"
+    HouseNum = "104"
+    Floor = "1"
+    Region = "Flanders"
+    ParkingFacility = True
+    ParkingSpot = "Parking Spot1"
+    TimeZone = "UTC+01:00"
 
 
 class GoogleFactory(factory.Factory):
@@ -198,13 +199,10 @@ class ChargingFacilityFactory(factory.Factory):
     class Meta:
         model = ChargingFacility
 
-    PowerType = factory.Faker(
-        "random_element",
-        elements=[PowerType.AC_1_PHASE, PowerType.DC, PowerType.AC_3_PHASE],
-    )
-    Voltage = factory.Faker("random_int", min=0, max=999)
-    Amperage = factory.Faker("random_int", min=0, max=99)
-    Power = factory.Faker("random_int", min=0, max=999)
+    PowerType = (PowerType.AC_1_PHASE,)
+    Voltage = 225
+    Amperage = 50
+    Power = 900
     ChargingMode = [ChargingMode.Mode_1]
 
 
@@ -212,10 +210,7 @@ class EvseDataRecordFactory(factory.Factory):
     class Meta:
         model = EvseDataRecord
 
-    deltaType = factory.Faker(
-        "random_element",
-        elements=[DeltaType.update, DeltaType.insert, DeltaType.delete],
-    )
+    deltaType = DeltaType.update
     lastUpdate = factory.Faker("date_time", tzinfo=pytz.UTC)
     EvseID = factory.Faker("uuid4")
     ChargingPoolID = ""
@@ -227,49 +222,35 @@ class EvseDataRecordFactory(factory.Factory):
     Address = factory.SubFactory("ocpi22.tests.factories.AddressFactory")
     GeoCoordinates = factory.SubFactory("ocpi22.tests.factories.GeoCoordinatesFactory")
     Plugs = Plug.Type_2_Outlet
-    DynamicPowerLevel = factory.Faker("boolean")
+    DynamicPowerLevel = True
     ChargingFacilities = factory.List(
         [
             factory.SubFactory("ocpi22.tests.factories.ChargingFacilityFactory")
             for _ in range(3)
         ]
     )
-    RenewableEnergy = factory.Faker("boolean")
+    RenewableEnergy = True
     EnergySource = []
     EnvironmentalImpact = None
-    CalibrationLawDataAvailability = factory.Faker(
-        "random_element",
-        elements=[
-            CalibrationLawDataAvailability.Local,
-            CalibrationLawDataAvailability.External,
-            CalibrationLawDataAvailability.Not_Available,
-        ],
-    )
+    CalibrationLawDataAvailability = (CalibrationLawDataAvailability.Local,)
     AuthenticationModes = [AuthenticationMode.NFC_RFID_Classic]
-    MaxCapacity = factory.Faker("random_int", min=0, max=999)
+    MaxCapacity = 950
     PaymentOptions = [PaymentOption.Direct]
     ValueAddedServices = [ValueAddedService.Reservation]
     Accessibility = []
     AccessibilityLocation = AccessibilityLocation.OnStreet
-    HotlinePhoneNumber = factory.Faker("phone_number")
+    HotlinePhoneNumber = "+3256380211"
     AdditionalInfo = []
     ChargingStationLocationReference = []
     GeoChargingPointEntrance = factory.SubFactory(
         "ocpi22.tests.factories.GeoCoordinatesFactory"
     )
-    IsOpen24Hours = factory.Faker("boolean")
+    IsOpen24Hours = True
     OpeningTimes = []
     HubOperatorID = None
-    ClearinghouseID = factory.Faker("uuid4")
-    IsHubjectCompatible = factory.Faker("boolean")
-    DynamicInfoAvailable = factory.Faker(
-        "random_element",
-        elements=[
-            DynamicInfoAvailable.true,
-            DynamicInfoAvailable.false,
-            DynamicInfoAvailable.auto,
-        ],
-    )
+    ClearinghouseID = "Clearing house ID 1"
+    IsHubjectCompatible = True
+    DynamicInfoAvailable = DynamicInfoAvailable.auto
 
 
 class OperatorEvseDataFactory(factory.Factory):
@@ -277,7 +258,7 @@ class OperatorEvseDataFactory(factory.Factory):
         model = OperatorEvseData
 
     OperatorID = "DE*SMP"
-    OperatorName = factory.Faker("company")
+    OperatorName = "Smappee Operator"
     EvseDataRecord = factory.List(
         [factory.SubFactory("ocpi22.tests.factories.EvseFactory") for _ in range(3)]
     )
@@ -287,7 +268,7 @@ class ERoamingPushEvseDataFactory(factory.Factory):
     class Meta:
         model = ERoamingPushEvseData
 
-    ActionType = "update"
+    ActionType = ActionType.fullLoad
     OperatorEvseData = factory.SubFactory(
         "ocpi22.tests.factories.OperatorEvseDataFactory"
     )
