@@ -15,6 +15,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from ocpi22.cpo.session_cache import get_cached_session
 from ocpi22.decorators import (
     requires_sender_role,
     requires_credentialsrole,
@@ -776,6 +777,9 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_credentialsrole
     def get(self, request, credentialsrole, uid, **_kwargs):
         session = Session.objects.get(uid=uid, ocpi_master=credentialsrole)
+        cached_session = get_cached_session(session.uid)
+        if cached_session and cached_session.kwh > session.stop_kwh:
+            session.stop_kwh = cached_session.kwh
         serializer = SessionSerializer(
             session,
             many=False,

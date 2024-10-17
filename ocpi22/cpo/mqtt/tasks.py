@@ -1,15 +1,13 @@
 import os
 
-from cachetools import cached, TTLCache
 from celery import shared_task, Celery
-from django.conf import settings
 
 from ocpi22 import logging
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum
-from ocpi22.cpo.mqtt.schemas import CachedSession
+from ocpi22.cpo.session_cache import get_cached_session, store_session_cache
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party
-from util import RedisStore, format_session_url
+from util import format_session_url
 
 
 # Todo: The tasks should be independent of Django, so we can run them in a separate process
@@ -28,13 +26,6 @@ class CeleryConfig:
 app = Celery('mqtt_tasks')
 app.config_from_object(CeleryConfig)
 
-session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
-
-
-@cached(cache=TTLCache(maxsize=0, ttl=4*60*60))
-def get_cached_session(session_id) -> CachedSession:
-    return session_cache.retrieve(session_id)
-
 
 @shared_task
 def process_meter_values(session_id, internal_reference, kwh, soc, power, timestamp):
@@ -42,6 +33,9 @@ def process_meter_values(session_id, internal_reference, kwh, soc, power, timest
     # timestamp = meter_values.timestamp or datetime.now(pytz.utc)
 
     session = get_cached_session(session_id)
+    session.kwh = kwh
+    store_session_cache(session)
+
     route = session.route_to_msp
     if not route:
         logging.error(f"Route not found for session {session_id}")

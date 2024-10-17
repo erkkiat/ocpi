@@ -29,7 +29,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 
-from ocpi22.cpo.mqtt.schemas import CachedSession
+from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.models import enum
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
@@ -43,7 +43,7 @@ from util import (
 )
 from rest_framework.viewsets import GenericViewSet
 
-from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum, OcpiModuleEnum
+from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum
 from ocpi22.commands.serializers import (
     CpoCommandResultSerializer,
     CommandResultSerializer,
@@ -66,7 +66,6 @@ from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.tariff import TariffElement
-from ocpi22.routing import find_credentials, find_route_from_credentials
 from ocpi22.util import command_store
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -464,19 +463,6 @@ def get_meter_values(session):
     return serializer.validated_data
 
 
-def save_to_session_cache(credentialsrole, session, token):
-    # Kokeile toimiiko jo authorize => mqtt metervalues
-    ic(credentialsrole, session, token)
-    cached_session = CachedSession(
-        session_id=session.uid,
-        kwh=session.kwh,
-        timestamp=session.last_updated,
-        route_to_msp=find_route_from_credentials(credentialsrole.credentials, OcpiModuleEnum.SESSIONS),
-    )
-    ic(cached_session)
-    session_cache.store(session.uid, cached_session, expiration=settings.MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS)
-
-
 class ChargePointViewSet(FlowchartViewSet):
     """
     The charge point is connected to roaming networks through this API. It interprets the OCPP
@@ -818,22 +804,12 @@ class ChargePointViewSet(FlowchartViewSet):
                                 ]
                             )
                         else:
-                            credentials = find_credentials(party)
-                            session = create_session(
-                                evse.location.uid,
-                                evse.uid,
-                                connector_id,
-                                party,
-                                credentials,
-                                internal_reference,
-                                authorization.token,
-                                session_status=Session.ACTIVE,
-                                authorization_method=enum.AuthMethodChoices.AUTH_REQUEST,  # Already authorized above
-                                authorization_reference=authorization.authorization_reference,
+                            messages.error(
+                                request,
+                                "No active session found for the token you provided. "
+                                "Please make sure the token is authorized using the authorize endpoint "
+                                "or by receiving a remote command from MSP.",
                             )
-                        logging.info(
-                            f"New session {session.uid} active at {evse.evse_id}"
-                        )
                     else:
                         party: Party = token.get_party()
 
@@ -1010,11 +986,18 @@ class ChargePointViewSet(FlowchartViewSet):
                             ),
                             status=status.HTTP_409_CONFLICT,
                         )
+
                     if stop_kwh:
                         session.stop_kwh = stop_kwh
-                        session.update_charging_periods(
-                            kwh=session.kwh, timestamp=stop_timestamp
-                        )
+                    else:
+                        cached_session = get_cached_session(session.uid)
+                        if cached_session and cached_session.kwh > session.kwh:
+                            session.stop_kwh = cached_session.kwh
+                        # Todo: process also SoC, power, timestamp from cached_session
+
+                    session.update_charging_periods(
+                        kwh=session.kwh, timestamp=stop_timestamp
+                    )
                     session.status = Session.COMPLETED
                     session.end_date_time = stop_timestamp.replace(tzinfo=pytz.utc)
                     session.last_updated = datetime.now(pytz.utc)
@@ -1046,7 +1029,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     messages.success(
                         request,
                         f"You have concluded the OCPI Session **{markdown_escape(session.uid)}** "
-                        f"with {markdown_escape(session.kwh)} kWh. At this point, the OCPI Charge Detail Record is "
+                        f"with {session.kwh} kWh. At this point, the OCPI Charge Detail Record is "
                         f"created automatically, and if you have set your URL for the "
                         f"invoicing webhook, the CDR is sent to the webhook. "
                         f"{extra_information}"
