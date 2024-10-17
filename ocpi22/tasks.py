@@ -266,10 +266,10 @@ def pull_objects(
                             # Not pulling from a hub, so the Credentials party must match
                             credentialsrole = credentials.roles.first()
                             # ic(credentialsrole, credentialsrole.party)
-                            if credentialsrole.party != party:
+                            if credentialsrole.get_party() != party:
                                 logging.error(
-                                    f"Party {party} in the pulled data doesn not match party "
-                                    f"{credentialsrole.party} in the credentialsrole. "
+                                    f"Party {party} in the pulled data doesn't match party "
+                                    f"{credentialsrole.party_str()} in the credentialsrole. "
                                     "The other party may be spoofing a location of another operator."
                                 )
                                 continue
@@ -305,9 +305,6 @@ def pull_objects(
                         raise
                 if next_url:
                     kwargs["url"] = next_url
-        # else:
-        #     module_name = obj.get('model').split('.')[-1]
-        #     logging.warning(f'Party {obj.get("party")} is not a {module_name} sender, skipping')
 
         if not next_url:
             object_list.pop(0)

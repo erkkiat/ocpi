@@ -58,6 +58,6 @@ class Command(BaseCommand):
                     # serializer.save()
                 else:
                     logging.warning(
-                        f"Parsing error from {endpoint.credentials.party()} {url}"
+                        f"Parsing error from {endpoint.credentials.party_str()} {url}"
                         f"{serializer.errors}"
                     )

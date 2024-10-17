@@ -158,12 +158,12 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         # if ocpi_platform.is_hub:
         #     self.send_all_updates(ocpi_module_name=OcpiModuleEnum.HUBCLIENTINFO)
 
-    def party(self) -> str:
+    def party_str(self) -> str:
         return ", ".join(
             [f"{r.country_code}*{r.party_id} ({r.role})" for r in self.roles.all()]
         )
 
-    party.short_description = _("Parties")  # For admin UI
+    party_str.short_description = _("Parties")  # For admin UI
 
     @staticmethod
     def base64(token: models.CharField):
@@ -221,7 +221,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     def get_party_for_role(self, role: OcpiRolesEnum) -> Optional[Party]:
         credentialsrole = self.roles.filter(role=role.value).first()
         if credentialsrole:
-            return credentialsrole.party
+            return credentialsrole.get_party()
 
     def get_role(self, party: Party):
         """
@@ -237,7 +237,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         return None
 
     def get_parties(self) -> List[Party]:
-        return [r.party for r in self.roles.all()]
+        return [r.party_str() for r in self.roles.all()]
 
     @property
     @cached(is_hub_cache)
@@ -351,8 +351,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
             return f"{self.country_code}*{self.party_id} ({self.role})"
         return f"{self.country_code}*{self.party_id}"
 
-    @property
-    def party(self) -> Party:
+    def get_party(self) -> Party:
         return Party(str(self.country_code), str(self.party_id))
 
     def party_str(self) -> str:

@@ -94,7 +94,7 @@ def find_route_from_credentials(
     if endpoint_count:
         if endpoint_count > 1:
             logging.error(
-                f"Multiple Endpoints for {credentials.party()} in the database"
+                f"Multiple Endpoints for {credentials.party_str()} in the database"
             )
         endpoint = endpoints.first()
         return Route(

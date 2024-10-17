@@ -228,8 +228,8 @@ class ApiPutTests(TestCase):
             token_a="TOKEN_A", ours="OURS", theirs="THEIRS"
         )
         self.credentialsrole = self.location.ocpi_master
-        self.country_code = self.location.ocpi_master.party.country_code
-        self.party_id = self.location.ocpi_master.party.party_id
+        self.country_code = self.location.ocpi_master.get_party().country_code
+        self.party_id = self.location.ocpi_master.get_party().party_id
 
     def test_evse_with_same_id(self):
         # Create two locations with the same Evse IDs

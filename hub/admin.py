@@ -14,7 +14,7 @@ from ocpi22.pull import admin_pull_all
 
 class CredentialsAdmin(admin.ModelAdmin):
     model = Credentials
-    list_display = ["name", "party", "valid", "responding"]
+    list_display = ["name", "party_str", "valid", "responding"]
     readonly_fields = [
         "theirs_base64",
         "ours_base64",

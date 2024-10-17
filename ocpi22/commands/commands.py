@@ -314,7 +314,7 @@ class CommandsViewSet(GenericViewSet):
                 if session
                 else authorization_reference,
                 auth_method=enum.AuthMethodChoices.COMMAND,
-                from_party=str(request.ocpi_party.party),  # HUB or eMSP
+                from_party=request.ocpi_party.party_str(),  # HUB or eMSP
                 evse_id=evse_uid,
                 connector_id=connector_id,
                 billed_to=billed_to,
@@ -551,7 +551,7 @@ def send_start_command(
             data=serializer.data,
         )
     else:
-        message = f"Cannot find a route for START_SESSION to {evse.location.party()}"
+        message = f"Cannot find a route for START_SESSION to {evse.location.party_str()}"
         log_error(request, message)
         raise APIException(message)
 
@@ -618,7 +618,7 @@ def send_reserve_command(
             data=serializer.data,
         )
     else:
-        message = f"Cannot find a route for RESERVE_NOW to {evse.location.party()}"
+        message = f"Cannot find a route for RESERVE_NOW to {evse.location.party_str()}"
         log_error(request, message)
         raise APIException(message)
 

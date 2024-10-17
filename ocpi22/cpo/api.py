@@ -795,8 +795,8 @@ class ChargePointViewSet(FlowchartViewSet):
                                 ),
                                 status=status.HTTP_401_UNAUTHORIZED,
                             )
-                        party = authorization.token.party
-                        session = get_session_by_token_uid(get_token_id(token), max_age_minutes=14)
+                        party: Party = authorization.token.get_party()
+                        session: Session = get_session_by_token_uid(get_token_id(token), max_age_minutes=14)
                         if session:
                             session.connector = Connector.objects.prefetch_related(
                                 "tariff_ids"
@@ -835,7 +835,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             f"New session {session.uid} active at {evse.evse_id}"
                         )
                     else:
-                        party = token.party()
+                        party: Party = token.get_party()
 
                     if not session:
                         credentials = (

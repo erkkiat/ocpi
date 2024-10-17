@@ -182,7 +182,7 @@ def authorize_with_msps_sync(
                     token=AdhocToken(**token),
                     responding_party=responding_party,
                     auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-                    billed_to=ocpi_master.party,
+                    billed_to=ocpi_master.get_party(),
                     ocpi_master=ocpi_master,
                 )
             else:

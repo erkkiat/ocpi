@@ -46,7 +46,7 @@ def get_partners_by_party_as_party(party: Party) -> set[Party]:
     from ocpi22.models.credentials import CredentialsRole
 
     roles = CredentialsRole.objects.filter(pk__in=primary_keys)
-    return set(role.party for role in roles)
+    return set(role.get_party() for role in roles)
 
 
 def get_partners(request: HttpRequest) -> set[int]:

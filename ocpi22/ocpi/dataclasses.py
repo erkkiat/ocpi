@@ -34,11 +34,14 @@ class AdhocToken:
     contract_id: str=field(default='-')
     last_updated: datetime=field(default=None)
 
-    def party(self):
+    def party_str(self):
         return str(self.billed_to)
 
+    def get_party(self):
+        return self.billed_to
+
     def __str__(self):
-        return f"{self.party()}: {self.type} {self.uid}"
+        return f"{self.party_str()}: {self.type} {self.uid}"
 
     def get(self, key, default=None):
         return getattr(self, key, default)

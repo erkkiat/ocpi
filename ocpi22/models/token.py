@@ -187,7 +187,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     )
 
     def __str__(self):
-        return f"{self.party()}: {self.type} {self.uid}"
+        return f"{self.party_str()}: {self.type} {self.uid}"
 
     def __hash__(self):
         return util.member_hash(self)
@@ -198,7 +198,7 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def owner(self):
-        return self.ocpi_master.party
+        return self.ocpi_master.get_party()
 
     def save(self, *args, raw=False, **kwargs):
         """

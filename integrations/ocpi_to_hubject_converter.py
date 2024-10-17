@@ -46,7 +46,7 @@ class OCPIToHubjectConverter:
 
     def convert_to_operator_evse_data(self, location: Location) -> OperatorEvseData:
         return OperatorEvseData(
-            OperatorID=location.party(),
+            OperatorID=location.party_str(),
             OperatorName=location.owner.name,
             EvseDataRecord=[
                 self._convert_to_evse_data_record(evse, location)

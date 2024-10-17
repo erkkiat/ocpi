@@ -486,7 +486,7 @@ class Evse(models.Model, ModelUtilMixin):
                 f"{self.location.ocpi_master.business_details.name}"
                 f" ({self.location.ocpi_master.country_code}*{self.location.ocpi_master.party_id})"
             )
-        return self.party()
+        return self.party_str()
 
     party_long.short_description = _("Charge Point Owner")
 
