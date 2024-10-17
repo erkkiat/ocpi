@@ -686,7 +686,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         billed_to=authorization.billed_to,
                         authorization_reference=authorization.authorization_reference,
                         auth_method=authorization.auth_method,
-                        session=session.uid if session else None,
+                        session_id=session.uid if session else None,
                     )
                     serializer = CPOAuthorizationResponseSerializer(instance=data)
                     return Response(

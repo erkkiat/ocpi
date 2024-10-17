@@ -689,6 +689,7 @@ class CPOAuthorizationResponseSerializer(serializers.Serializer):
     responding_party = serializers.CharField(max_length=5)
     billed_to = serializers.CharField(max_length=5)
     auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
+    session_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     @staticmethod
     def get_token(authorization):
