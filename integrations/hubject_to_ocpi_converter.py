@@ -1,5 +1,6 @@
 import uuid
 from collections import defaultdict
+from itertools import chain
 from typing import List
 
 from django.core.exceptions import ValidationError
@@ -23,14 +24,36 @@ from ocpi22.util import calculate_partition
 import pytz
 import hashlib
 
+from ocpiconnector.ocpi_identities import Party
+
 
 class HubjectToOCPIConverter:
-    def __init__(self, oicp_version: str, ocpi_version: str):
+    def __init__(self, oicp_version: str = None, ocpi_version: str = None):
         self.oicp_version = oicp_version
         self.ocpi_version = ocpi_version
         self.locations = []
         self.ocpi_evses = []
         self.connectors = []
+
+    payment_options_ocpi_capability_map = {
+        PaymentOption.Direct: [
+            OCPICapabilityEnum.CHIP_CARD_SUPPORT,
+            OCPICapabilityEnum.CONTACTLESS_CARD_SUPPORT,
+            OCPICapabilityEnum.CREDIT_CARD_PAYABLE,
+            OCPICapabilityEnum.DEBIT_CARD_PAYABLE,
+        ],
+        PaymentOption.Contract: [
+            OCPICapabilityEnum.RFID_READER,
+        ],
+    }
+
+    value_added_service_capability_map = {
+        ValueAddedService.Reservation: OCPICapabilityEnum.RESERVABLE,
+    }
+
+    auth_mode_capability_map = {
+        AuthenticationMode.NFC_RFID_Classic: OCPICapabilityEnum.RFID_READER,
+    }
 
     def __convert_to_connectors(
         self, hubject_evse: EvseDataRecord, ocpi_evse: Evse
@@ -64,14 +87,18 @@ class HubjectToOCPIConverter:
             # todo status cannot be directly convert from hubject
             # status=
             last_updated=evse.lastUpdate,
-            capabilities=self.get_capabilities(
-                evse.AuthenticationModes, evse.ValueAddedServices, evse.PaymentOptions
+            capabilities=set(
+                self.get_capabilities(
+                    evse.AuthenticationModes,
+                    evse.ValueAddedServices,
+                    evse.PaymentOptions,
+                )
             ),
             location=location,
         )
 
     def convert_to_locations(
-        self, evse_data_record: EvseDataRecord, owner: str
+        self, evse_data_record: EvseDataRecord, owner: Party
     ) -> Location:
         return Location(
             # todo: Add an identifier for hubject
@@ -176,45 +203,19 @@ class HubjectToOCPIConverter:
     def get_capabilities(
         self,
         authentication_modes: List[AuthenticationMode],
-        vas: List[ValueAddedService],
+        vas_list: List[ValueAddedService],
         payment_options: List[PaymentOption],
-    ) -> List[str]:
-        auth_mode_map = self.get_authentication_mode_map()
-        vas_map = self.get_value_added_services_map()
-        payment_options_map = self.get_payment_options_map()
+    ) -> chain[OCPICapabilityEnum | None]:
+        auth_mode_map = HubjectToOCPIConverter.auth_mode_capability_map
+        vas_map = HubjectToOCPIConverter.value_added_service_capability_map
+        payment_options_map = HubjectToOCPIConverter.payment_options_ocpi_capability_map
 
-        capabilities = set()
-
-        for auth_mode in authentication_modes:
-            capabilities.add(auth_mode_map.get(auth_mode))
-
-        for vas in vas:
-            capabilities.add(vas_map.get(vas))
-
-        for payment_option in payment_options:
-            capabilities.update(payment_options_map.get(payment_option))
-
-        return list(capabilities)
-
-    def get_authentication_mode_map(self) -> dict:
-        return {
-            AuthenticationMode.NFC_RFID_Classic: OCPICapabilityEnum.RFID_READER,
-        }
-
-    def get_value_added_services_map(self) -> dict:
-        return {
-            ValueAddedService.Reservation: OCPICapabilityEnum.RESERVABLE,
-        }
-
-    def get_payment_options_map(self) -> dict:
-        return {
-            PaymentOption.Direct: [
-                OCPICapabilityEnum.CHIP_CARD_SUPPORT,
-                OCPICapabilityEnum.CONTACTLESS_CARD_SUPPORT,
-                OCPICapabilityEnum.CREDIT_CARD_PAYABLE,
-                OCPICapabilityEnum.DEBIT_CARD_PAYABLE,
+        return chain(
+            (auth_mode_map.get(auth_mode) for auth_mode in authentication_modes),
+            [vas_map.get(vas) for vas in vas_list],
+            [
+                item
+                for payment_option in payment_options
+                for item in payment_options_map.get(payment_option, [])
             ],
-            PaymentOption.Contract: [
-                OCPICapabilityEnum.RFID_READER,
-            ],
-        }
+        )

@@ -38,11 +38,7 @@ def load_tests(_loader, tests, _ignore):
 class TestMappings(TestCase):
     def setUp(self):
         self.ocpi_2_oicp_converter = OCPIToHubjectConverter()
-
-        self.oicp_to_ocpi_converter = HubjectToOCPIConverter(
-            oicp_version="2.2.1",
-            ocpi_version="2.3",
-        )
+        self.oicp_to_ocpi_converter = HubjectToOCPIConverter()
 
     def test_map_connector_std_choices_to_plug_unknown(self):
         with self.assertRaises(ValidationError):
