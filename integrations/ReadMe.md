@@ -32,19 +32,8 @@ Following graph depict the Hubject to OCPI Location object converter.
 
 graph TD
     Start([Start]) --> A[/ERoaming Push EVSE Data <br> OperatorEVSEData <br> EvseDataRecords /]
-    A --> B[Initialize EVSEDataRecords loop, i = 0]
-    B --> C{{Is i < EVSEDataRecords list length ?}}
-    
-    C --> |Yes| D[Get OCPI Location]
-    D --> Evse[Get OCPI EVSE]
-    Evse --> Connectors[Get OCPI Connector]
-    D --> Increment[i++]
-    Evse --> Increment
-    Connectors --> Increment
-    
-    Increment --> |Continue loop|C
-    C -->|No| E[End Loop]
-    E --> F[/OCPI Locations/]
+    A --> Converter[HubjectToOCPIConverter]
+    Converter --> F[/OCPI Locations <br> OCPI EVSE/]
     F --> End([Return data])
     
 ```
