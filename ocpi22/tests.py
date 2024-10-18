@@ -116,12 +116,11 @@ from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
 from ocpiconnector.management.commands import exchange_credentials
 from ocpiconnector.ocpi_identities import (
-    Party,
     get_our_party,
     create_credentialsrole,
     get_our_credentialsrole,
 )
-
+from ocpiconnector.party import Party
 
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
@@ -229,8 +228,8 @@ class ApiPutTests(TestCase):
             token_a="TOKEN_A", ours="OURS", theirs="THEIRS"
         )
         self.credentialsrole = self.location.ocpi_master
-        self.country_code = self.location.ocpi_master.party.country_code
-        self.party_id = self.location.ocpi_master.party.party_id
+        self.country_code = self.location.ocpi_master.get_party().country_code
+        self.party_id = self.location.ocpi_master.get_party().party_id
 
     def test_evse_with_same_id(self):
         # Create two locations with the same Evse IDs
@@ -3814,7 +3813,7 @@ class TestMspUserApi(TestCase):
             authorize_token_mock.return_value = TokenAuthorization(
                 allowed="ALLOWED",
                 info=MessageTexts.get("TOKEN_ACCEPTED"),
-                token=AdhocToken(True, party, self.token_uid, TokenType.AD_HOC_USER),
+                token=AdhocToken(True, party, self.token_uid, TokenType.AD_HOC_USER, credentials.roles.first()),
                 billed_to=str(party),
                 authorization_reference="1234567890",
                 auth_method=enum.AuthMethodChoices.AUTH_REQUEST,

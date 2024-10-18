@@ -1,4 +1,6 @@
+import markdown
 from django.contrib import messages as django_messages
+from django.utils.safestring import mark_safe
 from rest_framework.renderers import BrowsableAPIRenderer
 
 
@@ -13,19 +15,19 @@ class Messages:
 
     def error(self, request, msg, **kwargs):
         if self.is_browsable(request):
-            return django_messages.error(request, msg, **kwargs)
+            return django_messages.error(request, mark_safe(markdown.markdown(msg)), **kwargs)
 
     def warning(self, request, msg, **kwargs):
         if self.is_browsable(request):
-            return django_messages.warning(request, msg, **kwargs)
+            return django_messages.warning(request, mark_safe(markdown.markdown(msg)), **kwargs)
 
     def success(self, request, msg, **kwargs):
         if self.is_browsable(request):
-            return django_messages.success(request, msg, **kwargs)
+            return django_messages.success(request, mark_safe(markdown.markdown(msg)), **kwargs)
 
     def info(self, request, msg, **kwargs):
         if self.is_browsable(request):
-            return django_messages.info(request, msg, **kwargs)
+            return django_messages.info(request, mark_safe(markdown.markdown(msg)), **kwargs)
 
 
 messages = Messages()

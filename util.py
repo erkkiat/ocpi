@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import time, datetime as python_datetime, date
 from functools import wraps
 from typing import List, Any, Optional, Union
+from urllib.parse import urljoin
 
 import pytz
 import redis
@@ -210,17 +211,19 @@ class RedisStore:
         The key is preformatted with the namespace. This is to make inheritance easier.
         """
         if isinstance(expiration, (datetime, python_datetime)):
-            expiration = expiration - datetime.utcnow()
+            expiration = expiration - datetime.now(pytz.utc)
         value = pickle.dumps(value)
         redis_store.set(self._format_key(key), value, expiration or self.expiration)
 
     def __setitem__(self, key, value):
+        ic(key, value)
         self.store(key, value)
 
     def retrieve(self, key) -> Optional[Any]:
         value = ""
         try:
             key = self._format_key(key)
+            ic(key)
             value = redis_store.get(key)
             if not value:
                 raise KeyError(f"Key {key} not found in Redis")
@@ -261,9 +264,10 @@ redis_store = redis.from_url(settings.REDIS_URL, decode_responses=False)
 
 
 class DistributedCache(RedisStore):
-    def __init__(self, *args, exclude=None, **kwargs):
+    def __init__(self, *args, exclude=None, namespace=None, **kwargs):
         self.exclude = exclude
-        super().__init__(*args, namespace=settings.HOSTNAME_SHORT, **kwargs)
+        namespace = namespace or settings.HOSTNAME_SHORT
+        super().__init__(*args, namespace=namespace, **kwargs)
 
     @dataclass
     class CacheInfo:
@@ -509,3 +513,13 @@ def make_hashable(x):
     if isinstance(x, Iterable) and not isinstance(x, (tuple, str)):
         return tuple([make_hashable(v) for v in x])
     return x
+
+
+def markdown_escape(s: str) -> str:
+    return s.replace('*', '\\*').replace('_', '\\_')
+
+
+def format_session_url(base_url, country_code, party_id, session_id):
+    return urljoin(
+        with_trailing_slash(base_url), "/".join([country_code, party_id, session_id])
+    )

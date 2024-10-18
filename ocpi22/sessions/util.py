@@ -14,6 +14,7 @@ from rest_framework.generics import get_object_or_404
 from typing import TYPE_CHECKING
 
 from ocpi22.models import enum
+from ocpi22.ocpi.dataclasses import AdhocToken
 
 if TYPE_CHECKING:
     from ocpi22.models.credentials import CredentialsRole
@@ -24,29 +25,25 @@ from ocpi22.models.token import Token
 from ocpi22.choices import AuthorizationEnum, OcpiRolesEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid
-from ocpi22.tokens.auth import TokenAuthorization, get_session_by_adhoc_token
+from ocpi22.tokens.auth import TokenAuthorization, get_session_by_token_uid
 from ocpi22.tokens.util import get_token_id
-from ocpiconnector.ocpi_identities import Party, get_our_credentialsrole
+from ocpiconnector.ocpi_identities import get_our_credentialsrole
+from ocpiconnector.party import Party
 
 
-def get_token(token_id, ad_hoc_token):
+def get_token(token_id, ad_hoc_token) -> Union[Token, AdhocToken]:
     assert token_id or ad_hoc_token
     if token_id:
         token = get_object_or_404(Token, uid=token_id)
         return token
-    CdrToken = namedtuple("CdrToken", ad_hoc_token)
-    return CdrToken(**ad_hoc_token)
+    return ad_hoc_token
 
 
 def get_session(
     token: Union[Token, str], statuses=(Session.PENDING, Session.ACTIVE)
 ) -> Session:
     token_id = get_token_id(token)
-    return get_session_by_adhoc_token(
-        token_id,
-        max_age_minutes=365 * 24 * 60,  # Maximum charge time: 1 year :)
-        statuses=statuses,
-    )
+    return get_session_by_token_uid(token_id, max_age_minutes=365 * 24 * 60, statuses=statuses)
 
 
 class EvseOccupied(RuntimeError):
@@ -70,6 +67,7 @@ def create_session(
     reservation_id=None,
     authorization_method=None,
     currency=None,
+    ocpi_master=None,
     *_args,
     **kwargs,
 ) -> Session:
@@ -78,12 +76,15 @@ def create_session(
         if not isinstance(token_id, Token)
         else token_id
     )
-    if not billed_to:
-        billed_to = token.ocpi_master
-    if isinstance(billed_to, str):
-        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
-    if isinstance(billed_to, Party):
-        billed_to = get_credentialsrole(party=billed_to)
+    if ocpi_master:
+        billed_to = ocpi_master
+    else:
+        if not billed_to:
+            billed_to = token.ocpi_master
+        if isinstance(billed_to, str):
+            billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
+        if isinstance(billed_to, Party):
+            billed_to = get_credentialsrole(party=billed_to)
     if not uid:
         uid = generate_session_uid()
     location = location_id
@@ -125,7 +126,7 @@ def create_session(
     #     raise EvseOccupied('Cannot start a new session because there is an active charging session '
     #                        f'{active_sessions.first().uid} in progress.')
 
-    assert billed_to, "Unable to bill session without billed_to"
+    assert billed_to and billed_to != '*', "Unable to bill session without billed_to"
 
     currency = currency or os.environ.get("CPO_CURRENCY", "EUR")
     if connector and connector.tariff_ids:

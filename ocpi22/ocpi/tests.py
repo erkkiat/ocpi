@@ -18,7 +18,7 @@ from ocpi22.ocpi.serializers import CredentialsSerializer
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.test_data import CredentialsData
 from ocpi22.tests import faketime, BetterTestCase
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 from ocpiconnector.testutil import (
     OCPIAPIRequestFactory,
     simulate_surrounding_world,

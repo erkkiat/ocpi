@@ -9,7 +9,7 @@ from rest_framework.decorators import permission_classes
 
 from fastapi.celery.tasks import activate_session
 from fastapi.schemas.charging import MeterValuesSchema, StopSchema, StartSchema
-from ocpi22.tokens.auth import get_session_by_adhoc_token
+from ocpi22.tokens.auth import get_session_by_token_uid
 
 api = NinjaAPI(urls_namespace="charging")
 
@@ -33,7 +33,7 @@ def chargepoint_meter_values(request, payload: MeterValuesSchema):
 # @permission_classes([IsAdminUser])
 def chargepoint_start_transaction(request, payload: StartSchema):
     ic(request.user, payload)
-    session = get_session_by_adhoc_token(payload.token_id, max_age_minutes=15)
+    session = get_session_by_token_uid(payload.token_id, max_age_minutes=15)
     # ic(bool(session))
     if not session:
         return 400, {

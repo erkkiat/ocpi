@@ -15,6 +15,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from ocpi22.cpo.session_cache import get_cached_session
 from ocpi22.decorators import (
     requires_sender_role,
     requires_credentialsrole,
@@ -32,7 +33,7 @@ from ocpi22.choices import (
     get_language,
     AuthorizationEnum,
     OcpiModuleEnum,
-    OcpiRolesEnum,
+    OcpiRolesEnum, EndpointRoleEnum,
 )
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
@@ -86,10 +87,10 @@ from ocpiconnector.management.commands.exchange_credentials import (
 )
 from ocpiconnector.ocpi_identities import (
     ocpi_platform,
-    Party,
     get_our_party,
     get_our_credentialsrole,
 )
+from ocpiconnector.party import Party
 from premium import requires_premium
 
 
@@ -205,13 +206,6 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         location: Optional[Location] = None
 
         try:
-            # if settings.CERTIFICATION_MODE and request.data:
-            #     serializer = AuthorizeSerializer(data=request.data, context={'request': request})
-            #     if serializer.is_valid():
-            #         location: Location = serializer.validated_data.get('location')
-            #     else:
-            #         return OCPIBadRequestResponse(data=serializer.errors)
-
             if ocpi_platform.is_hub:
                 return self.hub_authorize(request, token_uid, location)
             token: Token = Token.get_if_exists(
@@ -259,10 +253,13 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                             f"MSP backend responded{serializer.data} for {token_uid} at location {location}."
                         )
                     else:
-                        allowed = "NOT_ALLOWED"
+                        allowed = AuthorizationEnum.NOT_ALLOWED
                         logging.error(
                             f"Format error in response from MSP backend: {serializer.errors}"
                         )
+                elif token.whitelist in (Token.ALWAYS, Token.ALLOWED, Token.ALLOWED_OFFLINE):
+                    allowed = AuthorizationEnum.ALLOWED
+                    info = MessageTexts.get(AuthorizationEnum.ALLOWED)
                 else:
                     if (
                         settings.REQUIRE_WALLET_BALANCE
@@ -710,7 +707,7 @@ def stop_session_if_money_runs_out(request, session):
 
 def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
     party = Party(country_code, party_id)
-    route = find_route(to=party, ocpi_module=OcpiModuleEnum.LOCATIONS)
+    route = find_route(to=party, ocpi_module=OcpiModuleEnum.LOCATIONS, role=EndpointRoleEnum.SENDER)
     if not route:
         return False
     url = urljoin(
@@ -728,7 +725,7 @@ def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
         from_party_id=we.party_id,
         method="GET",
     )
-    ic(response)
+    # Todo: Store the location in our database
     return bool(response and response.get("status_code") == status.HTTP_200_OK)
 
 
@@ -780,6 +777,9 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_credentialsrole
     def get(self, request, credentialsrole, uid, **_kwargs):
         session = Session.objects.get(uid=uid, ocpi_master=credentialsrole)
+        cached_session = get_cached_session(session.uid)
+        if cached_session and cached_session.kwh > session.stop_kwh:
+            session.stop_kwh = cached_session.kwh
         serializer = SessionSerializer(
             session,
             many=False,
@@ -823,8 +823,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             logging.info(
-                f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.',
-                log_to_admin=True,
+                f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.'
             )
             session = serializer.save(ocpi_master=request.credentialsrole)
             update_authorization(request, session)

@@ -13,6 +13,7 @@ from django.urls import NoReverseMatch
 from django.utils.html import format_html
 from django.utils.translation import gettext as _
 
+import generic.countries
 from ocpi22 import choices
 import util
 
@@ -155,7 +156,7 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     # ISO 3166-1 alpha-3 code for the country of this location
     country = models.CharField(
-        max_length=3, choices=choices.COUNTRIES_ISO_3, verbose_name=_("Country")
+        max_length=3, choices=generic.countries.COUNTRIES_ISO_3, verbose_name=_("Country")
     )
 
     # This class defines the geo location of the Charge Point. The geodetic system to be used is WGS 84.
@@ -485,7 +486,7 @@ class Evse(models.Model, ModelUtilMixin):
                 f"{self.location.ocpi_master.business_details.name}"
                 f" ({self.location.ocpi_master.country_code}*{self.location.ocpi_master.party_id})"
             )
-        return self.party()
+        return self.party_str()
 
     party_long.short_description = _("Charge Point Owner")
 

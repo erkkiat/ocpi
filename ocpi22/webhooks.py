@@ -91,7 +91,7 @@ def send_to_webhook(
                     )
                     return None
         else:
-            logging.info(f"No webhook {serializer.URL} specified => no action")
+            logging.info(f"No webhook {serializer.URL} specified")
     except (IOError, ValidationError) as e:
         logging.error(f"Problem communicating with webhook {serializer.__class__}: {e}")
         raise

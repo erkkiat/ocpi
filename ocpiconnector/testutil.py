@@ -19,7 +19,7 @@ from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.test_data import expected_get_responses, expected_get_headers
-from ocpiconnector.ocpi_identities import Party
+from ocpiconnector.party import Party
 from ocpi22.routing import find_route
 from ocpi22.tokens.auth import _authorize_token, _get_authorization_from_sessions
 from util import unwrap
