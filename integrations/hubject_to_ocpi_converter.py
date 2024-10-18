@@ -122,12 +122,8 @@ class HubjectToOCPIConverter:
             time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
             latitude=coords[0],
             longitude=coords[1],
-            lat_partition=calculate_partition(
-                evse_data_record.GeoCoordinates.DecimalDegree.Latitude
-            ),
-            long_partition=calculate_partition(
-                evse_data_record.GeoCoordinates.DecimalDegree.Longitude
-            ),
+            lat_partition=calculate_partition(coords[0]),
+            long_partition=calculate_partition(coords[1]),
             # todo OICP has a boolean for parking_type
             # parking_type=
             last_updated=evse_data_record.lastUpdate,
