@@ -13,6 +13,7 @@ from integrations.hubject.schemas import (
     PaymentOption,
     EvseDataRecord,
     OperatorID,
+    GeoCoordinates,
 )
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.business_details import BusinessDetails
@@ -100,10 +101,14 @@ class HubjectToOCPIConverter:
     def convert_to_locations(
         self, evse_data_record: EvseDataRecord, owner: Party
     ) -> Location:
+        coords = self.get_geo_coordinates(evse_data_record.GeoCoordinates)
+        existing_location = Location.objects.get(
+            name=evse_data_record.ChargingStationNames[0].value
+        )
         return Location(
             # todo: Add an identifier for hubject
             # ocpi_master=,
-            uid=uuid.uuid4(),
+            uid=existing_location.uid if existing_location else uuid.uuid4(),
             # todo: OICP cannot be converted to publish field directly
             # publish=,
             name=evse_data_record.ChargingStationNames[0].value
@@ -115,8 +120,8 @@ class HubjectToOCPIConverter:
             state=evse_data_record.Address.Region,
             country=evse_data_record.Address.Country,
             time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
-            latitude=evse_data_record.GeoCoordinates.DecimalDegree.Latitude,
-            longitude=evse_data_record.GeoCoordinates.DecimalDegree.Longitude,
+            latitude=coords[0],
+            longitude=coords[1],
             lat_partition=calculate_partition(
                 evse_data_record.GeoCoordinates.DecimalDegree.Latitude
             ),
@@ -125,14 +130,16 @@ class HubjectToOCPIConverter:
             ),
             # todo OICP has a boolean for parking_type
             # parking_type=
-            last_updated=datetime.now(pytz.utc),
+            last_updated=evse_data_record.lastUpdate,
             # todo : OICP cannot be directly converted to facilities
             # facilities=
             charging_when_closed=evse_data_record.IsOpen24Hours,
             # todo: Ask from hubject about operator, suboperator
             # operator=,
             # suboperator=,
-            owner=owner,
+            owner=BusinessDetails(
+                name=owner.__str__(),
+            ),
         )
 
     def convert(self, eroaming_data: ERoamingPushEvseData):
@@ -219,3 +226,24 @@ class HubjectToOCPIConverter:
                 for item in payment_options_map.get(payment_option, [])
             ],
         )
+
+    def get_geo_coordinates(self, coordinates: GeoCoordinates) -> list:
+        def get_coordinates_from_google_format():
+            return coordinates.Google.Coordinates.split(" ")
+
+        def get_coordinates_from_decimal_degree_format():
+            return [
+                coordinates.DecimalDegree.Latitude,
+                coordinates.DecimalDegree.Longitude,
+            ]
+
+        def get_coordinates_from_decimal_degree_minutes_format():
+            # todo will be completed in ST-101
+            return []
+
+        if coordinates.Google is not None:
+            return get_coordinates_from_google_format()
+        elif coordinates.DecimalDegree is not None:
+            return get_coordinates_from_decimal_degree_format()
+        elif coordinates.DegreeMinuteSeconds is not None:
+            return get_coordinates_from_decimal_degree_minutes_format()
