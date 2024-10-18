@@ -25,8 +25,6 @@ from ocpi22.util import calculate_partition
 import pytz
 import hashlib
 
-from ocpiconnector.ocpi_identities import Party
-
 
 class HubjectToOCPIConverter:
     def __init__(self, oicp_version: str = None, ocpi_version: str = None):
@@ -99,16 +97,13 @@ class HubjectToOCPIConverter:
         )
 
     def convert_to_locations(
-        self, evse_data_record: EvseDataRecord, owner: Party
+        self, evse_data_record: EvseDataRecord, owner: str, unique_hashed_id: str = None
     ) -> Location:
         coords = self.get_geo_coordinates(evse_data_record.GeoCoordinates)
-        existing_location = Location.objects.get(
-            name=evse_data_record.ChargingStationNames[0].value
-        )
         return Location(
             # todo: Add an identifier for hubject
             # ocpi_master=,
-            uid=existing_location.uid if existing_location else uuid.uuid4(),
+            uid=unique_hashed_id,
             # todo: OICP cannot be converted to publish field directly
             # publish=,
             name=evse_data_record.ChargingStationNames[0].value
@@ -133,9 +128,7 @@ class HubjectToOCPIConverter:
             # todo: Ask from hubject about operator, suboperator
             # operator=,
             # suboperator=,
-            owner=BusinessDetails(
-                name=owner.__str__(),
-            ),
+            owner=BusinessDetails(name=owner),
         )
 
     def convert(self, eroaming_data: ERoamingPushEvseData):
@@ -143,13 +136,14 @@ class HubjectToOCPIConverter:
         locations_evse_map = self.get_location_evse_map(
             operator_evse_data.EvseDataRecord
         )
-        owner, _ = BusinessDetails.objects.get_or_create(
-            name=operator_evse_data.OperatorName
-        )
+        owner = eroaming_data.OperatorEvseData.OperatorID.root
         for location_hash_key in locations_evse_map.keys():
             # If the evses are in the same location, data related to the location will be the same
             evse_data_record = locations_evse_map[location_hash_key][0]
-            location = self.convert_to_locations(evse_data_record, owner)
+            # location hash key is a unique id based on the location. this prevents creating duplicating locations
+            location = self.convert_to_locations(
+                evse_data_record, owner, location_hash_key
+            )
             self.locations.append(location)
 
             for evse_data_record in locations_evse_map[location_hash_key]:
