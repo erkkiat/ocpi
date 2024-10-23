@@ -2,9 +2,10 @@ from django.test import TestCase
 from django.utils.datetime_safe import datetime
 from django.core.exceptions import ValidationError
 
-from integrations.solid_to_hubject_converter import SolidToHubjectConverter
+from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
 
 from integrations.hubject.test_data import ERoamingPushTestData
+from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.tests.factories import (
     LocationFactory,
     CredentialsRoleFactory,
@@ -37,6 +38,7 @@ def load_tests(_loader, tests, _ignore):
 class TestMappings(TestCase):
     def setUp(self):
         self.ocpi_2_oicp_converter = SolidToHubjectConverter()
+        self.oicp_to_ocpi_converter = HubjectToOCPIConverter()
 
     def test_map_connector_std_choices_to_plug_unknown(self):
         with self.assertRaises(ValidationError):
