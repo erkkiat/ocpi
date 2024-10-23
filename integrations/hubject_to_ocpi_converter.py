@@ -1,7 +1,6 @@
 import uuid
 from collections import defaultdict
 from itertools import chain
-from typing import List
 
 
 from integrations.hubject.schemas import (
@@ -55,7 +54,7 @@ class HubjectToOCPIConverter:
 
     def __convert_to_connectors(
         self, hubject_evse: EvseDataRecord, ocpi_evse: Evse
-    ) -> List[Connector]:
+    ) -> list[Connector]:
         hubject_connectors = hubject_evse.ChargingFacilities
         ocpi_connectors = []
         for c in hubject_connectors:
@@ -155,7 +154,7 @@ class HubjectToOCPIConverter:
                 self.ocpi_evses.append(tmp_evse)
                 self.connectors.extend(tmp_connectors)
 
-    def get_location_evse_map(self, evses: List[EvseDataRecord]) -> dict:
+    def get_location_evse_map(self, evses: list[EvseDataRecord]) -> dict:
         location_map = defaultdict(list)
         for evse in evses:
             address_hash = hashlib.sha256(
@@ -207,9 +206,9 @@ class HubjectToOCPIConverter:
 
     def get_capabilities(
         self,
-        authentication_modes: List[AuthenticationMode],
-        vas_list: List[ValueAddedService],
-        payment_options: List[PaymentOption],
+        authentication_modes: list[AuthenticationMode],
+        vas_list: list[ValueAddedService],
+        payment_options: list[PaymentOption],
     ) -> chain[OCPICapabilityEnum | None]:
         auth_mode_map = HubjectToOCPIConverter.auth_mode_capability_map
         vas_map = HubjectToOCPIConverter.value_added_service_capability_map
