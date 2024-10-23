@@ -31,7 +31,8 @@ import pytz
 
 
 def load_tests(_loader, tests, _ignore):
-    tests.addTests(doctest.DocTestSuite("integrations.ocpi_to_hubject_converter"))
+    tests.addTests(doctest.DocTestSuite("integrations.solid_to_hubject_converter"))
+    tests.addTests(doctest.DocTestSuite("integrations.hubject_to_ocpi_converter"))
     return tests
 
 

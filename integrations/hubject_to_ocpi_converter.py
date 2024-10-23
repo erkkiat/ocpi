@@ -3,7 +3,6 @@ from collections import defaultdict
 from itertools import chain
 from typing import List
 
-from django.core.exceptions import ValidationError
 
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
@@ -18,7 +17,7 @@ from integrations.hubject.schemas import (
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Location, Evse, Connector
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ocpi22.util import calculate_partition
 
@@ -114,7 +113,9 @@ class HubjectToOCPIConverter:
             postal_code=evse_data_record.Address.PostalCode,
             state=evse_data_record.Address.Region,
             country=evse_data_record.Address.Country,
-            time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
+            time_zone=self.get_timezone_by_offset_country(
+                evse_data_record.Address.TimeZone, evse_data_record.Address.Country
+            ),
             latitude=coords[0],
             longitude=coords[1],
             lat_partition=calculate_partition(coords[0]),
@@ -165,32 +166,39 @@ class HubjectToOCPIConverter:
             location_map[address_hash].append(evse)
         return location_map
 
-    def get_timezone(self, utc_offset: str):
+    def get_timezone_by_offset_country(self, utc_offset, country_code):
         """
         >>> oicp_to_ocpi = HubjectToOCPIConverter()
-        >>> oicp_to_ocpi.get_timezone('UTC+03:00')
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+03:00', "FI")
         'Europe/Helsinki'
-        >>> oicp_to_ocpi.get_timezone('UTC+05:30')
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:30', "LK")
         'Asia/Colombo'
-        >>> oicp_to_ocpi.get_timezone('UTC+05:45')
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:45', "NP")
         'Asia/Kathmandu'
-        >>> oicp_to_ocpi.get_timezone('UTC+00:00')
-        'UTC'
-        >>> oicp_to_ocpi.get_timezone('UTC+99:99')
-        Traceback (most recent call last):
-            ...
-        django.core.exceptions.ValidationError: ['Unknown UTC offset: UTC+99:99']
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+01:00', "GB")
+        'Europe/London'
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+99:99', "DE")
+        ''
         """
-        for tz in pytz.all_timezones:
-            try:
-                now = datetime.now(pytz.timezone(tz))
-                if (
-                    f"{now.strftime('UTC%z')[:6]}:{now.strftime('UTC%z')[6:]}"
-                    == utc_offset
-                ):
-                    return tz
-            except pytz.exceptions.UnknownTimeZoneError:
-                raise ValidationError(f"Unknown UTC offset: {utc_offset}")
+        # Convert UTC offset to hours and minutes (in case there's a partial offset like UTC+05:30)
+        sign = 1 if utc_offset[3] == "+" else -1
+        hours, minutes = map(int, utc_offset[4:].split(":"))
+        target_offset = timedelta(hours=sign * hours, minutes=sign * minutes)
+
+        # Get timezones for the given country code
+        country_timezones = pytz.country_timezones.get(country_code.upper(), [])
+
+        now = datetime.now()  # Get the current time to account for DST if applicable
+
+        for timezone in country_timezones:
+            tz = pytz.timezone(timezone)
+            offset = tz.utcoffset(now)
+
+            # Compare the offset to the target UTC offset
+            if offset == target_offset:
+                return timezone
+
+        return ""
 
     def get_address(self, address: Address) -> str:
         return f"{address.Street}, {address.HouseNum}"
