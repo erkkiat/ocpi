@@ -94,7 +94,7 @@ class HubjectToOCPIConverter:
             location=location,
         )
 
-    def convert_to_locations(
+    def convert_to_location(
         self, evse_data_record: EvseDataRecord, owner: str, unique_hashed_id: str = None
     ) -> Location:
         coords = self.get_geo_coordinates(evse_data_record.GeoCoordinates)
@@ -141,7 +141,7 @@ class HubjectToOCPIConverter:
             # If the evses are in the same location, data related to the location will be the same
             evse_data_record = locations_evse_map[location_hash_key][0]
             # location hash key is a unique id based on the location. this prevents creating duplicating locations
-            location = self.convert_to_locations(
+            location = self.convert_to_location(
                 evse_data_record, owner, location_hash_key
             )
             self.locations.append(location)
