@@ -31,12 +31,9 @@ port = settings.MQTT_PORT
 # Todo: should this be a process ID or something? Cannot overlap between processes
 client_id = f"ocpiconnector_{uuid.uuid4()}"
 
-METER_TOPIC_PATTERN = r"\$share/session_group/session/([^\/]+)/meter"
-STATUS_TOPIC_PATTERN = r"\$share/session_group/session/([^\/]+)/status"
-
 # Shared subscription topic with wildcard to capture all session_ids
-topic = "$share/session_group/session/+/metervalues"
-status = "$share/session_group/session/+/statusupdates"
+METER_TOPIC = "$share/session_group/session/+/metervalues"
+STATUS_TOPIC = "$share/session_group/session/+/statusupdates"
 
 
 def _decode_message(message):
@@ -81,35 +78,26 @@ def _process_status_update(message) -> None:
 
 
 def on_message(client, userdata, message):
-    if re.match(METER_TOPIC_PATTERN, message.topic):
+    meter_topic_pattern = r"\$share/session_group/session/([^\/]+)/meter"
+    status_topic_pattern = r"\$share/session_group/session/([^\/]+)/status"
+    if re.match(meter_topic_pattern, message.topic):
         _process_meter_values(message)
-    elif re.match(STATUS_TOPIC_PATTERN, message.topic):
+    elif re.match(status_topic_pattern, message.topic):
         _process_status_update(message)
     else:
         logger.error(f"Unknown topic {message.topic}")
         return
 
 
-#     from ocpi22.cpo.mqtt.tasks import process_meter_values
-#
-#     # Callback when the client receives a message
-#     # print(f"Received message on topic {message.topic}: {message.payload.decode()}")
-#     try:
-#         meter_values = MeterValues.model_validate_json(message.payload.decode())
-#         process_meter_values(**meter_values.model_dump())  # Switch to the below call after setting up celery
-#         # process_meter_values.apply_async(kwargs=meter_values.model_dump(), expires=35)
-#     except ValidationError as e:
-#         print(f"Failed to parse message: {e}")
-
-
 def on_connect(client, userdata, flags, rc, properties=None):
     # Callback when the client connects to the broker
     if rc == 0:
-        print("Connected successfully to the broker.")
-        client.subscribe(topic)
-        print(f"Subscribed to topic: {topic}")
+        logger.info("Connected successfully to the broker.")
+        client.subscribe(METER_TOPIC)
+        client.subscribe(STATUS_TOPIC)
+        logger.info(f"Subscribed to [{METER_TOPIC}] and [{STATUS_TOPIC}]")
     else:
-        print(f"Failed to connect, return code {rc}")
+        logger.error(f"Failed to connect, return code {rc}")
 
 
 # Create an MQTT client instance
