@@ -52,11 +52,8 @@ class HubjectToOCPIConverter:
         AuthenticationMode.NFC_RFID_Classic: OCPICapabilityEnum.RFID_READER,
     }
 
-    def __convert_to_connectors(
-        self, hubject_evse: EvseDataRecord, ocpi_evse: Evse
-    ) -> list[Connector]:
+    def __convert_to_connectors(self, hubject_evse: EvseDataRecord, ocpi_evse: Evse):
         hubject_connectors = hubject_evse.ChargingFacilities
-        ocpi_connectors = []
         for c in hubject_connectors:
             new_connector = Connector(
                 uid=uuid.uuid4(),
@@ -74,9 +71,7 @@ class HubjectToOCPIConverter:
                 # terms_and_conditions="",
                 last_updated=hubject_evse.lastUpdate,
             )
-            ocpi_connectors.append(new_connector)
-
-        return ocpi_connectors
+            yield new_connector
 
     def __convert_to_evse(self, evse: EvseDataRecord, location: Location) -> Evse:
         return Evse(
@@ -148,8 +143,8 @@ class HubjectToOCPIConverter:
 
             for evse_data_record in locations_evse_map[location_hash_key]:
                 tmp_evse = self.__convert_to_evse(evse_data_record, location)
-                tmp_connectors = self.__convert_to_connectors(
-                    evse_data_record, tmp_evse
+                tmp_connectors = list(
+                    self.__convert_to_connectors(evse_data_record, tmp_evse)
                 )
                 self.ocpi_evses.append(tmp_evse)
                 self.connectors.extend(tmp_connectors)
@@ -177,7 +172,7 @@ class HubjectToOCPIConverter:
         >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+01:00', "GB")
         'Europe/London'
         >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+99:99', "DE")
-        ''
+
         """
         # Convert UTC offset to hours and minutes (in case there's a partial offset like UTC+05:30)
         sign = 1 if utc_offset[3] == "+" else -1
@@ -197,7 +192,7 @@ class HubjectToOCPIConverter:
             if offset == target_offset:
                 return timezone
 
-        return ""
+        return None
 
     def get_address(self, address: Address) -> str:
         return f"{address.Street}, {address.HouseNum}"
