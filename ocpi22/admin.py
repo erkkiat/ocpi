@@ -35,6 +35,7 @@ from ocpi22.ocpi.partners import (
     get_partners_by_party_as_party,
 )
 from ocpi22.pull import admin_pull_all
+from ocpi22.push import admin_push_all
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
     ocpi_platform,
@@ -778,7 +779,7 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
         "roles__business_details__name",
     ]
     list_display_links = ["name"]
-    actions = [admin_pull_all]
+    actions = [admin_pull_all, admin_push_all]
 
     def has_add_permission(self, request):
         return settings.PREMIUM and super().has_add_permission(request)

@@ -4,3 +4,5 @@ DEBUG = True
 ALLOWED_HOSTS.extend(["*"])  # noqa
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
+
+HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"

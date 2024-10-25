@@ -90,7 +90,8 @@ class OCPIToHubjectConverter:
             GeoCoordinates=GeoCoordinates(
                 Google=None,
                 DecimalDegree=DecimalDegree(
-                    Latitude=str(location.latitude), Longitude=str(location.longitude)
+                    Latitude="{:.6f}".format(location.latitude),
+                    Longitude="{:.6f}".format(location.longitude),
                 ),
                 DegreeMinuteSeconds=None,
             ),
@@ -125,7 +126,8 @@ class OCPIToHubjectConverter:
             GeoChargingPointEntrance=GeoCoordinates(
                 Google=None,
                 DecimalDegree=DecimalDegree(
-                    Latitude=str(location.latitude), Longitude=str(location.longitude)
+                    Latitude="{:.6f}".format(location.latitude),
+                    Longitude="{:.6f}".format(location.longitude),
                 ),
                 DegreeMinuteSeconds=None,
             ),
@@ -216,7 +218,7 @@ class OCPIToHubjectConverter:
                 PowerType=self.get_power_type(connector.power_type),
                 Voltage=connector.max_voltage,
                 Amperage=connector.max_amperage,
-                Power=connector.max_electric_power,
+                Power=int(connector.max_electric_power / 1000),
             )
             for connector in connectors
         ]
@@ -293,7 +295,7 @@ class OCPIToHubjectConverter:
         # todo : Item AuthenticationModes cannot map all modes directly to OICP
         return [
             mode
-            for capability in capabilities
+            for capability in (capabilities or [])
             for mode in [self.get_authentication_mode(capability)]
             if mode is not None
         ]
@@ -331,7 +333,7 @@ class OCPIToHubjectConverter:
 
         return [
             vas
-            for capability in capabilities
+            for capability in (capabilities or [])
             for vas in [self.get_value_added_services(capability)]
             if vas is not None
         ]
@@ -408,7 +410,8 @@ class OCPIToHubjectConverter:
         payment_options = [
             option
             for option, required_capabilities in capability_map.items()
-            if any(capability in capabilities for capability in required_capabilities)
+            if capabilities
+            and any(capability in capabilities for capability in required_capabilities)
         ]
 
         # TODO: No Payment will be determined separately with tariffs
