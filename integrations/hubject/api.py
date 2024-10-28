@@ -1,4 +1,6 @@
 import os
+
+import certifi
 import requests
 
 from collections import defaultdict
@@ -89,7 +91,9 @@ class HubJectClient:
 def check_hubject_alive(request):
     try:
         client = HubJectClient()
-        response = client.get(with_trailing_slash(settings.HUBJECT_URL))
+        response = client.get(
+            with_trailing_slash(settings.HUBJECT_URL), verify=certifi.where()
+        )
         response.raise_for_status()
     except httpx.HTTPError as exc:
         print(exc)
@@ -139,7 +143,9 @@ def start_evse_full_load(request):
         )
 
         try:
-            response = client.post(full_load_url, data=data_to_send.model_dump())
+            response = client.post(
+                full_load_url, data=data_to_send.model_dump(), verify=certifi.where()
+            )
             response.raise_for_status()
         except httpx.HTTPError as exc:
             print(exc)
