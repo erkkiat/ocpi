@@ -77,7 +77,7 @@ class HubJectClient:
 
 
 @api.get("/alive", url_name="alive")
-def index(request):
+def check_hubject_alive(request):
     try:
         client = HubJectClient()
         response = client.get(with_trailing_slash(settings.HUBJECT_URL))
