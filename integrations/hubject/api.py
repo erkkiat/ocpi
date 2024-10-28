@@ -56,6 +56,15 @@ class HubJectClient:
             raise ValueError(
                 "Certificate or key data not found in environment variables"
             )
+        os.makedirs(
+            os.path.join(
+                settings.BASE_DIR,
+                "integrations",
+                "hubject",
+                "certificates",
+            ),
+            exist_ok=True,
+        )
 
         with open(self.cert_path, "w") as cert_file:
             cert_file.write(self.CERTIFICATE)
