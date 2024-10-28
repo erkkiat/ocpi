@@ -32,7 +32,6 @@ class HubJectClient:
     ):
         self.cert_path = os.path.join(
             settings.BASE_DIR,
-            "ocpiconnector",
             "integrations",
             "hubject",
             "certificates",
@@ -40,7 +39,6 @@ class HubJectClient:
         )
         self.key_path = os.path.join(
             settings.BASE_DIR,
-            "ocpiconnector",
             "integrations",
             "hubject",
             "certificates",
@@ -76,6 +74,21 @@ class HubJectClient:
 
     def patch(self, url, data=None, json=None, **kwargs):
         return self.session.patch(url, data=data, json=json, **kwargs)
+
+
+@api.get("/alive", url_name="alive")
+def index():
+    try:
+        client = HubJectClient()
+        response = client.get(with_trailing_slash(settings.HUBJECT_URL))
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        print(exc)
+        return {
+            "success": False,
+            "error": "Failed to connect to Hubject",
+        }
+    return {"success": True, "message": "Successfully connected to Hubject"}
 
 
 @api.post("/full-load/", url_name="hubject-evse-full-load")
