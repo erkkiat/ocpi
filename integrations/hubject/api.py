@@ -1,3 +1,6 @@
+import os
+import requests
+
 from collections import defaultdict
 from typing import Dict, List
 from urllib.parse import urljoin
@@ -19,19 +22,30 @@ from util import with_trailing_slash
 
 api = NinjaAPI()
 
-import os
-import requests
-
 
 class HubJectClient:
     CERTIFICATE = settings.HUBJECT_CERTIFICATE
     PUBLIC_KEY = settings.HUBJECT_PUBLIC_KEY
 
-    def __init__(self, ):
-        self.cert_path = os.path.join(settings.BASE_DIR, 'ocpiconnector', 'integrations', 'hubject', 'certificates',
-                                      'certificate.crt')
-        self.key_path = os.path.join(settings.BASE_DIR, 'ocpiconnector', 'integrations', 'hubject', 'certificates',
-                                     'private.key')
+    def __init__(
+        self,
+    ):
+        self.cert_path = os.path.join(
+            settings.BASE_DIR,
+            "ocpiconnector",
+            "integrations",
+            "hubject",
+            "certificates",
+            "certificate.crt",
+        )
+        self.key_path = os.path.join(
+            settings.BASE_DIR,
+            "ocpiconnector",
+            "integrations",
+            "hubject",
+            "certificates",
+            "private.key",
+        )
 
         if not os.path.isfile(self.cert_path) or not os.path.isfile(self.key_path):
             self._save_cert_and_key()
@@ -41,7 +55,9 @@ class HubJectClient:
 
     def _save_cert_and_key(self):
         if not self.CERTIFICATE or not self.PUBLIC_KEY:
-            raise ValueError("Certificate or key data not found in environment variables")
+            raise ValueError(
+                "Certificate or key data not found in environment variables"
+            )
 
         with open(self.cert_path, "w") as cert_file:
             cert_file.write(self.CERTIFICATE)
@@ -75,43 +91,39 @@ def start_evse_full_load(request):
         op_evse_data = converter.convert_to_operator_evse_data(location)
         collection[op_evse_data.OperatorID.root].append(op_evse_data)
 
-    # Certificate file paths
-    # client_cert = "/path/to/client-cert.pem"
-    # client_key = "/path/to/client-key.pem"
+    client = HubJectClient()
 
-    # async with httpx.AsyncClient(cert=(client_cert, client_key)) as client:
-    with httpx.Client() as client:
-        for operator_id, operator_evse_list in collection.items():
-            evse_data_record_lists = [
-                op_evse_data.EvseDataRecord for op_evse_data in operator_evse_list
-            ]
-            evse_data_records = [
-                evse for evse_list in evse_data_record_lists for evse in evse_list
-            ]
+    for operator_id, operator_evse_list in collection.items():
+        evse_data_record_lists = [
+            op_evse_data.EvseDataRecord for op_evse_data in operator_evse_list
+        ]
+        evse_data_records = [
+            evse for evse_list in evse_data_record_lists for evse in evse_list
+        ]
 
-            # Create data payload
-            data_to_send = ERoamingPushEvseData(
-                ActionType=ActionType.fullLoad,
-                OperatorEvseData=OperatorEvseData(
-                    OperatorID=operator_id,
-                    OperatorName=operator_evse_list[0].OperatorName,
-                    EvseDataRecord=evse_data_records,
-                ),
-            )
+        # Create data payload
+        data_to_send = ERoamingPushEvseData(
+            ActionType=ActionType.fullLoad,
+            OperatorEvseData=OperatorEvseData(
+                OperatorID=operator_id,
+                OperatorName=operator_evse_list[0].OperatorName,
+                EvseDataRecord=evse_data_records,
+            ),
+        )
 
-            full_load_url = urljoin(
-                with_trailing_slash(settings.HUBJECT_URL),
-                f"evsepush/v23/operators/{data_to_send.OperatorEvseData.OperatorID.root}/data-records",
-            )
+        full_load_url = urljoin(
+            with_trailing_slash(settings.HUBJECT_URL),
+            f"evsepush/v23/operators/{data_to_send.OperatorEvseData.OperatorID.root}/data-records",
+        )
 
-            try:
-                response = client.post(full_load_url, data=data_to_send.model_dump())
-                response.raise_for_status()
-            except httpx.HTTPError as exc:
-                print(exc)
-                return {
-                    "success": False,
-                    "error": f"Failed to full load evses for Operator {operator_id}",
-                }
+        try:
+            response = client.post(full_load_url, data=data_to_send.model_dump())
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            print(exc)
+            return {
+                "success": False,
+                "error": f"Failed to full load evses for Operator {operator_id}",
+            }
 
     return {"success": True, "message": "Evse full load successfully sent to hubject"}
