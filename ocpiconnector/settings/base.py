@@ -124,7 +124,7 @@ HOTLINE = os.environ.get("HOTLINE", "+3256380211")
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split("://")
     assert (
-        protocol == "mysql" and '"' not in protocol and "'" not in protocol
+            protocol == "mysql" and '"' not in protocol and "'" not in protocol
     ), "Only mysql:// is supported, check that you don't have quotes in the JAWSDB_MARIA_URL"
     credentials, connection = url.split("@")
     userid, password = credentials.split(":")
@@ -252,10 +252,10 @@ def hostname_variants(hostname):
 
 
 ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "testserver.test",
-] + hostname_variants(HOSTNAME)
+                    "localhost",
+                    "127.0.0.1",
+                    "testserver.test",
+                ] + hostname_variants(HOSTNAME)
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
@@ -585,6 +585,9 @@ MESSAGE_TAGS = {
     messages.ERROR: "alert-danger",
 }
 SEND_DATA_TO_ANALYTICS = False
+
+HUBJECT_CERTIFICATE = os.environ.get("HUBJECT_CERTIFICATE")
+HUBJECT_PUBLIC_KEY = os.environ.get("HUBJECT_PUBLIC_KEY")
 
 #  This is not needed in pytest let's fix this in pytest
 try:
