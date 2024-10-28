@@ -1,3 +1,7 @@
+from unittest.mock import patch, MagicMock, AsyncMock
+
+import pytest
+from asgiref.sync import sync_to_async
 from django.test import TestCase
 from django.utils.datetime_safe import datetime
 from django.core.exceptions import ValidationError
@@ -28,6 +32,8 @@ from ocpiconnector import testutil
 
 import doctest
 import pytz
+
+from integrations.hubject.api import api as hubject_apis
 
 
 def load_tests(_loader, tests, _ignore):
@@ -189,3 +195,38 @@ class TestMappings(TestCase):
             result,
             "The mapped OCPI Location data does not match the expected OICP data.",
         )
+
+
+class TestHubjectApi:
+    @pytest.mark.asyncio
+    @patch("ocpi22.models.location.Location.objects.all")
+    @patch(
+        "integrations.ocpi_to+hubject_converter.OCPIToHubjectConverter.convert_to_operator_evse_data"
+    )
+    @patch("httpx.AsyncClient.post")
+    async def test_start_load(self, mock_post, mock_convert, mock_all, client):
+        # Mock the model query to return dummy data
+        mock_all.return_value = [MagicMock(id=1), MagicMock(id=2)]
+
+        # Mock the converter to return an object with expected structure
+        mock_convert.side_effect = lambda x: MagicMock(
+            someID=MagicMock(root="operator1"), ss1=[{"data": "dummy_data"}]
+        )
+
+        # Mock the HTTP client response to simulate a successful post
+        mock_post.return_value = AsyncMock(status_code=200)
+
+        # Call the endpoint using the Django test client
+        response = await sync_to_async(hubject_apis.urls[0].callback)(
+            None
+        )  # Directly calling start_load with an empty request
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "success": True,
+            "message": "Data successfully processed and sent",
+        }
+
+        # Ensure that the converter and HTTP client were called correctly
+        assert mock_convert.call_count == len(mock_all.return_value)
+        mock_post.assert_called()

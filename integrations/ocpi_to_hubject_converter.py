@@ -47,7 +47,7 @@ class OCPIToHubjectConverter:
     def convert_to_operator_evse_data(self, location: Location) -> OperatorEvseData:
         return OperatorEvseData(
             OperatorID=location.party_str(),
-            OperatorName=location.owner.name,
+            OperatorName=location.owner.name if location.owner else "",
             EvseDataRecord=[
                 self._convert_to_evse_data_record(evse, location)
                 for evse in location.evses.all()
@@ -137,8 +137,8 @@ class OCPIToHubjectConverter:
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
-            IsHubjectCompatible=True,
-            DynamicInfoAvailable=DynamicInfoAvailable.auto,
+            IsHubjectCompatible=False,
+            DynamicInfoAvailable=DynamicInfoAvailable.false,
         )
 
     def get_plug(self, connector_std: str) -> Plug:

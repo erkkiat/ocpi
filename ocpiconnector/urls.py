@@ -51,6 +51,7 @@ from ocpiconnector.ocpi_identities import ocpi_platform
 from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
 from webhooks.urls import urlpatterns as webhooks_urls
+from integrations.hubject.api import api as hubject_api
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r"credentials/", CredentialsViewSet, basename="credentials")
@@ -142,6 +143,7 @@ urlpatterns = [
     ),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
     # path("__debug__/", include("debug_toolbar.urls")),
+    path("api/hubject/2.3/", hubject_api.urls),
 ]
 
 if ocpi_platform.is_emsp:
