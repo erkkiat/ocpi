@@ -55,7 +55,8 @@ class TariffQuickViewSet(
                 context={"request": request, "party": Party(country_code, party_id)},
             )
             if serializer.is_valid():
-                serializer.save(ocpi_master=our_role)
+                tariff = serializer.save(ocpi_master=our_role)
+                tariff.send_updates()
                 http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
                 return Response(serializer.data, status=http_status)
             else:
