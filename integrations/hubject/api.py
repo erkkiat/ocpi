@@ -19,6 +19,48 @@ from util import with_trailing_slash
 
 api = NinjaAPI()
 
+import os
+import requests
+
+
+class HubJectClient:
+    CERTIFICATE = settings.HUBJECT_CERTIFICATE
+    PUBLIC_KEY = settings.HUBJECT_PUBLIC_KEY
+
+    def __init__(self, ):
+        self.cert_path = os.path.join(settings.BASE_DIR, 'ocpiconnector', 'integrations', 'hubject', 'certificates',
+                                      'certificate.crt')
+        self.key_path = os.path.join(settings.BASE_DIR, 'ocpiconnector', 'integrations', 'hubject', 'certificates',
+                                     'private.key')
+
+        if not os.path.isfile(self.cert_path) or not os.path.isfile(self.key_path):
+            self._save_cert_and_key()
+
+        self.session = requests.Session()
+        self.session.cert = (self.cert_path, self.key_path)
+
+    def _save_cert_and_key(self):
+        if not self.CERTIFICATE or not self.PUBLIC_KEY:
+            raise ValueError("Certificate or key data not found in environment variables")
+
+        with open(self.cert_path, "w") as cert_file:
+            cert_file.write(self.CERTIFICATE)
+
+        with open(self.key_path, "w") as key_file:
+            key_file.write(self.PUBLIC_KEY)
+
+    def get(self, url, **kwargs):
+        return self.session.get(url, **kwargs)
+
+    def post(self, url, data=None, json=None, **kwargs):
+        return self.session.post(url, data=data, json=json, **kwargs)
+
+    def put(self, url, data=None, json=None, **kwargs):
+        return self.session.put(url, data=data, json=json, **kwargs)
+
+    def patch(self, url, data=None, json=None, **kwargs):
+        return self.session.patch(url, data=data, json=json, **kwargs)
+
 
 @api.post("/full-load/", url_name="hubject-evse-full-load")
 # @api.post("/full_load/", url_name="hubject-evse-full-load", auth=JWTAuth())
