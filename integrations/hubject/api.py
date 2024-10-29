@@ -87,6 +87,9 @@ class HubJectClient:
         with open(self.key_path, "w") as key_file:
             key_file.write(self.PUBLIC_KEY)
 
+        with open(self.ca_cert_path, "w") as key_file:
+            key_file.write(self.CA_CERTIFICATE)
+
     def get(self, url, **kwargs):
         return self.session.get(url, **kwargs)
 
