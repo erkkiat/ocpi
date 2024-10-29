@@ -35,9 +35,9 @@ class EvseStatus(str, Enum):
 
 
 class EvseStatusUpdate(BaseModel):
-    evse_uuid: str
+    evse_uid: str
     status: EvseStatus
-    last_updated: datetime
+    last_updated: datetime | None = datetime.utcnow
 
 
 @dataclass
