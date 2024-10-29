@@ -586,6 +586,10 @@ MESSAGE_TAGS = {
 }
 SEND_DATA_TO_ANALYTICS = False
 
+SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
+SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
+
+
 #  This is not needed in pytest let's fix this in pytest
 try:
     INSTALLED_APPS = ["test_without_migrations"] + INSTALLED_APPS
