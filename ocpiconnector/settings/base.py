@@ -77,7 +77,9 @@ SERVE_STATIC_FILES = _env_bool("SERVE_STATIC_FILES", True)
 MAX_NUMBER_OF_PARTNERS = os.environ.get("MAX_NUMBER_OF_PARTNERS", 1000)
 
 REMOTE_COMMAND_EXPIRATION = os.environ.get("REMOTE_COMMAND_EXPIRATION", 2 * 60)
-MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS = os.environ.get("MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS", 2 * 24 * 60 * 60)
+MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS = os.environ.get(
+    "MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS", 2 * 24 * 60 * 60
+)
 
 # Use the builtin account functionality and require a wallet balance when user wants to charge
 USE_ACCOUNTS = _env_bool("USE_ACCOUNTS", False)
@@ -124,7 +126,7 @@ HOTLINE = os.environ.get("HOTLINE", "+3256380211")
 def parse_jawsdb_maria_url(url):
     protocol, url = url.split("://")
     assert (
-            protocol == "mysql" and '"' not in protocol and "'" not in protocol
+        protocol == "mysql" and '"' not in protocol and "'" not in protocol
     ), "Only mysql:// is supported, check that you don't have quotes in the JAWSDB_MARIA_URL"
     credentials, connection = url.split("@")
     userid, password = credentials.split(":")
@@ -252,10 +254,10 @@ def hostname_variants(hostname):
 
 
 ALLOWED_HOSTS = [
-                    "localhost",
-                    "127.0.0.1",
-                    "testserver.test",
-                ] + hostname_variants(HOSTNAME)
+    "localhost",
+    "127.0.0.1",
+    "testserver.test",
+] + hostname_variants(HOSTNAME)
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
@@ -586,8 +588,9 @@ MESSAGE_TAGS = {
 }
 SEND_DATA_TO_ANALYTICS = False
 
-HUBJECT_CERTIFICATE = os.environ.get("HUBJECT_CERTIFICATE")
+HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
 HUBJECT_PUBLIC_KEY = os.environ.get("HUBJECT_PUBLIC_KEY")
+HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
 
 #  This is not needed in pytest let's fix this in pytest
 try:

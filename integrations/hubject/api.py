@@ -1,6 +1,5 @@
 import os
 
-import certifi
 import requests
 
 from collections import defaultdict
@@ -26,18 +25,19 @@ api = NinjaAPI()
 
 
 class HubJectClient:
-    CERTIFICATE = settings.HUBJECT_CERTIFICATE
+    CLIENT_CERTIFICATE = settings.HUBJECT_CLIENT_CERTIFICATE
     PUBLIC_KEY = settings.HUBJECT_PUBLIC_KEY
+    CA_CERTIFICATE = settings.HUBJECT_CA_CERTIFICATE
 
     def __init__(
         self,
     ):
-        self.cert_path = os.path.join(
+        self.client_cert_path = os.path.join(
             settings.BASE_DIR,
             "integrations",
             "hubject",
             "certificates",
-            "certificate.crt",
+            "client_certificate.crt",
         )
         self.key_path = os.path.join(
             settings.BASE_DIR,
@@ -47,14 +47,27 @@ class HubJectClient:
             "private.key",
         )
 
-        if not os.path.isfile(self.cert_path) or not os.path.isfile(self.key_path):
+        self.ca_cert_path = os.path.join(
+            settings.BASE_DIR,
+            "integrations",
+            "hubject",
+            "certificates",
+            "ca_certificate.crt",
+        )
+
+        if (
+            not os.path.isfile(self.client_cert_path)
+            or not os.path.isfile(self.key_path)
+            or not os.path.isfile(self.ca_cert_path)
+        ):
             self._save_cert_and_key()
 
         self.session = requests.Session()
-        self.session.cert = (self.cert_path, self.key_path)
+        self.session.cert = (self.client_cert_path, self.key_path)
+        self.session.verify = self.ca_cert_path
 
     def _save_cert_and_key(self):
-        if not self.CERTIFICATE or not self.PUBLIC_KEY:
+        if not self.CLIENT_CERTIFICATE or not self.PUBLIC_KEY:
             raise ValueError(
                 "Certificate or key data not found in environment variables"
             )
@@ -68,8 +81,8 @@ class HubJectClient:
             exist_ok=True,
         )
 
-        with open(self.cert_path, "w") as cert_file:
-            cert_file.write(self.CERTIFICATE)
+        with open(self.client_cert_path, "w") as cert_file:
+            cert_file.write(self.CLIENT_CERTIFICATE)
 
         with open(self.key_path, "w") as key_file:
             key_file.write(self.PUBLIC_KEY)
@@ -91,9 +104,7 @@ class HubJectClient:
 def check_hubject_alive(request):
     try:
         client = HubJectClient()
-        response = client.get(
-            with_trailing_slash(settings.HUBJECT_URL), verify=certifi.where()
-        )
+        response = client.get(with_trailing_slash(settings.HUBJECT_URL))
         response.raise_for_status()
     except httpx.HTTPError as exc:
         print(exc)
@@ -143,9 +154,7 @@ def start_evse_full_load(request):
         )
 
         try:
-            response = client.post(
-                full_load_url, data=data_to_send.model_dump(), verify=certifi.where()
-            )
+            response = client.post(full_load_url, data=data_to_send.model_dump())
             response.raise_for_status()
         except httpx.HTTPError as exc:
             print(exc)

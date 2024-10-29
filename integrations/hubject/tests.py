@@ -1,8 +1,9 @@
-from unittest.mock import patch, MagicMock, AsyncMock
+from urllib.parse import urljoin
 
 import pytest
-from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.test import TestCase
+from django.test import Client
 from django.utils.datetime_safe import datetime
 from django.core.exceptions import ValidationError
 
@@ -33,7 +34,8 @@ from ocpiconnector import testutil
 import doctest
 import pytz
 
-from integrations.hubject.api import api as hubject_apis
+from ocpiconnector.testutil import simulate_surrounding_world
+from util import with_trailing_slash
 
 
 def load_tests(_loader, tests, _ignore):
@@ -198,35 +200,98 @@ class TestMappings(TestCase):
 
 
 class TestHubjectApi:
-    @pytest.mark.asyncio
-    @patch("ocpi22.models.location.Location.objects.all")
-    @patch(
-        "integrations.ocpi_to+hubject_converter.OCPIToHubjectConverter.convert_to_operator_evse_data"
-    )
-    @patch("httpx.AsyncClient.post")
-    async def test_start_load(self, mock_post, mock_convert, mock_all, client):
-        # Mock the model query to return dummy data
-        mock_all.return_value = [MagicMock(id=1), MagicMock(id=2)]
-
-        # Mock the converter to return an object with expected structure
-        mock_convert.side_effect = lambda x: MagicMock(
-            someID=MagicMock(root="operator1"), ss1=[{"data": "dummy_data"}]
+    @pytest.mark.django_db
+    @simulate_surrounding_world
+    async def test_start_load(self, simulation):
+        berlin_supercharger_ocpi_master = CredentialsRoleFactory(
+            role="CPO",
+            country_code="DE",
+            party_id="SMP",
+        )
+        berlin_supercharger_operator_business_details = BusinessDetailsFactory(
+            name="berlin Supercharger Operator",
+            website="https://www.berlin-supercharger.com",
+            logo="test_logo.png",
+        )
+        berlin_supercharger_sub_operator_business_details = BusinessDetailsFactory(
+            name="berlin Supercharger Sub Operator",
+            website="https://www.berlin-supercharger.com",
+            logo="test_logo.png",
+        )
+        berlin_supercharger_owner_business_details = BusinessDetailsFactory(
+            name="Smappee Pvt Ltd.",
+            website="https://www.berlin-supercharger.com",
+            logo="test_logo.png",
         )
 
-        # Mock the HTTP client response to simulate a successful post
-        mock_post.return_value = AsyncMock(status_code=200)
+        berlin = LocationFactory(
+            publish=True,
+            name="berlin Supercharger",
+            address="Mannerheimintie 1",
+            city="berlin",
+            postal_code="00100",
+            state="Uusimaa",
+            country="FIN",
+            parking_type="ON_STREET",
+            latitude=60.1695,
+            longitude=24.9354,
+            time_zone="Europe/berlin",
+            ocpi_master=berlin_supercharger_ocpi_master,
+            operator=berlin_supercharger_operator_business_details,
+            suboperator=berlin_supercharger_sub_operator_business_details,
+            owner=berlin_supercharger_owner_business_details,
+            charging_when_closed=True,
+        )
 
-        # Call the endpoint using the Django test client
-        response = await sync_to_async(hubject_apis.urls[0].callback)(
-            None
-        )  # Directly calling start_load with an empty request
+        berlin_evse_data = EvseFactory(
+            evse_id="FI*ABC*E1234*5668",
+            status="RESERVED",
+            location=berlin,
+            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            capabilities=["RFID_READER", "RESERVABLE"],
+        )
+
+        ConnectorFactory(
+            uid="CONNECTOR_1",
+            evse=berlin_evse_data,
+            standard="IEC_62196_T2",
+            format="SOCKET",
+            power_type="DC",
+            max_voltage=230,
+            max_amperage=16,
+            max_electric_power=37,
+            terms_and_conditions="https://www.berlin-supercharger.com/terms-and-conditions",
+            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+        )
+
+        # Configure requests mock for external HTTP calls
+        simulation.tasks_requests.post.return_value.status_code = 200
+        simulation.tasks_requests.post.return_value.json.return_value = {
+            "success": True,
+            "message": "Evse full load successfully sent to hubject",
+        }
+
+        simulation.tasks_requests.post.assert_called_once_with(
+            "http://your-external-service-url", json={"data": "expected_payload"}
+        )
+
+        client = Client()
+
+        full_load_url = urljoin(
+            with_trailing_slash(settings.HUBJECT_URL),
+            "evsepush/v23/operators/FI*CPO/data-records",
+        )
+
+        response = client.post(full_load_url)
+
+        simulation.tasks_requests.post.assert_called_once_with(full_load_url, json={})
 
         assert response.status_code == 200
         assert response.json() == {
             "success": True,
-            "message": "Data successfully processed and sent",
+            "message": "Evse full load successfully sent to hubject",
         }
-
-        # Ensure that the converter and HTTP client were called correctly
-        assert mock_convert.call_count == len(mock_all.return_value)
-        mock_post.assert_called()
