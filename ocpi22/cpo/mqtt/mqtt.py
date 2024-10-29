@@ -7,13 +7,15 @@ from datetime import datetime
 import paho.mqtt.client as mqtt
 from celery import shared_task
 from django.conf import settings
+from django.db.models import F, Value
+from django.db.models.functions import Concat
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from rest_framework.generics import get_object_or_404
 
 from integrations.hubject.schemas import EvseStatus
 from ocpi22.cpo.mqtt.tasks import process_meter_values
-from ocpi22.models.location import Evse
+from ocpi22.models.location import Evse, Location
 
 
 def _load_envs():
@@ -61,14 +63,31 @@ def _process_meter_values(message) -> None:
         logger.exception(f"Failed to parse message: {e}")
     return
 
-def _generate_unique_evse_id(evse: Evse):
-    pass
+
+def get_evse_by_uid(uid: str):
+    evse = (
+        Evse.objects
+        .filter(uid=uid)  # Filter by UID
+        .annotate(
+            generated_evse_id=Concat(
+                F('location__ocpi_master__country_code'),  # Country code from ocpi_master
+                Value('*'),
+                F('location__ocpi_master__party_id'),  # Party ID from ocpi_master
+                Value('*E'),
+                F('uid')  # UID from Evse
+            )
+        )
+        .filter(generated_evse_id=F('evse_id'))  # Compare generated evse_id with the stored evse_id
+        .select_related('location__ocpi_master')  # Optimize fetching related objects
+        .first()
+    )
+    if not evse:
+        raise logger.error(f"Evse with UID {uid} not found")
 
 
 @shared_task
 def _save_and_send_status_updates(evse_uid: str, status: str, last_updated: datetime) -> None:
-    evse = get_object_or_404(Evse, uid=evse_uid)
-    evse = Evse.objects.filter(uid=evse_uid)
+    evse = get_evse_by_uid(evse_uid)
     evse.status = status
     evse.save(update_fields=["status", "last_updated"])
     evse.send_status_updates()
