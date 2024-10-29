@@ -218,7 +218,7 @@ class OCPIToHubjectConverter:
                 PowerType=self.get_power_type(connector.power_type),
                 Voltage=connector.max_voltage,
                 Amperage=connector.max_amperage,
-                Power=int(connector.max_electric_power / 1000),
+                Power=connector.power_kw(),
             )
             for connector in connectors
         ]

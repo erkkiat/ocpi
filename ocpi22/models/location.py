@@ -156,7 +156,9 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     # ISO 3166-1 alpha-3 code for the country of this location
     country = models.CharField(
-        max_length=3, choices=generic.countries.COUNTRIES_ISO_3, verbose_name=_("Country")
+        max_length=3,
+        choices=generic.countries.COUNTRIES_ISO_3,
+        verbose_name=_("Country"),
     )
 
     # This class defines the geo location of the Charge Point. The geodetic system to be used is WGS 84.
@@ -541,11 +543,21 @@ class Connector(models.Model, ModelUtilMixin):
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
     def __str__(self):
-        return f"#{self.uid} - {self.get_standard_display()} - {self.power()}"
+        return f"#{self.uid} - {self.get_standard_display()} - {self.power_str()}"
 
-    def power(self):
+    def power_str(self):
         phases = Ocpi.POWERTYPE_PHASES.get(self.power_type, 1)
         return f"{int((self.max_electric_power or int(self.max_voltage) * int(self.max_amperage) * phases) / 1000)} kW"
+
+    def power_kw(self):
+        phases = Ocpi.POWERTYPE_PHASES.get(self.power_type, 1)
+        return int(
+            (
+                self.max_electric_power
+                or int(self.max_voltage) * int(self.max_amperage) * phases
+            )
+            / 1000
+        )
 
     def tariff(self):
         return ",".join([t.price() for t in self.tariff_ids.all()])
