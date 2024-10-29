@@ -1,4 +1,5 @@
 import os
+import textwrap
 
 import requests
 
@@ -28,6 +29,19 @@ class HubJectClient:
     CLIENT_CERTIFICATE = settings.HUBJECT_CLIENT_CERTIFICATE
     PUBLIC_KEY = settings.HUBJECT_PUBLIC_KEY
     CA_CERTIFICATE = settings.HUBJECT_CA_CERTIFICATE
+
+    def format_cert_string(self, cert_str):
+        # Remove any surrounding whitespace and existing line breaks
+        cert_str = cert_str.strip().replace(" ", "\n").replace("\r", "")
+
+        # Split the content into 64-character chunks
+        cert_body = textwrap.fill(cert_str, 64)
+
+        # Add the header and footer
+        formatted_cert = (
+            f"-----BEGIN CERTIFICATE-----\n{cert_body}\n-----END CERTIFICATE-----"
+        )
+        return formatted_cert
 
     def __init__(
         self,
@@ -82,13 +96,13 @@ class HubJectClient:
         )
 
         with open(self.client_cert_path, "w") as cert_file:
-            cert_file.write(self.CLIENT_CERTIFICATE)
+            cert_file.write(self.format_cert_string(self.CLIENT_CERTIFICATE))
 
         with open(self.key_path, "w") as key_file:
-            key_file.write(self.PUBLIC_KEY)
+            key_file.write(self.format_cert_string(self.PUBLIC_KEY))
 
         with open(self.ca_cert_path, "w") as key_file:
-            key_file.write(self.CA_CERTIFICATE)
+            key_file.write(self.format_cert_string(self.CA_CERTIFICATE))
 
     def get(self, url, **kwargs):
         return self.session.get(url, **kwargs)
