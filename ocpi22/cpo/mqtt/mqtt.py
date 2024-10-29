@@ -61,10 +61,14 @@ def _process_meter_values(message) -> None:
         logger.exception(f"Failed to parse message: {e}")
     return
 
+def _generate_unique_evse_id(evse: Evse):
+    pass
+
 
 @shared_task
 def _save_and_send_status_updates(evse_uid: str, status: str, last_updated: datetime) -> None:
     evse = get_object_or_404(Evse, uid=evse_uid)
+    evse = Evse.objects.filter(uid=evse_uid)
     evse.status = status
     evse.save(update_fields=["status", "last_updated"])
     evse.send_status_updates()
@@ -88,8 +92,10 @@ def _process_status_update(message) -> None:
 def on_message(client, userdata, message):
     if "session" in message.topic and "metervalues" in message.topic:
         _process_meter_values(message)
+        logger.info(f"Received message {message.payload} on topic {message.topic}")
     elif "session" in message.topic and "statusupdates" in message.topic:
         _process_status_update(message)
+        logger.info(f"Received message {message.payload} on topic {message.topic}")
     else:
         logger.error(f"Unknown topic {message.topic}")
         return
