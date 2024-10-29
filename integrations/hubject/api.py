@@ -24,14 +24,14 @@ class HubJectClient:
         self,
     ):
         self.client_cert_path = os.path.join(
-            settings.BASE_DIR,
+            os.getcwd(),
             "integrations",
             "hubject",
             "certificates",
             "client_certificate.crt",
         )
         self.key_path = os.path.join(
-            settings.BASE_DIR,
+            os.getcwd(),
             "integrations",
             "hubject",
             "certificates",
@@ -39,7 +39,7 @@ class HubJectClient:
         )
 
         self.ca_cert_path = os.path.join(
-            settings.BASE_DIR,
+            os.getcwd(),
             "integrations",
             "hubject",
             "certificates",
@@ -64,7 +64,7 @@ class HubJectClient:
             )
         os.makedirs(
             os.path.join(
-                settings.BASE_DIR,
+                os.getcwd(),
                 "integrations",
                 "hubject",
                 "certificates",
