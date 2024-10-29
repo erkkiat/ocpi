@@ -2,13 +2,16 @@ import logging
 import os
 import re
 import uuid
+from datetime import datetime
 
 import paho.mqtt.client as mqtt
+from celery import shared_task
 from django.conf import settings
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from rest_framework.generics import get_object_or_404
 
+from integrations.hubject.schemas import EvseStatus
 from ocpi22.cpo.mqtt.tasks import process_meter_values
 from ocpi22.models.location import Evse
 
@@ -27,13 +30,11 @@ logger = logging.getLogger(__name__)
 
 broker = settings.MQTT_BROKER
 port = settings.MQTT_PORT
+METER_TOPIC = settings.SMAPPEE_METER_VALUES_TOPIC
+STATUS_TOPIC = settings.SMAPPEE_STATUS_UPDATE_TOPIC
 
 # Todo: should this be a process ID or something? Cannot overlap between processes
 client_id = f"ocpiconnector_{uuid.uuid4()}"
-
-# Shared subscription topic with wildcard to capture all session_ids
-METER_TOPIC = "$share/session_group/session/+/metervalues"
-STATUS_TOPIC = "$share/session_group/session/+/statusupdates"
 
 
 def _decode_message(message):
@@ -61,6 +62,15 @@ def _process_meter_values(message) -> None:
     return
 
 
+@shared_task
+def _save_and_send_status_updates(evse_uid: str, status: str, last_updated: datetime) -> None:
+    evse = get_object_or_404(Evse, uid=evse_uid)
+    evse.status = status
+    evse.save(update_fields=["status", "last_updated"])
+    evse.send_status_updates()
+    return
+
+
 def _process_status_update(message) -> None:
     decoded_evse_message = _decode_message(message)
     if not decoded_evse_message:
@@ -70,19 +80,15 @@ def _process_status_update(message) -> None:
     except ValidationError:
         logger.exception(f"Failed to parse {message.topic} message")
         return
-    evse = get_object_or_404(Evse, evse_uuid=evse_schema.evse_uuid)
-    evse.status = evse_schema.status
-    evse.save(update_fields=["status", "last_updated"])
-    evse.send_status_updates()
+    _save_and_send_status_updates.apply_async(**evse_schema.model_dump(),
+                                              expires=35)  # Switch to the below call after setting up celery
     return
 
 
 def on_message(client, userdata, message):
-    meter_topic_pattern = r"\$share/session_group/session/([^\/]+)/meter"
-    status_topic_pattern = r"\$share/session_group/session/([^\/]+)/status"
-    if re.match(meter_topic_pattern, message.topic):
+    if "session" in message.topic and "metervalues" in message.topic:
         _process_meter_values(message)
-    elif re.match(status_topic_pattern, message.topic):
+    elif "session" in message.topic and "statusupdates" in message.topic:
         _process_status_update(message)
     else:
         logger.error(f"Unknown topic {message.topic}")
