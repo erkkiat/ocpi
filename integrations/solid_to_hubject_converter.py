@@ -47,7 +47,7 @@ class SolidToHubjectConverter:
     def convert_to_operator_evse_data(self, location: Location) -> OperatorEvseData:
         return OperatorEvseData(
             OperatorID=location.party_str(),
-            OperatorName=location.owner.name,
+            OperatorName=self.get_operator_name(location),
             EvseDataRecord=[
                 self._convert_to_evse_data_record(evse, location)
                 for evse in location.evses.all()
@@ -64,7 +64,7 @@ class SolidToHubjectConverter:
             # todo : deltaType missing in ocpi22
             deltaType=None,
             lastUpdate=evse.last_updated,
-            EvseID=EvseID(evse.evse_id),
+            EvseID=self.get_evse_id(evse.evse_id),
             # todo : ChargingPoolID missing in ocpi22
             ChargingPoolID=None,
             # todo : ChargingStationID missing in ocpi22
@@ -90,7 +90,8 @@ class SolidToHubjectConverter:
             GeoCoordinates=GeoCoordinates(
                 Google=None,
                 DecimalDegree=DecimalDegree(
-                    Latitude=str(location.latitude), Longitude=str(location.longitude)
+                    Latitude="{:.6f}".format(location.latitude),
+                    Longitude="{:.6f}".format(location.longitude),
                 ),
                 DegreeMinuteSeconds=None,
             ),
@@ -121,11 +122,14 @@ class SolidToHubjectConverter:
             # todo : AdditionalInfo missing in ocpi22,
             # todo : ChargingStationLocationReference missing in ocpi22,
             # todo : ChargingStationNames missing in ocpi22
-            ChargingStationNames=[InfoTextType(lang="en", value=location.name)],
+            ChargingStationNames=[
+                InfoTextType(lang="en", value=location.name if location.name else "")
+            ],
             GeoChargingPointEntrance=GeoCoordinates(
                 Google=None,
                 DecimalDegree=DecimalDegree(
-                    Latitude=str(location.latitude), Longitude=str(location.longitude)
+                    Latitude="{:.6f}".format(location.latitude),
+                    Longitude="{:.6f}".format(location.longitude),
                 ),
                 DegreeMinuteSeconds=None,
             ),
@@ -135,8 +139,26 @@ class SolidToHubjectConverter:
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
-            IsHubjectCompatible=True,
-            DynamicInfoAvailable=DynamicInfoAvailable.auto,
+            IsHubjectCompatible=False,
+            DynamicInfoAvailable=DynamicInfoAvailable.false,
+        )
+
+    def get_evse_id(self, evse_id: str) -> EvseID:
+        """
+        >>> oicp_converter = OCPIToHubjectConverter()
+        >>> oicp_converter.get_evse_id("FI*SMP*34567")
+        EvseID(root="FI*SMP*E34567")
+        """
+        hubject_evse_id = re.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
+        return EvseID(hubject_evse_id)
+
+    def get_operator_name(self, location: Location) -> str:
+        return (
+            location.ocpi_master.business_details.name
+            if location.ocpi_master.business_details
+            else location.owner.name
+            if location.owner
+            else ""
         )
 
     def get_plug(self, connector_std: str) -> Plug:
@@ -214,9 +236,9 @@ class SolidToHubjectConverter:
         return [
             ChargingFacility(
                 PowerType=self.get_power_type(connector.power_type),
-                Voltage=connector.max_voltage,
-                Amperage=connector.max_amperage,
-                Power=connector.max_electric_power,
+                Voltage=max(0, min(999, connector.max_voltage)),
+                Amperage=max(0, min(99, connector.max_amperage)),
+                Power=max(0, min(999, connector.max_electric_power)),
             )
             for connector in connectors
         ]
@@ -293,7 +315,7 @@ class SolidToHubjectConverter:
         # todo : Item AuthenticationModes cannot map all modes directly to OICP
         return [
             mode
-            for capability in capabilities
+            for capability in (capabilities or [])
             for mode in [self.get_authentication_mode(capability)]
             if mode is not None
         ]
@@ -331,7 +353,7 @@ class SolidToHubjectConverter:
 
         return [
             vas
-            for capability in capabilities
+            for capability in (capabilities or [])
             for vas in [self.get_value_added_services(capability)]
             if vas is not None
         ]
@@ -362,7 +384,7 @@ class SolidToHubjectConverter:
         """
         >>> oicp_converter = SolidToHubjectConverter()
         >>> oicp_converter.get_timezone('Europe/Helsinki')
-        'UTC+03:00'
+        'UTC+02:00'
         >>> oicp_converter.get_timezone('Asia/Colombo')
         'UTC+05:30'
         >>> oicp_converter.get_timezone('Asia/Kathmandu')
@@ -408,7 +430,8 @@ class SolidToHubjectConverter:
         payment_options = [
             option
             for option, required_capabilities in capability_map.items()
-            if any(capability in capabilities for capability in required_capabilities)
+            if capabilities
+            and any(capability in capabilities for capability in required_capabilities)
         ]
 
         # TODO: No Payment will be determined separately with tariffs
