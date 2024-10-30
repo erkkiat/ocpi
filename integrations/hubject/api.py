@@ -1,4 +1,6 @@
 import os
+from collections import defaultdict
+from typing import List, Dict
 
 import requests
 
@@ -10,6 +12,13 @@ from django.conf import settings
 
 import httpx
 
+from integrations.hubject.schemas import (
+    ERoamingPushEvseData,
+    ActionType,
+    OperatorEvseData,
+)
+from integrations.ocpi_to_hubject_converter import OCPIToHubjectConverter
+from ocpi22.models.location import Location
 from util import with_trailing_slash
 
 api = NinjaAPI()
@@ -114,195 +123,47 @@ def check_hubject_alive(request):
 # @permission_classes([IsAdminUser])
 # @permission_required('is_admin', raise_exception=True)
 def start_evse_full_load(request):
-    # locations = Location.objects.all()
-    # converter = OCPIToHubjectConverter()
-    #
-    # collection: Dict[str, List] = defaultdict(list)
-    # for location in locations:
-    #     op_evse_data = converter.convert_to_operator_evse_data(location)
-    #     collection[op_evse_data.OperatorID.root].append(op_evse_data)
+    locations = Location.objects.all()
+    converter = OCPIToHubjectConverter()
+
+    collection: Dict[str, List] = defaultdict(list)
+    for location in locations:
+        op_evse_data = converter.convert_to_operator_evse_data(location)
+        collection[op_evse_data.OperatorID.root].append(op_evse_data)
 
     client = HubJectClient()
 
-    # for operator_id, operator_evse_list in collection.items():
-    #     evse_data_record_lists = [
-    #         op_evse_data.EvseDataRecord for op_evse_data in operator_evse_list
-    #     ]
-    #     evse_data_records = [
-    #         evse for evse_list in evse_data_record_lists for evse in evse_list
-    #     ]
-    #
-    #     # Create data payload
-    #     data_to_send = ERoamingPushEvseData(
-    #         ActionType=ActionType.fullLoad,
-    #         OperatorEvseData=OperatorEvseData(
-    #             OperatorID=operator_id,
-    #             OperatorName=operator_evse_list[0].OperatorName,
-    #             EvseDataRecord=evse_data_records,
-    #         ),
-    #     )
+    for operator_id, operator_evse_list in collection.items():
+        evse_data_record_lists = [
+            op_evse_data.EvseDataRecord for op_evse_data in operator_evse_list
+        ]
+        evse_data_records = [
+            evse for evse_list in evse_data_record_lists for evse in evse_list
+        ]
 
-    full_load_url = urljoin(
-        with_trailing_slash(settings.HUBJECT_URL),
-        "evsepush/v23/operators/FI*CPO/data-records",
-    )
+        # Create data payload
+        data_to_send = ERoamingPushEvseData(
+            ActionType=ActionType.fullLoad,
+            OperatorEvseData=OperatorEvseData(
+                OperatorID=operator_id,
+                OperatorName=operator_evse_list[0].OperatorName,
+                EvseDataRecord=evse_data_records,
+            ),
+        )
 
-    data_to_send = {
-        "ActionType": "fullLoad",
-        "OperatorEvseData": {
-            "OperatorID": "FI*CPO",
-            "OperatorName": "Smappee Operator",
-            "EvseDataRecord": [
-                {
-                    "deltaType": None,
-                    "lastUpdate": "2024-10-22T08:52:48.125846Z",
-                    "EvseID": "BE*SMP*EC1",
-                    "ChargingPoolID": None,
-                    "ChargingStationId": None,
-                    "ChargingStationNames": [{"lang": "en", "value": ""}],
-                    "HardwareManufacturer": None,
-                    "ChargingStationImage": None,
-                    "SubOperatorName": None,
-                    "Address": {
-                        "Country": "FRA",
-                        "City": "Paris",
-                        "Street": "-",
-                        "PostalCode": "",
-                        "HouseNum": "-",
-                        "Floor": None,
-                        "Region": None,
-                        "ParkingFacility": False,
-                        "ParkingSpot": None,
-                        "TimeZone": "UTC+02:00",
-                    },
-                    "GeoCoordinates": {
-                        "Google": None,
-                        "DecimalDegree": {
-                            "Longitude": "40.000000",
-                            "Latitude": "50.000000",
-                        },
-                        "DegreeMinuteSeconds": None,
-                    },
-                    "Plugs": ["CCS Combo 2 Plug (Cable Attached)"],
-                    "DynamicPowerLevel": None,
-                    "ChargingFacilities": [
-                        {
-                            "PowerType": "DC",
-                            "Voltage": 400,
-                            "Amperage": 96,
-                            "Power": 115,
-                            "ChargingModes": None,
-                        }
-                    ],
-                    "RenewableEnergy": False,
-                    "EnergySource": None,
-                    "EnvironmentalImpact": None,
-                    "CalibrationLawDataAvailability": "Local",
-                    "AuthenticationModes": ["NFC RFID Classic"],
-                    "MaxCapacity": None,
-                    "PaymentOptions": ["Contract"],
-                    "ValueAddedServices": [],
-                    "Accessibility": "Free publicly accessible",
-                    "AccessibilityLocation": None,
-                    "HotlinePhoneNumber": "+3256380211",
-                    "AdditionalInfo": None,
-                    "ChargingStationLocationReference": None,
-                    "GeoChargingPointEntrance": {
-                        "Google": None,
-                        "DecimalDegree": {
-                            "Longitude": "40.000000",
-                            "Latitude": "50.000000",
-                        },
-                        "DegreeMinuteSeconds": None,
-                    },
-                    "IsOpen24Hours": True,
-                    "OpeningTimes": None,
-                    "HubOperatorID": None,
-                    "ClearinghouseID": None,
-                    "IsHubjectCompatible": True,
-                    "DynamicInfoAvailable": "auto",
-                },
-                {
-                    "deltaType": None,
-                    "lastUpdate": "2024-10-22T08:59:10.501624Z",
-                    "EvseID": "BE*SMP*E6121000001",
-                    "ChargingPoolID": None,
-                    "ChargingStationId": None,
-                    "ChargingStationNames": [{"lang": "en", "value": ""}],
-                    "HardwareManufacturer": None,
-                    "ChargingStationImage": None,
-                    "SubOperatorName": None,
-                    "Address": {
-                        "Country": "BEL",
-                        "City": "Harelbeke",
-                        "Street": "Teststreet",
-                        "PostalCode": "",
-                        "HouseNum": "20",
-                        "Floor": None,
-                        "Region": None,
-                        "ParkingFacility": False,
-                        "ParkingSpot": None,
-                        "TimeZone": "UTC+02:00",
-                    },
-                    "GeoCoordinates": {
-                        "Google": None,
-                        "DecimalDegree": {
-                            "Longitude": "3.310811",
-                            "Latitude": "50.823115",
-                        },
-                        "DegreeMinuteSeconds": None,
-                    },
-                    "Plugs": ["Type 2 Outlet"],
-                    "DynamicPowerLevel": None,
-                    "ChargingFacilities": [
-                        {
-                            "PowerType": "AC_1_PHASE",
-                            "Voltage": 400,
-                            "Amperage": 32,
-                            "Power": 220,
-                            "ChargingModes": None,
-                        }
-                    ],
-                    "RenewableEnergy": False,
-                    "EnergySource": None,
-                    "EnvironmentalImpact": None,
-                    "CalibrationLawDataAvailability": "Local",
-                    "AuthenticationModes": [],
-                    "MaxCapacity": None,
-                    "PaymentOptions": [],
-                    "ValueAddedServices": [],
-                    "Accessibility": "Free publicly accessible",
-                    "AccessibilityLocation": None,
-                    "HotlinePhoneNumber": "+3256380211",
-                    "AdditionalInfo": None,
-                    "ChargingStationLocationReference": None,
-                    "GeoChargingPointEntrance": {
-                        "Google": None,
-                        "DecimalDegree": {
-                            "Longitude": "3.310811",
-                            "Latitude": "50.823115",
-                        },
-                        "DegreeMinuteSeconds": None,
-                    },
-                    "IsOpen24Hours": True,
-                    "OpeningTimes": None,
-                    "HubOperatorID": None,
-                    "ClearinghouseID": None,
-                    "IsHubjectCompatible": True,
-                    "DynamicInfoAvailable": "auto",
-                },
-            ],
-        },
-    }
+        full_load_url = urljoin(
+            with_trailing_slash(settings.HUBJECT_URL),
+            "evsepush/v23/operators/FI*CPO/data-records",
+        )
 
-    try:
-        response = client.post(full_load_url, data=data_to_send)
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        print(exc)
-        return {
-            "success": False,
-            "error": "Failed to full load evses for Operator FI*CPO",
-        }
+        try:
+            response = client.post(full_load_url, data=data_to_send.model_dump())
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            print(exc)
+            return {
+                "success": False,
+                "error": "Failed to full load evses for Operator FI*CPO",
+            }
 
     return {"success": True, "message": "Evse full load successfully sent to hubject"}
