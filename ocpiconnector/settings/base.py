@@ -589,7 +589,7 @@ MESSAGE_TAGS = {
 SEND_DATA_TO_ANALYTICS = False
 
 HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
-HUBJECT_PUBLIC_KEY = os.environ.get("HUBJECT_PUBLIC_KEY")
+HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
 
 #  This is not needed in pytest let's fix this in pytest

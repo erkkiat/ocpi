@@ -26,7 +26,7 @@ api = NinjaAPI()
 
 class HubJectClient:
     CLIENT_CERTIFICATE = settings.HUBJECT_CLIENT_CERTIFICATE
-    PUBLIC_KEY = settings.HUBJECT_PUBLIC_KEY
+    PRIVATE_KEY = settings.HUBJECT_PRIVATE_KEY
     CA_CERTIFICATE = settings.HUBJECT_CA_CERTIFICATE
 
     def __init__(
@@ -67,7 +67,7 @@ class HubJectClient:
         self.session.verify = self.ca_cert_path
 
     def _save_cert_and_key(self):
-        if not self.CLIENT_CERTIFICATE or not self.PUBLIC_KEY:
+        if not self.CLIENT_CERTIFICATE or not self.PRIVATE_KEY:
             raise ValueError(
                 "Certificate or key data not found in environment variables"
             )
@@ -85,7 +85,7 @@ class HubJectClient:
             cert_file.write(self.CLIENT_CERTIFICATE)
 
         with open(self.key_path, "w") as key_file:
-            key_file.write(self.PUBLIC_KEY)
+            key_file.write(self.PRIVATE_KEY)
 
         with open(self.ca_cert_path, "w") as key_file:
             key_file.write(self.CA_CERTIFICATE)
