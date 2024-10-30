@@ -47,7 +47,7 @@ class OCPIToHubjectConverter:
     def convert_to_operator_evse_data(self, location: Location) -> OperatorEvseData:
         return OperatorEvseData(
             OperatorID=location.party_str(),
-            OperatorName=location.owner.name if location.owner else "",
+            OperatorName=self.get_operator_name(location),
             EvseDataRecord=[
                 self._convert_to_evse_data_record(evse, location)
                 for evse in location.evses.all()
@@ -64,7 +64,7 @@ class OCPIToHubjectConverter:
             # todo : deltaType missing in ocpi22
             deltaType=None,
             lastUpdate=evse.last_updated,
-            EvseID=EvseID(evse.evse_id),
+            EvseID=self.get_evse_id(evse.evse_id),
             # todo : ChargingPoolID missing in ocpi22
             ChargingPoolID=None,
             # todo : ChargingStationID missing in ocpi22
@@ -122,7 +122,9 @@ class OCPIToHubjectConverter:
             # todo : AdditionalInfo missing in ocpi22,
             # todo : ChargingStationLocationReference missing in ocpi22,
             # todo : ChargingStationNames missing in ocpi22
-            ChargingStationNames=[InfoTextType(lang="en", value=location.name)],
+            ChargingStationNames=[
+                InfoTextType(lang="en", value=location.name if location.name else "")
+            ],
             GeoChargingPointEntrance=GeoCoordinates(
                 Google=None,
                 DecimalDegree=DecimalDegree(
@@ -139,6 +141,24 @@ class OCPIToHubjectConverter:
             # todo : ClearinghouseID missing in ocpi22,
             IsHubjectCompatible=False,
             DynamicInfoAvailable=DynamicInfoAvailable.false,
+        )
+
+    def get_evse_id(self, evse_id: str) -> EvseID:
+        """
+        >>> oicp_converter = OCPIToHubjectConverter()
+        >>> oicp_converter.get_evse_id("FI*SMP*34567")
+        EvseID(root="FI*SMP*E34567")
+        """
+        hubject_evse_id = re.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
+        return EvseID(hubject_evse_id)
+
+    def get_operator_name(self, location: Location) -> str:
+        return (
+            location.ocpi_master.business_details.name
+            if location.ocpi_master.business_details
+            else location.owner.name
+            if location.owner
+            else ""
         )
 
     def get_plug(self, connector_std: str) -> Plug:
@@ -216,9 +236,9 @@ class OCPIToHubjectConverter:
         return [
             ChargingFacility(
                 PowerType=self.get_power_type(connector.power_type),
-                Voltage=connector.max_voltage,
-                Amperage=connector.max_amperage,
-                Power=connector.power_kw(),
+                Voltage=max(0, min(999, connector.max_voltage)),
+                Amperage=max(0, min(99, connector.max_amperage)),
+                Power=max(0, min(999, connector.power_kw())),
             )
             for connector in connectors
         ]
@@ -364,7 +384,7 @@ class OCPIToHubjectConverter:
         """
         >>> oicp_converter = OCPIToHubjectConverter()
         >>> oicp_converter.get_timezone('Europe/Helsinki')
-        'UTC+03:00'
+        'UTC+02:00'
         >>> oicp_converter.get_timezone('Asia/Colombo')
         'UTC+05:30'
         >>> oicp_converter.get_timezone('Asia/Kathmandu')

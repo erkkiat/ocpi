@@ -116,21 +116,26 @@ class TestMappings(TestCase):
             role="CPO",
             country_code="DE",
             party_id="SMP",
+            business_details=BusinessDetailsFactory(
+                name="Smappee Pvt Ltd",
+                website="https://www.helsinki-supercharger.com",
+                logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+            ),
         )
         helsinki_supercharger_operator_business_details = BusinessDetailsFactory(
             name="Helsinki Supercharger Operator",
             website="https://www.helsinki-supercharger.com",
-            logo="test_logo.png",
+            logo="https://www.helsinki-supercharger.com/static/test_logo.png",
         )
         helsinki_supercharger_sub_operator_business_details = BusinessDetailsFactory(
             name="Helsinki Supercharger Sub Operator",
             website="https://www.helsinki-supercharger.com",
-            logo="test_logo.png",
+            logo="https://www.helsinki-supercharger.com/static/test_logo.png",
         )
         helsinki_supercharger_owner_business_details = BusinessDetailsFactory(
             name="Smappee Pvt Ltd.",
             website="https://www.helsinki-supercharger.com",
-            logo="test_logo.png",
+            logo="https://www.helsinki-supercharger.com/static/test_logo.png",
         )
 
         helsinki = LocationFactory(
@@ -192,6 +197,83 @@ class TestMappings(TestCase):
         result = testutil.compare_dicts_recursively(
             helsinki_hubject_evse_data.model_dump(),
             ERoamingPushTestData.helsinki_eroaming_push_data,
+        )
+        self.assertTrue(
+            result,
+            "The mapped OCPI Location data does not match the expected OICP data.",
+        )
+
+    def test_convert_to_eroaming_with_only_required_data(self):
+        berlin_supercharger_ocpi_master = CredentialsRoleFactory(
+            role="CPO",
+            country_code="DE",
+            party_id="SMP",
+            business_details=BusinessDetailsFactory(
+                name="Smappee berlin Pvt Ltd.",
+                website="https://www.berlin-supercharger.com",
+                logo="https://www.berlin-supercharger.com/static/test_logo.png",
+            ),
+        )
+
+        berlin = LocationFactory(
+            publish=True,
+            name="",
+            address="Mannerheimintie 1",
+            city="berlin",
+            postal_code="",
+            state="Uusimaa",
+            country="FIN",
+            parking_type=None,
+            latitude=0,
+            longitude=0,
+            time_zone="Europe/Berlin",
+            ocpi_master=berlin_supercharger_ocpi_master,
+            operator=None,
+            suboperator=None,
+            owner=None,
+            charging_when_closed=True,
+        )
+
+        berlin_evse_data = EvseFactory(
+            evse_id="FI*ABC*1234*C0*CT",
+            status="",
+            location=berlin,
+            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            capabilities=None,
+        )
+
+        ConnectorFactory(
+            uid="CONNECTOR_1",
+            evse=berlin_evse_data,
+            standard="IEC_62196_T2",
+            format="",
+            power_type="",
+            max_voltage=-100,
+            max_amperage=16,
+            max_electric_power=1400,
+            terms_and_conditions="https://www.berlin-supercharger.com/terms-and-conditions",
+            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+        )
+
+        berlin_hubject_evse_data = ERoamingPushEvseData(
+            ActionType=ActionType.insert,
+            OperatorEvseData=self.ocpi_2_oicp_converter.convert_to_operator_evse_data(
+                berlin
+            ),
+        )
+
+        # Remove automatically generated EVSE data
+        berlin_hubject_evse_data.OperatorEvseData.EvseDataRecord = [
+            berlin_hubject_evse_data.OperatorEvseData.EvseDataRecord[-1]
+        ]
+
+        result = testutil.compare_dicts_recursively(
+            berlin_hubject_evse_data.model_dump(),
+            ERoamingPushTestData.berlin_eroaming_push_data,
         )
         self.assertTrue(
             result,
