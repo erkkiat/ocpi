@@ -111,23 +111,23 @@ class TestMappings(TestCase):
             business_details=BusinessDetailsFactory(
                 name="Smappee Pvt Ltd",
                 website="https://www.helsinki-supercharger.com",
-                logo="test_logo.png",
+                logo="https://www.helsinki-supercharger.com/static/test_logo.png",
             ),
         )
         helsinki_supercharger_operator_business_details = BusinessDetailsFactory(
             name="Helsinki Supercharger Operator",
             website="https://www.helsinki-supercharger.com",
-            logo="test_logo.png",
+            logo="https://www.helsinki-supercharger.com/static/test_logo.png",
         )
         helsinki_supercharger_sub_operator_business_details = BusinessDetailsFactory(
             name="Helsinki Supercharger Sub Operator",
             website="https://www.helsinki-supercharger.com",
-            logo="test_logo.png",
+            logo="https://www.helsinki-supercharger.com/static/test_logo.png",
         )
         helsinki_supercharger_owner_business_details = BusinessDetailsFactory(
             name="Smappee Pvt Ltd.",
             website="https://www.helsinki-supercharger.com",
-            logo="test_logo.png",
+            logo="https://www.helsinki-supercharger.com/static/test_logo.png",
         )
 
         helsinki = LocationFactory(
@@ -203,7 +203,7 @@ class TestMappings(TestCase):
             business_details=BusinessDetailsFactory(
                 name="Smappee berlin Pvt Ltd.",
                 website="https://www.berlin-supercharger.com",
-                logo="test_logo.png",
+                logo="https://www.berlin-supercharger.com/static/test_logo.png",
             ),
         )
 

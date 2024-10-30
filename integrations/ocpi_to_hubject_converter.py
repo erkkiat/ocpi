@@ -237,7 +237,7 @@ class OCPIToHubjectConverter:
             ChargingFacility(
                 PowerType=self.get_power_type(connector.power_type),
                 Voltage=max(0, min(999, connector.max_voltage)),
-                Amperage=max(0, min(999, connector.max_amperage)),
+                Amperage=max(0, min(99, connector.max_amperage)),
                 Power=max(0, min(999, connector.max_electric_power)),
             )
             for connector in connectors
