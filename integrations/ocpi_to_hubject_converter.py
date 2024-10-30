@@ -219,6 +219,7 @@ class OCPIToHubjectConverter:
             "AC_1_PHASE": PowerType.AC_1_PHASE,
             "AC_3_PHASE": PowerType.AC_3_PHASE,
             "DC": PowerType.DC,
+            "AC": PowerType.AC_3_PHASE,
         }
 
         power_type = mapping.get(power_type_choice_221.upper())
