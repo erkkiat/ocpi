@@ -144,6 +144,11 @@ class OCPIToHubjectConverter:
         )
 
     def get_evse_id(self, evse_id: str) -> EvseID:
+        """
+        >>> oicp_converter = OCPIToHubjectConverter()
+        >>> oicp_converter.get_evse_id("FI*SMP*34567")
+        EvseID(root="FI*SMP*E34567")
+        """
         hubject_evse_id = re.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
         return EvseID(hubject_evse_id)
 
