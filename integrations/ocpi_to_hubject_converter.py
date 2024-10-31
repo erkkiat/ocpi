@@ -259,7 +259,7 @@ class OCPIToHubjectConverter:
             match = self.france_pattern.search(addr)
             if match:
                 return match.group("house"), match.group("street").strip()
-            return "-", "-"
+            return extract_general_address(addr)
 
         return dict(FRA=extract_french_address).get(country, extract_general_address)
 
@@ -318,7 +318,7 @@ class OCPIToHubjectConverter:
             for capability in (capabilities or [])
             for mode in [self.get_authentication_mode(capability)]
             if mode is not None
-        ]
+        ] or [AuthenticationMode.No_Authentication_Required]
 
     def get_value_added_services(
         self,
@@ -356,7 +356,7 @@ class OCPIToHubjectConverter:
             for capability in (capabilities or [])
             for vas in [self.get_value_added_services(capability)]
             if vas is not None
-        ]
+        ] or [ValueAddedService.None_]
 
     def get_accessibility_locations(
         self,
@@ -432,7 +432,7 @@ class OCPIToHubjectConverter:
             for option, required_capabilities in capability_map.items()
             if capabilities
             and any(capability in capabilities for capability in required_capabilities)
-        ]
+        ] or [PaymentOption.No_Payment]
 
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
