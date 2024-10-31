@@ -147,7 +147,7 @@ class OCPIToHubjectConverter:
         """
         >>> oicp_converter = OCPIToHubjectConverter()
         >>> oicp_converter.get_evse_id("FI*SMP*34567")
-        EvseID(root="FI*SMP*E34567")
+        EvseID(root='FI*SMP*E34567')
         """
         hubject_evse_id = re.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
         return EvseID(hubject_evse_id)
@@ -305,7 +305,7 @@ class OCPIToHubjectConverter:
         >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
         [<AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>]
         >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.UNLOCK_CAPABLE])
-        []
+        [<AuthenticationMode.No_Authentication_Required: 'No Authentication Required'>]
 
         This function collects all of the matching AuthenticationModes for the given list of OCPI 2.2.1 Capabilities.
         @param capabilities: List of OCPI 2.2.1 Capabilities
@@ -342,7 +342,7 @@ class OCPIToHubjectConverter:
         """
         >>> oicp_converter = OCPIToHubjectConverter()
         >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.CHARGING_PROFILE_CAPABLE])
-        []
+        [<ValueAddedService.None_: 'None'>]
         >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.RESERVABLE])
         [<ValueAddedService.Reservation: 'Reservation'>]
 
@@ -411,7 +411,7 @@ class OCPIToHubjectConverter:
         >>> oicp_converter.get_payment_options([OCPICapabilityEnum.RFID_READER])
         [<PaymentOption.Contract: 'Contract'>]
         >>> oicp_converter.get_payment_options([OCPICapabilityEnum.PED_TERMINAL, OCPICapabilityEnum.RESERVABLE])
-        []
+        [<PaymentOption.Direct: 'Direct'>]
         """
 
         capability_map = {

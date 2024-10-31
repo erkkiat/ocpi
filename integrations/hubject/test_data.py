@@ -121,7 +121,9 @@ class ERoamingPushTestData:
                         "Street": "Mannerheimintie",
                         "TimeZone": "UTC+01:00",
                     },
-                    "AuthenticationModes": [],
+                    "AuthenticationModes": [
+                        AuthenticationMode.No_Authentication_Required
+                    ],
                     "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
                     "ChargingFacilities": [
                         {
@@ -166,11 +168,11 @@ class ERoamingPushTestData:
                     "IsOpen24Hours": True,
                     "MaxCapacity": None,
                     "OpeningTimes": None,
-                    "PaymentOptions": [],
+                    "PaymentOptions": [PaymentOption.Direct],
                     "Plugs": [Plug.Type_2_Outlet],
                     "RenewableEnergy": False,
                     "SubOperatorName": None,
-                    "ValueAddedServices": [],
+                    "ValueAddedServices": [ValueAddedService.None_],
                     "deltaType": None,
                     "lastUpdate": pytz.utc.localize(
                         datetime(2024, 9, 22, 17, 32, 8, 599540)
