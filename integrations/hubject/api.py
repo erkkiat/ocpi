@@ -153,11 +153,14 @@ def start_evse_full_load(request):
 
         full_load_url = urljoin(
             with_trailing_slash(settings.HUBJECT_URL),
-            "evsepush/v23/operators/FI*CPO/data-records",
+            f"evsepush/v23/operators/{data_to_send.OperatorEvseData.OperatorID}/data-records",
         )
 
         try:
-            response = client.post(full_load_url, data=data_to_send.model_dump())
+            headers = {"Content-type": "application/json"}
+            response = client.post(
+                full_load_url, data=data_to_send.model_dump_json(), headers=headers
+            )
             response.raise_for_status()
         except httpx.HTTPError as exc:
             print(exc)
@@ -166,4 +169,4 @@ def start_evse_full_load(request):
                 "error": "Failed to full load evses for Operator FI*CPO",
             }
 
-    return {"success": True, "message": "Evse full load successfully sent to hubject"}
+    return response.json()
