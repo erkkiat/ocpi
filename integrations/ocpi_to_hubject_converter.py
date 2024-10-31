@@ -432,7 +432,7 @@ class OCPIToHubjectConverter:
             for option, required_capabilities in capability_map.items()
             if capabilities
             and any(capability in capabilities for capability in required_capabilities)
-        ] or [PaymentOption.No_Payment]
+        ] or [PaymentOption.Direct]
 
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
