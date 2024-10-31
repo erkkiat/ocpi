@@ -1,30 +1,39 @@
 import os
 
 from celery import shared_task, Celery
+from django.db.models import F, Value
+from django.db.models.functions import Concat
 
-from ocpi22 import logging
+from ocpi22 import logging as logger
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum
 from ocpi22.cpo.session_cache import get_cached_session, store_session_cache
+from ocpi22.models.location import Evse
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party
 from util import format_session_url
 
 
 # Todo: The tasks should be independent of Django, so we can run them in a separate process
-
 class CeleryConfig:
     broker_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     result_backend = broker_url
-    task_serializer = "orjson"
+    task_serializer = "json"
     accept_content = ["json"]
     result_expires = 1
     worker_concurrency = 4
     task_time_limit = 15
     task_soft_time_limit = 10
+    task_always_eager = os.getenv("CELERY_ALWAYS_EAGER", "False")
+    task_queue =
 
 
+
+
+#
 app = Celery('mqtt_tasks')
 app.config_from_object(CeleryConfig)
+import ipdb;ipdb.set_trace()
+app.autodiscover_tasks()
 
 
 @shared_task
@@ -38,7 +47,7 @@ def process_meter_values(session_id, internal_reference, kwh, soc, power, timest
 
     route = session.route_to_msp
     if not route:
-        logging.error(f"Route not found for session {session_id}")
+        logger.error(f"Route not found for session {session_id}")
         return
     # print(f"{route=}, {session_id=}, {timestamp=}, {meter_values=}")
     print(f"{kwh=} {route=}")
@@ -89,3 +98,35 @@ def process_meter_values(session_id, internal_reference, kwh, soc, power, timest
     # the asynchronous capabilities introduced in Django 4.1 and later versions.
     # Django’s ORM now provides asynchronous methods like acreate(), asave(), and aupdate()
     # for performing database operations without blocking the event loop.
+
+
+def _get_evse_by_uid(uid: str): # TODO: Move this to the corresponding repository
+    evse = (
+        Evse.objects
+        .filter(uid=uid)  # Filter by UID
+        .annotate(
+            generated_evse_id=Concat(
+                F('location__ocpi_master__country_code'),  # Country code from ocpi_master
+                Value('*'),
+                F('location__ocpi_master__party_id'),  # Party ID from ocpi_master
+                Value('*E'),
+                F('uid')  # UID from Evse
+            )
+        )
+        .filter(generated_evse_id=F('evse_id'))  # Compare generated evse_id with the stored evse_id
+        .select_related('location__ocpi_master')  # Optimize fetching related objects
+        .first()
+    )
+    if not evse:
+        raise logger.error(f"Evse with UID {uid} not found")
+
+
+@shared_task
+def save_and_send_evse_status_updates(evse_uid: str, status: str, last_updated: str) -> None:
+    evse = _get_evse_by_uid(evse_uid)
+    evse.status = status
+    evse.last_updated = last_updated
+    evse.save(update_fields=["status", "last_updated"])
+    evse.send_status_updates()
+    print("And done status")
+    return

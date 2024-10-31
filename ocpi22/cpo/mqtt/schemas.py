@@ -23,22 +23,27 @@ class MeterValues(BaseModel):
 
 
 class EvseStatus(str, Enum):
-    AVAILABLE: OcppStatusChoices.AVAILABLE
-    PREPARING: OcppStatusChoices.PREPARING
-    CHARGING: OcppStatusChoices.CHARGING
-    SUSPENDEDEV: OcppStatusChoices.SUSPENDEDEV
-    SUSPENDEDEVSE: OcppStatusChoices.SUSPENDEDEVSE
-    FINISHING: OcppStatusChoices.FINISHING
-    RESERVED: OcppStatusChoices.RESERVED
-    UNAVAILABLE: OcppStatusChoices.UNAVAILABLE
-    FAULTED: OcppStatusChoices.FAULTED
+    AVAILABLE = OcppStatusChoices.AVAILABLE.value
+    PREPARING = OcppStatusChoices.PREPARING.value
+    CHARGING = OcppStatusChoices.CHARGING.value
+    SUSPENDEDEV = OcppStatusChoices.SUSPENDEDEV.value
+    SUSPENDEDEVSE = OcppStatusChoices.SUSPENDEDEVSE.value
+    FINISHING = OcppStatusChoices.FINISHING.value
+    RESERVED = OcppStatusChoices.RESERVED.value
+    UNAVAILABLE = OcppStatusChoices.UNAVAILABLE.value
+    FAULTED = OcppStatusChoices.FAULTED.value
 
 
 class EvseStatusUpdate(BaseModel):
     evse_uid: str
     status: EvseStatus
-    last_updated: datetime | None = datetime.utcnow
+    last_updated: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
+    class Config:
+        json_encoders = {
+            EvseStatus: lambda v: v.value,  # Convert Enum to its value
+            datetime: lambda v: v.isoformat(),  # Convert datetime to ISO format
+        }
 
 @dataclass
 class CachedSession:
