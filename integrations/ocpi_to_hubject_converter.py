@@ -411,7 +411,7 @@ class OCPIToHubjectConverter:
         >>> oicp_converter.get_payment_options([OCPICapabilityEnum.RFID_READER])
         [<PaymentOption.Contract: 'Contract'>]
         >>> oicp_converter.get_payment_options([OCPICapabilityEnum.PED_TERMINAL, OCPICapabilityEnum.RESERVABLE])
-        [<PaymentOption.Direct: 'Direct'>]
+        [<PaymentOption.Contract: 'Contract'>]
         """
 
         capability_map = {
@@ -432,7 +432,7 @@ class OCPIToHubjectConverter:
             for option, required_capabilities in capability_map.items()
             if capabilities
             and any(capability in capabilities for capability in required_capabilities)
-        ] or [PaymentOption.Direct]
+        ] or [PaymentOption.Contract]
 
         # TODO: No Payment will be determined separately with tariffs
         return payment_options

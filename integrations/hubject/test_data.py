@@ -168,7 +168,7 @@ class ERoamingPushTestData:
                     "IsOpen24Hours": True,
                     "MaxCapacity": None,
                     "OpeningTimes": None,
-                    "PaymentOptions": [PaymentOption.Direct],
+                    "PaymentOptions": [PaymentOption.Contract],
                     "Plugs": [Plug.Type_2_Outlet],
                     "RenewableEnergy": False,
                     "SubOperatorName": None,
