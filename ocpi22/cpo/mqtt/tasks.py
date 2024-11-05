@@ -108,7 +108,7 @@ def _format_evse_id(country_code: str, party_id: str, evse_uid: str) -> str:
 
 
 @shared_task
-def save_and_send_evse_status_updates(evse_uid: str, status: str, last_updated: str) -> None:
+def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
     country, party_id = _get_country_and_party_id()
     evse_id = _format_evse_id(country, party_id, evse_uid)
     evse = get_object_or_404(Evse, uid=evse_uid, evse_id=evse_id)
