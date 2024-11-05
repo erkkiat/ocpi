@@ -1,5 +1,3 @@
-from django.db.models import F, Value
-from django.db.models.functions import Concat
 from pydantic import ValidationError
 
 import logging
@@ -37,7 +35,6 @@ def process_meter_values_data(message) -> None:
 
 
 def process_status_update_data(message) -> None:
-    logger.info("What's here")
     decoded_evse_message = _decode_message(message)
     if not decoded_evse_message:
         return
@@ -49,5 +46,4 @@ def process_status_update_data(message) -> None:
     evse_data = EvseStatusUpdate.model_dump(evse_schema, mode="json")
     save_and_send_evse_status_updates.apply_async(kwargs=evse_data,
                                                   expires=35)
-    logger.info("And Im done here status")# Switch to the below call after setting up celery
     return
