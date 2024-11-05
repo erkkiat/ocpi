@@ -147,7 +147,7 @@ class OCPIToHubjectConverter:
         """
         >>> oicp_converter = OCPIToHubjectConverter()
         >>> oicp_converter.get_evse_id("FI*SMP*34567")
-        EvseID(root="FI*SMP*E34567")
+        EvseID(root='FI*SMP*E34567')
         """
         hubject_evse_id = re.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
         return EvseID(hubject_evse_id)
@@ -259,7 +259,7 @@ class OCPIToHubjectConverter:
             match = self.france_pattern.search(addr)
             if match:
                 return match.group("house"), match.group("street").strip()
-            return "-", "-"
+            return extract_general_address(addr)
 
         return dict(FRA=extract_french_address).get(country, extract_general_address)
 
@@ -305,7 +305,7 @@ class OCPIToHubjectConverter:
         >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
         [<AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>]
         >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.UNLOCK_CAPABLE])
-        []
+        [<AuthenticationMode.No_Authentication_Required: 'No Authentication Required'>]
 
         This function collects all of the matching AuthenticationModes for the given list of OCPI 2.2.1 Capabilities.
         @param capabilities: List of OCPI 2.2.1 Capabilities
@@ -318,7 +318,7 @@ class OCPIToHubjectConverter:
             for capability in (capabilities or [])
             for mode in [self.get_authentication_mode(capability)]
             if mode is not None
-        ]
+        ] or [AuthenticationMode.No_Authentication_Required]
 
     def get_value_added_services(
         self,
@@ -342,7 +342,7 @@ class OCPIToHubjectConverter:
         """
         >>> oicp_converter = OCPIToHubjectConverter()
         >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.CHARGING_PROFILE_CAPABLE])
-        []
+        [<ValueAddedService.None_: 'None'>]
         >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.RESERVABLE])
         [<ValueAddedService.Reservation: 'Reservation'>]
 
@@ -356,7 +356,7 @@ class OCPIToHubjectConverter:
             for capability in (capabilities or [])
             for vas in [self.get_value_added_services(capability)]
             if vas is not None
-        ]
+        ] or [ValueAddedService.None_]
 
     def get_accessibility_locations(
         self,
@@ -411,7 +411,7 @@ class OCPIToHubjectConverter:
         >>> oicp_converter.get_payment_options([OCPICapabilityEnum.RFID_READER])
         [<PaymentOption.Contract: 'Contract'>]
         >>> oicp_converter.get_payment_options([OCPICapabilityEnum.PED_TERMINAL, OCPICapabilityEnum.RESERVABLE])
-        []
+        [<PaymentOption.Contract: 'Contract'>]
         """
 
         capability_map = {
@@ -432,7 +432,7 @@ class OCPIToHubjectConverter:
             for option, required_capabilities in capability_map.items()
             if capabilities
             and any(capability in capabilities for capability in required_capabilities)
-        ]
+        ] or [PaymentOption.Contract]
 
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
