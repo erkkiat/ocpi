@@ -15,6 +15,11 @@ A connector can be Type 2 for AC power, CHAdeMO or CCS for DC power, etc.
 A Location is a physical place, such as parking lot or garage, where one or more EVSEs are installed.
 A location can have one or more EVSEs.
 
+## EVSE ID
+
+An EVSE ID is a unique identifier for an EVSE. It is composed of a country code, a party ID and a unique identifier.
+The format is specified in the [eMI3 standard](https://www.emi3group.com/).
+
 ```mermaid
 classDiagram
     class Location {
@@ -57,10 +62,10 @@ need to store Locations from our customer CPO and our roaming partner CPOs. When
 
 ```mermaid
 graph TD
-    CC[Customer CPO] -- BE*SMP*E1*123 --> API[SolidRoam <br/> Roaming API]
+    CC[Customer CPO] -- BE*SMP*E123 --> API[SolidRoam <br/> Roaming API]
     API -- "EVSE with overlapping UID '123'" --> DB[(Database)]
-    CPO1["Roaming Partner <br/> (CPO)"] -- DE*CPO*E1*123 --> OCPI[OCPI API] -- "EVSEs with overlapping UID '123'" --> DB
-    CPO2["Roaming Partner <br/> (CPO)"] -- FR*CPO*E1*123 --> OCPI[OCPI API]
+    CPO1["Roaming Partner <br/> (CPO)"] -- DE*CPO*E123 --> OCPI[OCPI API] -- "EVSEs with overlapping UID '123'" --> DB
+    CPO2["Roaming Partner <br/> (CPO)"] -- FR*CPO*E123 --> OCPI[OCPI API]
     
     style CPO1 fill:lightblue,stroke:black,stroke-width:2px,color:black
     style CPO2 fill:pink,stroke:black,stroke-width:2px,color:black
