@@ -73,10 +73,10 @@ graph TD
 ```
 
 In the above example, we can only modify the customer CPO's EVSEs, because any other EVSE is owned by someone else.
-When using Django ORM, we need to get and filter based on EVSE UID, country_code and party_id. For example:
+When using Django ORM, we need to get and filter based on Evse.evse_id, not only with Evse.uid, which will sometimes overlap between operators, which results in multiple hits.
+
+For example:
 
 ```python
-from solid_backend.evse.models import EVSE
-
-evse = Evse.objects.get(uid="123", country_code="BE", party_id="SMP")
+evse = Evse.objects.get(evse_id="BE*SMP*E123")
 ```
