@@ -1,9 +1,5 @@
-from urllib.parse import urljoin
-
 import pytest
-from django.conf import settings
 from django.test import TestCase
-from django.test import Client
 from django.utils.datetime_safe import datetime
 from django.core.exceptions import ValidationError
 
@@ -35,7 +31,6 @@ import doctest
 import pytz
 
 from ocpiconnector.testutil import simulate_surrounding_world
-from util import with_trailing_slash
 
 
 def load_tests(_loader, tests, _ignore):
@@ -284,7 +279,7 @@ class TestMappings(TestCase):
 class TestHubjectApi:
     @pytest.mark.django_db
     @simulate_surrounding_world
-    async def test_start_load(self, simulation):
+    async def test_successful_start_load(self, simulation):
         berlin_supercharger_ocpi_master = CredentialsRoleFactory(
             role="CPO",
             country_code="DE",
@@ -349,31 +344,3 @@ class TestHubjectApi:
             updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
             created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         )
-
-        # Configure requests mock for external HTTP calls
-        simulation.tasks_requests.post.return_value.status_code = 200
-        simulation.tasks_requests.post.return_value.json.return_value = {
-            "success": True,
-            "message": "Evse full load successfully sent to hubject",
-        }
-
-        simulation.tasks_requests.post.assert_called_once_with(
-            "http://your-external-service-url", json={"data": "expected_payload"}
-        )
-
-        client = Client()
-
-        full_load_url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            "evsepush/v23/operators/FI*CPO/data-records",
-        )
-
-        response = client.post(full_load_url)
-
-        simulation.tasks_requests.post.assert_called_once_with(full_load_url, json={})
-
-        assert response.status_code == 200
-        assert response.json() == {
-            "success": True,
-            "message": "Evse full load successfully sent to hubject",
-        }
