@@ -62,9 +62,7 @@ class HubjectService:
             response = HubjectService.client.post(
                 full_load_url, data=payload.model_dump_json(), headers=headers
             )
+            return response.json()
         except Exception as exc:
             logging.error(exc)
-            return {
-                "success": False,
-                "error": response.content.decode("utf-8"),
-            }
+            return response.json()
