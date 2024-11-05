@@ -1,145 +1,99 @@
 import logging
 import os
-import re
+import ssl
+import sys
 import uuid
-from datetime import datetime
+from doctest import debug
 
+import django
 import paho.mqtt.client as mqtt
-from celery import shared_task
-from django.conf import settings
-from django.db.models import F, Value
-from django.db.models.functions import Concat
 from dotenv import load_dotenv
-from pydantic import ValidationError
-from rest_framework.generics import get_object_or_404
-
-from integrations.hubject.schemas import EvseStatus
-from ocpi22.cpo.mqtt.tasks import process_meter_values
-from ocpi22.models.location import Evse, Location
 
 
 def _load_envs():
-    base_dir = os.getcwd()
-    env_path = os.path.join(base_dir, "../../../.env")
+    current_directory = os.getcwd()
+    env_path = os.path.join(current_directory, ".env")
     load_dotenv(env_path)
 
 
 _load_envs()
 
-from schemas import MeterValues, EvseStatusUpdate
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+
+# Set the Django settings module
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
+django.setup()
+
+from ocpi22.cpo.mqtt.services import process_meter_values_data, process_status_update_data
 
 logger = logging.getLogger(__name__)
 
-broker = settings.MQTT_BROKER
-port = settings.MQTT_PORT
-METER_TOPIC = settings.SMAPPEE_METER_VALUES_TOPIC
-STATUS_TOPIC = settings.SMAPPEE_STATUS_UPDATE_TOPIC
 
-# Todo: should this be a process ID or something? Cannot overlap between processes
-client_id = f"ocpiconnector_{uuid.uuid4()}"
-
-
-def _decode_message(message):
-    try:
-        return message.payload.decode()
-    except UnicodeDecodeError:
-        logger.exception(f"Failed to decode {message.topic} message")
-        return None
-
-
-def _process_meter_values(message) -> None:
-    decoded_meter_message = _decode_message(message)
-    if not decoded_meter_message:
-        return
-    try:
-        meter_values = MeterValues.model_validate_json(decoded_meter_message)
-    except ValidationError:
-        logger.exception(f"Failed to validate {message.opic} message")
-        return
-    try:
-        process_meter_values.apply_async(**meter_values.model_dump(),
-                                         expires=35)  # Switch to the below call after setting up celery
-    except Exception as e:
-        logger.exception(f"Failed to parse message: {e}")
-    return
-
-
-def get_evse_by_uid(uid: str):
-    evse = (
-        Evse.objects
-        .filter(uid=uid)  # Filter by UID
-        .annotate(
-            generated_evse_id=Concat(
-                F('location__ocpi_master__country_code'),  # Country code from ocpi_master
-                Value('*'),
-                F('location__ocpi_master__party_id'),  # Party ID from ocpi_master
-                Value('*E'),
-                F('uid')  # UID from Evse
-            )
-        )
-        .filter(generated_evse_id=F('evse_id'))  # Compare generated evse_id with the stored evse_id
-        .select_related('location__ocpi_master')  # Optimize fetching related objects
-        .first()
-    )
-    if not evse:
-        raise logger.error(f"Evse with UID {uid} not found")
-
-
-@shared_task
-def _save_and_send_status_updates(evse_uid: str, status: str, last_updated: datetime) -> None:
-    evse = get_evse_by_uid(evse_uid)
-    evse.status = status
-    evse.save(update_fields=["status", "last_updated"])
-    evse.send_status_updates()
-    return
-
-
-def _process_status_update(message) -> None:
-    decoded_evse_message = _decode_message(message)
-    if not decoded_evse_message:
-        return
-    try:
-        evse_schema = EvseStatusUpdate.model_validate_json(decoded_evse_message)
-    except ValidationError:
-        logger.exception(f"Failed to parse {message.topic} message")
-        return
-    _save_and_send_status_updates.apply_async(**evse_schema.model_dump(),
-                                              expires=35)  # Switch to the below call after setting up celery
-    return
+def get_topic(topic_env_var):
+    topic = os.getenv(topic_env_var)
+    if not topic:
+        raise ValueError(f"{topic_env_var} is not set in the environment variables")
+    return topic
 
 
 def on_message(client, userdata, message):
-    if "session" in message.topic and "metervalues" in message.topic:
-        _process_meter_values(message)
-        logger.info(f"Received message {message.payload} on topic {message.topic}")
-    elif "session" in message.topic and "statusupdates" in message.topic:
-        _process_status_update(message)
-        logger.info(f"Received message {message.payload} on topic {message.topic}")
+    if "metervalues" in message.topic:
+        logger.info("Received meter value message")
+        process_meter_values_data(message)
+        logger.info(f"Processed meter value message {message.payload} on topic {message.topic}")
+    if "status" in message.topic:
+        logger.info("Received status update message")
+        process_status_update_data(message)
+        logger.info(f"Processed status update message {message.payload} on topic {message.topic}")
     else:
         logger.error(f"Unknown topic {message.topic}")
         return
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
-    # Callback when the client connects to the broker
+    meter_topic = get_topic("SMAPPEE_METER_VALUES_TOPIC")
+    status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
     if rc == 0:
         logger.info("Connected successfully to the broker.")
-        client.subscribe(METER_TOPIC)
-        client.subscribe(STATUS_TOPIC)
-        logger.info(f"Subscribed to [{METER_TOPIC}] and [{STATUS_TOPIC}]")
+        client.subscribe(meter_topic)
+        client.subscribe(status_topic)
+        logger.info(f"Subscribed to [{meter_topic}] and [{status_topic}]")
     else:
         logger.error(f"Failed to connect, return code {rc}")
 
 
-# Create an MQTT client instance
-client = mqtt.Client(client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+def get_broker_username_password():
+    username = os.getenv("MQTT_USERNAME")
+    password = os.getenv("MQTT_PASSWORD")
+    if not username or not password:
+        raise ValueError(
+            "MQTT username or password is missing please check the environment variables, MQTT_USERNAME and MQTT_PASSWORD")
+    return username, password
 
-# Attach the on_connect and on_message callbacks
-client.on_connect = on_connect
-client.on_message = on_message
 
-# Connect to the broker
-client.connect(broker, port)
+def get_broker_and_port():
+    broker = os.getenv("MQTT_BROKER")
+    port = int(os.getenv("MQTT_PORT"))
+    if not broker or not port:
+        raise ValueError(
+            "MQTTT Broker or port are missing please check the environment variables, MQTT_BROKER and MQTT_PORT")
+    return broker, port
 
-# Start the MQTT client loop to listen for messages
-client.loop_forever()
+
+def configure_client(client_id):
+    username, password = get_broker_username_password()
+    client = mqtt.Client(client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+    if os.getenv("MQTT_DISABLE_TLS", False):
+        client.tls_set(cert_reqs=ssl.CERT_NONE)  # Disables certificate validation
+        client.tls_insecure_set(True)
+    client.username_pw_set(username, password)
+    client.on_connect = on_connect
+    client.on_message = on_message
+    return client
+
+
+client_id = f"ROAMING_{uuid.uuid4()}"
+mqtt_client = configure_client(client_id)
+broker_url, port = get_broker_and_port()
+mqtt_client.connect(broker_url, port)
+mqtt_client.loop_forever()
