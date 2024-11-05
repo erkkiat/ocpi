@@ -2,8 +2,9 @@
 
 ```mermaid
 graph TD
-    CP(Charge Point) -->|Status Notification| SM(Smappee<br>Backend)
-    SM -->|status_change| SR(SolidRoam Roaming API)
+    CP(Charge Point) -->|"OCPP Status Notification"| SM(Smappee<br>Backend)
+    SM -->|"status_change<br>(OCPP status)"| SR(SolidRoam Roaming API)
+    SR -->|"Map OCPP status<br/>to OCPI status"| SR
     SR -->|PATCH OCPI EVSE| D(Gireve)
     SR -->|eRoamingEvseStatus| H(Hubject)
     SR -->|PATCH OCPI EVSE| P(Roaming<br/>Partner 1)
