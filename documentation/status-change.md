@@ -5,14 +5,14 @@ graph TD
     CP(Charge Point) -->|"OCPP Status Notification"| SM(Smappee<br>Backend)
     SM -->|"status_change<br>(OCPP status)"| SR(SolidRoam Roaming API)
     SR -->|"Map OCPP status<br/>to OCPI status"| SR
-    SR -->|PATCH OCPI EVSE| D(Gireve)
+    SR -->|PATCH <br/> OCPI EVSE| D(Gireve)
     SR -->|eRoamingEvseStatus| H(Hubject)
-    SR -->|PATCH OCPI EVSE| P(Roaming<br/>Partner 1)
-    SR -->|PATCH OCPI EVSE| Q(Roaming<br/>Partner N)
-    D -->|PATCH EVSE| E(MSP1)
-    D -->|PATCH EVSE| F(MSP2)
-    H --> G(MSP3)
-    H --> I(MSP4)
+    SR -->|PATCH <br/> OCPI EVSE| P(Roaming<br/>Partner 1)
+    SR -->|PATCH <br/> OCPI EVSE| Q(Roaming<br/>Partner N)
+    D -->|PATCH <br/> OCPI EVSE| E(MSP1)
+    D -->|PATCH <br/> OCPI EVSE| F(MSP2)
+    H -->|Status <br/> Update| G(MSP3)
+    H -->|Status <br/> Update| I(MSP4)
 
     style CP fill:lightblue,stroke:black,stroke-width:2px,color:black
     style SM fill:lightblue,stroke:black,stroke-width:2px,color:black
