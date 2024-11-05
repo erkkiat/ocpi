@@ -1,8 +1,9 @@
 import os
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from celery import shared_task, Celery
-from django.db.models import F, Value
-from django.db.models.functions import Concat
+from rest_framework.generics import get_object_or_404
 
 from ocpi22 import logging as logger
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum
@@ -23,16 +24,11 @@ class CeleryConfig:
     worker_concurrency = 4
     task_time_limit = 15
     task_soft_time_limit = 10
-    task_always_eager = os.getenv("CELERY_ALWAYS_EAGER", "False")
-    task_queue =
-
-
 
 
 #
 app = Celery('mqtt_tasks')
 app.config_from_object(CeleryConfig)
-import ipdb;ipdb.set_trace()
 app.autodiscover_tasks()
 
 
@@ -100,33 +96,24 @@ def process_meter_values(session_id, internal_reference, kwh, soc, power, timest
     # for performing database operations without blocking the event loop.
 
 
-def _get_evse_by_uid(uid: str): # TODO: Move this to the corresponding repository
-    evse = (
-        Evse.objects
-        .filter(uid=uid)  # Filter by UID
-        .annotate(
-            generated_evse_id=Concat(
-                F('location__ocpi_master__country_code'),  # Country code from ocpi_master
-                Value('*'),
-                F('location__ocpi_master__party_id'),  # Party ID from ocpi_master
-                Value('*E'),
-                F('uid')  # UID from Evse
-            )
-        )
-        .filter(generated_evse_id=F('evse_id'))  # Compare generated evse_id with the stored evse_id
-        .select_related('location__ocpi_master')  # Optimize fetching related objects
-        .first()
-    )
-    if not evse:
-        raise logger.error(f"Evse with UID {uid} not found")
+def _get_country_and_party_id():
+    cpo = os.getenv("CPO")
+    if not cpo:
+        raise ValueError("CPO is not set in the environment variables")
+    return cpo.split("*")
+
+
+def _format_evse_id(country_code: str, party_id: str, evse_uid: str) -> str:
+    return f"{country_code}*{party_id}*E{evse_uid}"
 
 
 @shared_task
 def save_and_send_evse_status_updates(evse_uid: str, status: str, last_updated: str) -> None:
-    evse = _get_evse_by_uid(evse_uid)
+    country, party_id = _get_country_and_party_id()
+    evse_id = _format_evse_id(country, party_id, evse_uid)
+    evse = get_object_or_404(Evse, uid=evse_uid, evse_id=evse_id)
     evse.status = status
-    evse.last_updated = last_updated
+    evse.last_updated = datetime.now(ZoneInfo("UTC"))
     evse.save(update_fields=["status", "last_updated"])
     evse.send_status_updates()
-    print("And done status")
     return
