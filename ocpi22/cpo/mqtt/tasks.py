@@ -8,6 +8,7 @@ from rest_framework.generics import get_object_or_404
 from ocpi22 import logging as logger
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum
 from ocpi22.cpo.session_cache import get_cached_session, store_session_cache
+from ocpi22.locations.services import EvseServices
 from ocpi22.models.location import Evse
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party
@@ -112,6 +113,7 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
     country, party_id = _get_country_and_party_id()
     evse_id = _format_evse_id(country, party_id, evse_uid)
     evse = get_object_or_404(Evse, uid=evse_uid, evse_id=evse_id)
+    status = EvseServices.ocpp_to_evse_statu(status)
     evse.status = status
     evse.last_updated = datetime.now(ZoneInfo("UTC"))
     evse.save(update_fields=["status", "last_updated"])
