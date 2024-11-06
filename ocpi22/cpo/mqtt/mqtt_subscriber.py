@@ -92,11 +92,11 @@ def configure_client(client_id):
 
 
 
-# if __name__ == "__main__":
+# if __name__ == "__main__": #TODO enable this for docker
 logger.info("Did I come here")
 client_id = f"ROAMING_{uuid.uuid4()}"
 mqtt_client = configure_client(client_id)
 broker_url, port = get_broker_and_port()
 mqtt_client.connect(broker_url, port)
-logger.info("Running Mqtt subscriber in the loop")
+logger.info("Starting mqtt subscriber in the loop")
 mqtt_client.loop_forever()
