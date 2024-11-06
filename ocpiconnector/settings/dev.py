@@ -11,3 +11,4 @@ HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 FIXIE_URL = os.getenv("FIXIE_URL", "")
 os.environ["http_proxy"] = FIXIE_URL
 os.environ["https_proxy"] = FIXIE_URL
+os.environ["no_proxy"] = "localhost,127.0.0.1"
