@@ -2,7 +2,9 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import orjson
 from celery import shared_task, Celery
+from kombu.serialization import register
 from rest_framework.generics import get_object_or_404
 
 from ocpi22 import logging as logger
@@ -14,6 +16,14 @@ from ocpi22.models.location import Evse
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party
 from util import format_session_url
+
+register(
+    "orjson",
+    orjson_serializer,
+    orjson.loads,
+    content_type='application/x-orjson',
+    content_encoding='utf-8'
+)
 
 
 # Todo: The tasks should be independent of Django, so we can run them in a separate process
