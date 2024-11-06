@@ -37,12 +37,10 @@ class EvseStatus(str, Enum):
 class EvseStatusUpdate(BaseModel):
     evse_uid: str
     status: EvseStatus
-    last_updated: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
     class Config:
         json_encoders = {
             EvseStatus: lambda v: v.value,  # Convert Enum to its value
-            datetime: lambda v: v.isoformat(),  # Convert datetime to ISO format
         }
 
 @dataclass

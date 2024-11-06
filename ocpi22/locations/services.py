@@ -8,22 +8,22 @@ class EvseServices:
     def ocpp_to_evse_status(status: str):
         match status:
             case "AVAILABLE":
-                return Evse.STATUS_CHOICES.AVAILABLE
+                return Evse.AVAILABLE
             case "PREPARING":
-                return Evse.STATUS_CHOICES.CHARGING
+                return Evse.CHARGING
             case "CHARGING":
-                return Evse.STATUS_CHOICES.HARGING
+                return Evse.CHARGING
             case "SUSPENDEDEV":
-                return Evse.STATUS_CHOICES.CHARGING
+                return Evse.CHARGING
             case "SUSPENDEDEVSE":
-                return Evse.STATUS_CHOICES.CHARGING
+                return Evse.CHARGING
             case "FINISHING":
-                return Evse.STATUS_CHOICES.CHARGING
+                return Evse.CHARGING
             case "RESERVED":
-                return Evse.STATUS_CHOICES.RESERVED
+                return Evse.RESERVED
             case "FAULTED":
-                return Evse.STATUS_CHOICES.OUT_OF_ORDER
+                return Evse.OUTOFORDER
             case "UNAVAILABLE":
-                return Evse.STATUS_CHOICES.CHARGING
+                return Evse.CHARGING
             case _:
                 raise ValueError(f"Invalid OCPP status [{status}] found")

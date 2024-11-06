@@ -30,7 +30,7 @@ register(
 class CeleryConfig:
     broker_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     result_backend = broker_url
-    task_serializer = orjson_serializer
+    task_serializer = "orjson"
     accept_content = ["json"]
     result_expires = 1
     worker_concurrency = 4
@@ -121,6 +121,7 @@ def _format_evse_id(country_code: str, party_id: str, evse_uid: str) -> str:
 
 @shared_task
 def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
+    print("I cane to save and send")
     country, party_id = _get_country_and_party_id()
     evse_id = _format_evse_id(country, party_id, evse_uid)
     evse = get_object_or_404(Evse, uid=evse_uid, evse_id=evse_id)

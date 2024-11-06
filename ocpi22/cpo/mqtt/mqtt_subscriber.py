@@ -84,17 +84,19 @@ def get_broker_and_port():
 def configure_client(client_id):
     username, password = get_broker_username_password()
     client = mqtt.Client(client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
-    if os.getenv("MQTT_DISABLE_TLS", False):
-        client.tls_set(cert_reqs=ssl.CERT_NONE)  # Disables certificate validation
-        client.tls_insecure_set(True)
     client.username_pw_set(username, password)
     client.on_connect = on_connect
     client.on_message = on_message
     return client
 
 
+
+
+# if __name__ == "__main__":
+logger.info("Did I come here")
 client_id = f"ROAMING_{uuid.uuid4()}"
 mqtt_client = configure_client(client_id)
 broker_url, port = get_broker_and_port()
 mqtt_client.connect(broker_url, port)
+logger.info("Running Mqtt subscriber in the loop")
 mqtt_client.loop_forever()
