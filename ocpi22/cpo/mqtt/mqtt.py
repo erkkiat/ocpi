@@ -3,7 +3,6 @@ import os
 import ssl
 import sys
 import uuid
-from doctest import debug
 
 import django
 import paho.mqtt.client as mqtt
@@ -16,13 +15,15 @@ def _load_envs():
     load_dotenv(env_path)
 
 
-_load_envs()
+def setup_django():
+    _load_envs()
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+    # Set the Django settings module
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
+    django.setup()
 
-# Set the Django settings module
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
-django.setup()
+setup_django()
 
 from ocpi22.cpo.mqtt.services import process_meter_values_data, process_status_update_data
 
