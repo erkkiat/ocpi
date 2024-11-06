@@ -22,7 +22,7 @@ def start_evse_full_load(request):
         payload = service.get_evse_full_load_payload_by_operator_id(
             operator_id, op_evse_records
         )
-        response = service.execute_evse_full_load(operator_id, payload)
+        response = service.post_evse_full_load(operator_id, payload)
 
         hubject_responses[operator_id].append(response)
 

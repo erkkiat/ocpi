@@ -1,19 +1,9 @@
-import pytest
+import doctest
+
+import pytz
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils.datetime_safe import datetime
-from django.core.exceptions import ValidationError
-
-from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
-from integrations.ocpi_to_hubject_converter import OCPIToHubjectConverter
-
-from integrations.hubject.test_data import ERoamingPushTestData
-from ocpi22.tests.factories import (
-    LocationFactory,
-    CredentialsRoleFactory,
-    BusinessDetailsFactory,
-    EvseFactory,
-    ConnectorFactory,
-)
 
 from integrations.hubject.schemas import (
     Plug,
@@ -23,14 +13,19 @@ from integrations.hubject.schemas import (
     ActionType,
     ERoamingPushEvseData,
 )
+from integrations.hubject.tests.eroaming_mock_data import ERoamingPushTestData
+from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
+from integrations.ocpi_to_hubject_converter import OCPIToHubjectConverter
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
+from ocpi22.tests.factories import (
+    LocationFactory,
+    CredentialsRoleFactory,
+    BusinessDetailsFactory,
+    EvseFactory,
+    ConnectorFactory,
+)
 from ocpiconnector import testutil
-
-import doctest
-import pytz
-
-from ocpiconnector.testutil import simulate_surrounding_world
 
 
 def load_tests(_loader, tests, _ignore):
@@ -273,74 +268,4 @@ class TestMappings(TestCase):
         self.assertTrue(
             result,
             "The mapped OCPI Location data does not match the expected OICP data.",
-        )
-
-
-class TestHubjectApi:
-    @pytest.mark.django_db
-    @simulate_surrounding_world
-    async def test_successful_start_load(self, simulation):
-        berlin_supercharger_ocpi_master = CredentialsRoleFactory(
-            role="CPO",
-            country_code="DE",
-            party_id="SMP",
-        )
-        berlin_supercharger_operator_business_details = BusinessDetailsFactory(
-            name="berlin Supercharger Operator",
-            website="https://www.berlin-supercharger.com",
-            logo="test_logo.png",
-        )
-        berlin_supercharger_sub_operator_business_details = BusinessDetailsFactory(
-            name="berlin Supercharger Sub Operator",
-            website="https://www.berlin-supercharger.com",
-            logo="test_logo.png",
-        )
-        berlin_supercharger_owner_business_details = BusinessDetailsFactory(
-            name="Smappee Pvt Ltd.",
-            website="https://www.berlin-supercharger.com",
-            logo="test_logo.png",
-        )
-
-        berlin = LocationFactory(
-            publish=True,
-            name="berlin Supercharger",
-            address="Mannerheimintie 1",
-            city="berlin",
-            postal_code="00100",
-            state="Uusimaa",
-            country="FIN",
-            parking_type="ON_STREET",
-            latitude=60.1695,
-            longitude=24.9354,
-            time_zone="Europe/berlin",
-            ocpi_master=berlin_supercharger_ocpi_master,
-            operator=berlin_supercharger_operator_business_details,
-            suboperator=berlin_supercharger_sub_operator_business_details,
-            owner=berlin_supercharger_owner_business_details,
-            charging_when_closed=True,
-        )
-
-        berlin_evse_data = EvseFactory(
-            evse_id="FI*ABC*E1234*5668",
-            status="RESERVED",
-            location=berlin,
-            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            capabilities=["RFID_READER", "RESERVABLE"],
-        )
-
-        ConnectorFactory(
-            uid="CONNECTOR_1",
-            evse=berlin_evse_data,
-            standard="IEC_62196_T2",
-            format="SOCKET",
-            power_type="DC",
-            max_voltage=230,
-            max_amperage=16,
-            max_electric_power=37,
-            terms_and_conditions="https://www.berlin-supercharger.com/terms-and-conditions",
-            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         )

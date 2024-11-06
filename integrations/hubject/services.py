@@ -49,13 +49,12 @@ class HubjectService:
             ),
         )
 
-    def execute_evse_full_load(self, operator_id, payload):
+    def post_evse_full_load(self, operator_id, payload):
         full_load_url = urljoin(
             with_trailing_slash(settings.HUBJECT_URL),
             f"evsepush/v23/operators/{operator_id}/data-records",
         )
-
-        response = None
+        response = {}
 
         try:
             headers = {"Content-type": "application/json"}
@@ -65,4 +64,4 @@ class HubjectService:
             return response.json()
         except Exception as exc:
             logging.error(exc)
-            return response.json()
+            return {"success": False, "error": str(exc)}

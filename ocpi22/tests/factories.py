@@ -24,6 +24,7 @@ from integrations.hubject.schemas import (
     ValueAddedService,
     AccessibilityLocation,
     ActionType,
+    Accessibility,
 )
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Location, Evse, Connector
@@ -199,7 +200,7 @@ class ChargingFacilityFactory(factory.Factory):
     class Meta:
         model = ChargingFacility
 
-    PowerType = (PowerType.AC_1_PHASE,)
+    PowerType = PowerType.AC_1_PHASE
     Voltage = 225
     Amperage = 50
     Power = 900
@@ -213,7 +214,7 @@ class EvseDataRecordFactory(factory.Factory):
     deltaType = DeltaType.update
     lastUpdate = factory.Faker("date_time", tzinfo=pytz.UTC)
     EvseID = factory.Faker("uuid4")
-    ChargingPoolID = ""
+    ChargingPoolID = None
     ChargingStationId = ""
     ChargingStationNames = []
     HardwareManufacturer = ""
@@ -221,7 +222,7 @@ class EvseDataRecordFactory(factory.Factory):
     SubOperatorName = ""
     Address = factory.SubFactory("ocpi22.tests.factories.AddressFactory")
     GeoCoordinates = factory.SubFactory("ocpi22.tests.factories.GeoCoordinatesFactory")
-    Plugs = Plug.Type_2_Outlet
+    Plugs = [Plug.Type_2_Outlet]
     DynamicPowerLevel = True
     ChargingFacilities = factory.List(
         [
@@ -237,7 +238,7 @@ class EvseDataRecordFactory(factory.Factory):
     MaxCapacity = 950
     PaymentOptions = [PaymentOption.Direct]
     ValueAddedServices = [ValueAddedService.Reservation]
-    Accessibility = []
+    Accessibility = Accessibility.Free_publicly_accessible
     AccessibilityLocation = AccessibilityLocation.OnStreet
     HotlinePhoneNumber = "+3256380211"
     AdditionalInfo = []
@@ -260,7 +261,10 @@ class OperatorEvseDataFactory(factory.Factory):
     OperatorID = "DE*SMP"
     OperatorName = "Smappee Operator"
     EvseDataRecord = factory.List(
-        [factory.SubFactory("ocpi22.tests.factories.EvseFactory") for _ in range(3)]
+        [
+            factory.SubFactory("ocpi22.tests.factories.EvseDataRecordFactory")
+            for _ in range(3)
+        ]
     )
 
 
