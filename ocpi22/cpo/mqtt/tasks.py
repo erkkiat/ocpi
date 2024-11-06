@@ -7,6 +7,7 @@ from rest_framework.generics import get_object_or_404
 
 from ocpi22 import logging as logger
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum
+from ocpi22.cpo.mqtt.custom_orjson_serializer import orjson_serializer
 from ocpi22.cpo.session_cache import get_cached_session, store_session_cache
 from ocpi22.locations.services import EvseServices
 from ocpi22.models.location import Evse
@@ -19,7 +20,7 @@ from util import format_session_url
 class CeleryConfig:
     broker_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     result_backend = broker_url
-    task_serializer = "json"
+    task_serializer = orjson_serializer
     accept_content = ["json"]
     result_expires = 1
     worker_concurrency = 4
