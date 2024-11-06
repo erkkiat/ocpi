@@ -5,7 +5,7 @@ from ocpi22.models.location import Evse
 class EvseServices:
 
     @staticmethod
-    def ocpp_to_evse_statu(status: str):
+    def ocpp_to_evse_status(status: str):
         match status:
             case "AVAILABLE":
                 return Evse.STATUS_CHOICES.AVAILABLE
