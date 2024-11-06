@@ -357,7 +357,7 @@ class OCPIToHubjectConverter:
             for capability in (capabilities or [])
             for vas in [self.get_value_added_services(capability)]
             if vas is not None
-        ] or [ValueAddedService.None_]
+        ] or []
 
     def get_accessibility_locations(
         self,

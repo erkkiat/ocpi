@@ -55,27 +55,15 @@ class TestHubjectService:
         )
 
     @responses.activate
-    def test_post_evse_full_load(self, evse_full_load_payload):
+    def test_post_evse_full_load(
+        self, evse_full_load_payload, hubject_successful_response
+    ):
         operator_id = evse_full_load_payload.OperatorEvseData.OperatorID.root
-
-        hubject_response = {
-            "Result": "true",
-            "StatusCode": {
-                "Code": "000",
-                "Description": "null",
-                "AdditionalInfo": "null",
-            },
-            "SessionID": "null",
-            "CPOPartnerSessionID": "null",
-            "EMPPartnerSessionID": "null",
-        }
-
-        print(evse_full_load_payload.model_dump())
 
         responses.add(
             responses.POST,
             f"{settings.HUBJECT_URL}evsepush/v23/operators/{operator_id}/data-records",
-            json=hubject_response,
+            json=hubject_successful_response,
             status=200,
             match=[
                 matchers.json_params_matcher(
@@ -87,4 +75,32 @@ class TestHubjectService:
 
         result = service.post_evse_full_load(operator_id, evse_full_load_payload)
 
-        assert result == hubject_response
+        assert result == hubject_successful_response
+
+    @responses.activate
+    def test_post_evse_full_load_unsuccessful_response(
+        self, evse_full_load_payload, hubject_unsuccessful_response
+    ):
+        operator_id = evse_full_load_payload.OperatorEvseData.OperatorID.root
+
+        # edit the payload to generate a unsuccessful response from the hubject APIs
+        evse_full_load_payload.OperatorEvseData.EvseDataRecord[
+            0
+        ].ValueAddedServices = []
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}evsepush/v23/operators/{operator_id}/data-records",
+            json=hubject_unsuccessful_response,
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    evse_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        service = HubjectService()
+
+        result = service.post_evse_full_load(operator_id, evse_full_load_payload)
+
+        assert result == hubject_unsuccessful_response

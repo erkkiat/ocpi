@@ -275,3 +275,31 @@ def evse_full_load_payload(
             EvseDataRecord=[berlin_emsdetten_evse_data_records[0]],
         ),
     )
+
+
+@pytest.fixture
+def hubject_successful_response():
+    return {
+        "Result": "true",
+        "StatusCode": {
+            "Code": "000",
+            "Description": "null",
+            "AdditionalInfo": "null",
+        },
+        "SessionID": "null",
+        "CPOPartnerSessionID": "null",
+        "EMPPartnerSessionID": "null",
+    }
+
+
+@pytest.fixture
+def hubject_unsuccessful_response():
+    return {
+        "message": "Error parsing/validating JSON.",
+        "validationErrors": [
+            {
+                "fieldReference": "operatorEvseData.evseDataRecord[0].valueAddedServices",
+                "errorMessage": "must not be empty",
+            }
+        ],
+    }
