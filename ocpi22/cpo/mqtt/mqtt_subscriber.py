@@ -1,12 +1,13 @@
 import logging
 import os
-import ssl
 import sys
 import uuid
 
 import django
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
+
+from ocpiconnector.settings.base import env_bool
 
 
 def _load_envs():
@@ -17,15 +18,21 @@ def _load_envs():
 
 def setup_django():
     _load_envs()
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+    sys.path.append(
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+    )
 
     # Set the Django settings module
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
     django.setup()
 
+
 setup_django()
 
-from ocpi22.cpo.mqtt.services import process_meter_values_data, process_status_update_data
+from ocpi22.cpo.mqtt.services import (  # noqa
+    process_meter_values_data,  # noqa
+    process_status_update_data,  # noqa
+)  # noqa
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +48,15 @@ def on_message(client, userdata, message):
     if "metervalues" in message.topic:
         logger.info("Received meter value message")
         process_meter_values_data(message)
-        logger.info(f"Processed meter value message {message.payload} on topic {message.topic}")
+        logger.info(
+            f"Processed meter value message {message.payload} on topic {message.topic}"
+        )
     if "status" in message.topic:
         logger.info("Received status update message")
         process_status_update_data(message)
-        logger.info(f"Processed status update message {message.payload} on topic {message.topic}")
+        logger.info(
+            f"Processed status update message {message.payload} on topic {message.topic}"
+        )
     else:
         logger.error(f"Unknown topic {message.topic}")
         return
@@ -54,6 +65,7 @@ def on_message(client, userdata, message):
 def on_connect(client, userdata, flags, rc, properties=None):
     meter_topic = get_topic("SMAPPEE_METER_VALUES_TOPIC")
     status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
+    print("Did I come here")
     if rc == 0:
         logger.info("Connected successfully to the broker.")
         client.subscribe(meter_topic)
@@ -68,7 +80,8 @@ def get_broker_username_password():
     password = os.getenv("MQTT_PASSWORD")
     if not username or not password:
         raise ValueError(
-            "MQTT username or password is missing please check the environment variables, MQTT_USERNAME and MQTT_PASSWORD")
+            "MQTT username or password is missing please check the environment variables, MQTT_USERNAME and MQTT_PASSWORD"
+        )
     return username, password
 
 
@@ -77,26 +90,44 @@ def get_broker_and_port():
     port = int(os.getenv("MQTT_PORT"))
     if not broker or not port:
         raise ValueError(
-            "MQTTT Broker or port are missing please check the environment variables, MQTT_BROKER and MQTT_PORT")
+            "MQTTT Broker or port are missing please check the environment variables, MQTT_BROKER and MQTT_PORT"
+        )
     return broker, port
 
 
 def configure_client(client_id):
     username, password = get_broker_username_password()
-    client = mqtt.Client(client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
+    client = mqtt.Client(
+        client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
+    )
     client.username_pw_set(username, password)
     client.on_connect = on_connect
     client.on_message = on_message
     return client
 
 
-
-
 # if __name__ == "__main__": #TODO enable this for docker
-logger.info("Did I come here")
-client_id = f"ROAMING_{uuid.uuid4()}"
-mqtt_client = configure_client(client_id)
-broker_url, port = get_broker_and_port()
-mqtt_client.connect(broker_url, port)
-logger.info("Starting mqtt subscriber in the loop")
-mqtt_client.loop_forever()
+
+
+def connect_client():
+    client_id = f"ROAMING_{uuid.uuid4()}"
+    client = configure_client(client_id)
+    broker_url, port = get_broker_and_port()
+    client.connect(broker_url, port)
+    return client
+
+
+def start_client(client):
+    logger.info("Starting mqtt subscriber in the loop")
+    if env_bool(os.getenv("MQTT_LOOP_FOREVER")):
+        client.loop_forever()
+    client.loop_start()
+
+
+def stop_and_disconnect(client):
+    client.loop_stop()
+    client.disconnect()
+
+
+mqtt_client = connect_client()
+start_client(mqtt_client)
