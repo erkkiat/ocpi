@@ -18,15 +18,15 @@ ic.configureOutput(includeContext=True)
 TRUE_OPTIONS = (1, "1", True, "True", "true")
 
 
-def _env_bool(key, default=False) -> bool:
+def env_bool(key, default=False) -> bool:
     return bool(os.environ.get(key, default) in TRUE_OPTIONS)
 
 
-DEBUG = _env_bool("DEBUG", False)
+DEBUG = env_bool("DEBUG", False)
 
-RENDER_ONLY_JSON = _env_bool("RENDER_ONLY_JSON", False)
+RENDER_ONLY_JSON = env_bool("RENDER_ONLY_JSON", False)
 
-TEST = _env_bool("TEST", False)
+TEST = env_bool("TEST", False)
 
 DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT", "%d.%m.%Y %H:%M")
 DATE_FORMAT = os.environ.get("DATE_FORMAT", "%d.%m.%Y")
@@ -34,14 +34,14 @@ locale_formats.DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT_LOCALE", "D j.n
 DECIMAL_SEPARATOR = os.environ.get("DECIMAL_SEPARATOR", ",")
 DEFAULT_CURRENCY = os.environ.get("DEFAULT_CURRENCY", "EUR")
 
-PREMIUM = _env_bool("PREMIUM", False)
-CPO_API = _env_bool("CPO_API", False)
-MSP_API = _env_bool("MSP_API", False)
+PREMIUM = env_bool("PREMIUM", False)
+CPO_API = env_bool("CPO_API", False)
+MSP_API = env_bool("MSP_API", False)
 
-PERFORMANCE_TEST = _env_bool("PERFORMANCE_TEST", False)
-CPO_SIMULATOR = _env_bool("CPO_SIMULATOR", False)
+PERFORMANCE_TEST = env_bool("PERFORMANCE_TEST", False)
+CPO_SIMULATOR = env_bool("CPO_SIMULATOR", False)
 
-ALLOW_ADMIN_DELETE_AND_CHANGE = _env_bool("ALLOW_ADMIN_DELETE_AND_CHANGE", False)
+ALLOW_ADMIN_DELETE_AND_CHANGE = env_bool("ALLOW_ADMIN_DELETE_AND_CHANGE", False)
 
 # Complete expiration of access at 00:00 on the specified date
 expires_on_str = os.environ.get("EXPIRES_ON")
@@ -61,7 +61,7 @@ TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get("SECRET_KEY")
 assert SECRET_KEY, "Please set a SECRET_KEY in environment"
-SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT")
+SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT")
 TWILIO_API_KEY = os.environ.get("TWILIO_API_KEY")
 
 # Find a Redis, since Heroku Redis services use different environment variables
@@ -71,19 +71,19 @@ REDIS_URL = next((url for url in REDIS_URLS if url), None)
 REDIS_SESSION_CACHE_NAMESPACE = "sessioncache"
 
 # Send updates to partners who we have Credentials for
-SEND_UPDATES = _env_bool("SEND_UPDATES", True)
+SEND_UPDATES = env_bool("SEND_UPDATES", True)
 UPDATES_DISABLED = "Updates have been disabled using one of the environment variables SEND_UPDATES or PREMIUM."
-SERVE_STATIC_FILES = _env_bool("SERVE_STATIC_FILES", True)
+SERVE_STATIC_FILES = env_bool("SERVE_STATIC_FILES", True)
 MAX_NUMBER_OF_PARTNERS = os.environ.get("MAX_NUMBER_OF_PARTNERS", 1000)
 
 REMOTE_COMMAND_EXPIRATION = os.environ.get("REMOTE_COMMAND_EXPIRATION", 2 * 60)
-MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS = os.environ.get("MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS", 2 * 24 * 60 * 60)
+MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS = os.environ.get(
+    "MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS", 2 * 24 * 60 * 60
+)
 
 # Use the builtin account functionality and require a wallet balance when user wants to charge
-USE_ACCOUNTS = _env_bool("USE_ACCOUNTS", False)
-REQUIRE_WALLET_BALANCE = bool(
-    _env_bool("REQUIRE_WALLET_BALANCE", True) and USE_ACCOUNTS
-)
+USE_ACCOUNTS = env_bool("USE_ACCOUNTS", False)
+REQUIRE_WALLET_BALANCE = bool(env_bool("REQUIRE_WALLET_BALANCE", True) and USE_ACCOUNTS)
 
 OCPI_DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 OCPI_22_URL = "/ocpi/2.2/"
@@ -98,7 +98,7 @@ STILL_ALIVE_FREQUENCY = os.environ.get("STILL_ALIVE_FREQUENCY", 60 * 5)
 MAXIMUM_RESERVATION = os.environ.get("MAXIMUM_RESERVATION", 60 * 30)
 
 # Send updates asynchronously using Celery
-BACKGROUND_SEND = _env_bool("BACKGROUND_SEND", True)
+BACKGROUND_SEND = env_bool("BACKGROUND_SEND", True)
 
 ADMINS = [("Erkki Tapola", "erkki.tapola@solidroam.com")]
 MANAGERS = ADMINS
@@ -427,7 +427,7 @@ INSTALLED_APPS = [
     "ninja_extra",
 ]
 
-CORS_ORIGIN_ALLOW_ALL = _env_bool("CORS_ALLOW_ALL_ORIGINS", False)
+CORS_ORIGIN_ALLOW_ALL = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
 CORS_ALLOW_HEADERS = (
     *default_headers,
     "access-control-allow-origin",
