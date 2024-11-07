@@ -11,7 +11,7 @@ api = NinjaAPI()
 # @api.post("/full_load/", url_name="hubject-evse-full-load", auth=JWTAuth())
 # @permission_classes([IsAdminUser])
 # @permission_required('is_admin', raise_exception=True)
-def start_evse_full_load(request):
+def start_evse_full_load(request) -> Dict:
     service = HubjectService()
     collection: Dict[str, List] = service.get_operator_evse_dict()
     hubject_responses = defaultdict(list)

@@ -1,8 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 import responses
 from django.conf import settings
+from pydantic_core import PydanticSerializationError
+from requests import HTTPError
 from responses import matchers
 
 from integrations.hubject.schemas import (
@@ -104,3 +106,41 @@ class TestHubjectService:
         result = service.post_evse_full_load(operator_id, evse_full_load_payload)
 
         assert result == hubject_unsuccessful_response
+
+    @responses.activate
+    def test_execute_evse_full_load_http_error(self, evse_full_load_payload):
+        operator_id = evse_full_load_payload.OperatorEvseData.OperatorID.root
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}evsepush/v23/operators/{operator_id}/data-records",
+            body=HTTPError("HTTP request failed"),
+            status=500,
+        )
+
+        with pytest.raises(HTTPError):
+            service = HubjectService()
+            result = service.post_evse_full_load(operator_id, evse_full_load_payload)
+
+            assert result == {
+                "success": False,
+                "errorType": "HTTP request failed",
+                "error": "HTTP request failed",
+            }
+
+    def test_execute_evse_full_load_pydantic_error(self):
+        service = HubjectService()
+        operator_id = "DE+MSP"
+
+        payload_mock = MagicMock()
+        payload_mock.model_dump_json.side_effect = PydanticSerializationError(
+            "serialization error"
+        )
+
+        result = service.post_evse_full_load(operator_id, payload_mock)
+
+        assert result == {
+            "success": False,
+            "errorType": "Pydantic validation failed",
+            "error": "serialization error",
+        }
