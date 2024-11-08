@@ -17,13 +17,17 @@ def smappee_meter_topic():
 
 
 @pytest.fixture
-def location_hki(self, db):
+def location_hki(db):
     return LocationFactory()
 
 
 @pytest.fixture()
-def evse(self, location_hki, db):
-    return EvseFactory(location=location_hki, status="RESERVED")
+def evse(location_hki, db):
+    return EvseFactory(
+        location=location_hki,
+        status="RESERVED",
+        uid="d80b60c1-751e-43b5-868b-9a60a41c5456",
+    )
 
 
 @pytest.fixture
@@ -41,3 +45,4 @@ def smappee_meter_message(smappee_meter_topic):
     message = MagicMock()
     message.topic = smappee_meter_topic
     message.payload = b'{"session_id": "94f5993d-232a-4916-a801-4e408c24c9cc", "internal_reference": "internal": "kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
+    return message
