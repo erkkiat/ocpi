@@ -7,7 +7,7 @@ from integrations.hubject.services import HubjectService
 api = NinjaAPI()
 
 
-@api.post("/full-load/", url_name="hubject-evse-full-load")
+@api.post("/evse/full-load/", url_name="hubject-evse-full-load")
 # @api.post("/full_load/", url_name="hubject-evse-full-load", auth=JWTAuth())
 # @permission_classes([IsAdminUser])
 # @permission_required('is_admin', raise_exception=True)
