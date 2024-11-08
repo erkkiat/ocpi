@@ -25,6 +25,22 @@ class TestMqttServices:
             for record in caplog.records
         )
 
+    @patch("ocpi22.cpo.mqtt.services._decode_message", return_value=None)
+    @patch.object(MeterValues, attribute="model_validate_json")
+    @patch.object(process_meter_values, attribute="apply_async")
+    def test_process_meter_values_data_exits_early_if_decode_message_fails(
+        self,
+        mock_apply_async,
+        mock_model_validate_json,
+        mock_decode_message,
+        smappee_status_update_message,
+    ):
+        smappee_status_update_message.payload = b"\x80"
+        assert process_meter_values_data(smappee_status_update_message) is None
+        mock_decode_message.assert_called_once_with(smappee_status_update_message)
+        mock_model_validate_json.assert_not_called()
+        mock_apply_async.assert_not_called()
+
     def test_process_meter_values_update_returns_none_when_data_validation_fails(
         self, smappee_meter_message, caplog
     ):
@@ -86,8 +102,8 @@ class TestMqttServices:
         ):
             with patch.object(
                 process_meter_values, "apply_async"
-            ) as mock_process_meter_values:
+            ) as mock_process_meter_values_task:
                 process_meter_values_data(smappee_meter_message)
-                mock_process_meter_values.assert_called_once_with(
+                mock_process_meter_values_task.assert_called_once_with(
                     kwargs=message_dict, expires=35
                 )
