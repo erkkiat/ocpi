@@ -65,7 +65,6 @@ def on_message(client, userdata, message):
 def on_connect(client, userdata, flags, rc, properties=None):
     meter_topic = get_topic("SMAPPEE_METER_VALUES_TOPIC")
     status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
-    print("Did I come here")
     if rc == 0:
         logger.info("Connected successfully to the broker.")
         client.subscribe(meter_topic)
@@ -87,12 +86,12 @@ def get_broker_username_password():
 
 def get_broker_and_port():
     broker = os.getenv("MQTT_BROKER")
-    port = int(os.getenv("MQTT_PORT"))
+    port = os.getenv("MQTT_PORT")
     if not broker or not port:
         raise ValueError(
             "MQTTT Broker or port are missing please check the environment variables, MQTT_BROKER and MQTT_PORT"
         )
-    return broker, port
+    return broker, int(port)
 
 
 def configure_client(client_id):
@@ -106,9 +105,6 @@ def configure_client(client_id):
     return client
 
 
-# if __name__ == "__main__": #TODO enable this for docker
-
-
 def connect_client():
     client_id = f"ROAMING_{uuid.uuid4()}"
     client = configure_client(client_id)
@@ -118,10 +114,11 @@ def connect_client():
 
 
 def start_client(client):
-    logger.info("Starting mqtt subscriber in the loop")
-    if env_bool(os.getenv("MQTT_LOOP_FOREVER")):
+    if env_bool("MQTT_LOOP_FOREVER"):
+        logger.info("Starting mqtt subscriber in the loop")
         client.loop_forever()
-    client.loop_start()
+    else:
+        client.loop_start()
 
 
 def stop_and_disconnect(client):
@@ -129,5 +126,6 @@ def stop_and_disconnect(client):
     client.disconnect()
 
 
+# if __name__ == "__main__": #TODO enable this and initialize django and envs under this section
 mqtt_client = connect_client()
 start_client(mqtt_client)
