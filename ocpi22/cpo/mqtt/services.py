@@ -1,3 +1,4 @@
+from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
 import logging
@@ -31,9 +32,11 @@ def process_meter_values_data(message) -> None:
     try:
         process_meter_values.apply_async(
             kwargs=meter_values.model_dump(mode="json"), expires=35
-        )  # Switch to the below call after setting up celery
-    except Exception as e:
-        logger.exception(f"Failed to parse message: {e}")
+        )
+    except OperationalError:
+        logger.exception("Celery operational error")
+    except Exception:
+        logger.exception("An unexpected error occurred")
     return
 
 
