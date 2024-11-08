@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import orjson
 from kombu.exceptions import OperationalError
 
 from ocpi22.cpo.mqtt.schemas import MeterValues
@@ -54,7 +55,7 @@ class TestMqttServices:
                     for record in caplog.records
                 )
 
-    def test_process_meter_values_udpate_returns_none_when_unexpected_error_occurs(
+    def test_process_meter_values_update_returns_none_when_unexpected_error_occurs(
         self, smappee_meter_message, caplog
     ):
         meter_values = MagicMock(spec=MeterValues)
@@ -71,4 +72,22 @@ class TestMqttServices:
                 assert any(
                     "An unexpected error occurred" in record.message
                     for record in caplog.records
+                )
+
+    def test_meter_values_update_data_calls_process_meter_values_celery_task(
+        self, smappee_meter_message
+    ):
+        meter_values = MagicMock(spec=MeterValues)
+        decoded_message = _decode_message(smappee_meter_message)
+        message_dict = orjson.loads(decoded_message)
+        meter_values.model_dump.return_value = message_dict
+        with patch.object(
+            MeterValues, "model_validate_json", return_value=meter_values
+        ):
+            with patch.object(
+                process_meter_values, "apply_async"
+            ) as mock_process_meter_values:
+                process_meter_values_data(smappee_meter_message)
+                mock_process_meter_values.assert_called_once_with(
+                    kwargs=message_dict, expires=35
                 )
