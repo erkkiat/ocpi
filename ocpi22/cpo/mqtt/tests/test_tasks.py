@@ -1,0 +1,59 @@
+from unittest.mock import patch
+
+import pytest
+from django.http import Http404
+
+from ocpi22.cpo.mqtt.tasks import (
+    _get_country_and_party_id,
+    _format_evse_id,
+    save_and_send_evse_status_updates,
+)
+from ocpi22.models.location import Evse
+from ocpi22.tests.factories import EvseFactory
+
+
+class TestMqttTasks:
+    def test_get_country_code_and_party_id(self, monkeypatch):
+        monkeypatch.setenv("CPO", "FI*CPO")
+        country_code, party_id = _get_country_and_party_id()
+        assert country_code == "FI"
+        assert party_id == "CPO"
+
+    def test_get_country_code_and_party_raises_when_not_set(self, monkeypatch):
+        monkeypatch.delenv("CPO", raising=False)
+        with pytest.raises(ValueError):
+            _get_country_and_party_id()
+
+    def test_format_evse_id(self, monkeypatch):
+        country_code, party_id = _get_country_and_party_id()
+        evse_id = _format_evse_id(country_code, party_id, "100000001")
+        assert evse_id == "FI*CPO*E100000001"
+
+    def test_save_and_send_evse_status_updates_raises_404_when_evse_not_found(
+        self, monkeypatch, db
+    ):
+        monkeypatch.setenv("CPO", "FI*CPO")
+        with pytest.raises(Http404):
+            save_and_send_evse_status_updates("100000002", "Available")
+
+    def test_save_and_send_evse_status_updates_saves_status(self, monkeypatch, db):
+        monkeypatch.setenv("CPO", "FI*CPO")
+        evse = EvseFactory(
+            uid="100000003", evse_id="FI*CPO*E100000003", status="AVAILABLE"
+        )
+        save_and_send_evse_status_updates("100000003", "CHARGING")
+        evse.refresh_from_db()
+        assert evse.status == "CHARGING"
+
+    def test_save_and_send_evse_status_updates_calls_send_status_updates(
+        self, monkeypatch, db
+    ):
+        evse = EvseFactory(
+            uid="100000004", evse_id="FI*CPO*E100000004", status="RESERVED"
+        )
+        monkeypatch.setenv("CPO", "FI*CPO")
+        with patch.object(Evse, "send_status_updates") as mock_send_status_updates:
+            save_and_send_evse_status_updates.run("100000004", "AVAILABLE")
+            evse.refresh_from_db()
+            assert evse.status == "AVAILABLE"
+            mock_send_status_updates.assert_called_once()
