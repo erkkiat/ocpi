@@ -1,5 +1,5 @@
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -8,43 +8,11 @@ from ocpi22.cpo.mqtt.mqtt_subscriber import (
     connect_client,
     on_message,
 )
-from ocpi22.tests.factories import LocationFactory, EvseFactory
 
 
 class TestMqttSubscriber:
     _smappee_status_topic = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
     _smappee_meter_topic = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
-
-    @pytest.fixture
-    def smappee_status_topic(self):
-        return
-
-    @pytest.fixture
-    def smappee_meter_topic(self):
-        return os.getenv("SMAPPEE_METER_VALUES_TOPIC")
-
-    @pytest.fixture
-    def location_hki(self, db):
-        return LocationFactory()
-
-    @pytest.fixture()
-    def evse(self, location_hki, db):
-        return EvseFactory(location=location_hki, status="RESERVED")
-
-    @pytest.fixture
-    def smappee_status_update_message(self, evse):
-        message = MagicMock()
-        message.topic = self._smappee_status_topic
-        message.payload = f'{{"evse_uid":"{evse.uid}", "status":"AVAILABLE"}}'.encode(
-            "utf-8"
-        )
-        return message
-
-    @pytest.fixture
-    def smappee_meter_message(self):
-        message = MagicMock()
-        message.topic = self._smappee_meter_topic
-        message.payload = b'{"session_id": "94f5993d-232a-4916-a801-4e408c24c9cc", "internal_reference": "internal": "kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
 
     @pytest.fixture
     def mocked_mqtt_client(self):
