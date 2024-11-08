@@ -44,5 +44,5 @@ def smappee_status_update_message(evse, smappee_status_topic):
 def smappee_meter_message(smappee_meter_topic):
     message = MagicMock()
     message.topic = smappee_meter_topic
-    message.payload = b'{"session_id": "94f5993d-232a-4916-a801-4e408c24c9cc", "internal_reference": "internal": "kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
+    message.payload = b'{"session_id": "94f5993d-232a-4916-a801-4e408c24c9cc", "internal_reference": "657c4d2d-cbac-4950-b252-2c71695e83a1", "kw": 1.1, "soc": 1.1, "power": 2.2, "timestamp": "2022-02-22T22:22:22"}'
     return message
