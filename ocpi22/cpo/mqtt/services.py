@@ -49,6 +49,11 @@ def process_status_update_data(message) -> None:
     except ValidationError:
         logger.exception(f"Failed to parse {message.topic} message")
         return
-    evse_data = EvseStatusUpdate.model_dump(evse_schema, mode="json")
-    save_and_send_evse_status_updates.apply_async(kwargs=evse_data, expires=35)
+    evse_data = evse_schema.model_dump(mode="json")
+    try:
+        save_and_send_evse_status_updates.apply_async(kwargs=evse_data, expires=35)
+    except OperationalError:
+        logger.exception("Celery operational error")
+    except Exception:
+        logger.exception("An unexpected error occurred")
     return
