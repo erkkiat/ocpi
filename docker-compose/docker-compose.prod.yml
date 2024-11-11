@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  django-server:
+    build:
+      context: .
+    container_name: django-server
+    environment:
+      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.prod"
+    ports:
+      - "8080:8080"
+    volumes:
+      - static-data:/app/static
+      - media-data:/app/media
+    command: ["django-server"]
+
+  mqtt-subscriber:
+    build:
+      context: .
+    container_name: mqtt-subscriber
+    environment:
+      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.prod"
+      MQTT_BROKER: "${MQTT_BROKER}"
+      MQTT_PORT: "${MQTT_PORT}"
+      MQTT_USERNAME: "${MQTT_USERNAME}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD}"
+    command: ["mqtt-subscriber"]
+
+  celery-mqtt:
+    build:
+      context: .
+    container_name: celery-mqtt
+    environment:
+      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.prod"
+      BROKER_URL: "${BROKER_URL}"
+    volumes:
+      - celery-logs:/var/log/celery
+    command: ["celery-mqtt"]
+
+  celery-django:
+    build:
+      context: .
+    container_name: celery-django
+    environment:
+      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.prod"
+    volumes:
+      - celery-logs:/var/log/celery
+    command: ["celery-django"]
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/var/lib/redis
+
+  db:
+    image: postgres:latest
+    container_name: ocpi-postgres
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
+  redis-data:
+  celery-logs:
+  static-data:
+  media-data:
