@@ -1,15 +1,19 @@
-FROM python:3
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONPATH=$PYTHONPATH:/code:/code/ocpiconnector
-RUN mkdir /code
-COPY . /code/
-COPY requirements.txt /code/
-WORKDIR /code
-RUN pip3 install --upgrade pip
-RUN pip3 install --no-cache-dir -r requirements.txt
+FROM python:3.11-slim
 
-RUN python manage.py migrate --database=gdpr_log gdpr_assist
-RUN python manage.py collectstatic --noinput
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/ocpiconnector
 
-# run gunicorn
-CMD gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8080 --reload --timeout 120
+WORKDIR /app
+
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . /app/
+
+RUN python ocpiconnector/manage.py migrate --database=gdpr_log gdpr_assist
+RUN python ocpiconnector/manage.py collectstatic --noinput
+
+EXPOSE 8080
+
+ENTRYPOINT ["./entrypoint.sh"]
