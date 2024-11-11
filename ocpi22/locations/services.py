@@ -1,9 +1,8 @@
 # TODO refactor this to have ddomain speicific services
-from ocpi22.choices import OcppStatusChoices
 from ocpi22.models.location import Evse
 
-class EvseServices:
 
+class EvseServices:
     @staticmethod
     def ocpp_to_evse_status(status: str):
         match status:
