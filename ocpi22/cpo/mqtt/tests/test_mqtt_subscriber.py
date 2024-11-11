@@ -36,7 +36,6 @@ class TestMqttSubscriber:
         mocked_mqtt_client.subscribe.assert_any_call(topic)
         stop_and_disconnect(mocked_mqtt_client)
 
-    @pytest.mark.asyncio
     def test_on_message_calls_process_status_update_data(
         self, smappee_status_update_message
     ):
