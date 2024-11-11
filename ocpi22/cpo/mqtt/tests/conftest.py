@@ -21,7 +21,7 @@ def location_hki(db):
     return LocationFactory()
 
 
-@pytest.fixture()
+@pytest.fixture
 def evse(location_hki, db):
     return EvseFactory(
         location=location_hki,
