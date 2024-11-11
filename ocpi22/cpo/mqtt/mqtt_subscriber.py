@@ -7,8 +7,6 @@ import django
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
-from ocpiconnector.settings.base import env_bool
-
 
 def _load_envs():
     current_directory = os.getcwd()
@@ -28,7 +26,7 @@ def setup_django():
 
 
 setup_django()
-
+from ocpiconnector.settings.base import env_bool  # noqa
 from ocpi22.cpo.mqtt.services import (  # noqa
     process_meter_values_data,  # noqa
     process_status_update_data,  # noqa
