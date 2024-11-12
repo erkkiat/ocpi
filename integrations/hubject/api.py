@@ -7,11 +7,8 @@ from integrations.hubject.services import HubjectService
 api = NinjaAPI()
 
 
-@api.post("/evse/full-load/", url_name="hubject-evse-full-load")
-# @api.post("/full_load/", url_name="hubject-evse-full-load", auth=JWTAuth())
-# @permission_classes([IsAdminUser])
-# @permission_required('is_admin', raise_exception=True)
-def start_evse_full_load(request) -> Dict:
+@api.post("/evses/full-load/", url_name="hubject-evse-full-load")
+def update_oicp_evses_of_all_operators(request) -> Dict:
     service = HubjectService()
     collection: Dict[str, List] = service.get_operator_evse_dict()
     hubject_responses = defaultdict(list)

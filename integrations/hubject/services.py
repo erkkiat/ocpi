@@ -26,14 +26,16 @@ class HubjectService:
     def get_operator_evse_dict(self) -> Dict[str, List]:
         locations = Location.objects.all()
 
-        collection: Dict[str, List] = defaultdict(list)
+        operator_id_operator_evse_map: Dict[str, List] = defaultdict(list)
         for location in locations:
             op_evse_data = HubjectService.converter.convert_to_operator_evse_data(
                 location
             )
-            collection[op_evse_data.OperatorID.root].append(op_evse_data)
+            operator_id_operator_evse_map[op_evse_data.OperatorID.root].append(
+                op_evse_data
+            )
 
-        return collection
+        return operator_id_operator_evse_map
 
     def get_evse_full_load_payload_by_operator_id(
         self, operator_id: str, op_evse_list: list[OperatorEvseData]
