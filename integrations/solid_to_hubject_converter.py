@@ -145,7 +145,7 @@ class SolidToHubjectConverter:
 
     def get_evse_id(self, evse_id: str) -> EvseID:
         """
-        >>> oicp_converter = OCPIToHubjectConverter()
+        >>> oicp_converter = SolidToHubjectConverter()
         >>> oicp_converter.get_evse_id("FI*SMP*34567")
         EvseID(root='FI*SMP*E34567')
         """

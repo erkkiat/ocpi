@@ -5,7 +5,6 @@ from itertools import chain
 
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
-    Address,
     AuthenticationMode,
     ValueAddedService,
     PaymentOption,
@@ -163,13 +162,13 @@ class HubjectToOCPIConverter:
     def get_timezone_by_offset_country(self, utc_offset, country_code):
         """
         >>> oicp_to_ocpi = HubjectToOCPIConverter()
-        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+03:00', "FI")
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+02:00', "FI")
         'Europe/Helsinki'
         >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:30', "LK")
         'Asia/Colombo'
         >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:45', "NP")
         'Asia/Kathmandu'
-        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+01:00', "GB")
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+00:00', "GB")
         'Europe/London'
         >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+99:99', "DE")
 
@@ -182,7 +181,7 @@ class HubjectToOCPIConverter:
         # Get timezones for the given country code
         country_timezones = pytz.country_timezones.get(country_code.upper(), [])
 
-        now = datetime.now()  # Get the current time to account for DST if applicable
+        now = datetime.utcnow()  # Get the current time to account for DST if applicable
 
         for timezone in country_timezones:
             tz = pytz.timezone(timezone)
@@ -192,10 +191,41 @@ class HubjectToOCPIConverter:
             if offset == target_offset:
                 return timezone
 
-        return None
+        return
 
-    def get_address(self, address: Address) -> str:
-        return f"{address.Street}, {address.HouseNum}"
+    def get_address_formatter(self, country: str):
+        """
+        Returns a function to format the address based on country-specific address conventions.
+        """
+
+        def format_general_address(street, house_number):
+            # Default format for most countries
+            return f"{street} {house_number}".strip()
+
+        def format_french_address(street, house_number):
+            # In France, the house number typically comes first
+            return f"{house_number} {street}".strip()
+
+        # Add more formatters for other countries if needed
+        return dict(FRA=format_french_address).get(country, format_general_address)
+
+    def get_address(self, street: str, house_number: str, country: str) -> str:
+        """
+        Formats an address from the street and house number, based on country conventions.
+
+        Examples:
+        >>> oicp_converter = HubjectToOCPIConverter()
+        >>> oicp_converter.get_address("Weteringstraat", "34-1", 'NLD')
+        'Weteringstraat 34-1'
+        >>> oicp_converter.get_address("Rue de Grenelle", "23", 'FRA')
+        '23 Rue de Grenelle'
+        >>> oicp_converter.get_address("Weberstr.", "2", 'DEU')
+        'Weberstr. 2'
+        >>> oicp_converter.get_address("Kandintie", "4E", 'FIN')
+        'Kandintie 4E'
+        """
+        formatter = self.get_address_formatter(country)
+        return formatter(street, house_number)
 
     def get_operator(self, operator: OperatorID): ...
 
