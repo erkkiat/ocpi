@@ -2,74 +2,62 @@ version: "3.9"
 
 services:
   django-server:
-    build:
-      context: .
-    container_name: django-server
-    environment:
-      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.prod"
-    ports:
-      - "8080:8080"
+    image: solidroam/django-app:latest
     volumes:
-      - static-data:/app/static
-      - media-data:/app/media
-    command: ["django-server"]
+      - static_volume:/app/staticfiles
+      - media_volume:/app/mediafiles
+    ports:
+      - "8000:8000"
+    command: gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000
+    networks:
+      - app-network
 
   mqtt-subscriber:
-    build:
-      context: .
-    container_name: mqtt-subscriber
-    environment:
-      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.prod"
-      MQTT_BROKER: "${MQTT_BROKER}"
-      MQTT_PORT: "${MQTT_PORT}"
-      MQTT_USERNAME: "${MQTT_USERNAME}"
-      MQTT_PASSWORD: "${MQTT_PASSWORD}"
-    command: ["mqtt-subscriber"]
-
-  celery-mqtt:
-    build:
-      context: .
-    container_name: celery-mqtt
-    environment:
-      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.prod"
-      BROKER_URL: "${BROKER_URL}"
+    image: solidroam/mqtt-subscriber:latest
     volumes:
-      - celery-logs:/var/log/celery
-    command: ["celery-mqtt"]
+      - mqtt_logs:/var/log/mqtt
+    command: python ocpiconnector/ocpi22/cpo/mqtt/mqtt_subscriber.py
+    networks:
+      - app-network
 
-  celery-django:
-    build:
-      context: .
-    container_name: celery-django
-    environment:
-      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.prod"
+  celery-mqtt-tasks:
+    image: solidroam/celery-mqtt:latest
     volumes:
-      - celery-logs:/var/log/celery
-    command: ["celery-django"]
+      - celery_logs:/var/log/celery
+    command: celery -A ocpiconnector.ocpi22.cpo.mqtt.tasks worker --loglevel=info
+    networks:
+      - app-network
+
+  celery-django-tasks:
+    image: solidroam/celery-django:latest
+    volumes:
+      - celery_logs:/var/log/celery
+    command: celery -A ocpiconnector worker --loglevel=info
+    networks:
+      - app-network
 
   redis:
     image: redis:latest
-    container_name: redis
-    ports:
-      - "6379:6379"
     volumes:
-      - redis-data:/var/lib/redis
+      - redis_data:/data
+    networks:
+      - app-network
 
+# Change it to mysql later on
   db:
     image: postgres:latest
-    container_name: ocpi-postgres
-    environment:
-      POSTGRES_USER: "${POSTGRES_USER}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${POSTGRES_DB}"
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    networks:
+      - app-network
 
 volumes:
+  static_volume:
+  media_volume:
   pgdata:
-  redis-data:
-  celery-logs:
-  static-data:
-  media-data:
+  redis_data:
+  celery_logs:
+  mqtt_logs:
+
+networks:
+  app-network:

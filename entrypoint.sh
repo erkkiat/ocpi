@@ -1,6 +1,4 @@
 #!/bin/bash
-
-# Exit immediately if a command exits with a non-zero status
 set -e
 
 # Check the first argument passed to the container
