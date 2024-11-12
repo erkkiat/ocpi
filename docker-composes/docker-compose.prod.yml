@@ -2,49 +2,49 @@ version: "3.9"
 
 services:
   django-server:
-    image: solidroam/django-app:latest
     build:
-      context: ../  # Set to the root directory of your project
+      context: ../
+    image: solidroam/django-app:latest
     container_name: django-server
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
     ports:
       - "${DJANGO_PORT:-8000}:8000"
-    command: gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000
+    command: django-server  # Matches the case in entrypoint.sh
     networks:
       - app-network
 
   mqtt-subscriber:
-    image: solidroam/mqtt-subscriber:latest
     build:
-      context: ../  # Set to the root directory of your project
+      context: ../
+    image: solidroam/mqtt-subscriber:latest
     container_name: mqtt-subscriber
     volumes:
       - mqtt_logs:/var/log/mqtt
-    command: python ocpiconnector/ocpi22/cpo/mqtt/mqtt_subscriber.py
+    command: mqtt-subscriber  # Matches the case in entrypoint.sh
     networks:
       - app-network
 
   celery-mqtt-tasks:
-    image: solidroam/celery-mqtt:latest
     build:
-      context: ../  # Set to the root directory of your project
+      context: ../
+    image: solidroam/celery-mqtt:latest
     container_name: celery-mqtt
     volumes:
       - celery_logs:/var/log/celery
-    command: celery -A ocpiconnector.ocpi22.cpo.mqtt.tasks worker --loglevel=info
+    command: celery-mqtt  # Matches the case in entrypoint.sh
     networks:
       - app-network
 
   celery-django-tasks:
-    image: solidroam/celery-django:latest
     build:
-      context: ../  # Set to the root directory of your project
+      context: ../
+    image: solidroam/celery-django:latest
     container_name: celery-django
     volumes:
       - celery_logs:/var/log/celery
-    command: celery -A ocpiconnector worker --loglevel=info
+    command: celery-django  # Matches the case in entrypoint.sh
     networks:
       - app-network
 
