@@ -3,58 +3,58 @@ version: "3.9"
 services:
   django-server:
     build:
-      context: ../  # Adjusted build context to root of project
+      context: ../  # Points to the project root
     container_name: django-server
     env_file:
-      - ../.env  # Adjusted to load .env from root directory
+      - ../.env  # Load .env from the root directory
     environment:
       DJANGO_COLLECT_STATIC: "true"
       DJANGO_MIGRATE: "true"
     volumes:
-      - ../:/app  # Adjusted to mount root project directory
+      - ../:/app  # Mount the root project directory for live reloading
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
     ports:
       - "${DJANGO_PORT:-8000}:8000"
-    command: gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000
+    command: django-server  # Matches the keyword in entrypoint.sh
     networks:
       - app-network
 
   mqtt-subscriber:
     build:
-      context: ../  # Adjusted build context to root of project
+      context: ../  # Points to the project root
     container_name: mqtt-subscriber
     env_file:
-      - ../.env  # Adjusted to load .env from root directory
+      - ../.env  # Load .env from the root directory
     volumes:
-      - ../:/app  # Adjusted to mount root project directory
-    command: python ocpiconnector/ocpi22/cpo/mqtt/mqtt_subscriber.py
+      - ../:/app  # Mount the root project directory for live reloading
+    command: mqtt-subscriber  # Matches the keyword in entrypoint.sh
     networks:
       - app-network
 
   celery-mqtt-tasks:
     build:
-      context: ../  # Adjusted build context to root of project
+      context: ../  # Points to the project root
     container_name: celery-mqtt
     env_file:
-      - ../.env  # Adjusted to load .env from root directory
+      - ../.env  # Load .env from the root directory
     volumes:
-      - ../:/app  # Adjusted to mount root project directory
+      - ../:/app  # Mount the root project directory for live reloading
       - celery_logs:/var/log/celery
-    command: celery -A ocpiconnector.ocpi22.cpo.mqtt.tasks worker --loglevel=info
+    command: celery-mqtt  # Matches the keyword in entrypoint.sh
     networks:
       - app-network
 
   celery-django-tasks:
     build:
-      context: ../  # Adjusted build context to root of project
+      context: ../  # Points to the project root
     container_name: celery-django
     env_file:
-      - ../.env  # Adjusted to load .env from root directory
+      - ../.env  # Load .env from the root directory
     volumes:
-      - ../:/app  # Adjusted to mount root project directory
+      - ../:/app  # Mount the root project directory for live reloading
       - celery_logs:/var/log/celery
-    command: celery -A ocpiconnector worker --loglevel=info
+    command: celery-django  # Matches the keyword in entrypoint.sh
     networks:
       - app-network
 
@@ -62,7 +62,7 @@ services:
     image: redis:latest
     container_name: redis
     env_file:
-      - ../.env  # Adjusted to load .env from root directory
+      - ../.env  # Load .env from the root directory
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -74,7 +74,7 @@ services:
     image: postgres:latest
     container_name: ocpi-postgres
     env_file:
-      - ../.env  # Adjusted to load .env from root directory
+      - ../.env  # Load .env from the root directory
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
