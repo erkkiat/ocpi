@@ -3,17 +3,19 @@ version: "3.9"
 services:
   django-server:
     image: solidroam/django-app:latest
+    container_name: django-server
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
     ports:
-      - "8000:8000"
+      - "${DJANGO_PORT:-8000}:8000"
     command: gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000
     networks:
       - app-network
 
   mqtt-subscriber:
     image: solidroam/mqtt-subscriber:latest
+    container_name: mqtt-subscriber
     volumes:
       - mqtt_logs:/var/log/mqtt
     command: python ocpiconnector/ocpi22/cpo/mqtt/mqtt_subscriber.py
@@ -22,6 +24,7 @@ services:
 
   celery-mqtt-tasks:
     image: solidroam/celery-mqtt:latest
+    container_name: celery-mqtt
     volumes:
       - celery_logs:/var/log/celery
     command: celery -A ocpiconnector.ocpi22.cpo.mqtt.tasks worker --loglevel=info
@@ -30,6 +33,7 @@ services:
 
   celery-django-tasks:
     image: solidroam/celery-django:latest
+    container_name: celery-django
     volumes:
       - celery_logs:/var/log/celery
     command: celery -A ocpiconnector worker --loglevel=info
@@ -38,16 +42,21 @@ services:
 
   redis:
     image: redis:latest
+    container_name: redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     networks:
       - app-network
 
-# Change it to mysql later on
   db:
     image: postgres:latest
+    container_name: ocpi-postgres
     volumes:
       - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - app-network
 
