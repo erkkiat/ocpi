@@ -3,6 +3,8 @@ version: "3.9"
 services:
   django-server:
     image: solidroam/django-app:latest
+    build:
+      context: ../  # Set to the root directory of your project
     container_name: django-server
     volumes:
       - static_volume:/app/staticfiles
@@ -15,6 +17,8 @@ services:
 
   mqtt-subscriber:
     image: solidroam/mqtt-subscriber:latest
+    build:
+      context: ../  # Set to the root directory of your project
     container_name: mqtt-subscriber
     volumes:
       - mqtt_logs:/var/log/mqtt
@@ -24,6 +28,8 @@ services:
 
   celery-mqtt-tasks:
     image: solidroam/celery-mqtt:latest
+    build:
+      context: ../  # Set to the root directory of your project
     container_name: celery-mqtt
     volumes:
       - celery_logs:/var/log/celery
@@ -33,6 +39,8 @@ services:
 
   celery-django-tasks:
     image: solidroam/celery-django:latest
+    build:
+      context: ../  # Set to the root directory of your project
     container_name: celery-django
     volumes:
       - celery_logs:/var/log/celery
