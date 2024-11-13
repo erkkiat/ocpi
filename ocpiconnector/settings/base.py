@@ -3,7 +3,6 @@ import os
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
-import sentry_sdk
 from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
 from django.contrib import messages
@@ -11,18 +10,10 @@ from django.utils.translation import gettext_lazy as _
 
 # Install icecream globally, no need for local imports
 from icecream import install, ic
-from sentry_sdk.integrations.celery import CeleryIntegration
-from sentry_sdk.integrations.django import DjangoIntegration
 
-sentry_sdk.init(
-    dsn=os.environ.get("SENTRY_DSN"),
-    integrations=[
-        DjangoIntegration(),
-        CeleryIntegration(),
-    ],
-    traces_sample_rate=1.0,  # Adjust based on your needs
-    send_default_pii=True,
-)
+from ocpiconnector.settings.configure_sentry import setup_sentry
+
+setup_sentry()
 
 install()  # TODO Remove it next PR
 
