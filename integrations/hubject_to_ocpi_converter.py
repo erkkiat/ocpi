@@ -190,7 +190,7 @@ class HubjectToOCPIConverter:
         country_timezones = pytz.country_timezones.get(country_code[2:].upper(), [])
 
         if len(country_timezones) == 0:
-            raise ValueError(f"Provided country code {country_code} is not valid")
+            raise ValueError(f"Provided country code {country_code} is not valid.")
 
         now = datetime.utcnow()  # Get the current time to account for DST if applicable
 
