@@ -162,24 +162,35 @@ class HubjectToOCPIConverter:
     def get_timezone_by_offset_country(self, utc_offset, country_code):
         """
         >>> oicp_to_ocpi = HubjectToOCPIConverter()
-        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+02:00', "FI")
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+02:00', "FIN")
         'Europe/Helsinki'
-        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:30', "LK")
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:30', "LKA")
         'Asia/Colombo'
-        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:45', "NP")
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:45', "NPL")
         'Asia/Kathmandu'
-        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+00:00', "GB")
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+00:00', "GBR")
         'Europe/London'
-        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+99:99', "DE")
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+99:99', "DEU")
 
         """
+        if "UTC" not in utc_offset:
+            raise ValueError(
+                "OICP Timezone must be in the form of 'UTC+HH:MM' or 'UTC-HH:MM'"
+            )
+
+        if len(country_code) != 3:
+            raise ValueError("Country code must have the format Alpha-3 (three-letter)")
+
         # Convert UTC offset to hours and minutes (in case there's a partial offset like UTC+05:30)
         sign = 1 if utc_offset[3] == "+" else -1
         hours, minutes = map(int, utc_offset[4:].split(":"))
         target_offset = timedelta(hours=sign * hours, minutes=sign * minutes)
 
         # Get timezones for the given country code
-        country_timezones = pytz.country_timezones.get(country_code.upper(), [])
+        country_timezones = pytz.country_timezones.get(country_code[2:].upper(), [])
+
+        if len(country_timezones) == 0:
+            raise ValueError(f"Provided country code {country_code} is not valid")
 
         now = datetime.utcnow()  # Get the current time to account for DST if applicable
 
