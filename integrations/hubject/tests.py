@@ -270,5 +270,5 @@ class TestMappings(TestCase):
         )
         self.assertTrue(
             result,
-            "The mapped OCPI Location data does not match the expected OICP data",
+            "The mapped OCPI Location data does not match the expected OICP data.",
         )
