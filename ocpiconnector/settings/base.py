@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
+import sentry_sdk
 from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
 from django.contrib import messages
@@ -10,8 +11,20 @@ from django.utils.translation import gettext_lazy as _
 
 # Install icecream globally, no need for local imports
 from icecream import install, ic
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.django import DjangoIntegration
 
-install()
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN"),
+    integrations=[
+        DjangoIntegration(),
+        CeleryIntegration(),
+    ],
+    traces_sample_rate=1.0,  # Adjust based on your needs
+    send_default_pii=True,
+)
+
+install()  # TODO Remove it next PR
 
 ic.configureOutput(includeContext=True)
 
@@ -77,7 +90,9 @@ SERVE_STATIC_FILES = _env_bool("SERVE_STATIC_FILES", True)
 MAX_NUMBER_OF_PARTNERS = os.environ.get("MAX_NUMBER_OF_PARTNERS", 1000)
 
 REMOTE_COMMAND_EXPIRATION = os.environ.get("REMOTE_COMMAND_EXPIRATION", 2 * 60)
-MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS = os.environ.get("MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS", 2 * 24 * 60 * 60)
+MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS = os.environ.get(
+    "MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS", 2 * 24 * 60 * 60
+)
 
 # Use the builtin account functionality and require a wallet balance when user wants to charge
 USE_ACCOUNTS = _env_bool("USE_ACCOUNTS", False)
