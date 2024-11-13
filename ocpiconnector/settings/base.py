@@ -11,7 +11,11 @@ from django.utils.translation import gettext_lazy as _
 # Install icecream globally, no need for local imports
 from icecream import install, ic
 
-install()
+from ocpiconnector.settings.configure_sentry import setup_sentry
+
+setup_sentry()
+
+install()  # TODO Remove it next PR
 
 ic.configureOutput(includeContext=True)
 
@@ -77,7 +81,9 @@ SERVE_STATIC_FILES = _env_bool("SERVE_STATIC_FILES", True)
 MAX_NUMBER_OF_PARTNERS = os.environ.get("MAX_NUMBER_OF_PARTNERS", 1000)
 
 REMOTE_COMMAND_EXPIRATION = os.environ.get("REMOTE_COMMAND_EXPIRATION", 2 * 60)
-MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS = os.environ.get("MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS", 2 * 24 * 60 * 60)
+MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS = os.environ.get(
+    "MAXIMUM_CHARGE_SESSION_LENGTH_IN_SECONDS", 2 * 24 * 60 * 60
+)
 
 # Use the builtin account functionality and require a wallet balance when user wants to charge
 USE_ACCOUNTS = _env_bool("USE_ACCOUNTS", False)
