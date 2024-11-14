@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from typing import Dict, List
 from urllib.error import HTTPError
@@ -16,7 +17,8 @@ from integrations.ocpi_to_hubject_converter import OCPIToHubjectConverter
 from ocpi22.models.location import Location
 from util import with_trailing_slash
 
-import ocpi22.logging as logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 class HubjectService:
@@ -39,10 +41,14 @@ class HubjectService:
 
     def get_evse_full_load_payload_by_operator_id(
         self, operator_id: str, op_evse_list: list[OperatorEvseData]
-    ) -> ERoamingPushEvseData:
+    ) -> ERoamingPushEvseData | None:
         evse_list = [
             record for op_evse in op_evse_list for record in op_evse.EvseDataRecord
         ]
+
+        if len(evse_list) == 0:
+            logger.warning("No evses found in operator evse list")
+            return
 
         return ERoamingPushEvseData(
             ActionType=ActionType.fullLoad,
@@ -77,12 +83,12 @@ class HubjectService:
             return {
                 "success": False,
                 "errorType": "Pydantic validation failed",
-                "error": str(e),
+                "error": e.__str__(),
             }
         except HTTPError as exc:
             logging.error(exc)
             return {
                 "success": False,
                 "errorType": "HTTP request failed",
-                "error": str(exc),
+                "error": exc.__str__(),
             }

@@ -10,7 +10,7 @@ api = NinjaAPI()
 @api.post("/evses/full-load/", url_name="hubject-evse-full-load", response=Dict)
 def update_oicp_evses_of_all_operators(request):
     service = HubjectService()
-    operator_id_operator_evse_data_collection: Dict[str, List] = (
+    operator_id_operator_evse_data_map: Dict[str, List] = (
         service.get_operator_evse_dict()
     )
     hubject_responses = defaultdict(list)
@@ -19,11 +19,14 @@ def update_oicp_evses_of_all_operators(request):
     for (
         operator_id,
         op_evse_records,
-    ) in operator_id_operator_evse_data_collection.items():
+    ) in operator_id_operator_evse_data_map.items():
         # Create data payload
         payload = service.get_evse_full_load_payload_by_operator_id(
             operator_id, op_evse_records
         )
+        if not payload:
+            continue
+
         response = service.post_evse_full_load(operator_id, payload)
 
         hubject_responses[operator_id].append(response)
