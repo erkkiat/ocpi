@@ -15,7 +15,7 @@ from integrations.hubject.schemas import (
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.location import Location, Evse, Connector
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from ocpi22.util import calculate_partition
 
@@ -182,24 +182,23 @@ class HubjectToOCPIConverter:
             raise ValueError("Country code must have the format Alpha-3 (three-letter)")
 
         # Convert UTC offset to hours and minutes (in case there's a partial offset like UTC+05:30)
-        sign = 1 if utc_offset[3] == "+" else -1
-        hours, minutes = map(int, utc_offset[4:].split(":"))
-        target_offset = timedelta(hours=sign * hours, minutes=sign * minutes)
+        hours, minutes = map(int, utc_offset[3:].split(":"))
+        target_seconds = float(hours * 3600 + minutes * 60)
 
         # Get timezones for the given country code
-        country_timezones = pytz.country_timezones.get(country_code[2:].upper(), [])
+        country_timezones = pytz.country_timezones.get(country_code[:2].upper(), [])
 
         if len(country_timezones) == 0:
-            raise ValueError(f"Provided country code {country_code} is not valid.")
+            raise ValueError(f"No timezones found for country code {country_code}.")
 
         now = datetime.utcnow()  # Get the current time to account for DST if applicable
 
         for timezone in country_timezones:
             tz = pytz.timezone(timezone)
-            offset = tz.utcoffset(now)
+            offset = tz.utcoffset(now).total_seconds()
 
             # Compare the offset to the target UTC offset
-            if offset == target_offset:
+            if offset == target_seconds:
                 return timezone
 
         return
