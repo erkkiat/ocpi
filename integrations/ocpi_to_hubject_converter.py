@@ -237,9 +237,9 @@ class OCPIToHubjectConverter:
         return [
             ChargingFacility(
                 PowerType=self.get_power_type(connector.power_type),
-                Voltage=max(0, min(999, connector.max_voltage)),
-                Amperage=max(0, min(99, connector.max_amperage)),
-                Power=max(0, min(999, connector.power_kw())),
+                Voltage=max(0, connector.max_voltage),
+                Amperage=max(0, connector.max_amperage),
+                Power=max(0, connector.power_kw()),
             )
             for connector in connectors
         ]
@@ -357,7 +357,7 @@ class OCPIToHubjectConverter:
             for capability in (capabilities or [])
             for vas in [self.get_value_added_services(capability)]
             if vas is not None
-        ] or []
+        ] or [ValueAddedService.None_]
 
     def get_accessibility_locations(
         self,
