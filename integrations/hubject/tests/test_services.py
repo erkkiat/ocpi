@@ -27,9 +27,9 @@ class TestHubjectService:
         mock_locations.return_value = berlin_emsdetten_location
         mock_convert.side_effect = berlin_emsdetten_op_evse_data
 
-        service = HubjectService()
+        hubject_service = HubjectService()
 
-        result = service.get_operator_evse_dict()
+        result = hubject_service.get_operator_evse_dict()
 
         assert result == {
             "DE*SMP": berlin_emsdetten_op_evse_data,
