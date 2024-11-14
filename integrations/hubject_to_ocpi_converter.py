@@ -195,10 +195,10 @@ class HubjectToOCPIConverter:
 
         for timezone in country_timezones:
             tz = pytz.timezone(timezone)
-            offset = tz.utcoffset(now).total_seconds()
+            offset_seconds = tz.utcoffset(now).total_seconds()
 
             # Compare the offset to the target UTC offset
-            if offset == target_seconds:
+            if offset_seconds == target_seconds:
                 return timezone
 
         return
