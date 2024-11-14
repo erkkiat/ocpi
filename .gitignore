@@ -8,4 +8,5 @@ env.sh
 .idea
 .env
 *.prof
-./profile_output.prof
+*.db
+**/htmlcov/

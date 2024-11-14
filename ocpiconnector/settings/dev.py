@@ -1,5 +1,7 @@
 from ocpiconnector.settings.base import *  # noqa
-import os
+import os  # noqa
+
+ENV = os.getenv("ENV", "development").lower()
 
 DEBUG = True
 ALLOWED_HOSTS.extend(["*"])  # noqa

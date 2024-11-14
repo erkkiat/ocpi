@@ -44,10 +44,6 @@ from ocpi22.msp.api import (
 )
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
 from ocpi22.views import home
-from fastapi.routers.charging import api as charging_api
-from fastapi.routers.tokens import api as tokens_api
-from fastapi.routers.jwt import api as jwt_api
-from ocpiconnector.ocpi_identities import ocpi_platform
 from payment.views import PaymentViewSet
 from settlement.views import InvoiceReportViews
 from webhooks.urls import urlpatterns as webhooks_urls
@@ -107,7 +103,6 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("18n/", include("django.conf.urls.i18n")),
     path("lang/", set_language, name="admin_set_language"),
-    path("api/", jwt_api.urls),
     path("", home),
     path("", include(root_router.urls), name="root-view"),
     path("hub/", include(hub_urls)),
@@ -129,7 +124,6 @@ urlpatterns = [
         "admin/ocpi22/credentials/connection/new", new_connection, name="new-connection"
     ),
     path("admin/", admin.site.urls),
-    path("api/cpo/v3/charging/", charging_api.urls),
     path("hubadmin/", hub_admin_site.urls),
     path("issues/", views.issues, name="issues"),
     path("_nested_admin/", include("nested_admin.urls")),
@@ -145,9 +139,6 @@ urlpatterns = [
     # path("__debug__/", include("debug_toolbar.urls")),
     path("api/hubject/2.3/", hubject_api.urls),
 ]
-
-if ocpi_platform.is_emsp:
-    urlpatterns.append(path("api/cpo/v3/token/", tokens_api.urls))
 
 if settings.SERVE_STATIC_FILES or settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()

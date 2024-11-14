@@ -33,7 +33,7 @@ moesifdjango~=2.3.9
 geojson~=3.1.0
 twilio~=9.3.2
 python-dotenv~=1.0.1
-sentry-sdk==2.14.0
+sentry-sdk==2.18.0
 googletrans~=3.1.0a0
 geopy~=2.4.1
 pycountry~=24.6.1

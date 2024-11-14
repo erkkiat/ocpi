@@ -1,5 +1,7 @@
 from ocpiconnector.settings.base import *  # noqa
-import os
+import os  # noqa
+
+ENV = os.getenv("ENV", "staging").lower()
 
 ALLOWED_HOSTS.extend(["staging.solidroam.com"])  # noqa
 MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]  # noqa
