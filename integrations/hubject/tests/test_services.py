@@ -26,7 +26,7 @@ class TestHubjectService:
 
         hubject_service = HubjectService()
 
-        result = hubject_service.get_operator_evse_dict()
+        result = hubject_service.get_all_operator_evses()
 
         assert result == {
             "DE*SMP": berlin_emsdetten_op_evse_data,

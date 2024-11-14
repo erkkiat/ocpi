@@ -11,7 +11,7 @@ api = NinjaAPI()
 def update_oicp_evses_of_all_operators(request):
     service = HubjectService()
     operator_id_operator_evse_data_map: Dict[str, List] = (
-        service.get_operator_evse_dict()
+        service.get_all_operator_evses()
     )
     hubject_responses = defaultdict(list)
 

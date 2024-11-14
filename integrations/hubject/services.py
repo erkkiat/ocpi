@@ -25,7 +25,7 @@ class HubjectService:
     client = HubjectClient()
     converter = OCPIToHubjectConverter()
 
-    def get_operator_evse_dict(self) -> Dict[str, List]:
+    def get_all_operator_evses(self) -> Dict[str, List]:
         locations = Location.objects.all()
 
         operator_id_operator_evse_map: Dict[str, List] = defaultdict(list)
@@ -73,10 +73,7 @@ class HubjectService:
         try:
             payload_json = payload.model_dump_json()
 
-            headers = {"Content-type": "application/json"}
-            response = HubjectService.client.post(
-                full_load_url, data=payload_json, headers=headers
-            )
+            response = HubjectService.client.post(full_load_url, data=payload_json)
             return response.json()
         except PydanticSerializationError as e:
             logging.error(e)
