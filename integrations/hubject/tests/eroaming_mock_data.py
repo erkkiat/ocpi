@@ -129,7 +129,7 @@ class ERoamingPushTestData:
                         {
                             "Amperage": 16,
                             "ChargingModes": None,
-                            "Power": 999,
+                            "Power": 12,
                             "PowerType": PowerType.AC_3_PHASE,
                             "Voltage": 0,
                         }

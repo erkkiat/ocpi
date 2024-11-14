@@ -64,13 +64,13 @@ class TestMappings(TestCase):
                 power_type="AC_1_PHASE",
                 max_voltage=230,
                 max_amperage=16,
-                max_electric_power=37,
+                max_electric_power=37000,
             ),
             Connector(
                 power_type="DC",
                 max_voltage=401,
                 max_amperage=45,
-                max_electric_power=50,
+                max_electric_power=50000,
             ),
         ]
         expected_facilities = [
@@ -165,7 +165,7 @@ class TestMappings(TestCase):
             power_type="DC",
             max_voltage=230,
             max_amperage=16,
-            max_electric_power=37,
+            max_electric_power=37000,
             terms_and_conditions="https://www.helsinki-supercharger.com/terms-and-conditions",
             last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
             updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
@@ -242,7 +242,7 @@ class TestMappings(TestCase):
             power_type="",
             max_voltage=-100,
             max_amperage=16,
-            max_electric_power=1400,
+            max_electric_power=12000,
             terms_and_conditions="https://www.berlin-supercharger.com/terms-and-conditions",
             last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
             updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
