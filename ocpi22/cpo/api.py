@@ -87,7 +87,7 @@ from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
-from ocpiconnector.party import Party
+from ocpiconnector.party import Party, party_from_str
 from premium import requires_premium
 
 pp = PrettyPrinter(indent=4).pprint
@@ -1123,8 +1123,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     params = dict(result=result, message=message)
                     ocpi_serializer = CommandResultSerializer(instance=params)
                     response_url = command.get("response_url")
-                    party = session.billed_to.split("*")
-                    to = Party(*party)
+                    to = party_from_str(session.billed_to)
                     sender = get_our_party(OcpiRolesEnum.CPO)
 
                     # Send CommandResponse to MSP

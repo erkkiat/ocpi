@@ -3,6 +3,10 @@ from dataclasses import dataclass, field
 import generic.countries
 
 
+def party_from_str(party_str: str) -> "Party":
+    return Party(*party_str.split("*"))
+
+
 @dataclass(eq=True, frozen=True)
 class Party:
     country_code: str = field(default="")
