@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ocpi22.models.credentials import CredentialsRole
 
 from ocpi22.ocpi.util_party import get_sender_party
-from ocpiconnector.party import Party
+from ocpiconnector.party import Party, party_from_str
 
 partners_cache = cachetools.TTLCache(maxsize=1024, ttl=60 * 60 * 4)
 
@@ -26,18 +26,18 @@ def get_partners_by_party(party: Union[Party, "CredentialsRole"]) -> set[int]:
     """
     if not party:
         return set()
+    if isinstance(party, str):
+        party = party_from_str(party)
     if isinstance(party, Party):
         from ocpi22.ocpi.auth import get_credentialsrole
 
         role = get_credentialsrole(None, party, create=True)
-    else:
-        role = party
-    if role:
-        our_partners = role.agreed_parties.all().values_list("id", flat=True)
-        we_are_partners_to = role.agreed_parties_backwards.all().values_list(
-            "id", flat=True
-        )
-        return set.union(set(our_partners), set(we_are_partners_to))
+        if role:
+            our_partners = role.agreed_parties.all().values_list("id", flat=True)
+            we_are_partners_to = role.agreed_parties_backwards.all().values_list(
+                "id", flat=True
+            )
+            return set.union(set(our_partners), set(we_are_partners_to))
     return set()  # This should not happen
 
 
