@@ -14,17 +14,14 @@ from integrations.hubject.services import HubjectService
 
 
 class TestHubjectService:
-    @patch("ocpi22.locations.location.Location.objects.all")
     @patch.object(HubjectService.converter, "convert_to_operator_evse_data")
     @pytest.mark.django_db
     def test_get_operator_evse_dict(
         self,
         mock_convert,
-        mock_locations,
         berlin_emsdetten_location,
         berlin_emsdetten_op_evse_data,
     ):
-        mock_locations.return_value = berlin_emsdetten_location
         mock_convert.side_effect = berlin_emsdetten_op_evse_data
 
         hubject_service = HubjectService()
