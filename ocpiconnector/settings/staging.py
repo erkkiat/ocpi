@@ -1,5 +1,7 @@
 from ocpiconnector.settings.base import *  # noqa
-import os
+import os  # noqa
+
+ENV = os.getenv("ENV", "staging").lower()
 
 ALLOWED_HOSTS.extend(["staging.solidroam.com"])  # noqa
 MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]  # noqa
@@ -17,3 +19,4 @@ SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
 SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "$share/session_group/session/+/statusupdates"
 )
+

@@ -11,7 +11,11 @@ from django.utils.translation import gettext_lazy as _
 # Install icecream globally, no need for local imports
 from icecream import install, ic
 
-install()
+from ocpiconnector.settings.configure_sentry import setup_sentry
+
+setup_sentry()
+
+install()  # TODO Remove it next PR
 
 ic.configureOutput(includeContext=True)
 

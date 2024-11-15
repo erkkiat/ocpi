@@ -1,6 +1,8 @@
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
+ENV = os.getenv("ENV", "test").lower()
+
 ALLOWED_HOSTS.extend(["*"])  # noqa
 SEND_DATA_TO_ANALYTICS = (
     True  # This is not needed, will refactor after the settings refactor
