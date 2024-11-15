@@ -16,6 +16,7 @@ from ocpi22.cpo.mqtt.mqtt_subscriber import (
     configure_client,
     on_connect,
     start_client,
+    _subscribe,
 )
 
 
@@ -36,14 +37,15 @@ class TestMqttSubscriber:
         mocked_mqtt_client.subscribe.assert_any_call(topic)
         stop_and_disconnect(mocked_mqtt_client)
 
+    @pytest.mark.django_db
     def test_on_message_calls_process_status_update_data(
-        self, smappee_status_update_message
+        self, smappee_status_update_message, db
     ):
         with patch(
             "ocpi22.cpo.mqtt.mqtt_subscriber.process_status_update_data"
-        ) as mock_process_status_update:
+        ) as mock_process_status_update_data:
             on_message(None, None, smappee_status_update_message)
-            mock_process_status_update.assert_called_once_with(
+            mock_process_status_update_data.assert_called_once_with(
                 smappee_status_update_message
             )
 
@@ -116,15 +118,13 @@ class TestMqttSubscriber:
 
     def test_start_client_with_loop_start_when_it_set_to_false(self, monkeypatch):
         mock_client = MagicMock(spec=mqtt.Client)
-        monkeypatch.setenv("MQTT_LOOP_FOREVER", "False")
-        start_client(mock_client)
+        start_client(mock_client, False)
         mock_client.loop_start.assert_called_once()
         mock_client.loop_forever.assert_not_called()
 
     def test_start_client_with_loop_forever_when_it_set_to_true(self, monkeypatch):
         mock_client = MagicMock(spec=mqtt.Client)
-        monkeypatch.setenv("MQTT_LOOP_FOREVER", "True")
-        start_client(mock_client)
+        start_client(mock_client, True)
         mock_client.loop_forever.assert_called_once()
         mock_client.loop_start.assert_not_called()
 
@@ -147,3 +147,19 @@ class TestMqttSubscriber:
                 mock_get_broker_and_port.assert_called_once()
                 mock_client.connect.assert_called_once_with("localhost", 1834)
                 assert client == mock_client
+
+    def test_subscribe_success(self, caplog):
+        mock_client = MagicMock(spec=mqtt.Client)
+        mock_client.subscribe.return_value = (mqtt.MQTT_ERR_SUCCESS, 1)
+        _subscribe(mock_client, "test/topic")
+
+        mock_client.subscribe.assert_called_once_with("test/topic")
+        assert "Successfully subscribed to test/topic" in caplog.text
+
+    def test_subscribe_failure(self, caplog):
+        mock_client = MagicMock(spec=mqtt.Client)
+        mock_client.subscribe.return_value = (mqtt.MQTT_ERR_NO_CONN, 1)
+        _subscribe(mock_client, "test/topic")
+
+        mock_client.subscribe.assert_called_once_with("test/topic")
+        assert "Failed to subscribe to test/topic with error code 4" in caplog.text

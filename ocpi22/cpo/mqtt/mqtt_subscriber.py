@@ -27,6 +27,14 @@ def setup_django():
     django.setup()
 
 
+def _subscribe(client, topic):
+    result, mid = client.subscribe(topic)
+    if result != mqtt.MQTT_ERR_SUCCESS:
+        logger.error(f"Failed to subscribe to {topic} with error code {result}")
+    else:
+        logger.info(f"Successfully subscribed to {topic}")
+
+
 def get_topic(topic_env_var):
     topic = os.getenv(topic_env_var)
     if not topic:
@@ -57,8 +65,8 @@ def on_connect(client, userdata, flags, rc, properties=None):
     status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
     if rc == 0:
         logger.info("Connected successfully to the broker.")
-        client.subscribe(meter_topic)
-        client.subscribe(status_topic)
+        _subscribe(client, meter_topic)
+        _subscribe(client, status_topic)
         logger.info(f"Subscribed to [{meter_topic}] and [{status_topic}]")
     else:
         logger.error(f"Failed to connect, return code {rc}")
@@ -103,8 +111,8 @@ def connect_client():
     return client
 
 
-def start_client(client):
-    if env_bool("MQTT_LOOP_FOREVER"):
+def start_client(client, loop_forever=True):
+    if loop_forever:
         logger.info("Starting mqtt subscriber in the loop")
         client.loop_forever()
     else:
@@ -116,9 +124,7 @@ def stop_and_disconnect(client):
     client.disconnect()
 
 
-if (
-    __name__ == "__main__"
-):  # TODO enable this and initialize django and envs under this section
+if __name__ == "__main__":
     setup_django()
     from ocpiconnector.settings.base import env_bool  # noqa
     from ocpi22.cpo.mqtt.services import (  # noqa
@@ -126,5 +132,6 @@ if (
         process_status_update_data,  # noqa
     )  # noqa
 
+    loop_forever = env_bool("MQTT_LOOP_FOREVER")
     mqtt_client = connect_client()
-    start_client(mqtt_client)
+    start_client(mqtt_client, loop_forever)
