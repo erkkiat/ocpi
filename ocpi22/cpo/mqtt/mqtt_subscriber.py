@@ -7,6 +7,8 @@ import django
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
+logger = logging.getLogger(__name__)
+
 
 def _load_envs():
     current_directory = os.getcwd()
@@ -23,16 +25,6 @@ def setup_django():
     # Set the Django settings module
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
     django.setup()
-
-
-setup_django()
-from ocpiconnector.settings.base import env_bool  # noqa
-from ocpi22.cpo.mqtt.services import (  # noqa
-    process_meter_values_data,  # noqa
-    process_status_update_data,  # noqa
-)  # noqa
-
-logger = logging.getLogger(__name__)
 
 
 def get_topic(topic_env_var):
@@ -124,6 +116,15 @@ def stop_and_disconnect(client):
     client.disconnect()
 
 
-# if __name__ == "__main__": #TODO enable this and initialize django and envs under this section
-mqtt_client = connect_client()
-start_client(mqtt_client)
+if (
+    __name__ == "__main__"
+):  # TODO enable this and initialize django and envs under this section
+    setup_django()
+    from ocpiconnector.settings.base import env_bool  # noqa
+    from ocpi22.cpo.mqtt.services import (  # noqa
+        process_meter_values_data,  # noqa
+        process_status_update_data,  # noqa
+    )  # noqa
+
+    mqtt_client = connect_client()
+    start_client(mqtt_client)
