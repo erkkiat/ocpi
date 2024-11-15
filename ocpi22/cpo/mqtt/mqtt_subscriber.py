@@ -49,7 +49,7 @@ def on_message(client, userdata, message):
         logger.info(
             f"Processed meter value message {message.payload} on topic {message.topic}"
         )
-    if "status" in message.topic:
+    elif "status" in message.topic:
         logger.info("Received status update message")
         process_status_update_data(message)
         logger.info(
