@@ -43,7 +43,6 @@ stripe==10.12.0
 pydantic~=2.9.1
 prometheus_client==0.21.0
 django-gdpr-assist~=1.4.2
-django-silk~=5.2.0
 drf-yasg~=1.21.7
 django-ninja-jwt~=5.3.3
 django-test-without-migrations
