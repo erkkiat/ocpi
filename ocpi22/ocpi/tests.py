@@ -144,8 +144,6 @@ class PartnerTests(BetterTestCase):
         p3 = Party("FI", "000")
         p4 = Party("FI", "NAP")
 
-        # ic(CredentialsRole.objects.all())
-
         with self.assertRaises(ValueError):
             add_partner(p1, p2)
 

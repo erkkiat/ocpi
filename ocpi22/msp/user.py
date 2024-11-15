@@ -10,7 +10,7 @@ from django.db import IntegrityError
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
-from icecream import ic
+
 from rest_framework import serializers, status
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -398,8 +398,6 @@ class UserViewSet(viewsets.GenericViewSet):
         try:
             user: User = request.user
 
-            # ic(format)
-
             return Response(
                 {
                     "status_message": "Success",
@@ -427,7 +425,7 @@ class UserViewSet(viewsets.GenericViewSet):
             f'attachment; filename="gdpr-export-{user.username}.csv"'
         )
         userdata = user.profile._privacy_meta.export(user.profile)
-        ic(userdata, userdata.keys())
+
         writer = csv.DictWriter(response, fieldnames=userdata.keys())
         writer.writeheader()
         writer.writerow(userdata)

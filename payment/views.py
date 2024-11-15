@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.utils.translation import gettext as _
-from icecream import ic
+
 
 from ocpi22 import logging
 import os
@@ -65,7 +65,7 @@ class StripePayments:
             customer = Customer.objects.create(
                 user=request.user, customer_id=stripe_customer.id
             )
-            # ic(stripe_customer, customer)
+
         success_url = request.build_absolute_uri(reverse("msp-payment-success"))
         cancel_url = request.build_absolute_uri(reverse("msp-payment-cancel"))
         params = dict(
@@ -75,7 +75,7 @@ class StripePayments:
             success_url=f"{success_url}?{query}",
             cancel_url=f"{cancel_url}",
         )
-        # ic(params)
+
         session = stripe.checkout.Session.create(**params)
         result = dict(
             # id=session.id,
@@ -83,7 +83,7 @@ class StripePayments:
             success_url=success_url,
             cancel_url=cancel_url,
         )
-        # ic(result)
+
         return result
 
     @staticmethod
@@ -94,14 +94,12 @@ class StripePayments:
         description: str = _("Payment for EV charging"),
         payment_method: PaymentMethod = None,
     ):
-        # ic(amount, currency, description, payment_method)
         customer = user.payment_customer
         if not payment_method:
             payment_method = customer.payment_methods.first()
         if not payment_method:
             raise NoPaymentMethod("Customer has no payment methods available")
 
-        # ic(customer, payment_method)
         pi = payment_intent(
             amount=amount,
             capture_method="manual",
@@ -111,7 +109,7 @@ class StripePayments:
             confirm=True,
             description=description,
         )
-        # ic(PaymentStatusEnum.RESERVED.value)
+
         payment = Payment.objects.create(
             session_id=pi.get("id"),
             payment_method=payment_method,
@@ -128,28 +126,28 @@ class StripePayments:
                 "Reservation was made, but storing it to local database failed. Capture will not work",
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        # ic(pi, payment)
+
         # payment_status = pi.get('status')
         # if payment_status == 'requires_confirmation':
         #     confirm = stripe.PaymentIntent.confirm(
         #         pi, payment_method=payment_method, receipt_email=user.email
         #     )
-        #     ic(confirm)
+        #
         #     requires_action = confirm.get('requires_action')
         #     if requires_action:
-        #         ic(requires_action, confirm.get('next_action'))
+        #
         #         captured = stripe.PaymentIntent.capture(pi, amount_to_capture=1500)
-        #         ic(captured)
+        #
         # if payment_status == 'requires_capture':
         #     captured = stripe.PaymentIntent.capture(pi, amount_to_capture=1500)
-        #     ic(captured)
+        #
         return HttpResponse("Reservation made for payment.", status=status.HTTP_200_OK)
 
     @staticmethod
     def capture(payment: Payment, amount: float):
         try:
             stripe.PaymentIntent.capture(payment.session_id, amount_to_capture=amount)
-            # ic(captured)
+
             payment.status = PaymentStatusEnum.COMPLETED.value
             payment.save(update_fields=["status"])
             return HttpResponse("Payment captured.", status=status.HTTP_200_OK)
@@ -168,7 +166,7 @@ class PaymentViewSet(viewsets.ViewSet):
     def get_serializer_class(self):
         if not hasattr(self, "action_map"):
             return serializers.Serializer
-        # ic(self.action_map['post'])
+
         serializer = dict(
             reserve_amount=ReservePaymentSerializer,
         ).get(self.action_map["post"], serializers.Serializer)
@@ -181,7 +179,7 @@ class PaymentViewSet(viewsets.ViewSet):
     def get_metadata_class(self):
         if not hasattr(self, "action_map"):
             return serializers.Serializer
-        # ic(self.action_map['post'])
+
         serializer = dict(
             reserve_amount=ReservePaymentSerializer,
         ).get(self.action_map["post"], ReservePaymentSerializer)
@@ -204,7 +202,7 @@ class PaymentViewSet(viewsets.ViewSet):
         #     logging.info(f'Creating Stripe customer for "{request.user.email}"')
         #     customer = stripe.Customer.create(idempotency_key=str(request.user.pk))
         #     Customer.objects.create(user=request.user, customer_id=customer.id)
-        # ic(customer)
+
         # success_url = request.build_absolute_uri(reverse("msp-payment-success"))
         # cancel_url = request.build_absolute_uri(reverse("msp-payment-cancel"))
         # params = dict(
@@ -214,7 +212,7 @@ class PaymentViewSet(viewsets.ViewSet):
         #     success_url=f'{success_url}?{query}',
         #     cancel_url=f'{cancel_url}',
         # )
-        # ic(params)
+
         # session = stripe.checkout.Session.create(**params)
         # result = dict(
         #     id=session.id,
@@ -222,18 +220,17 @@ class PaymentViewSet(viewsets.ViewSet):
         #     success_url=success_url,
         #     cancel_url=cancel_url
         # )
-        # ic(result)
+
         result = payments.add_card(request)
         return Response(result)
 
     @action(methods=("GET", "POST"), detail=False)
     def success(self, request):
         try:
-            # ic(request.GET)
             session_id = request.GET.get("session_id")
             if session_id:
                 session = stripe.checkout.Session.retrieve(session_id)
-                # ic(session)
+
                 intent = session.get("setup_intent", "")
                 if intent:
                     setup_intent = stripe.SetupIntent.retrieve(intent)
@@ -243,12 +240,12 @@ class PaymentViewSet(viewsets.ViewSet):
                     PaymentMethod.objects.create(
                         payment_method_id=payment_method_id, customer=customer
                     )
-                    # ic(payment_method_id, customer_id, customer, payment_method)
+
                     if len(request.user.payment_customer.payment_methods.all()):
                         logging.info(
                             f"Payment method {payment_method_id} added for user {request.user.pk}"
                         )
-                        # ic(payment_method_id, request.user.pk, request.user.payment_customer.payment_methods.all())
+
                         return HttpResponse(
                             "The payment method has been added. Please wait to be redirected.",
                             status=status.HTTP_200_OK,
@@ -275,7 +272,6 @@ class PaymentViewSet(viewsets.ViewSet):
 
     @action(methods=("GET", "POST"), detail=False)
     def cancel(self, request):
-        ic(request.GET)
         session_id = request.GET.get("session_id")
         if session_id:
             payment = Payment.objects.get(session_id=session_id)
@@ -310,7 +306,7 @@ class PaymentViewSet(viewsets.ViewSet):
                     amount=amount,
                     currency=serializer.validated_data.get("currency"),
                 )
-                # ic(payment_method, result)
+
                 return Response(
                     dict(
                         status_text=_("Reservation has been made successfully"),
