@@ -1,3 +1,6 @@
+from collections import OrderedDict
+
+
 class LocationData:
     location1 = {
         "quick_url": "http://localhost:8000/api/cpo/v2/location/quick/EKI1/",
@@ -72,7 +75,169 @@ class LocationData:
                         "tariff_ids": ["DC50"],
                     }
                 ],
-                "last_updated": "2022-06-19T12:13:14",
+                "last_updated": "2022-06-19T12:13:14Z",
             }
         ],
     }
+
+    quick_location_with_evses_and_connectors = {
+            "address": "Kotikatu 38",
+            "city": "Espoo",
+            "country": "FIN",
+            "evses": [
+                OrderedDict(
+                    [
+                        ("uid", "1"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "CABLE"),
+                                        ("max_voltage", 233),
+                                        ("max_amperage", 32),
+                                        ("max_electric_power", 22200),
+                                        ("tariff_ids", ["EKI1"]),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-01-01T12:00:00Z"),
+                    ]
+                ),
+                OrderedDict(
+                    [
+                        ("uid", "2"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "SOCKET"),
+                                        ("max_voltage", 232),
+                                        ("max_amperage", 32),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-01-01T12:00:00Z"),
+                    ]
+                ),
+                OrderedDict(
+                    [
+                        ("uid", "12321"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "CABLE"),
+                                        ("max_voltage", 233),
+                                        ("max_amperage", 32),
+                                        ("tariff_ids", ["DC50"]),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-01-01T12:00:00Z"),
+                    ]
+                ),
+            ],
+            "id": "EKI1",
+            "latitude": 60.0,
+            "longitude": 30.0,
+            "name": "Eki's home charger",
+            "postal_code": "01234",
+            "time_zone": "Europe/Helsinki",
+            'last_updated': '2022-01-01T12:00:00Z',
+        }
+
+    quick_location_with_evses_and_connectors_update = {
+            "id": "EKI1",
+            "name": "Eki's home charger",
+            "address": "Kotikatu 38",
+            "city": "Espoo",
+            "postal_code": "01234",
+            "country": "FIN",
+            "time_zone": "Europe/Helsinki",
+            "latitude": 60.0,
+            "longitude": 30.0,  # 'quick_url': 'http://testserver.test:8000/api/cpo/v2/location/quick/EKI1/',
+            "evses": [
+                OrderedDict(
+                    [
+                        ("uid", "2"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "SOCKET"),
+                                        ("max_voltage", 232),
+                                        ("max_amperage", 32),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-01-01T12:00:00Z"),
+                    ]
+                ),
+                OrderedDict(
+                    [
+                        ("uid", "12321"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "CABLE"),
+                                        ("max_voltage", 233),
+                                        ("max_amperage", 32),
+                                        ("tariff_ids", ["DC50"]),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-01-01T12:00:00Z"),
+                    ]
+                ),
+                OrderedDict(
+                    [
+                        ("uid", "1"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "SOCKET"),
+                                        ("max_voltage", 233),
+                                        ("max_amperage", 32),
+                                        ("max_electric_power", 11000),
+                                        ("tariff_ids", ["DC50"]),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-06-19T12:13:14Z"),
+                    ]
+                )
+            ],
+            'last_updated': '2022-01-01T12:00:00Z',
+        }

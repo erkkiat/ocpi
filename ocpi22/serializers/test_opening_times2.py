@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from ocpi22.models.hours import RegularHours, ExceptionalPeriod
-from ocpi22.models.tests import create_advanced_hours_testdata
+from ocpi22.models.test_opening_hours import create_advanced_hours_testdata
 from ocpi22.serializers.hours import (
     RegularHoursSerializer,
     ExceptionalPeriodSerializer,

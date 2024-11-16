@@ -149,6 +149,7 @@ class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH
     )
     connectors = ConnectorQuickSerializer(many=True)
+    last_updated = UTCDateTimeField(required=False)
 
 
 class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -168,6 +169,7 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             "latitude",
             "longitude",
             "evses",
+            "last_updated"
         ]
 
     id = serializers.CharField(
@@ -204,6 +206,7 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         help_text="If omitted, time zone will be determined automatically based on coordinates",
     )
     lookup_field = "uid"
+    last_updated = UTCDateTimeField(required=False)
 
     def create(self, validated_data, *args, **kwargs):
         evses = validated_data.pop("evses", [])

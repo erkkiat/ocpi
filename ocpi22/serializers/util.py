@@ -99,9 +99,13 @@ class CallbacksSerializer(serializers.Serializer):
 
 
 class UTCDateTimeField(serializers.DateTimeField):
-    def to_representation(self, value):
-        value = value.strftime(settings.OCPI_DATE_FORMAT)
-        return super().to_representation(value)
+    def to_representation(self, value) -> str:
+        assert isinstance(
+            value, datetime
+        ), f"Expected a datetime, got type {type(value)} with value {value}"
+        value = value.astimezone(tzoffset(None, 0))
+        result = value.strftime(settings.OCPI_DATE_FORMAT)
+        return super().to_representation(result)
 
     def to_internal_value(self, value: Union[str, datetime]):
         if isinstance(value, datetime):

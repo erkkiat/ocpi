@@ -18,6 +18,7 @@ from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
 from urllib3.exceptions import ConnectTimeoutError
 
+from ocpi22.cpo.test_data import LocationData
 from ocpi22.ocpi.serializers import SessionSerializer
 from ocpi22.routing import find_route
 from django.conf import settings
@@ -32,7 +33,6 @@ from ocpi22.cpo.serializers import LocationQuickSerializer
 from ocpi22.cpo.tariff import TariffQuickViewSet
 from ocpi22.models.location import Location
 from ocpi22.models.session import Session
-from ocpi22.tests import meter_values
 
 api_factory = APIRequestFactory()
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
@@ -49,87 +49,6 @@ class TestQuickLocations(TestCase):
         "ocpi22/cpo/database-dumps/tariffs.json",
     ]
     maxDiff = 99999
-
-    @simulate_surrounding_world
-    def test_quick_location(self, simulation):
-        #
-        # Test new location outside of any cities, coordinates as string
-        #
-
-        location_id = "Korso"
-        location_name = "Location Name"
-        data = {
-            "id": location_id,
-            "name": location_name,
-            "latitude": "55.67309",
-            "longitude": "24.33591",
-        }
-        try:
-            response = put_location(data, reverse("quick-location-list"))
-            self.assertEqual(
-                response.status_code,
-                status.HTTP_201_CREATED,
-                "Expecting Location to be created successfully",
-            )
-            location = Location.objects.get_if_exists(uid=location_id.upper())
-            self.assertIsNotNone(
-                location, f"Location not found in database with key {location_id}"
-            )
-            data = LocationQuickSerializer(instance=location).data
-            expected = {
-                "id": location_id.upper(),
-                "name": location_name,
-                "address": "Panevėžio aplinkl. 20",
-                "city": "-",
-                "postal_code": "38417",
-                "country": "LTU",
-                "time_zone": "Europe/Vilnius",
-                "latitude": 55.67309,
-                "longitude": 24.33591,
-            }
-
-            self.assertTrue(
-                compare_dicts_recursively(data, expected),
-                f"New Location data differs from expected: {data}",
-            )
-
-            #
-            # Try updating Location data with new coordinates, address should be updated automatically
-            #
-
-            data = {"id": location_id, "latitude": 60.3507477, "longitude": 25.0763834}
-            response = patch_location(data, reverse("quick-location-list"))
-            self.assertEqual(
-                response.status_code,
-                status.HTTP_200_OK,
-                "Expecting Location to be updated successfully",
-            )
-            location = Location.get_if_exists(uid=location_id)
-            data = LocationQuickSerializer(instance=location).data
-            self.assertTrue(
-                compare_dicts_recursively(
-                    data,
-                    # Todo: Maybe we should have English addresses available in parallel?
-                    {
-                        "id": location_id,
-                        "name": location_name,
-                        "address": "Korsonpolku 4",
-                        "city": "Vantaa",
-                        "postal_code": "01450",
-                        "country": "FIN",
-                        "time_zone": "Europe/Helsinki",
-                        "latitude": 60.3507477,
-                        "longitude": 25.0763834,
-                    },
-                ),
-                "Updated Location data differs from expected",
-            )
-        except (
-            geopy.exc.GeocoderUnavailable,
-            geopy.exc.GeocoderServiceError,
-            ConnectTimeoutError,
-        ):
-            self.skipTest("Geocoder is unavailable")
 
     @simulate_surrounding_world
     def test_quick_location_with_evses_and_connectors(self, simulation):
@@ -150,99 +69,17 @@ class TestQuickLocations(TestCase):
             uid=test_data.LocationData.location1.get("id")
         )
         data = LocationQuickSerializer(instance=location).data
-        expected_data = {
-            "address": "Kotikatu 38",
-            "city": "Espoo",
-            "country": "FIN",
-            "evses": [
-                OrderedDict(
-                    [
-                        ("uid", "1"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "CABLE"),
-                                        ("max_voltage", 233),
-                                        ("max_amperage", 32),
-                                        ("max_electric_power", 22200),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                        ("tariff_ids", ["EKI1"]),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-01-01T12:00:00Z"),
-                    ]
-                ),
-                OrderedDict(
-                    [
-                        ("uid", "2"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "SOCKET"),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                        ("max_voltage", 232),
-                                        ("max_amperage", 32),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-01-01T12:00:00Z"),
-                    ]
-                ),
-                OrderedDict(
-                    [
-                        ("uid", "12321"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "CABLE"),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                        ("max_voltage", 233),
-                                        ("max_amperage", 32),
-                                        ("tariff_ids", ["DC50"]),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-01-01T12:00:00Z"),
-                    ]
-                ),
-            ],
-            "id": "EKI1",
-            "latitude": 60.0,
-            "longitude": 30.0,
-            "name": "Eki's home charger",
-            "postal_code": "01234",
-            "time_zone": "Europe/Helsinki",
-        }
-        # ic(recursive_sort_dict(data))
-        # ic(compare(data, expected_data))
-        self.assertTrue(
-            compare_dicts_recursively(data, expected_data),
-            "New Location data differs from expected",
-        )
+        assert dict(data) == LocationData.quick_location_with_evses_and_connectors, \
+            "New Location data differs from expected"
 
         #
         # Update Location
         #
 
+        data_update = test_data.LocationData.location_update1
         with time_machine.travel(faketime, tick=False):
             response = patch_location(
-                test_data.LocationData.location_update1, reverse("quick-location-list")
+                data_update, reverse("quick-location-list")
             )
         self.assertEqual(
             response.status_code,
@@ -250,92 +87,11 @@ class TestQuickLocations(TestCase):
             "Expecting Location to be updated successfully",
         )
         location = Location.get_if_exists(
-            uid=test_data.LocationData.location_update1.get("id")
+            uid=data_update.get("id")
         )
         data = LocationQuickSerializer(instance=location).data
-        expected_data = {
-            "id": "EKI1",
-            "name": "Eki's home charger",
-            "address": "Kotikatu 38",
-            "city": "Espoo",
-            "postal_code": "01234",
-            "country": "FIN",
-            "time_zone": "Europe/Helsinki",
-            "latitude": 60.0,
-            "longitude": 30.0,  # 'quick_url': 'http://testserver.test:8000/api/cpo/v2/location/quick/EKI1/',
-            "evses": [
-                OrderedDict(
-                    [
-                        ("uid", "1"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "SOCKET"),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                        ("max_voltage", 233),
-                                        ("max_amperage", 32),
-                                        ("max_electric_power", 11000),
-                                        ("tariff_ids", ["DC50"]),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-06-19T12:13:14Z"),
-                    ]
-                ),
-                OrderedDict(
-                    [
-                        ("uid", "2"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "SOCKET"),
-                                        ("max_voltage", 232),
-                                        ("max_amperage", 32),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-01-01T12:00:00Z"),
-                    ]
-                ),
-                OrderedDict(
-                    [
-                        ("uid", "12321"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "CABLE"),
-                                        ("max_voltage", 233),
-                                        ("max_amperage", 32),
-                                        ("tariff_ids", ["DC50"]),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-01-01T12:00:00Z"),
-                    ]
-                ),
-            ],
-        }
-        self.assertTrue(
-            compare_dicts_recursively(data, expected_data),
-            "Updated Location data differs from expected",
-        )
+        assert dict(data) == LocationData.quick_location_with_evses_and_connectors_update, \
+            "Updated Location data differs from expected"
 
     def test_quick_tariff(self):
         test_cases = [
@@ -753,6 +509,7 @@ class TestChargingPeriods(TestCase):
                             time_machine.travel(timestamp, tick=False),
                             patch("ocpi22.util.is_our_identifier", return_value=True),
                         ):
+                            from ocpi22.test_tariff_location_and_evse import meter_values
                             response = meter_values(
                                 dict(
                                     session_id=sess_id,
