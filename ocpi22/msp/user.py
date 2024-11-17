@@ -398,8 +398,6 @@ class UserViewSet(viewsets.GenericViewSet):
         try:
             user: User = request.user
 
-            # ic(format)
-
             return Response(
                 {
                     "status_message": "Success",
@@ -427,7 +425,6 @@ class UserViewSet(viewsets.GenericViewSet):
             f'attachment; filename="gdpr-export-{user.username}.csv"'
         )
         userdata = user.profile._privacy_meta.export(user.profile)
-        ic(userdata, userdata.keys())
         writer = csv.DictWriter(response, fieldnames=userdata.keys())
         writer.writeheader()
         writer.writerow(userdata)

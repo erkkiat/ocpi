@@ -203,7 +203,6 @@ class TestQuickLocations(TestCase):
 
         # The below needs some work
         # response = get(reverse('quick-tariff-list'), TariffQuickViewSet)
-        # ic(response.status_code, response.data)
 
 
 class TestChargingPeriods(TestCase):
@@ -502,7 +501,6 @@ class TestChargingPeriods(TestCase):
                 expected_response,
                 expected_session_data,
             ) in data:
-                # ic('*' * 60, kwh, soc, timestamp)
                 try:
                     with self.subTest(kwh=kwh, timestamp=timestamp):
                         with (
@@ -555,7 +553,7 @@ class TestChargingPeriods(TestCase):
                                 "Session data differs from expected",
                             )
                 except AssertionError:
-                    ic(args[0], response.data)
+                    print(args[0], response.data)
                     raise
 
         find_route.cache_clear()

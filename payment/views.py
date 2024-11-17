@@ -65,7 +65,6 @@ class StripePayments:
             customer = Customer.objects.create(
                 user=request.user, customer_id=stripe_customer.id
             )
-            # ic(stripe_customer, customer)
         success_url = request.build_absolute_uri(reverse("msp-payment-success"))
         cancel_url = request.build_absolute_uri(reverse("msp-payment-cancel"))
         params = dict(
@@ -75,7 +74,6 @@ class StripePayments:
             success_url=f"{success_url}?{query}",
             cancel_url=f"{cancel_url}",
         )
-        # ic(params)
         session = stripe.checkout.Session.create(**params)
         result = dict(
             # id=session.id,
@@ -83,7 +81,6 @@ class StripePayments:
             success_url=success_url,
             cancel_url=cancel_url,
         )
-        # ic(result)
         return result
 
     @staticmethod

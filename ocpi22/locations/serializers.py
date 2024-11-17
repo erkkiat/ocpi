@@ -457,10 +457,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         return location
 
     # def to_representation(self, value):
-    #     if hasattr(value, 'opening_times'):
-    #         ic(value.opening_times.all())
-    #         # ic(value.opening_times.first().regular_hours.all())
-    #     ic(value.pk)
     #     return super().to_representation(value)
 
 

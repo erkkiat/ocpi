@@ -29,7 +29,6 @@ def list_roaming_parties(request, role: Optional[int] = None) -> HttpResponse:
     ownrole = get_object_or_404(CredentialsRole, pk=role)
     partners_cache.clear()
     partners = get_partners_by_party(ownrole)
-    ic(partners)
     parties = (
         CredentialsRole.objects.exclude(pk__in=partners)
         .exclude(pk=ownrole.pk)

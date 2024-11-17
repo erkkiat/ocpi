@@ -182,7 +182,6 @@ class SettlementTestCase(TestCase):
         # Find out which parties represent the same company to make the settlement
         get_entity_roles.cache_clear()
         entities = get_entity_roles()
-        # ic(entities)
         entities_data = [(c, list(map(lambda x: x.pk, e))) for c, e in entities]
 
         self.assertEqual(
@@ -211,7 +210,6 @@ class SettlementTestCase(TestCase):
             )
             for x in invoices
         ]
-        # ic(invoices, invoices_data)
 
         self.assertEqual(
             invoices_data,
@@ -242,7 +240,6 @@ class SettlementTestCase(TestCase):
 
         settlements = [settle(d.start, d.end) for d in dates]
         settlements_data = [asdict(x) for s in settlements for x in s]
-        # ic(settlements_data)
         self.assertTrue(
             compare_lists_recursively(
                 settlements_data, SettlementData.invoice_data_ranges
@@ -259,5 +256,3 @@ class SettlementTestCase(TestCase):
         self.assertEqual(
             rechecked_totals, cdr_total_incl_vat, "Something seems off with the totals"
         )
-
-        # ic(Cdr.objects.values('end_date_time', 'total_cost_excl_vat', 'total_cost_incl_vat'))

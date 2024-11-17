@@ -120,8 +120,6 @@ def create_cdr(
     connector = evse.connectors.first()
     credentials = Credentials.objects.first()
 
-    # ic(str(cpo), str(msp), cost, currency)
-
     return Cdr.objects.create(
         ocpi_master=cpo,
         start_date_time=start_date_time,

@@ -34,7 +34,6 @@ class TestLocations(TestCase):
             "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
             LocationSerializer221,
         )
-        ic(location)
 
 
 @pytest.mark.django_db

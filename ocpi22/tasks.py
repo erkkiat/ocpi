@@ -173,7 +173,6 @@ def send_ocpi_request(
 
         # # Log the response to Sentry
         # if hasattr(result, 'data') and result.data:
-        #     # ic(result.data, result.json())
         #     sentry_sdk.set_context('result', result.json())
 
         try:
@@ -265,7 +264,6 @@ def pull_objects(
                         else:
                             # Not pulling from a hub, so the Credentials party must match
                             credentialsrole = credentials.roles.first()
-                            # ic(credentialsrole, credentialsrole.party)
                             if credentialsrole.get_party() != party:
                                 logging.error(
                                     f"Party {party} in the pulled data doesn't match party "

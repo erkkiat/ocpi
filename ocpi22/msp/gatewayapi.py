@@ -17,13 +17,10 @@ def send_sms(sender: str, msg_content: str, recipients: list):
         auth=(token, ""),
         timeout=10,
     )
-    ic(resp, resp.json())
     resp.raise_for_status()
 
 
 def message_user(phone, charger_name, price, url):
-    ic(phone, charger_name, price, url)
-
     data = (
         f'Please approve charging at "{charger_name}". '
         f'The price is {price}. Respond "Ok" to start charging, '

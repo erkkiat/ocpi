@@ -49,7 +49,6 @@ class WebhookDetail(generics.RetrieveUpdateDestroyAPIView):
         serializer = self.get_webhook_serializer_class(event)
         outbound_serializer = getattr(serializer, "OutboundSerializer", None)
         response_serializer = getattr(serializer, "ResponseSerializer", None)
-        ic(event, outbound_serializer, response_serializer)
 
         return dict(
             webhook_details=dict(

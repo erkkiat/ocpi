@@ -361,7 +361,6 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
         if self.request.user.is_superuser:
             return Cdr.objects.all().order_by("created")
         if hasattr(self.request, "country_code"):
-            ic(self.request.country_code, self.request.party_id)
             return Cdr.objects.filter(
                 ocpi_master=self.request.credentialsrole
             ).order_by("created")

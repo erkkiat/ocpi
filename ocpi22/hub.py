@@ -27,7 +27,6 @@ class CommandsHubViewSet(GenericViewSet):
     def get_serializer_class(self):
         if not hasattr(self, "action_map"):
             return serializers.Serializer
-        # ic(self.action_map['post'])
         serializer = dict(
             start_session=StartSessionSerializer,
             stop_session=StopSessionSerializer,
@@ -36,7 +35,6 @@ class CommandsHubViewSet(GenericViewSet):
         return serializer
 
     def get_view_name(self):
-        # ic(self.kwargs if hasattr(self, 'kwargs') else 'N/A')
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
             return f'HUB Command {self.kwargs.get("uid")}'
         if self.name:

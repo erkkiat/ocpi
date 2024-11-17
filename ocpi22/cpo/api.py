@@ -938,7 +938,6 @@ class ChargePointViewSet(FlowchartViewSet):
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
         except (ValidationError, RuntimeError) as e:
-            # ic(e)
             logging.error(f"Exception in meter_values(): {e}", request=request)
             return Response(dict(status=str(e)), status=status.HTTP_409_CONFLICT)
 

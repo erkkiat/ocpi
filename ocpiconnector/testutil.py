@@ -72,7 +72,6 @@ def compare_dicts_recursively(received, expected, path="", label="") -> bool:
     Compare the content and structure of two dicts recursively. "***" matches anything.
     When a list is encountered, it is compared using compare_lists_recursively.
     """
-    # ic(path, label, received, expected)
     output = ""
     if isinstance(received, (str, bytes, bytearray)):
         return compare_dicts_recursively(
@@ -184,8 +183,6 @@ def mocked_object_get(url, *_args, **kwargs):
 
         return result
     except (AssertionError, KeyError):
-        # ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_headers))
-        # ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
         raise
 
 
@@ -282,7 +279,6 @@ class Simulation:
             elif isinstance(text, str):
                 success = text in args[0]
             if not success:
-                ic(args, kwargs)
                 self.enable_logging_exceptions()  # Avoid loops
                 raise AssertionError(
                     f'Expected "{text}" to be logged as error, but it was "{args[0]}" instead'

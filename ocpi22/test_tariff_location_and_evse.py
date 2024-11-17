@@ -195,7 +195,6 @@ class ApiPutTests(TestCase):
         role = get_credentialsrole(
             None, Party(country_code="FI", party_id=f"F{uid}"), create=True
         )
-        ic(role.pk)
         location = Location.objects.create(
             uid=uid,
             name=f"{name} {uid}",
@@ -242,7 +241,6 @@ class ApiPutTests(TestCase):
         ic()
 
     def test_evse_format(self):
-        ic()
         loc = self.create_location()
         evse = loc.evses.all()[0]
         url = reverse(
@@ -301,7 +299,6 @@ class ApiPutTests(TestCase):
             party_id=loc.ocpi_master.party_id,
             uid=loc.uid,
         )
-        # ic(response, response.data)
         data = response.data.get("data")
         self.assertIsInstance(
             data, dict, msg='There should be a dict element "data" in the Location'
@@ -683,7 +680,6 @@ class ApiPutTests(TestCase):
             with self.subTest("Putting tariff", filename=filename):
                 data = load_example(f"data/examples/{filename}.json")
 
-                # ic(filename, data.get('id'))
                 country_code = data.get("country_code")
                 party_id = data.get("party_id")
 
@@ -720,7 +716,6 @@ class ApiPutTests(TestCase):
                 uid = data.get("id")
                 tariff = Tariff.objects.get(uid=uid, archived=False)
                 saved_data = TariffSerializer(tariff).data
-                # ic(saved_data)
                 last_updated = data.get("last_updated")
 
                 if last_updated:
@@ -770,9 +765,8 @@ class ApiPutTests(TestCase):
                         )
 
     def test_serialization(self):
-        ic(Location.objects.first())
+        pass
         # location = load_example('ocpi22/data/examples/location_example_parking_garage_opening_hours.json')
-        # ic(location)
 
     def test_cost_calculation(self):
         start_date_time = datetime(2022, 1, 1, 0, 0, tzinfo=pytz.utc)
@@ -854,7 +848,6 @@ class ApiPutTests(TestCase):
                 tariff = serializer.save(ocpi_master=our_role)
                 session.connector.tariff_ids.set([tariff])
                 self.assertTrue(session.calculate_price(), "Cannot calculate price.")
-                # ic(filename, session.total_cost_excl_vat, session.total_cost_incl_vat)
                 self.assertEqual(
                     session.total_cost_excl_vat,
                     excl_vat,
@@ -932,7 +925,6 @@ class ApiPutTests(TestCase):
                 response = self.post(url, data, token_base64, viewset)
                 if response.status_code >= 300:
                     print(f'status_text: "{response.status_text}" for {filename} case.')
-                    # ic(response.data)
                 self.assertEqual(
                     response.headers.get("Location"),
                     cdr_url,
@@ -953,7 +945,6 @@ class ApiPutTests(TestCase):
                 uid = data.get("id")
                 saved_cdr = Cdr.objects.get(uid=uid)
                 saved_data = CdrSerializer(saved_cdr, context={"version": "2.2.1"}).data
-                # ic(saved_data)
 
                 # Check that all Tariffs are archived, so that they won't be modified
                 for t in saved_cdr.tariffs.all():
@@ -1045,7 +1036,6 @@ class ApiPutTests(TestCase):
                 )
                 # if response.status_text or response.status_code not in (200, 201):
                 #     print(f'status_text: "{response.status_text}" for {filename} case.')
-                #     ic(response.data)
                 self.assertEqual(
                     response.status_code,
                     http_status,
@@ -1061,7 +1051,6 @@ class ApiPutTests(TestCase):
                 uid = data.get("uid").upper()
                 try:
                     saved_data = TokenSerializer(Token.objects.get(uid=uid)).data
-                    # ic(saved_data)
                 except Token.DoesNotExist:
                     print(f"Unable to verify token {uid} from database.")
                     token_list = [str(t) for t in Token.objects.all()]
@@ -1151,7 +1140,6 @@ class ApiPutTests(TestCase):
 def dump_tariffs():
     for t in Tariff.objects.all():
         serializer = TariffSerializer(t)
-        ic(t.pk, serializer.data)
 
 
 class TariffTests(TestCase):
@@ -1307,7 +1295,6 @@ class CdrTests(TestCase):
         location = evse.location
         credentials = Credentials.objects.first()
 
-        # ic(connector, connector.get_tariffs()[0].price())
 
         session = Session.objects.create(
             ocpi_master=role,
@@ -1675,7 +1662,6 @@ class UpdatePartiesTest(TestCase):
     fixtures = ["ocpi22/data/test-database-1.json"]
 
     def mocked_token_put(*_args, **kwargs):
-        # ic(_args, kwargs)
         headers = {
             "Authorization": "Token "
             "QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0"
@@ -1855,7 +1841,6 @@ fake_token = "1234567890"
 
 def mocked_credentials_get(url, *_args, **_kwargs):
     assert isinstance(url, str), f"Expecting a URL str, got {url}"
-    # ic(url, _args, _kwargs)
 
     response_data = {
         "http://localhost/versions": {
@@ -1868,7 +1853,6 @@ def mocked_credentials_get(url, *_args, **_kwargs):
 
 
 def mocked_credentials_post(url, *_args, **_kwargs):
-    # ic(_args, _kwargs)
     response = {
         "status_code": 1000,
         "status_message": "",
@@ -1895,7 +1879,6 @@ class TestCredentials(TestCase):
 
     @staticmethod
     def mocked_credentials_delete(url, *_args, **_kwargs):
-        # ic(_args, _kwargs)
         response = {
             "status_code": 1000,
             "status_message": "",
@@ -2068,7 +2051,6 @@ class TestCredentials(TestCase):
     #     credentials = Credentials.objects.get(pk=2)
     #     self.assertTrue(credentials.roles.count())
     #     self.assertTrue(credentials.endpoints.count())
-    #     # ic(credentials)
     #
     #     credentials.delete()
     #
@@ -2077,7 +2059,6 @@ class TestCredentials(TestCase):
     #     # Let's examine what was actually sent
     #     args, kwargs = mock_delete.call_args
     #
-    #     # ic(args, kwargs)
     #     expected_headers = {'Authorization': 'Token '
     #                                          'QUNCODIxNThFQzEzNkE5MkJFRUMwMDRFMzAxMEI4RDgyM0ZBOTVCOTYzNTU1OEYyRjgxNDBDOUVFODIxOUUzQw==',
     #                         'OCPI-from-country-code': 'FI',
@@ -2293,8 +2274,6 @@ class TestRouting(TestCase):
         )
 
     def mocked_request(*_args, **kwargs):
-        # ic()
-        # ic(_args, kwargs)
         return MockResponse(
             json.dumps(dict(message=routed_response_text)),
             200,
@@ -2380,7 +2359,6 @@ class TestRouting(TestCase):
                     if testcase.get("routing"):
                         # Let's check that routing has been done
                         args, kwargs = mock_request.call_args
-                        # ic(args, kwargs)
                         self.assertDictEqual(
                             kwargs,
                             {
@@ -2438,7 +2416,6 @@ class TestSession(TestCase):
             ),
         )
         self.assertTrue(bool(session))
-        # ic(session)
 
         test_cases = (
             ("session_patch_example_charging_period", 200, 0.8, 1, None, None),
@@ -2510,9 +2487,7 @@ class TestSession(TestCase):
                         ),
                         "Webhook data differs from expected",
                     )
-                # ic()
                 # kwargs = dict(calls[0])
-                # ic(webhook_post_mock.call_args_list)  # webhook_post_mock.call_args makes the test explode
 
                 # if expected_webhook_data:
                 #     self.assertDictEqual(
@@ -2540,7 +2515,6 @@ class TestSession(TestCase):
 
                 if expected_dict:
                     session_data = SessionSerializer(instance=session).data
-                    # ic(recursive_sort_dict(session_data), recursive_sort_dict(expected_dict))
                     self.assertDictEqual(
                         session_data,
                         expected_dict,
@@ -2690,7 +2664,6 @@ class TestCpoApi(TestCase):
 
             data_sent = args[0]
 
-        # ic(recursive_sort_dict(data_sent), recursive_sort_dict(RfidTestData.expected_data_1))
         self.assertTrue(
             compare_dicts_recursively(data_sent, RfidTestData.expected_data_1),
             "The Session update doesn't look as expected",
@@ -2962,7 +2935,6 @@ class TestCpoApi(TestCase):
                             "meter_values does not result in an updated price for the session",
                         )
                         session_data = SessionSerializer(instance=session).data
-                        # ic(recursive_sort_dict(session_data), recursive_sort_dict(expected_session_data))
                         self.assertDictEqual(
                             session_data, expected_session_data, "Session data differs"
                         )
@@ -2987,7 +2959,6 @@ class TestCpoApi(TestCase):
         ):
             response = stop_transaction(data)
 
-        # ic(recursive_sort_dict(response.data), recursive_sort_dict(StopTransactionResponses.stop1))
         self.assertTrue(
             compare_dicts_recursively(response.data, StopTransactionResponses.stop1),
             "stop_transaction response differs from expected",
@@ -2995,7 +2966,6 @@ class TestCpoApi(TestCase):
         send_updates_mock.assert_called()
         args, kwargs = send_updates_mock.call_args
         sent_data = args[0]
-        # ic(recursive_sort_dict(sent_data), recursive_sort_dict(SessionData.stop4))
         self.assertTrue(
             compare_dicts_recursively(sent_data, SessionData.stop4),
             "stop_transaction is sending different session data than expected to MSP",
@@ -3103,7 +3073,6 @@ class TestCpoApi(TestCase):
         )
         cpo_response = start_transaction(data)
 
-        # ic(recursive_sort_dict(cpo_response.data))
         self.assertTrue(
             compare_dicts_recursively(
                 cpo_response.data, AdhocTokenData.start_transaction_response
@@ -3238,7 +3207,6 @@ class TestCpoApi(TestCase):
 
         session = Session.objects.get(internal_reference="MY-INTERNAL-REFERENCE-2")
         session_data = SessionSerializer(session).data
-        # ic(recursive_sort_dict(session_data), recursive_sort_dict(SessionData.meter_values_1))
         self.assertTrue(
             compare_dicts_recursively(session_data, SessionData.meter_values_1),
             "Session differs from expected",
@@ -3273,8 +3241,6 @@ class TestCpoApi(TestCase):
             "There should be one new CDR after stopping a session",
         )
 
-        # ic(recursive_sort_dict(response.data.get('session')), recursive_sort_dict(StopTransactionResponses.stop3.get('session')))
-        # ic(recursive_sort_dict(response.data.get('charge_detail_record')), recursive_sort_dict(StopTransactionResponses.stop3.get('charge_detail_record')))
         self.assertTrue(
             compare_dicts_recursively(response.data, StopTransactionResponses.stop3),
             "stop_transaction response differs from expected",
@@ -3499,7 +3465,6 @@ class TestMspApi(TestCase):
         # Try charging without enough money
         with simulation.assert_error_logged("not enough balance"):
             response = start_charging(data, self.user, version="2.2")
-        # ic(response, response.data)
         self.assertEqual(
             response.status_code,
             status.HTTP_402_PAYMENT_REQUIRED,

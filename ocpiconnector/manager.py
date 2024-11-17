@@ -43,7 +43,6 @@ class PartnerQuerySet(models.QuerySet):
         @param kwargs: Keyword arguments for Manager.filter(), the criteria to filter the objects with
         @return: The first object found or None
         """
-        # ic(args, kwargs)
         queryset = self.filter(*args, **kwargs)
 
         if multiple_is_ok_just_get_the_first_one:
