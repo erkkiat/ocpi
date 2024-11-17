@@ -6,7 +6,7 @@ terraform.tfstate
 terraform.tfstate.backup
 env.sh
 .idea
-.env
+.env*
 *.prof
 *.db
 **/htmlcov/
