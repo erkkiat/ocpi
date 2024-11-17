@@ -1,3 +1,6 @@
+from datetime import timezone
+
+from django.conf import settings
 from rest_framework import serializers
 from ocpi22.models.hours import (
     RegularHours,
@@ -20,6 +23,14 @@ class CustomTimeField(serializers.TimeField):
         return value.strftime("%H:%M")
 
 
+class CustomDateTimeField(serializers.DateTimeField):
+    def to_representation(self, value):
+        if value is None or isinstance(value, str):
+            return value
+        value = value.astimezone(timezone.utc)
+        return value.strftime(settings.OCPI_DATE_FORMAT)
+
+
 class RegularHoursSerializer(serializers.ModelSerializer):
     class Meta:
         model = RegularHours
@@ -33,6 +44,9 @@ class ExceptionalPeriodSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExceptionalOpening
         fields = ["period_begin", "period_end"]
+
+    period_begin = CustomDateTimeField()
+    period_end = CustomDateTimeField()
 
 
 class HoursSerializer(serializers.ModelSerializer):

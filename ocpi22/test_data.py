@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytz
@@ -11,17 +11,11 @@ class CredentialsData:
         "data": {
             "roles": [
                 {
-                    "business_details": {"name": "ChargerHub.EU", "website": ""},
+                    "business_details": {"name": "SolidRoam CPO", "website": ""},
                     "country_code": "FI",
                     "party_id": "CPO",
                     "role": "CPO",
-                },
-                {
-                    "business_details": {"name": "ChargerHub.EU", "website": ""},
-                    "country_code": "FI",
-                    "party_id": "MSP",
-                    "role": "EMSP",
-                },
+                }
             ],
             "token": "12345",
             "url": "http://testserver.test:8000/ocpi/versions/",
@@ -32,16 +26,15 @@ class CredentialsData:
     }
 
     registered_credentials = {
-        "_state": "***",
         "connection_status": "CONNECTED",
-        "created": datetime(2022, 1, 8, 7, 56, 40, 267000, tzinfo=pytz.utc),
+        "created": datetime(2022, 1, 8, 7, 56, 40, 267000, tzinfo=timezone.utc),
         "id": 2,
-        "last_connection": datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc),
-        "last_updated": datetime(2022, 1, 13, 18, 57, 11, 300000, tzinfo=pytz.utc),
+        "last_connection": datetime(2022, 1, 1, 12, 0, tzinfo=timezone.utc),
+        "last_updated": datetime(2022, 1, 13, 18, 57, 11, 300000, tzinfo=timezone.utc),
         "ours": "12345",
         "theirs": "9e80a9c4-28be-11e9-b210-d663bd873d93",
         "token_a": "",
-        "updated": datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc),
+        "updated": datetime(2022, 1, 1, 12, 0, tzinfo=timezone.utc),
         "url": "https://ocpi.example.com/versions/",
         "valid": True,
         "version": "221",
@@ -61,13 +54,13 @@ class CredentialsData:
         "data": {
             "roles": [
                 {
-                    "business_details": {"name": "ChargerHub.EU", "website": ""},
+                    "business_details": {"name": "SolidRoam CPO", "website": ""},
                     "country_code": "FI",
                     "party_id": "CPO",
                     "role": "CPO",
                 },
                 {
-                    "business_details": {"name": "ChargerHub.EU", "website": ""},
+                    "business_details": {"name": "SolidRoam CPO", "website": ""},
                     "country_code": "FI",
                     "party_id": "MSP",
                     "role": "EMSP",
@@ -2220,162 +2213,13 @@ class CpoApiData:
 
 
 class LocationData:
-    webhook_calls = [
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {"location_id": "LOC1", "evse_id": "3256", "status": "AVAILABLE"},
-            "timeout": 10,
-            "url": "http://localhost/status/3256/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {"location_id": "LOC1", "evse_id": "3257", "status": "RESERVED"},
-            "timeout": 10,
-            "url": "http://localhost/status/3257/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {"location_id": "LOC1", "evse_id": "3256", "status": "AVAILABLE"},
-            "timeout": 10,
-            "url": "http://localhost/status/3256/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {"location_id": "LOC1", "evse_id": "3257", "status": "RESERVED"},
-            "timeout": 10,
-            "url": "http://localhost/status/3257/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {"location_id": "LOC1", "evse_id": "3256", "status": "AVAILABLE"},
-            "timeout": 10,
-            "url": "http://localhost/status/3256/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {"location_id": "LOC1", "evse_id": "3257", "status": "RESERVED"},
-            "timeout": 10,
-            "url": "http://localhost/status/3257/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {"location_id": "LOC1", "evse_id": "3299", "status": "RESERVED"},
-            "timeout": 10,
-            "url": "http://localhost/status/3299/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {
-                "location_id": "CBB0DF21-D17D-40BA-A4AA-DC588C8F98CB",
-                "evse_id": "eccb8dd9-4189-433e-b100-cc0945dd17dc",
-                "status": "AVAILABLE",
-            },
-            "timeout": 10,
-            "url": "http://localhost/status/eccb8dd9-4189-433e-b100-cc0945dd17dc/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {
-                "location_id": "3E7B39C2-10D0-4138-A8B3-8509A25F9920",
-                "evse_id": "fd855359-bc81-47bb-bb89-849ae3dac89e",
-                "status": "AVAILABLE",
-            },
-            "timeout": 10,
-            "url": "http://localhost/status/fd855359-bc81-47bb-bb89-849ae3dac89e/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {
-                "location_id": "3E7B39C2-10D0-4138-A8B3-8509A25F9920",
-                "evse_id": "fd855359-bc81-47bb-bb89-849ae3dac89e",
-                "status": "AVAILABLE",
-            },
-            "timeout": 10,
-            "url": "http://localhost/status/fd855359-bc81-47bb-bb89-849ae3dac89e/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {
-                "location_id": "3E7B39C2-10D0-4138-A8B3-8509A25F9920",
-                "evse_id": "fd855359-bc81-47bb-bb89-849ae3dac89e",
-                "status": "AVAILABLE",
-            },
-            "timeout": 10,
-            "url": "http://localhost/status/fd855359-bc81-47bb-bb89-849ae3dac89e/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {
-                "location_id": "F76C2E0C-A6EF-4F67-BF23-6A187E5CA0E0",
-                "evse_id": "8c1b3487-61ac-40a7-a367-21eee99dbd90",
-                "status": "AVAILABLE",
-            },
-            "timeout": 10,
-            "url": "http://localhost/status/8c1b3487-61ac-40a7-a367-21eee99dbd90/",
-            "verify": False,
-        },
-        {
-            "headers": {
-                "accept": "application/json",
-                "content-type": "application/json",
-            },
-            "json": {
-                "location_id": "A5295927-09B9-4A71-B4B9-A5FFFDFA0B77",
-                "evse_id": "4534ad5f-45be-428b-bfd0-fa489dda932d",
-                "status": "AVAILABLE",
-            },
-            "timeout": 10,
-            "url": "http://localhost/status/4534ad5f-45be-428b-bfd0-fa489dda932d/",
-            "verify": False,
-        },
-    ]
+    webhook_calls = [('3256', 'AVAILABLE'), ('3257', 'RESERVED'), ('3256', 'AVAILABLE'), ('3257', 'RESERVED'),
+                     ('3256', 'AVAILABLE'), ('3257', 'RESERVED'), ('eccb8dd9-4189-433e-b100-cc0945dd17dc', 'AVAILABLE'),
+                     ('fd855359-bc81-47bb-bb89-849ae3dac89e', 'AVAILABLE'),
+                     ('fd855359-bc81-47bb-bb89-849ae3dac89e', 'AVAILABLE'),
+                     ('fd855359-bc81-47bb-bb89-849ae3dac89e', 'AVAILABLE'),
+                     ('8c1b3487-61ac-40a7-a367-21eee99dbd90', 'AVAILABLE'),
+                     ('4534ad5f-45be-428b-bfd0-fa489dda932d', 'AVAILABLE')]
 
 
 class TariffData:

@@ -37,7 +37,7 @@ class TestLocations(TestCase):
 
 
 @pytest.mark.django_db
-def test_pre_save_always_saves_emi3_standard_evse_id(self):
+def test_pre_save_always_saves_emi3_standard_evse_id():
     location = LocationFactory()
     evse = EvseFactory(evse_id="WHATEVER", location=location)
     assert (

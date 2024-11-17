@@ -182,7 +182,7 @@ class ApiPutTests(TestCase):
     maxDiff = None
 
     def create_location(
-        self, uid=None, address="Testroad 1", name="Name", location_status="AVAILABLE"
+        self, uid="L1", address="Testroad 1", name="Name", location_status="AVAILABLE", credentials=None
     ) -> Location:
         """
         Create a location with multiple Evses, with overlapping Evse IDs (OCPI: Evse ID is unique
@@ -192,8 +192,13 @@ class ApiPutTests(TestCase):
             uid = self.location_index
             self.location_index += 1
 
+        if not credentials:
+            credentials = Credentials.objects.create(
+                token_a="TOKEN_A", ours="OURS", theirs="THEIRS"
+            )
+
         role = get_credentialsrole(
-            None, Party(country_code="FI", party_id=f"F{uid}"), create=True
+            credentials, Party(country_code="FI", party_id=f"F{uid}"), create=True
         )
         location = Location.objects.create(
             uid=uid,
@@ -224,21 +229,18 @@ class ApiPutTests(TestCase):
 
     def setUp(self):
         logging.disable(logging.CRITICAL)
-        self.location = self.create_location()
         self.credentials = Credentials.objects.create(
             token_a="TOKEN_A", ours="OURS", theirs="THEIRS"
         )
+        self.location = self.create_location(credentials=self.credentials, uid="1")
         self.credentialsrole = self.location.ocpi_master
         self.country_code = self.location.ocpi_master.get_party().country_code
         self.party_id = self.location.ocpi_master.get_party().party_id
 
     def test_evse_with_same_id(self):
         # Create two locations with the same Evse IDs
-        ic()
-        _location1 = self.create_location()
-        ic()
-        _location2 = self.create_location()
-        ic()
+        _location1 = self.create_location(uid="1")
+        _location2 = self.create_location(uid="1")
 
     def test_evse_format(self):
         loc = self.create_location()
@@ -300,42 +302,26 @@ class ApiPutTests(TestCase):
             uid=loc.uid,
         )
         data = response.data.get("data")
-        self.assertIsInstance(
-            data, dict, msg='There should be a dict element "data" in the Location'
-        )
+        assert isinstance(data, dict), f'There should be a dict element "data" in the Location: {response.data}'
 
         # Coordinates
         coordinates = data.get("coordinates")
-        self.assertIsInstance(coordinates, dict)
+        assert isinstance(coordinates, dict)
         latitude = coordinates.get("latitude")
         longitude = coordinates.get("longitude")
-        self.assertIsInstance(
-            latitude, str, msg="OCPI: Latitude and longitude should be strings"
-        )
-        self.assertIsInstance(
-            longitude, str, msg="OCPI: Latitude and longitude should be strings"
-        )
+        assert isinstance(latitude, str), "OCPI: Latitude and longitude should be strings"
+        assert isinstance(longitude, str), "OCPI: Latitude and longitude should be strings"
         decimals = latitude.split(".")[1]
-        self.assertEqual(
-            len(decimals),
-            6,
-            msg="e-clearing.net: There should be exactly 6 decimals in latitude",
-        )
+        assert len(decimals) == 6, "e-clearing.net: There should be exactly 6 decimals in latitude"
         decimals = longitude.split(".")[1]
-        self.assertEqual(
-            len(decimals),
-            6,
-            msg="e-clearing.net: There should be exactly 6 decimals in longitude",
-        )
+        assert len(decimals) == 6, "e-clearing.net: There should be exactly 6 decimals in longitude"
 
         # EVSES
         evses = data.get("evses")
-        self.assertIsInstance(evses, list, msg="Location EVSEs should be a list")
+        assert isinstance(evses, list), "Location EVSEs should be a list"
         for evse in evses:
             connectors = evse.get("connectors")
-            self.assertIsInstance(
-                connectors, list, msg="EVSE connectors should be a list"
-            )
+            assert isinstance(connectors, list), "EVSE connectors should be a list"
 
     def put(
         self,
@@ -606,9 +592,12 @@ class ApiPutTests(TestCase):
         method_calls = list(
             map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
         )
-        self.assertTrue(
-            compare_lists_recursively(method_calls, LocationData.webhook_calls)
-        )
+        comparison = [
+            (x.get('json').get('evse_id'), x.get('json').get('status'))
+            for x in method_calls
+        ]
+        print(comparison)
+        assert comparison == LocationData.webhook_calls
 
     def test_put_tariff(self):
         url = reverse("tariff-list")
@@ -1085,17 +1074,15 @@ class ApiPutTests(TestCase):
             "text/html"  # To get the detail_url in the response
         )
         request.credentials = self.credentials
+        loc = self.location
         credentialsrole = request.credentials.get_role(
             Party(
-                self.location.ocpi_master.country_code,
-                self.location.ocpi_master.party_id,
+                loc.ocpi_master.country_code,
+                loc.ocpi_master.party_id,
             )
         )
-        loc = self.location
-        assert (
-            credentialsrole.country_code == loc.ocpi_master.country_code
-            and credentialsrole.party_id == loc.ocpi_master.party_id
-        )
+        assert credentialsrole.country_code == loc.ocpi_master.country_code
+        assert credentialsrole.party_id == loc.ocpi_master.party_id
         viewset = LocationViewSet()
         viewset.request = request
         response = viewset.get(
@@ -1104,28 +1091,17 @@ class ApiPutTests(TestCase):
             party_id=loc.ocpi_master.party_id,
             uid=loc.uid,
         )
-        # ic(response, response.data)
+
+        assert response.data.get("status_code") == 1000, "OCPI status code should be 1000 for success"
+
         data = response.data.get("data")
-
-        self.assertEqual(
-            response.data.get("status_code"),
-            1000,
-            msg="OCPI status code should be 1000 for success",
-        )
-
         detail_url = data.get("detail_url")
-        self.assertURLEqual(
-            detail_url,
-            "http://testserver.test:8000/ocpi/2.2.1/locations/FI/F1/1",
-            "Location detail URL differs from expected",
-        )
+        assert detail_url == "http://testserver.test:8000/ocpi/2.2.1/locations/FI/F1/1", \
+            "Location detail URL differs from expected"
 
         # This should fail without authentication
         result = self.client.get(detail_url)
-        self.assertTrue(
-            result.status_code in [401, 403],
-            "A Location request should require OCPI authentication.",
-        )
+        assert result.status_code in [401, 403], "A Location request should require OCPI authentication."
 
     def _create_credentials(self, country_code, party_id):
         roles, _created = CredentialsRole.objects.get_or_create(

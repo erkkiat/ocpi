@@ -88,50 +88,29 @@ class CredentialsTests(BetterTestCase):
             result = CredentialsViewSet().post(request)
 
         credentials = Credentials.objects.get(pk=2)
-        self.assertFalse(credentials.token_a, "Token A should have been cleared")
-        self.assertEqual(
-            credentials.roles.count(), 2, "Credentials should have two roles"
-        )
+        assert not credentials.token_a, "Token A should have been cleared"
+        assert credentials.roles.count() == 2, "Credentials should have two roles"
         first_role: CredentialsRole = credentials.roles.first()
-        self.assertEqual(
-            first_role.country_code, "NL", "Expecting different country code"
-        )
-        self.assertEqual(first_role.party_id, "EXA", "Expecting different party ID")
+        assert first_role.country_code == "NL", "Expecting different country code"
+        assert first_role.party_id == "EXA", "Expecting different party ID"
 
         serializer = CredentialsSerializer(data=result.data.get("data"))
-        self.assertTrue(
-            serializer.is_valid(),
-            f"Credentials POST response should be valid: {serializer.errors}",
-        )
-        self.assertTrue(
-            compare_dicts_recursively(
-                result.data, CredentialsData.credentials_post_response
-            )
-        )
+        assert serializer.is_valid(), f"Credentials POST response should be valid: {serializer.errors}"
+        assert result.data == CredentialsData.credentials_post_response
 
-        self.assertEqual(
-            result.status_code,
-            status.HTTP_201_CREATED,
-            "Credentials should be POSTable using token_a",
-        )
-
+        assert result.status_code == status.HTTP_201_CREATED, "Credentials should be POSTable using token_a"
         credentials = Credentials.objects.get(ours=random_token)
-        self.assertDictEqual(
-            credentials.__dict__, CredentialsData.registered_credentials
-        )
+        credentials_dict = credentials.__dict__
+        credentials_dict.pop("_state")
+        assert credentials_dict == CredentialsData.registered_credentials
 
         # Updating an existing Credentials using POST should fail
         with simulation.assert_error_logged("use PUT to update"):
             result = CredentialsViewSet().post(request)
 
-        self.assertTrue(
-            result.status_code == status.HTTP_400_BAD_REQUEST,
-            "Updating an existing credentials should fail",
-        )
-        self.assertTrue(
-            "Credentials exist" in result.data.get("status_message", ""),
-            "Updating an existing credentials should fail",
-        )
+        assert result.status_code == status.HTTP_400_BAD_REQUEST, "Updating an existing credentials should fail"
+        assert "Credentials exist" in result.data.get("status_message", ""), \
+            "Updating an existing credentials should fail"
 
 
 class PartnerTests(BetterTestCase):
