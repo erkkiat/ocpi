@@ -1,13 +1,10 @@
 import uuid
 from collections import defaultdict
 from itertools import chain
-from typing import List
 
-from django.core.exceptions import ValidationError
 
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
-    Address,
     AuthenticationMode,
     ValueAddedService,
     PaymentOption,
@@ -54,11 +51,8 @@ class HubjectToOCPIConverter:
         AuthenticationMode.NFC_RFID_Classic: OCPICapabilityEnum.RFID_READER,
     }
 
-    def __convert_to_connectors(
-        self, hubject_evse: EvseDataRecord, ocpi_evse: Evse
-    ) -> List[Connector]:
+    def __convert_to_connectors(self, hubject_evse: EvseDataRecord, ocpi_evse: Evse):
         hubject_connectors = hubject_evse.ChargingFacilities
-        ocpi_connectors = []
         for c in hubject_connectors:
             new_connector = Connector(
                 uid=uuid.uuid4(),
@@ -76,9 +70,7 @@ class HubjectToOCPIConverter:
                 # terms_and_conditions="",
                 last_updated=hubject_evse.lastUpdate,
             )
-            ocpi_connectors.append(new_connector)
-
-        return ocpi_connectors
+            yield new_connector
 
     def __convert_to_evse(self, evse: EvseDataRecord, location: Location) -> Evse:
         return Evse(
@@ -96,7 +88,7 @@ class HubjectToOCPIConverter:
             location=location,
         )
 
-    def convert_to_locations(
+    def convert_to_location(
         self, evse_data_record: EvseDataRecord, owner: str, unique_hashed_id: str = None
     ) -> Location:
         coords = self.get_geo_coordinates(evse_data_record.GeoCoordinates)
@@ -114,7 +106,9 @@ class HubjectToOCPIConverter:
             postal_code=evse_data_record.Address.PostalCode,
             state=evse_data_record.Address.Region,
             country=evse_data_record.Address.Country,
-            time_zone=self.get_timezone(evse_data_record.Address.TimeZone),
+            time_zone=self.get_timezone_by_offset_country(
+                evse_data_record.Address.TimeZone, evse_data_record.Address.Country
+            ),
             latitude=coords[0],
             longitude=coords[1],
             lat_partition=calculate_partition(coords[0]),
@@ -141,20 +135,20 @@ class HubjectToOCPIConverter:
             # If the evses are in the same location, data related to the location will be the same
             evse_data_record = locations_evse_map[location_hash_key][0]
             # location hash key is a unique id based on the location. this prevents creating duplicating locations
-            location = self.convert_to_locations(
+            location = self.convert_to_location(
                 evse_data_record, owner, location_hash_key
             )
             self.locations.append(location)
 
             for evse_data_record in locations_evse_map[location_hash_key]:
                 tmp_evse = self.__convert_to_evse(evse_data_record, location)
-                tmp_connectors = self.__convert_to_connectors(
-                    evse_data_record, tmp_evse
+                tmp_connectors = list(
+                    self.__convert_to_connectors(evse_data_record, tmp_evse)
                 )
                 self.ocpi_evses.append(tmp_evse)
                 self.connectors.extend(tmp_connectors)
 
-    def get_location_evse_map(self, evses: List[EvseDataRecord]) -> dict:
+    def get_location_evse_map(self, evses: list[EvseDataRecord]) -> dict:
         location_map = defaultdict(list)
         for evse in evses:
             address_hash = hashlib.sha256(
@@ -165,43 +159,91 @@ class HubjectToOCPIConverter:
             location_map[address_hash].append(evse)
         return location_map
 
-    def get_timezone(self, utc_offset: str):
+    def get_timezone_by_offset_country(self, utc_offset, country_code):
         """
         >>> oicp_to_ocpi = HubjectToOCPIConverter()
-        >>> oicp_to_ocpi.get_timezone('UTC+03:00')
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+02:00', "FIN")
         'Europe/Helsinki'
-        >>> oicp_to_ocpi.get_timezone('UTC+05:30')
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:30', "LKA")
         'Asia/Colombo'
-        >>> oicp_to_ocpi.get_timezone('UTC+05:45')
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+05:45', "NPL")
         'Asia/Kathmandu'
-        >>> oicp_to_ocpi.get_timezone('UTC+00:00')
-        'UTC'
-        >>> oicp_to_ocpi.get_timezone('UTC+99:99')
-        Traceback (most recent call last):
-            ...
-        django.core.exceptions.ValidationError: ['Unknown UTC offset: UTC+99:99']
-        """
-        for tz in pytz.all_timezones:
-            try:
-                now = datetime.now(pytz.timezone(tz))
-                if (
-                    f"{now.strftime('UTC%z')[:6]}:{now.strftime('UTC%z')[6:]}"
-                    == utc_offset
-                ):
-                    return tz
-            except pytz.exceptions.UnknownTimeZoneError:
-                raise ValidationError(f"Unknown UTC offset: {utc_offset}")
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+00:00', "GBR")
+        'Europe/London'
+        >>> oicp_to_ocpi.get_timezone_by_offset_country('UTC+99:99', "DEU")
 
-    def get_address(self, address: Address) -> str:
-        return f"{address.Street}, {address.HouseNum}"
+        """
+        if "UTC" not in utc_offset:
+            raise ValueError(
+                "OICP Timezone must be in the form of 'UTC+HH:MM' or 'UTC-HH:MM'"
+            )
+
+        if len(country_code) != 3:
+            raise ValueError("Country code must have the format Alpha-3 (three-letter)")
+
+        # Convert UTC offset to hours and minutes (in case there's a partial offset like UTC+05:30)
+        hours, minutes = map(int, utc_offset[3:].split(":"))
+        target_seconds = float(hours * 3600 + minutes * 60)
+
+        # Get timezones for the given country code
+        country_timezones = pytz.country_timezones.get(country_code[:2].upper(), [])
+
+        if len(country_timezones) == 0:
+            raise ValueError(f"No timezones found for country code {country_code}.")
+
+        now = datetime.utcnow()  # Get the current time to account for DST if applicable
+
+        for timezone in country_timezones:
+            tz = pytz.timezone(timezone)
+            offset_seconds = tz.utcoffset(now).total_seconds()
+
+            # Compare the offset to the target UTC offset
+            if offset_seconds == target_seconds:
+                return timezone
+
+        return
+
+    def get_address_formatter(self, country: str):
+        """
+        Returns a function to format the address based on country-specific address conventions.
+        """
+
+        def format_general_address(street, house_number):
+            # Default format for most countries
+            return f"{street} {house_number}".strip()
+
+        def format_french_address(street, house_number):
+            # In France, the house number typically comes first
+            return f"{house_number} {street}".strip()
+
+        # Add more formatters for other countries if needed
+        return dict(FRA=format_french_address).get(country, format_general_address)
+
+    def get_address(self, street: str, house_number: str, country: str) -> str:
+        """
+        Formats an address from the street and house number, based on country conventions.
+
+        Examples:
+        >>> oicp_converter = HubjectToOCPIConverter()
+        >>> oicp_converter.get_address("Weteringstraat", "34-1", 'NLD')
+        'Weteringstraat 34-1'
+        >>> oicp_converter.get_address("Rue de Grenelle", "23", 'FRA')
+        '23 Rue de Grenelle'
+        >>> oicp_converter.get_address("Weberstr.", "2", 'DEU')
+        'Weberstr. 2'
+        >>> oicp_converter.get_address("Kandintie", "4E", 'FIN')
+        'Kandintie 4E'
+        """
+        formatter = self.get_address_formatter(country)
+        return formatter(street, house_number)
 
     def get_operator(self, operator: OperatorID): ...
 
     def get_capabilities(
         self,
-        authentication_modes: List[AuthenticationMode],
-        vas_list: List[ValueAddedService],
-        payment_options: List[PaymentOption],
+        authentication_modes: list[AuthenticationMode],
+        vas_list: list[ValueAddedService],
+        payment_options: list[PaymentOption],
     ) -> chain[OCPICapabilityEnum | None]:
         auth_mode_map = HubjectToOCPIConverter.auth_mode_capability_map
         vas_map = HubjectToOCPIConverter.value_added_service_capability_map
