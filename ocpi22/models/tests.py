@@ -44,7 +44,7 @@ def create_advanced_hours_testdata():
 
 
 class HoursModelTest(TestCase):
-    def test_hours_str_basic(self):
+    def test_hours_str_bas(self):
         hours = Hours.objects.create(twentyfourseven=True)
         self.assertEqual(hours.get_hours_display_english(), "24/7")
 

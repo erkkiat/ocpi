@@ -177,7 +177,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             power,
             Decimal(hours) - Decimal(hours_so_far),
         )
-        # ic(active_charging_period, hours, hours_so_far)
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
@@ -404,7 +403,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                     incl_vat = excl_vat * (1.0 + pc.vat / 100) if pc.vat else excl_vat
                     total_incl_vat += incl_vat
                     total_excl_vat += excl_vat
-                    # ic(pc, kwh, hours, start_date_time, flat_fee, incl_vat, excl_vat, total_incl_vat, total_excl_vat)
+
                 return max(total_incl_vat, 0.0), max(total_excl_vat, 0.0)
             return 0.0, 0.0
 
@@ -417,7 +416,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             # Todo: Prevent START_SESSION on a Connector where the price cannot be calculated
             # Todo: Even better, mark the EVSE inoperative, or prevent making it available
             return False
-        # ic(self.uid, [t.price() for t in tariffs])
 
         # Calculate the session duration using either a stored end time or the current time
         result_incl_vat: float = 0.0
@@ -444,7 +442,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 cp_incl_vat, cp_excl_vat = _calculate_price(
                     cp_kwh, cp_hours, cp.start_date_time, flat_fee=apply_flat_fee
                 )
-                # ic(cp, cp.tariff.price(), cp_kwh, cp_hours, cp_incl_vat, cp_excl_vat)
 
                 apply_flat_fee = False  # Flat fee was applied once above, and not during the next for loop steps
                 result_incl_vat += cp_incl_vat
@@ -514,8 +511,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         )
         valid_tariff = tariff_element.tariff if tariff_element else None
 
-        # ic(previous_tariff_element, tariff_element)
-
         if not tariff_element:
             logging.error(
                 f"No TariffElement applies for EVSE {self.evse} connector {self.connector} at {timestamp}."
@@ -535,8 +530,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                     (timestamp or datetime.now(pytz.utc)) - last_period.start_date_time
                 ).total_seconds() / 3600
                 last_period.set_dimension(hours=last_period_hours)
-                # ic(last_period, last_period_hours)
-            # ic('Created a new charging period', period)
+
         return period
 
     def send_updates(self, data=None, method="put", path_components=None) -> None:

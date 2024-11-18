@@ -78,8 +78,6 @@ class InvoiceReportViews(viewsets.GenericViewSet):
             Sum("total_energy")
         )
 
-        # ic(str(result.query))
-
         if request.GET.get("format", "").lower() == "csv":
             return Response(list(result))  # Not paginated on purpose
         result = paginator.paginate_queryset(result, request)
@@ -124,8 +122,6 @@ class InvoiceReportViews(viewsets.GenericViewSet):
         """
         result = self.queryset
         # result = self.get_cdrs_in_date_range(request)
-
-        # ic(str(result.query))
 
         paginator = self.pagination_class()
         if request.GET.get("format", "").lower() == "csv":

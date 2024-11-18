@@ -1,6 +1,6 @@
 import markdown
 from django.utils.html import format_html
-from icecream import ic
+
 from rest_framework import generics
 from django.utils.translation import gettext as _
 
@@ -49,7 +49,6 @@ class WebhookDetail(generics.RetrieveUpdateDestroyAPIView):
         serializer = self.get_webhook_serializer_class(event)
         outbound_serializer = getattr(serializer, "OutboundSerializer", None)
         response_serializer = getattr(serializer, "ResponseSerializer", None)
-        ic(event, outbound_serializer, response_serializer)
 
         return dict(
             webhook_details=dict(

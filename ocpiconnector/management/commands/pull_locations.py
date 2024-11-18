@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 
 import requests
 from django.core.management.base import BaseCommand
-from icecream import ic
+
 from requests import Response
 
 from ocpi22.locations.serializers import LocationSerializer
@@ -39,7 +39,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        ic(args, options)
         # clear = options['clear']
         endpoints = Endpoint.objects.filter(identifier="locations", role="SENDER")
         for endpoint in endpoints:
@@ -47,16 +46,12 @@ class Command(BaseCommand):
             token = endpoint.get_token_base64()
             response: Response = self.ocpi_get(url, token)
             data = response.json()["data"]
-            # ic(response.json())
+
             for location in data:
-                ic(location)
                 serializer = LocationSerializer(data=location)
                 # context={'version': endpoint.credentials.get_version_display()})
 
-                if serializer.is_valid():
-                    ic(serializer.data)
-                    # serializer.save()
-                else:
+                if not serializer.is_valid():
                     logging.warning(
                         f"Parsing error from {endpoint.credentials.party_str()} {url}"
                         f"{serializer.errors}"

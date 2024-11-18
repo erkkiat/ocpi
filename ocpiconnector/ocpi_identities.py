@@ -165,9 +165,6 @@ def get_our_party_id(role: str = None, identities=ocpi_identities) -> str:
     return party_id
 
 
-# ic(ocpi_platform.is_hub, ocpi_platform.is_cpo, ocpi_platform.is_emsp)
-
-
 @cached(cache=dict())
 def get_our_party(role: OcpiRolesEnum = None, identities=ocpi_identities) -> Party:
     """
