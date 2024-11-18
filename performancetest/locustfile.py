@@ -3,7 +3,7 @@ from datetime import datetime
 from random import randint
 from time import sleep
 from typing import Optional, Union
-from icecream import ic
+
 
 import pytz
 import requests
@@ -104,13 +104,11 @@ def on_test_start(environment: Environment, **kwargs):
         json={"username": "performance", "password": "password", "exp": 86400},
     )
 
-    ic(response.json())
     token = response.json().get("access")
     assert (
         len(token) > 10
     ), f"Failed to get token: {response.status_code}, {response.text}"
     headers = {"Authorization": f"Bearer {token}"}
-    # ic(headers)
 
     create_location(environment, LOCATION_ID)
     # for i in range(451, EVSE_COUNT+1):

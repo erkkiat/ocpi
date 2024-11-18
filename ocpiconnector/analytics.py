@@ -52,8 +52,6 @@ def send_session_update_to_analytics(session: Session):
         "source_system": "SolidRoam Roaming Module",
     }
 
-    # ic(data)
-
     # Send data to analytics
     tasks.send_data_to_analytics.delay(data, "https://api.zoined.com/sales")
     session.analytics_sent = True

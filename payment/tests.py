@@ -6,7 +6,7 @@ import pytz
 import stripe
 from django.contrib.auth.models import User
 from django.test import TestCase
-from icecream import ic
+
 from rest_framework import status
 from util import reverse
 from rest_framework.test import APIRequestFactory
@@ -18,8 +18,6 @@ from payment.views import PaymentViewSet, StripePayments
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = APIRequestFactory()
-
-ic.includeContext = True
 
 
 class PaymentTests(TestCase):
@@ -72,7 +70,7 @@ class PaymentTests(TestCase):
 
         # With Session ID
         session_id = test_data.session.get("id")
-        # ic(session_id)
+
         request = api_factory.get(f"url?session_id={session_id}")
         request.user = self.testuser
         Customer.objects.create(user=request.user, customer_id="cus_MpaqQOHTYhC7q4")
@@ -99,8 +97,6 @@ class PaymentTests(TestCase):
         request.data = dict(amount="abc", currency=123)
         request.user = self.testuser
 
-        # ic(request.user, request.user.payment_customer.payment_methods.all())
-
         response = PaymentViewSet().reserve_amount(request)
 
         self.assertEqual(
@@ -113,14 +109,12 @@ class PaymentTests(TestCase):
         request.data = dict(amount=123, currency="EUR")
         request.user = self.testuser
 
-        # ic(request.user, request.user.payment_customer.payment_methods.all())
-
         response = PaymentViewSet().reserve_amount(request)
 
         self.assertTrue(
             response, "There is no response from the payments reserve() endpoint"
         )
-        # ic(response, response.data)
+
         self.assertEqual(
             response.status_code,
             status.HTTP_200_OK,
@@ -134,6 +128,5 @@ class PaymentTests(TestCase):
 
         payment = Payment.objects.get(payment_method=payment_method)
         payments.capture(payment, 3.14)
-        # ic(result)
 
         paymentintent_capture_mock.assert_called_once()

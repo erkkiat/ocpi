@@ -39,7 +39,9 @@ from util import (
     redis_store,
     time_lte,
     time_lt,
-    ErrorLoggingResponse as Response, RedisStore, markdown_escape,
+    ErrorLoggingResponse as Response,
+    RedisStore,
+    markdown_escape,
 )
 from rest_framework.viewsets import GenericViewSet
 
@@ -87,7 +89,7 @@ from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
-from ocpiconnector.party import Party
+from ocpiconnector.party import Party, party_from_str
 from premium import requires_premium
 
 pp = PrettyPrinter(indent=4).pprint
@@ -384,19 +386,19 @@ def process_meter_values(
         messages.success(
             request,
             f"You have updated the OCPI Session **{markdown_escape(session.uid)}** "
-            f"with {kwh} kWh."
+            f"with {kwh} kWh.",
         )
         messages.info(
             request,
             "It's good to send the kWh and power values frequently "
             "enough, so that the driver can see the up-to-date status "
             "from the mobile application. For DC charging, "
-            "please update the State of Charge as well."
+            "please update the State of Charge as well.",
         )
         messages.success(
             request,
             f"When you're done, next you can "
-            f'<a href="{next_url}">stop the Session</a>.'
+            f'<a href="{next_url}">stop the Session</a>.',
         )
 
         return Response(
@@ -428,7 +430,7 @@ def process_meter_values(
             request,
             "Only active sessions can be updated, and this session has "
             f'the status "{session.status}", which means that it {explain}. '
-            f"You can see {session_admin_link}."
+            f"You can see {session_admin_link}.",
         )
         return Response(
             dict(
@@ -565,7 +567,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     messages.success(
                         request,
                         "<div>Next, you can go and "
-                        f'<a href="{next_url}">authorize a Token</a> for charging.</div>'
+                        f'<a href="{next_url}">authorize a Token</a> for charging.</div>',
                     )
 
                     return Response(
@@ -592,7 +594,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 request,
                 "Seems that the EVSE you specified does not exist. You can "
                 f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
-                "using the admin tools."
+                "using the admin tools.",
             )
             return Response(dict(status_text=str(e)), status=status.HTTP_404_NOT_FOUND)
 
@@ -642,20 +644,22 @@ class ChargePointViewSet(FlowchartViewSet):
                         messages.info(
                             request,
                             f'You can <a target="tokenadmin" href="{token_admin}">browse the list of '
-                            "known Tokens in our database</a> or try one which an MSP has in their database."
+                            "known Tokens in our database</a> or try one which an MSP has in their database.",
                         )
                     else:
-                        token_dict=authorization.token
+                        token_dict = authorization.token
                         ad_hoc_token = AdhocToken(
                             uid=token_dict.get("uid"),
                             valid=token_dict.get("valid"),
                             billed_to=authorization.get_token_party(),
                             type=token_dict.get("type"),
                             ocpi_master=authorization.ocpi_master,
-                            contract_id=authorization.token.get('contract_id', '-')
+                            contract_id=authorization.token.get("contract_id", "-"),
                         )
-                        assert authorization.ocpi_master and authorization.ocpi_master.credentials, \
-                            f"No OCPI Master or Credentials found: {authorization.ocpi_master}"
+                        assert (
+                            authorization.ocpi_master
+                            and authorization.ocpi_master.credentials
+                        ), f"No OCPI Master or Credentials found: {authorization.ocpi_master}"
                         session = create_session(
                             credentials=authorization.ocpi_master.credentials,
                             authorization_reference=authorization.authorization_reference,
@@ -666,17 +670,21 @@ class ChargePointViewSet(FlowchartViewSet):
                             evse_uid=evse.uid,
                             connector_id=None,
                             location_id=evse.location.uid,
-                            ocpi_master=authorization.ocpi_master
+                            ocpi_master=authorization.ocpi_master,
                         )
-                        save_to_session_cache(credentialsrole=authorization.ocpi_master, session=session, token=token)
+                        save_to_session_cache(
+                            credentialsrole=authorization.ocpi_master,
+                            session=session,
+                            token=token,
+                        )
                         messages.success(
                             request,
                             "A new OCPI Session has been started in `PENDING` status. "
                             f"Store the Session ID, **{markdown_escape(session.uid)}**. "
                             "You will need it for `meter_values` and `stop_session`. Next, you can "
                             f'<a href="{next_url}">start the charging session</a>. '
-                            f'Make sure to use the Token **{get_token_id(token)}**, '
-                            f"which has been authorized. The authorization expires in 15 minutes."
+                            f"Make sure to use the Token **{get_token_id(token)}**, "
+                            f"which has been authorized. The authorization expires in 15 minutes.",
                         )
 
                     data = dict(
@@ -711,7 +719,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 "Seems that the ID for the EVSE or the Token was not quite correct. You can "
                 f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
                 f'and <a target="tokenadmin" href="{token_admin}">the list of known Tokens</a> '
-                "using the admin tools."
+                "using the admin tools.",
             )
             return Response(
                 dict(status_message=str(e)), status=status.HTTP_404_NOT_FOUND
@@ -782,14 +790,18 @@ class ChargePointViewSet(FlowchartViewSet):
                                 status=status.HTTP_401_UNAUTHORIZED,
                             )
                         party: Party = authorization.token.get_party()
-                        session: Session = get_session_by_token_uid(get_token_id(token), max_age_minutes=14)
+                        session: Session = get_session_by_token_uid(
+                            get_token_id(token), max_age_minutes=14
+                        )
                         if session:
                             session.connector = Connector.objects.prefetch_related(
                                 "tariff_ids"
                             ).get_if_exists(uid=connector_id, evse=evse)
                             session.internal_reference = internal_reference or None
                             session.status = Session.ACTIVE
-                            session.authorization_reference = authorization.authorization_reference
+                            session.authorization_reference = (
+                                authorization.authorization_reference
+                            )
                             if session.connector and session.connector.tariff_ids:
                                 first_tariff = session.connector.tariff_ids.first()
                                 if first_tariff:
@@ -851,7 +863,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     messages.success(
                         request,
                         "<div>Next, you can go and send some "
-                        f'<a href="{next_url}">meter values</a>.</div>'
+                        f'<a href="{next_url}">meter values</a>.</div>',
                     )
 
                     session_serializer = CpoSessionSerializer(
@@ -890,7 +902,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 request,
                 f"{e} You can complete active sessions using the "
                 f'<a href="{stop_transaction_url}">stop_transaction</a> or by '
-                f'<a href="{status_change_url}">changing the EVSE status</a> to "AVAILABLE".'
+                f'<a href="{status_change_url}">changing the EVSE status</a> to "AVAILABLE".',
             )
             return Response(dict(status=str(e)), status=status.HTTP_409_CONFLICT)
 
@@ -938,13 +950,11 @@ class ChargePointViewSet(FlowchartViewSet):
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
         except (ValidationError, RuntimeError) as e:
-            # ic(e)
             logging.error(f"Exception in meter_values(): {e}", request=request)
             return Response(dict(status=str(e)), status=status.HTTP_409_CONFLICT)
 
     @action(methods=("GET", "POST"), detail=False)
     @requires_premium
-    # @silk_profile(name='stop_transaction')
     def stop_transaction(self, request):
         """
         This call will end the OCPI Session. Call it after the cable has been disconnected from the vehicle.
@@ -1032,13 +1042,15 @@ class ChargePointViewSet(FlowchartViewSet):
                         f"with {session.kwh} kWh. At this point, the OCPI Charge Detail Record is "
                         f"created automatically, and if you have set your URL for the "
                         f"invoicing webhook, the CDR is sent to the webhook. "
-                        f"{extra_information}"
+                        f"{extra_information}",
                     )
 
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
 
-                    Cdr.create_based_on_session(session)  # Todo: Do this in a celery task
+                    Cdr.create_based_on_session(
+                        session
+                    )  # Todo: Do this in a celery task
 
                     session_serializer = CpoSessionSerializer(
                         instance=session,
@@ -1123,8 +1135,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     params = dict(result=result, message=message)
                     ocpi_serializer = CommandResultSerializer(instance=params)
                     response_url = command.get("response_url")
-                    party = session.billed_to.split("*")
-                    to = Party(*party)
+                    to = party_from_str(session.billed_to)
                     sender = get_our_party(OcpiRolesEnum.CPO)
 
                     # Send CommandResponse to MSP

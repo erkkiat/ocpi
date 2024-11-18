@@ -216,14 +216,13 @@ class RedisStore:
         redis_store.set(self._format_key(key), value, expiration or self.expiration)
 
     def __setitem__(self, key, value):
-        ic(key, value)
         self.store(key, value)
 
     def retrieve(self, key) -> Optional[Any]:
         value = ""
         try:
             key = self._format_key(key)
-            ic(key)
+
             value = redis_store.get(key)
             if not value:
                 raise KeyError(f"Key {key} not found in Redis")
@@ -352,7 +351,6 @@ class HashableDict(dict):
     """
 
     def __hash__(self):
-        # ic(super().items())
         return hash(tuple(sorted(make_hashable(super().items()))))
 
     def __setitem__(self, key, value):
@@ -516,7 +514,7 @@ def make_hashable(x):
 
 
 def markdown_escape(s: str) -> str:
-    return s.replace('*', '\\*').replace('_', '\\_')
+    return s.replace("*", "\\*").replace("_", "\\_")
 
 
 def format_session_url(base_url, country_code, party_id, session_id):

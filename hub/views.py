@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import permission_required
 from django.shortcuts import get_object_or_404, render
 from django.utils.translation import gettext as _
 from django.http import HttpResponseRedirect, HttpResponse
-from icecream import ic
+
 
 from hub.settings import list_parties_template
 from ocpi22.messages import messages
@@ -29,7 +29,7 @@ def list_roaming_parties(request, role: Optional[int] = None) -> HttpResponse:
     ownrole = get_object_or_404(CredentialsRole, pk=role)
     partners_cache.clear()
     partners = get_partners_by_party(ownrole)
-    ic(partners)
+
     parties = (
         CredentialsRole.objects.exclude(pk__in=partners)
         .exclude(pk=ownrole.pk)

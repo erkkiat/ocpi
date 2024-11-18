@@ -49,7 +49,7 @@ class TestUserApi(TestCase):
         User.objects.filter(email=email).delete()
 
         response = send_request(data, UserViewSet().register, "user-register")
-        # ic(response, response.data)
+
         self.assertEqual(
             response.status_code, status.HTTP_201_CREATED, "Expected success"
         )
@@ -74,8 +74,6 @@ class TestUserApi(TestCase):
                 "user-password",
             )
             kwargs = dict(user=user)
-
-            # ic(args, kwargs, expected_status)
 
             response = send_request(*args, **kwargs)
             self.assertEqual(

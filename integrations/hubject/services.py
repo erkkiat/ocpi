@@ -13,7 +13,7 @@ from integrations.hubject.schemas import (
     ActionType,
     OperatorEvseData,
 )
-from integrations.ocpi_to_hubject_converter import OCPIToHubjectConverter
+from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.models.location import Location
 from util import with_trailing_slash
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class HubjectService:
     client = HubjectClient()
-    converter = OCPIToHubjectConverter()
+    converter = SolidToHubjectConverter()
 
     def get_all_operator_evses(self) -> Dict[str, List]:
         locations = Location.objects.all()

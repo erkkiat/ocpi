@@ -313,7 +313,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         return validated_data
 
     def create(self, validated_data: dict):
-        with transaction.atomic():
+        with transaction.atom:
             # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
             evses = validated_data.pop("evses", [])
@@ -458,9 +458,9 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
     # def to_representation(self, value):
     #     if hasattr(value, 'opening_times'):
-    #         ic(value.opening_times.all())
-    #         # ic(value.opening_times.first().regular_hours.all())
-    #     ic(value.pk)
+    #
+    #
+    #
     #     return super().to_representation(value)
 
 

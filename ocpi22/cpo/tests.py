@@ -13,7 +13,7 @@ from django.db import connection, reset_queries
 from django.test import TestCase
 
 from django.contrib.auth.models import AnonymousUser
-from icecream import ic
+
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
 from urllib3.exceptions import ConnectTimeoutError
@@ -229,8 +229,7 @@ class TestQuickLocations(TestCase):
             "postal_code": "01234",
             "time_zone": "Europe/Helsinki",
         }
-        # ic(recursive_sort_dict(data))
-        # ic(compare(data, expected_data))
+
         self.assertTrue(
             compare_dicts_recursively(data, expected_data),
             "New Location data differs from expected",
@@ -447,7 +446,6 @@ class TestQuickLocations(TestCase):
 
         # The below needs some work
         # response = get(reverse('quick-tariff-list'), TariffQuickViewSet)
-        # ic(response.status_code, response.data)
 
 
 class TestChargingPeriods(TestCase):
@@ -746,7 +744,6 @@ class TestChargingPeriods(TestCase):
                 expected_response,
                 expected_session_data,
             ) in data:
-                # ic('*' * 60, kwh, soc, timestamp)
                 try:
                     with self.subTest(kwh=kwh, timestamp=timestamp):
                         with (
@@ -771,7 +768,7 @@ class TestChargingPeriods(TestCase):
                         )
                         if expected_args:
                             kwargs = simulation.tasks_requests.patch.call_args.kwargs
-                            args = simulation.tasks_requests.patch.call_args.args
+                            _ = simulation.tasks_requests.patch.call_args.args
                             self.assertTrue(
                                 compare_dicts_recursively(
                                     kwargs["data"], expected_args
@@ -798,7 +795,6 @@ class TestChargingPeriods(TestCase):
                                 "Session data differs from expected",
                             )
                 except AssertionError:
-                    ic(args[0], response.data)
                     raise
 
         find_route.cache_clear()

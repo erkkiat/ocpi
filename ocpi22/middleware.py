@@ -34,7 +34,7 @@ class OCPIHubMiddleware:
             try:
                 headers = request.META
                 to = get_to_party(headers)
-                # ic(party)
+
                 if to:
                     # Todo: Check that Command has the same Party as Credentials (maybe in auth.py)
                     if not is_our_identifier(to):
