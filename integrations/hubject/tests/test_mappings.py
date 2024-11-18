@@ -1,8 +1,8 @@
 import doctest
 
+import pytest
 import pytz
 from django.core.exceptions import ValidationError
-from django.test import TestCase
 from django.utils.datetime_safe import datetime
 
 from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
@@ -36,29 +36,31 @@ def load_tests(_loader, tests, _ignore):
     return tests
 
 
-class TestMappings(TestCase):
+class TestMappings:
+    def __init__(self):
+        self.setUp()
+
     def setUp(self):
         self.ocpi_2_oicp_converter = SolidToHubjectConverter()
         self.oicp_to_ocpi_converter = HubjectToOCPIConverter()
 
     def test_map_connector_std_choices_to_plug_unknown(self):
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             self.ocpi_2_oicp_converter.get_plug("UNKNOWN_PLUG")
 
     def test_get_distinct_plugs_from_connector_std_choices(self):
         connectors = [Connector(standard="CHADEMO"), Connector(standard="IEC_62196_T2")]
         mapped_plugs = self.ocpi_2_oicp_converter.get_distinct_plugs(connectors)
 
-        self.assertTrue(
-            Plug.CHAdeMO in mapped_plugs, "The CHAdeMO plug is not in the mapped plugs."
-        )
-        self.assertTrue(
-            Plug.Type_2_Outlet in mapped_plugs,
-            "The Type 2 Outlet plug is not in the mapped plugs.",
-        )
+        assert (
+            Plug.CHAdeMO in mapped_plugs
+        ), "The CHAdeMO plug is not in the mapped plugs."
+        assert (
+            Plug.Type_2_Outlet in mapped_plugs
+        ), "The Type 2 Outlet plug is not in the mapped plugs."
 
     def test_map_power_type_choices_221_to_power_type_unknown(self):
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             self.ocpi_2_oicp_converter.get_power_type("UNKNOWN_POWER_TYPE")
 
     def test_get_all_charging_facilities_from_connectors(self):
@@ -84,25 +86,22 @@ class TestMappings(TestCase):
                 PowerType=PowerType.DC, Voltage=401, Amperage=45, Power=50
             ),
         ]
-        self.assertEqual(
-            self.ocpi_2_oicp_converter.get_charging_facilities(connectors),
-            expected_facilities,
+        assert (
+            self.ocpi_2_oicp_converter.get_charging_facilities(connectors)
+            == expected_facilities
         )
 
     def test_get_all_authentication_modes_from_capabilities(self):
         capabilities = [OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.RESERVABLE]
 
         authentication_modes = [AuthenticationMode.NFC_RFID_Classic]
-        self.assertEqual(
-            self.ocpi_2_oicp_converter.get_authentication_modes_list(capabilities),
-            authentication_modes,
+        assert (
+            self.ocpi_2_oicp_converter.get_authentication_modes_list(capabilities)
+            == authentication_modes
         )
 
     def test_accessibility_locations_when_parking_type_none(self):
-        self.assertEqual(
-            self.ocpi_2_oicp_converter.get_accessibility_locations(None),
-            None,
-        )
+        assert self.ocpi_2_oicp_converter.get_accessibility_locations(None) is None
 
     def test_map_location_to_eroaming_push_evse_data(self):
         helsinki_supercharger_ocpi_master = CredentialsRoleFactory(
@@ -191,71 +190,15 @@ class TestMappings(TestCase):
             helsinki_hubject_evse_data.model_dump(),
             ERoamingPushTestData.helsinki_eroaming_push_data,
         )
-        self.assertTrue(
-            result,
-            "The mapped OCPI Location data does not match the expected OICP data.",
-        )
+        assert (
+            result
+        ), "The mapped OCPI Location data does not match the expected OICP data."
 
-    def test_convert_to_eroaming_with_only_required_data(self):
-        berlin_supercharger_ocpi_master = CredentialsRoleFactory(
-            role="CPO",
-            country_code="DE",
-            party_id="SMP",
-            business_details=BusinessDetailsFactory(
-                name="Smappee berlin Pvt Ltd.",
-                website="https://www.berlin-supercharger.com",
-                logo="https://www.berlin-supercharger.com/static/test_logo.png",
-            ),
-        )
-
-        berlin = LocationFactory(
-            publish=True,
-            name="",
-            address="Mannerheimintie 1",
-            city="berlin",
-            postal_code="",
-            state="Uusimaa",
-            country="FIN",
-            parking_type=None,
-            latitude=0,
-            longitude=0,
-            time_zone="Europe/Berlin",
-            ocpi_master=berlin_supercharger_ocpi_master,
-            operator=None,
-            suboperator=None,
-            owner=None,
-            charging_when_closed=True,
-        )
-
-        berlin_evse_data = EvseFactory(
-            evse_id="FI*ABC*1234*C0*CT",
-            status="",
-            location=berlin,
-            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            capabilities=None,
-        )
-
-        ConnectorFactory(
-            uid="CONNECTOR_1",
-            evse=berlin_evse_data,
-            standard="IEC_62196_T2",
-            format="",
-            power_type="",
-            max_voltage=-100,
-            max_amperage=16,
-            max_electric_power=12000,
-            terms_and_conditions="https://www.berlin-supercharger.com/terms-and-conditions",
-            last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-            created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-        )
-
+    def test_convert_to_eroaming_with_only_required_data(self, berlin_location):
         berlin_hubject_evse_data = ERoamingPushEvseData(
             ActionType=ActionType.insert,
             OperatorEvseData=self.ocpi_2_oicp_converter.convert_to_operator_evse_data(
-                berlin
+                berlin_location
             ),
         )
 
@@ -268,7 +211,6 @@ class TestMappings(TestCase):
             berlin_hubject_evse_data.model_dump(),
             ERoamingPushTestData.berlin_eroaming_push_data,
         )
-        self.assertTrue(
-            result,
-            "The mapped OCPI Location data does not match the expected OICP data.",
-        )
+        assert (
+            result
+        ), "The mapped OCPI Location data does not match the expected OICP data."

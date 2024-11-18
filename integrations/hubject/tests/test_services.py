@@ -19,17 +19,19 @@ class TestHubjectService:
     def test_get_operator_evse_dict(
         self,
         mock_convert,
-        berlin_emsdetten_location,
-        berlin_emsdetten_op_evse_data,
+        berlin_location,
+        emsdetten_location,
+        berlin_op_evse_data,
+        emsdetten_op_evse_data,
     ):
-        mock_convert.side_effect = berlin_emsdetten_op_evse_data
+        mock_convert.side_effect = [berlin_location, emsdetten_location]
 
         hubject_service = HubjectService()
 
         result = hubject_service.get_all_operator_evses()
 
         assert result == {
-            "DE*SMP": berlin_emsdetten_op_evse_data,
+            "DE*SMP": [berlin_op_evse_data, emsdetten_op_evse_data],
         }
         assert mock_convert.call_count == 2
 

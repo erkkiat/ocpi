@@ -23,8 +23,8 @@ from ocpi22.tests.factories import (
 
 
 @pytest.fixture
-def helsinki_location():
-    helsinki_supercharger_ocpi_master = CredentialsRoleFactory(
+def helsinki_ocpi_master():
+    return CredentialsRoleFactory(
         role="CPO",
         country_code="DE",
         party_id="SMP",
@@ -34,54 +34,53 @@ def helsinki_location():
             logo="https://www.helsinki-supercharger.com/static/test_logo.png",
         ),
     )
-    helsinki_supercharger_operator_business_details = BusinessDetailsFactory(
+
+
+@pytest.fixture
+def helsinki_operator_details():
+    return BusinessDetailsFactory(
         name="Helsinki Supercharger Operator",
         website="https://www.helsinki-supercharger.com",
         logo="https://www.helsinki-supercharger.com/static/test_logo.png",
     )
-    helsinki_supercharger_sub_operator_business_details = BusinessDetailsFactory(
+
+
+@pytest.fixture
+def helsinki_sub_operator_details(helsinki_ocpi_master):
+    return BusinessDetailsFactory(
         name="Helsinki Supercharger Sub Operator",
         website="https://www.helsinki-supercharger.com",
         logo="https://www.helsinki-supercharger.com/static/test_logo.png",
     )
-    helsinki_supercharger_owner_business_details = BusinessDetailsFactory(
+
+
+@pytest.fixture
+def helsinki_owner_details():
+    return BusinessDetailsFactory(
         name="Smappee Pvt Ltd.",
         website="https://www.helsinki-supercharger.com",
         logo="https://www.helsinki-supercharger.com/static/test_logo.png",
     )
 
-    helsinki = LocationFactory(
-        publish=True,
-        name="Helsinki Supercharger",
-        address="Mannerheimintie 1",
-        city="Helsinki",
-        postal_code="00100",
-        state="Uusimaa",
-        country="FIN",
-        parking_type="ON_STREET",
-        latitude=60.1695,
-        longitude=24.9354,
-        time_zone="Europe/Helsinki",
-        ocpi_master=helsinki_supercharger_ocpi_master,
-        operator=helsinki_supercharger_operator_business_details,
-        suboperator=helsinki_supercharger_sub_operator_business_details,
-        owner=helsinki_supercharger_owner_business_details,
-        charging_when_closed=True,
-    )
 
-    helsinki_evse_data = EvseFactory(
+@pytest.fixture
+def helsinki_evse(helsinki_location):
+    return EvseFactory(
         evse_id="FI*ABC*E1234*5668",
         status="RESERVED",
-        location=helsinki,
+        location=helsinki_location,
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         capabilities=["RFID_READER", "RESERVABLE"],
     )
 
-    ConnectorFactory(
+
+@pytest.fixture
+def helsinki_connector(helsinki_evse):
+    return ConnectorFactory(
         uid="CONNECTOR_1",
-        evse=helsinki_evse_data,
+        evse=helsinki_evse,
         standard="IEC_62196_T2",
         format="SOCKET",
         power_type="DC",
@@ -94,52 +93,46 @@ def helsinki_location():
         created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
     )
 
-    return helsinki
+
+@pytest.fixture
+def helsinki_location(
+    helsinki_ocpi_master,
+    helsinki_operator_details,
+    helsinki_sub_operator_details,
+    helsinki_owner_details,
+):
+    return LocationFactory(
+        publish=True,
+        name="Helsinki Supercharger",
+        address="Mannerheimintie 1",
+        city="Helsinki",
+        postal_code="00100",
+        state="Uusimaa",
+        country="FIN",
+        parking_type="ON_STREET",
+        latitude=60.1695,
+        longitude=24.9354,
+        time_zone="Europe/Helsinki",
+        ocpi_master=helsinki_ocpi_master,
+        operator=helsinki_operator_details,
+        suboperator=helsinki_sub_operator_details,
+        owner=helsinki_owner_details,
+        charging_when_closed=True,
+    )
 
 
 @pytest.fixture
-def berlin_emsdetten_location():
-    berlin_supercharger_ocpi_master = CredentialsRoleFactory(
+def berlin_ocpi_master():
+    return CredentialsRoleFactory(
         role="CPO",
         country_code="DE",
         party_id="SMP",
     )
 
-    berlin_location = LocationFactory(
-        name="Berlin Location",
-        address="Ansgarstr. 4",
-        city="Wallenhorst",
-        postal_code="49134",
-        state="",
-        country="DEU",
-        latitude=9.360922,
-        longitude=47.662249,
-        time_zone="Europe/Berlin",
-        ocpi_master=berlin_supercharger_ocpi_master,
-        operator=None,
-        suboperator=None,
-        owner=None,
-        charging_when_closed=True,
-    )
 
-    emsdetten_location = LocationFactory(
-        name="Emsdetten Location",
-        address="Südring 25",
-        city="Emsdetten",
-        postal_code="38170",
-        state="",
-        country="DEU",
-        latitude=9.360922,
-        longitude=47.662249,
-        time_zone="Europe/Berlin",
-        ocpi_master=berlin_supercharger_ocpi_master,
-        operator=None,
-        suboperator=None,
-        owner=None,
-        charging_when_closed=True,
-    )
-
-    berlin_evse_data = EvseFactory.build(
+@pytest.fixture
+def berlin_evse_data(berlin_location):
+    return EvseFactory(
         evse_id="FI*ABC*1234*C0*CT",
         status="",
         location=berlin_location,
@@ -149,17 +142,10 @@ def berlin_emsdetten_location():
         capabilities=None,
     )
 
-    emsdetten_evse_data = EvseFactory.build(
-        evse_id="FI*ABC*1234*C2*CT",
-        status="",
-        location=emsdetten_location,
-        last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-        updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-        created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-        capabilities=None,
-    )
 
-    ConnectorFactory.build(
+@pytest.fixture
+def connector(berlin_evse_data):
+    return ConnectorFactory(
         uid="CONNECTOR_1",
         evse=berlin_evse_data,
         standard="IEC_62196_T2",
@@ -174,9 +160,65 @@ def berlin_emsdetten_location():
         created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
     )
 
-    ConnectorFactory.build(
+
+@pytest.fixture
+def berlin_location(berlin_ocpi_master):
+    return LocationFactory(
+        name="Berlin Location",
+        address="Ansgarstr. 4",
+        city="Wallenhorst",
+        postal_code="49134",
+        state="",
+        country="DEU",
+        latitude=9.360922,
+        longitude=47.662249,
+        time_zone="Europe/Berlin",
+        ocpi_master=berlin_ocpi_master,
+        operator=None,
+        suboperator=None,
+        owner=None,
+        charging_when_closed=True,
+    )
+
+
+@pytest.fixture
+def emsdetten_location(berlin_ocpi_master):
+    return LocationFactory(
+        name="Emsdetten Location",
+        address="Südring 25",
+        city="Emsdetten",
+        postal_code="38170",
+        state="",
+        country="DEU",
+        latitude=9.360922,
+        longitude=47.662249,
+        time_zone="Europe/Berlin",
+        ocpi_master=berlin_ocpi_master,
+        operator=None,
+        suboperator=None,
+        owner=None,
+        charging_when_closed=True,
+    )
+
+
+@pytest.fixture
+def emsdetten_evse(emsdetten_location):
+    return EvseFactory(
+        evse_id="FI*ABC*1234*C2*CT",
+        status="",
+        location=emsdetten_location,
+        last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+        updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+        created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
+        capabilities=None,
+    )
+
+
+@pytest.fixture
+def emsdetten_connector(emsdetten_evse):
+    return ConnectorFactory(
         uid="CONNECTOR_2",
-        evse=emsdetten_evse_data,
+        evse=emsdetten_evse,
         standard="IEC_62196_T2",
         format="",
         power_type="",
@@ -189,29 +231,28 @@ def berlin_emsdetten_location():
         created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
     )
 
-    return [berlin_location, emsdetten_location]
+
+@pytest.fixture
+def emsdetten_op_evse_data(emsdetten_evse):
+    return OperatorEvseDataFactory.build(
+        OperatorID="DE*SMP",
+        OperatorName="Smappee Operator",
+        EvseDataRecord=[emsdetten_evse],
+    )
 
 
 @pytest.fixture
-def berlin_emsdetten_op_evse_data(berlin_emsdetten_evse_data_records):
-    berlin_mock_op_evse_data = OperatorEvseDataFactory.build(
+def berlin_op_evse_data(berlin_evse_data):
+    return OperatorEvseDataFactory.build(
         OperatorID="DE*SMP",
         OperatorName="Smappee Operator",
-        EvseDataRecord=[berlin_emsdetten_evse_data_records[0]],
+        EvseDataRecord=[berlin_evse_data],
     )
-
-    emsdetten_mock_op_evse_data = OperatorEvseDataFactory.build(
-        OperatorID="DE*SMP",
-        OperatorName="Smappee Operator",
-        EvseDataRecord=[berlin_emsdetten_evse_data_records[1]],
-    )
-
-    return [berlin_mock_op_evse_data, emsdetten_mock_op_evse_data]
 
 
 @pytest.fixture
-def berlin_emsdetten_evse_data_records():
-    berlin_evse_data_record = EvseDataRecordFactory.build(
+def berlin_evse_data_record():
+    return EvseDataRecordFactory(
         lastUpdate=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         EvseID="FI*ABC*E1234*C0*CT",
         Address=AddressFactory(
@@ -234,7 +275,10 @@ def berlin_emsdetten_evse_data_records():
         DynamicInfoAvailable="false",
     )
 
-    emsdetten_evse_data_record = EvseDataRecordFactory.build(
+
+@pytest.fixture
+def emsdetten_evse_data_records():
+    return EvseDataRecordFactory(
         lastUpdate=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         EvseID="FI*ABC*E1234*C0*CT",
         Address=AddressFactory(
@@ -260,19 +304,15 @@ def berlin_emsdetten_evse_data_records():
         DynamicInfoAvailable="false",
     )
 
-    return [berlin_evse_data_record, emsdetten_evse_data_record]
-
 
 @pytest.fixture
-def evse_full_load_payload(
-    berlin_emsdetten_evse_data_records, berlin_emsdetten_op_evse_data
-):
+def evse_full_load_payload(berlin_op_evse_data, emsdetten_op_evse_data):
     return ERoamingPushEvseData(
         ActionType=ActionType.fullLoad,
         OperatorEvseData=OperatorEvseData(
-            OperatorID=berlin_emsdetten_op_evse_data[0].OperatorID,
-            OperatorName=berlin_emsdetten_op_evse_data[0].OperatorName,
-            EvseDataRecord=[berlin_emsdetten_evse_data_records[0]],
+            OperatorID=berlin_op_evse_data.OperatorID,
+            OperatorName=berlin_op_evse_data.OperatorName,
+            EvseDataRecord=[berlin_op_evse_data, emsdetten_op_evse_data],
         ),
     )
 
