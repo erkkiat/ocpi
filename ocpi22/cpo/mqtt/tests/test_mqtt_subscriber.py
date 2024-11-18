@@ -10,13 +10,13 @@ from ocpi22.cpo.mqtt.mqtt_subscriber import (
     stop_and_disconnect,
     connect_client,
     on_message,
-    get_topic,
     get_broker_username_password,
     get_broker_and_port,
     configure_client,
     on_connect,
     start_client,
     _subscribe,
+    get_topic,
 )
 
 
