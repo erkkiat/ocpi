@@ -4,47 +4,50 @@ services:
   django-server:
     build:
       context: ../
-    image: solidroam/django-app:latest
+    image: solidroam/django-app:prod-latest
     container_name: django-server
+    environment:
+      DJANGO_COLLECT_STATIC: "true"
+      DJANGO_MIGRATE: "true"
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
     ports:
       - "${DJANGO_PORT:-8000}:8000"
-    command: django-server  # Matches the case in entrypoint.sh
+    command: django-server
     networks:
       - app-network
 
   mqtt-subscriber:
     build:
       context: ../
-    image: solidroam/mqtt-subscriber:latest
+    image: solidroam/mqtt-subscriber:prod-latest
     container_name: mqtt-subscriber
     volumes:
       - mqtt_logs:/var/log/mqtt
-    command: mqtt-subscriber  # Matches the case in entrypoint.sh
+    command: mqtt-subscriber
     networks:
       - app-network
 
   celery-mqtt-tasks:
     build:
       context: ../
-    image: solidroam/celery-mqtt:latest
+    image: solidroam/celery-mqtt:prod-latest
     container_name: celery-mqtt
     volumes:
       - celery_logs:/var/log/celery
-    command: celery-mqtt  # Matches the case in entrypoint.sh
+    command: celery-mqtt
     networks:
       - app-network
 
   celery-django-tasks:
     build:
       context: ../
-    image: solidroam/celery-django:latest
+    image: solidroam/celery-django:prod-latest
     container_name: celery-django
     volumes:
       - celery_logs:/var/log/celery
-    command: celery-django  # Matches the case in entrypoint.sh
+    command: celery-django
     networks:
       - app-network
 
