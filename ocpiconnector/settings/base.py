@@ -377,18 +377,6 @@ MIDDLEWARE = [
 if "MOESIF_APPLICATION_ID" in os.environ:
     MIDDLEWARE.append("moesifdjango.middleware.moesif_middleware")
 
-# Silk settings
-
-SILKY_MAX_REQUEST_BODY_SIZE = -1  # Silk logs request body regardless of size
-SILKY_MAX_RESPONSE_BODY_SIZE = -1  # Silk logs response body regardless of size
-SILKY_META = True  # Silk will log request and response meta
-SILKY_PYTHON_PROFILER = True
-
-# Adjust the number of requests Silk keeps before performing garbage collection
-SILKY_MAX_RECORDED_REQUESTS = 1000
-
-# Disable Silk in production
-
 if EXPIRES_ON:
     MIDDLEWARE.append("ocpi22.middleware.EnabledUntilMiddleware")
 
@@ -425,7 +413,6 @@ INSTALLED_APPS = [
     "gdpr_assist",
     "corsheaders",
     "payment",
-    "silk",  # Todo: Disable silk in production
     "drf_yasg",
     "ninja_jwt",
     "ninja_extra",
