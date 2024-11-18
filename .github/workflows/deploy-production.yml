@@ -1,10 +1,8 @@
 name: Deploy to Production
 
 on:
-  push:
-    branches:
-      - main
-      - release
+  release:
+    types: [published]
 
 jobs:
   lint:
@@ -59,7 +57,7 @@ jobs:
 
     env:
       DOCKER_REGISTRY: solidroam
-      IMAGE_TAG: prod-latest
+      IMAGE_TAG: ${{ github.event.release.tag_name }}
 
     steps:
       - name: Checkout code
