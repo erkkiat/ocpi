@@ -156,7 +156,9 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     # ISO 3166-1 alpha-3 code for the country of this location
     country = models.CharField(
-        max_length=3, choices=generic.countries.COUNTRIES_ISO_3, verbose_name=_("Country")
+        max_length=3,
+        choices=generic.countries.COUNTRIES_ISO_3,
+        verbose_name=_("Country"),
     )
 
     # This class defines the geo location of the Charge Point. The geodetic system to be used is WGS 84.
@@ -582,11 +584,10 @@ class Connector(models.Model, ModelUtilMixin):
 def evse_pre_save(sender, instance: Evse, *_args, raw, **_kwargs):
     if raw:
         return
-    if not instance.evse_id:
-        instance.evse_id = (
-            f"{instance.location.ocpi_master.country_code}*"
-            f"{instance.location.ocpi_master.party_id}*E{instance.uid}"
-        )
+    instance.evse_id = (
+        f"{instance.location.ocpi_master.country_code}*"
+        f"{instance.location.ocpi_master.party_id}*E{instance.uid}"
+    )
 
 
 @receiver(pre_save, sender=Connector)

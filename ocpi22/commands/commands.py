@@ -1,7 +1,7 @@
 import pytz
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
-from icecream import ic
+
 
 import ocpi22.logging as logging
 
@@ -87,7 +87,7 @@ class CommandsViewSet(GenericViewSet):
     def get_serializer_class(self):
         if not hasattr(self, "action_map"):
             return serializers.Serializer
-        # ic(self.action_map['post'])
+
         serializer = dict(
             start_session=StartSessionSerializer,
             stop_session=StopSessionSerializer,
@@ -98,7 +98,6 @@ class CommandsViewSet(GenericViewSet):
         return serializer
 
     def get_view_name(self):
-        # ic(self.kwargs if hasattr(self, 'kwargs') else 'N/A')
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
             return f'Command {self.kwargs.get("uid")}'
         if self.name:
@@ -206,7 +205,7 @@ class CommandsViewSet(GenericViewSet):
                 http_status=status.HTTP_404_NOT_FOUND,
             )
         command_data = command_store[command_id]
-        ic(version, command_data)
+
         if command_data:
             route_dict = command_data.get("route_back")
             print(f"{route_dict=}")
@@ -226,7 +225,7 @@ class CommandsViewSet(GenericViewSet):
                     credentials_id=route.credentials_id,
                     title="the response received from CPO",
                 )
-                ic(response)
+
                 status_code = {
                     200: Ocpi.OK,
                 }.get(
@@ -476,7 +475,6 @@ class CommandsViewSet(GenericViewSet):
     @staticmethod
     @ocpi_exception_handler
     def list(request, *_args, **_kwargs):
-        # ic(request.version)
         return Response(
             dict(
                 start_session=request.build_absolute_uri(
@@ -551,7 +549,9 @@ def send_start_command(
             data=serializer.data,
         )
     else:
-        message = f"Cannot find a route for START_SESSION to {evse.location.party_str()}"
+        message = (
+            f"Cannot find a route for START_SESSION to {evse.location.party_str()}"
+        )
         log_error(request, message)
         raise APIException(message)
 
@@ -644,7 +644,7 @@ def send_stop_command(session: Session) -> Optional[Response]:
             session_id=session.uid,
         )
         serializer = StopSessionSerializer(instance=data)
-        # ic(serializer.data)
+
         return ocpi_post(
             urljoin(f"{route.url}/", "STOP_SESSION"),
             route.token_base64,

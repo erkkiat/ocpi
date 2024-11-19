@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field, RootModel
 
+from ocpi22.choices import OcppStatusChoices
 from ocpi22.routing import Route
 
 
@@ -19,6 +21,27 @@ class MeterValues(BaseModel):
     power: Optional[float] = Field(None, description="The power in kW.")
     timestamp: str = Field(..., description="The timestamp of the meter value.")
 
+
+class EvseStatus(str, Enum):
+    AVAILABLE = OcppStatusChoices.AVAILABLE.value
+    PREPARING = OcppStatusChoices.PREPARING.value
+    CHARGING = OcppStatusChoices.CHARGING.value
+    SUSPENDEDEV = OcppStatusChoices.SUSPENDEDEV.value
+    SUSPENDEDEVSE = OcppStatusChoices.SUSPENDEDEVSE.value
+    FINISHING = OcppStatusChoices.FINISHING.value
+    RESERVED = OcppStatusChoices.RESERVED.value
+    UNAVAILABLE = OcppStatusChoices.UNAVAILABLE.value
+    FAULTED = OcppStatusChoices.FAULTED.value
+
+
+class EvseStatusUpdate(BaseModel):
+    evse_uid: str
+    status: EvseStatus
+
+    class Config:
+        json_encoders = {
+            EvseStatus: lambda v: v.value,  # Convert Enum to its value
+        }
 
 @dataclass
 class CachedSession:

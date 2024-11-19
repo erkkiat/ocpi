@@ -13,18 +13,20 @@ See [ST-33](https://solidroam.agilemaximum.com/item/33/refine/) for Hubject OICP
 
 ```mermaid
 graph TD
-    CPO(CPO customer) -- QuickTariff --> API(Roaming API)
-    API -- QuickTariff --> DB[(Database)]
-    DB -- QuickTariff --> F1(Generic <br/> OCPI Converter)
-    DB -- QuickTariff --> F2(Hubject <br/> OICP Converter)
+    CPO(API consumer) -- SolidTariff --> API(Roaming API)
+    API -- SolidTariff --> DB[(Database)]
+    RN([Various <br/>Roaming Networks]) -- OCPI Tariff --> DB
+    DB -- SolidTariff --> F1(Generic <br/> OCPI Converter)
+    DB -- SolidTariff --> F2(Hubject <br/> OICP Converter)
     F1 -- OCPI Tariff --> CACHE[(Fast <br/> Cache)]
     F2 -- Hubject OICP <br/> PricingProductData --> CACHE
     CACHE -- OCPI Tariff --> G(Gireve)
     CACHE -- PricingProductData --> H(Hubject)
-
+    G -- "OCPI Tariffs<br/>from other<br/>CPOs" -->DB
     style CPO fill:green,stroke:darkgreen,stroke-width:2px
     style G fill:slateblue,stroke:blue,stroke-width:2px,color:black
     style H fill:slateblue,stroke:blue,stroke-width:2px,color:black
+    style RN fill:slateblue,stroke:blue,stroke-width:2px,color:black
 
 ```
 

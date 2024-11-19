@@ -9,7 +9,7 @@ from typing import Union, Iterable
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
-from icecream import ic
+
 from requests import Response
 from rest_framework.test import APIRequestFactory
 
@@ -63,7 +63,6 @@ def compare_lists_recursively(
             expected, received, path=path, label1=label2, label2=label1, swapped=True
         )
     if not result:
-        ic(received, expected)
         print(output)
     return result
 
@@ -73,7 +72,7 @@ def compare_dicts_recursively(received, expected, path="", label="") -> bool:
     Compare the content and structure of two dicts recursively. "***" matches anything.
     When a list is encountered, it is compared using compare_lists_recursively.
     """
-    # ic(path, label, received, expected)
+
     output = ""
     if isinstance(received, (str, bytes, bytearray)):
         return compare_dicts_recursively(
@@ -120,7 +119,6 @@ def compare_dicts_recursively(received, expected, path="", label="") -> bool:
     # if label != 'expected':
     #     result = compare_dicts_recursively(expected, received, path=path, label='expected')
     if not result:
-        ic(received, expected)
         print(output)
     return result
 
@@ -186,8 +184,6 @@ def mocked_object_get(url, *_args, **kwargs):
 
         return result
     except (AssertionError, KeyError):
-        # ic(url, recursive_sort_dict(response_headers), recursive_sort_dict(expected_headers))
-        # ic(recursive_sort_dict(content), recursive_sort_dict(expected_get_responses[url]))
         raise
 
 
@@ -284,7 +280,6 @@ class Simulation:
             elif isinstance(text, str):
                 success = text in args[0]
             if not success:
-                ic(args, kwargs)
                 self.enable_logging_exceptions()  # Avoid loops
                 raise AssertionError(
                     f'Expected "{text}" to be logged as error, but it was "{args[0]}" instead'

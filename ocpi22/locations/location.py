@@ -151,7 +151,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             context={
                 "version": version,
                 "credentials": credentials,
-                "party": credentialsrole.party,
+                "party": credentialsrole.get_party(),
                 "request": request,
                 "credentialsrole": credentialsrole,
             },

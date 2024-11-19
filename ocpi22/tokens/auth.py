@@ -1,9 +1,7 @@
 import pytz
 from django.utils.datetime_safe import datetime
-from django.utils.safestring import mark_safe
 from rest_framework import status
 from rest_framework.utils.serializer_helpers import ReturnDict
-# from silk.profiling.profiler import silk_profile
 
 import ocpi22.logging as logging
 from dataclasses import dataclass, field
@@ -197,7 +195,6 @@ class TokenAuthorization:
         return self.token.get("language", "en") if self.token else "en"
 
 
-# @silk_profile(name='authorize_token')
 def authorize_token(
     token: Union[str, Token], location=None, request=None, max_age=15, rfid=False
 ) -> Optional[TokenAuthorization]:
@@ -215,7 +212,7 @@ def authorize_token(
                     request,
                     f"This Token, **{markdown_escape(str(token))}** has been authorized "
                     f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
-                    f"authorization was cached in the system."
+                    f"authorization was cached in the system.",
                 )
                 if not session.authorization_reference:
                     raise ValueError(
@@ -225,17 +222,23 @@ def authorize_token(
                     allowed="ALLOWED",
                     info=MessageTexts.get("TOKEN_ACCEPTED"),
                     token=AdhocToken(
-                        True, session.billed_to, token, TokenType.AD_HOC_USER, session.billed_to
+                        True,
+                        session.billed_to,
+                        token,
+                        TokenType.AD_HOC_USER,
+                        session.billed_to,
                     ),
                     responding_party=session.billed_to.party_str(),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
-                    ocpi_master=session.billed_to
+                    ocpi_master=session.billed_to,
                 )
 
         # Not AD HOC, so Token should be found from database
-        authorization: TokenAuthorization = _authorize_token(token, location, request=request)
+        authorization: TokenAuthorization = _authorize_token(
+            token, location, request=request
+        )
         if authorization.is_positive and authorization.authorization_reference:
             messages.info(
                 request,
@@ -244,7 +247,7 @@ def authorize_token(
                 "for this specific session. "
                 "It is the way to connect the record in the MSP database to the record in the CPO database. "
                 "After the charging session is finished, the MSP will receive the Charge Detail Record, which "
-                "has an authorization reference matching the one stored by the MSP internally."
+                "has an authorization reference matching the one stored by the MSP internally.",
             )
     if t:
         logging.info(f"Authorization took {t}", request=request)

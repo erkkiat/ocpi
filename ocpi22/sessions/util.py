@@ -1,11 +1,10 @@
 import pytz
 from cachetools import cached, TTLCache
 from django.utils.datetime_safe import datetime
-from icecream import ic
+
 
 import ocpi22.logging as logging
 import os
-from collections import namedtuple
 from typing import Union
 
 from rest_framework import exceptions
@@ -43,7 +42,9 @@ def get_session(
     token: Union[Token, str], statuses=(Session.PENDING, Session.ACTIVE)
 ) -> Session:
     token_id = get_token_id(token)
-    return get_session_by_token_uid(token_id, max_age_minutes=365 * 24 * 60, statuses=statuses)
+    return get_session_by_token_uid(
+        token_id, max_age_minutes=365 * 24 * 60, statuses=statuses
+    )
 
 
 class EvseOccupied(RuntimeError):
@@ -126,7 +127,7 @@ def create_session(
     #     raise EvseOccupied('Cannot start a new session because there is an active charging session '
     #                        f'{active_sessions.first().uid} in progress.')
 
-    assert billed_to and billed_to != '*', "Unable to bill session without billed_to"
+    assert billed_to and billed_to != "*", "Unable to bill session without billed_to"
 
     currency = currency or os.environ.get("CPO_CURRENCY", "EUR")
     if connector and connector.tariff_ids:
@@ -176,11 +177,11 @@ def get_ocpi_token(session_id: str) -> str:
     session = Session.objects.select_related(
         "ocpi_master", "ocpi_master__credentials"
     ).get(uid=session_id)
-    ic(session)
+
     from ocpi22.models.credentials import CredentialsRole
 
     ocpi_master = CredentialsRole.objects.get(pk=session.ocpi_master_id)
-    ic(ocpi_master)
+
     return (
         ocpi_master.credentials.ours
         if getattr(ocpi_master, "credentials", None)
