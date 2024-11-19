@@ -1,5 +1,5 @@
 import random
-import uuid
+import time
 
 import factory
 import pytz
@@ -28,8 +28,8 @@ from integrations.hubject.schemas import (
     Accessibility,
 )
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.credentials import CredentialsRole, Credentials
+from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff
 
 
@@ -92,17 +92,13 @@ class LocationFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(BusinessDetailsFactory)
     charging_when_closed = factory.Faker("boolean")
     parking_type = "ON_STREET"
-    evses = factory.RelatedFactoryList(
-        "ocpi22.tests.factories.EvseFactory", "location", size=1
-    )
 
 
 class EvseFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Evse
 
-    uid = str(uuid.uuid4()).replace("-", "")[:16]
-    evse_id = "FI*ABC*E1234*5678"
+    uid = f"{int(time.time())}"
     status = "RESERVED"
     location = factory.SubFactory(LocationFactory)
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytest
 import pytz
@@ -14,10 +14,6 @@ from integrations.hubject.schemas import (
     ValueAddedService,
     PowerType,
     PaymentOption,
-    Accessibility,
-    AccessibilityLocation,
-    CalibrationLawDataAvailability,
-    DynamicInfoAvailable,
 )
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -82,8 +78,6 @@ def helsinki_owner_details():
 @pytest.fixture
 def helsinki_evse(helsinki_connector):
     helsinki_evse = EvseFactory(
-        uid="helsinkievseuid",
-        evse_id="FI*ABC*E1234*5668",
         status="RESERVED",
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
@@ -138,7 +132,7 @@ def helsinki_location(
         charging_when_closed=True,
     )
 
-    helsinki_location.evses.set([helsinki_evse])
+    helsinki_location.evses.add(helsinki_evse)
     return helsinki_location
 
 
@@ -163,7 +157,7 @@ def emsdetten_ocpi_master(smappee_business_details):
 
 
 @pytest.fixture
-def berlin_evse_data(berlin_location, berlin_connector):
+def berlin_evse_data(berlin_connector):
     berlin_evse_data = EvseFactory(
         uid="berlinevseuid",
         evse_id="FI*ABC*1234*C0*CT",
@@ -178,7 +172,7 @@ def berlin_evse_data(berlin_location, berlin_connector):
 
 
 @pytest.fixture
-def berlin_connector(berlin_evse_data):
+def berlin_connector():
     return ConnectorFactory(
         uid="CONNECTOR_1",
         standard="IEC_62196_T2",
@@ -235,10 +229,11 @@ def emsdetten_location(emsdetten_ocpi_master, emsdetten_evse):
         charging_when_closed=True,
     )
     emsdetten_location.evses.set([emsdetten_evse])
+    return emsdetten_location
 
 
 @pytest.fixture
-def emsdetten_evse(emsdetten_location, emsdetten_connector):
+def emsdetten_evse(emsdetten_connector):
     emsdetten_evse = EvseFactory(
         uid="Eemsdettenevseuid",
         evse_id="FI*ABC*1234*C2*CT",
@@ -253,7 +248,7 @@ def emsdetten_evse(emsdetten_location, emsdetten_connector):
 
 
 @pytest.fixture
-def emsdetten_connector(emsdetten_evse):
+def emsdetten_connector():
     return ConnectorFactory(
         uid="CONNECTOR_2",
         standard="IEC_62196_T2",
@@ -272,7 +267,7 @@ def emsdetten_connector(emsdetten_evse):
 @pytest.fixture
 def emsdetten_op_evse_data(emsdetten_evse_data_record):
     return OperatorEvseDataFactory.build(
-        OperatorID="DE*SMP",
+        OperatorID="DE*EMP",
         OperatorName="Smappee Pvt Ltd",
         EvseDataRecord=[emsdetten_evse_data_record],
     )
@@ -441,178 +436,4 @@ def hubject_unsuccessful_response():
                 "errorMessage": "must not be empty",
             }
         ],
-    }
-
-
-@pytest.fixture
-def expected_helsinki_eroaming_push_evse_data():
-    return {
-        "ActionType": ActionType.insert,
-        "OperatorEvseData": {
-            "OperatorID": "DE*SMP",
-            "OperatorName": "Smappee Pvt Ltd",
-            "EvseDataRecord": [
-                {
-                    "Accessibility": Accessibility.Free_publicly_accessible,
-                    "AccessibilityLocation": AccessibilityLocation.OnStreet,
-                    "AdditionalInfo": None,
-                    "Address": {
-                        "City": "Helsinki",
-                        "Country": "FIN",
-                        "Floor": None,
-                        "HouseNum": "1",
-                        "ParkingFacility": True,
-                        "ParkingSpot": None,
-                        "PostalCode": "00100",
-                        "Region": None,
-                        "Street": "Mannerheimintie",
-                        "TimeZone": "UTC+02:00",
-                    },
-                    "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
-                    "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
-                    "ChargingFacilities": [
-                        {
-                            "Amperage": 16,
-                            "ChargingModes": None,
-                            "Power": 37,
-                            "PowerType": PowerType.DC,
-                            "Voltage": 230,
-                        }
-                    ],
-                    "ChargingPoolID": None,
-                    "ChargingStationId": None,
-                    "ChargingStationImage": None,
-                    "ChargingStationLocationReference": None,
-                    "ChargingStationNames": [
-                        {"lang": "en", "value": "Helsinki Supercharger"}
-                    ],
-                    "ClearinghouseID": None,
-                    "DynamicInfoAvailable": DynamicInfoAvailable.false,
-                    "DynamicPowerLevel": None,
-                    "EnergySource": None,
-                    "EnvironmentalImpact": None,
-                    "EvseID": "DE*SMP*Ehelsinkievseuid",
-                    "GeoChargingPointEntrance": {
-                        "DecimalDegree": {
-                            "Latitude": "60.169500",
-                            "Longitude": "24.935400",
-                        },
-                        "DegreeMinuteSeconds": None,
-                        "Google": None,
-                    },
-                    "GeoCoordinates": {
-                        "DecimalDegree": {
-                            "Latitude": "60.169500",
-                            "Longitude": "24.935400",
-                        },
-                        "DegreeMinuteSeconds": None,
-                        "Google": None,
-                    },
-                    "HardwareManufacturer": None,
-                    "HotlinePhoneNumber": "+3256380211",
-                    "HubOperatorID": None,
-                    "IsHubjectCompatible": False,
-                    "IsOpen24Hours": True,
-                    "MaxCapacity": None,
-                    "OpeningTimes": None,
-                    "PaymentOptions": [PaymentOption.Contract],
-                    "Plugs": [Plug.Type_2_Outlet],
-                    "RenewableEnergy": False,
-                    "SubOperatorName": None,
-                    "ValueAddedServices": [ValueAddedService.Reservation],
-                    "deltaType": None,
-                    "lastUpdate": datetime(
-                        2024, 9, 22, 17, 32, 8, 599540, tzinfo=timezone.utc
-                    ),
-                }
-            ],
-        },
-    }
-
-
-@pytest.fixture
-def expected_berlin_eroaming_push_evse_data():
-    return {
-        "ActionType": ActionType.insert,
-        "OperatorEvseData": {
-            "OperatorID": "DE*SMP",
-            "OperatorName": "Smappee Pvt Ltd",
-            "EvseDataRecord": [
-                {
-                    "Accessibility": Accessibility.Free_publicly_accessible,
-                    "AccessibilityLocation": None,
-                    "AdditionalInfo": None,
-                    "Address": {
-                        "City": "Wallenhorst",
-                        "Country": "DEU",
-                        "Floor": None,
-                        "HouseNum": "4",
-                        "ParkingFacility": False,
-                        "ParkingSpot": None,
-                        "PostalCode": "",
-                        "Region": None,
-                        "Street": "Ansgarstr.",
-                        "TimeZone": "UTC+01:00",
-                    },
-                    "AuthenticationModes": [
-                        AuthenticationMode.No_Authentication_Required
-                    ],
-                    "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
-                    "ChargingFacilities": [
-                        {
-                            "Amperage": 16,
-                            "ChargingModes": None,
-                            "Power": 12,
-                            "PowerType": PowerType.AC_3_PHASE,
-                            "Voltage": 0,
-                        }
-                    ],
-                    "ChargingPoolID": None,
-                    "ChargingStationId": None,
-                    "ChargingStationImage": None,
-                    "ChargingStationLocationReference": None,
-                    "ChargingStationNames": [
-                        {"lang": "en", "value": "Berlin Location"}
-                    ],
-                    "ClearinghouseID": None,
-                    "DynamicInfoAvailable": DynamicInfoAvailable.false,
-                    "DynamicPowerLevel": None,
-                    "EnergySource": None,
-                    "EnvironmentalImpact": None,
-                    "EvseID": "DE*SMP*Eberlinevseuid",
-                    "GeoChargingPointEntrance": {
-                        "DecimalDegree": {
-                            "Latitude": "0.000000",
-                            "Longitude": "0.000000",
-                        },
-                        "DegreeMinuteSeconds": None,
-                        "Google": None,
-                    },
-                    "GeoCoordinates": {
-                        "DecimalDegree": {
-                            "Latitude": "0.000000",
-                            "Longitude": "0.000000",
-                        },
-                        "DegreeMinuteSeconds": None,
-                        "Google": None,
-                    },
-                    "HardwareManufacturer": None,
-                    "HotlinePhoneNumber": "+3256380211",
-                    "HubOperatorID": None,
-                    "IsHubjectCompatible": False,
-                    "IsOpen24Hours": True,
-                    "MaxCapacity": None,
-                    "OpeningTimes": None,
-                    "PaymentOptions": [PaymentOption.Contract],
-                    "Plugs": [Plug.Type_2_Outlet],
-                    "RenewableEnergy": False,
-                    "SubOperatorName": None,
-                    "ValueAddedServices": [ValueAddedService.None_],
-                    "deltaType": None,
-                    "lastUpdate": pytz.utc.localize(
-                        datetime(2024, 9, 22, 17, 32, 8, 599540)
-                    ),
-                }
-            ],
-        },
     }
