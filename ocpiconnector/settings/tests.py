@@ -10,6 +10,6 @@ SEND_DATA_TO_ANALYTICS = (
     True  # This is not needed, will refactor after the settings refactor
 )
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgres://ocpi:ocpiocpi@localhost:5432/test_db"
+    "DATABASE_URL", "postgres://test_user:test_password@localhost:5432/test_db"
 )
 SECRET_KEY="BESTONEEVER"

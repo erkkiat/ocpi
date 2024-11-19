@@ -30,6 +30,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: lint
+    services:
+      postgres:
+        image: postgres:13
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd "pg_isready -U test_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
 
     steps:
       - name: Checkout code
@@ -40,7 +56,7 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Load Environment Variables from .env
+      - name: Load Environment Variables from test.env
         run: |
           if [ -f test.env ]; then
             export $(cat test.env | xargs)
