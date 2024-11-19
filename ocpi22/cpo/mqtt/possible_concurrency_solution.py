@@ -44,7 +44,7 @@ async def handle_item(a):
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=payload) as response:
                     status = response.status
-                    response_text = await response.text()
+                    await response.text()
                     print(f"Sent data to {url}, status: {status}")
                     # Optionally process the response_text
         except Exception as e:
