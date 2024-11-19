@@ -57,7 +57,6 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Allow more than 1000 fields in POST req
 TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get("SECRET_KEY")
-assert SECRET_KEY, "Please set a SECRET_KEY in environment"
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT")
 TWILIO_API_KEY = os.environ.get("TWILIO_API_KEY")
 
@@ -173,38 +172,6 @@ if "postgres" in DATABASE_URL:
             "PORT": url.port,
         }
     }
-# else:
-#     env = environ.Env()
-#     environ.Env.read_env()
-#
-#     DATABASES = {
-#         'default': env.db('JAWSDB_URL')
-#     }
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "dj_db_conn_pool.backends.postgresql",
-#         'NAME': f'ocpi{PORT}',
-#         'USER': 'ocpi',
-#         'PASSWORD': 'ocpiocpi',
-#         'HOST': 'localhost',  # Use the service name
-#         'PORT': '5432',
-#         'POOL_OPTIONS': {
-#             'POOL_SIZE': 100,
-#             'MAX_OVERFLOW': 1000,
-#             'RECYCLE': 24 * 60 * 60,
-#             'TIMEOUT': 30,
-#         },
-#     }
-# }
-
-# # Add a new database to log GDPR actions
-# DATABASES.update({
-#     'gdpr_log': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'gdpr-log.sqlite3'),
-#     },
-# })
 
 DATABASES.update({"gdpr_log": DATABASES.get("default")})
 
