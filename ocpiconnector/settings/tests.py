@@ -10,3 +10,4 @@ SEND_DATA_TO_ANALYTICS = (
 DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgres://ocpi:ocpiocpi@localhost:5432/test_db"
 )
+SECRET_KEY="BESTONEEVER"
