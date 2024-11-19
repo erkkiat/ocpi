@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 import pytz
@@ -9,6 +9,15 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
+    InfoTextType,
+    DecimalDegree,
+    ValueAddedService,
+    PowerType,
+    PaymentOption,
+    Accessibility,
+    AccessibilityLocation,
+    CalibrationLawDataAvailability,
+    DynamicInfoAvailable,
 )
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -19,20 +28,27 @@ from ocpi22.tests.factories import (
     EvseDataRecordFactory,
     AddressFactory,
     OperatorEvseDataFactory,
+    GeoCoordinatesFactory,
+    ChargingFacilityFactory,
 )
 
 
 @pytest.fixture
-def helsinki_ocpi_master():
+def smappee_business_details():
+    return BusinessDetailsFactory(
+        name="Smappee Pvt Ltd",
+        website="https://www.helsinki-supercharger.com",
+        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+    )
+
+
+@pytest.fixture
+def helsinki_ocpi_master(smappee_business_details):
     return CredentialsRoleFactory(
         role="CPO",
         country_code="DE",
         party_id="SMP",
-        business_details=BusinessDetailsFactory(
-            name="Smappee Pvt Ltd",
-            website="https://www.helsinki-supercharger.com",
-            logo="https://www.helsinki-supercharger.com/static/test_logo.png",
-        ),
+        business_details=smappee_business_details,
     )
 
 
@@ -64,29 +80,30 @@ def helsinki_owner_details():
 
 
 @pytest.fixture
-def helsinki_evse(helsinki_location):
-    return EvseFactory(
+def helsinki_evse(helsinki_connector):
+    helsinki_evse = EvseFactory(
+        uid="helsinkievseuid",
         evse_id="FI*ABC*E1234*5668",
         status="RESERVED",
-        location=helsinki_location,
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         capabilities=["RFID_READER", "RESERVABLE"],
     )
+    helsinki_evse.connectors.set([helsinki_connector])
+    return helsinki_evse
 
 
 @pytest.fixture
-def helsinki_connector(helsinki_evse):
+def helsinki_connector():
     return ConnectorFactory(
         uid="CONNECTOR_1",
-        evse=helsinki_evse,
         standard="IEC_62196_T2",
         format="SOCKET",
         power_type="DC",
         max_voltage=230,
         max_amperage=16,
-        max_electric_power=37,
+        max_electric_power=37000,
         terms_and_conditions="https://www.helsinki-supercharger.com/terms-and-conditions",
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
@@ -100,8 +117,9 @@ def helsinki_location(
     helsinki_operator_details,
     helsinki_sub_operator_details,
     helsinki_owner_details,
+    helsinki_evse,
 ):
-    return LocationFactory(
+    helsinki_location = LocationFactory(
         publish=True,
         name="Helsinki Supercharger",
         address="Mannerheimintie 1",
@@ -120,40 +138,55 @@ def helsinki_location(
         charging_when_closed=True,
     )
 
+    helsinki_location.evses.set([helsinki_evse])
+    return helsinki_location
+
 
 @pytest.fixture
-def berlin_ocpi_master():
+def berlin_ocpi_master(smappee_business_details):
     return CredentialsRoleFactory(
         role="CPO",
         country_code="DE",
         party_id="SMP",
+        business_details=smappee_business_details,
     )
 
 
 @pytest.fixture
-def berlin_evse_data(berlin_location):
-    return EvseFactory(
+def emsdetten_ocpi_master(smappee_business_details):
+    return CredentialsRoleFactory(
+        role="CPO",
+        country_code="DE",
+        party_id="EMP",
+        business_details=smappee_business_details,
+    )
+
+
+@pytest.fixture
+def berlin_evse_data(berlin_location, berlin_connector):
+    berlin_evse_data = EvseFactory(
+        uid="berlinevseuid",
         evse_id="FI*ABC*1234*C0*CT",
         status="",
-        location=berlin_location,
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         capabilities=None,
     )
+    berlin_evse_data.connectors.set([berlin_connector])
+    return berlin_evse_data
 
 
 @pytest.fixture
-def connector(berlin_evse_data):
+def berlin_connector(berlin_evse_data):
     return ConnectorFactory(
         uid="CONNECTOR_1",
-        evse=berlin_evse_data,
         standard="IEC_62196_T2",
         format="",
         power_type="",
         max_voltage=-100,
         max_amperage=16,
-        max_electric_power=1400,
+        max_electric_power=12000,
         terms_and_conditions="https://www.berlin-supercharger.com/terms-and-conditions",
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
@@ -162,16 +195,16 @@ def connector(berlin_evse_data):
 
 
 @pytest.fixture
-def berlin_location(berlin_ocpi_master):
-    return LocationFactory(
+def berlin_location(berlin_ocpi_master, berlin_evse_data):
+    berlin_location = LocationFactory(
         name="Berlin Location",
         address="Ansgarstr. 4",
         city="Wallenhorst",
-        postal_code="49134",
+        postal_code="",
         state="",
         country="DEU",
-        latitude=9.360922,
-        longitude=47.662249,
+        latitude=0,
+        longitude=0,
         time_zone="Europe/Berlin",
         ocpi_master=berlin_ocpi_master,
         operator=None,
@@ -179,11 +212,13 @@ def berlin_location(berlin_ocpi_master):
         owner=None,
         charging_when_closed=True,
     )
+    berlin_location.evses.set([berlin_evse_data])
+    return berlin_location
 
 
 @pytest.fixture
-def emsdetten_location(berlin_ocpi_master):
-    return LocationFactory(
+def emsdetten_location(emsdetten_ocpi_master, emsdetten_evse):
+    emsdetten_location = LocationFactory(
         name="Emsdetten Location",
         address="Südring 25",
         city="Emsdetten",
@@ -193,32 +228,34 @@ def emsdetten_location(berlin_ocpi_master):
         latitude=9.360922,
         longitude=47.662249,
         time_zone="Europe/Berlin",
-        ocpi_master=berlin_ocpi_master,
+        ocpi_master=emsdetten_ocpi_master,
         operator=None,
         suboperator=None,
         owner=None,
         charging_when_closed=True,
     )
+    emsdetten_location.evses.set([emsdetten_evse])
 
 
 @pytest.fixture
-def emsdetten_evse(emsdetten_location):
-    return EvseFactory(
+def emsdetten_evse(emsdetten_location, emsdetten_connector):
+    emsdetten_evse = EvseFactory(
+        uid="Eemsdettenevseuid",
         evse_id="FI*ABC*1234*C2*CT",
         status="",
-        location=emsdetten_location,
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         capabilities=None,
     )
+    emsdetten_evse.connectors.set([emsdetten_connector])
+    return emsdetten_evse
 
 
 @pytest.fixture
 def emsdetten_connector(emsdetten_evse):
     return ConnectorFactory(
         uid="CONNECTOR_2",
-        evse=emsdetten_evse,
         standard="IEC_62196_T2",
         format="",
         power_type="",
@@ -233,54 +270,91 @@ def emsdetten_connector(emsdetten_evse):
 
 
 @pytest.fixture
-def emsdetten_op_evse_data(emsdetten_evse):
+def emsdetten_op_evse_data(emsdetten_evse_data_record):
     return OperatorEvseDataFactory.build(
         OperatorID="DE*SMP",
-        OperatorName="Smappee Operator",
-        EvseDataRecord=[emsdetten_evse],
+        OperatorName="Smappee Pvt Ltd",
+        EvseDataRecord=[emsdetten_evse_data_record],
     )
 
 
 @pytest.fixture
-def berlin_op_evse_data(berlin_evse_data):
+def berlin_op_evse_data(berlin_evse_data_record):
     return OperatorEvseDataFactory.build(
         OperatorID="DE*SMP",
-        OperatorName="Smappee Operator",
-        EvseDataRecord=[berlin_evse_data],
+        OperatorName="Smappee Pvt Ltd",
+        EvseDataRecord=[berlin_evse_data_record],
     )
 
 
 @pytest.fixture
 def berlin_evse_data_record():
-    return EvseDataRecordFactory(
-        lastUpdate=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-        EvseID="FI*ABC*E1234*C0*CT",
+    return EvseDataRecordFactory.build(
+        deltaType=None,
+        lastUpdate=datetime(2024, 9, 22, 17, 32, 8, 599540, tzinfo=pytz.UTC),
+        EvseID="DE*SMP*Eberlinevseuid",
         Address=AddressFactory(
             Country="DEU",
             City="Wallenhorst",
-            Street="Evolis",
-            PostalCode="49134",
+            Street="Ansgarstr.",
+            PostalCode="",
             HouseNum="4",
-            ParkingFacility=True,
             TimeZone="UTC+01:00",
+            Floor=None,
+            Region=None,
+            ParkingSpot=None,
+            ParkingFacility=False,
         ),
+        GeoChargingPointEntrance=GeoCoordinatesFactory(
+            Google=None,
+            DegreeMinuteSeconds=None,
+            DecimalDegree=DecimalDegree(Longitude="0.000000", Latitude="0.000000"),
+        ),
+        GeoCoordinates=GeoCoordinatesFactory(
+            Google=None,
+            DegreeMinuteSeconds=None,
+            DecimalDegree=DecimalDegree(Longitude="0.000000", Latitude="0.000000"),
+        ),
+        ChargingStationNames=[InfoTextType(lang="en", value="Berlin Location")],
         Plugs=[Plug.Type_2_Outlet],
         CalibrationLawDataAvailability="Local",
-        AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
-        PaymentOptions=["Direct"],
-        ValueAddedServices=["Reservation"],
-        AccessibilityLocation="OnStreet",
+        AuthenticationModes=[AuthenticationMode.No_Authentication_Required],
+        PaymentOptions=[PaymentOption.Contract],
+        ValueAddedServices=[ValueAddedService.None_],
+        ChargingStationId=None,
+        HardwareManufacturer=None,
+        ChargingStationImage=None,
+        ChargingFacilities=[
+            ChargingFacilityFactory(
+                PowerType=PowerType.AC_3_PHASE,
+                Voltage=0,
+                Amperage=16,
+                Power=12,
+                ChargingModes=None,
+            )
+        ],
+        MaxCapacity=None,
+        ClearinghouseID=None,
+        EnergySource=None,
+        SubOperatorName=None,
+        AccessibilityLocation=None,
         HotlinePhoneNumber="+3256380211",
+        AdditionalInfo=None,
+        ChargingStationLocationReference=None,
+        OpeningTimes=None,
         IsHubjectCompatible=False,
         DynamicInfoAvailable="false",
+        DynamicPowerLevel=None,
+        RenewableEnergy=False,
     )
 
 
 @pytest.fixture
-def emsdetten_evse_data_records():
-    return EvseDataRecordFactory(
-        lastUpdate=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
-        EvseID="FI*ABC*E1234*C0*CT",
+def emsdetten_evse_data_record():
+    return EvseDataRecordFactory.build(
+        deltaType=None,
+        lastUpdate=datetime(2024, 9, 22, 17, 32, 8, 599540, tzinfo=pytz.UTC),
+        EvseID="DE*SMP*Eemsdettenevseuid",
         Address=AddressFactory(
             Country="DEU",
             City="Harelbeke",
@@ -289,30 +363,55 @@ def emsdetten_evse_data_records():
             HouseNum="25",
             Floor="1",
             Region="Flanders",
-            ParkingFacility=True,
-            ParkingSpot="Parking Spot1",
+            ParkingFacility=False,
+            ParkingSpot=None,
             TimeZone="UTC+01:00",
+        ),
+        ChargingStationId=None,
+        AccessibilityLocation=None,
+        ClearinghouseID=None,
+        ChargingStationNames=[InfoTextType(lang="en", value="Berlin Location")],
+        HardwareManufacturer=None,
+        ChargingStationImage=None,
+        SubOperatorName=None,
+        GeoChargingPointEntrance=GeoCoordinatesFactory(
+            Google=None,
+            DegreeMinuteSeconds=None,
+            DecimalDegree=DecimalDegree(Longitude="0.000000", Latitude="0.000000"),
+        ),
+        GeoCoordinates=GeoCoordinatesFactory(
+            Google=None,
+            DegreeMinuteSeconds=None,
+            DecimalDegree=DecimalDegree(Longitude="0.000000", Latitude="0.000000"),
         ),
         Plugs=[Plug.Type_2_Outlet],
         CalibrationLawDataAvailability="Local",
-        AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
-        PaymentOptions=["Direct"],
-        ValueAddedServices=["Reservation"],
-        AccessibilityLocation="OnStreet",
+        AuthenticationModes=[AuthenticationMode.No_Authentication_Required],
+        MaxCapacity=None,
+        DynamicPowerLevel=None,
+        PaymentOptions=[PaymentOption.Contract],
+        ValueAddedServices=[ValueAddedService.None_],
         HotlinePhoneNumber="+3256380211",
         IsHubjectCompatible=False,
+        RenewableEnergy=False,
+        EnergySource=None,
         DynamicInfoAvailable="false",
+        OpeningTimes=None,
+        AdditionalInfo=None,
+        ChargingStationLocationReference=None,
     )
 
 
 @pytest.fixture
-def evse_full_load_payload(berlin_op_evse_data, emsdetten_op_evse_data):
+def evse_full_load_payload(
+    berlin_op_evse_data, berlin_evse_data_record, emsdetten_evse_data_record
+):
     return ERoamingPushEvseData(
         ActionType=ActionType.fullLoad,
         OperatorEvseData=OperatorEvseData(
             OperatorID=berlin_op_evse_data.OperatorID,
             OperatorName=berlin_op_evse_data.OperatorName,
-            EvseDataRecord=[berlin_op_evse_data, emsdetten_op_evse_data],
+            EvseDataRecord=[berlin_evse_data_record, emsdetten_evse_data_record],
         ),
     )
 
@@ -342,4 +441,178 @@ def hubject_unsuccessful_response():
                 "errorMessage": "must not be empty",
             }
         ],
+    }
+
+
+@pytest.fixture
+def expected_helsinki_eroaming_push_evse_data():
+    return {
+        "ActionType": ActionType.insert,
+        "OperatorEvseData": {
+            "OperatorID": "DE*SMP",
+            "OperatorName": "Smappee Pvt Ltd",
+            "EvseDataRecord": [
+                {
+                    "Accessibility": Accessibility.Free_publicly_accessible,
+                    "AccessibilityLocation": AccessibilityLocation.OnStreet,
+                    "AdditionalInfo": None,
+                    "Address": {
+                        "City": "Helsinki",
+                        "Country": "FIN",
+                        "Floor": None,
+                        "HouseNum": "1",
+                        "ParkingFacility": True,
+                        "ParkingSpot": None,
+                        "PostalCode": "00100",
+                        "Region": None,
+                        "Street": "Mannerheimintie",
+                        "TimeZone": "UTC+02:00",
+                    },
+                    "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
+                    "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
+                    "ChargingFacilities": [
+                        {
+                            "Amperage": 16,
+                            "ChargingModes": None,
+                            "Power": 37,
+                            "PowerType": PowerType.DC,
+                            "Voltage": 230,
+                        }
+                    ],
+                    "ChargingPoolID": None,
+                    "ChargingStationId": None,
+                    "ChargingStationImage": None,
+                    "ChargingStationLocationReference": None,
+                    "ChargingStationNames": [
+                        {"lang": "en", "value": "Helsinki Supercharger"}
+                    ],
+                    "ClearinghouseID": None,
+                    "DynamicInfoAvailable": DynamicInfoAvailable.false,
+                    "DynamicPowerLevel": None,
+                    "EnergySource": None,
+                    "EnvironmentalImpact": None,
+                    "EvseID": "DE*SMP*Ehelsinkievseuid",
+                    "GeoChargingPointEntrance": {
+                        "DecimalDegree": {
+                            "Latitude": "60.169500",
+                            "Longitude": "24.935400",
+                        },
+                        "DegreeMinuteSeconds": None,
+                        "Google": None,
+                    },
+                    "GeoCoordinates": {
+                        "DecimalDegree": {
+                            "Latitude": "60.169500",
+                            "Longitude": "24.935400",
+                        },
+                        "DegreeMinuteSeconds": None,
+                        "Google": None,
+                    },
+                    "HardwareManufacturer": None,
+                    "HotlinePhoneNumber": "+3256380211",
+                    "HubOperatorID": None,
+                    "IsHubjectCompatible": False,
+                    "IsOpen24Hours": True,
+                    "MaxCapacity": None,
+                    "OpeningTimes": None,
+                    "PaymentOptions": [PaymentOption.Contract],
+                    "Plugs": [Plug.Type_2_Outlet],
+                    "RenewableEnergy": False,
+                    "SubOperatorName": None,
+                    "ValueAddedServices": [ValueAddedService.Reservation],
+                    "deltaType": None,
+                    "lastUpdate": datetime(
+                        2024, 9, 22, 17, 32, 8, 599540, tzinfo=timezone.utc
+                    ),
+                }
+            ],
+        },
+    }
+
+
+@pytest.fixture
+def expected_berlin_eroaming_push_evse_data():
+    return {
+        "ActionType": ActionType.insert,
+        "OperatorEvseData": {
+            "OperatorID": "DE*SMP",
+            "OperatorName": "Smappee Pvt Ltd",
+            "EvseDataRecord": [
+                {
+                    "Accessibility": Accessibility.Free_publicly_accessible,
+                    "AccessibilityLocation": None,
+                    "AdditionalInfo": None,
+                    "Address": {
+                        "City": "Wallenhorst",
+                        "Country": "DEU",
+                        "Floor": None,
+                        "HouseNum": "4",
+                        "ParkingFacility": False,
+                        "ParkingSpot": None,
+                        "PostalCode": "",
+                        "Region": None,
+                        "Street": "Ansgarstr.",
+                        "TimeZone": "UTC+01:00",
+                    },
+                    "AuthenticationModes": [
+                        AuthenticationMode.No_Authentication_Required
+                    ],
+                    "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
+                    "ChargingFacilities": [
+                        {
+                            "Amperage": 16,
+                            "ChargingModes": None,
+                            "Power": 12,
+                            "PowerType": PowerType.AC_3_PHASE,
+                            "Voltage": 0,
+                        }
+                    ],
+                    "ChargingPoolID": None,
+                    "ChargingStationId": None,
+                    "ChargingStationImage": None,
+                    "ChargingStationLocationReference": None,
+                    "ChargingStationNames": [
+                        {"lang": "en", "value": "Berlin Location"}
+                    ],
+                    "ClearinghouseID": None,
+                    "DynamicInfoAvailable": DynamicInfoAvailable.false,
+                    "DynamicPowerLevel": None,
+                    "EnergySource": None,
+                    "EnvironmentalImpact": None,
+                    "EvseID": "DE*SMP*Eberlinevseuid",
+                    "GeoChargingPointEntrance": {
+                        "DecimalDegree": {
+                            "Latitude": "0.000000",
+                            "Longitude": "0.000000",
+                        },
+                        "DegreeMinuteSeconds": None,
+                        "Google": None,
+                    },
+                    "GeoCoordinates": {
+                        "DecimalDegree": {
+                            "Latitude": "0.000000",
+                            "Longitude": "0.000000",
+                        },
+                        "DegreeMinuteSeconds": None,
+                        "Google": None,
+                    },
+                    "HardwareManufacturer": None,
+                    "HotlinePhoneNumber": "+3256380211",
+                    "HubOperatorID": None,
+                    "IsHubjectCompatible": False,
+                    "IsOpen24Hours": True,
+                    "MaxCapacity": None,
+                    "OpeningTimes": None,
+                    "PaymentOptions": [PaymentOption.Contract],
+                    "Plugs": [Plug.Type_2_Outlet],
+                    "RenewableEnergy": False,
+                    "SubOperatorName": None,
+                    "ValueAddedServices": [ValueAddedService.None_],
+                    "deltaType": None,
+                    "lastUpdate": pytz.utc.localize(
+                        datetime(2024, 9, 22, 17, 32, 8, 599540)
+                    ),
+                }
+            ],
+        },
     }

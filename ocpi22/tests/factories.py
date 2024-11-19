@@ -1,4 +1,5 @@
 import random
+import uuid
 
 import factory
 import pytz
@@ -92,7 +93,7 @@ class LocationFactory(factory.django.DjangoModelFactory):
     charging_when_closed = factory.Faker("boolean")
     parking_type = "ON_STREET"
     evses = factory.RelatedFactoryList(
-        "ocpi22.tests.factories.EvseFactory", "location", size=3
+        "ocpi22.tests.factories.EvseFactory", "location", size=1
     )
 
 
@@ -100,7 +101,7 @@ class EvseFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Evse
 
-    uid = factory.Faker("uuid4")
+    uid = str(uuid.uuid4()).replace("-", "")[:16]
     evse_id = "FI*ABC*E1234*5678"
     status = "RESERVED"
     location = factory.SubFactory(LocationFactory)
