@@ -40,6 +40,12 @@ jobs:
         with:
           python-version: 3.11
 
+      - name: Load Environment Variables from .env
+        run: |
+          if [ -f test.env ]; then
+            export $(cat test.env | xargs)
+          fi
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
