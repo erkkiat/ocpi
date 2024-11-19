@@ -5,7 +5,7 @@ import pytest
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 
-from ocpi22.cpo.mqtt import mqtt_subscriber
+from ocpi22.cpo.mqtt import mqtt_subscriber, services
 from ocpi22.cpo.mqtt.mqtt_subscriber import (
     stop_and_disconnect,
     connect_client,
@@ -41,8 +41,8 @@ class TestMqttSubscriber:
     def test_on_message_calls_process_status_update_data(
         self, smappee_status_update_message, db
     ):
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.process_status_update_data"
+        with patch.object(
+            services, "process_status_update_data"
         ) as mock_process_status_update_data:
             on_message(None, None, smappee_status_update_message)
             mock_process_status_update_data.assert_called_once_with(
@@ -50,8 +50,8 @@ class TestMqttSubscriber:
             )
 
     def test_on_message_calls_process_meter_values(self, smappee_meter_message):
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.process_meter_values_data"
+        with patch.object(
+            services, "process_meter_values_data"
         ) as mock_process_meter_values:
             on_message(None, None, smappee_meter_message)
             mock_process_meter_values.assert_called_once_with(smappee_meter_message)
