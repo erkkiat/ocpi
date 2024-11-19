@@ -172,38 +172,6 @@ if "postgres" in DATABASE_URL:
             "PORT": url.port,
         }
     }
-# else:
-#     env = environ.Env()
-#     environ.Env.read_env()
-#
-#     DATABASES = {
-#         'default': env.db('JAWSDB_URL')
-#     }
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "dj_db_conn_pool.backends.postgresql",
-#         'NAME': f'ocpi{PORT}',
-#         'USER': 'ocpi',
-#         'PASSWORD': 'ocpiocpi',
-#         'HOST': 'localhost',  # Use the service name
-#         'PORT': '5432',
-#         'POOL_OPTIONS': {
-#             'POOL_SIZE': 100,
-#             'MAX_OVERFLOW': 1000,
-#             'RECYCLE': 24 * 60 * 60,
-#             'TIMEOUT': 30,
-#         },
-#     }
-# }
-
-# # Add a new database to log GDPR actions
-# DATABASES.update({
-#     'gdpr_log': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'gdpr-log.sqlite3'),
-#     },
-# })
 
 DATABASES.update({"gdpr_log": DATABASES.get("default")})
 
