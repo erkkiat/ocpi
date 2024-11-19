@@ -58,7 +58,6 @@ TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get("SECRET_KEY")
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT")
-TWILIO_API_KEY = os.environ.get("TWILIO_API_KEY")
 
 # Find a Redis, since Heroku Redis services use different environment variables
 REDIS_KEYS = ["STACKHERO_REDIS_URL_TLS", "REDIS_URL", "REDISCLOUD_URL"]
