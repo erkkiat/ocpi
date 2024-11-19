@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Ensure necessary directories exist
+mkdir -p /app/static /app/media
+
 # Check the first argument passed to the container
 case "$1" in
     django-server)
