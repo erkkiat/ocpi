@@ -2,10 +2,13 @@ import logging
 import os
 import sys
 import uuid
+from logging import getLogger
 
 import django
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
+
+logger = getLogger("__name__")
 
 
 def _load_envs():
@@ -34,9 +37,6 @@ from ocpi22.cpo.mqtt.services import (  # noqa
     process_meter_values_data,  # noqa
     process_status_update_data,  # noqa
 )  # noqa
-
-logger = logging.getLogger(__name__)
-
 
 def _subscribe(client, topic):
     result, mid = client.subscribe(topic)
