@@ -7,6 +7,11 @@ import django
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
+from ocpi22.cpo.mqtt.services import (  # noqa
+    process_meter_values_data,  # noqa
+    process_status_update_data,  # noqa
+)  # noqa
+
 logger = logging.getLogger(__name__)
 
 
@@ -127,11 +132,6 @@ def stop_and_disconnect(client):
 if __name__ == "__main__":
     setup_django()
     from ocpiconnector.settings.base import env_bool  # noqa
-    from ocpi22.cpo.mqtt.services import (  # noqa
-        process_meter_values_data,  # noqa
-        process_status_update_data,  # noqa
-    )  # noqa
-
     loop_forever = env_bool("MQTT_LOOP_FOREVER")
     mqtt_client = connect_client()
     start_client(mqtt_client, loop_forever)
