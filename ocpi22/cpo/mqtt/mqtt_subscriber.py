@@ -7,19 +7,16 @@ import django
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
-from ocpi22.cpo.mqtt.services import (  # noqa
-    process_meter_values_data,  # noqa
-    process_status_update_data,  # noqa
-)  # noqa
-
-logger = logging.getLogger(__name__)
-
 
 def _load_envs():
-    current_directory = os.getcwd()
-    env_path = os.path.join(current_directory, ".env")
-    load_dotenv(env_path)
-
+    environment = os.getenv("ENV")
+    if environment in ["test", "development"]:
+        current_directory = os.getcwd()
+        env_path = os.path.join(current_directory, "test.env")
+        load_dotenv(env_path)
+        logger.info("Loaded test.env from root")
+    else:
+        logger.info("Skipping dotenv for production and staging")
 
 def setup_django():
     _load_envs()
@@ -30,6 +27,15 @@ def setup_django():
     # Set the Django settings module
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
     django.setup()
+
+setup_django()
+
+from ocpi22.cpo.mqtt.services import (  # noqa
+    process_meter_values_data,  # noqa
+    process_status_update_data,  # noqa
+)  # noqa
+
+logger = logging.getLogger(__name__)
 
 
 def _subscribe(client, topic):
@@ -130,7 +136,6 @@ def stop_and_disconnect(client):
 
 
 if __name__ == "__main__":
-    setup_django()
     from ocpiconnector.settings.base import env_bool  # noqa
     loop_forever = env_bool("MQTT_LOOP_FOREVER")
     mqtt_client = connect_client()
