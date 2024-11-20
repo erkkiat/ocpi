@@ -1,7 +1,8 @@
 import os
-from unittest.mock import MagicMock
 
+import orjson
 import pytest
+from paho.mqtt.client import MQTTMessage
 
 from ocpi22.tests.factories import LocationFactory, EvseFactory
 
@@ -32,8 +33,8 @@ def evse(location_hki, db):
 
 @pytest.fixture
 def smappee_status_update_message(evse, smappee_status_topic):
-    message = MagicMock()
-    message.topic = smappee_status_topic
+    message = MQTTMessage()
+    message.topic = smappee_status_topic.encode("utf-8")
     message.payload = f'{{"evse_uid":"{evse.uid}", "status":"AVAILABLE"}}'.encode(
         "utf-8"
     )
@@ -42,7 +43,18 @@ def smappee_status_update_message(evse, smappee_status_topic):
 
 @pytest.fixture
 def smappee_meter_message(smappee_meter_topic):
-    message = MagicMock()
-    message.topic = smappee_meter_topic
-    message.payload = b'{"session_id": "94f5993d-232a-4916-a801-4e408c24c9cc", "internal_reference": "657c4d2d-cbac-4950-b252-2c71695e83a1", "kwh": 1.1, "soc": 1.1, "power": 2.2, "timestamp": "2022-02-22T22:22:22"}'
+    message = MQTTMessage()
+    message.topic = smappee_meter_topic.encode("utf-8")
+    message.payload = orjson.dumps(
+        {
+            "session_id": "94f5993d-232a-4916-a801-4e408c24c9cc",
+            "internal_reference": "657c4d2d-cbac-4950-b252-2c71695e83a1",
+            "kwh": 1.1,
+            "soc": 1.1,
+            "power": 2.2,
+            "timestamp": "2022-02-22T22:22:22",
+        }
+    )
+    message.qos = 1
+    message.retain = False
     return message
