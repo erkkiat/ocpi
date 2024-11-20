@@ -1477,7 +1477,7 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
     if raw:
         return
     try:
-        if not settings.ENV == "test": # A bit hacky but doing it for the deployment fix
+        if settings.ENV != "test":
             cdr_serializer = CdrSerializer(instance)
             send_to_webhook(
                 serialized_data=cdr_serializer.data,
