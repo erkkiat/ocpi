@@ -36,6 +36,7 @@ services:
     container_name: celery-mqtt
     environment:
       WORKER_NAME: "celery-mqtt-worker"
+      CELERY_QUEUE_NAME: "${CELERY_MQTT_QUEUE_NAME}"
     volumes:
       - celery_logs:/var/log/celery
     command: celery-mqtt
@@ -49,6 +50,7 @@ services:
     container_name: celery-django
     environment:
       WORKER_NAME: "celery-django-worker"
+      CELERY_QUEUE_NAME: "${CELERY_DJANGO_QUEUE_NAME}"
     volumes:
       - celery_logs:/var/log/celery
     command: celery-django
