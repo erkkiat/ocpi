@@ -9,7 +9,7 @@ ENV PYTHONPATH=/app:/app/ocpiconnector
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     pkg-config \
@@ -27,34 +27,33 @@ COPY . .
 # Precompile Python files
 RUN python -m compileall .
 
+# Ensure the scripts are executable
+RUN chmod +x ./fetch_secrets.sh ./entrypoint.sh
+
 # Stage 2: Final Image
 FROM python:3.9-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app:/app/ocpiconnector
-ENV PYTHONOPTIMIZE=1  # Enable Python optimization (-O)
+ENV PYTHONOPTIMIZE=1
 
 # Set the working directory
 WORKDIR /app
 
 # Install runtime-only system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only compiled files from the build stage
+# Copy compiled Python files and necessary runtime files from the build stage
 COPY --from=build /app/__pycache__/ ./__pycache__/
 COPY --from=build /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
-
-# Copy non-Python files required for runtime
 COPY --from=build /app/static ./static/
 COPY --from=build /app/templates ./templates/
+COPY --from=build /app/fetch_secrets.sh ./fetch_secrets.sh
 COPY --from=build /app/entrypoint.sh ./entrypoint.sh
-
-# Ensure the entrypoint script is executable
-RUN chmod +x ./entrypoint.sh
 
 # Expose the application port
 EXPOSE 8080
