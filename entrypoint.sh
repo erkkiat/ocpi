@@ -4,7 +4,8 @@ set -e
 # Ensure necessary directories exist
 mkdir -p /app/static /app/media
 
-# Check the first argument passed to the container
+WORKER_HOSTNAME="${WORKER_NAME}@%h"
+
 case "$1" in
     django-server)
         echo "Starting Django server..."
@@ -15,12 +16,12 @@ case "$1" in
         exec python ocpiconnector/cpo/mqtt/mqtt_subscriber.py
         ;;
     celery-mqtt)
-        echo "Starting Celery worker for MQTT tasks..."
-        exec celery -A ocpiconnector.cpo.mqtt.tasks worker --loglevel=info
+        echo "Starting Celery worker for MQTT tasks with hostname: $WORKER_HOSTNAME"
+        exec celery -A ocpiconnector.cpo.mqtt.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME
         ;;
     celery-django)
-        echo "Starting Celery worker for Django tasks..."
-        exec celery -A ocpiconnector worker --loglevel=info
+        echo "Starting Celery worker for Django tasks with hostname: $WORKER_HOSTNAME"
+        exec celery -A ocpiconnector worker --loglevel=info --hostname=$WORKER_HOSTNAME
         ;;
     *)
         echo "Unknown service: $1"

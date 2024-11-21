@@ -34,6 +34,8 @@ services:
       context: ../
     image: solidroam/celery-mqtt:prod-latest
     container_name: celery-mqtt
+    environment:
+      WORKER_NAME: "celery-mqtt-worker"
     volumes:
       - celery_logs:/var/log/celery
     command: celery-mqtt
@@ -45,6 +47,8 @@ services:
       context: ../
     image: solidroam/celery-django:prod-latest
     container_name: celery-django
+    environment:
+      WORKER_NAME: "celery-django-worker"
     volumes:
       - celery_logs:/var/log/celery
     command: celery-django
