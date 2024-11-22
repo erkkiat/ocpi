@@ -7,6 +7,7 @@ services:
     image: solidroam/django-app:prod-latest
     container_name: django-server
     environment:
+      ENV: production
       AWS_SECRET_ID: "django-server-secrets"
       DJANGO_COLLECT_STATIC: "true"
       DJANGO_MIGRATE: "true"
@@ -25,6 +26,7 @@ services:
     image: solidroam/mqtt-subscriber:prod-latest
     container_name: mqtt-subscriber
     environment:
+      ENV: production
       AWS_SECRET_ID: "mqtt-subscriber-secrets"
     volumes:
       - mqtt_logs:/var/log/mqtt
@@ -38,6 +40,7 @@ services:
     image: solidroam/celery-mqtt:prod-latest
     container_name: celery-mqtt
     environment:
+      ENV: production
       AWS_SECRET_ID: "mqtt-celery-secrets"
       WORKER_NAME: "celery-mqtt-worker"
     volumes:
@@ -52,31 +55,12 @@ services:
     image: solidroam/celery-django:prod-latest
     container_name: celery-django
     environment:
+      ENV: production
       WORKER_NAME: "celery-django-worker"
       AWS_SECRET_ID: "django-celery-secrets"
     volumes:
       - celery_logs:/var/log/celery
     command: ["celery-django"]
-    networks:
-      - app-network
-
-  redis:
-    image: redis:latest
-    container_name: redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - app-network
-
-  db:
-    image: postgres:latest
-    container_name: ocpi-postgres
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - app-network
 
