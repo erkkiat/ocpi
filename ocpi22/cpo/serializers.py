@@ -643,10 +643,14 @@ class CPOAuthorizationResponseSerializer(serializers.Serializer):
     allowed = serializers.ChoiceField(choices=AuthorizationEnum.choices)
     token = serializers.SerializerMethodField()
     authorization_reference = serializers.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        help_text="The unique reference of the authorization, provided by the eMSP"
     )
     responding_party = serializers.CharField(max_length=5)
-    billed_to = serializers.CharField(max_length=5)
+    billed_to = serializers.CharField(
+        max_length=5,
+        help_text="The identifier of the eMSP that is responsible for paying for the session"
+    )
     auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
     session_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 

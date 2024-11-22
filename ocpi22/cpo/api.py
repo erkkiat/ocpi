@@ -68,13 +68,13 @@ from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.tariff import TariffElement
-from ocpi22.util import command_store
+from ocpi22.util import command_store, clear_empty
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.serializers import CdrSerializer, InvoicingCallbackSerializer
-from ocpi22.ocpi.util import generate_session_uid, options_message
+from ocpi22.ocpi.util import options_message
 from ocpi22.sessions.util import create_session, EvseOccupied
 from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import (
@@ -84,6 +84,7 @@ from ocpi22.tokens.auth import (
 )
 from ocpi22.tokens.util import get_token_id
 from ocpi22.logging import log_error
+from ocpi22.util import MyMetadata
 
 from pprint import PrettyPrinter
 
@@ -471,6 +472,7 @@ class ChargePointViewSet(FlowchartViewSet):
     )  # Todo: A CPO instance can have locations from other partners as well
     lookup_field = "uid"
     permission_classes = [IsAdminUser]
+    metadata = MyMetadata()
 
     flowchart = dict(
         steps=(
@@ -501,6 +503,24 @@ class ChargePointViewSet(FlowchartViewSet):
         process="status_change-->authorize-->start_transaction-->meter_values-->stop_transaction-->status_change2;\n"
         "meter_values-->meter_values;\n",
     )
+
+    return_values = dict(
+        authorize=dict(post=CPOAuthorizationResponseSerializer),
+        start_transaction=dict(post=CpoSessionSerializer),
+        meter_values=dict(post=CpoSessionSerializer),
+        stop_transaction=dict(post=CpoSessionSerializer),
+    )
+
+    def get_extra_metadata(self, _request) -> dict:
+        return clear_empty(dict(return_value={
+                http_method.upper():
+                    self.metadata.get_serializer_info(
+                        self.metadata.ensure_serializer_instance(
+                            self.return_values.get(method_name, {}).get(http_method)
+                        )
+                    )
+            for http_method, method_name in getattr(self, "action_map", {}).items()
+        }))
 
     def get_serializer_class(self):
         return dict(
@@ -804,12 +824,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         instance=session,
                         context={"version": request.version, "request": request},
                     )
-                    return Response(
-                        dict(
-                            status_text="Session started",
-                            session=session_serializer.data,
-                        )
-                    )
+                    return Response(session_serializer.data)
                 else:
                     messages.error(
                         request,
@@ -988,12 +1003,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         instance=session,
                         context={"version": request.version, "request": request},
                     )
-                    return Response(
-                        dict(
-                            status_text="Session finished",
-                            session=session_serializer.data,
-                        )
-                    )
+                    return Response(session_serializer.data)
                 else:
                     return Response(
                         data=serializer.errors, status=status.HTTP_400_BAD_REQUEST
