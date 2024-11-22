@@ -293,8 +293,8 @@ class InternalReferenceSerializer(fields.CharField):
 
 
 class OcppStatusSerializer(fields.ChoiceField):
-    def __init__(self):
-        super().__init__(OcppStatusChoices.choices)
+    def __init__(self, **kwargs):
+        super().__init__(choices=OcppStatusChoices.choices, **kwargs)
 
     def to_internal_value(self, data):
         result = {
@@ -320,7 +320,15 @@ class StatusChangeSerializer(serializers.Serializer):
         source="evse",
         help_text="The identifier of the device which provides electricity to one or more connectors",
     )
-    status = OcppStatusSerializer()
+    status = OcppStatusSerializer(
+        help_text="The new status of the EVSE, as defined in the OCPP specification"
+    )
+    timestamp = UTCDateTimeField(
+        required=False,
+        help_text="Optional timestamp for the status change. Using this field is highly recommended, so that "
+                  "disruptions in connectivity won't distort status change history. "
+                  "This will ensure correct billing for the sessions.",
+    )
 
 
 class AuthorizationSerializer(serializers.Serializer):

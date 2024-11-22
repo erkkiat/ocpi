@@ -541,6 +541,9 @@ class ChargePointViewSet(FlowchartViewSet):
             if request.method == "POST":
                 serializer = StatusChangeSerializer(data=request.data)
                 if serializer.is_valid():
+
+                    # Todo: Store the status change in the database for converting to ChargingPeriods
+
                     ocpp_status = serializer.initial_data.get("status")
                     ocpi_status = serializer.validated_data.get("status")
                     evse: Evse = serializer.validated_data.get("evse")

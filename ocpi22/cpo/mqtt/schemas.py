@@ -37,6 +37,7 @@ class EvseStatus(str, Enum):
 class EvseStatusUpdate(BaseModel):
     evse_uid: str
     status: EvseStatus
+    timestamp: Optional[str] = Field(None, description="The optional, but recommended timestamp of the status change.")
 
     class Config:
         json_encoders = {
