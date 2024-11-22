@@ -15,7 +15,7 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
     ports:
-      - "${DJANGO_PORT:-8000}:8000"
+      - "8000:8000"
     command: django-server  # Matches the keyword in entrypoint.sh
     networks:
       - app-network
@@ -24,8 +24,6 @@ services:
     build:
       context: ../  # Points to the project root
     container_name: mqtt-subscriber
-    env_file:
-      - ../.env  # Load .env from the root directory
     volumes:
       - ../:/app  # Mount the root project directory for live reloading
     command: mqtt-subscriber  # Matches the keyword in entrypoint.sh
@@ -36,8 +34,6 @@ services:
     build:
       context: ../  # Points to the project root
     container_name: celery-mqtt
-    env_file:
-      - ../.env  # Load .env from the root directory
     volumes:
       - ../:/app  # Mount the root project directory for live reloading
       - celery_logs:/var/log/celery
@@ -49,8 +45,6 @@ services:
     build:
       context: ../  # Points to the project root
     container_name: celery-django
-    env_file:
-      - ../.env  # Load .env from the root directory
     volumes:
       - ../:/app  # Mount the root project directory for live reloading
       - celery_logs:/var/log/celery
@@ -64,7 +58,7 @@ services:
     env_file:
       - ../.env  # Load .env from the root directory
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -74,11 +68,10 @@ services:
     image: postgres:latest
     container_name: ocpi-postgres
     env_file:
-      - ../.env  # Load .env from the root directory
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "5433:5432"
     networks:
       - app-network
 
