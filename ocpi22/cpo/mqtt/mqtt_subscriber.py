@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import uuid
 from logging import getLogger
 
@@ -20,6 +21,7 @@ def _load_envs():
     else:
         logger.info("Skipping dotenv for production and staging")
 
+
 def setup_django():
     _load_envs()
     sys.path.append(
@@ -30,12 +32,14 @@ def setup_django():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
     django.setup()
 
+
 setup_django()
 
 from ocpi22.cpo.mqtt.services import (  # noqa
     process_meter_values_data,  # noqa
     process_status_update_data,  # noqa
 )  # noqa
+
 
 def _subscribe(client, topic):
     result, mid = client.subscribe(topic)
@@ -113,12 +117,29 @@ def configure_client(client_id):
     return client
 
 
-def connect_client():
+def connect_client(retries=5, delay=5):
     client_id = f"ROAMING_{uuid.uuid4()}"
     client = configure_client(client_id)
     broker_url, port = get_broker_and_port()
-    client.connect(broker_url, port)
-    return client
+
+    for attempt in range(retries):
+        try:
+            logger.info(
+                f"Attempting to connect to MQTT broker (attempt {attempt + 1}/{retries})..."
+            )
+            client.connect(broker_url, port)
+            logger.info("Connected successfully to the MQTT broker.")
+            return client
+        except Exception as e:
+            logger.error(f"Connection attempt {attempt + 1} failed: {e}")
+            if attempt < retries - 1:
+                logger.info(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                logger.error("Max retries reached. Giving up.")
+                raise ConnectionError(
+                    "Failed to connect to MQTT broker after retries."
+                ) from e
 
 
 def start_client(client, loop_forever=True):
@@ -136,6 +157,7 @@ def stop_and_disconnect(client):
 
 if __name__ == "__main__":
     from ocpiconnector.settings.base import env_bool  # noqa
+
     loop_forever = env_bool("MQTT_LOOP_FOREVER")
     mqtt_client = connect_client()
     start_client(mqtt_client, loop_forever)
