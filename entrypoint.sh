@@ -3,15 +3,31 @@ set -e
 
 WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
-# Fetch secrets
-if [ -x ./fetch_secrets.sh ]; then
-    echo "Fetching secrets for service: $1"
-    ./fetch_secrets.sh "$1"
+# Load environment variables for local development
+if [[ "$ENV" == "development" ]]; then
+    ENV_FILE="$1.env" # Use entrypoint-specific .env files for development e.g django-server.env, make sure we have those env files in local
+    if [[ -f "$ENV_FILE" ]]; then
+        echo "Loading environment variables from $ENV_FILE..."
+        export $(grep -v '^#' "$ENV_FILE" | xargs)
+    else
+        echo "Warning: $ENV_FILE not found. Ensure the correct environment file exists."
+    fi
 else
-    echo "Error: fetch_secrets.sh not found or not executable."
-    exit 1
+    echo "Skipping entrypoint-specific .env file loading in ENV=$ENV."
 fi
 
+# Fetch secrets only for staging and production
+if [[ "$ENV" == "staging" || "$ENV" == "production" ]]; then
+    if [ -x ./fetch_secrets.sh ]; then
+        echo "Fetching secrets for service: $1"
+        ./fetch_secrets.sh "$1"
+    else
+        echo "Error: fetch_secrets.sh not found or not executable."
+        exit 1
+    fi
+fi
+
+# Main service startup logic
 case "$1" in
     django-server)
         echo "Starting Django server with secrets..."
