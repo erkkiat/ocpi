@@ -1424,7 +1424,6 @@ class StopTransactionResponses:
             "total_energy": 35.0,
             "total_time": 1.000,
         },
-        "internal_reference": "MY-INTERNAL-REFERENCE",
         "kwh_total": Decimal("35.000"),
         "session": {
             "detail_url": "http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1",
@@ -1435,7 +1434,6 @@ class StopTransactionResponses:
             "currency": "EUR",
             "end_date_time": "2022-01-01T13:00:00Z",
             "evse_uid": "HELSINKI-3",
-            "internal_reference": "MY-INTERNAL-REFERENCE",
             "location_id": "HELSINKI-1",
             "session_id": "FI*CPO*S*MOCK-1",
             "start_date_time": "2022-01-01T12:00:00Z",
@@ -1539,7 +1537,6 @@ class StopTransactionResponses:
             "total_energy": 123.45,
             "total_time": 0.0,
         },
-        "internal_reference": "MY-INTERNAL-REFERENCE-2",
         "kwh_total": Decimal("123.450"),
         "session": {
             "auth_method": "COMMAND",
@@ -1549,7 +1546,6 @@ class StopTransactionResponses:
             "currency": "EUR",
             "end_date_time": "2022-01-01T12:00:00Z",
             "evse_uid": "HELSINKI-3",
-            "internal_reference": "MY-INTERNAL-REFERENCE-2",
             "location_id": "HELSINKI-1",
             "session_id": "FI*CPO*S*MOCK-1",
             "start_date_time": "2022-01-01T12:00:00Z",
@@ -1692,7 +1688,6 @@ class StopTransactionResponses:
                     ]
                 ),
             ),
-            ("internal_reference", "MY-INTERNAL-REFERENCE-2"),
             ("kwh_total", Decimal("123.450")),
             (
                 "session",
@@ -1709,7 +1704,6 @@ class StopTransactionResponses:
                         ),
                         ("end_date_time", "2022-01-01T12:23:00Z"),
                         ("evse_uid", "HELSINKI-3"),
-                        ("internal_reference", "MY-INTERNAL-REFERENCE-2"),
                         ("last_updated", "2022-01-01T12:23:00Z"),
                         ("location_id", "HELSINKI-1"),
                         ("session_id", "FI*CPO*S*MOCK-1"),
@@ -1908,7 +1902,6 @@ class RfidTestData:
             "connector_id": "1",
             "currency": "EUR",
             "evse_uid": "HELSINKI-3",
-            "internal_reference": "MY-INTERNAL-REFERENCE",
             "location_id": "HELSINKI-1",
             "session_id": "FI*CPO*S*MOCK-1",
             "start_date_time": "2022-01-01T12:00:00Z",
@@ -2509,7 +2502,6 @@ class AdhocTokenData:
             "location_id": "HELSINKI-1",
             "connector_id": "1",
             "session_id": "FI*CPO*S*MOCK-1",
-            "internal_reference": "MY-INTERNAL-REFERENCE-2",
             "start_date_time": "2022-01-01T12:00:00Z",
             "start_kwh": 0.0,
             "stop_kwh": 0.0,

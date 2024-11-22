@@ -48,7 +48,6 @@ def smappee_meter_message(smappee_meter_topic):
     message.payload = orjson.dumps(
         {
             "session_id": "94f5993d-232a-4916-a801-4e408c24c9cc",
-            "internal_reference": "657c4d2d-cbac-4950-b252-2c71695e83a1",
             "kwh": 1.1,
             "soc": 1.1,
             "power": 2.2,

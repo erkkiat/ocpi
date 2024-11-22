@@ -15,7 +15,6 @@ class Uid(RootModel):
 
 class MeterValues(BaseModel):
     session_id: Optional[str] = Field(..., max_length=36, description="The unique identifier of the session.")
-    internal_reference: Optional[str] = Field(None, description="Optional internal reference for the Session.")
     kwh: float = Field(..., description="The metered energy in kWh.")
     soc: Optional[float] = Field(None, description="The state of charge in percentage.")
     power: Optional[float] = Field(None, description="The power in kW.")

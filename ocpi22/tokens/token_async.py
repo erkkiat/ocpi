@@ -8,7 +8,7 @@ import asyncio
 from asgiref.sync import sync_to_async
 
 from ocpi22 import logging
-from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, AuthorizationEnum
+from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, AuthorizationEnum, EndpointRoleEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.location import Location
@@ -79,6 +79,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
     result = None
+    pending = []
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
     # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
@@ -158,7 +159,9 @@ def authorize_with_msps_sync(
 
     if not parties:
         parties = find_endpoints_by_roles(
-            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS
+            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
+            OcpiModuleEnum.TOKENS,
+            sender_or_receiver=EndpointRoleEnum.SENDER.value
         )
 
     data = (

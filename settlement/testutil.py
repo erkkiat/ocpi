@@ -127,7 +127,6 @@ def create_cdr(
         billed_to=msp,
         uid=f"CDR-{number}",
         session_id=f"SESSION-{number}",
-        internal_reference=f"REFERENCE-{number}",
         cdr_token_uid="TOKEN1",
         cdr_token_type=TokenType.RFID,
         cdr_token_contract_id="12345",

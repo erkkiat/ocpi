@@ -816,7 +816,9 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
         )
         created = bool(not session)
         if created and partial:
-            return OCPIResponse("Unknown Session UID, unable to PATCH.")
+            return OCPIResponse(status_message="Unknown Session UID, unable to PATCH.",
+                                http_status=status.HTTP_404_NOT_FOUND,
+                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
 
         # Todo: If PATCH fails, we have missed the Session PUT, so we need to fetch the full Session from CPO
         # Todo: Fetch Location if missing
