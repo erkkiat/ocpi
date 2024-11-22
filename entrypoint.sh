@@ -1,11 +1,11 @@
 #!/bin/bash
-set -e
+set -e  # Exit immediately if a command exits with a non-zero status
 
 WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
 # Load environment variables for local development
 if [[ "$ENV" == "development" ]]; then
-    ENV_FILE="$1.env" # Use entrypoint-specific .env files for development e.g django-server.env, make sure we have those env files in local
+    ENV_FILE="$1.env" # Use entrypoint-specific .env files for development (e.g., django-server.env)
     if [[ -f "$ENV_FILE" ]]; then
         echo "Loading environment variables from $ENV_FILE..."
         export $(grep -v '^#' "$ENV_FILE" | xargs)
@@ -30,20 +30,29 @@ fi
 # Main service startup logic
 case "$1" in
     django-server)
-        echo "Starting Django server with secrets..."
-        exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8080 --reload --timeout 120
+        echo "Running collectstatic..."
+        python manage.py collectstatic --noinput
+
+        # Apply migrations only in development or staging environments
+        if [[ "$ENV" == "development" ]]; then
+            echo "Applying database migrations for $ENV environment..."
+            python manage.py migrate --noinput
+        fi
+
+        echo "Starting Django server..."
+        exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --reload --timeout 120
         ;;
     celery-django)
         echo "Starting Celery worker for Django tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
-        exec celery -A ocpiconnector worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
+        exec celery -A ocpi22.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
         ;;
     mqtt-subscriber)
-        echo "Starting MQTT subscriber with secrets..."
-        exec python ocpiconnector/cpo/mqtt/mqtt_subscriber.py
+        echo "Starting MQTT subscriber..."
+        exec python ocpi22/cpo/mqtt/mqtt_subscriber.py
         ;;
     celery-mqtt)
         echo "Starting Celery worker for MQTT tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
-        exec celery -A ocpiconnector.cpo.mqtt.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
+        exec celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
         ;;
     *)
         echo "Unknown service: $1"
