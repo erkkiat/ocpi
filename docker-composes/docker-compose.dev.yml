@@ -3,59 +3,79 @@ version: "3.9"
 services:
   django-server:
     build:
-      context: ../  # Points to the project root
+      context: ../
     container_name: django-server
     environment:
       DJANGO_COLLECT_STATIC: "true"
       DJANGO_MIGRATE: "true"
       ENV: development
     volumes:
-      - ../:/app  # Mount the root project directory for live reloading
+      - ../:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
     ports:
       - "8000:8000"
-    command: django-server  # Matches the keyword in entrypoint.sh
+    command: django-server
     networks:
-      - app-network
+      - backend-network
+      - db-network
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   mqtt-subscriber:
     build:
-      context: ../  # Points to the project root
+      context: ../
     container_name: mqtt-subscriber
     environment:
       ENV: development
     volumes:
-      - ../:/app  # Mount the root project directory for live reloading
-    command: mqtt-subscriber  # Matches the keyword in entrypoint.sh
+      - ../:/app
+    command: mqtt-subscriber
     networks:
-      - app-network
+      - backend-network
+      - db-network
+    depends_on:
+      - emqx
+      - db
 
   celery-mqtt-tasks:
     build:
-      context: ../  # Points to the project root
+      context: ../
     container_name: celery-mqtt
     environment:
       ENV: development
     volumes:
-      - ../:/app  # Mount the root project directory for live reloading
+      - ../:/app
       - celery_logs:/var/log/celery
-    command: celery-mqtt  # Matches the keyword in entrypoint.sh
+    command: celery-mqtt
     networks:
-      - app-network
+      - backend-network
+      - db-network
+    depends_on:
+      - redis
+      - db
 
   celery-django-tasks:
     build:
-      context: ../  # Points to the project root
+      context: ../
     container_name: celery-django
     environment:
       ENV: development
+      CELERY_QUEUE_NAME: django_tasks
+      WORKER_HOSTNAME: django_worker
     volumes:
-      - ../:/app  # Mount the root project directory for live reloading
+      - ../:/app
       - celery_logs:/var/log/celery
-    command: celery-django  # Matches the keyword in entrypoint.sh
+    command: celery-django
     networks:
-      - app-network
+      - backend-network
+      - db-network
+    depends_on:
+      - redis
+      - db
 
   redis:
     image: redis:latest
@@ -65,7 +85,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - app-network
+      - backend-network
 
   db:
     image: postgres:latest
@@ -73,13 +93,20 @@ services:
     environment:
       POSTGRES_USER: ocpi
       POSTGRES_PASSWORD: ocpiocpi
-      POSTGRES_DB: ocpi8000
+      POSTGRES_DB: ocpi
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ../init.sql:/docker-entrypoint-initdb.d/init.sql  # Adjusted path
     ports:
-      - "5433:5432"
+      - "5432:5432"
     networks:
-      - app-network
+      - db-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ocpi" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 
   emqx:
     image: emqx/emqx:latest
@@ -96,6 +123,8 @@ services:
     volumes:
       - emqx_data:/opt/emqx/data
       - emqx_log:/opt/emqx/log
+    networks:
+      - backend-network
 
 volumes:
   static_volume:
@@ -107,4 +136,7 @@ volumes:
   emqx_log:
 
 networks:
-  app-network:
+  backend-network:
+    driver: bridge
+  db-network:
+    driver: bridge
