@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy Production Build to Staging and Production
 
 on:
   release:
@@ -78,46 +78,66 @@ jobs:
     needs: test
 
     env:
-      DOCKER_REGISTRY: solidroam
       IMAGE_TAG: ${{ github.event.release.tag_name }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Log in to Docker Hub
-        run: |
-          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Build and Push Images
+      - name: Build and Push Production Images
         run: |
-          docker build -t $DOCKER_REGISTRY/django-app:$IMAGE_TAG -f ./ocpiconnector/Dockerfile ./ocpiconnector/
-          docker push $DOCKER_REGISTRY/django-app:$IMAGE_TAG
-          docker build -t $DOCKER_REGISTRY/mqtt-subscriber:$IMAGE_TAG -f ./ocpiconnector/Dockerfile ./ocpiconnector/
-          docker push $DOCKER_REGISTRY/mqtt-subscriber:$IMAGE_TAG
-          docker build -t $DOCKER_REGISTRY/celery-mqtt:$IMAGE_TAG -f ./ocpiconnector/Dockerfile ./ocpiconnector/
-          docker push $DOCKER_REGISTRY/celery-mqtt:$IMAGE_TAG
-          docker build -t $DOCKER_REGISTRY/celery-django:$IMAGE_TAG -f ./ocpiconnector/Dockerfile ./ocpiconnector/
-          docker push $DOCKER_REGISTRY/celery-django:$IMAGE_TAG
+          ECR_REPO_URL=${{ steps.login-ecr.outputs.registry }}
+          for service in django-app mqtt-subscriber celery-mqtt celery-django; do
+            docker build -t $ECR_REPO_URL/$service:${IMAGE_TAG} -f ./ocpiconnector/Dockerfile ./ocpiconnector/
+            docker push $ECR_REPO_URL/$service:${IMAGE_TAG}
+          done
 
-  deploy:
+  deploy-staging:
     runs-on: ubuntu-latest
     needs: build-and-push
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Deploy to Staging EC2 Instance
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets '[{"Key":"InstanceIds","Values":["${{ secrets.STAGING_INSTANCE_ID }}"]}]' \
+            --parameters '{"commands":["
+              export ECR_REPO_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+              export IMAGE_TAG=${{ github.event.release.tag_name }}
+              cd /path/to/docker-composes
+              docker-compose -f docker-compose-staging.yml pull
+              docker-compose -f docker-compose-staging.yml run django-server python manage.py migrate --noinput
+              docker-compose -f docker-compose-staging.yml up -d
+              docker system prune -f
+            "]}' \
+            --region ${{ secrets.AWS_REGION }}
 
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+
+    steps:
       - name: Deploy to Production EC2 Instance
-        uses: appleboy/ssh-action@v0.1.5
-        with:
-          host: ${{ secrets.SERVER_PROD_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            cd ocpiconnector/docker-composes
-            docker-compose -f docker-compose-prod.yml pull
-            docker-compose -f docker-compose-prod.yml run django-server python manage.py migrate --noinput
-            docker-compose -f docker-compose-prod.yml up -d
-            docker system prune -f
+        run: |
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets '[{"Key":"InstanceIds","Values":["${{ secrets.PRODUCTION_INSANCE_ID }}"]}]' \
+            --parameters '{"commands":["
+              export ECR_REPO_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+              export IMAGE_TAG=${{ github.event.release.tag_name }}
+              cd /path/to/docker-composes
+              docker-compose -f docker-compose-prod.yml pull
+              docker-compose -f docker-compose-prod.yml run django-server python manage.py migrate --noinput
+              docker-compose -f docker-compose-prod.yml up -d
+              docker system prune -f
+            "]}' \
+            --region ${{ secrets.AWS_REGION }}
