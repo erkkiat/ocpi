@@ -110,7 +110,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.SMPAPEE_AWS_ACCOUNT_ID }}:role/github-actions-role
+          role-to-assume: arn:aws:iam::${{ secrets.SMPAPEE_AWS_ACCOUNT_ID }}:role/gha-staging-deployment
           aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
 
       - name: Deploy to Staging EC2 Instance

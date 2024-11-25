@@ -88,7 +88,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.SOLID_ACCOUNT_ID }}:role/github-actions-role
+          role-to-assume: arn:aws:iam::${{ secrets.SOLID_ACCOUNT_ID }}:role/gha-deployment-role
           aws-region: ${{ secrets.SOLID_ECR_REGION }}
 
       - name: Log in to Solid ECR
@@ -109,7 +109,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.SMAPPEE_ACCOUNT_ID }}:role/github-actions-role
+          role-to-assume: arn:aws:iam::${{ secrets.SMAPPEE_ACCOUNT_ID }}:role/gha-staging-deployment
           aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
 
       - name: Deploy to Staging EC2 Instance
@@ -137,7 +137,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.SMAPPEE_ACCOUNT_ID }}:role/github-actions-role
+          role-to-assume: arn:aws:iam::${{ secrets.SMAPPEE_ACCOUNT_ID }}:role/gha-production-deployment
           aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
 
       - name: Deploy to Production EC2 Instance
