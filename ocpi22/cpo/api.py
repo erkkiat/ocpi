@@ -930,7 +930,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     context={"version": request.version, "request": request},
                 )
                 if serializer.is_valid():
-                    session = serializer.validated_data.get("session")
+                    session = serializer.validated_data["session"]
                     stop_kwh = serializer.validated_data.get("stop_kwh")
                     stop_timestamp = serializer.validated_data.get(
                         "stop_timestamp", datetime.now(pytz.utc)

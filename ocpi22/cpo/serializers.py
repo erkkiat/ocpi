@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Union, Optional
+from zoneinfo import ZoneInfo
 
 import pytz
 from django.conf import settings
@@ -306,7 +307,7 @@ class StatusChangeSerializer(serializers.Serializer):
     )
     timestamp = UTCDateTimeField(
         required=False,
-        default_timezone=pytz.UTC,
+        default_timezone=ZoneInfo("UTC"),
         help_text="Optional timestamp for the status change. Using this field is highly recommended, so that "
                   "disruptions in connectivity won't distort status change history. "
                   "This will ensure correct billing for the sessions.",
@@ -350,7 +351,7 @@ class MeterValuesSerializer(serializers.Serializer):
     )
     timestamp = UTCDateTimeField(
         required=False,
-        default_timezone=pytz.UTC,
+        default_timezone=ZoneInfo("UTC"),
         help_text="Optional timestamp for the meter values. Using this field is highly recommended, so that "
         "disruptions in connectivity won't distort cost calculation.",
     )
@@ -375,7 +376,7 @@ class StartTransactionSerializer(serializers.Serializer):
     )
     timestamp = UTCDateTimeField(
         required=False,
-        default_timezone=pytz.UTC,
+        default_timezone=ZoneInfo("UTC"),
         help_text="The timestamp of the moment when the charging session starts, defaults to UTC timezone",
     )
 
@@ -397,7 +398,7 @@ class StopTransactionSerializer(serializers.Serializer):
     )
     timestamp = UTCDateTimeField(
         required=False,
-        default_timezone=pytz.UTC,
+        default_timezone=ZoneInfo("UTC"),
         help_text="The timestamp of the moment when the driver has unplugged the vehicle, defaults to UTC timezone",
     )
 

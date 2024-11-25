@@ -13,7 +13,7 @@ from util import DistributedCache
 )  # 4 hours local memory cache, maybe Redis would not be smart here since hub uses this for routing
 def find_endpoints_by_roles(
         roles: Optional[tuple|list], ocpi_module: choices.OcpiModuleEnum,
-        sender_or_receiver: choices.EndpointRoleEnum = choices.EndpointRoleEnum.RECEIVER.value
+        endpoint_role: choices.EndpointRoleEnum = choices.EndpointRoleEnum.RECEIVER.value
 ) -> list:
     """
     Find all endpoints for specified roles for sending updates to other parties.
@@ -49,7 +49,7 @@ def find_endpoints_by_roles(
                 )
                 for endpoint in Endpoint.objects.filter(
                     identifier__iexact=ocpi_module.value.lower(),
-                    role__iexact=sender_or_receiver,
+                    role__iexact=endpoint_role,
                     credentials=credentials,
                 )
             ]
