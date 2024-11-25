@@ -23,8 +23,6 @@ DEBUG = env_bool("DEBUG", False)
 
 RENDER_ONLY_JSON = env_bool("RENDER_ONLY_JSON", False)
 
-TEST = env_bool("TEST", False)
-
 DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT", "%d.%m.%Y %H:%M")
 DATE_FORMAT = os.environ.get("DATE_FORMAT", "%d.%m.%Y")
 locale_formats.DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT_LOCALE", "D j.n.Y H:i")
@@ -45,21 +43,12 @@ expires_on_str = os.environ.get("EXPIRES_ON")
 EXPIRES_ON = datetime.strptime(expires_on_str, "%Y-%m-%d") if expires_on_str else None
 WARN_BEFORE_DAYS = 3
 
-# Philippines
-# DATE_FORMAT = '%m/%d/%Y'
-# DATETIME_FORMAT = '%m/%d/%Y, %I:%M %p'
-# DECIMAL_SEPARATOR = '.'
-# DEFAULT_CURRENCY = 'PHP'
-# DATETIME_FORMAT_LOCALE = 'n/j/Y h:i a'
-
 APPEND_SLASH = False  # Accept requests with no trailing slash
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Allow more than 1000 fields in POST requests
 TEMPLATE_DEBUG = DEBUG
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get("SECRET_KEY")
-assert SECRET_KEY, "Please set a SECRET_KEY in environment"
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT")
-TWILIO_API_KEY = os.environ.get("TWILIO_API_KEY")
 
 # Find a Redis, since Heroku Redis services use different environment variables
 REDIS_KEYS = ["STACKHERO_REDIS_URL_TLS", "REDIS_URL", "REDISCLOUD_URL"]
@@ -69,7 +58,6 @@ REDIS_SESSION_CACHE_NAMESPACE = "sessioncache"
 
 # Send updates to partners who we have Credentials for
 SEND_UPDATES = env_bool("SEND_UPDATES", True)
-UPDATES_DISABLED = "Updates have been disabled using one of the environment variables SEND_UPDATES or PREMIUM."
 SERVE_STATIC_FILES = env_bool("SERVE_STATIC_FILES", True)
 MAX_NUMBER_OF_PARTNERS = os.environ.get("MAX_NUMBER_OF_PARTNERS", 1000)
 
@@ -173,38 +161,6 @@ if "postgres" in DATABASE_URL:
             "PORT": url.port,
         }
     }
-# else:
-#     env = environ.Env()
-#     environ.Env.read_env()
-#
-#     DATABASES = {
-#         'default': env.db('JAWSDB_URL')
-#     }
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "dj_db_conn_pool.backends.postgresql",
-#         'NAME': f'ocpi{PORT}',
-#         'USER': 'ocpi',
-#         'PASSWORD': 'ocpiocpi',
-#         'HOST': 'localhost',  # Use the service name
-#         'PORT': '5432',
-#         'POOL_OPTIONS': {
-#             'POOL_SIZE': 100,
-#             'MAX_OVERFLOW': 1000,
-#             'RECYCLE': 24 * 60 * 60,
-#             'TIMEOUT': 30,
-#         },
-#     }
-# }
-
-# # Add a new database to log GDPR actions
-# DATABASES.update({
-#     'gdpr_log': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'gdpr-log.sqlite3'),
-#     },
-# })
 
 DATABASES.update({"gdpr_log": DATABASES.get("default")})
 
@@ -390,7 +346,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    # 'django.contrib.admindocs',
     "ocpi22",
     "ocpiconnector",
     "webhooks",
@@ -402,7 +357,6 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "django_filters",
     "nested_admin",
-    # 'oauth2_provider',
     "gdpr_assist",
     "corsheaders",
     "payment",
@@ -445,11 +399,6 @@ TEMPLATES = [
 MESSAGE_STORAGE = "ocpiconnector.util.SessionDedupStorage"  # Removes duplicate messages, like the OCPI 2.2 explanations
 SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
-# A sample logging configuration. The only tangible logging
-# performed by this configuration is to send an email to
-# the site admins on every HTTP 500 error when DEBUG=False.
-# See http://docs.djangoproject.com/en/dev/topics/logging for
-# more details on how to customize your logging configuration.
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -470,7 +419,7 @@ LOGGING = {
     },
     "loggers": {
         "django.request": {
-            "handlers": ["mail_admins"],
+            "handlers": ["mail_admins", "console"],
             "level": "ERROR",
             "propagate": True,
         },
@@ -493,17 +442,14 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
     "DEFAULT_PERMISSION_CLASSES": ["ocpi22.ocpi.auth.OCPIPermission"],
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        # Fortunately this is compatible with the NinjaAPI JWT
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
-        # 'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
     ),
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_METADATA_CLASS": "ocpi22.util.MyMetadata",
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
-        # 'rest_framework_csv.renderers.CSVRenderer',
     ],
 }
 

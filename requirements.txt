@@ -30,7 +30,6 @@ time_machine==2.15.0
 django-multiselectfield==0.1.13
 moesifdjango~=2.3.9
 geojson~=3.1.0
-twilio~=9.3.2
 python-dotenv~=1.0.1
 sentry-sdk==2.18.0
 googletrans~=3.1.0a0
