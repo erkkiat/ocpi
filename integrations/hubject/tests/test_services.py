@@ -30,6 +30,7 @@ from integrations.hubject.schemas import (
     DynamicInfoAvailable,
 )
 from integrations.hubject.services import HubjectService
+from ocpiconnector.party import Party
 
 
 class TestHubjectService:
@@ -46,40 +47,28 @@ class TestHubjectService:
         emsdetten_op_evse_data,
     ):
         mock_locations.return_value = [berlin_location, emsdetten_location]
-        result = self.__hubject_service.get_all_operator_evses()
-        print(result[emsdetten_op_evse_data.OperatorID.root])
+        party = Party(country_code="DE", party_id="SMP")
+        result = self.__hubject_service.get_operator_evse_data(party)
 
-        assert (
-            result[berlin_op_evse_data.OperatorID.root][0]
-            == self.expected_berlin_op_evse_data_record()
-        )
-        assert (
-            result[emsdetten_op_evse_data.OperatorID.root][0]
-            == self.expected_emsdetten_op_evse_data_record()
-        )
+        assert result == self.expected_berlin_op_evse_data_record()
 
-    def test_get_evse_full_load_payload_by_operator_id(
+    def test_get_evse_full_load(
         self,
         berlin_op_evse_data,
-        emsdetten_op_evse_data,
         berlin_evse_data_record,
-        emsdetten_evse_data_record,
     ):
-        operator_id = berlin_op_evse_data.OperatorID
+        operator_id = Party(country_code="DE", party_id="SMP")
         operator_name = berlin_op_evse_data.OperatorName
-        op_evse_list = [berlin_op_evse_data, emsdetten_op_evse_data]
 
-        result = self.__hubject_service.get_evse_full_load_payload_by_operator_id(
-            operator_id, op_evse_list
-        )
-
-        assert result.ActionType == ActionType.fullLoad
-        assert result.OperatorEvseData.OperatorID == operator_id
-        assert result.OperatorEvseData.OperatorName == operator_name
-        assert result.OperatorEvseData.EvseDataRecord == [
-            berlin_evse_data_record,
-            emsdetten_evse_data_record,
-        ]
+        with patch(
+            "integrations.hubject.services.HubjectService.get_operator_evse_data",
+            return_value=berlin_op_evse_data,
+        ):
+            result = self.__hubject_service.get_evse_full_load_payload(operator_id)
+            assert result.ActionType == ActionType.fullLoad
+            assert result.OperatorEvseData.OperatorID.root == operator_id.__str__()
+            assert result.OperatorEvseData.OperatorName == operator_name
+            assert result.OperatorEvseData.EvseDataRecord == [berlin_evse_data_record]
 
     @responses.activate
     def test_post_evse_full_load(

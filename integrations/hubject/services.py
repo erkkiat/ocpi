@@ -1,6 +1,4 @@
 import logging
-from collections import defaultdict
-from typing import Dict, List
 from urllib.error import HTTPError
 from urllib.parse import urljoin
 
@@ -15,6 +13,7 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.models.location import Location
+from ocpiconnector.party import Party
 from util import with_trailing_slash
 
 logging.basicConfig(level=logging.DEBUG)
@@ -25,40 +24,41 @@ class HubjectService:
     client = HubjectClient()
     converter = SolidToHubjectConverter()
 
-    def get_all_operator_evses(self) -> Dict[str, List]:
-        locations = Location.objects.all()
+    def get_operator_evse_data(self, party: Party) -> OperatorEvseData | None:
+        locations = Location.objects.filter(
+            ocpi_master__party_id=party.party_id,
+            ocpi_master__country_code=party.country_code,
+        )
+        evse_data_records = []
+        operator_name = None
 
-        operator_id_operator_evse_map: Dict[str, List] = defaultdict(list)
         for location in locations:
-            op_evse_data = HubjectService.converter.convert_to_operator_evse_data(
-                location
+            tmp_operator_evse_data = (
+                HubjectService.converter.convert_to_operator_evse_data(location)
             )
-            operator_id_operator_evse_map[op_evse_data.OperatorID.root].append(
-                op_evse_data
-            )
+            evse_data_records.extend(tmp_operator_evse_data.EvseDataRecord)
+            operator_name = tmp_operator_evse_data.OperatorName
 
-        return operator_id_operator_evse_map
+        if len(evse_data_records) == 0:
+            return
 
-    def get_evse_full_load_payload_by_operator_id(
-        self, operator_id: str, op_evse_list: list[OperatorEvseData]
+        return OperatorEvseData(
+            OperatorID=party.__str__(),
+            OperatorName=operator_name,
+            EvseDataRecord=evse_data_records,
+        )
+
+    def get_evse_full_load_payload(
+        self, operator_id: Party
     ) -> ERoamingPushEvseData | None:
-        evse_list = [
-            record for op_evse in op_evse_list for record in op_evse.EvseDataRecord
-        ]
+        operator_evse_data: OperatorEvseData = self.get_operator_evse_data(operator_id)
 
-        if len(evse_list) == 0:
-            logger.warning("No evses found in operator evse list")
+        if operator_evse_data is None:
             return
 
         return ERoamingPushEvseData(
             ActionType=ActionType.fullLoad,
-            OperatorEvseData=OperatorEvseData(
-                OperatorID=operator_id,
-                OperatorName=op_evse_list[0].OperatorName
-                if len(op_evse_list) > 0
-                else "",
-                EvseDataRecord=evse_list,
-            ),
+            OperatorEvseData=operator_evse_data,
         )
 
     def post_evse_full_load(

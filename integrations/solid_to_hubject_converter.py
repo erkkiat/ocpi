@@ -153,6 +153,7 @@ class SolidToHubjectConverter:
         return EvseID(hubject_evse_id)
 
     def get_operator_name(self, location: Location) -> str:
+        # TODO This is risky, need to think where to put this, option 1 - having it as a env variable
         return (
             location.ocpi_master.business_details.name
             if location.ocpi_master.business_details
