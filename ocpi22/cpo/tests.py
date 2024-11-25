@@ -492,7 +492,6 @@ class TestChargingPeriods(TestCase):
                     ],
                 },
                 {
-                    "internal_reference": None,
                     "now_kwh": 2.0,
                     "power": None,
                     "price": "0,74zł",
@@ -614,7 +613,6 @@ class TestChargingPeriods(TestCase):
                     "total_cost": {"excl_vat": 22.8, "incl_vat": 28.27},
                 },
                 {
-                    "internal_reference": None,
                     "now_kwh": 50.0,
                     "power": None,
                     "price": "28,27zł",

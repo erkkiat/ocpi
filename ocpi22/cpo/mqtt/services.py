@@ -49,6 +49,11 @@ def process_status_update_data(message) -> None:
     except ValidationError:
         logger.exception(f"Failed to parse {message.topic} message")
         return
+
+    # Todo: Find the Session which may be active on the EVSE
+    #       Store the status update in the database, optimise for querying per Session
+    #       Convert the stored status updates to ChargingPeriods in OCPI Session and CDR
+
     evse_data = evse_schema.model_dump(mode="json")
     try:
         save_and_send_evse_status_updates.apply_async(kwargs=evse_data, expires=35)
