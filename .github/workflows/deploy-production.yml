@@ -78,23 +78,24 @@ jobs:
     needs: test
 
     env:
+      ECR_REPO_URL: ${{ secrets.SOLID_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SOLID_ECR_REGION }}.amazonaws.com
       IMAGE_TAG: ${{ github.event.release.tag_name }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.SOLID_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ secrets.SOLID_ECR_REGION }}
+
+      - name: Log in to Solid ECR
+        uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and Push Production Images
         run: |
-          ECR_REPO_URL=${{ steps.login-ecr.outputs.registry }}
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
             docker build -t $ECR_REPO_URL/$service:${IMAGE_TAG} -f ./ocpiconnector/Dockerfile ./ocpiconnector/
             docker push $ECR_REPO_URL/$service:${IMAGE_TAG}
@@ -105,39 +106,53 @@ jobs:
     needs: build-and-push
 
     steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.SMAPPEE_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
+
       - name: Deploy to Staging EC2 Instance
         run: |
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
             --targets '[{"Key":"InstanceIds","Values":["${{ secrets.STAGING_INSTANCE_ID }}"]}]' \
             --parameters '{"commands":["
-              export ECR_REPO_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+              export ECR_REPO_URL=${{ secrets.SOLID_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SOLID_ECR_REGION }}.amazonaws.com
               export IMAGE_TAG=${{ github.event.release.tag_name }}
-              cd /path/to/docker-composes
+              aws ecr get-login-password --region ${{ secrets.SOLID_ECR_REGION }} | docker login --username AWS --password-stdin $ECR_REPO_URL
+              cd ocpiconnector/docker-composes
               docker-compose -f docker-compose-staging.yml pull
               docker-compose -f docker-compose-staging.yml run django-server python manage.py migrate --noinput
               docker-compose -f docker-compose-staging.yml up -d
               docker system prune -f
             "]}' \
-            --region ${{ secrets.AWS_REGION }}
+            --region ${{ secrets.SMAPPEE_AWS_REGION }}
 
   deploy-production:
     runs-on: ubuntu-latest
     needs: deploy-staging
 
     steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.SMAPPEE_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
+
       - name: Deploy to Production EC2 Instance
         run: |
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
-            --targets '[{"Key":"InstanceIds","Values":["${{ secrets.PRODUCTION_INSANCE_ID }}"]}]' \
+            --targets '[{"Key":"InstanceIds","Values":["${{ secrets.PRODUCTION_INSTANCE_ID }}"]}]' \
             --parameters '{"commands":["
-              export ECR_REPO_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+              export ECR_REPO_URL=${{ secrets.SOLID_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SOLID_ECR_REGION }}.amazonaws.com
               export IMAGE_TAG=${{ github.event.release.tag_name }}
-              cd /path/to/docker-composes
+              aws ecr get-login-password --region ${{ secrets.SOLID_ECR_REGION }} | docker login --username AWS --password-stdin $ECR_REPO_URL
+              cd ocpiconnector/docker-composes
               docker-compose -f docker-compose-prod.yml pull
               docker-compose -f docker-compose-prod.yml run django-server python manage.py migrate --noinput
               docker-compose -f docker-compose-prod.yml up -d
               docker system prune -f
             "]}' \
-            --region ${{ secrets.AWS_REGION }}
+            --region ${{ secrets.SMAPPEE_AWS_REGION }}

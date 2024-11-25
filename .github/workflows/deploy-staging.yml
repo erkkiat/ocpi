@@ -1,10 +1,7 @@
-name: Staging Pipeline
+name: Deploy to Staging
 
 on:
   pull_request:
-    branches:
-      - develop
-  push:
     branches:
       - develop
 
@@ -77,46 +74,58 @@ jobs:
           name: html-coverage-report
           path: htmlcov/
 
-  build-and-push:
+  build-and-push-staging:
     runs-on: ubuntu-latest
     needs: test
 
     env:
-      ECR_REPO_URL: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+      ECR_REPO_URL: ${{ secrets.SOLID_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SOLID_ECR_REGION }}.amazonaws.com
       IMAGE_TAG: staging-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Log in to AWS ECR
-        run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REPO_URL
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.SOLID_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ secrets.SOLID_ECR_REGION }}
 
-      - name: Build and Push Docker Images
+      - name: Log in to Solid ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and Push Staging Images
         run: |
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
             docker build -t $ECR_REPO_URL/$service:${IMAGE_TAG} -f ./ocpiconnector/Dockerfile ./ocpiconnector/
             docker push $ECR_REPO_URL/$service:${IMAGE_TAG}
           done
 
-  deploy:
+  deploy-staging:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: build-and-push-staging
 
     steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.SMPAPEE_AWS_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
+
       - name: Deploy to Staging EC2 Instance
         run: |
           aws ssm send-command \
             --document-name "AWS-RunShellScript" \
-            --targets '[{"Key":"InstanceIds","Values":["${{ secrets.STAGING_INSANCE_ID }}"]}]' \
+            --targets '[{"Key":"InstanceIds","Values":["${{ secrets.STAGING_INSTANCE_ID }}"]}]' \
             --parameters '{"commands":["
-              export ECR_REPO_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+              export ECR_REPO_URL=${{ secrets.SOLID_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SOLID_ECR_REGION }}.amazonaws.com
               export IMAGE_TAG=staging-latest
+              aws ecr get-login-password --region ${{ secrets.SOLID_ECR_REGION }} | docker login --username AWS --password-stdin $ECR_REPO_URL
               cd ocpiconnector/docker-composes
               docker-compose -f docker-compose-staging.yml pull
               docker-compose -f docker-compose-staging.yml run django-server python manage.py migrate --noinput
               docker-compose -f docker-compose-staging.yml up -d
               docker system prune -f
             "]}' \
-            --region ${{ secrets.AWS_REGION }}
+            --region ${{ secrets.SMAPPEE_AWS_REGION }}
