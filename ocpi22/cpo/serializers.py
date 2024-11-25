@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Union, Optional
+from zoneinfo import ZoneInfo
 
 import pytz
 from django.conf import settings
@@ -45,7 +46,6 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
         fields = [
             "detail_url",
             "session_id",
-            "internal_reference",
             "billed_to",
             "start_date_time",
             "end_date_time",
@@ -65,7 +65,6 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
         ]
 
     session_id = serializers.CharField(source="uid", read_only=True)
-    internal_reference = serializers.CharField(read_only=True)
     token = serializers.SerializerMethodField(read_only=True)
     billed_to = serializers.SerializerMethodField(read_only=True)
     location_id = serializers.SerializerMethodField(read_only=True)
@@ -271,30 +270,13 @@ class SessionIdSerializer(fields.CharField):
 
     def to_internal_value(self, data):
         if data:
-            session = Session.objects.get(uid=data.upper())
-            if session.status != Session.ACTIVE:
-                raise ValidationError(f"Session with UID '{data}' is no longer active.")
-            return session
-        return None
-
-
-class InternalReferenceSerializer(fields.CharField):
-    """Results in a Session or None"""
-
-    def to_internal_value(self, data) -> Optional[Session]:
-        if data:
-            session = Session.objects.get_if_exists(internal_reference__iexact=data)
-            if not session:
-                raise ValidationError(
-                    f"Session with internal reference '{data}' does not exist."
-                )
-            return session
+            return Session.objects.get(uid=data.upper())
         return None
 
 
 class OcppStatusSerializer(fields.ChoiceField):
-    def __init__(self):
-        super().__init__(OcppStatusChoices.choices)
+    def __init__(self, **kwargs):
+        super().__init__(choices=OcppStatusChoices.choices, **kwargs)
 
     def to_internal_value(self, data):
         result = {
@@ -320,7 +302,16 @@ class StatusChangeSerializer(serializers.Serializer):
         source="evse",
         help_text="The identifier of the device which provides electricity to one or more connectors",
     )
-    status = OcppStatusSerializer()
+    status = OcppStatusSerializer(
+        help_text="The new status of the EVSE, as defined in the OCPP specification"
+    )
+    timestamp = UTCDateTimeField(
+        required=False,
+        default_timezone=ZoneInfo("UTC"),
+        help_text="Optional timestamp for the status change. Using this field is highly recommended, so that "
+                  "disruptions in connectivity won't distort status change history. "
+                  "This will ensure correct billing for the sessions.",
+    )
 
 
 class AuthorizationSerializer(serializers.Serializer):
@@ -341,13 +332,7 @@ class MeterValuesSerializer(serializers.Serializer):
 
     session_id = SessionIdSerializer(
         source="session",
-        required=False,
-        help_text="The optional OCPI session ID (from the response of the start_transaction endpoint)",
-    )
-    internal_reference = InternalReferenceSerializer(
-        required=False,
-        help_text="The optional internal reference on the CPO platform "
-        "(for example order number from the billing system)",
+        help_text="The OCPI session ID (from the response of the start_transaction endpoint)",
     )
     kwh = serializers.FloatField(
         help_text="The kWh measurement at the time of this message",
@@ -366,46 +351,34 @@ class MeterValuesSerializer(serializers.Serializer):
     )
     timestamp = UTCDateTimeField(
         required=False,
+        default_timezone=ZoneInfo("UTC"),
         help_text="Optional timestamp for the meter values. Using this field is highly recommended, so that "
         "disruptions in connectivity won't distort cost calculation.",
     )
 
-    def validate(self, attrs):
-        if "session" not in attrs and "internal_reference" not in attrs:
-            raise ValidationError(
-                "Please specify either the session_id or the internal_reference"
-            )
-        return attrs
-
 
 class StartTransactionSerializer(serializers.Serializer):
-    evse_uid = EvseSerialnumberSerializer(
-        source="evse",
-        help_text="The identifier of the device which provides electricity to one or more connectors",
+    session_id = SessionIdSerializer(
+        source="session",
+        required=False,
+        help_text="The ID of the charging session on the CPO platform, "
+                  "you get this from the response of a successful authorize request"
     )
     connector_id = serializers.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        help_text="The connector number used for charging during this transaction",
-    )
-    token_id = TokenIdSerializer(
-        source="token",
-        help_text="The hidden ID of the RFID token, separate from the visual one",
-    )
-    internal_reference = serializers.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        help_text="The session ID on the CPO platform or order number from the CPO billing system",
-        required=False,
-        allow_null=True,
+        help_text="The ID of the connector used for charging",
     )
     start_kwh = serializers.FloatField(
         required=False,
         default=0.0,
         help_text="The optional kWh measurement at the meter at start of the transaction, can start from zero "
-        "or start from where the previous charging session ended or some other value",
+                  "or start from where the previous charging session ended or some other value",
     )
-
-    def is_adhoc_token(self) -> bool:
-        return isinstance(self.validated_data.get("token"), str)
+    timestamp = UTCDateTimeField(
+        required=False,
+        default_timezone=ZoneInfo("UTC"),
+        help_text="The timestamp of the moment when the charging session starts, defaults to UTC timezone",
+    )
 
 
 class StopTransactionSerializer(serializers.Serializer):
@@ -415,13 +388,7 @@ class StopTransactionSerializer(serializers.Serializer):
 
     session_id = SessionIdSerializer(
         source="session",
-        required=False,
-        help_text="The optional OCPI session ID (from the response of the start_transaction endpoint)",
-    )
-    internal_reference = InternalReferenceSerializer(
-        required=False,
-        help_text="The optional internal reference on the CPO platform "
-        "(for example order number from the billing system)",
+        help_text="The OCPI session ID (from the response of the start_transaction endpoint)",
     )
     stop_kwh = serializers.DecimalField(
         max_digits=8,
@@ -429,18 +396,11 @@ class StopTransactionSerializer(serializers.Serializer):
         required=False,
         help_text="Optionally, the final kWh reading from the charger",
     )
-    stop_timestamp = UTCDateTimeField(
+    timestamp = UTCDateTimeField(
         required=False,
-        default_timezone=pytz.UTC,
+        default_timezone=ZoneInfo("UTC"),
         help_text="The timestamp of the moment when the driver has unplugged the vehicle, defaults to UTC timezone",
     )
-
-    def validate(self, attrs):
-        if "session" not in attrs and "internal_reference" not in attrs:
-            raise ValidationError(
-                "Please specify either the session_id or the internal_reference"
-            )
-        return attrs
 
 
 class PartyStrField(serializers.CharField):
@@ -684,10 +644,14 @@ class CPOAuthorizationResponseSerializer(serializers.Serializer):
     allowed = serializers.ChoiceField(choices=AuthorizationEnum.choices)
     token = serializers.SerializerMethodField()
     authorization_reference = serializers.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        help_text="The unique reference of the authorization, provided by the eMSP"
     )
     responding_party = serializers.CharField(max_length=5)
-    billed_to = serializers.CharField(max_length=5)
+    billed_to = serializers.CharField(
+        max_length=5,
+        help_text="The identifier of the eMSP that is responsible for paying for the session"
+    )
     auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
     session_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 

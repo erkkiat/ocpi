@@ -2643,10 +2643,10 @@ class TestCpoApi(TestCase):
         )
         cpo_request.version = "2.2.1"
         cpo_request.data = {
+            "session_id": "FI*CPO*S*MOCK-1",
             "evse_uid": "HELSINKI-3",
             "connector_id": "1",
             "token_id": "EKI1",
-            "internal_reference": "MY-INTERNAL-REFERENCE",
             "start_kwh": 120,
         }
         with patch(
@@ -2674,18 +2674,9 @@ class TestCpoApi(TestCase):
             )
         )
 
-        # Duplicate internal_reference
-        response = cpo_viewset.start_transaction(cpo_request)
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_409_CONFLICT,
-            "Duplicate internal_reference shoud cause an error",
-        )
-
         testcases = (
             dict(
                 request=dict(
-                    internal_reference="MY-INTERNAL-REFERENCE",
                     kwh=123.45,
                     soc=42,
                 ),
@@ -2694,7 +2685,6 @@ class TestCpoApi(TestCase):
                     "power": None,
                     "price": "2,14€",
                     "session_id": "FI*CPO*S*MOCK-1",
-                    "internal_reference": "MY-INTERNAL-REFERENCE",
                     "soc": 42.0,
                     "start_kwh": 120.0,
                     "status_text": "Session updated",
@@ -2776,7 +2766,6 @@ class TestCpoApi(TestCase):
             ),
             dict(
                 request=dict(
-                    internal_reference="MY-INTERNAL-REFERENCE",
                     kwh=153.45,
                     soc=80,
                 ),
@@ -2785,7 +2774,6 @@ class TestCpoApi(TestCase):
                     "power": None,
                     "price": "20,74€",
                     "session_id": "FI*CPO*S*MOCK-1",
-                    "internal_reference": "MY-INTERNAL-REFERENCE",
                     "soc": 80.0,
                     "start_kwh": 120.0,
                     "status_text": "Session updated",
@@ -2842,11 +2830,9 @@ class TestCpoApi(TestCase):
             ),
             dict(
                 request=dict(
-                    internal_reference="MY-INTERNAL-REFERENCE",
                     kwh=0,
                 ),
                 expected_response={
-                    "internal_reference": "MY-INTERNAL-REFERENCE",
                     "now_kwh": 0.0,
                     "power": None,
                     "price": "-",
@@ -2924,8 +2910,8 @@ class TestCpoApi(TestCase):
                     expected_session_data = case.get("session_data")
                     if expected_session_data:
                         session = Session.objects.get(
-                            internal_reference=cpo_request.data.get(
-                                "internal_reference"
+                            session_id=cpo_request.data.get(
+                                "session_id"
                             )
                         )
                         self.assertTrue(
@@ -2943,7 +2929,6 @@ class TestCpoApi(TestCase):
         #
 
         data = dict(
-            internal_reference="MY-INTERNAL-REFERENCE",
             stop_kwh=155,
             stop_timestamp=faketime
             + timedelta(
@@ -3068,7 +3053,6 @@ class TestCpoApi(TestCase):
         data = dict(
             evse_uid="HELSINKI-3",
             token_id="SOME-ADHOC-TOKEN",
-            internal_reference="MY-INTERNAL-REFERENCE-2",
             connector_id="1",
         )
         cpo_response = start_transaction(data)
@@ -3146,14 +3130,15 @@ class TestCpoApi(TestCase):
         # Todo: Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
         data = dict(
-            internal_reference="MY-INTERNAL-REFERENCE-2", kwh=123.45, soc=42, power=150
+            session_id="FI*CPO*S*MOCK-1",
+            kwh=123.45, soc=42, power=150
         )
 
         #
         # Try updating meter values for a non-active Session
         #
 
-        Session.objects.filter(internal_reference="MY-INTERNAL-REFERENCE-2").update(
+        Session.objects.filter(session_id="FI*CPO*S*MOCK-1").update(
             status=Session.COMPLETED
         )
 
@@ -3167,7 +3152,7 @@ class TestCpoApi(TestCase):
         # Try updating meter values without a tariff specified
         #
 
-        session = Session.objects.get(internal_reference="MY-INTERNAL-REFERENCE-2")
+        session = Session.objects.get(session_id="FI*CPO*S*MOCK-1")
         session.status = Session.ACTIVE
         session.save()
         connector = session.connector
@@ -3184,7 +3169,7 @@ class TestCpoApi(TestCase):
         # Update meter values with a tariff
         #
 
-        session = Session.objects.get(internal_reference="MY-INTERNAL-REFERENCE-2")
+        session = Session.objects.get(session_id="FI*CPO*S*MOCK-1")
         session.connector.tariff_ids.set([9])
         session.save()
 
@@ -3197,7 +3182,6 @@ class TestCpoApi(TestCase):
                 "power": 150.0,
                 "price": "76,54€",
                 "session_id": "FI*CPO*S*MOCK-1",
-                "internal_reference": "MY-INTERNAL-REFERENCE-2",
                 "soc": 42.0,
                 "start_kwh": 0.0,
                 "status_text": "Session updated",
@@ -3205,7 +3189,7 @@ class TestCpoApi(TestCase):
             },
         )
 
-        session = Session.objects.get(internal_reference="MY-INTERNAL-REFERENCE-2")
+        session = Session.objects.get(session_id="FI*CPO*S*MOCK-1")
         session_data = SessionSerializer(session).data
 
         self.assertTrue(
@@ -3251,7 +3235,7 @@ class TestCpoApi(TestCase):
 
         # Check that the Session looks correct
 
-        session = Session.objects.get(internal_reference="MY-INTERNAL-REFERENCE-2")
+        session = Session.objects.get(session_id="FI*CPO*S*MOCK-1")
         self.assertEqual(
             session.status,
             Session.COMPLETED,
@@ -3266,7 +3250,7 @@ class TestCpoApi(TestCase):
         with simulation.assert_error_logged("Session was completed earlier"):
             response = stop_transaction(
                 dict(
-                    internal_reference="MY-INTERNAL-REFERENCE-2",
+                    session_id="FI*CPO*S*MOCK-1",
                     stop_timestamp=datetime.now(pytz.utc),
                 )
             )
@@ -3438,7 +3422,6 @@ class TestMspApi(TestCase):
             "evse_uid": "HELSINKI-3",
             "connector_id": "1",
             "contract_id": "CONTRACT-123",
-            "internal_reference": "REFERENCE-123",
         }
 
         # Provide eternal success from the webhook

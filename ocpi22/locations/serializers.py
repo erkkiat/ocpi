@@ -313,7 +313,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         return validated_data
 
     def create(self, validated_data: dict):
-        with transaction.atom:
+        with transaction.atomic():
             # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
             evses = validated_data.pop("evses", [])

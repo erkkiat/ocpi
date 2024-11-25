@@ -28,6 +28,7 @@ from rest_framework import serializers, versioning
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
+from rest_framework.serializers import Serializer
 from urllib3.util import Url
 from urllib.parse import urljoin
 
@@ -539,6 +540,17 @@ class MyMetadata(SimpleMetadata):
                     dict(return_values=self.get_serializer_info(serializer))
                 )
         return metadata
+
+    def get_serializer_info(self, serializer):
+        if not serializer:
+            return ""
+        return super().get_serializer_info(serializer)
+
+    @staticmethod
+    def ensure_serializer_instance(serializer_class):
+        if serializer_class:
+            return serializer_class()
+        return Serializer()
 
 
 @lru_cache(maxsize=0)
