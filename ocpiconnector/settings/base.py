@@ -402,29 +402,72 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "filters": {"require_debug_false": {"()": "django.utils.log.RequireDebugFalse"}},
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
+        },
+    },
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
     "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
         "mail_admins": {
             "level": "ERROR",
             "filters": ["require_debug_false"],
             "class": "django.utils.log.AdminEmailHandler",
+            "formatter": "verbose",
         },
-        "console": {
-            "class": "logging.StreamHandler",
+        "sentry": {
+            "level": "ERROR",
+            "class": "sentry_sdk.integrations.logging.EventHandler",
+            "formatter": "verbose",
         },
     },
     "root": {
-        "handlers": ["console"],
+        "handlers": ["console", "sentry"],
         "level": "INFO",
     },
     "loggers": {
-        "django.request": {
-            "handlers": ["mail_admins", "console"],
-            "level": "ERROR",
+        "django": {
+            "handlers": ["console", "sentry"],
+            "level": "INFO",
             "propagate": True,
+        },
+        "django.request": {
+            "handlers": ["mail_admins", "console", "sentry"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "WARNING",  # Log database queries above WARNING level
+            "propagate": False,
+        },
+        "sentry_sdk": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "celery": {
+            "handlers": ["console", "sentry"],
+            "level": "ERROR",
+            "propagate": False,
         },
     },
 }
+
 
 # OAuth2
 LOGIN_URL = "/admin/login/"
@@ -515,6 +558,10 @@ MESSAGE_TAGS = {
     messages.ERROR: "alert-danger",
 }
 SEND_DATA_TO_ANALYTICS = False
+
+HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
+HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
+HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")

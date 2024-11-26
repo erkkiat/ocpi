@@ -484,15 +484,13 @@ class ChargingMode(Enum):
 
 class ChargingFacility(BaseModel):
     PowerType: PowerType
-    Voltage: Optional[conint(ge=0, le=999)] = Field(
+    Voltage: Optional[conint(ge=0)] = Field(
         None, description="Voltage (Line to Neutral) of the Charging Facility"
     )
-    Amperage: Optional[conint(ge=0, le=99)] = Field(
+    Amperage: Optional[conint(ge=0)] = Field(
         None, description="Amperage of the Charging Facility"
     )
-    Power: conint(ge=0, le=999) = Field(
-        ..., description="Charging Facility power in kW"
-    )
+    Power: conint(ge=0) = Field(..., description="Charging Facility power in kW")
     # todo: get this information from smappee
     ChargingModes: Optional[List[ChargingMode]] = Field(
         None, description="List of charging modes that are supported."

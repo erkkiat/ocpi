@@ -543,11 +543,21 @@ class Connector(models.Model, ModelUtilMixin):
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
     def __str__(self):
-        return f"#{self.uid} - {self.get_standard_display()} - {self.power()}"
+        return f"#{self.uid} - {self.get_standard_display()} - {self.power_str()}"
 
-    def power(self):
+    def power_str(self):
         phases = Ocpi.POWERTYPE_PHASES.get(self.power_type, 1)
         return f"{int((self.max_electric_power or int(self.max_voltage) * int(self.max_amperage) * phases) / 1000)} kW"
+
+    def power_kw(self):
+        phases = Ocpi.POWERTYPE_PHASES.get(self.power_type, 1)
+        return int(
+            (
+                self.max_electric_power
+                or int(self.max_voltage) * int(self.max_amperage) * phases
+            )
+            / 1000
+        )
 
     def tariff(self):
         return ",".join([t.price() for t in self.tariff_ids.all()])
@@ -562,7 +572,7 @@ class Connector(models.Model, ModelUtilMixin):
         related = ("tariff_elements",)
         tariffs = self.tariff_ids.prefetch_related(
             *related
-        ).all() or Tariff.prefetch_related(*related).get_default_tariffs(self.standard)
+        ).all() or Tariff.get_default_tariffs(self.standard)
         return tariffs
 
     def get_admin_url(self):
