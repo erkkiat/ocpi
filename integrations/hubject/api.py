@@ -24,6 +24,9 @@ def update_oicp_evses_by_operator(request):
             }
 
     except TariffNotFoundError:
-        return {"success": False, "message": "There exists Evses without tariffs."}
+        return {
+            "success": False,
+            "message": "No tariff were found for one or more of the evses.",
+        }
 
     return service.post_evse_full_load(str(party), payload)
