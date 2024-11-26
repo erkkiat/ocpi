@@ -119,6 +119,7 @@ class TariffFactory(factory.django.DjangoModelFactory):
     min_price_incl_vat = 0.2
     max_price_excl_vat = 0.8
     max_price_incl_vat = 0.9
+    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
 
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -141,6 +142,20 @@ class ConnectorFactory(factory.django.DjangoModelFactory):
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     created = factory.Faker("date_time", tzinfo=pytz.UTC)
+
+    @factory.post_generation
+    def tariff_ids(self, create, extracted, **kwargs):
+        if not create:
+            # Skip if the instance is not saved to the database
+            return
+
+        if extracted:
+            # Add the provided Tariffs
+            for tariff in extracted:
+                self.tariff_ids.add(tariff)
+        else:
+            # Add a default Tariff if none are provided
+            self.tariff_ids.add(TariffFactory())
 
 
 class AddressFactory(factory.Factory):

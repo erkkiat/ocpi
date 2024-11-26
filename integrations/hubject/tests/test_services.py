@@ -36,7 +36,7 @@ from ocpiconnector.party import Party
 class TestHubjectService:
     __hubject_service = HubjectService()
 
-    @patch("ocpi22.models.location.Location.objects.all")
+    @patch("ocpi22.models.location.Location.objects.filter")
     @pytest.mark.django_db
     def test_get_operator_evse_dict(
         self,
@@ -50,7 +50,7 @@ class TestHubjectService:
         party = Party(country_code="DE", party_id="SMP")
         result = self.__hubject_service.get_operator_evse_data(party)
 
-        assert result == self.expected_berlin_op_evse_data_record()
+        assert result == self.expected_berlin_emsdetten_op_evse_data_record()
 
     def test_get_evse_full_load(
         self,
@@ -239,7 +239,7 @@ class TestHubjectService:
 
     def expected_emsdetten_op_evse_data_record(self):
         return OperatorEvseData(
-            OperatorID=OperatorID(root="DE*EMP"),
+            OperatorID=OperatorID(root="DE*SMP"),
             OperatorName="Smappee Pvt Ltd",
             EvseDataRecord=[
                 EvseDataRecord(
@@ -314,4 +314,17 @@ class TestHubjectService:
                     DynamicInfoAvailable=DynamicInfoAvailable.false,
                 )
             ],
+        )
+
+    def expected_berlin_emsdetten_op_evse_data_record(self):
+        berlin_evse_data_record = (
+            self.expected_berlin_op_evse_data_record().EvseDataRecord[0]
+        )
+        emsdetten_evse_data_record = (
+            self.expected_emsdetten_op_evse_data_record().EvseDataRecord[0]
+        )
+        return OperatorEvseData(
+            OperatorID=OperatorID(root="DE*SMP"),
+            OperatorName="Smappee Pvt Ltd",
+            EvseDataRecord=[berlin_evse_data_record, emsdetten_evse_data_record],
         )
