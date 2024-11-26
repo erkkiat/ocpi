@@ -130,6 +130,34 @@ class TestMappings:
             == self.expected_berlin_eroaming_push_evse_data(evse_id)
         ), "The mapped OCPI Location data does not match the expected OICP data."
 
+    def test_french_address(self):
+        french_street_addr = "36 rue Pierre De Coubertin"
+        french_country_code = "FRA"
+        street, house_num = self._ocpi_2_oicp_converter.get_address_components(
+            french_street_addr, french_country_code
+        )
+
+        expected_street_addr = "rue Pierre De Coubertin"
+        expected_house_num = "36"
+        assert street == expected_street_addr
+        assert house_num == expected_house_num
+
+    def test_invalid_address(self):
+        invalid_street_addr = "Coubertin"
+        invalid_country_code = "FRA"
+        street, house_num = self._ocpi_2_oicp_converter.get_address_components(
+            invalid_street_addr, invalid_country_code
+        )
+
+        print(street, house_num)
+        expected_value = "-"
+        assert street == expected_value
+        assert house_num == expected_value
+
+    def test_invalid_timzone(self):
+        with pytest.raises(ValidationError):
+            self._ocpi_2_oicp_converter.get_timezone("Unknown")
+
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {
             "ActionType": ActionType.insert,
