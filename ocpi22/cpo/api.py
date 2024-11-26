@@ -68,13 +68,13 @@ from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.tariff import TariffElement
-from ocpi22.util import command_store
+from ocpi22.util import command_store, clear_empty
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.serializers import CdrSerializer, InvoicingCallbackSerializer
-from ocpi22.ocpi.util import generate_session_uid, options_message
+from ocpi22.ocpi.util import options_message
 from ocpi22.sessions.util import create_session, EvseOccupied
 from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import (
@@ -84,6 +84,7 @@ from ocpi22.tokens.auth import (
 )
 from ocpi22.tokens.util import get_token_id
 from ocpi22.logging import log_error
+from ocpi22.util import MyMetadata
 
 from pprint import PrettyPrinter
 
@@ -340,12 +341,10 @@ def process_meter_values(
     power=None,
     soc=None,
     session=None,
-    internal_reference=None,
     timestamp=None,
 ):
     next_url = reverse("chargepoint-stop-transaction")
     timestamp = timestamp or datetime.now(pytz.utc)
-    session = session or internal_reference
 
     # We found a valid Session
     if session and session.status == Session.ACTIVE:
@@ -405,7 +404,6 @@ def process_meter_values(
             dict(
                 status_text="Session updated",
                 session_id=session.uid,
-                internal_reference=session.internal_reference,
                 start_kwh=session.start_kwh,
                 now_kwh=kwh,
                 total_kwh=session.kwh,
@@ -436,7 +434,6 @@ def process_meter_values(
             dict(
                 status_text='You can only update a Session which has a status "ACTIVE".',
                 session_id=session.uid,
-                internal_reference=session.internal_reference,
                 start_kwh=session.start_kwh,
                 now_kwh=kwh,
                 total_kwh=session.kwh,
@@ -450,7 +447,6 @@ def process_meter_values(
 
 class MeterValuesStorageSerializer(MeterValuesSerializer):
     session_id = None
-    internal_reference = None
 
     def validate(self, attrs):
         return attrs
@@ -476,6 +472,7 @@ class ChargePointViewSet(FlowchartViewSet):
     )  # Todo: A CPO instance can have locations from other partners as well
     lookup_field = "uid"
     permission_classes = [IsAdminUser]
+    metadata = MyMetadata()
 
     flowchart = dict(
         steps=(
@@ -506,6 +503,24 @@ class ChargePointViewSet(FlowchartViewSet):
         process="status_change-->authorize-->start_transaction-->meter_values-->stop_transaction-->status_change2;\n"
         "meter_values-->meter_values;\n",
     )
+
+    return_values = dict(
+        authorize=dict(post=CPOAuthorizationResponseSerializer),
+        start_transaction=dict(post=CpoSessionSerializer),
+        meter_values=dict(post=CpoSessionSerializer),
+        stop_transaction=dict(post=CpoSessionSerializer),
+    )
+
+    def get_extra_metadata(self, _request) -> dict:
+        return clear_empty(dict(return_value={
+                http_method.upper():
+                    self.metadata.get_serializer_info(
+                        self.metadata.ensure_serializer_instance(
+                            self.return_values.get(method_name, {}).get(http_method)
+                        )
+                    )
+            for http_method, method_name in getattr(self, "action_map", {}).items()
+        }))
 
     def get_serializer_class(self):
         return dict(
@@ -541,6 +556,9 @@ class ChargePointViewSet(FlowchartViewSet):
             if request.method == "POST":
                 serializer = StatusChangeSerializer(data=request.data)
                 if serializer.is_valid():
+
+                    # Todo: Store the status change in the database for converting to ChargingPeriods
+
                     ocpp_status = serializer.initial_data.get("status")
                     ocpi_status = serializer.validated_data.get("status")
                     evse: Evse = serializer.validated_data.get("evse")
@@ -746,11 +764,9 @@ class ChargePointViewSet(FlowchartViewSet):
         * `HTTP_400_BAD_REQUEST` when the request is not formatted in the required way
         * `HTTP_401_UNAUTHORIZED` when the APP_USER token has expired
         * `HTTP_404_NOT_FOUND` when the Token or the EVSE doesn't exist
-        * `HTTP_409_CONFLICT` when a Session with the same internal_reference already exists or the EVSE is occupied
         """
         try:
             next_url = reverse("chargepoint-meter-values")
-            session: Session = Session.objects.none()
 
             if request.method == "POST":
                 serializer = StartTransactionSerializer(
@@ -758,98 +774,36 @@ class ChargePointViewSet(FlowchartViewSet):
                     context={"version": request.version, "request": request},
                 )
                 if serializer.is_valid():
-                    evse: Evse = serializer.validated_data["evse"]
+                    session = serializer.validated_data["session"]
                     connector_id: str = serializer.validated_data["connector_id"]
-                    internal_reference = serializer.validated_data.get(
-                        "internal_reference"
-                    )
-                    token = serializer.validated_data["token"]
-                    start_kwh = serializer.validated_data["start_kwh"]
-
-                    if (
-                        internal_reference
-                        and Session.objects.filter(
-                            internal_reference=internal_reference
-                        ).exists()
-                    ):
+                    session.start_kwh = serializer.validated_data["start_kwh"]
+                    authorization: TokenAuthorization = authorize_token(session.cdr_token_uid)
+                    if not authorization:
                         return Response(
                             dict(
-                                status_text=f"Session with internal reference `{internal_reference}` already exists",
+                                status_text="Token is (no longer) valid",
+                                token_id=session.cdr_token_uid
                             ),
-                            status=status.HTTP_409_CONFLICT,
+                            status=status.HTTP_401_UNAUTHORIZED,
                         )
+                    session.connector = Connector.objects.prefetch_related(
+                        "tariff_ids"
+                    ).get_if_exists(uid=connector_id, evse=session.evse, raise_exception=True)
+                    session.status = Session.ACTIVE
+                    if session.connector.tariff_ids:
+                        first_tariff = session.connector.tariff_ids.first()
+                        if first_tariff:
+                            session.currency = first_tariff.currency
+                    session.save(
+                        update_fields=[
+                            "connector",
+                            "status",
+                            "currency",
+                        ]
+                    )
 
-                    if serializer.is_adhoc_token():
-                        authorization: TokenAuthorization = authorize_token(token)
-                        if not authorization:
-                            return Response(
-                                dict(
-                                    status_text="Token is (no longer) valid",
-                                    token_id=get_token_id(token),
-                                ),
-                                status=status.HTTP_401_UNAUTHORIZED,
-                            )
-                        party: Party = authorization.token.get_party()
-                        session: Session = get_session_by_token_uid(
-                            get_token_id(token), max_age_minutes=14
-                        )
-                        if session:
-                            session.connector = Connector.objects.prefetch_related(
-                                "tariff_ids"
-                            ).get_if_exists(uid=connector_id, evse=evse)
-                            session.internal_reference = internal_reference or None
-                            session.status = Session.ACTIVE
-                            session.authorization_reference = (
-                                authorization.authorization_reference
-                            )
-                            if session.connector and session.connector.tariff_ids:
-                                first_tariff = session.connector.tariff_ids.first()
-                                if first_tariff:
-                                    session.currency = first_tariff.currency
-                            session.save(
-                                update_fields=[
-                                    "connector",
-                                    "internal_reference",
-                                    "status",
-                                    "authorization_reference",
-                                    "currency",
-                                ]
-                            )
-                        else:
-                            messages.error(
-                                request,
-                                "No active session found for the token you provided. "
-                                "Please make sure the token is authorized using the authorize endpoint "
-                                "or by receiving a remote command from MSP.",
-                            )
-                    else:
-                        party: Party = token.get_party()
-
-                    if not session:
-                        credentials = (
-                            request.credentials
-                            if hasattr(request, "credentials")
-                            else None
-                        )
-                        # Todo: Session.currency needs to match with Tariff currency
-                        session = create_session(
-                            uid=generate_session_uid(),
-                            internal_reference=internal_reference,
-                            evse_uid=evse,
-                            location_id=evse.location,
-                            connector_id=connector_id,
-                            token_id=get_token_id(token),
-                            billed_to=party,
-                            start_kwh=start_kwh,
-                            stop_kwh=start_kwh,
-                            session_status=Session.ACTIVE,
-                            credentials=credentials,
-                            ocpi_master=get_our_credentialsrole(OcpiRolesEnum.CPO),
-                        )
-                        logging.info(
-                            f"Created session {session.uid} based on start_transaction from CPO"
-                        )
                     session.send_updates()
+
                     messages.info(
                         request,
                         {
@@ -870,12 +824,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         instance=session,
                         context={"version": request.version, "request": request},
                     )
-                    return Response(
-                        dict(
-                            status_text="Session started",
-                            session=session_serializer.data,
-                        )
-                    )
+                    return Response(session_serializer.data)
                 else:
                     messages.error(
                         request,
@@ -981,9 +930,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     context={"version": request.version, "request": request},
                 )
                 if serializer.is_valid():
-                    session = serializer.validated_data.get(
-                        "session", serializer.validated_data.get("internal_reference")
-                    )
+                    session = serializer.validated_data["session"]
                     stop_kwh = serializer.validated_data.get("stop_kwh")
                     stop_timestamp = serializer.validated_data.get(
                         "stop_timestamp", datetime.now(pytz.utc)
@@ -1056,12 +1003,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         instance=session,
                         context={"version": request.version, "request": request},
                     )
-                    return Response(
-                        dict(
-                            status_text="Session finished",
-                            session=session_serializer.data,
-                        )
-                    )
+                    return Response(session_serializer.data)
                 else:
                     return Response(
                         data=serializer.errors, status=status.HTTP_400_BAD_REQUEST

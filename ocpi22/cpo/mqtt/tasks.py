@@ -70,10 +70,7 @@ from util import format_session_url  # noqa
 
 
 @shared_task(queue="HIGH")
-def process_meter_values(session_id, internal_reference, kwh, soc, power, timestamp):
-    session_id = session_id or internal_reference
-    # timestamp = meter_values.timestamp or datetime.now(pytz.utc)
-
+def process_meter_values(session_id, kwh, soc, power, timestamp):
     session = get_cached_session(session_id)
     session.kwh = kwh
     store_session_cache(session)

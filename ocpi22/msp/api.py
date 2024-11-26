@@ -93,7 +93,6 @@ def process_start_charging(
     evse,
     connector_id: str = None,
     contract_id: str = "",
-    internal_reference: str = None,
     max_price: Decimal = None,
     token_id: str = None,
 ):
@@ -127,7 +126,7 @@ def process_start_charging(
             )
         token = construct_adhoc_token(account.app_token_id, contract_id)
 
-    authorization_reference = internal_reference or generate_auth_reference()
+    authorization_reference = generate_auth_reference()
 
     response: requests.Response = send_start_command(
         request, evse, token, connector_id, contract_id, authorization_reference

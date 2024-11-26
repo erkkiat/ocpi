@@ -57,7 +57,6 @@ def create_session(
     connector_id,
     billed_to: Union[Party, str, "CredentialsRole"],
     credentials,
-    internal_reference=None,
     token_id: Union[Token, str] = None,
     ad_hoc_token=None,
     uid=None,
@@ -139,7 +138,6 @@ def create_session(
     params = dict(
         uid=uid,
         reservation_id=reservation_id,
-        internal_reference=internal_reference,
         start_kwh=start_kwh,
         stop_kwh=stop_kwh,
         status=session_status,

@@ -81,15 +81,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
 
-    # The internal order number or other identifier from the CPO billing system, not part of OCPI
-    internal_reference = models.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        blank=True,
-        null=True,
-        db_index=True,
-        verbose_name=_("Internal reference"),
-    )
-
     # The optional ID of the reservation, if this session is based on one
     reservation_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
