@@ -2,7 +2,7 @@ from ocpi22.tests.factories import ConnectorFactory
 
 
 class TestConnectorModel:
-    def test_power_kw(self):
+    def test_energy_conversion_to_kilo_watts(self):
         connector = ConnectorFactory.build(
             uid="CONNECTOR_1",
             standard="IEC_62196_T2",

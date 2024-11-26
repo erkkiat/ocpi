@@ -13,7 +13,7 @@ from integrations.hubject.schemas import (
     OperatorEvseData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
-from ocpi22.models.location import Location, Connector
+from ocpi22.models.location import Location, Connector, Evse
 from ocpiconnector.exceptions import NoTariffForGivenConnectorError
 from ocpiconnector.party import Party
 from util import with_trailing_slash
@@ -37,6 +37,20 @@ class HubjectService:
         if len(locations) == 0:
             return
 
+        locations = Location.objects.prefetch_related(
+            Prefetch(
+                "evses",
+                queryset=Evse.objects.prefetch_related(
+                    Prefetch(
+                        "connectors",
+                        queryset=Connector.objects.prefetch_related("tariff_ids"),
+                        to_attr="connectors_with_tariffs",
+                    )
+                ),
+                to_attr="evses_with_connectors",
+            )
+        )
+
         for location in locations:
             tmp_operator_evse_data = (
                 HubjectService.converter.convert_to_operator_evse_data(location)
@@ -44,15 +58,7 @@ class HubjectService:
             evse_data_records.extend(tmp_operator_evse_data.EvseDataRecord)
             operator_name = tmp_operator_evse_data.OperatorName
 
-            evses = location.evses.prefetch_related(
-                Prefetch(
-                    "connectors",
-                    queryset=Connector.objects.prefetch_related("tariff_ids"),
-                    to_attr="connectors_with_tariffs",
-                )
-            )
-
-            for evse in evses:
+            for evse in location.evses_with_connectors:
                 for connector in evse.connectors_with_tariffs:
                     if not connector.get_tariffs():
                         raise NoTariffForGivenConnectorError(
