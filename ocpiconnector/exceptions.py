@@ -26,7 +26,7 @@ class NoCommonVersion(APIException):
     pass
 
 
-class NoTariffForGivenConnectorError(Exception):
+class TariffNotFoundError(Exception):
     def __init__(
         self,
         evse_id=None,
