@@ -3,6 +3,7 @@ from urllib.error import HTTPError
 from urllib.parse import urljoin
 
 from django.conf import settings
+from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
 
 from integrations.hubject.client import HubjectClient
@@ -12,7 +13,7 @@ from integrations.hubject.schemas import (
     OperatorEvseData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
-from ocpi22.models.location import Location
+from ocpi22.models.location import Location, Connector
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 
@@ -38,6 +39,21 @@ class HubjectService:
             )
             evse_data_records.extend(tmp_operator_evse_data.EvseDataRecord)
             operator_name = tmp_operator_evse_data.OperatorName
+
+            evses = location.evses.prefetch_related(
+                Prefetch(
+                    "connectors",
+                    queryset=Connector.objects.prefetch_related("tariff_ids"),
+                    to_attr="connectors_with_tariffs",
+                )
+            )
+
+            for evse in evses:
+                for connector in evse.connectors_with_tariffs:
+                    if not connector.get_tariffs():
+                        raise ValueError(
+                            f"Evse {evse.evse_id}, connector {connector.standard} does not have assigned or default tariffs"
+                        )
 
         if len(evse_data_records) == 0:
             return

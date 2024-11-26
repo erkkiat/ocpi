@@ -9,16 +9,20 @@ api = NinjaAPI()
 
 
 @api.post("/evses/full-load/", url_name="hubject-evse-full-load", response=Dict)
-def update_oicp_evses_of_all_operators(request):
+def update_oicp_evses_by_operator(request):
     service = HubjectService()
     party = get_our_party(OcpiRolesEnum.CPO)
 
-    payload = service.get_evse_full_load_payload(party)
+    try:
+        payload = service.get_evse_full_load_payload(party)
 
-    if payload is None:
-        return {
-            "success": False,
-            "message": "Operator not found",
-        }
+        if payload is None:
+            return {
+                "success": False,
+                "message": "Operator not found",
+            }
+
+    except ValueError as e:
+        return {"success": False, "message": str(e)}
 
     return service.post_evse_full_load(party.__str__(), payload)

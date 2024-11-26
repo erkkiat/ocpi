@@ -572,7 +572,7 @@ class Connector(models.Model, ModelUtilMixin):
         related = ("tariff_elements",)
         tariffs = self.tariff_ids.prefetch_related(
             *related
-        ).all() or Tariff.prefetch_related(*related).get_default_tariffs(self.standard)
+        ).all() or Tariff.get_default_tariffs(self.standard)
         return tariffs
 
     def get_admin_url(self):
