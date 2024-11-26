@@ -1,4 +1,5 @@
 import random
+import time
 
 import factory
 import pytz
@@ -24,10 +25,11 @@ from integrations.hubject.schemas import (
     ValueAddedService,
     AccessibilityLocation,
     ActionType,
+    Accessibility,
 )
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.credentials import CredentialsRole, Credentials
+from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff
 
 
@@ -90,17 +92,13 @@ class LocationFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(BusinessDetailsFactory)
     charging_when_closed = factory.Faker("boolean")
     parking_type = "ON_STREET"
-    evses = factory.RelatedFactoryList(
-        "ocpi22.tests.factories.EvseFactory", "location", size=3
-    )
 
 
 class EvseFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Evse
 
-    uid = factory.Faker("uuid4")
-    evse_id = "FI*ABC*E1234*5678"
+    uid = f"{int(time.time())}"
     status = "RESERVED"
     location = factory.SubFactory(LocationFactory)
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -121,6 +119,7 @@ class TariffFactory(factory.django.DjangoModelFactory):
     min_price_incl_vat = 0.2
     max_price_excl_vat = 0.8
     max_price_incl_vat = 0.9
+    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
 
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -143,6 +142,20 @@ class ConnectorFactory(factory.django.DjangoModelFactory):
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     created = factory.Faker("date_time", tzinfo=pytz.UTC)
+
+    @factory.post_generation
+    def tariff_ids(self, create, extracted, **kwargs):
+        if not create:
+            # Skip if the instance is not saved to the database
+            return
+
+        if extracted:
+            # Add the provided Tariffs
+            for tariff in extracted:
+                self.tariff_ids.add(tariff)
+        else:
+            # Add a default Tariff if none are provided
+            self.tariff_ids.add(TariffFactory())
 
 
 class AddressFactory(factory.Factory):
@@ -199,7 +212,7 @@ class ChargingFacilityFactory(factory.Factory):
     class Meta:
         model = ChargingFacility
 
-    PowerType = (PowerType.AC_1_PHASE,)
+    PowerType = PowerType.AC_1_PHASE
     Voltage = 225
     Amperage = 50
     Power = 900
@@ -213,7 +226,7 @@ class EvseDataRecordFactory(factory.Factory):
     deltaType = DeltaType.update
     lastUpdate = factory.Faker("date_time", tzinfo=pytz.UTC)
     EvseID = factory.Faker("uuid4")
-    ChargingPoolID = ""
+    ChargingPoolID = None
     ChargingStationId = ""
     ChargingStationNames = []
     HardwareManufacturer = ""
@@ -221,7 +234,7 @@ class EvseDataRecordFactory(factory.Factory):
     SubOperatorName = ""
     Address = factory.SubFactory("ocpi22.tests.factories.AddressFactory")
     GeoCoordinates = factory.SubFactory("ocpi22.tests.factories.GeoCoordinatesFactory")
-    Plugs = Plug.Type_2_Outlet
+    Plugs = [Plug.Type_2_Outlet]
     DynamicPowerLevel = True
     ChargingFacilities = factory.List(
         [
@@ -237,7 +250,7 @@ class EvseDataRecordFactory(factory.Factory):
     MaxCapacity = 950
     PaymentOptions = [PaymentOption.Direct]
     ValueAddedServices = [ValueAddedService.Reservation]
-    Accessibility = []
+    Accessibility = Accessibility.Free_publicly_accessible
     AccessibilityLocation = AccessibilityLocation.OnStreet
     HotlinePhoneNumber = "+3256380211"
     AdditionalInfo = []
@@ -260,7 +273,10 @@ class OperatorEvseDataFactory(factory.Factory):
     OperatorID = "DE*SMP"
     OperatorName = "Smappee Operator"
     EvseDataRecord = factory.List(
-        [factory.SubFactory("ocpi22.tests.factories.EvseFactory") for _ in range(3)]
+        [
+            factory.SubFactory("ocpi22.tests.factories.EvseDataRecordFactory")
+            for _ in range(3)
+        ]
     )
 
 

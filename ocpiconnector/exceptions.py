@@ -24,3 +24,7 @@ class OCPIMismatch(APIException):
 
 class NoCommonVersion(APIException):
     pass
+
+
+class TariffNotFoundError(Exception):
+    pass

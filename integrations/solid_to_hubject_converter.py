@@ -153,6 +153,7 @@ class SolidToHubjectConverter:
         return EvseID(hubject_evse_id)
 
     def get_operator_name(self, location: Location) -> str:
+        # TODO This is risky, need to think where to put this, option 1 - having it as a env variable
         return (
             location.ocpi_master.business_details.name
             if location.ocpi_master.business_details
@@ -219,6 +220,7 @@ class SolidToHubjectConverter:
             "AC_1_PHASE": PowerType.AC_1_PHASE,
             "AC_3_PHASE": PowerType.AC_3_PHASE,
             "DC": PowerType.DC,
+            "AC": PowerType.AC_3_PHASE,
         }
 
         power_type = mapping.get(power_type_choice_221.upper())
@@ -236,9 +238,9 @@ class SolidToHubjectConverter:
         return [
             ChargingFacility(
                 PowerType=self.get_power_type(connector.power_type),
-                Voltage=max(0, min(999, connector.max_voltage)),
-                Amperage=max(0, min(99, connector.max_amperage)),
-                Power=max(0, min(999, connector.max_electric_power)),
+                Voltage=max(0, connector.max_voltage),
+                Amperage=max(0, connector.max_amperage),
+                Power=max(0, connector.power_kw()),
             )
             for connector in connectors
         ]
