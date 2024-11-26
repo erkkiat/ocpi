@@ -1,4 +1,4 @@
-name: Deploy to Staging
+name: Build and Push to Staging ECR
 
 on:
   pull_request:
@@ -79,7 +79,7 @@ jobs:
     needs: test
 
     env:
-      ECR_REPO_URL: ${{ secrets.SOLID_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SOLID_ECR_REGION }}.amazonaws.com
+      ECR_REPO_URL: ${{ secrets.ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.ECR_REGION }}.amazonaws.com
       IMAGE_TAG: staging-latest
 
     steps:
@@ -89,10 +89,10 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.SOLID_ACCOUNT_ID }}:role/github-actions-role
-          aws-region: ${{ secrets.SOLID_ECR_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.ECR_ACCOUNT_ID }}:role/github-actions-role
+          aws-region: ${{ secrets.ECR_REGION }}
 
-      - name: Log in to Solid ECR
+      - name: Log in to ECR
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build and Push Staging Images
@@ -101,31 +101,3 @@ jobs:
             docker build -t $ECR_REPO_URL/$service:${IMAGE_TAG} -f ./ocpiconnector/Dockerfile ./ocpiconnector/
             docker push $ECR_REPO_URL/$service:${IMAGE_TAG}
           done
-
-  deploy-staging:
-    runs-on: ubuntu-latest
-    needs: build-and-push-staging
-
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::${{ secrets.SMPAPEE_AWS_ACCOUNT_ID }}:role/gha-staging-deployment
-          aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
-
-      - name: Deploy to Staging EC2 Instance
-        run: |
-          aws ssm send-command \
-            --document-name "AWS-RunShellScript" \
-            --targets '[{"Key":"InstanceIds","Values":["${{ secrets.STAGING_INSTANCE_ID }}"]}]' \
-            --parameters '{"commands":["
-              export ECR_REPO_URL=${{ secrets.SOLID_ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SOLID_ECR_REGION }}.amazonaws.com
-              export IMAGE_TAG=staging-latest
-              aws ecr get-login-password --region ${{ secrets.SOLID_ECR_REGION }} | docker login --username AWS --password-stdin $ECR_REPO_URL
-              cd ocpiconnector/docker-composes
-              docker-compose -f docker-compose-staging.yml pull
-              docker-compose -f docker-compose-staging.yml run django-server python manage.py migrate --noinput
-              docker-compose -f docker-compose-staging.yml up -d
-              docker system prune -f
-            "]}' \
-            --region ${{ secrets.SMAPPEE_AWS_REGION }}
