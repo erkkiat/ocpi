@@ -21,3 +21,26 @@ SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
 SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "$share/session_group/session/+/statusupdates"
 )
+DEV_LOGGING = {
+    **LOGGING,  # noqa
+    "loggers": {
+        **LOGGING["loggers"],  # noqa
+        "django": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "ocpi22.cpo.mqtt.mqtt_subscriber": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": True,
+        },
+    },
+}
+
+LOGGING = DEV_LOGGING
