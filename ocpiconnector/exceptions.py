@@ -24,3 +24,21 @@ class OCPIMismatch(APIException):
 
 class NoCommonVersion(APIException):
     pass
+
+
+class NoTariffForGivenConnectorError(Exception):
+    def __init__(
+        self,
+        evse_id=None,
+        standard=None,
+        message="No Tariffs found for the given connector",
+    ):
+        self.evse_id = evse_id
+        self.standard = standard
+        self.error_message = f"Evse {self.evse_id}, connector {self.standard} does not have assigned or default tariffs"
+        self.message = (
+            message
+            if self.evse_id is None or self.standard is None
+            else self.error_message
+        )
+        super().__init__(self.message)

@@ -14,6 +14,7 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.models.location import Location, Connector
+from ocpiconnector.exceptions import NoTariffForGivenConnectorError
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 
@@ -33,6 +34,9 @@ class HubjectService:
         evse_data_records = []
         operator_name = None
 
+        if len(locations) == 0:
+            return
+
         for location in locations:
             tmp_operator_evse_data = (
                 HubjectService.converter.convert_to_operator_evse_data(location)
@@ -51,15 +55,17 @@ class HubjectService:
             for evse in evses:
                 for connector in evse.connectors_with_tariffs:
                     if not connector.get_tariffs():
-                        raise ValueError(
-                            f"Evse {evse.evse_id}, connector {connector.standard} does not have assigned or default tariffs"
+                        raise NoTariffForGivenConnectorError(
+                            evse.evse_id,
+                            connector.standard,
+                            f"Evse {evse.evse_id}, connector {connector.standard} does not have assigned or default tariffs",
                         )
 
         if len(evse_data_records) == 0:
             return
 
         return OperatorEvseData(
-            OperatorID=party.__str__(),
+            OperatorID=str(party),
             OperatorName=operator_name,
             EvseDataRecord=evse_data_records,
         )
@@ -96,12 +102,12 @@ class HubjectService:
             return {
                 "success": False,
                 "errorType": "Pydantic validation failed",
-                "error": e.__str__(),
+                "error": e.args[0],
             }
         except HTTPError as exc:
             logging.error(exc)
             return {
                 "success": False,
                 "errorType": "HTTP request failed",
-                "error": exc.__str__(),
+                "error": exc.args[0],
             }
