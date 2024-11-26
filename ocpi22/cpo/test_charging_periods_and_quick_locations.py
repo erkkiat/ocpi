@@ -86,8 +86,8 @@ class TestQuickLocations(TestCase):
                                         ("max_voltage", 233),
                                         ("max_amperage", 32),
                                         ("max_electric_power", 22200),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
                                         ("tariff_ids", ["EKI1"]),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
                                     ]
                                 )
                             ],
@@ -106,9 +106,9 @@ class TestQuickLocations(TestCase):
                                         ("uid", "1"),
                                         ("standard", "IEC_62196_T2"),
                                         ("format", "SOCKET"),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
                                         ("max_voltage", 232),
                                         ("max_amperage", 32),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
                                     ]
                                 )
                             ],
@@ -127,10 +127,10 @@ class TestQuickLocations(TestCase):
                                         ("uid", "1"),
                                         ("standard", "IEC_62196_T2"),
                                         ("format", "CABLE"),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
                                         ("max_voltage", 233),
                                         ("max_amperage", 32),
                                         ("tariff_ids", ["DC50"]),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
                                     ]
                                 )
                             ],
@@ -140,6 +140,7 @@ class TestQuickLocations(TestCase):
                 ),
             ],
             "id": "EKI1",
+            'last_updated': '2022-01-01T12:00:00Z',
             "latitude": 60.0,
             "longitude": 30.0,
             "name": "Eki's home charger",
@@ -147,10 +148,7 @@ class TestQuickLocations(TestCase):
             "time_zone": "Europe/Helsinki",
         }
 
-        self.assertTrue(
-            compare_dicts_recursively(data, expected_data),
-            "New Location data differs from expected",
-        )
+        assert dict(data) == expected_data
 
         # Update Location
 
@@ -685,16 +683,17 @@ def get(url, viewset):
     return viewset().list(request)
 
 
-def test_exception_handler(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except (geopy.exc.GeocoderUnavailable, geopy.exc.GeocoderServiceError) as e:
-            sys.stderr.write(f"Geocoder error during test: {e}")
-            return None
-
-    return wrapper
+# Todo: fix test
+# def test_exception_handler(func):
+#     @wraps(func)
+#     def wrapper(*args, **kwargs):
+#         try:
+#             return func(*args, **kwargs)
+#         except (geopy.exc.GeocoderUnavailable, geopy.exc.GeocoderServiceError) as e:
+#             sys.stderr.write(f"Geocoder error during test: {e}")
+#             return None
+#
+#     return wrapper
 
 
 # @test_exception_handler

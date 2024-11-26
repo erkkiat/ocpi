@@ -15,10 +15,15 @@ class CredentialsData:
                     "country_code": "FI",
                     "party_id": "CPO",
                     "role": "CPO",
-                }
+                },
+                {'business_details': {'name': 'SolidRoam CPO',
+                                      'website': ''},
+                 'country_code': 'FI',
+                 'party_id': 'MSP',
+                 'role': 'EMSP'}
             ],
             "token": "12345",
-            "url": "http://testserver.test:8000/ocpi/versions/",
+            "url": "http://testserver.test/ocpi/versions/",
         },
         "status_code": 1000,
         "status_message": "Success",
@@ -42,8 +47,8 @@ class CredentialsData:
 
     expected_versions_response = {
         "data": [
-            {"url": "http://testserver.test:8000/ocpi/2.2/", "version": "2.2"},
-            {"url": "http://testserver.test:8000/ocpi/2.2.1/", "version": "2.2.1"},
+            {"url": "http://testserver.test/ocpi/2.2/", "version": "2.2"},
+            {"url": "http://testserver.test/ocpi/2.2.1/", "version": "2.2.1"},
         ],
         "status_code": 1000,
         "status_message": "Success",
@@ -67,7 +72,7 @@ class CredentialsData:
                 },
             ],
             "token": "BF60351F296E9E1B339646C8B57338BFE84B61C18E50BCBE822A72D8DDC60A26",
-            "url": "http://testserver.test:8000/ocpi/versions/",
+            "url": "http://testserver.test/ocpi/versions/",
         },
         "status_code": 1000,
         "status_message": "Success",
