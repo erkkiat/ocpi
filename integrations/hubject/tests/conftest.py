@@ -26,6 +26,7 @@ from ocpi22.tests.factories import (
     OperatorEvseDataFactory,
     GeoCoordinatesFactory,
     ChargingFacilityFactory,
+    TariffFactory,
 )
 
 
@@ -172,7 +173,7 @@ def berlin_evse_data(berlin_connector):
 
 
 @pytest.fixture
-def berlin_connector():
+def berlin_connector(berlin_tariff):
     return ConnectorFactory(
         uid="CONNECTOR_1",
         standard="IEC_62196_T2",
@@ -180,6 +181,7 @@ def berlin_connector():
         power_type="",
         max_voltage=-100,
         max_amperage=16,
+        tariff_ids=[berlin_tariff],
         max_electric_power=12000,
         terms_and_conditions="https://www.berlin-supercharger.com/terms-and-conditions",
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
@@ -248,7 +250,7 @@ def emsdetten_evse(emsdetten_connector):
 
 
 @pytest.fixture
-def emsdetten_connector():
+def emsdetten_connector(emsdetten_tariff):
     return ConnectorFactory(
         uid="CONNECTOR_2",
         standard="IEC_62196_T2",
@@ -257,11 +259,22 @@ def emsdetten_connector():
         max_voltage=-100,
         max_amperage=16,
         max_electric_power=1400,
+        tariff_ids=[emsdetten_tariff],
         terms_and_conditions="https://www.berlin-supercharger.com/terms-and-conditions",
         last_updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         updated=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
         created=pytz.utc.localize(datetime(2024, 9, 22, 17, 32, 8, 599540)),
     )
+
+
+@pytest.fixture
+def emsdetten_tariff():
+    return TariffFactory()
+
+
+@pytest.fixture
+def berlin_tariff():
+    return TariffFactory()
 
 
 @pytest.fixture

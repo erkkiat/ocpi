@@ -36,7 +36,7 @@ from ocpiconnector.party import Party
 class TestHubjectService:
     __hubject_service = HubjectService()
 
-    @patch("ocpi22.models.location.Location.objects.filter")
+    @patch("ocpi22.models.location.Location.objects.prefetch_related")
     @pytest.mark.django_db
     def test_get_operator_evse_dict(
         self,
@@ -45,8 +45,21 @@ class TestHubjectService:
         emsdetten_location,
         berlin_op_evse_data,
         emsdetten_op_evse_data,
+        berlin_connector,
+        emsdetten_connector,
+        berlin_tariff,
+        emsdetten_tariff,
+        berlin_evse_data,
+        emsdetten_evse,
     ):
+        berlin_location.evses_with_connectors = [berlin_evse_data]
+        emsdetten_location.evses_with_connectors = [emsdetten_evse]
+
+        berlin_evse_data.connectors_with_tariffs = [berlin_connector]
+        emsdetten_evse.connectors_with_tariffs = [emsdetten_connector]
+
         mock_locations.return_value = [berlin_location, emsdetten_location]
+
         party = Party(country_code="DE", party_id="SMP")
         result = self.__hubject_service.get_operator_evse_data(party)
 
