@@ -2890,9 +2890,7 @@ class TestCpoApi(TestCase):
                     expected_session_data = case.get("session_data")
                     if expected_session_data:
                         session = Session.objects.get(
-                            session_id=cpo_request.data.get(
-                                "session_id"
-                            )
+                            session_id=cpo_request.data.get("session_id")
                         )
                         self.assertTrue(
                             session.total_cost_excl_vat and session.total_cost_incl_vat,
@@ -3107,10 +3105,7 @@ class TestCpoApi(TestCase):
 
         # Todo: Send CPO API authorize for AD_HOC_USER with and after 15 min has expired
 
-        data = dict(
-            session_id="FI*CPO*S*MOCK-1",
-            kwh=123.45, soc=42, power=150
-        )
+        data = dict(session_id="FI*CPO*S*MOCK-1", kwh=123.45, soc=42, power=150)
 
         #
         # Try updating meter values for a non-active Session
@@ -4158,7 +4153,7 @@ class TokenAuthorizationTests(BetterTestCase):
             reverse("token-authorize", args=[token_id]),
             **make_headers(
                 self.token_base64,
-                sender=self.our_credentialsrole.party,
+                sender=self.our_credentialsrole.get_party(),
                 to=self.token.ocpi_master.party,
             ),
         )

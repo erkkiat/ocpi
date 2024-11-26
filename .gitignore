@@ -11,4 +11,3 @@ env.sh
 *.db
 **/htmlcov/
 .coverage
-

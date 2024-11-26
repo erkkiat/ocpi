@@ -51,10 +51,6 @@ class TestQuickLocations(TestCase):
 
     @simulate_surrounding_world
     def test_quick_location_with_evses_and_connectors(self, simulation):
-        #
-        # Create Location
-        #
-
         with time_machine.travel(faketime, tick=False):
             response = put_location(
                 test_data.LocationData.location1, reverse("quick-location-list")
