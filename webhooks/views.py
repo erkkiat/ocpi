@@ -1,6 +1,6 @@
 import markdown
 from django.utils.html import format_html
-from icecream import ic
+
 from rest_framework import generics
 from django.utils.translation import gettext as _
 

@@ -9,7 +9,7 @@ from typing import Union, Iterable
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
-from icecream import ic
+
 from requests import Response
 from rest_framework.test import APIRequestFactory
 

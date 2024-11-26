@@ -2,7 +2,7 @@ from typing import Union
 
 from django.conf import settings
 from django.db import IntegrityError
-from icecream import ic
+
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 

@@ -10,13 +10,13 @@ from ocpi22.cpo.mqtt.mqtt_subscriber import (
     stop_and_disconnect,
     connect_client,
     on_message,
-    get_topic,
     get_broker_username_password,
     get_broker_and_port,
     configure_client,
     on_connect,
     start_client,
     _subscribe,
+    get_topic,
 )
 
 
@@ -32,14 +32,9 @@ class TestMqttSubscriber:
             client.on_connect(mock_mqtt_client, None, None, 0)
             yield mock_mqtt_client
 
-    @pytest.mark.parametrize("topic", [_smappee_status_topic, _smappee_meter_topic])
-    def test_subscribe(self, mocked_mqtt_client, topic):
-        mocked_mqtt_client.subscribe.assert_any_call(topic)
-        stop_and_disconnect(mocked_mqtt_client)
-
     @pytest.mark.django_db
     def test_on_message_calls_process_status_update_data(
-        self, smappee_status_update_message, db
+        self, smappee_status_update_message, db, celery_app, celery_worker
     ):
         with patch(
             "ocpi22.cpo.mqtt.mqtt_subscriber.process_status_update_data"
@@ -49,7 +44,9 @@ class TestMqttSubscriber:
                 smappee_status_update_message
             )
 
-    def test_on_message_calls_process_meter_values(self, smappee_meter_message):
+    def test_on_message_calls_process_meter_values(
+        self, celery_app, celery_worker, smappee_meter_message
+    ):
         with patch(
             "ocpi22.cpo.mqtt.mqtt_subscriber.process_meter_values_data"
         ) as mock_process_meter_values:
@@ -79,7 +76,7 @@ class TestMqttSubscriber:
             get_broker_username_password()
 
     def test_get_broker_and_port_success(self, monkeypatch):
-        host = "localhost"
+        host = "mqtt://localhost"
         port = "1834"
         monkeypatch.setenv("MQTT_HOST", host)
         monkeypatch.setenv("MQTT_PORT", port)

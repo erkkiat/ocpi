@@ -140,6 +140,3 @@ urlpatterns = [
 
 if settings.SERVE_STATIC_FILES or settings.DEBUG:
     urlpatterns += staticfiles_urlpatterns()
-
-urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
-# Todo: Disable silk in production

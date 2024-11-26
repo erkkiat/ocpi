@@ -1,5 +1,4 @@
 import requests
-from icecream import ic
 
 
 def send_sms(sender: str, msg_content: str, recipients: list):

@@ -8,7 +8,7 @@ from typing import Optional, Mapping, Any
 from urllib.parse import urljoin
 
 import requests
-from icecream import ic
+
 from rest_framework.exceptions import NotAuthenticated
 
 import ocpi22.logging as logging
@@ -182,7 +182,12 @@ class ApiPutTests(TestCase):
     maxDiff = None
 
     def create_location(
-        self, uid="L1", address="Testroad 1", name="Name", location_status="AVAILABLE", credentials=None
+        self,
+        uid="L1",
+        address="Testroad 1",
+        name="Name",
+        location_status="AVAILABLE",
+        credentials=None,
     ) -> Location:
         """
         Create a location with multiple Evses, with overlapping Evse IDs (OCPI: Evse ID is unique
@@ -302,19 +307,29 @@ class ApiPutTests(TestCase):
             uid=loc.uid,
         )
         data = response.data.get("data")
-        assert isinstance(data, dict), f'There should be a dict element "data" in the Location: {response.data}'
+        assert isinstance(
+            data, dict
+        ), f'There should be a dict element "data" in the Location: {response.data}'
 
         # Coordinates
         coordinates = data.get("coordinates")
         assert isinstance(coordinates, dict)
         latitude = coordinates.get("latitude")
         longitude = coordinates.get("longitude")
-        assert isinstance(latitude, str), "OCPI: Latitude and longitude should be strings"
-        assert isinstance(longitude, str), "OCPI: Latitude and longitude should be strings"
+        assert isinstance(
+            latitude, str
+        ), "OCPI: Latitude and longitude should be strings"
+        assert isinstance(
+            longitude, str
+        ), "OCPI: Latitude and longitude should be strings"
         decimals = latitude.split(".")[1]
-        assert len(decimals) == 6, "e-clearing.net: There should be exactly 6 decimals in latitude"
+        assert (
+            len(decimals) == 6
+        ), "e-clearing.net: There should be exactly 6 decimals in latitude"
         decimals = longitude.split(".")[1]
-        assert len(decimals) == 6, "e-clearing.net: There should be exactly 6 decimals in longitude"
+        assert (
+            len(decimals) == 6
+        ), "e-clearing.net: There should be exactly 6 decimals in longitude"
 
         # EVSES
         evses = data.get("evses")
@@ -593,7 +608,7 @@ class ApiPutTests(TestCase):
             map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
         )
         comparison = [
-            (x.get('json').get('evse_id'), x.get('json').get('status'))
+            (x.get("json").get("evse_id"), x.get("json").get("status"))
             for x in method_calls
         ]
         print(comparison)
@@ -752,10 +767,6 @@ class ApiPutTests(TestCase):
                             check_function(tariff),
                             f"Check function failed for {filename}",
                         )
-
-    def test_serialization(self):
-        pass
-        # location = load_example('ocpi22/data/examples/location_example_parking_garage_opening_hours.json')
 
     def test_cost_calculation(self):
         start_date_time = datetime(2022, 1, 1, 0, 0, tzinfo=pytz.utc)
@@ -1092,16 +1103,22 @@ class ApiPutTests(TestCase):
             uid=loc.uid,
         )
 
-        assert response.data.get("status_code") == 1000, "OCPI status code should be 1000 for success"
+        assert (
+            response.data.get("status_code") == 1000
+        ), "OCPI status code should be 1000 for success"
 
         data = response.data.get("data")
         detail_url = data.get("detail_url")
-        assert detail_url == "http://testserver.test:8000/ocpi/2.2.1/locations/FI/F1/1", \
-            "Location detail URL differs from expected"
+        assert (
+            detail_url == "http://testserver.test:8000/ocpi/2.2.1/locations/FI/F1/1"
+        ), "Location detail URL differs from expected"
 
         # This should fail without authentication
         result = self.client.get(detail_url)
-        assert result.status_code in [401, 403], "A Location request should require OCPI authentication."
+        assert result.status_code in [
+            401,
+            403,
+        ], "A Location request should require OCPI authentication."
 
     def _create_credentials(self, country_code, party_id):
         roles, _created = CredentialsRole.objects.get_or_create(
@@ -1111,11 +1128,6 @@ class ApiPutTests(TestCase):
             defaults=dict(business_details=self.business_details),
         )
         self.credentials.roles.add(roles)
-
-
-def dump_tariffs():
-    for t in Tariff.objects.all():
-        serializer = TariffSerializer(t)
 
 
 class TariffTests(TestCase):
@@ -1270,8 +1282,6 @@ class CdrTests(TestCase):
         evse = connector.evse
         location = evse.location
         credentials = Credentials.objects.first()
-
-
         session = Session.objects.create(
             ocpi_master=role,
             uid="TEST1",
@@ -2450,9 +2460,7 @@ class TestSession(TestCase):
                     patch("ocpi22.webhooks.requests.put") as webhook_post_mock,
                 ):
                     mock_get.return_value = "http://localhost/session/"
-                    response = SessionViewSet().patch(
-                        request, **kwargs
-                    )
+                    response = SessionViewSet().patch(request, **kwargs)
 
                 calls = webhook_post_mock.call_args_list
                 webhook_post_mock.assert_called_once()
@@ -2463,12 +2471,6 @@ class TestSession(TestCase):
                         ),
                         "Webhook data differs from expected",
                     )
-                # kwargs = dict(calls[0])
-
-                # if expected_webhook_data:
-                #     self.assertDictEqual(
-                #         kwargs, expected_webhook_data, f'Data sent to webhook differs from expected'
-                #     )
 
                 self.assertEqual(
                     response.status_code,
@@ -3756,7 +3758,13 @@ class TestMspUserApi(TestCase):
             authorize_token_mock.return_value = TokenAuthorization(
                 allowed="ALLOWED",
                 info=MessageTexts.get("TOKEN_ACCEPTED"),
-                token=AdhocToken(True, party, self.token_uid, TokenType.AD_HOC_USER, credentials.roles.first()),
+                token=AdhocToken(
+                    True,
+                    party,
+                    self.token_uid,
+                    TokenType.AD_HOC_USER,
+                    credentials.roles.first(),
+                ),
                 billed_to=str(party),
                 authorization_reference="1234567890",
                 auth_method=enum.AuthMethodChoices.AUTH_REQUEST,

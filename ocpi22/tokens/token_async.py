@@ -90,7 +90,9 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                     session=session,
                     url=make_url(url, token_id),
                     data=data,
-                    ocpi_master=await sync_to_async(credentials.get_role)(Party(country_code, party_id)),
+                    ocpi_master=await sync_to_async(credentials.get_role)(
+                        Party(country_code, party_id)
+                    ),
                     headers=make_headers(
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
@@ -147,7 +149,9 @@ def authorize_with_msps_sync(
     # Todo: Add info texts for TokenNotAuthorized
     TokenNotAuthorized = TokenAuthorization(
         allowed=AuthorizationEnum.NOT_ALLOWED,
-        token=AdhocToken(valid=False, type="", uid=token, billed_to=Party(), ocpi_master=None),
+        token=AdhocToken(
+            valid=False, type="", uid=token, billed_to=Party(), ocpi_master=None
+        ),
     )
 
     # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
@@ -157,10 +161,14 @@ def authorize_with_msps_sync(
             (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS
         )
 
-    data = {
-        "location_id": location.uid,
-        "evse_uids": [e.uid for e in location.evses.all()],
-    } if location else {}
+    data = (
+        {
+            "location_id": location.uid,
+            "evse_uids": [e.uid for e in location.evses.all()],
+        }
+        if location
+        else {}
+    )
 
     response = asyncio.run(authorize_with_msps(token, data, parties))
     if response:

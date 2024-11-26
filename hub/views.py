@@ -4,7 +4,6 @@ from django.contrib.auth.decorators import permission_required
 from django.shortcuts import get_object_or_404, render
 from django.utils.translation import gettext as _
 from django.http import HttpResponseRedirect, HttpResponse
-from icecream import ic
 
 from hub.settings import list_parties_template
 from ocpi22.messages import messages

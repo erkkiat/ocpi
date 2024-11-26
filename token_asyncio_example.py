@@ -3,8 +3,6 @@ import json
 import aiohttp
 import asyncio
 
-from icecream import ic
-
 
 async def post_request(session, url, data, headers=None):
     headers = headers or {}

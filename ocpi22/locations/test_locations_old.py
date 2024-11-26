@@ -10,7 +10,6 @@ from django.test import Client
 
 from unittest import TestCase
 
-from icecream import ic
 
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.tests.factories import EvseFactory, LocationFactory
@@ -30,7 +29,7 @@ def load_json(filename, serializer):
 
 class TestLocations(TestCase):
     def test_serialization(self):
-        location = load_json(
+        _ = load_json(
             "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
             LocationSerializer221,
         )

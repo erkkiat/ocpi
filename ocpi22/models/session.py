@@ -177,6 +177,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             power,
             Decimal(hours) - Decimal(hours_so_far),
         )
+
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.
     # This is the field used by the CPO’s system (RFID reader on the Charge Point) to identify this token.

@@ -1,13 +1,15 @@
+from builtins import list
+from typing import Union, Optional
+
 import pytz
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
-from icecream import ic
+
 
 import ocpi22.logging as logging
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Union, Optional
 from urllib.parse import urljoin
 
 from django.conf import settings
@@ -546,7 +548,9 @@ def send_start_command(
             data=serializer.data,
         )
     else:
-        message = f"Cannot find a route for START_SESSION to {evse.location.party_str()}"
+        message = (
+            f"Cannot find a route for START_SESSION to {evse.location.party_str()}"
+        )
         log_error(request, message)
         raise APIException(message)
 

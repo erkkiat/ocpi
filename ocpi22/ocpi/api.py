@@ -8,7 +8,7 @@ from typing import Optional
 
 from django.core.handlers.wsgi import WSGIRequest
 from django.views.decorators.csrf import csrf_exempt
-from icecream import ic
+
 from rest_framework import routers, status, mixins
 from rest_framework.generics import get_object_or_404
 from rest_framework.renderers import JSONRenderer
@@ -33,7 +33,8 @@ from ocpi22.choices import (
     get_language,
     AuthorizationEnum,
     OcpiModuleEnum,
-    OcpiRolesEnum, EndpointRoleEnum,
+    OcpiRolesEnum,
+    EndpointRoleEnum,
 )
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
@@ -257,7 +258,11 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                         logging.error(
                             f"Format error in response from MSP backend: {serializer.errors}"
                         )
-                elif token.whitelist in (Token.ALWAYS, Token.ALLOWED, Token.ALLOWED_OFFLINE):
+                elif token.whitelist in (
+                    Token.ALWAYS,
+                    Token.ALLOWED,
+                    Token.ALLOWED_OFFLINE,
+                ):
                     allowed = AuthorizationEnum.ALLOWED
                     info = MessageTexts.get(AuthorizationEnum.ALLOWED)
                 else:
@@ -706,7 +711,9 @@ def stop_session_if_money_runs_out(request, session):
 
 def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
     party = Party(country_code, party_id)
-    route = find_route(to=party, ocpi_module=OcpiModuleEnum.LOCATIONS, role=EndpointRoleEnum.SENDER)
+    route = find_route(
+        to=party, ocpi_module=OcpiModuleEnum.LOCATIONS, role=EndpointRoleEnum.SENDER
+    )
     if not route:
         return False
     url = urljoin(

@@ -13,10 +13,9 @@ from django.db import connection, reset_queries
 from django.test import TestCase
 
 from django.contrib.auth.models import AnonymousUser
-from icecream import ic
+
 from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
-from urllib3.exceptions import ConnectTimeoutError
 
 from ocpi22.cpo.test_data import LocationData
 from ocpi22.ocpi.serializers import SessionSerializer
@@ -69,29 +68,109 @@ class TestQuickLocations(TestCase):
             uid=test_data.LocationData.location1.get("id")
         )
         data = LocationQuickSerializer(instance=location).data
-        assert dict(data) == LocationData.quick_location_with_evses_and_connectors, \
-            "New Location data differs from expected"
+        assert (
+            dict(data) == LocationData.quick_location_with_evses_and_connectors
+        ), "New Location data differs from expected"
+        expected_data = {
+            "address": "Kotikatu 38",
+            "city": "Espoo",
+            "country": "FIN",
+            "evses": [
+                OrderedDict(
+                    [
+                        ("uid", "1"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "CABLE"),
+                                        ("max_voltage", 233),
+                                        ("max_amperage", 32),
+                                        ("max_electric_power", 22200),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                        ("tariff_ids", ["EKI1"]),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-01-01T12:00:00Z"),
+                    ]
+                ),
+                OrderedDict(
+                    [
+                        ("uid", "2"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "SOCKET"),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                        ("max_voltage", 232),
+                                        ("max_amperage", 32),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-01-01T12:00:00Z"),
+                    ]
+                ),
+                OrderedDict(
+                    [
+                        ("uid", "12321"),
+                        (
+                            "connectors",
+                            [
+                                OrderedDict(
+                                    [
+                                        ("uid", "1"),
+                                        ("standard", "IEC_62196_T2"),
+                                        ("format", "CABLE"),
+                                        ("last_updated", "2022-01-01T12:00:00Z"),
+                                        ("max_voltage", 233),
+                                        ("max_amperage", 32),
+                                        ("tariff_ids", ["DC50"]),
+                                    ]
+                                )
+                            ],
+                        ),
+                        ("last_updated", "2022-01-01T12:00:00Z"),
+                    ]
+                ),
+            ],
+            "id": "EKI1",
+            "latitude": 60.0,
+            "longitude": 30.0,
+            "name": "Eki's home charger",
+            "postal_code": "01234",
+            "time_zone": "Europe/Helsinki",
+        }
 
-        #
+        self.assertTrue(
+            compare_dicts_recursively(data, expected_data),
+            "New Location data differs from expected",
+        )
+
         # Update Location
-        #
 
         data_update = test_data.LocationData.location_update1
         with time_machine.travel(faketime, tick=False):
-            response = patch_location(
-                data_update, reverse("quick-location-list")
-            )
+            response = patch_location(data_update, reverse("quick-location-list"))
         self.assertEqual(
             response.status_code,
             status.HTTP_200_OK,
             "Expecting Location to be updated successfully",
         )
-        location = Location.get_if_exists(
-            uid=data_update.get("id")
-        )
+        location = Location.get_if_exists(uid=data_update.get("id"))
         data = LocationQuickSerializer(instance=location).data
-        assert dict(data) == LocationData.quick_location_with_evses_and_connectors_update, \
-            "Updated Location data differs from expected"
+        assert (
+            dict(data) == LocationData.quick_location_with_evses_and_connectors_update
+        ), "Updated Location data differs from expected"
 
     def test_quick_tariff(self):
         test_cases = [
@@ -507,7 +586,10 @@ class TestChargingPeriods(TestCase):
                             time_machine.travel(timestamp, tick=False),
                             patch("ocpi22.util.is_our_identifier", return_value=True),
                         ):
-                            from ocpi22.test_tariff_location_and_evse import meter_values
+                            from ocpi22.test_tariff_location_and_evse import (
+                                meter_values,
+                            )
+
                             response = meter_values(
                                 dict(
                                     session_id=sess_id,
@@ -526,7 +608,7 @@ class TestChargingPeriods(TestCase):
                         )
                         if expected_args:
                             kwargs = simulation.tasks_requests.patch.call_args.kwargs
-                            args = simulation.tasks_requests.patch.call_args.args
+                            _ = simulation.tasks_requests.patch.call_args.args
                             self.assertTrue(
                                 compare_dicts_recursively(
                                     kwargs["data"], expected_args
@@ -552,8 +634,10 @@ class TestChargingPeriods(TestCase):
                                 ),
                                 "Session data differs from expected",
                             )
-                except AssertionError:
-                    print(args[0], response.data)
+                except AssertionError as e:
+                    print(
+                        e.args[0], response.data
+                    )  # TODO Let's remove this print after the conflict fix
                     raise
 
         find_route.cache_clear()

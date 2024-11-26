@@ -3,7 +3,7 @@ from datetime import datetime
 from random import randint
 from time import sleep
 from typing import Optional, Union
-from icecream import ic
+
 
 import pytz
 import requests

@@ -513,7 +513,7 @@ def make_hashable(x):
 
 
 def markdown_escape(s: str) -> str:
-    return s.replace('*', '\\*').replace('_', '\\_')
+    return s.replace("*", "\\*").replace("_", "\\_")
 
 
 def format_session_url(base_url, country_code, party_id, session_id):
