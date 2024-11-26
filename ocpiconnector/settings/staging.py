@@ -2,7 +2,7 @@ from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
 ENV = os.getenv("ENV", "staging").lower()
-DEBUG = False
+DEBUG = os.getenv("DEBUG", False)
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 
 ALLOWED_HOSTS.extend(["staging.solidroam.com"])  # noqa
