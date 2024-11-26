@@ -161,7 +161,7 @@ def authorize_with_msps_sync(
         parties = find_endpoints_by_roles(
             (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
             OcpiModuleEnum.TOKENS,
-            sender_or_receiver=EndpointRoleEnum.SENDER.value
+            endpoint_role=EndpointRoleEnum.SENDER.value
         )
 
     data = (

@@ -33,3 +33,7 @@ class Party:
         return CredentialsRole.get_if_exists(
             country_code__iexact=self.country_code, party_id__iexact=self.party_id
         )
+
+    @classmethod
+    def from_str(cls, party_str):
+        return cls(*party_str.split('*'))
