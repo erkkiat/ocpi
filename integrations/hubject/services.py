@@ -64,7 +64,7 @@ class HubjectService:
                         raise TariffNotFoundError(
                             evse.evse_id,
                             connector.standard,
-                            f"Evse {evse.evse_id}, connector {connector.standard} does not have assigned or default tariffs",
+                            f"No Tariff found for Evse {evse.evse_id} and connector {connector.standard}",
                         )
 
         if len(evse_data_records) == 0:
