@@ -2,6 +2,7 @@ import doctest
 from dataclasses import asdict
 from datetime import timedelta, datetime
 
+import pytest
 import pytz
 import time_machine
 from django.db.models import Min, Max, Sum
@@ -159,9 +160,9 @@ class SettlementTestCase(TestCase):
         Cdr.objects.all().delete()
         create_cdrs(3, 3)
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=False)
     def test_settlement(self):
-        return  # Todo: fix test
         Cdr.objects.count()
         # print(f'{cdr_count} CDR records in database.')
         start_datetime = datetime.now(pytz.utc) - timedelta(days=30)

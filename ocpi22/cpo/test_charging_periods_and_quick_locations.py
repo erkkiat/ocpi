@@ -7,6 +7,7 @@ from functools import wraps
 from unittest.mock import patch
 
 import geopy
+import pytest
 import pytz
 import time_machine
 from django.db import connection, reset_queries
@@ -683,17 +684,17 @@ def get(url, viewset):
     return viewset().list(request)
 
 
-# Todo: fix test
-# def test_exception_handler(func):
-#     @wraps(func)
-#     def wrapper(*args, **kwargs):
-#         try:
-#             return func(*args, **kwargs)
-#         except (geopy.exc.GeocoderUnavailable, geopy.exc.GeocoderServiceError) as e:
-#             sys.stderr.write(f"Geocoder error during test: {e}")
-#             return None
-#
-#     return wrapper
+@pytest.mark.skip(reason="Fix me!")
+def test_exception_handler(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except (geopy.exc.GeocoderUnavailable, geopy.exc.GeocoderServiceError) as e:
+            sys.stderr.write(f"Geocoder error during test: {e}")
+            return None
+
+    return wrapper
 
 
 # @test_exception_handler

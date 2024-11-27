@@ -7,6 +7,7 @@ import os
 from typing import Optional, Mapping, Any
 from urllib.parse import urljoin
 
+import pytest
 import requests
 
 from rest_framework.exceptions import NotAuthenticated
@@ -1176,9 +1177,9 @@ class TariffTests(TestCase):
             tariff.tariff_elements.all()[0].price_components.all()[0].price, 0.22
         )
 
+    @pytest.mark.skip(reason="Fix me!")
     @simulate_surrounding_world
     def test_delete_tariff(self, simulation):
-        return  # Todo: fix test
         previous_count = Tariff.objects.count()
         our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
         t1 = create_tariff(uid="T1", ocpi_master=our_role)
@@ -1265,10 +1266,10 @@ class CdrTests(TestCase):
             ocpi_master=get_credentialsrole(None, party=Party(country_code, party_id))
         )
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=False)
     @simulate_surrounding_world
     def test_session_to_cdr(self, simulation):
-        return  # Todo: fix test
         cpo_credentials = Credentials.objects.create()
         role = get_credentialsrole(
             cpo_credentials, Party("BE", "BEC"), create=True, role=OcpiRolesEnum.CPO
@@ -1382,10 +1383,10 @@ class CommandTests(TestCase):
     def setUp(self) -> None:
         get_our_credentialsrole.cache_clear()
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=False)
     @simulate_surrounding_world
     def test_start_stop_session(self, simulation):
-        return  # Todo: fix test
         url = reverse("commands-start-session")
         viewset = CommandsViewSet()
 
@@ -1734,10 +1735,10 @@ class UpdatePartiesTest(TestCase):
             "Creating the admin token seems not to work",
         )
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=False)
     @simulate_surrounding_world
     def test_update_new_token(self, simulation):
-        return  # Todo: fix test
         settings.SEND_UPDATES = True
         settings.BACKGROUND_SEND = False
         credentialsrole = get_credentialsrole(None, Party("FI", "MSP"), create=True)
@@ -2364,11 +2365,11 @@ class TestSession(TestCase):
     fixtures = ["ocpi22/data/test-database-sessions.json"]
     maxDiff = None
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=False)
     @patch("ocpi22.tokens.token_async.post_request", new_callable=AsyncMock)
     @simulate_surrounding_world
     def test_update_session(self, mock_post_request, simulation):
-        return  # Todo: fix test
         mock_post_request.return_value = 200, AuthorizeData.accept_authorization
 
         evse = Evse.objects.all()[0]
@@ -2502,10 +2503,10 @@ class TestCpoApi(TestCase):
     def setUp(self) -> None:
         find_endpoints_by_roles.cache_clear()
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=False)
     @simulate_surrounding_world
     def test_status_change(self, simulation):
-        return  # Todo: fix test
         evse = Evse.objects.get(uid="HELSINKI-3")
         self.assertEqual(evse.status, "AVAILABLE")
 
@@ -2580,6 +2581,7 @@ class TestCpoApi(TestCase):
             )
         )
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=False)
     @patch(
         "ocpi22.util.redis_store.get",
@@ -2602,7 +2604,6 @@ class TestCpoApi(TestCase):
         _uuid4_mock: Mock,
         _get_parameter_mock: Mock,
     ):
-        return  # Todo: fix test
         mock_post_request.return_value = 200, AuthorizeData.accept_authorization
 
         evse = Evse.objects.get(uid="HELSINKI-3")
@@ -2926,11 +2927,11 @@ class TestCpoApi(TestCase):
             "stop_transaction is sending different session data than expected to MSP",
         )
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=False)
     @patch("ocpi22.tokens.token_async.post_request", new_callable=AsyncMock)
     @simulate_surrounding_world
     def test_adhoc_token(self, mock_post_request: Mock, simulation):
-        return  # Todo: fix test
         mock_post_request.return_value = 200, AuthorizeData.accept_authorization
 
         url = reverse("commands-start-session")
@@ -3271,9 +3272,9 @@ class TestPutSession(TestCase):
     ]
     maxDiff = None
 
+    @pytest.mark.skip(reason="Fix me!")
     @simulate_surrounding_world
     def test_put_session_with_charging_periods(self, simulation: Simulation):
-        return  # Todo: fix test
         # First I decided to reject Session PUT if there is no matching Authorization on the MSP end,
         # But I realized that such Sessions need to be sorted by hand afterwards
         #
@@ -3380,10 +3381,10 @@ class TestMspApi(TestCase):
     def setUp(self) -> None:
         self.user = User.objects.create_user("eki")
 
+    @pytest.mark.skip(reason="Fix me!")
     @time_machine.travel(faketime, tick=True)
     @simulate_surrounding_world
     def test_app_charging(self, simulation):
-        return  # Todo: fix test
         data = {
             "location_id": "HELSINKI-1",
             "evse_uid": "HELSINKI-3",
@@ -3655,8 +3656,8 @@ class TestMspMap(TestCase):
         "type": "FeatureCollection",
     }
 
+    @pytest.mark.skip(reason="Fix me!")
     def test_map(self):
-        return  # Todo: fix test
         response = self.client.get(reverse("map-locations"))
         self.assertDictEqual(
             response.data,
@@ -4017,8 +4018,8 @@ class TestOCPIAuthentication(TestCase):
         request.headers = make_headers(credentials.ours_base64(), to=to, sender=sender)
         return request, credentials.ours_base64()
 
+    @pytest.mark.skip(reason="Fix me!")
     def test_hub_routed_message(self):
-        return  # Todo: fix test
         hub_party = Party("FI", "HBB")
         msp_party = Party("FI", "MSP")
         our_party = get_our_party(OcpiRolesEnum.CPO)
@@ -4226,9 +4227,9 @@ class TokenAuthorizationTests(BetterTestCase):
         viewset.kwargs = kwargs
         self.assertEqual(viewset.get_view_name(), "Token 123")
 
+    @pytest.mark.skip(reason="Fix me!")
     @simulate_surrounding_world
     def test_invalid_token_authorization(self, simulation):
-        return  # Todo: fix test
         token_id = "EKI1"
 
         request = self.prepare_testcase(
@@ -4267,9 +4268,9 @@ class TokenAuthorizationTests(BetterTestCase):
         # Clean up afterwards
         Token.objects.filter(uid=token_id).update(valid=True)
 
+    @pytest.mark.skip(reason="Fix me!")
     @simulate_surrounding_world
     def test_successful_token_authorization(self, simulation):
-        return  # Todo: fix test
         token_id = "EKI1"
 
         location_uid = "HELSINKI-1"

@@ -8,6 +8,7 @@ from ocpi22.models.hours import (
     Hours,
     ExceptionalClosing,
 )
+from ocpi22.serializers.util import UTCDateTimeField
 
 
 class CustomTimeField(serializers.TimeField):
@@ -21,14 +22,6 @@ class CustomTimeField(serializers.TimeField):
                 return value
             raise ValueError("Time has to be in HH:MM format")
         return value.strftime("%H:%M")
-
-
-class CustomDateTimeField(serializers.DateTimeField):
-    def to_representation(self, value):
-        if value is None or isinstance(value, str):
-            return value
-        value = value.astimezone(timezone.utc)
-        return value.strftime(settings.OCPI_DATE_FORMAT)
 
 
 class RegularHoursSerializer(serializers.ModelSerializer):
@@ -45,8 +38,8 @@ class ExceptionalPeriodSerializer(serializers.ModelSerializer):
         model = ExceptionalOpening
         fields = ["period_begin", "period_end"]
 
-    period_begin = CustomDateTimeField()
-    period_end = CustomDateTimeField()
+    period_begin = UTCDateTimeField()
+    period_end = UTCDateTimeField()
 
 
 class HoursSerializer(serializers.ModelSerializer):

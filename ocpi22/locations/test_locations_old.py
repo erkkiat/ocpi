@@ -28,8 +28,8 @@ def load_json(filename, serializer):
 
 
 class TestLocations(TestCase):
+    @pytest.mark.skip(reason="Fix me!")
     def test_serialization(self):
-        return  # Todo: fix test
         _ = load_json(
             "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
             LocationSerializer221,

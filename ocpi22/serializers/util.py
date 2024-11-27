@@ -100,9 +100,8 @@ class CallbacksSerializer(serializers.Serializer):
 
 class UTCDateTimeField(serializers.DateTimeField):
     def to_representation(self, value) -> str:
-        assert isinstance(
-            value, datetime
-        ), f"Expected a datetime, got type {type(value)} with value {value}"
+        if not isinstance(value, datetime):
+            raise ValueError(f"Expected a datetime, got type {type(value)} with value {value}")
         value = value.astimezone(tzoffset(None, 0))
         result = value.strftime(settings.OCPI_DATE_FORMAT)
         return super().to_representation(result)
@@ -110,9 +109,8 @@ class UTCDateTimeField(serializers.DateTimeField):
     def to_internal_value(self, value: Union[str, datetime]):
         if isinstance(value, datetime):
             return value
-        assert isinstance(
-            value, str
-        ), f"Expected a string, got type {type(value)} with value {value}"
+        if not isinstance(value, str):
+            raise ValueError(f"Expected a string, got type {type(value)} with value {value}")
         value: datetime = parser.parse(value)
         if value and isinstance(value.tzinfo, tzoffset):
             raise serializers.ValidationError(
