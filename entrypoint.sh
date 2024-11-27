@@ -3,19 +3,6 @@ set -e  # Exit immediately if a command exits with a non-zero status
 
 WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
-# Load environment variables for local development
-if [[ "$ENV" == "development" ]]; then
-    ENV_FILE="$1.env" # Use entrypoint-specific .env files for development (e.g., django-server.env)
-    if [[ -f "$ENV_FILE" ]]; then
-        echo "Loading environment variables from $ENV_FILE..."
-        export $(grep -v '^#' "$ENV_FILE" | xargs)
-    else
-        echo "Warning: $ENV_FILE not found. Ensure the correct environment file exists."
-    fi
-else
-    echo "Skipping entrypoint-specific .env file loading in ENV=$ENV."
-fi
-
 # Fetch secrets only for staging and production
 if [[ "$ENV" == "staging" || "$ENV" == "production" ]]; then
     if [ -x ./fetch_secrets.sh ]; then
@@ -25,6 +12,8 @@ if [[ "$ENV" == "staging" || "$ENV" == "production" ]]; then
         echo "Error: fetch_secrets.sh not found or not executable."
         exit 1
     fi
+else
+    echo "Skipping secret fetching in ENV=$ENV."
 fi
 
 # Main service startup logic
@@ -33,8 +22,8 @@ case "$1" in
         echo "Running collectstatic..."
         python manage.py collectstatic --noinput
 
-        # Apply migrations only in development or staging environments
-        if [[ "$ENV" == "development" ]]; then
+        # Apply migrations in development and staging environments
+        if [[ "$ENV" == "development" || "$ENV" == "staging" ]]; then
             echo "Applying database migrations for $ENV environment..."
             python manage.py migrate --noinput
         fi
