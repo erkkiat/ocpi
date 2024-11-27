@@ -8,7 +8,7 @@ import asyncio
 from asgiref.sync import sync_to_async
 
 from ocpi22 import logging
-from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, AuthorizationEnum
+from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, AuthorizationEnum, EndpointRoleEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.location import Location
@@ -79,6 +79,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
     result = None
+    pending_tasks = []
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
     # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
@@ -103,12 +104,12 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
         ]
 
         while tasks:
-            done, pending = await asyncio.wait(
+            done_tasks, pending_tasks = await asyncio.wait(
                 tasks, return_when=asyncio.FIRST_COMPLETED
             )
-            # print(f'Processing {len(done)} done tasks ({len(pending)} still pending)...')
+            # print(f'Processing {len(done_tasks)} done_tasks tasks ({len(pending_tasks)} still pending_tasks)...')
 
-            for task in done:
+            for task in done_tasks:
                 try:
                     result = process_task_result(task)
                     if result:
@@ -116,14 +117,14 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 except Exception as e:
                     logging.error(f"Task {task.get_name()} raised an exception: {e}")
 
-            if not pending:
-                # No more tasks pending, break the loop
+            if not pending_tasks:
+                # No more tasks pending_tasks, break the loop
                 return result
 
-            tasks = set(pending)
+            tasks = set(pending_tasks)
 
-        # Cancel all pending tasks as we have found our successful task or there are no tasks left
-        for task in pending:
+        # Cancel all pending_tasks tasks as we have found our successful task or there are no tasks left
+        for task in pending_tasks:
             logging.info(f"Cancelling task {task.get_name()}", task.cancel())
 
         return result
@@ -158,7 +159,9 @@ def authorize_with_msps_sync(
 
     if not parties:
         parties = find_endpoints_by_roles(
-            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value), OcpiModuleEnum.TOKENS
+            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
+            OcpiModuleEnum.TOKENS,
+            sender_or_receiver=EndpointRoleEnum.SENDER.value
         )
 
     data = (

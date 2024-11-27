@@ -27,5 +27,5 @@ def setup_sentry():
         ],
         traces_sample_rate=tracing_sampling_rate,  # Adjust based on your needs
         profiles_sample_rate=profiling_sample_rate,
-        send_default_pii=True,
+        send_default_pii=False,
     )

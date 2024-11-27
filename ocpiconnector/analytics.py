@@ -29,7 +29,7 @@ def send_session_update_to_analytics(session: Session):
         "delivery_customer_id": session.cdr_token_uid,
         "sales_date": session_date,
         "sales_time": session_time,
-        "product_id": f"{session.connector.power()} {session.connector.get_standard_display()}",
+        "product_id": f"{session.connector.power_str()} {session.connector.get_standard_display()}",
         "product_quantity": session.kwh,
         "product_unit_price": Decimal(session.total_cost_incl_vat)
         / Decimal(max(session.kwh, 0.001)),
