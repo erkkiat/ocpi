@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import MagicMock, patch
 
 import orjson
@@ -51,6 +52,7 @@ class TestMqttServices:
     def test_process_meter_values_update_returns_none_when_data_validation_fails(
         self, smappee_meter_message, caplog
     ):
+        caplog.set_level(logging.ERROR, logger="ocpi22.cpo.mqtt.services")
         smappee_meter_message.payload = b'{"invalid_data": "94f5993d-232a-4916-a801-4e408c24c9cc", "kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
         assert process_meter_values_data(smappee_meter_message) is None
         assert any(
@@ -64,7 +66,9 @@ class TestMqttServices:
     ):
         return  # Todo: fix test
         meter_values = MagicMock(spec=MeterValues)
-        meter_values.model_dump.return_value = '{"kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
+        meter_values.model_dump.return_value = (
+            '{"kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
+        )
         with patch.object(
             MeterValues, "model_validate_json", return_value=meter_values
         ):
@@ -79,6 +83,7 @@ class TestMqttServices:
                     for record in caplog.records
                 )
 
+    #         caplog.set_level(logging.INFO, logger="ocpi22.cpo.mqtt.mqtt_subscriber")
     def test_process_meter_values_update_fails_when_unexpected_error_occurs(
         self, smappee_meter_message, caplog
     ):
@@ -139,6 +144,8 @@ class TestMqttServices:
     ):
         smappee_status_update_message.payload = b'{"invalid_data": "94f5993d-232a"}'
         assert process_meter_values_data(smappee_status_update_message) is None
+        # caplog.set_level(logging.INFO, logger="ocpi22.cpo.mqtt.services")
+
         assert any(
             f"Failed to validate {smappee_status_update_message.topic} message"
             in record.message
