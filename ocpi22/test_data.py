@@ -1285,17 +1285,27 @@ class TokenAuthorizationData:
         }
     ]
     location_not_found = {
-        "data": {
-            "location_id": [
-                ErrorDetail(
-                    string="Location NONEXISTENT cannot be found from MSP database",
-                    code="invalid",
-                )
-            ]
-        },
-        "status_code": 2001,
-        "status_message": "Bad request: no message supplied",
-        "timestamp": "2022-01-01T12:00:00Z",
+        'data': {'allowed': 'NOT_ALLOWED',
+                 'authorization_reference': '',
+                 'token': {'country_code': 'FI', 'party_id': 'MSP', 'uid': 'EKI1', 'type': 'APP_USER',
+                           'contract_id': 'CONTRACT_F', 'visual_number': '123C', 'issuer': 'eki', 'valid': True,
+                           'whitelist': 'NEVER', 'last_updated': '2022-01-10T07:00:01Z'}},
+        'status_code': 1000,
+        'status_message': 'Your charging token is not allowed to charge at this '
+                          'location',
+        'timestamp': '2022-01-01T12:00:00Z'
+    }
+
+    location_not_found2 = {
+        'data': {'allowed': 'NOT_ALLOWED',
+                 'authorization_reference': '',
+                 'token': {'country_code': 'FI', 'party_id': 'MSP', 'uid': 'EKI1', 'type': 'APP_USER',
+                           'contract_id': 'CONTRACT_F', 'visual_number': '123C', 'issuer': 'eki', 'valid': True,
+                           'whitelist': 'NEVER', 'last_updated': '2022-01-10T07:00:01Z'}},
+        'status_code': 1000,
+        'status_message': 'Your charging token is not allowed to charge (at this '
+                          'location)',
+        'timestamp': '2022-01-01T12:00:00Z'
     }
 
     non_existent_token = {

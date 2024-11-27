@@ -126,7 +126,6 @@ class RegistrationSerializer(ProfileSerializer):
             "firstname",
             "lastname",
             "telephone",
-            "vehicle",
             "password",
             "confirm",
         )

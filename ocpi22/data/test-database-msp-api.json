@@ -184,6 +184,25 @@
   },
   {
     "model": "ocpi22.tariff",
+    "pk": 2,
+    "fields": {
+      "archived": false,
+      "ocpi_master": 99,
+      "uid": "DC50",
+      "currency": "PLN",
+      "type": "REGULAR",
+      "tariff_alt_url": "",
+      "min_price_excl_vat": null,
+      "min_price_incl_vat": null,
+      "max_price_excl_vat": null,
+      "max_price_incl_vat": null,
+      "last_updated": null,
+      "updated" : "2022-03-23T06:39:54.213Z",
+      "created" : "2022-02-20T14:42:04.475Z"
+    }
+  },
+  {
+    "model": "ocpi22.tariff",
     "pk": 5,
     "fields": {
       "archived": false,
