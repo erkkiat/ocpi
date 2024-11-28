@@ -1,6 +1,3 @@
-from datetime import timezone
-
-from django.conf import settings
 from rest_framework import serializers
 from ocpi22.models.hours import (
     RegularHours,

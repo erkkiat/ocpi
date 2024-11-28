@@ -1,5 +1,5 @@
 from django.db import models
-from django.utils import dateformat, timezone
+from django.utils import dateformat
 from django.utils.translation import gettext_lazy as _
 
 # Todo: What does the client need, Hours.is_open_now(), Hours.how_long_until_open(), Hours.how_long_until_close()?
