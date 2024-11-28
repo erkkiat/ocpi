@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytz
-from rest_framework.exceptions import ErrorDetail
 
 
 class CredentialsData:
@@ -16,11 +15,12 @@ class CredentialsData:
                     "party_id": "CPO",
                     "role": "CPO",
                 },
-                {'business_details': {'name': 'SolidRoam CPO',
-                                      'website': ''},
-                 'country_code': 'FI',
-                 'party_id': 'MSP',
-                 'role': 'EMSP'}
+                {
+                    "business_details": {"name": "SolidRoam CPO", "website": ""},
+                    "country_code": "FI",
+                    "party_id": "MSP",
+                    "role": "EMSP",
+                },
             ],
             "token": "12345",
             "url": "http://testserver.test/ocpi/versions/",
@@ -1285,27 +1285,49 @@ class TokenAuthorizationData:
         }
     ]
     location_not_found = {
-        'data': {'allowed': 'NOT_ALLOWED',
-                 'authorization_reference': '',
-                 'token': {'country_code': 'FI', 'party_id': 'MSP', 'uid': 'EKI1', 'type': 'APP_USER',
-                           'contract_id': 'CONTRACT_F', 'visual_number': '123C', 'issuer': 'eki', 'valid': True,
-                           'whitelist': 'NEVER', 'last_updated': '2022-01-10T07:00:01Z'}},
-        'status_code': 1000,
-        'status_message': 'Your charging token is not allowed to charge at this '
-                          'location',
-        'timestamp': '2022-01-01T12:00:00Z'
+        "data": {
+            "allowed": "NOT_ALLOWED",
+            "authorization_reference": "",
+            "token": {
+                "country_code": "FI",
+                "party_id": "MSP",
+                "uid": "EKI1",
+                "type": "APP_USER",
+                "contract_id": "CONTRACT_F",
+                "visual_number": "123C",
+                "issuer": "eki",
+                "valid": True,
+                "whitelist": "NEVER",
+                "last_updated": "2022-01-10T07:00:01Z",
+            },
+        },
+        "status_code": 1000,
+        "status_message": "Your charging token is not allowed to charge at this "
+        "location",
+        "timestamp": "2022-01-01T12:00:00Z",
     }
 
     location_not_found2 = {
-        'data': {'allowed': 'NOT_ALLOWED',
-                 'authorization_reference': '',
-                 'token': {'country_code': 'FI', 'party_id': 'MSP', 'uid': 'EKI1', 'type': 'APP_USER',
-                           'contract_id': 'CONTRACT_F', 'visual_number': '123C', 'issuer': 'eki', 'valid': True,
-                           'whitelist': 'NEVER', 'last_updated': '2022-01-10T07:00:01Z'}},
-        'status_code': 1000,
-        'status_message': 'Your charging token is not allowed to charge (at this '
-                          'location)',
-        'timestamp': '2022-01-01T12:00:00Z'
+        "data": {
+            "allowed": "NOT_ALLOWED",
+            "authorization_reference": "",
+            "token": {
+                "country_code": "FI",
+                "party_id": "MSP",
+                "uid": "EKI1",
+                "type": "APP_USER",
+                "contract_id": "CONTRACT_F",
+                "visual_number": "123C",
+                "issuer": "eki",
+                "valid": True,
+                "whitelist": "NEVER",
+                "last_updated": "2022-01-10T07:00:01Z",
+            },
+        },
+        "status_code": 1000,
+        "status_message": "Your charging token is not allowed to charge (at this "
+        "location)",
+        "timestamp": "2022-01-01T12:00:00Z",
     }
 
     non_existent_token = {
@@ -2221,13 +2243,20 @@ class CpoApiData:
 
 
 class LocationData:
-    webhook_calls = [('3256', 'AVAILABLE'), ('3257', 'RESERVED'), ('3256', 'AVAILABLE'), ('3257', 'RESERVED'),
-                     ('3256', 'AVAILABLE'), ('3257', 'RESERVED'), ('eccb8dd9-4189-433e-b100-cc0945dd17dc', 'AVAILABLE'),
-                     ('fd855359-bc81-47bb-bb89-849ae3dac89e', 'AVAILABLE'),
-                     ('fd855359-bc81-47bb-bb89-849ae3dac89e', 'AVAILABLE'),
-                     ('fd855359-bc81-47bb-bb89-849ae3dac89e', 'AVAILABLE'),
-                     ('8c1b3487-61ac-40a7-a367-21eee99dbd90', 'AVAILABLE'),
-                     ('4534ad5f-45be-428b-bfd0-fa489dda932d', 'AVAILABLE')]
+    webhook_calls = [
+        ("3256", "AVAILABLE"),
+        ("3257", "RESERVED"),
+        ("3256", "AVAILABLE"),
+        ("3257", "RESERVED"),
+        ("3256", "AVAILABLE"),
+        ("3257", "RESERVED"),
+        ("eccb8dd9-4189-433e-b100-cc0945dd17dc", "AVAILABLE"),
+        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
+        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
+        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
+        ("8c1b3487-61ac-40a7-a367-21eee99dbd90", "AVAILABLE"),
+        ("4534ad5f-45be-428b-bfd0-fa489dda932d", "AVAILABLE"),
+    ]
 
 
 class TariffData:
