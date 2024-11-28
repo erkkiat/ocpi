@@ -28,7 +28,6 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
         return
     object_list = [
         dict(
-            party=credentials.get_party(),
             model="ocpi22.models.tariffs.Tariff",
             viewset="ocpi22.ocpi.api.TariffViewSet",
             url=getattr(
@@ -41,7 +40,6 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
             ),
         ),
         dict(
-            party=credentials.get_party(),
             model="ocpi22.models.tokens.Token",
             viewset="ocpi22.ocpi.api.TokenViewSet",
             url=getattr(
@@ -54,7 +52,6 @@ def schedule_full_update(credentials: Credentials, countdown=1, limit=2):
             ),
         ),
         dict(
-            party=credentials.get_party(),
             model="ocpi22.models.locations.Location",
             viewset="ocpi22.locations.location.LocationViewSet",
             url=getattr(

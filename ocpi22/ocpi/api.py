@@ -893,7 +893,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_sender_role(OcpiRolesEnum.CPO)
     @requires_last_updated
     def patch(self, request, data, *args, **kwargs):
-        return self.put(request, *args, partial=True, **kwargs)
+        return self.put(request, data, *args, partial=True, **kwargs)
 
 
 class ClientInfoViewSet(mixins.ListModelMixin, GenericViewSet):

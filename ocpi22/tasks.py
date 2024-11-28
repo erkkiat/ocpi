@@ -153,7 +153,7 @@ def send_ocpi_request(
 
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
             logging.error(
-                f"{settings.HOSTNAME}: Unable to send update to {url}: {result.status_code} - {result.reason}"
+                f"{settings.HOSTNAME}: Request failed, {url}: {result.status_code} - {result.reason}"
             )
             write_to_file(result.text)
         else:
@@ -275,7 +275,7 @@ def pull_objects(
                         # Check if we have pulled our own object
                         from ocpi22.util import is_our_identifier
 
-                        if is_our_identifier(credentialsrole.party):
+                        if is_our_identifier(credentialsrole.get_party()):
                             logging.info(
                                 f"Party {party} in the pulled data matches our own party, not storing."
                             )
