@@ -79,7 +79,7 @@ jobs:
     needs: test
 
     env:
-      ECR_REPO_URL: ${{ secrets.ECR_ACCOUNT_ID }}.dkr.ecr.${{ secrets.ECR_REGION }}.amazonaws.com
+      ECR_REPO_URL: ${{ secrets.SMP_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_ECR_REGION }}.amazonaws.com/solidroam-basecontainer-f3
       IMAGE_TAG: staging-latest
 
     steps:
@@ -92,6 +92,7 @@ jobs:
           aws-access-key-id: ${{ secrets.SMP_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.SMP_AWS_SECRET_ACCESS_KEY }}
           aws-region:  ${{ secrets.SMP_AWS_REGION }}
+          role-to-assume: ${{ secrets.SMP_AWS_GHA_ROLE}}
 
       - name: Log in to ECR
         uses: aws-actions/amazon-ecr-login@v1
