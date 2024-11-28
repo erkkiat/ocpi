@@ -1,8 +1,7 @@
 from decimal import Decimal
-from typing import Union, Optional
+from typing import Union
 from zoneinfo import ZoneInfo
 
-import pytz
 from django.conf import settings
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
@@ -148,6 +147,7 @@ class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH
     )
     connectors = ConnectorQuickSerializer(many=True)
+    last_updated = UTCDateTimeField(required=False)
 
 
 class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -167,6 +167,7 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
             "latitude",
             "longitude",
             "evses",
+            "last_updated",
         ]
 
     id = serializers.CharField(
@@ -203,6 +204,7 @@ class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
         help_text="If omitted, time zone will be determined automatically based on coordinates",
     )
     lookup_field = "uid"
+    last_updated = UTCDateTimeField(required=False)
 
     def create(self, validated_data, *args, **kwargs):
         evses = validated_data.pop("evses", [])
@@ -309,8 +311,8 @@ class StatusChangeSerializer(serializers.Serializer):
         required=False,
         default_timezone=ZoneInfo("UTC"),
         help_text="Optional timestamp for the status change. Using this field is highly recommended, so that "
-                  "disruptions in connectivity won't distort status change history. "
-                  "This will ensure correct billing for the sessions.",
+        "disruptions in connectivity won't distort status change history. "
+        "This will ensure correct billing for the sessions.",
     )
 
 
@@ -362,7 +364,7 @@ class StartTransactionSerializer(serializers.Serializer):
         source="session",
         required=False,
         help_text="The ID of the charging session on the CPO platform, "
-                  "you get this from the response of a successful authorize request"
+        "you get this from the response of a successful authorize request",
     )
     connector_id = serializers.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
@@ -372,7 +374,7 @@ class StartTransactionSerializer(serializers.Serializer):
         required=False,
         default=0.0,
         help_text="The optional kWh measurement at the meter at start of the transaction, can start from zero "
-                  "or start from where the previous charging session ended or some other value",
+        "or start from where the previous charging session ended or some other value",
     )
     timestamp = UTCDateTimeField(
         required=False,
@@ -645,12 +647,12 @@ class CPOAuthorizationResponseSerializer(serializers.Serializer):
     token = serializers.SerializerMethodField()
     authorization_reference = serializers.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        help_text="The unique reference of the authorization, provided by the eMSP"
+        help_text="The unique reference of the authorization, provided by the eMSP",
     )
     responding_party = serializers.CharField(max_length=5)
     billed_to = serializers.CharField(
         max_length=5,
-        help_text="The identifier of the eMSP that is responsible for paying for the session"
+        help_text="The identifier of the eMSP that is responsible for paying for the session",
     )
     auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
     session_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)

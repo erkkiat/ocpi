@@ -27,7 +27,6 @@ class CommandsHubViewSet(GenericViewSet):
     def get_serializer_class(self):
         if not hasattr(self, "action_map"):
             return serializers.Serializer
-
         serializer = dict(
             start_session=StartSessionSerializer,
             stop_session=StopSessionSerializer,

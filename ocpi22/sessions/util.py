@@ -175,11 +175,9 @@ def get_ocpi_token(session_id: str) -> str:
     session = Session.objects.select_related(
         "ocpi_master", "ocpi_master__credentials"
     ).get(uid=session_id)
-
     from ocpi22.models.credentials import CredentialsRole
 
     ocpi_master = CredentialsRole.objects.get(pk=session.ocpi_master_id)
-
     return (
         ocpi_master.credentials.ours
         if getattr(ocpi_master, "credentials", None)

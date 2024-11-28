@@ -388,7 +388,6 @@ class LocationEvseUidSerializer(serializers.Serializer):
 
     def to_internal_value(self, evse_uid):
         request = self.context["request"]
-
         evse = Evse.get_if_exists(
             uid=evse_uid, location__ocpi_master=request.ocpi_party
         )

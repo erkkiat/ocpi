@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from ocpi22.models.hours import RegularHours, ExceptionalPeriod
-from ocpi22.models.tests import create_advanced_hours_testdata
+from ocpi22.models.test_opening_hours import create_advanced_hours_testdata
 from ocpi22.serializers.hours import (
     RegularHoursSerializer,
     ExceptionalPeriodSerializer,
@@ -20,7 +20,7 @@ class HoursModelTest(TestCase):
             weekday=1, period_begin="08:00", period_end="18:00"
         )
         serializer = RegularHoursSerializer(regular_hour)
-        self.assertEqual(serializer.data, HoursTest.regular_hours)
+        assert serializer.data == HoursTest.regular_hours
 
     def test_exceptional_period_serialization(self):
         period_begin = datetime(2021, 1, 1, 8, 0, 0, tzinfo=timezone.utc)
@@ -29,7 +29,7 @@ class HoursModelTest(TestCase):
             period_begin=period_begin, period_end=period_end
         )
         serializer = ExceptionalPeriodSerializer(exceptional_period)
-        self.assertEqual(serializer.data, HoursTest.exceptional_period)
+        assert serializer.data == HoursTest.exceptional_period
 
     def test_hours_serialization(self):
         hours = create_advanced_hours_testdata()

@@ -2,9 +2,10 @@ from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
 ENV = os.getenv("ENV", "staging").lower()
+DEBUG = os.getenv("DEBUG", False)
+HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 
 ALLOWED_HOSTS.extend(["staging.solidroam.com"])  # noqa
-# noqa
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 

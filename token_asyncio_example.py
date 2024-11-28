@@ -13,7 +13,6 @@ async def post_request(session, url, data, headers=None):
             # json_data = await response.content.read()
             json_data = await response.json()
             # if len(json_data) < 1000:
-            #
             # json_data = json.loads(json_data.decode('utf-8'))
         except (aiohttp.ContentTypeError, json.JSONDecodeError):
             # Handle the case where response is not JSON or cannot be decoded
@@ -63,7 +62,6 @@ async def authorize_with_all_msps(url_list: list[tuple[str, str]]):
             for task in done:
                 try:
                     status, data = task.result()
-
                     if status == 200:
                         result = process_task_result(task)
                         if result:

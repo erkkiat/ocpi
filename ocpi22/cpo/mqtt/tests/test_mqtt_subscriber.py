@@ -1,3 +1,4 @@
+import logging
 import os
 from unittest.mock import patch, MagicMock
 
@@ -146,6 +147,7 @@ class TestMqttSubscriber:
                 assert client == mock_client
 
     def test_subscribe_success(self, caplog):
+        caplog.set_level(logging.INFO, logger="ocpi22.cpo.mqtt.mqtt_subscriber")
         mock_client = MagicMock(spec=mqtt.Client)
         mock_client.subscribe.return_value = (mqtt.MQTT_ERR_SUCCESS, 1)
         _subscribe(mock_client, "test/topic")
@@ -154,6 +156,8 @@ class TestMqttSubscriber:
         assert "Successfully subscribed to test/topic" in caplog.text
 
     def test_subscribe_failure(self, caplog):
+        caplog.set_level(logging.ERROR, logger="ocpi22.cpo.mqtt.mqtt_subscriber")
+
         mock_client = MagicMock(spec=mqtt.Client)
         mock_client.subscribe.return_value = (mqtt.MQTT_ERR_NO_CONN, 1)
         _subscribe(mock_client, "test/topic")
