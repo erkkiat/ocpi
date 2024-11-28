@@ -741,7 +741,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 "Seems that the ID for the EVSE or the Token was not quite correct. You can "
                 f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
                 f'and <a target="tokenadmin" href="{token_admin}">the list of known Tokens</a> '
-                "using the admin tools.",
+                f"using the admin tools. Error message: '{e}'",
             )
             return Response(
                 dict(status_message=str(e)), status=status.HTTP_404_NOT_FOUND
@@ -781,6 +781,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     session = serializer.validated_data["session"]
                     connector_id: str = serializer.validated_data["connector_id"]
                     session.start_kwh = serializer.validated_data["start_kwh"]
+                    session.stop_kwh = session.start_kwh
                     authorization: TokenAuthorization = authorize_token(
                         session.cdr_token_uid
                     )
@@ -807,6 +808,8 @@ class ChargePointViewSet(FlowchartViewSet):
                             "connector",
                             "status",
                             "currency",
+                            "start_kwh",
+                            "stop_kwh",
                         ]
                     )
 
