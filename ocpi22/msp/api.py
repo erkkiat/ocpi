@@ -100,7 +100,6 @@ def process_start_charging(
         # Using an external user database
         permission_required = "ocpi22.charge_with_any_token"
         user: User = request.user
-
         if user.has_perm(permission_required) and not user.is_superuser:
             return Response(
                 data=dict(

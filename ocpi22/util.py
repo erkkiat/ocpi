@@ -342,7 +342,6 @@ def is_our_identifier(party: Party, identities=None) -> bool:
         return False
     if identities is None:
         identities = ocpi_identities
-
     result = bool(str(party) in identities)
     return result
 
@@ -802,7 +801,6 @@ def fetch_object(
         from_party_id=our_party.party_id,
         title="tariff",
     )
-
     data = response.get("json")
     data = data.get("data", data)  # Do we have the actual data one level deeper?
     version = route.version

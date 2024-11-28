@@ -49,24 +49,19 @@ class Hours(models.Model):
                 part = f"{_(RegularHours.WEEKDAY_CHOICES[weekdays[0] - 1][1])[:3]} {begin.strftime('%H')}-{end.strftime('%H')}"
             parts.append(part)
 
+        def format_date(d):
+            return dateformat.format(d, "F jS G:i")
+
         for eo in exceptional_openings:
-            begin_formatted = dateformat.format(
-                timezone.localtime(eo.period_begin), "F jS G:i"
-            )
-            end_formatted = dateformat.format(
-                timezone.localtime(eo.period_end), "F jS G:i"
-            )
+            begin_formatted = format_date(eo.period_begin)
+            end_formatted = format_date(eo.period_end)
             parts.append(
                 f"{_('Exceptionally Open')}: {begin_formatted}-{end_formatted}"
             )
 
         for ec in exceptional_closings:
-            begin_formatted = dateformat.format(
-                timezone.localtime(ec.period_begin), "F jS G:i"
-            )
-            end_formatted = dateformat.format(
-                timezone.localtime(ec.period_end), "F jS G:i"
-            )
+            begin_formatted = format_date(ec.period_begin)
+            end_formatted = format_date(ec.period_end)
             parts.append(
                 f"{_('Exceptionally Closed')}: {begin_formatted}-{end_formatted}"
             )

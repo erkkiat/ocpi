@@ -9,270 +9,6 @@
     "model": "ocpi22.businessdetails"
   },
   {
-    "model": "ocpi22.facility",
-    "pk": 1,
-    "fields": {
-      "description": "Hotels and other lodging",
-      "name": "HOTEL"
-    }
-  },
-  {
-    "pk": 2,
-    "model": "ocpi22.facility",
-    "fields": {
-      "description": "A restaurant",
-      "name": "RESTAURANT"
-    }
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 3,
-    "fields": {
-      "description": "",
-      "name": "CAFE"
-    }
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 4,
-    "fields": {
-      "description": "",
-      "name": "SPORT"
-    }
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 5,
-    "fields": {
-      "description": "",
-      "name": "MALL"
-    }
-  },
-  {
-    "fields": {
-      "name": "SUPERMARKET",
-      "description": ""
-    },
-    "pk": 6,
-    "model": "ocpi22.facility"
-  },
-  {
-    "fields": {
-      "description": "",
-      "name": "RECREATION_AREA"
-    },
-    "model": "ocpi22.facility",
-    "pk": 7
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 8,
-    "fields": {
-      "description": "",
-      "name": "NATURE"
-    }
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 9,
-    "fields": {
-      "description": "",
-      "name": "MUSEUM"
-    }
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 10,
-    "fields": {
-      "name": "BIKE_SHARING",
-      "description": ""
-    }
-  },
-  {
-    "fields": {
-      "name": "BUS_STOP",
-      "description": ""
-    },
-    "pk": 11,
-    "model": "ocpi22.facility"
-  },
-  {
-    "fields": {
-      "name": "TAXI_STAND",
-      "description": ""
-    },
-    "model": "ocpi22.facility",
-    "pk": 12
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 13,
-    "fields": {
-      "description": "",
-      "name": "TRAM_STOP"
-    }
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 14,
-    "fields": {
-      "description": "",
-      "name": "METRO_STATION"
-    }
-  },
-  {
-    "fields": {
-      "description": "",
-      "name": "TRAIN_STATION"
-    },
-    "model": "ocpi22.facility",
-    "pk": 15
-  },
-  {
-    "fields": {
-      "description": "",
-      "name": "AIRPORT"
-    },
-    "model": "ocpi22.facility",
-    "pk": 16
-  },
-  {
-    "fields": {
-      "description": "",
-      "name": "PARKING_LOT"
-    },
-    "pk": 17,
-    "model": "ocpi22.facility"
-  },
-  {
-    "fields": {
-      "description": "",
-      "name": "CARPOOL_PARKING"
-    },
-    "model": "ocpi22.facility",
-    "pk": 18
-  },
-  {
-    "model": "ocpi22.facility",
-    "pk": 19,
-    "fields": {
-      "description": "",
-      "name": "FUEL_STATION"
-    }
-  },
-  {
-    "fields": {
-      "name": "WIFI",
-      "description": ""
-    },
-    "pk": 20,
-    "model": "ocpi22.facility"
-  },
-  {
-    "model": "ocpi22.capability",
-    "pk": 1,
-    "fields": {
-      "description": "Charging at this EVSE can be authorized with an RFID token.",
-      "name": "RFID_READER"
-    }
-  },
-  {
-    "fields": {
-      "description": "EVSE has a payment terminal that makes it possible to pay for charging using a debit card.",
-      "name": "DEBIT_CARD_PAYABLE"
-    },
-    "pk": 2,
-    "model": "ocpi22.capability"
-  },
-  {
-    "pk": 3,
-    "model": "ocpi22.capability",
-    "fields": {
-      "name": "CHARGING_PROFILE_CAPABLE",
-      "description": "The EVSE supports charging profiles."
-    }
-  },
-  {
-    "fields": {
-      "name": "CHARGING_PREFERENCES_CAPABLE",
-      "description": "The EVSE supports charging preferences."
-    },
-    "pk": 4,
-    "model": "ocpi22.capability"
-  },
-  {
-    "fields": {
-      "description": "EVSE has a payment terminal that supports chip cards.",
-      "name": "CHIP_CARD_SUPPORT"
-    },
-    "pk": 5,
-    "model": "ocpi22.capability"
-  },
-  {
-    "model": "ocpi22.capability",
-    "pk": 6,
-    "fields": {
-      "description": "EVSE has a payment terminal that supports contactless cards.",
-      "name": "CONTACTLESS_CARD_SUPPORT"
-    }
-  },
-  {
-    "fields": {
-      "description": "EVSE has a payment terminal that makes it possible to pay for charging using a credit card.",
-      "name": "CREDIT_CARD_PAYABLE"
-    },
-    "model": "ocpi22.capability",
-    "pk": 7
-  },
-  {
-    "model": "ocpi22.capability",
-    "pk": 9,
-    "fields": {
-      "description": "EVSE has a payment terminal with a pin-code entry device.",
-      "name": "PED_TERMINAL"
-    }
-  },
-  {
-    "model": "ocpi22.capability",
-    "pk": 10,
-    "fields": {
-      "name": "REMOTE_START_STOP_CAPABLE",
-      "description": "The EVSE can remotely be started/stopped."
-    }
-  },
-  {
-    "fields": {
-      "name": "RESERVABLE",
-      "description": "The EVSE can be reserved."
-    },
-    "model": "ocpi22.capability",
-    "pk": 11
-  },
-  {
-    "pk": 12,
-    "model": "ocpi22.capability",
-    "fields": {
-      "name": "START_SESSION_CONNECTOR_REQUIRED",
-      "description": "When a StartSession is sent to this EVSE, the MSP is required to add the optional connector_id field in the StartSession object."
-    }
-  },
-  {
-    "fields": {
-      "description": "This EVSE supports token groups, two or more tokens work as one, so that a session can be started with one token and stopped with another (handy when a card and key-fob are given to the EV-driver).",
-      "name": "TOKEN_GROUP_CAPABLE"
-    },
-    "pk": 13,
-    "model": "ocpi22.capability"
-  },
-  {
-    "fields": {
-      "description": "Connectors have mechanical lock that can be requested by the eMSP to be unlocked.",
-      "name": "UNLOCK_CAPABLE"
-    },
-    "model": "ocpi22.capability",
-    "pk": 14
-  },
-  {
     "fields": {
       "time_zone": "Europe/Helsinki",
       "publish_allowed_to": [],
@@ -444,6 +180,25 @@
       "language": "EN",
       "type": "RFID",
       "valid": true
+    }
+  },
+  {
+    "model": "ocpi22.tariff",
+    "pk": 2,
+    "fields": {
+      "archived": false,
+      "ocpi_master": 99,
+      "uid": "DC50",
+      "currency": "PLN",
+      "type": "REGULAR",
+      "tariff_alt_url": "",
+      "min_price_excl_vat": null,
+      "min_price_incl_vat": null,
+      "max_price_excl_vat": null,
+      "max_price_incl_vat": null,
+      "last_updated": null,
+      "updated" : "2022-03-23T06:39:54.213Z",
+      "created" : "2022-02-20T14:42:04.475Z"
     }
   },
   {

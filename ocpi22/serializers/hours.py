@@ -1,3 +1,6 @@
+from datetime import timezone
+
+from django.conf import settings
 from rest_framework import serializers
 from ocpi22.models.hours import (
     RegularHours,
@@ -5,6 +8,7 @@ from ocpi22.models.hours import (
     Hours,
     ExceptionalClosing,
 )
+from ocpi22.serializers.util import UTCDateTimeField
 
 
 class CustomTimeField(serializers.TimeField):
@@ -33,6 +37,9 @@ class ExceptionalPeriodSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExceptionalOpening
         fields = ["period_begin", "period_end"]
+
+    period_begin = UTCDateTimeField()
+    period_end = UTCDateTimeField()
 
 
 class HoursSerializer(serializers.ModelSerializer):

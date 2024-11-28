@@ -1,3 +1,6 @@
+from builtins import list
+from typing import Union, Optional
+
 import pytz
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
@@ -7,7 +10,6 @@ import ocpi22.logging as logging
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Union, Optional
 from urllib.parse import urljoin
 
 from django.conf import settings
@@ -87,7 +89,6 @@ class CommandsViewSet(GenericViewSet):
     def get_serializer_class(self):
         if not hasattr(self, "action_map"):
             return serializers.Serializer
-
         serializer = dict(
             start_session=StartSessionSerializer,
             stop_session=StopSessionSerializer,
@@ -205,7 +206,6 @@ class CommandsViewSet(GenericViewSet):
                 http_status=status.HTTP_404_NOT_FOUND,
             )
         command_data = command_store[command_id]
-
         if command_data:
             route_dict = command_data.get("route_back")
             print(f"{route_dict=}")
@@ -225,7 +225,6 @@ class CommandsViewSet(GenericViewSet):
                     credentials_id=route.credentials_id,
                     title="the response received from CPO",
                 )
-
                 status_code = {
                     200: Ocpi.OK,
                 }.get(
@@ -644,7 +643,6 @@ def send_stop_command(session: Session) -> Optional[Response]:
             session_id=session.uid,
         )
         serializer = StopSessionSerializer(instance=data)
-
         return ocpi_post(
             urljoin(f"{route.url}/", "STOP_SESSION"),
             route.token_base64,

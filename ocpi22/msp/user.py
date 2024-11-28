@@ -126,7 +126,6 @@ class RegistrationSerializer(ProfileSerializer):
             "firstname",
             "lastname",
             "telephone",
-            "vehicle",
             "password",
             "confirm",
         )
@@ -425,7 +424,6 @@ class UserViewSet(viewsets.GenericViewSet):
             f'attachment; filename="gdpr-export-{user.username}.csv"'
         )
         userdata = user.profile._privacy_meta.export(user.profile)
-
         writer = csv.DictWriter(response, fieldnames=userdata.keys())
         writer.writeheader()
         writer.writerow(userdata)

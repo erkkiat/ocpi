@@ -394,7 +394,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                     incl_vat = excl_vat * (1.0 + pc.vat / 100) if pc.vat else excl_vat
                     total_incl_vat += incl_vat
                     total_excl_vat += excl_vat
-
                 return max(total_incl_vat, 0.0), max(total_excl_vat, 0.0)
             return 0.0, 0.0
 
@@ -407,7 +406,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             # Todo: Prevent START_SESSION on a Connector where the price cannot be calculated
             # Todo: Even better, mark the EVSE inoperative, or prevent making it available
             return False
-
         # Calculate the session duration using either a stored end time or the current time
         result_incl_vat: float = 0.0
         result_excl_vat: float = 0.0
@@ -433,7 +431,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 cp_incl_vat, cp_excl_vat = _calculate_price(
                     cp_kwh, cp_hours, cp.start_date_time, flat_fee=apply_flat_fee
                 )
-
                 apply_flat_fee = False  # Flat fee was applied once above, and not during the next for loop steps
                 result_incl_vat += cp_incl_vat
                 result_excl_vat += cp_excl_vat
@@ -521,7 +518,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                     (timestamp or datetime.now(pytz.utc)) - last_period.start_date_time
                 ).total_seconds() / 3600
                 last_period.set_dimension(hours=last_period_hours)
-
         return period
 
     def send_updates(self, data=None, method="put", path_components=None) -> None:

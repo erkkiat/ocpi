@@ -72,7 +72,6 @@ def compare_dicts_recursively(received, expected, path="", label="") -> bool:
     Compare the content and structure of two dicts recursively. "***" matches anything.
     When a list is encountered, it is compared using compare_lists_recursively.
     """
-
     output = ""
     if isinstance(received, (str, bytes, bytearray)):
         return compare_dicts_recursively(

@@ -222,7 +222,6 @@ class RedisStore:
         value = ""
         try:
             key = self._format_key(key)
-
             value = redis_store.get(key)
             if not value:
                 raise KeyError(f"Key {key} not found in Redis")
