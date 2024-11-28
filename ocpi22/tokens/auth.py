@@ -21,6 +21,7 @@ from ocpi22.choices import (
     AuthorizationEnum,
     TokenType,
     get_language,
+    EndpointRoleEnum,
 )
 from ocpi22.messages import messages
 from ocpi22.models.session import Session
@@ -300,7 +301,9 @@ def _authorize_token(
             ocpi_master=token.ocpi_master,
         )
 
-    route: Route = find_route(token.get_party(), OcpiModuleEnum.TOKENS)
+    route: Route = find_route(
+        token.get_party(), OcpiModuleEnum.TOKENS, role=EndpointRoleEnum.SENDER
+    )
     if not route or not token:
         logging.warning(
             f"Route ({route}) or Token ({token}) missing, cannot authorize Token",
