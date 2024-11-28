@@ -23,7 +23,6 @@ from ocpiconnector.testutil import (
     OCPIAPIRequestFactory,
     simulate_surrounding_world,
     FakeResponse,
-    compare_dicts_recursively,
 )
 from util import reverse
 
@@ -95,10 +94,14 @@ class CredentialsTests(BetterTestCase):
         assert first_role.party_id == "EXA", "Expecting different party ID"
 
         serializer = CredentialsSerializer(data=result.data.get("data"))
-        assert serializer.is_valid(), f"Credentials POST response should be valid: {serializer.errors}"
+        assert (
+            serializer.is_valid()
+        ), f"Credentials POST response should be valid: {serializer.errors}"
         assert result.data == CredentialsData.credentials_post_response
 
-        assert result.status_code == status.HTTP_201_CREATED, "Credentials should be POSTable using token_a"
+        assert (
+            result.status_code == status.HTTP_201_CREATED
+        ), "Credentials should be POSTable using token_a"
         credentials = Credentials.objects.get(ours=random_token)
         credentials_dict = credentials.__dict__
         credentials_dict.pop("_state")
@@ -108,9 +111,12 @@ class CredentialsTests(BetterTestCase):
         with simulation.assert_error_logged("use PUT to update"):
             result = CredentialsViewSet().post(request)
 
-        assert result.status_code == status.HTTP_400_BAD_REQUEST, "Updating an existing credentials should fail"
-        assert "Credentials exist" in result.data.get("status_message", ""), \
-            "Updating an existing credentials should fail"
+        assert (
+            result.status_code == status.HTTP_400_BAD_REQUEST
+        ), "Updating an existing credentials should fail"
+        assert "Credentials exist" in result.data.get(
+            "status_message", ""
+        ), "Updating an existing credentials should fail"
 
 
 class PartnerTests(BetterTestCase):

@@ -90,7 +90,7 @@ from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
-from ocpiconnector.party import Party, party_from_str
+from ocpiconnector.party import party_from_str
 from premium import requires_premium
 
 pp = PrettyPrinter(indent=4).pprint
@@ -512,15 +512,20 @@ class ChargePointViewSet(FlowchartViewSet):
     )
 
     def get_extra_metadata(self, _request) -> dict:
-        return clear_empty(dict(return_value={
-                http_method.upper():
-                    self.metadata.get_serializer_info(
+        return clear_empty(
+            dict(
+                return_value={
+                    http_method.upper(): self.metadata.get_serializer_info(
                         self.metadata.ensure_serializer_instance(
                             self.return_values.get(method_name, {}).get(http_method)
                         )
                     )
-            for http_method, method_name in getattr(self, "action_map", {}).items()
-        }))
+                    for http_method, method_name in getattr(
+                        self, "action_map", {}
+                    ).items()
+                }
+            )
+        )
 
     def get_serializer_class(self):
         return dict(
@@ -556,7 +561,6 @@ class ChargePointViewSet(FlowchartViewSet):
             if request.method == "POST":
                 serializer = StatusChangeSerializer(data=request.data)
                 if serializer.is_valid():
-
                     # Todo: Store the status change in the database for converting to ChargingPeriods
 
                     ocpp_status = serializer.initial_data.get("status")
@@ -777,18 +781,22 @@ class ChargePointViewSet(FlowchartViewSet):
                     session = serializer.validated_data["session"]
                     connector_id: str = serializer.validated_data["connector_id"]
                     session.start_kwh = serializer.validated_data["start_kwh"]
-                    authorization: TokenAuthorization = authorize_token(session.cdr_token_uid)
+                    authorization: TokenAuthorization = authorize_token(
+                        session.cdr_token_uid
+                    )
                     if not authorization:
                         return Response(
                             dict(
                                 status_text="Token is (no longer) valid",
-                                token_id=session.cdr_token_uid
+                                token_id=session.cdr_token_uid,
                             ),
                             status=status.HTTP_401_UNAUTHORIZED,
                         )
                     session.connector = Connector.objects.prefetch_related(
                         "tariff_ids"
-                    ).get_if_exists(uid=connector_id, evse=session.evse, raise_exception=True)
+                    ).get_if_exists(
+                        uid=connector_id, evse=session.evse, raise_exception=True
+                    )
                     session.status = Session.ACTIVE
                     if session.connector.tariff_ids:
                         first_tariff = session.connector.tariff_ids.first()
