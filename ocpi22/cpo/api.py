@@ -3,6 +3,7 @@ from datetime import time, date
 from decimal import Decimal
 from functools import reduce
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse_lazy
 from django.utils.datetime_safe import datetime
 
@@ -852,12 +853,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        except (
-            Evse.DoesNotExist,
-            Token.DoesNotExist,
-            Connector.DoesNotExist,
-            Session.DoesNotExist,
-        ) as e:
+        except ObjectDoesNotExist as e:
             logging.error(f"Exception in start_transaction(): {e}", request=request)
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
         except EvseOccupied as e:
