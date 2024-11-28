@@ -852,7 +852,12 @@ class ChargePointViewSet(FlowchartViewSet):
                 {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        except (Evse.DoesNotExist, Token.DoesNotExist, Connector.DoesNotExist) as e:
+        except (
+            Evse.DoesNotExist,
+            Token.DoesNotExist,
+            Connector.DoesNotExist,
+            Session.DoesNotExist,
+        ) as e:
             logging.error(f"Exception in start_transaction(): {e}", request=request)
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
         except EvseOccupied as e:
