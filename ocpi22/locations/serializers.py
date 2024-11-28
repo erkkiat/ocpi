@@ -456,13 +456,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
         return location
 
-    # def to_representation(self, value):
-    #     if hasattr(value, 'opening_times'):
-    #
-    #
-    #
-    #     return super().to_representation(value)
-
 
 class LocationSerializer(LocationSerializer221):
     class Meta:

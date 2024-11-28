@@ -71,7 +71,6 @@ class OcpiModule:
             f"The OCPI object {cls} needs to have ocpi_object_owner specified "
             f"so that the sender identity is clear when sending updates to other parties."
         )
-
         return ocpi_identities.get(cls.ocpi_object_owner, default="*")
 
     def update_last_updated(self):
@@ -232,7 +231,6 @@ class OcpiModule:
     @functools.lru_cache(maxsize=None)
     def serialize(self, version: Union[OCPIVersion, str]) -> dict:
         version = OCPIVersion(version)
-
         serializer_class = self.__class__.get_serializer_class(version.pure_number)
         serializer = serializer_class(self)
         return serializer.data
@@ -250,7 +248,6 @@ class OcpiModule:
         route = find_route(
             to, self.ocpi_module_name, add_path="/".join(path_components)
         )
-
         if route:
             data = data or self.serialize(version=route.version.pure_number)
             self.send_background_update(
@@ -295,7 +292,6 @@ def ocpi_post(
     data = ""
     if "data" in kwargs:
         data = kwargs.pop("data")
-
     response = requests.post(
         url,
         *args,

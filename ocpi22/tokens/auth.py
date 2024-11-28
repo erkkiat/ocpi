@@ -188,7 +188,7 @@ class TokenAuthorization:
             BLOCKED="Your charging token is blocked",
             EXPIRED="Your charging token is not valid at the moment",
             NO_CREDIT="Your charging token has no credit left",
-            NOT_ALLOWED="Your charging token is not allowed to charge at this location",
+            NOT_ALLOWED="Your charging token is not allowed to charge (at this location)",
         ).get(self.allowed, "Unknown error")
 
     def get_language(self) -> str:
