@@ -104,7 +104,7 @@ jobs:
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
               repo_url="$ECR_REPO_URL/solidroam-$service-f3"
               echo "DEBUG: The repo_url is: $repo_url"
-              aws ecr get-login-password --region "${{ secrets.SMP_AWS_REGION }}" | docker login --username AWS --password-stdin "$repo_url"
+              aws ecr get-login-password --region "${{ secrets.SMP_AWS_REGION }}" | docker login --username ${{ secrets.SMP_AWS_TEMP_USER }} --password-stdin "$repo_url"
               full_image_url_with_tag="$repo_url:${IMAGE_TAG}"
               docker build -t "$full_image_url_with_tag" -f ./ocpiconnector/Dockerfile ./ocpiconnector/
               docker push "$full_image_url_with_tag"
