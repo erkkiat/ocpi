@@ -132,7 +132,9 @@ class OCPIAPIRequestFactory(APIRequestFactory):
             ocpi_party.credentials if ocpi_party else Credentials.objects.first()
         )
         headers = make_headers(
-            credentials.ours_base64(), to=Party("FI", "CPO"), sender=sender
+            credentials.ours_base64() if credentials else None,
+            to=Party("FI", "CPO"),
+            sender=sender,
         )
         headers.update(kwargs)
         request = super().request(**headers)

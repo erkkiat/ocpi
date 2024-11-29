@@ -377,7 +377,6 @@ class ApiPutTests(TestCase):
         request.version = "2.2.1"
         return viewset().post(request)
 
-    @pytest.mark.skip("Fix me before production")
     @simulate_surrounding_world
     def test_put_location(self, simulation):
         url = reverse("location-list")
