@@ -97,14 +97,14 @@ jobs:
           aws-access-key-id: "AKIA3P7P7GWBB3KWEGMV"
           aws-secret-access-key: ${{ secrets.SMP_AWS_SECRET_ACCESS_KEY }}
           aws-region:  "eu-west-1"
-          role-to-assume: ${{ secrets.SMP_AWS_GHA_ROLE}}
+#          role-to-assume: ${{ secrets.SMP_AWS_GHA_ROLE}}
 
       - name: Build and Push Staging Images
         run: |
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
               repo_url="$ECR_REPO_URL/solidroam-$service-f3"
               echo "DEBUG: The repo_url is: $repo_url"
-              aws ecr get-login-password --region "${{ secrets.SMP_AWS_REGION }}" | docker login --username AWS --password-stdin "$repo_url"
+              aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin "$repo_url"
               full_image_url_with_tag="$repo_url:${IMAGE_TAG}"
               docker build -t "$full_image_url_with_tag" -f ./ocpiconnector/Dockerfile ./ocpiconnector/
               docker push "$full_image_url_with_tag"
