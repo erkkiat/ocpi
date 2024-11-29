@@ -18,6 +18,7 @@ from ocpi22 import choices, logging
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, DYNAMIC_PRICE_SOURCE_CHOICES
 from ocpi22.credentials.util import find_endpoints_by_roles
 import ocpi22.tasks as tasks
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.util import (
     ModelUtilMixin,
     format_currency,
@@ -491,3 +492,46 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
                 credentials_id=credentials.id,
                 title="Tariff",
             )
+
+
+class SolidTariff(models.Model):
+    uid = models.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
+    )
+    currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        verbose_name=_("Currency"),
+        default="EUR",
+    )
+    price_per_kwh = models.DecimalField(
+        max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    price_per_min = models.DecimalField(
+        max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    price_flat = models.DecimalField(
+        max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    vat = models.FloatField(blank=True, null=True)
+    msp = models.ForeignKey(
+        CredentialsRole,
+        on_delete=models.CASCADE,
+        related_name="msp_credentialsroles",
+        verbose_name=_("MSP details"),
+        null=True,
+        blank=True,
+    )
+    operator = models.ForeignKey(
+        CredentialsRole,
+        on_delete=models.CASCADE,
+        related_name="operator_credentialsroles",
+        verbose_name=_("CPO details"),
+    )
+
+    last_updated = models.DateTimeField(
+        null=True, blank=True, verbose_name=_("Last updated")
+    )
+
+    updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))

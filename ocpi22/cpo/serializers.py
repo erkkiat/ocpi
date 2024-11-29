@@ -1,3 +1,5 @@
+from collections import defaultdict
+from datetime import datetime
 from decimal import Decimal
 from typing import Union
 from zoneinfo import ZoneInfo
@@ -6,27 +8,34 @@ from django.conf import settings
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OcppStatusChoices, TOKEN_TYPE_CHOICES, AuthorizationEnum
+from ocpi22.choices import (
+    OcppStatusChoices,
+    TOKEN_TYPE_CHOICES,
+    AuthorizationEnum,
+    OcpiRolesEnum,
+)
 from ocpi22.commands.serializers import CommandResultBaseSerializer
 from ocpi22.cpo.util import _find_our_evse
 from ocpi22.models import enum
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
-from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
+from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent, SolidTariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
-from ocpi22.util import (
-    clear_empty,
-    uid_validator,
-    CURRENCY_CHOICES,
-    fill_out_location_address,
-)
 from ocpi22.serializers.util import (
     SerializerCleanedUp,
     HyperlinkedModelSerializerCleanedUp,
     CallbacksSerializer,
     UTCDateTimeField,
 )
+from ocpi22.util import (
+    clear_empty,
+    uid_validator,
+    CURRENCY_CHOICES,
+    fill_out_location_address,
+)
+from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 from ocpiconnector.party import Party
 
 
@@ -531,6 +540,29 @@ class VatSerializer(serializers.FloatField):
         return {self.key: data}
 
 
+class CurrencySerializer(serializers.Field):
+    key = "currency"
+
+    def to_representation(self, tariff: Tariff) -> str:
+        currency = tariff.currency
+        if currency:
+            return currency
+        return "EUR"
+
+    def to_internal_value(self, data):
+        if not isinstance(data, str):
+            raise ValidationError("Currency must be a string value.")
+
+        data = data.strip().upper()
+
+        valid_currencies = dict(CURRENCY_CHOICES)
+
+        if data not in valid_currencies:
+            raise ValidationError(f"Invalid currency value {data}.")
+
+        return {self.key: data}
+
+
 class PriceSerializer(serializers.DecimalField):
     def to_representation(self, tariff: Tariff) -> Decimal:
         pc = tariff.get_type(self.tariff_type)
@@ -556,7 +588,7 @@ class PriceFlatSerializer(PriceSerializer):
     key = "price_flat"
 
 
-class TariffQuickSerializer(SerializerCleanedUp):
+class SolidTariffSerializer(SerializerCleanedUp):
     id = serializers.CharField(
         source="uid",
         validators=[uid_validator],
@@ -590,10 +622,46 @@ class TariffQuickSerializer(SerializerCleanedUp):
         allow_null=True,
         help_text="The Value Added Tax amount in percentage",
     )
+    msps = serializers.ListField(child=PartyStrField(), required=False)
 
     def create(self, validated_data):
+        def create_solid_tariffs():
+            msps = validated_data.get("msps", [])
+            operator_country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
+            operator_party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
+
+            try:
+                operator = CredentialsRole.objects.get(
+                    country_code=operator_country_code, party_id=operator_party_id
+                )
+            except (ValueError, CredentialsRole.DoesNotExist):
+                raise ValueError(
+                    f"Invalid or missing operator credentials: {operator_country_code}*{operator_party_id}"
+                )
+
+            solid_tariffs = [
+                SolidTariff(
+                    uid=validated_data.get("uid"),
+                    currency=currency,
+                    price_per_kwh=per_kwh,
+                    price_per_min=per_min,
+                    price_flat=flat,
+                    vat=vat,
+                    msp=msp if msp else None,
+                    operator=operator,
+                    last_updated=datetime.now(),
+                )
+                for msp in (msps or [None])
+            ]
+
+            SolidTariff.objects.bulk_create(solid_tariffs)
+
+        currency = validated_data.get(CurrencySerializer.key)
+
         tariff = Tariff.objects.create(
-            uid=validated_data.get("uid"), ocpi_master=validated_data.get("ocpi_master")
+            uid=validated_data.get("uid"),
+            ocpi_master=validated_data.get("ocpi_master"),
+            currency=currency,
         )
         te = TariffElement.objects.create(tariff=tariff)
         per_kwh = validated_data.get(PriceKwhSerializer.key)
@@ -613,6 +681,9 @@ class TariffQuickSerializer(SerializerCleanedUp):
             PriceComponent.objects.create(
                 tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
             )
+
+        create_solid_tariffs()
+
         return tariff
 
     def update(self, tariff: Tariff, validated_data: dict):
@@ -645,7 +716,71 @@ class TariffQuickSerializer(SerializerCleanedUp):
         if vat is not None:
             te.price_components.update(vat=vat)
 
+        self.update_solid_tariff(tariff, validated_data)
+
         return tariff
+
+    def update_solid_tariff(self, tariff: Tariff, validated_data: dict):
+        solid_tariffs = list(SolidTariff.objects.filter(uid=tariff.uid))
+
+        per_kwh = validated_data.get(PriceKwhSerializer.key)
+        per_min = validated_data.get(PriceMinSerializer.key)
+        flat = validated_data.get(PriceFlatSerializer.key)
+        vat = validated_data.get(VatSerializer.key)
+
+        fields_to_update = {
+            "price_per_kwh": per_kwh,
+            "price_per_min": per_min,
+            "price_flat": flat,
+            "currency": validated_data.get("currency"),
+            "vat": vat,
+        }
+
+        msp_tariff_map = defaultdict(list)
+        current_saved_msps = set()
+
+        for solid_tariff in solid_tariffs:
+            for field, value in fields_to_update.items():
+                if value is not None:
+                    setattr(solid_tariff, field, value)
+
+            if solid_tariff.msp:
+                msp_tariff_map[solid_tariff.msp.party_str()].append(solid_tariff)
+                current_saved_msps.add(solid_tariff.msp)
+
+            solid_tariff.last_updated = datetime.now()
+
+        msps = validated_data.get("msps")
+
+        if msps is not None:
+            new_msps = set(msps)
+
+            msps_to_add = new_msps - current_saved_msps
+            msps_to_remove = current_saved_msps - new_msps
+
+            for solid_tariff in solid_tariffs:
+                if solid_tariff.msp in msps_to_remove:
+                    solid_tariff.msp = None
+
+            new_solid_tariffs = [
+                SolidTariff(
+                    uid=tariff.uid,
+                    price_per_kwh=fields_to_update.get("price_per_kwh"),
+                    price_per_min=fields_to_update.get("price_per_min"),
+                    price_flat=fields_to_update.get("price_flat"),
+                    currency=fields_to_update.get("currency"),
+                    vat=fields_to_update.get("vat"),
+                    msp=msp,
+                    last_updated=datetime.now(),
+                )
+                for msp in msps_to_add
+            ]
+            SolidTariff.objects.bulk_create(new_solid_tariffs)
+
+        SolidTariff.objects.bulk_update(
+            solid_tariffs,
+            fields=list(fields_to_update.keys()) + ["last_updated", "msp"],
+        )
 
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):

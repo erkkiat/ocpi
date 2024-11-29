@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
-from ocpi22.cpo.serializers import TariffQuickSerializer
+from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.models.tariff import Tariff
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -30,7 +30,7 @@ class TariffQuickViewSet(
     """
 
     queryset = Tariff.objects.filter(archived=False).order_by("uid")
-    serializer_class = TariffQuickSerializer
+    serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = "uid"
 
@@ -48,7 +48,7 @@ class TariffQuickViewSet(
             tariff = Tariff.get_if_exists(
                 uid__iexact=uid, ocpi_master=our_role, archived=False
             )
-            serializer = TariffQuickSerializer(
+            serializer = SolidTariffSerializer(
                 data=data,
                 instance=tariff,
                 partial=partial,
@@ -84,16 +84,16 @@ class TariffQuickViewSet(
             ), "Different UID in request and URL"
 
             if request.method == "GET":
-                serializer = TariffQuickSerializer(tariff, context={"request": request})
+                serializer = SolidTariffSerializer(tariff, context={"request": request})
                 return Response(serializer.data)
 
             partial = bool(request.method == "PATCH")
-            serializer = TariffQuickSerializer(
+            serializer = SolidTariffSerializer(
                 tariff, data=request.data, partial=partial, context={"request": request}
             )
             if serializer.is_valid():
                 serializer.save(ocpi_master=our_role)
-                serializer = TariffQuickSerializer(Tariff.objects.get(uid=uid))
+                serializer = SolidTariffSerializer(Tariff.objects.get(uid=uid))
                 return Response(serializer.data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
