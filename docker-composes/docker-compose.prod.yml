@@ -9,6 +9,7 @@ services:
       AWS_SECRET_ID: "django-app-secrets"
       DJANGO_COLLECT_STATIC: "true"
       DJANGO_MIGRATE: "true"
+      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
       DJANGO_PORT: "${DJANGO_PORT:-8000}"
     volumes:
       - static_volume:/app/staticfiles
@@ -25,6 +26,7 @@ services:
     environment:
       ENV: production
       AWS_SECRET_ID: "mqtt-subscriber-secrets"
+      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
     volumes:
       - mqtt_logs:/var/log/mqtt
     command: ["mqtt-subscriber"]
@@ -37,7 +39,8 @@ services:
     environment:
       ENV: production
       AWS_SECRET_ID: "mqtt-celery-secrets"
-      WORKER_NAME: "celery-mqtt-worker"
+      WORKER_NAME: "celery-mqtt-worker-high"
+      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
     volumes:
       - celery_logs:/var/log/celery
     command: ["celery-mqtt"]
@@ -49,8 +52,10 @@ services:
     container_name: celery-django
     environment:
       ENV: production
-      WORKER_NAME: "celery-django-worker"
       AWS_SECRET_ID: "django-celery-secrets"
+      WORKER_NAME: "celery-django-worker"
+      DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
+
     volumes:
       - celery_logs:/var/log/celery
     command: ["celery-django"]
