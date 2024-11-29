@@ -1,9 +1,9 @@
 from urllib.parse import urljoin
 
+from logging import getLogger
 from django.conf import settings
 from django.db.models import ProtectedError
 
-import ocpi22.logging as logging
 from typing import Optional
 
 from django.core.handlers.wsgi import WSGIRequest
@@ -39,7 +39,6 @@ from ocpi22.choices import (
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
 from ocpi22.webhooks import send_to_webhook
-from ocpi22.logging import log_error
 from ocpi22.msp.account import update_balance
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
@@ -94,6 +93,7 @@ from ocpiconnector.ocpi_identities import (
 from ocpiconnector.party import Party
 from premium import requires_premium
 
+logger = getLogger(__name__)
 
 # Todo: In case a PATCH request fails, the client is expected to call the GET method to check the state
 #  of the object in the other party’s system. If the object doesn’t exist, the client should do a PUT.
@@ -182,7 +182,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             created_token = serializer.save(ocpi_master=credentialsrole)
-            logging.info(f'{"Creating" if created else "Updating"} {created_token}')
+            logger.info(f'{"Creating" if created else "Updating"} {created_token}')
             created_token.send_hub_updates()
             return OCPIResponse(
                 serializer.data,
@@ -222,7 +222,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                     status_message=f'Unknown Token "{token_uid}"',
                 )
 
-            logging.info(
+            logger.info(
                 f"Authorization request received for a token {token_uid} for location {location}."
             )
 
@@ -232,7 +232,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
             if not token.valid:
                 allowed = AuthorizationEnum.NOT_ALLOWED
                 info = MessageTexts.get("TOKEN_NOT_VALID")
-                logging.warning(f"Token {token} is marked as invalid in our database.")
+                logger.warning(f"Token {token} is marked as invalid in our database.")
                 # Todo: Send alert to support?
             else:
                 # Todo: Update tests for internal accounting and create tests for MSP authorize callback
@@ -250,12 +250,12 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                     if serializer.is_valid():
                         allowed = msp_response.get("result", "NOT_ALLOWED").upper()
                         max_price = msp_response.get("max_price")
-                        logging.info(
+                        logger.info(
                             f"MSP backend responded{serializer.data} for {token_uid} at location {location}."
                         )
                     else:
                         allowed = AuthorizationEnum.NOT_ALLOWED
-                        logging.error(
+                        logger.error(
                             f"Format error in response from MSP backend: {serializer.errors}"
                         )
                 elif token.whitelist in (
@@ -270,7 +270,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                         settings.REQUIRE_WALLET_BALANCE
                         and token.total_balance_float() < 1.0
                     ):
-                        log_error(request, f"Token {token} has no balance")
+                        logger.error(f"Token {token} has no balance")
                         allowed = AuthorizationEnum.NO_CREDIT
                         info = MessageTexts.get("NO_BALANCE")
                     else:
@@ -291,7 +291,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                 Authorization.objects.create(
                     authorization_reference=authorization_reference, max_price=max_price
                 )
-                logging.info(
+                logger.info(
                     f"Created authorization reference {authorization_reference} with max price {max_price}"
                 )
 
@@ -466,7 +466,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 http_status=status.HTTP_405_METHOD_NOT_ALLOWED,
                 status_code=Ocpi.ClientError.UNKNOWN_TOKEN,
             )
-        logging.warning(
+        logger.warning(
             f"Soft deleting {request.credentials} on request by Credential owner (valid=False)."
         )
         request.credentials.soft_delete()
@@ -490,9 +490,9 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             credentials.roles.all().delete()
             for role in data["roles"]:
                 credentials.add_role(role)
-        except ProtectedError as e:
+        except ProtectedError:
             # If CredentialsRoles are in use, we cannot touch them in any way, so skipping the delete and add_role
-            logging.error(f"Unable to delete CredentialsRoles: {e}")
+            logger.exception("Unable to delete CredentialsRoles")
 
         # Delay storing tokens until now, in case the roles have some issue
         credentials.save()
@@ -506,7 +506,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             data=data, context={"version": request.version}
         )
         if not serializer.is_valid():
-            logging.error(
+            logger.error(
                 f"Our software has a logic error in Credentials POST: {serializer.errors}"
             )
             return OCPIResponse(
@@ -543,7 +543,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
             data=data, context={"version": request.version}
         )
         if not serializer.is_valid():
-            logging.error(
+            logger.error(
                 f"Our software has a logic error in Credentials POST: {serializer.errors}"
             )
             return OCPIResponse(
@@ -645,7 +645,7 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
             instance=tariff, data=data, context={"version": version, "request": request}
         )
         if serializer.is_valid():
-            logging.info(
+            logger.info(
                 f'{"Creating" if created else "Updating"} Tariff {credentialsrole} - {uid}.'
             )
             created_tariff = serializer.save(ocpi_master=credentialsrole)
@@ -703,7 +703,7 @@ def stop_session_if_money_runs_out(request, session):
             ):
                 response = send_stop_command(session)
                 if response.status_code != status.HTTP_200_OK:
-                    logging.error(
+                    logger.error(
                         f"Unable to stop Session {session.uid} before the reserved money {reserved_money} runs out",
                         request,
                     )
@@ -738,7 +738,7 @@ def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
 def update_authorization(request, session: Session) -> None:
     try:
         if not session.authorization_reference:
-            logging.warning(
+            logger.warning(
                 f"Session {session.uid} has no authorization_reference, cannot link to Authorization."
             )
             return
@@ -748,11 +748,11 @@ def update_authorization(request, session: Session) -> None:
         if not authorization.session:
             authorization.session = session
             authorization.save(update_fields=["session"])
-            logging.info(
+            logger.info(
                 f"Authorization {session.authorization_reference} is now linked to Session {session.uid}"
             )
     except Authorization.DoesNotExist:
-        logging.error(
+        logger.error(
             f"Authorization {session.authorization_reference} is not known by MSP.",
             request,
         )
@@ -816,9 +816,11 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
         )
         created = bool(not session)
         if created and partial:
-            return OCPIResponse(status_message="Unknown Session UID, unable to PATCH.",
-                                http_status=status.HTTP_404_NOT_FOUND,
-                                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS)
+            return OCPIResponse(
+                status_message="Unknown Session UID, unable to PATCH.",
+                http_status=status.HTTP_404_NOT_FOUND,
+                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+            )
 
         # Todo: If PATCH fails, we have missed the Session PUT, so we need to fetch the full Session from CPO
         # Todo: Fetch Location if missing
@@ -830,7 +832,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
             context={"request": request, "version": request.version},
         )
         if serializer.is_valid():
-            logging.info(
+            logger.info(
                 f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.'
             )
             session = serializer.save(ocpi_master=request.credentialsrole)
@@ -881,7 +883,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
                 tryagain=True,
                 **kwargs,
             )
-        logging.error(
+        logger.error(
             'Problem with PUT Session from '
             f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}'
         )

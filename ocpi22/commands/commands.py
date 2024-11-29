@@ -2,11 +2,9 @@ from builtins import list
 from typing import Union, Optional
 
 import pytz
+from logging import getLogger
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
-
-
-import ocpi22.logging as logging
 
 from dataclasses import dataclass
 from datetime import timedelta
@@ -65,7 +63,8 @@ from ocpi22.tokens.util import construct_adhoc_token, get_token_id, get_token_ty
 from ocpiconnector.ocpi_identities import get_our_party, ocpi_platform
 from ocpiconnector.party import Party
 from ocpi22.util import build_absolute_uri, command_store
-from ocpi22.logging import log_error
+
+logger = getLogger(__name__)
 
 
 @dataclass(eq=True)
@@ -160,20 +159,20 @@ class CommandsViewSet(GenericViewSet):
     def reserve_now_extra_actions(self, request, session, **kwargs):
         if not session:
             session = self.create_session(request, **kwargs)
-            logging.info(
+            logger.info(
                 f"Created reservation session {session.uid} based on remote command from MSP."
             )
         else:
-            logging.info(f"Found an existing session {session.uid}.")
+            logger.info(f"Found an existing session {session.uid}.")
 
     def start_session_extra_actions(self, request, session, **kwargs):
         if not session:
             session = self.create_session(request, **kwargs)
-            logging.info(
+            logger.info(
                 f"Created session {session.uid} based on remote command from MSP."
             )
         else:
-            logging.info(f"Found an existing session {session.uid}.")
+            logger.info(f"Found an existing session {session.uid}.")
             # raise APIException(f'Session already exists')
 
         # Reservation may have started earlier, but charging session starts now
@@ -324,7 +323,7 @@ class CommandsViewSet(GenericViewSet):
             else:
                 data = send_to_webhook(initial_data, webhook_serializer)
             if not data:
-                logging.error(
+                logger.error(
                     f"Unable to connect to CPMS webhook at {webhook_serializer.URL}."
                 )
                 return OCPIResponse(
@@ -337,7 +336,7 @@ class CommandsViewSet(GenericViewSet):
 
             timeout = int(data.get("timeout", timeout))
             result = data.get("result", CommandResponse.REJECTED).upper()
-            logging.info(f"Result from charger for command {command_prefix}: {result}")
+            logger.info(f"Result from charger for command {command_prefix}: {result}")
             message = MessageTexts.get(
                 f"{command_prefix}_{result}",  # E.g. try to get response message for START_<result>
                 MessageTexts.get(
@@ -446,7 +445,7 @@ class CommandsViewSet(GenericViewSet):
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
         if session.count() > 1:
-            logging.error(
+            logger.error(
                 f"Multiple Sessions found with the same authorization reference {command_id}"
             )
 
@@ -455,7 +454,7 @@ class CommandsViewSet(GenericViewSet):
             result = serializer.validated_data.get("result")
             message = serializer.validated_data.get("message")
             session.update(message=message)
-            logging.info(
+            logger.info(
                 f'Received CommandResult {result} and '
                 f'message {message or "N/A"} for command {command} ID {command_id}'
             )
@@ -509,7 +508,7 @@ def send_start_command(
 
     route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
     if route:
-        logging.info(
+        logger.info(
             f"*** Sending start command for {evse.location.name} to {route.url}."
         )
         if not isinstance(token, Token):
@@ -535,10 +534,8 @@ def send_start_command(
             data.pop("connector_id", None)
         serializer = StartSessionSerializer(data=data)
         if not serializer.is_valid():
-            logging.error(
-                "Malformed outbound data in send_start_command() (system bug)"
-            )
-            logging.error(serializer.errors)
+            logger.error("Malformed outbound data in send_start_command() (system bug)")
+            logger.error(serializer.errors)
             raise ValidationError("Malformed outbound data (system bug)")
         return ocpi_post(
             urljoin(f"{route.url}/", "START_SESSION"),
@@ -551,7 +548,7 @@ def send_start_command(
         message = (
             f"Cannot find a route for START_SESSION to {evse.location.party_str()}"
         )
-        log_error(request, message)
+        logger.error(message)
         raise APIException(message)
 
 
@@ -573,7 +570,7 @@ def send_reserve_command(
 
     route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
     if route:
-        logging.info(
+        logger.info(
             f"*** Sending reserve command for {evse.location.name} to {route.url}."
         )
         if not isinstance(token, Token):
@@ -604,10 +601,10 @@ def send_reserve_command(
         )
         serializer = ReserveNowSerializer(data=data)
         if not serializer.is_valid():
-            logging.error(
+            logger.error(
                 "Malformed outbound data in send_reserve_command() (system bug)"
             )
-            logging.error(serializer.errors)
+            logger.error(serializer.errors)
             raise ValidationError("Malformed outbound data (system bug)")
         return ocpi_post(
             urljoin(f"{route.url}/", "RESERVE_NOW"),
@@ -618,7 +615,7 @@ def send_reserve_command(
         )
     else:
         message = f"Cannot find a route for RESERVE_NOW to {evse.location.party_str()}"
-        log_error(request, message)
+        logger.error(message)
         raise APIException(message)
 
 
@@ -628,7 +625,7 @@ def send_stop_command(session: Session) -> Optional[Response]:
 
     route: Route = find_route(Party(country_code, party_id), OcpiModuleEnum.COMMANDS)
     if route:
-        logging.info(f"*** Sending stop command for {session} to {route.url}.")
+        logger.info(f"*** Sending stop command for {session} to {route.url}.")
         authorization_reference = session.authorization_reference
         data = dict(
             response_url=build_absolute_uri(
@@ -652,5 +649,5 @@ def send_stop_command(session: Session) -> Optional[Response]:
         )
     else:
         message = f"Cannot find a route for STOP_SESSION to {country_code}*{party_id}"
-        logging.error(message)
+        logger.error(message)
         raise APIException(message)

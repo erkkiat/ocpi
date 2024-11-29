@@ -1,14 +1,16 @@
 from collections import OrderedDict
+from logging import getLogger
 from typing import Optional, Union
 
 import requests
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
 
-from ocpi22 import logging as logging
 from ocpi22.models.location import Location, Evse
 from ocpi22.serializers.util import CallbacksSerializer
 from ocpi22.util import build_callback_request
+
+logger = getLogger(__name__)
 
 
 def send_to_webhook(
@@ -76,7 +78,7 @@ def send_to_webhook(
                 timeout=timeout,
                 **kwargs,
             )
-            logging.info(
+            logger.info(
                 f"Webhook {serializer.URL} at {url} responded in {response.elapsed}"
             )
 
@@ -86,17 +88,17 @@ def send_to_webhook(
                 if response_serializer.is_valid():
                     return response_json
                 else:
-                    logging.error(
+                    logger.error(
                         f"Got a malformed response from webhook at {url}: {response_json}"
                     )
                     return None
         else:
-            logging.info(f"No webhook {serializer.URL} specified")
-    except (IOError, ValidationError) as e:
-        logging.error(f"Problem communicating with webhook {serializer.__class__}: {e}")
+            logger.info(f"No webhook {serializer.URL} specified")
+    except (IOError, ValidationError):
+        logger.exception(f"Problem communicating with webhook {serializer.__class__}")
         raise
-    except Exception as e:
-        logging.error(f"Webhook error: {e}")
+    except Exception:
+        logger.exception("Webhook error")
         raise
 
     return None

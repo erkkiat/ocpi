@@ -1,7 +1,11 @@
 from functools import lru_cache
 from typing import Optional
 
+from logging import getLogger
+
 from ocpiconnector.party import Party
+
+logger = getLogger(__name__)
 
 
 def get_sender_party(
@@ -20,9 +24,7 @@ def get_sender_party(
     'FI*EON'
     """
     if not headers:
-        from ocpi22 import logging
-
-        logging.error("No headers from sender")
+        logger.error("No headers from sender")
         return Party("", "")
     headers = dict_keys_to_lower_and_filter(headers, "ocpi")
     country_code = headers.get(

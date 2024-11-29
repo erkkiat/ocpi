@@ -87,7 +87,6 @@ def invalidate_partner_cache(party: Union[Party, "CredentialsRole"]) -> bool:
     return True
 
     # Todo: Invalidate a single Party from cache, but the calling code is not yet working properly
-    # from ocpi22 import logging
     # key_to_invalidate = hashkey(party)
     # result = bool(partners_cache.pop(key_to_invalidate, None))
     # logging.info(f'Invalidated partner cache for {party}: {result}')
