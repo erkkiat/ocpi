@@ -1,12 +1,12 @@
 version: "3.9"
 
 services:
-  django-server:
+  django-app:
     image: "${ECR_REPO_URL}/django-app:${IMAGE_TAG}"
-    container_name: django-server
+    container_name: django-app
     environment:
       ENV: production
-      AWS_SECRET_ID: "django-server-secrets"
+      AWS_SECRET_ID: "django-app-secrets"
       DJANGO_COLLECT_STATIC: "true"
       DJANGO_MIGRATE: "true"
       DJANGO_PORT: "${DJANGO_PORT:-8000}"
@@ -15,7 +15,7 @@ services:
       - media_volume:/app/mediafiles
     ports:
       - "${DJANGO_PORT:-8000}:8000"
-    command: ["django-server"]
+    command: ["django-app"]
     networks:
       - app-network
 

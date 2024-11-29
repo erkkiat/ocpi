@@ -1,23 +1,23 @@
 version: "3.9"
 
 services:
-  django-server:
+  django-app:
     build:
       context: ../
-    container_name: django-server
+    container_name: django-app
     environment:
       DJANGO_COLLECT_STATIC: "true"
       DJANGO_MIGRATE: "true"
       ENV: development
     env_file:
-      - ../django-server.env
+      - ../django-app.env
     volumes:
       - ../:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
     ports:
       - "8000:8000"
-    command: django-server
+    command: django-app
     networks:
       - backend-network
       - db-network
