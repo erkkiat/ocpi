@@ -431,7 +431,14 @@ class PartyStrField(serializers.CharField):
         if isinstance(data, CredentialsRole):
             return data
         if isinstance(data, str):
-            return get_credentialsrole(party=Party(*data.split("*")))
+            if "*" not in data:
+                raise ValidationError(
+                    f"Invalid format for party ID or CredentialsRole, expected country_code*party_id, got {data}"
+                )
+            party = get_credentialsrole(party=Party(*data.split("*")))
+            if not party:
+                raise ValidationError(f"No party with id {data}")
+            return party
         raise ValidationError(f"Expected a party ID or CredentialsRole, got {data}")
 
     def to_representation(self, value):
