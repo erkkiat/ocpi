@@ -386,15 +386,8 @@ class LocationIdDictSerializer(serializers.CharField):
 class LocationEvseUidSerializer(serializers.Serializer):
     default_error_messages = default_error_messages
 
-    def get_location_id(self):
-        if hasattr(self.parent, "parent") and self.parent.parent:
-            return self.parent.parent.initial_data.get("location_id")
-        elif hasattr(self, "parent") and self.parent:
-            return self.parent.initial_data.get("location_id")
-        return None
-
     def to_internal_value(self, evse_uid):
-        request = self.context.get("request")
+        request = self.context["request"]
         evse = Evse.get_if_exists(
             uid=evse_uid, location__ocpi_master=request.ocpi_party
         )

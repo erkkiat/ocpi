@@ -59,6 +59,7 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
             "currency",
             "total_cost_incl_vat",
             "total_cost_excl_vat",
+            "total_kwh",
             "status",
             "last_updated",
         ]
@@ -72,6 +73,11 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     start_date_time = UTCDateTimeField(format=settings.OCPI_DATE_FORMAT)
     end_date_time = UTCDateTimeField(required=False)
     last_updated = UTCDateTimeField(required=False)
+    total_kwh = serializers.SerializerMethodField(read_only=True)
+
+    @staticmethod
+    def get_total_kwh(session):
+        return session.stop_kwh - session.start_kwh
 
     @staticmethod
     def get_token(session):
