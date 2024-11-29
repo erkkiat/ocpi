@@ -102,9 +102,9 @@ jobs:
       - name: Build and Push Staging Images
         run: |
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-            repo_url = "$ECR_REPO_URL/solidroam-$service-f3"
-            aws ecr get-login-password --region $AWS_REGION | docker login --username ${{ secrets.SMP_AWS_TEMP_USER }} --password-stdin $repo_url
-            full_image_url_with_tag = "$ECR_REPO_URL/solidroam-$service-f3:${IMAGE_TAG}"
-            docker build -t "${full_image_url_with_tag}" -f ./ocpiconnector/Dockerfile ./ocpiconnector/
-            docker push "${full_image_url}"
+              repo_url="$ECR_REPO_URL/solidroam-$service-f3"
+              aws ecr get-login-password --region "${{ secrets.SMP_AWS_REGION }}" | docker login --username "${{ secrets.SMP_AWS_TEMP_USER }}" --password-stdin "$repo_url"
+              full_image_url_with_tag="$repo_url:${IMAGE_TAG}"
+              docker build -t "$full_image_url_with_tag" -f ./ocpiconnector/Dockerfile ./ocpiconnector/
+              docker push "$full_image_url_with_tag"
           done
