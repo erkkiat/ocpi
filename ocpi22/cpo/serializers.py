@@ -721,6 +721,18 @@ class SolidTariffSerializer(SerializerCleanedUp):
         return tariff
 
     def update_solid_tariff(self, tariff: Tariff, validated_data: dict):
+        operator_country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
+        operator_party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
+
+        try:
+            operator = CredentialsRole.objects.get(
+                country_code=operator_country_code, party_id=operator_party_id
+            )
+        except (ValueError, CredentialsRole.DoesNotExist):
+            raise ValueError(
+                f"Invalid or missing operator credentials: {operator_country_code}*{operator_party_id}"
+            )
+
         solid_tariffs = list(SolidTariff.objects.filter(uid=tariff.uid))
 
         per_kwh = validated_data.get(PriceKwhSerializer.key)
@@ -760,7 +772,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
             for solid_tariff in solid_tariffs:
                 if solid_tariff.msp in msps_to_remove:
-                    solid_tariff.msp = None
+                    solid_tariff.delete()
+                    solid_tariffs.remove(solid_tariff)
 
             new_solid_tariffs = [
                 SolidTariff(
@@ -771,6 +784,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     currency=fields_to_update.get("currency"),
                     vat=fields_to_update.get("vat"),
                     msp=msp,
+                    operator=operator,
                     last_updated=datetime.now(),
                 )
                 for msp in msps_to_add
