@@ -97,7 +97,7 @@ jobs:
           aws-access-key-id: "AKIA3P7P7GWBB3KWEGMV"
           aws-secret-access-key: ${{ secrets.SMP_AWS_SECRET_ACCESS_KEY }}
           aws-region:  "eu-west-1"
-          # role-to-assume: ${{ secrets.SMP_AWS_GHA_ROLE}}
+          role-to-assume: ${{ secrets.SMP_AWS_GHA_ROLE}}
 
       - name: Build and Push Staging Images
         run: |
