@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Fetch secrets from AWS Secrets Manager
+# Function to fetch secrets from AWS Secrets Manager
 fetch_secret() {
     local secret_id=$1
     SECRETS=$(aws secretsmanager get-secret-value \
@@ -14,7 +14,7 @@ fetch_secret() {
     echo "$SECRETS"
 }
 
-# Ensure the AWS_SECRET_ID is set
+# Ensure the AWS_SECRET_ID environment variable is set
 if [ -z "$AWS_SECRET_ID" ]; then
     echo "Error: AWS_SECRET_ID environment variable is not set."
     exit 1
@@ -22,19 +22,22 @@ fi
 
 echo "Fetching secrets for $AWS_SECRET_ID..."
 
-# Fetch the secrets and export them as environment variables
+# Fetch the secrets
 SECRETS=$(fetch_secret "$AWS_SECRET_ID")
 if [ -z "$SECRETS" ]; then
     echo "Error: No secrets retrieved for $AWS_SECRET_ID"
     exit 1
 fi
 
-# Export secrets without using a temporary file
-echo "$SECRETS" | jq -r 'to_entries | .[] | "export \(.key)=\(.value)"' | while read -r line; do
-    eval "$line"
+# Write the secrets into /etc/environment and export them
+echo "$SECRETS" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' | while read -r line; do
+    # Append the secret to /etc/environment
+    echo "$line" >> /etc/environment
+    # Export the secret as an environment variable for immediate use
+    eval "export $line"
 done
 
-echo "Secrets fetched and exported for $AWS_SECRET_ID."
+echo "Secrets written to /etc/environment and exported to the current environment."
 
 # Execute the main command
 exec "$@"
