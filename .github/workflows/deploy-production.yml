@@ -83,7 +83,7 @@ jobs:
     needs: test
 
     env:
-      ECR_REPO_URL: ${{ secrets.SMP_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_ECR_REGION }}.amazonaws.com/solidroam-basecontainer-f3
+      ECR_REPO_URL: ${{ secrets.SMP_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com/solidroam-basecontainer-f3
       IMAGE_TAG: ${{ github.event.release.tag_name }}
 
     steps:
