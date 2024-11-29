@@ -105,14 +105,7 @@ jobs:
         run: |
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
             # Build the image
-            docker build -t $ECR_REPO_URL/$service:${IMAGE_TAG} -f ./ocpiconnector/Dockerfile ./ocpiconnector/
-
-            # Push the production image
-            docker push $ECR_REPO_URL/$service:${IMAGE_TAG}
-
-            # Tag the same image as staging-latest
-            docker tag $ECR_REPO_URL/$service:${IMAGE_TAG} $ECR_REPO_URL/$service:staging-latest
-
-            # Push the staging-latest tag
-            docker push $ECR_REPO_URL/$service:staging-latest
+            full_image_url = $ECR_REPO_URL/solidroam-$service-f1:${IMAGE_TAG}
+            docker build -t "${full_image_url}" -f ./ocpiconnector/Dockerfile ./ocpiconnector/
+            docker push "${full_image_url}"
           done

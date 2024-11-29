@@ -84,7 +84,7 @@ jobs:
     needs: test
 
     env:
-      ECR_REPO_URL: ${{ secrets.SMP_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_ECR_REGION }}.amazonaws.com/solidroam-basecontainer-f3
+      ECR_REPO_URL: ${{ secrets.SMP_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_ECR_REGION }}.amazonaws.com
       IMAGE_TAG: staging-latest
 
     steps:
@@ -105,6 +105,7 @@ jobs:
       - name: Build and Push Staging Images
         run: |
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-            docker build -t $ECR_REPO_URL/$service:${IMAGE_TAG} -f ./ocpiconnector/Dockerfile ./ocpiconnector/
-            docker push $ECR_REPO_URL/$service:${IMAGE_TAG}
+            full_image_url = $ECR_REPO_URL/solidroam-$service-f3:${IMAGE_TAG}
+            docker build -t "${full_image_url}" -f ./ocpiconnector/Dockerfile ./ocpiconnector/
+            docker push "${full_image_url}"
           done
