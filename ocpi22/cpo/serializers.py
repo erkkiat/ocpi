@@ -35,7 +35,11 @@ from ocpi22.util import (
     CURRENCY_CHOICES,
     fill_out_location_address,
 )
-from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
+from ocpiconnector.ocpi_identities import (
+    get_our_country_code,
+    get_our_party_id,
+    get_our_party,
+)
 from ocpiconnector.party import Party
 
 
@@ -721,30 +725,28 @@ class SolidTariffSerializer(SerializerCleanedUp):
         return tariff
 
     def update_solid_tariff(self, tariff: Tariff, validated_data: dict):
-        operator_country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
-        operator_party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
+        party: Party = get_our_party(OcpiRolesEnum.CPO.value)
 
         try:
             operator = CredentialsRole.objects.get(
-                country_code=operator_country_code, party_id=operator_party_id
+                country_code=party.country_code, party_id=party.party_id
             )
         except (ValueError, CredentialsRole.DoesNotExist):
-            raise ValueError(
-                f"Invalid or missing operator credentials: {operator_country_code}*{operator_party_id}"
-            )
+            raise ValueError(f"Invalid or missing operator credentials: {str(party)}")
 
-        solid_tariffs = list(SolidTariff.objects.filter(uid=tariff.uid))
+        solid_tariffs = list(SolidTariff.objects.filter(uid=tariff.uid, archived=False))
 
         per_kwh = validated_data.get(PriceKwhSerializer.key)
         per_min = validated_data.get(PriceMinSerializer.key)
         flat = validated_data.get(PriceFlatSerializer.key)
         vat = validated_data.get(VatSerializer.key)
+        currency = validated_data.get(CurrencySerializer.key)
 
         fields_to_update = {
             "price_per_kwh": per_kwh,
             "price_per_min": per_min,
             "price_flat": flat,
-            "currency": validated_data.get("currency"),
+            "currency": currency,
             "vat": vat,
         }
 
@@ -761,39 +763,49 @@ class SolidTariffSerializer(SerializerCleanedUp):
                 current_saved_msps.add(solid_tariff.msp)
 
             solid_tariff.last_updated = datetime.now()
+            solid_tariff.archived = False
 
         msps = validated_data.get("msps")
 
         if msps is not None:
-            new_msps = set(msps)
+            if len(msps) == 0:
+                for i, solid_tariff in enumerate(solid_tariffs):
+                    solid_tariff.msp = None
+                    # Delete all redundant records
+                    if i != 0:
+                        solid_tariff.archived = True
+            else:
+                new_msps = set(msps)
 
-            msps_to_add = new_msps - current_saved_msps
-            msps_to_remove = current_saved_msps - new_msps
+                msps_to_add = new_msps - current_saved_msps
+                msps_to_remove = current_saved_msps - new_msps
 
-            for solid_tariff in solid_tariffs:
-                if solid_tariff.msp in msps_to_remove:
-                    solid_tariff.delete()
-                    solid_tariffs.remove(solid_tariff)
+                for solid_tariff in solid_tariffs:
+                    if solid_tariff.msp is None:
+                        solid_tariff.msp = msps_to_add.pop()
+                    elif solid_tariff.msp in msps_to_remove:
+                        solid_tariff.archived = True
 
-            new_solid_tariffs = [
-                SolidTariff(
-                    uid=tariff.uid,
-                    price_per_kwh=fields_to_update.get("price_per_kwh"),
-                    price_per_min=fields_to_update.get("price_per_min"),
-                    price_flat=fields_to_update.get("price_flat"),
-                    currency=fields_to_update.get("currency"),
-                    vat=fields_to_update.get("vat"),
-                    msp=msp,
-                    operator=operator,
-                    last_updated=datetime.now(),
-                )
-                for msp in msps_to_add
-            ]
-            SolidTariff.objects.bulk_create(new_solid_tariffs)
+                new_solid_tariffs = [
+                    SolidTariff(
+                        uid=tariff.uid,
+                        price_per_kwh=fields_to_update.get("price_per_kwh"),
+                        price_per_min=fields_to_update.get("price_per_min"),
+                        price_flat=fields_to_update.get("price_flat"),
+                        currency=fields_to_update.get("currency"),
+                        vat=fields_to_update.get("vat"),
+                        archived=False,
+                        msp=msp,
+                        operator=operator,
+                        last_updated=datetime.now(),
+                    )
+                    for msp in msps_to_add
+                ]
+                SolidTariff.objects.bulk_create(new_solid_tariffs)
 
         SolidTariff.objects.bulk_update(
             solid_tariffs,
-            fields=list(fields_to_update.keys()) + ["last_updated", "msp"],
+            fields=list(fields_to_update.keys()) + ["last_updated", "msp", "archived"],
         )
 
 
