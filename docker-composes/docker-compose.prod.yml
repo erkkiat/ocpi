@@ -72,8 +72,6 @@ services:
 volumes:
   static_volume:
   media_volume:
-  pgdata:
-  redis_data:
   celery_logs:
   mqtt_logs:
 
