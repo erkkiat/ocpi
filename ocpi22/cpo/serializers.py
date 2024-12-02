@@ -637,7 +637,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
     def create(self, validated_data):
         def create_solid_tariffs():
-            msps = validated_data.get("msps", [])
+            msps = set(validated_data.get("msps", []))
             operator_country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
             operator_party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
 
