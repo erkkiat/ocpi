@@ -1,4 +1,5 @@
 import os
+import ssl
 import sys
 import time
 import uuid
@@ -112,6 +113,13 @@ def configure_client(client_id):
         client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
     )
     client.username_pw_set(username, password)
+    if not os.getenv("MQTT_SSL_VERIFY", True):
+        logger.warning(
+            f"Skipping SSL certificate verification for {os.getenv('ENV')}.."
+        )
+        client.tls_set(cert_reqs=ssl.CERT_NONE)
+        client.tls_insecure_set(True)
+
     client.on_connect = on_connect
     client.on_message = on_message
     return client
@@ -125,10 +133,12 @@ def connect_client(retries=5, delay=5):
     for attempt in range(retries):
         try:
             logger.info(
-                f"Attempting to connect to MQTT broker (attempt {attempt + 1}/{retries})..."
+                f"Attempting to connect to MQTT broker {broker_url}:{port} (attempt {attempt + 1}/{retries})..."
             )
             client.connect(broker_url, port)
-            logger.info("Connected successfully to the MQTT broker.")
+            logger.info(
+                f"Connected successfully to the MQTT broker {broker_url}:{port}"
+            )
             return client
         except Exception as e:
             logger.error(f"Connection attempt {attempt + 1} failed: {e}")

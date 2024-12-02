@@ -6,8 +6,11 @@ DEBUG = os.getenv("DEBUG", False)
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 
 ALLOWED_HOSTS.extend(["staging.solidroam.com"])  # noqa
-MQTT_BROKER = os.getenv("MQTT_BROKER")
-MQTT_PORT = os.getenv("MQTT_PORT")
+MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtttest.smappee.net")
+MQTT_PORT = os.getenv("MQTT_PORT", 443)
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
+MQTT_SSL_VERIFY = os.getenv("MQTT_SSL_VERIFY", True)
 
 FIXIE_URL = os.getenv("FIXIE_URL", "")
 os.environ["http_proxy"] = FIXIE_URL
