@@ -156,8 +156,9 @@ def stop_and_disconnect(client):
 
 
 if __name__ == "__main__":
+    logger = getLogger(__name__)
     from ocpiconnector.settings.base import env_bool  # noqa
 
-    loop_forever = env_bool("MQTT_LOOP_FOREVER")
+    loop_forever = env_bool("MQTT_LOOP_FOREVER", True)
     mqtt_client = connect_client()
     start_client(mqtt_client, loop_forever)

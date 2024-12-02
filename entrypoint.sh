@@ -18,7 +18,7 @@ fi
 
 # Main service startup logic
 case "$1" in
-    django-server)
+    django-app)
         echo "Running collectstatic..."
         python manage.py collectstatic --noinput
 
