@@ -732,12 +732,12 @@ class SolidTariffSerializer(SerializerCleanedUp):
         return tariff
 
     def update_solid_tariff(self, tariff: Tariff, validated_data: dict):
-        party: Party = get_our_party(OcpiRolesEnum.CPO.value)
+        party: Party = get_our_party(OcpiRolesEnum.CPO)
 
         try:
-            operator = CredentialsRole.objects.get(
+            operator = CredentialsRole.objects.filter(
                 country_code=party.country_code, party_id=party.party_id
-            )
+            ).first()
         except (ValueError, CredentialsRole.DoesNotExist):
             raise ValueError(f"Invalid or missing operator credentials: {str(party)}")
 
