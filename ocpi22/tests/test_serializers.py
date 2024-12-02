@@ -82,15 +82,6 @@ class TestSolidTariffSerializer:
         assert solid_tariffs[1].msp == smp1_solid_tariff_data["msps"][1]
         assert tariff.uid == smp1_solid_tariff_data["uid"]
 
-    # @pytest.mark.django_db
-    # def test_create_solid_tariff_with_invalid_msp(self, smp1_solid_tariff_data):
-    #     smp1_solid_tariff_data["ocpi_master"] = self.operator.first()
-    #     smp1_solid_tariff_data["msps"] = ["DE*EMP"]
-    #
-    #     serializer = SolidTariffSerializer(smp1_solid_tariff_data)
-    #     with pytest.raises(ValueError):
-    #         tariff = serializer.create(smp1_solid_tariff_data)
-
     @patch("ocpi22.cpo.serializers.SolidTariff.objects.filter")
     @pytest.mark.django_db
     def test_update_solid_tariff(
