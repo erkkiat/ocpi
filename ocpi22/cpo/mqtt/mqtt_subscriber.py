@@ -107,19 +107,32 @@ def get_broker_and_port():
     return broker, int(port)
 
 
-def configure_client(client_id):
-    username, password = get_broker_username_password()
-    client = mqtt.Client(
-        client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
-    )
-    client.username_pw_set(username, password)
+def get_ssl_certified_client(client) -> mqtt.Client:
     if not os.getenv("MQTT_SSL_VERIFY", True):
         logger.warning(
             f"Skipping SSL certificate verification for {os.getenv('ENV')}.."
         )
         client.tls_set(cert_reqs=ssl.CERT_NONE)
         client.tls_insecure_set(True)
+        return client
+    # else
+    # TODO
+    # 1. read the secret from aws secret manager with boto
+    # 2. Save it in /tmp/mqtt.pem
+    # 3. Load it in the tls_set
+    # client.tls_set(ca_certs=cert_file, cert_reqs=ssl.CERT_REQUIRED)
 
+    # else:
+    return client
+
+
+def configure_client(client_id):
+    username, password = get_broker_username_password()
+    client = mqtt.Client(
+        client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
+    )
+    client.username_pw_set(username, password)
+    client = get_ssl_certified_client(client)
     client.on_connect = on_connect
     client.on_message = on_message
     return client
