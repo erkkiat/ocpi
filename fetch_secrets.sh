@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -e  # Exit immediately if a command exits with a non-zero status
 
 # Function to fetch secrets from AWS Secrets Manager
 fetch_secret() {
@@ -14,30 +14,27 @@ fetch_secret() {
     echo "$SECRETS"
 }
 
-# Ensure the AWS_SECRET_ID environment variable is set
-if [ -z "$AWS_SECRET_ID" ]; then
-    echo "Error: AWS_SECRET_ID environment variable is not set."
+# Ensure the service name is passed as an argument
+if [ -z "$1" ]; then
+    echo "Error: Service name must be passed as the first argument."
     exit 1
 fi
 
-echo "Fetching secrets for $AWS_SECRET_ID..."
+SERVICE_NAME=$1
+ENV_FILE="./${SERVICE_NAME}.env"
+
+echo "Fetching secrets for service: $SERVICE_NAME..."
 
 # Fetch the secrets
-SECRETS=$(fetch_secret "$AWS_SECRET_ID")
+SECRETS=$(fetch_secret "$SERVICE_NAME")
 if [ -z "$SECRETS" ]; then
-    echo "Error: No secrets retrieved for $AWS_SECRET_ID"
+    echo "Error: No secrets retrieved for $SERVICE_NAME"
     exit 1
 fi
 
-# Write the secrets into /etc/environment and export them
-echo "$SECRETS" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' | while read -r line; do
-    # Append the secret to /etc/environment
-    echo "$line" >> /etc/environment
-    # Export the secret as an environment variable for immediate use
-    eval "export $line"
-done
+# Write the secrets into the .env file
+echo "Writing secrets to $ENV_FILE..."
+echo "# Secrets fetched on $(date)" > "$ENV_FILE"
+echo "$SECRETS" | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' >> "$ENV_FILE"
 
-echo "Secrets written to /etc/environment and exported to the current environment."
-
-# Execute the main command
-exec "$@"
+echo "Secrets written to $ENV_FILE."
