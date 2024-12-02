@@ -3,20 +3,6 @@ set -e  # Exit immediately if a command exits with a non-zero status
 
 WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
-# Fetch secrets only for staging and production
-if [[ "$ENV" == "staging" || "$ENV" == "production" ]]; then
-    if [ -x ./fetch_secrets.sh ]; then
-        echo "Fetching secrets for service: $1"
-        ./fetch_secrets.sh "$1"
-    else
-        echo "Error: fetch_secrets.sh not found or not executable."
-        exit 1
-    fi
-else
-    echo "Skipping secret fetching in ENV=$ENV."
-fi
-
-# Main service startup logic
 case "$1" in
     django-app)
         echo "Running collectstatic..."
