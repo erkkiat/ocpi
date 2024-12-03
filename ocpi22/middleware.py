@@ -19,8 +19,6 @@ from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
 
 # For profiling
-import cProfile
-from django.utils.deprecation import MiddlewareMixin
 
 
 class OCPIHubMiddleware:
@@ -143,22 +141,6 @@ class ErrorLoggingMiddleware:
         except Exception as e:
             logging.error(f"An exception occured: {e}", request)
             raise
-
-
-class ProfilerMiddleware(MiddlewareMixin):
-    def process_request(self, request):
-        setattr(self, "pr", cProfile.Profile())
-        self.pr.enable()
-
-    def process_response(self, request, response):
-        self.pr.disable()
-        self.pr.dump_stats("profile_output.prof")
-        # s = io.StringIO()
-        # sortby = pstats.SortKey.CUMULATIVE
-        # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
-        # ps.print_stats()
-        # print(s.getvalue())
-        return response
 
 
 class EnabledUntilMiddleware:
