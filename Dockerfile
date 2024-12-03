@@ -54,10 +54,6 @@ COPY --from=build /app/fetch_secrets.sh ./fetch_secrets.sh
 COPY --from=build /app/entrypoint.sh ./entrypoint.sh
 COPY --from=build /app/ocpiconnector ./ocpiconnector
 
-# Verify dependencies in the final stage
-RUN pip list || (echo "Error listing installed packages in final stage!" && exit 1)
-RUN find /usr/local/lib/python3.11 -name "*celery*" || (echo "Celery files not found in final stage!" && exit 1)
-
 # Expose the application port
 EXPOSE 8080
 
