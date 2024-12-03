@@ -109,10 +109,8 @@ jobs:
 
       - name: Build and Push Staging Images
         run: |
-          pwd
-          ls -al
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-              repo_url="$ECR_REPO_URL/repo-$service-f3"
+              repo_url="$ECR_REPO_URL/solidroam-$service-f3"
               full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
               echo "Building image for $service with tag: $IMAGE_TAG"
