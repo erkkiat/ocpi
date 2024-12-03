@@ -1,4 +1,5 @@
 import json
+from logging import getLogger
 from typing import Union
 from urllib.parse import urljoin
 
@@ -7,8 +8,13 @@ import asyncio
 
 from asgiref.sync import sync_to_async
 
-from ocpi22 import logging
-from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, AuthorizationEnum, EndpointRoleEnum
+
+from ocpi22.choices import (
+    OcpiRolesEnum,
+    OcpiModuleEnum,
+    AuthorizationEnum,
+    EndpointRoleEnum,
+)
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.location import Location
@@ -22,6 +28,8 @@ from util import with_trailing_slash
 
 from typing import TYPE_CHECKING
 
+logger = getLogger(__name__)
+
 if TYPE_CHECKING:
     ...
 
@@ -34,7 +42,7 @@ async def post_request(session, url, data, ocpi_master, headers=None) -> (int, d
         try:
             json_data = await response.json()
         except (aiohttp.ContentTypeError, json.JSONDecodeError):
-            logging.error(f"Cannot decode JSON response from url {url}")
+            logger.error(f"Cannot decode JSON response from url {url}")
             json_data = None
 
         return status, json_data, ocpi_master
@@ -50,15 +58,13 @@ def process_task_result(successful_task):
             json_data = json_data.get("data")
             # If content is a Token authorize response, then break, otherwise continue
             if isinstance(json_data, dict) and json_data.get("allowed"):
-                logging.info(
-                    f"Received authorization from {successful_task.get_name()}"
-                )
+                logger.info(f"Received authorization from {successful_task.get_name()}")
                 json_data["responding_party"] = successful_task.get_name()
                 json_data["ocpi_master"] = ocpi_master
                 return json_data
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
         # Handle the case where response is not JSON or cannot be decoded
-        logging.error(
+        logger.error(
             f"Cannot decode JSON response from party {successful_task.get_name()}"
         )
         pass
@@ -114,8 +120,8 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                     result = process_task_result(task)
                     if result:
                         break
-                except Exception as e:
-                    logging.error(f"Task {task.get_name()} raised an exception: {e}")
+                except Exception:
+                    logger.exception(f"Task {task.get_name()} failed")
 
             if not pending_tasks:
                 # No more tasks pending_tasks, break the loop
@@ -125,7 +131,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
         # Cancel all pending_tasks tasks as we have found our successful task or there are no tasks left
         for task in pending_tasks:
-            logging.info(f"Cancelling task {task.get_name()}", task.cancel())
+            logger.info(f"Cancelling task {task.get_name()}", task.cancel())
 
         return result
 
@@ -145,7 +151,6 @@ def authorize_with_msps_sync(
     """
     from ocpi22.tokens.auth import TokenAuthorization
     from ocpi22.ocpi.serializers import AuthorizationInfoSerializer
-    from ocpi22 import logging
 
     # Todo: Add info texts for TokenNotAuthorized
     TokenNotAuthorized = TokenAuthorization(
@@ -161,7 +166,7 @@ def authorize_with_msps_sync(
         parties = find_endpoints_by_roles(
             (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
             OcpiModuleEnum.TOKENS,
-            endpoint_role=EndpointRoleEnum.SENDER.value
+            endpoint_role=EndpointRoleEnum.SENDER.value,
         )
 
     data = (
@@ -196,12 +201,12 @@ def authorize_with_msps_sync(
                     ocpi_master=ocpi_master,
                 )
             else:
-                logging.error(
+                logger.error(
                     'Cannot create TokenAuthorization from response from '
                     f'{serializer.validated_data.get("responding_party", "N/A")}: {serializer.errors}'
                 )
                 return TokenNotAuthorized
-        except TypeError as e:
-            logging.error(f"Cannot create TokenAuthorization from response: {e}")
+        except TypeError:
+            logger.exception("Cannot create TokenAuthorization from response")
             return TokenNotAuthorized
     return TokenNotAuthorized

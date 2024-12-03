@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import time, datetime as python_datetime, date
 from functools import wraps
+from logging import getLogger
 from typing import List, Any, Optional, Union
 from urllib.parse import urljoin
 
@@ -19,6 +20,8 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse as django_reverse
 
 from ocpi22 import choices
+
+logger = getLogger(__name__)
 
 default_error_messages = dict(
     object_missing="There is no {name} with UID `{uid}` in our database",
@@ -144,9 +147,7 @@ def format_url(url, **kwargs) -> str:
             url = url.decode("utf-8")
         return url.format(**kwargs)
     except KeyError as e:
-        from ocpi22 import logging
-
-        logging.error(f"Unknown URL variable in format_url: {e}")
+        logger.exception(f"Unknown URL variable in format_url: {e}")
         return url
 
 
@@ -232,24 +233,16 @@ class RedisStore:
                 # print(f'Parsing {value} using pickle')
                 value = pickle.loads(value)
             return value
-        except pickle.UnpicklingError as e:
-            from ocpi22 import logging
-
-            logging.error(
-                f"Error retrieving and decoding Redis key {key} as pickled: {e}"
+        except pickle.UnpicklingError:
+            logger.exception(
+                f"Error retrieving and decoding Redis key {key} as pickled"
             )
             # print(f'Error retrieving Redis key {key} as pickled: {e}')
-        except (TypeError, UnicodeDecodeError) as e:
-            from ocpi22 import logging
-
-            logging.error(
-                f"Error decoding value {value} from Redis with key {key}: {e}"
-            )
+        except (TypeError, UnicodeDecodeError):
+            logger.exception(f"Error decoding value {value} from Redis with key {key}")
             # print(f'Error decoding value from Redis with key {key}: {e}')
-        except json.JSONDecodeError as e:
-            from ocpi22 import logging
-
-            logging.error(f"Error decoding Redis key {key} value {value} as JSON: {e}")
+        except json.JSONDecodeError:
+            logger.exception(f"Error decoding Redis key {key} value {value} as JSON")
             # print(f'Error decoding Redis key {key} value {value} as JSON: {e}')
         # If reading the stored data fails, there is not much we can do, but for caching this is ok
         raise KeyError(f"Key {key} not found in Redis")
@@ -304,9 +297,7 @@ class DistributedCache(RedisStore):
         def cache_clear():
             for key in redis_store.scan_iter(f"{self.namespace}:*"):
                 if not redis_store.delete(key):
-                    from ocpi22 import logging
-
-                    logging.warning(f"Could not delete key {key} from Redis")
+                    logger.warning(f"Could not delete key {key} from Redis")
             self.hits = 0
             self.misses = 0
 
@@ -442,9 +433,7 @@ class ErrorLoggingResponse(Response):
         content_type=None,
     ):
         if status >= 400:
-            from ocpi22 import logging
-
-            logging.error(f"Error {status}: {data}")
+            logger.error(f"Error {status}: {data}")
         super().__init__(data, status, template_name, headers, exception, content_type)
 
 

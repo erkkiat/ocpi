@@ -1,4 +1,6 @@
 import base64
+from logging import getLogger
+
 import binascii
 import os
 from enum import Enum
@@ -21,6 +23,8 @@ from ocpiconnector.party import Party
 from util import reverse
 
 from ocpi22.models.credentials import Credentials, CredentialsRole
+
+logger = getLogger(__name__)
 
 
 class OcpiAuthTypes(Enum):
@@ -228,7 +232,5 @@ class OCPIPermission(DjangoModelPermissions):
         if request.path in self.public_views:
             return True
 
-        from ocpi22 import logging
-
-        logging.warning(f"No valid authentication for {request.path} (token: {token})")
+        logger.warning(f"No valid authentication for {request.path} (token: {token})")
         raise exceptions.NotAuthenticated

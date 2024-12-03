@@ -1,9 +1,9 @@
+from logging import getLogger
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.utils.translation import gettext as _
 
 
-from ocpi22 import logging
 import os
 
 from django.contrib.auth.decorators import login_required
@@ -17,6 +17,8 @@ from util import reverse
 from ocpi22.models.cdr import Cdr
 from ocpi22.util import CURRENCY_CHOICES
 from payment.models import Customer, Payment, PaymentStatusEnum, PaymentMethod
+
+logger = getLogger(__name__)
 
 stripe.api_key = os.environ.get(
     "STRIPE_API_KEY",
@@ -58,7 +60,7 @@ class StripePayments:
         if hasattr(request.user, "payment_customer"):
             customer = request.user.payment_customer
         else:
-            logging.info(f'Creating Stripe customer for "{request.user.email}"')
+            logger.info(f'Creating Stripe customer for "{request.user.email}"')
             stripe_customer = stripe.Customer.create(
                 idempotency_key=str(request.user.pk)
             )
@@ -115,7 +117,7 @@ class StripePayments:
             currency=currency,
         )
         if not payment:
-            logging.error(
+            logger.error(
                 f'Reservation has been made, but cannot create Payment in local database for '
                 f'user {user.pk} for amount {amount}: {pi.get("id")}'
             )
@@ -149,7 +151,7 @@ class StripePayments:
             payment.save(update_fields=["status"])
             return HttpResponse("Payment captured.", status=status.HTTP_200_OK)
         except None:
-            logging.error(
+            logger.error(
                 f"Unable to capture payment {payment} for {amount} {payment.currency}"
             )
 
@@ -196,7 +198,7 @@ class PaymentViewSet(viewsets.ViewSet):
         # if hasattr(request.user, 'payment_customer'):
         #     customer = request.user.payment_customer
         # else:
-        #     logging.info(f'Creating Stripe customer for "{request.user.email}"')
+        #     logger.info(f'Creating Stripe customer for "{request.user.email}"')
         #     customer = stripe.Customer.create(idempotency_key=str(request.user.pk))
         #     Customer.objects.create(user=request.user, customer_id=customer.id)
 
@@ -239,7 +241,7 @@ class PaymentViewSet(viewsets.ViewSet):
                     )
 
                     if len(request.user.payment_customer.payment_methods.all()):
-                        logging.info(
+                        logger.info(
                             f"Payment method {payment_method_id} added for user {request.user.pk}"
                         )
 
@@ -248,20 +250,20 @@ class PaymentViewSet(viewsets.ViewSet):
                             status=status.HTTP_200_OK,
                         )
                     else:
-                        logging.error(
+                        logger.error(
                             f"Failed to add payment method for user {request.user.pk}",
                             request,
                         )
                 else:
-                    logging.error(
+                    logger.error(
                         f"No payment intent received from Stripe for session {session_id}"
                     )
             else:
-                logging.error("No session ID in request from Stripe")
-        except stripe.error.InvalidRequestError as e:
-            logging.error(f"Payment session does not exist at Stripe: {e}", request)
-        except Customer.DoesNotExist as e:
-            logging.error(f"PaymentCustomer does not exist: {e}")
+                logger.error("No session ID in request from Stripe")
+        except stripe.error.InvalidRequestError:
+            logger.exception("Payment session does not exist at Stripe")
+        except Customer.DoesNotExist:
+            logger.exception("PaymentCustomer does not exist")
 
         return HttpResponse(
             "Adding a payment method failed", status=status.HTTP_400_BAD_REQUEST
@@ -314,13 +316,12 @@ class PaymentViewSet(viewsets.ViewSet):
                 )
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except User.payment_customer.RelatedObjectDoesNotExist as e:
-            logging.error(
-                f"Cannot make reservation for user {request.user.pk} without any payment methods added: {e}",
-                request,
+        except User.payment_customer.RelatedObjectDoesNotExist:
+            logger.exception(
+                f"Cannot make reservation for user {request.user.pk} without any payment methods added",
             )
             return Response(
-                f"User has no payment methods specified: {e}",
+                "User has no payment methods specified",
                 status=status.HTTP_406_NOT_ACCEPTABLE,
             )
 
@@ -339,7 +340,7 @@ def capture_reservation(cdr: Cdr) -> bool:
         payments.capture(payment, amount)
         return True
     else:
-        logging.error(
+        logger.error(
             f"No session in the CDR, cannot capture amount {amount} for payment {payment}"
         )
     return False

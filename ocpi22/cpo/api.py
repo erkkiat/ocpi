@@ -2,6 +2,7 @@ import json
 from datetime import time, date
 from decimal import Decimal
 from functools import reduce
+from logging import getLogger
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse_lazy
@@ -17,7 +18,6 @@ from django.utils.safestring import mark_safe
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import IsAdminUser
 
-import ocpi22.logging as logging
 from typing import Union, Optional
 
 import redis
@@ -84,7 +84,6 @@ from ocpi22.tokens.auth import (
     get_session_by_token_uid,
 )
 from ocpi22.tokens.util import get_token_id
-from ocpi22.logging import log_error
 from ocpi22.util import MyMetadata
 
 from pprint import PrettyPrinter
@@ -96,6 +95,8 @@ from premium import requires_premium
 
 pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
+
+logger = getLogger(__name__)
 
 
 class CpoEvseViewSet(
@@ -269,7 +270,7 @@ def close_active_sessions_for_evse(evse_uid: str):
 
     for session in active_sessions:
         session.send_updates()
-        logging.error(
+        logger.error(
             f"Completed active Session {session.uid} which has been left hanging"
         )
 
@@ -352,7 +353,7 @@ def process_meter_values(
         try:
             Session.objects.prefetch_related("chargingperiods").get(pk=session.pk)
         except Session.DoesNotExist:
-            logging.error(f"Session {session}  not found")
+            logger.error(f"Session {session}  not found")
 
         if not session.connector.tariff_ids.count():
             raise RuntimeError(
@@ -366,7 +367,6 @@ def process_meter_values(
         session.update_charging_periods(
             Decimal(kwh) - session.start_kwh, soc, power, timestamp
         )
-        # logging.info(f'Meter values stored and fetched in {float(t):.2f} seconds', request)
 
         session.calculate_price()
         session.save(
@@ -611,7 +611,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
             )
         except Evse.DoesNotExist as e:
-            logging.error(f"Exception in CPO status_change(): {e}")
+            logger.exception("Evse does not exists")
             evse_admin = reverse("admin:ocpi22_evse_changelist")
             messages.info(
                 request,
@@ -734,10 +734,10 @@ class ChargePointViewSet(FlowchartViewSet):
             )
 
         except (Evse.DoesNotExist, Token.DoesNotExist, ValueError, OSError) as e:
-            logging.error(f"Exception in CPO authorize(): {e}")
+            logger.exception("Exception in CPO authorize()")
             evse_admin = reverse("admin:ocpi22_evse_changelist")
             token_admin = reverse("admin:ocpi22_token_changelist")
-            messages.info(
+            messages.info(  # what is this ?
                 request,
                 "Seems that the ID for the EVSE or the Token was not quite correct. You can "
                 f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
@@ -854,7 +854,7 @@ class ChargePointViewSet(FlowchartViewSet):
             )
 
         except ObjectDoesNotExist as e:
-            logging.error(f"Exception in start_transaction(): {e}", request=request)
+            logger.error(f"Exception in start_transaction(): {e}", request=request)
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
         except EvseOccupied as e:
             stop_transaction_url = reverse("chargepoint-stop-transaction")
@@ -911,7 +911,7 @@ class ChargePointViewSet(FlowchartViewSet):
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
         except (ValidationError, RuntimeError) as e:
-            logging.error(f"Exception in meter_values(): {e}", request=request)
+            logger.error(f"Exception in meter_values(): {e}", request=request)
             return Response(dict(status=str(e)), status=status.HTTP_409_CONFLICT)
 
     @action(methods=("GET", "POST"), detail=False)
@@ -982,7 +982,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         ]
                     )
                     session.send_updates()
-                    logging.info(
+                    logger.info(
                         f"Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and "
                         f"cost {session.total_cost_incl_vat} {session.currency}"
                     )
@@ -1027,7 +1027,7 @@ class ChargePointViewSet(FlowchartViewSet):
             )
 
         except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
-            logging.error(f"Exception in stop_transaction(): {e}", request=request)
+            logger.error(f"Exception in stop_transaction(): {e}", request=request)
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
 
     @ocpi_exception_handler
@@ -1126,7 +1126,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     )
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except redis.exceptions.ConnectionError as e:
-            logging.error(
+            logger.error(
                 f"Cannot read and store callback settings  "
                 f"due to trouble connecting with Redis: {e}",
                 request=request,
@@ -1138,8 +1138,8 @@ class ChargePointViewSet(FlowchartViewSet):
                 ),
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        except KeyError as e:
-            log_error(request, str(e))
+        except KeyError:
+            logger.exception()
             return Response(
                 dict(
                     status_text=f"Unable to find eMSP remote command from cache, "
@@ -1438,4 +1438,4 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
                 serializer=InvoicingCallbackSerializer,
             )
     except Exception as e:
-        logging.error(f"Unable to send the new CDR to CpoInvoiceWebhook: {e}")
+        logger.error(f"Unable to send the new CDR to CpoInvoiceWebhook: {e}")
