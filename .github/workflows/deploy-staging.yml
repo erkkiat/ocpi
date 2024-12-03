@@ -113,9 +113,9 @@ jobs:
               repo_url="$ECR_REPO_URL/repo-$service-f3"
               full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
-              echo "DEBUG: Building image for $service with tag: $IMAGE_TAG"
+              echo "Building image for $service with tag: $IMAGE_TAG"
               docker build -t "$full_image_url_with_tag" -f ./ocpiconnector/Dockerfile ./ocpiconnector/
 
-              echo "DEBUG: Pushing image for $service to ECR..."
+              echo "Pushing image for $service to ECR... $full_image_url_with_tag"
               docker push "$full_image_url_with_tag"
           done
