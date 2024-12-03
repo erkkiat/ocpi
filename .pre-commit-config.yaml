@@ -10,6 +10,8 @@ repos:
     - id: check-missing-migrations
       name: Checking missing Django migrations
       description: This hook checks if changes has been made into models but not reflected into a migration.
+      env:
+        DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.dev"
       entry: python manage.py makemigrations
       args: [ --check, --dry-run ]
       language: system
