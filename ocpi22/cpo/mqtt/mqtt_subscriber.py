@@ -58,7 +58,7 @@ def get_topic(topic_env_var):
 
 
 def on_message(client, userdata, message):
-    if "metervalues" in message.topic:
+    if "meter_values" in message.topic:
         logger.info("Received meter value message")
         process_meter_values_data(message)
         logger.info(
