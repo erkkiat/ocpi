@@ -12,7 +12,6 @@ import requests
 
 from rest_framework.exceptions import NotAuthenticated
 
-import ocpi22.logging as logging
 import uuid
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
@@ -234,7 +233,6 @@ class ApiPutTests(TestCase):
         return location
 
     def setUp(self):
-        logging.disable(logging.CRITICAL)
         self.credentials = Credentials.objects.create(
             token_a="TOKEN_A", ours="OURS", theirs="THEIRS"
         )
@@ -1137,7 +1135,6 @@ class TariffTests(TestCase):
     fixtures = ["ocpi22/data/credentials.json", "ocpi22/data/defaulttariffs.json"]
 
     def setUp(self) -> None:
-        logging.disable(logging.CRITICAL)
         get_our_credentialsrole.cache_clear()  # Needed whenever loading different fixtures
 
     def check_tariff(self, tariff, tariff_elements, price_components):
@@ -3823,13 +3820,8 @@ class TestMspUserApi(TestCase):
             "Account balance differs from expected after a deposit",
         )
 
-    @patch(
-        "ocpi22.ocpi.util.logging"
-    )  # There are some conflicts with atomic transactions when logging to mysql
     @simulate_surrounding_world
-    def test_token_authorization_with_webhook(
-        self, _mocked_logging: Mock, simulation: Simulation
-    ):
+    def test_token_authorization_with_webhook(self, simulation: Simulation):
         return  # Todo: remove test
         simulation.webhook_requests.put.return_value = FakeResponse(
             200, AuthorizeData.accept_authorization_msp
@@ -3862,11 +3854,8 @@ class TestMspUserApi(TestCase):
                 )
             )
 
-    @patch(
-        "ocpi22.ocpi.util.logging"
-    )  # There are some conflicts with atomic transactions when logging to mysql
     @simulate_surrounding_world
-    def test_cdrs_and_transactions(self, _mocked_logging: Mock, simulation: Simulation):
+    def test_cdrs_and_transactions(self, simulation: Simulation):
         return  # Todo: remove test
 
         simulation.webhook_requests.put.return_value = FakeResponse(
