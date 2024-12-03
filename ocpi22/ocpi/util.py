@@ -4,6 +4,7 @@ import uuid
 from collections import OrderedDict
 from urllib.parse import urljoin
 
+from logging import getLogger
 from django.utils.datetime_safe import datetime
 from typing import Union
 
@@ -15,13 +16,11 @@ from django.utils.module_loading import import_string
 from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
 
-from ocpi22 import logging
 from ocpi22.choices import OcpiRolesEnum
 from rest_framework.response import Response
 
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.routing import find_route
-from ocpi22.logging import log_error
 from ocpiconnector.exceptions import OCPIProtocolError
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
@@ -31,6 +30,8 @@ from ocpiconnector.ocpi_identities import (
 )
 from ocpiconnector.party import Party
 from util import OCPIVersion, with_trailing_slash
+
+logger = getLogger(__name__)
 
 
 def get_serializer(ocpi_serializer_class):
@@ -116,18 +117,18 @@ class OcpiModule:
                     self.ocpi_object_owner not in ocpi_identities.roles
                     and not ocpi_platform.is_hub
                 ):
-                    logging.warning(
+                    logger.warning(
                         f"We don't possess the role required for sending updates for {type(self)}."
                     )
                     return
 
                 if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
-                    logging.info("Sending updates to INTERESTED PARTIES")
+                    logger.info("Sending updates to INTERESTED PARTIES")
                     self.send_update_to_interested_parties(
                         method=method, path_components=path_components
                     )
                 else:
-                    logging.info("Sending updates to ALL connected parties")
+                    logger.info("Sending updates to ALL connected parties")
                     self.send_all_updates(
                         data=data, method=method, path_components=path_components
                     )
@@ -143,7 +144,7 @@ class OcpiModule:
         from ocpi22.credentials.util import find_endpoints_by_roles
 
         our_country_code, our_party_id = self.get_owner_identity().split("*")
-        logging.info(
+        logger.info(
             f"Sending updates for {self} from {our_country_code}*{our_party_id} to {self.send_updates_to}"
         )
 
@@ -158,7 +159,7 @@ class OcpiModule:
                         )
 
                     data = data or self.serialize(credentials.version)
-                    logging.info(f"Sending update to URL {url}")
+                    logger.info(f"Sending update to URL {url}")
                     self.send_background_update(
                         data,
                         url,
@@ -167,10 +168,10 @@ class OcpiModule:
                         sender=Party(our_country_code, our_party_id),
                         method=method,
                     )
-                except Exception as e:
-                    logging.error(f"Unable to send update to {url}: {e}")
+                except Exception:
+                    logger.exception(f"Unable to send update to {url}")
             return True
-        logging.error(
+        logger.error(
             f"{settings.HOSTNAME}: Unable to send updates for {self}, don't know where to send."
         )
         return False
@@ -199,11 +200,11 @@ class OcpiModule:
                 args, retry=False, title=f"{cls.ocpi_module_name.value} update"
             )
         else:
-            logging.warning(f"Skipping send for {cls}")
+            logger.warning(f"Skipping send for {cls}")
 
     def send_hub_updates(self) -> None:
         if ocpi_platform.is_hub and settings.SEND_UPDATES:
-            logging.info(f"Sending HUB updates for {self}.")
+            logger.info(f"Sending HUB updates for {self}.")
             self.send_updates()  # Todo: Use sender identity, not our HUB identity
 
     @classmethod
@@ -254,13 +255,12 @@ class OcpiModule:
                 data, route.url, route.token_base64, to=to, sender=sender, method=method
             )
         else:
-            logging.error(f"Unable to find route to {str(to)}")
+            logger.error(f"Unable to find route to {str(to)}")
 
     def send_update_to_interested_parties(self, *args, method="PUT", **kwargs) -> None:
         if hasattr(self, "credentials"):
             if not hasattr(self, "billed_to"):
-                log_error(
-                    None,
+                logger.error(
                     f"Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties",
                 )
                 return
@@ -268,7 +268,7 @@ class OcpiModule:
             to = self.billed_to.get_party()
             return self.route_single_update_message(to=to, method=method, **kwargs)
         else:
-            logging.error(
+            logger.error(
                 f"Object #{self.uid} - {self} has no credentials, cannot send updates to interested parties"
             )
             # Todo: Stop charging session, cannot bill
@@ -300,11 +300,11 @@ def ocpi_post(
         timeout=25,
         headers=make_headers(token_base64, to, sender),
     )
-    logging.info(f"Posting to {url}, response {response.status_code}")
+    logger.info(f"Posting to {url}, response {response.status_code}")
     if response.status_code >= 300:
         try:
             data = response.json()
-            logging.error(
+            logger.error(
                 f"{settings.HOSTNAME}: `{url}` - {response.status_code} - {data}"
             )
             # raise ValidationError(data.get("status_message") or f'Unknown error: {data}')
@@ -312,10 +312,8 @@ def ocpi_post(
             Exception,
             requests.exceptions.JSONDecodeError,
             requests.exceptions.Timeout,
-        ) as e:
-            logging.error(
-                f"{settings.HOSTNAME}: `{url}` - {response.status_code} - {e}"
-            )
+        ):
+            logger.exception("Ocpi post request failed")
     return response
 
 
@@ -437,10 +435,10 @@ class OCPIResponse(Response):
             data = errors  # This is a courtacy, it's not OCPI compliant
             status_code = Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS
             http_status = status.HTTP_400_BAD_REQUEST
-            logging.error(f"{settings.HOSTNAME}: {status_message}")
+            logger.error(f"{settings.HOSTNAME}: {status_message}")
         result = format_ocpi_response(status_code, status_message, data)
         if status_code != Ocpi.OK or http_status >= status.HTTP_401_UNAUTHORIZED:
-            logging.error(str(result))
+            logger.error(str(result))
         super().__init__(
             result, status=kwargs.pop("status", http_status), *args, **kwargs
         )
@@ -594,7 +592,7 @@ def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwa
             f"Method {method} is not supported for ocpi_credentials_request"
         )
 
-    logging.info(f"{method.upper()} {url} with token {token_base64[:2]}****")
+    logger.info(f"{method.upper()} {url} with token {token_base64[:2]}****")
     headers = make_headers(
         token_base64
     )  # No routing headers for Credentials or Versions

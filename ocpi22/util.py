@@ -8,6 +8,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import lru_cache
+from logging import getLogger
 from typing import Optional, Any, Union
 
 import pytz
@@ -47,7 +48,9 @@ from ocpiconnector.party import Party
 from util import format_url, RedisStore, redis_store, with_trailing_slash
 
 
-# slack_logging.init()
+# slack_logger.init()
+
+logger = getLogger(__name__)
 
 
 def clear_empty(dict_with_possibly_empty_values: dict) -> Union[OrderedDict, dict]:
@@ -378,8 +381,8 @@ class ModelUtilMixin:
                 return self.ocpi_master.get_party()
             if getattr(self, "location", None) and self.location.ocpi_master:
                 return self.location.ocpi_master.get_party()
-        except ObjectDoesNotExist as e:
-            print(f"get_party() failed for {self}: {e}")
+        except ObjectDoesNotExist:
+            logger.exception("Party not found")
             raise
         return Party("", "")
 
@@ -776,9 +779,7 @@ def fetch_object(
 
     route = find_route(party or credentials, ocpi_module, role=EndpointRoleEnum.SENDER)
     if not route:
-        from ocpi22 import logging
-
-        logging.error(f'No route found to fetch {ocpi_module.value} with id: "{id}"')
+        logger.error(f'No route found to fetch {ocpi_module.value} with id: "{id}"')
         return False
     role = ocpi_module.get_owner()
     party = party or credentials.get_party_for_role(role)
@@ -804,7 +805,6 @@ def fetch_object(
     data = response.get("json")
     data = data.get("data", data)  # Do we have the actual data one level deeper?
     version = route.version
-    from ocpi22 import logging
 
     if data:
         viewset = import_string(ocpi_module.get_viewset())
@@ -815,7 +815,7 @@ def fetch_object(
             request=None, data=data, credentialsrole=credentialsrole, version=version
         )
         if response.status_code in {200, 201}:
-            logging.info(f'Fetched missing {ocpi_module.value} with id: "{uid}"')
+            logger.info(f'Fetched missing {ocpi_module.value} with id: "{uid}"')
             return True
-    logging.warning(f'Unable to fetch {ocpi_module.value} with id: "{uid}"')
+    logger.warning(f'Unable to fetch {ocpi_module.value} with id: "{uid}"')
     return False

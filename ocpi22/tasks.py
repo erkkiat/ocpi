@@ -2,6 +2,7 @@ import os
 import random
 from datetime import timedelta, datetime
 from json import JSONDecodeError
+from logging import getLogger
 from typing import Optional, Union
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
@@ -26,6 +27,7 @@ from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.party import Party
 from util import unwrap
 
+logger = getLogger(__name__)
 pp = pprint.PrettyPrinter(indent=4).pprint
 zoined_token = os.environ.get("ZOINED_TOKEN")
 
@@ -104,9 +106,7 @@ if REDIS_URL:
         # Send pings automatically to Cronitor for Celery background tasks
         cronitor.celery.initialize(app, api_key=CRONITOR_API_KEY)
 else:
-    from ocpi22 import logging
-
-    logging.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
+    logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
 
 
 @shared_task
@@ -129,7 +129,6 @@ def send_ocpi_request(
 
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
-    from ocpi22 import logging
 
     try:
         headers = make_headers(token_base64, to=to, sender=sender)
@@ -152,12 +151,12 @@ def send_ocpi_request(
         result: requests.Response = function(**kwargs)
 
         if result.status_code >= status.HTTP_400_BAD_REQUEST:
-            logging.error(
+            logger.error(
                 f"{settings.HOSTNAME}: Request failed, {url}: {result.status_code} - {result.reason}"
             )
             write_to_file(result.text)
         else:
-            logging.info(
+            logger.info(
                 f"Sending {method.upper()} {title} request to {url}, "
                 f"response {result.status_code} (time {result.elapsed})"
             )
@@ -177,9 +176,9 @@ def send_ocpi_request(
 
         try:
             result_json = result.json()
-        except requests.exceptions.JSONDecodeError as e:
+        except requests.exceptions.JSONDecodeError:
             write_to_file(result.text)
-            logging.error(f"Unable to decode JSON response from {url}: {e}")
+            logger.exception(f"Unable to decode JSON response from {url}")
             result_json = dict()
         return dict(
             status_code=result.status_code,
@@ -188,9 +187,7 @@ def send_ocpi_request(
             sender=dict(country_code=to_country_code, party_id=to_party_id),
         )
     except (IOError, JSONDecodeError) as e:
-        logging.error(
-            f"{settings.HOSTNAME}: Unable to send an OCPI request to {str(to)} at {url}: {e}"
-        )
+        logger.exception(f"Unable to send an OCPI request to {str(to)} at {url}")
 
         # Todo: This also needs to be done some other way than starting the Django logic
         # from ocpi22.models.credentials import Credentials
@@ -215,7 +212,6 @@ def exchange_credentials(token, url):
 def pull_objects(
     object_list, limit=10, delay=2, total_objects=0, credentials_id=None, **kwargs
 ) -> None:
-    from ocpi22 import logging
     from ocpi22.models.credentials import Credentials
 
     assert isinstance(
@@ -225,7 +221,7 @@ def pull_objects(
 
     try:
         if not object_list:
-            logging.info("Empty object list, nothing to pull")
+            logger.info("Empty object list, nothing to pull")
             return
         next_url = ""
         obj = object_list[0]
@@ -249,7 +245,7 @@ def pull_objects(
                         request.party_specified_in_url = True
                         party = Party(i.get("country_code"), i.get("party_id"))
                         if not party:
-                            logging.error(
+                            logger.error(
                                 f"Trying to pull data from {credentials}, "
                                 f"but unable to determine party for {i}"
                             )
@@ -265,7 +261,7 @@ def pull_objects(
                             # Not pulling from a hub, so the Credentials party must match
                             credentialsrole = credentials.roles.first()
                             if credentialsrole.get_party() != party:
-                                logging.error(
+                                logger.error(
                                     f"Party {party} in the pulled data doesn't match party "
                                     f"{credentialsrole.party_str()} in the credentialsrole. "
                                     "The other party may be spoofing a location of another operator."
@@ -276,7 +272,7 @@ def pull_objects(
                         from ocpi22.util import is_our_identifier
 
                         if is_our_identifier(credentialsrole.get_party()):
-                            logging.info(
+                            logger.info(
                                 f"Party {party} in the pulled data matches our own party, not storing."
                             )
                             continue
@@ -295,10 +291,10 @@ def pull_objects(
                                     "status_message", "<no status message provided>"
                                 )
                             )
-                    except Exception as e:
-                        logging.error(
+                    except Exception:
+                        logger.exception(
                             f"Unable to update {model} using data pulled from url {url} "
-                            f"for uid {i.get('uid', i.get('id', ''))}: {e}."
+                            f"for uid {i.get('uid', i.get('id', ''))}"
                         )
                         raise
                 if next_url:
@@ -307,7 +303,7 @@ def pull_objects(
         if not next_url:
             object_list.pop(0)
             if not len(object_list):
-                logging.info(f"Total of {total_objects} objects pulled")
+                logger.info(f"Total of {total_objects} objects pulled")
                 return
 
         countdown = random.randint(delay, int(1.5 * delay))
@@ -322,14 +318,13 @@ def pull_objects(
             pull_objects(
                 object_list, limit, delay, total_objects, credentials_id, **kwargs
             )
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-        logging.error(f"Unable to pull objects: {e}")
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+        logger.exception("Unable to pull objects")
 
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways
 def check_still_alive(credentials_id: int = None) -> None:
     from ocpi22.models.credentials import Credentials
-    from ocpi22 import logging
 
     if credentials_id:
         credentials = Credentials.objects.none()
@@ -343,18 +338,15 @@ def check_still_alive(credentials_id: int = None) -> None:
             requests.get(credentials.url, timeout=20)
             credentials.last_connection = datetime.now(pytz.utc)
             credentials.connection_status = choices.CONNECTED
-            logging.info(f"{credentials} is alive")
-        except IOError as e:
-            logging.error(
-                f"{settings.HOSTNAME}: {credentials} is *NOT* alive ({credentials.url}), "
-                f"last connection was {int(time_since_last_connection / 60) or 'N/A'} minutes ago: {e}"
+            logger.info(f"{credentials} is alive")
+        except IOError:
+            logger.exception(
+                f"{credentials} is *NOT* alive ({credentials.url}), "
+                f"last connection was {int(time_since_last_connection / 60) or 'N/A'} minutes ago"
             )
             credentials.connection_status = choices.OFFLINE
-        except Exception as e:
-            logging.error(
-                f"{settings.HOSTNAME}: STILL ALIVE CHECK: Unable to connect to "
-                f"{credentials} ({credentials.url}): {type(e)} - {e}"
-            )
+        except Exception:
+            logger.exception(f"Unable to connect to {credentials} ({credentials.url})")
             credentials.connection_status = choices.OFFLINE
         credentials.save(update_fields=["last_connection", "connection_status"])
         return
@@ -363,7 +355,7 @@ def check_still_alive(credentials_id: int = None) -> None:
         - timedelta(seconds=settings.STILL_ALIVE_FREQUENCY - 3),
         valid=True,
     )
-    # logging.info(f"Checking {stale_credentials.count()} parties for alive")
+    # logger.info(f"Checking {stale_credentials.count()} parties for alive")
     c: Credentials
     for c in stale_credentials:
         if c.is_complete() and c.connection_status in {
@@ -371,7 +363,7 @@ def check_still_alive(credentials_id: int = None) -> None:
             choices.OFFLINE,
         }:
             # since_last_time = (datetime.now(pytz.utc) - c.last_connection).seconds
-            # logging.info(f"Checking that {c} is alive and well, last successful "
+            # logger.info(f"Checking that {c} is alive and well, last successful "
             #              f"connection was {int(since_last_time / 60)} min ago")
             check_still_alive.apply_async(
                 (c.pk,), countdown=random.randint(0, stale_credentials.count())
@@ -380,10 +372,8 @@ def check_still_alive(credentials_id: int = None) -> None:
 
 @app.task(max_retries=5, default_retry_delay=120)
 def send_data_to_analytics(data: Union[dict, list], url):
-    from ocpi22 import logging
-
     if not zoined_token:
-        # logging.info(f'No Zoined token set => no update to analytics')
+        # logger.info(f'No Zoined token set => no update to analytics')
         return
     headers = {
         "content-type": "application/json",
@@ -394,9 +384,9 @@ def send_data_to_analytics(data: Union[dict, list], url):
         data = [data]
     response = requests.post(url=url, json=data, headers=headers, timeout=5)
     if response.status_code != 200:
-        logging.error(f"Unable to send update to analytics: {response.text}")
+        logger.error(f"Unable to send update to analytics: {response.text}")
     # else:
-    #     logging.info(f'Update sent to analytics: {response.text}')
+    #     logger.info(f'Update sent to analytics: {response.text}')
 
 
 #  TODO This needs refactor will take care of it as soon as settings is up

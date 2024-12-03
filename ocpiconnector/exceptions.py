@@ -10,9 +10,6 @@ class OCPIProtocolError(APIException):
     errno = None
 
     def __init__(self, msg, errno=None):
-        from ocpi22 import logging
-
-        logging.error(msg)
         super().__init__(msg)
         self.errno = errno
 

@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from enum import Enum
+from logging import getLogger
 from zoneinfo import ZoneInfo
 
 import orjson
@@ -58,7 +59,6 @@ app.autodiscover_tasks()
 
 from rest_framework.generics import get_object_or_404  # noqa
 
-from ocpi22 import logging as logger  # noqa
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum  # noqa
 from ocpi22.cpo.mqtt.custom_orjson_serializer import orjson_serializer  # noqa
 from ocpi22.cpo.session_cache import get_cached_session, store_session_cache  # noqa
@@ -67,6 +67,8 @@ from ocpi22.models.location import Evse  # noqa
 from ocpi22.tasks import send_ocpi_request  # noqa
 from ocpiconnector.ocpi_identities import get_our_party  # noqa
 from util import format_session_url  # noqa
+
+logger = getLogger(__name__)
 
 
 @shared_task(queue="HIGH")
