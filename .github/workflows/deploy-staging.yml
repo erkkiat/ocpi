@@ -109,12 +109,14 @@ jobs:
 
       - name: Build and Push Staging Images
         run: |
+          pwd
+          ls -al
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
               repo_url="$ECR_REPO_URL/repo-$service-f3"
               full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
               echo "Building image for $service with tag: $IMAGE_TAG"
-              docker build -t "$full_image_url_with_tag" -f ./ocpiconnector/Dockerfile ./ocpiconnector/
+              docker build -t "$full_image_url_with_tag" -f ./Dockerfile .
 
               echo "Pushing image for $service to ECR... $full_image_url_with_tag"
               docker push "$full_image_url_with_tag"
