@@ -20,6 +20,7 @@ def _load_envs():
     else:
         logger.info("Skipping dotenv for production and staging")
 
+
 def setup_django():
     _load_envs()
     sys.path.append(
@@ -30,12 +31,14 @@ def setup_django():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
     django.setup()
 
+
 setup_django()
 
 from ocpi22.cpo.mqtt.services import (  # noqa
     process_meter_values_data,  # noqa
     process_status_update_data,  # noqa
 )  # noqa
+
 
 def _subscribe(client, topic):
     result, mid = client.subscribe(topic)
@@ -53,7 +56,7 @@ def get_topic(topic_env_var):
 
 
 def on_message(client, userdata, message):
-    if "metervalues" in message.topic:
+    if "meter_values" in message.topic:
         logger.info("Received meter value message")
         process_meter_values_data(message)
         logger.info(
@@ -136,6 +139,7 @@ def stop_and_disconnect(client):
 
 if __name__ == "__main__":
     from ocpiconnector.settings.base import env_bool  # noqa
+
     loop_forever = env_bool("MQTT_LOOP_FOREVER")
     mqtt_client = connect_client()
     start_client(mqtt_client, loop_forever)
