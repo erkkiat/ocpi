@@ -12,7 +12,7 @@ services:
       DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
       DJANGO_PORT: "${DJANGO_PORT:-8000}"
     env_file:
-      - ../django-app.env
+      - ../.env-local/django-app.env
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
@@ -30,7 +30,7 @@ services:
       AWS_SECRET_ID: "mqtt-subscriber-secrets"
       DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
     env_file:
-      - ../mqtt-subscriber.env
+      - ../.env-local/mqtt-subscriber.env
     volumes:
       - mqtt_logs:/var/log/mqtt
     command: [ "mqtt-subscriber" ]
@@ -46,7 +46,7 @@ services:
       WORKER_NAME: "celery-mqtt-worker-high"
       DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
     env_file:
-      - ../celery-mqtt.env
+      - ../.env-local/celery-mqtt.env
     volumes:
       - celery_logs:/var/log/celery
     command: [ "celery-mqtt" ]
@@ -62,7 +62,7 @@ services:
       WORKER_NAME: "celery-django-worker"
       DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
     env_file:
-      - ../celery-mqtt.env
+      - ../.env-local/celery-mqtt.env
     volumes:
       - celery_logs:/var/log/celery
     command: [ "celery-django" ]

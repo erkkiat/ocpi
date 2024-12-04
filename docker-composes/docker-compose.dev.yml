@@ -10,7 +10,7 @@ services:
       DJANGO_MIGRATE: "true"
       ENV: development
     env_file:
-      - ../django-app.env
+      - ../.env-local/django-app.env
     volumes:
       - ../:/app
       - static_volume:/app/staticfiles
@@ -34,7 +34,7 @@ services:
     environment:
       ENV: development
     env_file:
-      - ../mqtt-subscriber.env
+      - ../.env-local/mqtt-subscriber.env
     volumes:
       - ../:/app
     command: mqtt-subscriber
@@ -52,7 +52,7 @@ services:
     environment:
       ENV: development
     env_file:
-      - ../celery-mqtt.env
+      - ../.env-local/celery-mqtt.env
     volumes:
       - ../:/app
       - celery_logs:/var/log/celery
@@ -73,7 +73,7 @@ services:
       CELERY_QUEUE_NAME: django_tasks
       WORKER_HOSTNAME: django_worker
     env_file:
-      - ../celery-django.env
+      - ../.env-local/celery-django.env
     volumes:
       - ../:/app
       - celery_logs:/var/log/celery
