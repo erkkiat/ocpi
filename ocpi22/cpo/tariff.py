@@ -13,7 +13,7 @@ from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
 
 
-class TariffQuickViewSet(
+class SolidTariffViewSet(
     mixins.ListModelMixin,
     mixins.UpdateModelMixin,
     mixins.RetrieveModelMixin,
