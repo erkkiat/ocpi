@@ -433,7 +433,7 @@ class PartyStrField(serializers.CharField):
         if isinstance(data, str):
             if "*" not in data:
                 raise ValidationError(
-                    f"Invalid format for party ID or CredentialsRole, expected country_code*party_id, got {data}"
+                    f"Invalid format for party ID, expected country_code*party_id, got {data}"
                 )
             party = get_credentialsrole(party=Party(*data.split("*")))
             if not party:
