@@ -34,6 +34,7 @@ from ocpi22.util import (
     uid_validator,
     CURRENCY_CHOICES,
     fill_out_location_address,
+    get_currency_choices,
 )
 from ocpiconnector.ocpi_identities import (
     get_our_country_code,
@@ -566,7 +567,7 @@ class CurrencySerializer(serializers.Field):
 
         data = data.strip().upper()
 
-        valid_currencies = dict(CURRENCY_CHOICES)
+        valid_currencies = get_currency_choices()
 
         if data not in valid_currencies:
             raise ValidationError(f"Invalid currency value {data}.")
