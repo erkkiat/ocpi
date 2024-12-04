@@ -8,14 +8,10 @@ on:
     branches:
       - develop
 
-# Define the shared environment
-shared_environment: &shared_environment
-  environment: staging  # Change to 'production' for production workflows
-
 jobs:
   lint:
     name: Lint Code
-    <<: *shared_environment
+    environment: staging
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -34,7 +30,7 @@ jobs:
 
   test:
     name: Run Tests
-    <<: *shared_environment
+    environment: staging
     runs-on: ubuntu-latest
     needs: lint
     services:
@@ -91,7 +87,7 @@ jobs:
 
   build-and-push-staging:
     name: Build and Push Docker Images to Staging
-    <<: *shared_environment
+    environment: staging
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push'

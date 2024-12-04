@@ -4,13 +4,10 @@ on:
   release:
     types: [published]
 
-shared_environment: &shared_environment
-  environment: production
-
 jobs:
   lint:
     runs-on: ubuntu-latest
-    <<: *shared_environment
+    environment: production
 
     steps:
       - name: Checkout code
@@ -30,7 +27,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: lint
-    <<: *shared_environment
+    environment: production
     services:
       redis:
         image: redis:latest
@@ -86,7 +83,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     needs: test
-    <<: *shared_environment
+    environment: production
 
     env:
       ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
