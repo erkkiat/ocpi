@@ -50,7 +50,6 @@ class TestQuickLocations(TestCase):
     ]
     maxDiff = 99999
 
-    @pytest.mark.skip("Fix me before production")
     @simulate_surrounding_world
     def test_quick_location_with_evses_and_connectors(self, simulation):
         with time_machine.travel(faketime, tick=False):
@@ -69,88 +68,8 @@ class TestQuickLocations(TestCase):
         assert (
             dict(data) == LocationData.quick_location_with_evses_and_connectors
         ), "New Location data differs from expected"
-        expected_data = {
-            "address": "Kotikatu 38",
-            "city": "Espoo",
-            "country": "FIN",
-            "evses": [
-                OrderedDict(
-                    [
-                        ("uid", "1"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "CABLE"),
-                                        ("max_voltage", 233),
-                                        ("max_amperage", 32),
-                                        ("max_electric_power", 22200),
-                                        ("tariff_ids", ["EKI1"]),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-01-01T12:00:00Z"),
-                    ]
-                ),
-                OrderedDict(
-                    [
-                        ("uid", "2"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "SOCKET"),
-                                        ("max_voltage", 232),
-                                        ("max_amperage", 32),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-01-01T12:00:00Z"),
-                    ]
-                ),
-                OrderedDict(
-                    [
-                        ("uid", "12321"),
-                        (
-                            "connectors",
-                            [
-                                OrderedDict(
-                                    [
-                                        ("uid", "1"),
-                                        ("standard", "IEC_62196_T2"),
-                                        ("format", "CABLE"),
-                                        ("max_voltage", 233),
-                                        ("max_amperage", 32),
-                                        ("tariff_ids", ["DC50"]),
-                                        ("last_updated", "2022-01-01T12:00:00Z"),
-                                    ]
-                                )
-                            ],
-                        ),
-                        ("last_updated", "2022-01-01T12:00:00Z"),
-                    ]
-                ),
-            ],
-            "id": "EKI1",
-            "last_updated": "2022-01-01T12:00:00Z",
-            "latitude": 60.0,
-            "longitude": 30.0,
-            "name": "Eki's home charger",
-            "postal_code": "01234",
-            "time_zone": "Europe/Helsinki",
-        }
 
-        assert dict(data) == expected_data
+        assert dict(data) == LocationData.quick_location_with_evses_and_connectors
 
         # Update Location
 
@@ -168,7 +87,6 @@ class TestQuickLocations(TestCase):
             dict(data) == LocationData.quick_location_with_evses_and_connectors_update
         ), "Updated Location data differs from expected"
 
-    @pytest.mark.skip("Fix me before production")
     def test_quick_tariff(self):
         test_cases = [
             dict(
@@ -289,7 +207,6 @@ class TestChargingPeriods(TestCase):
     ]
     maxDiff = None
 
-    @pytest.mark.skip("Fix me before production")
     @simulate_surrounding_world
     def test_tariff_change(self, simulation):
         meter_values_data = (
