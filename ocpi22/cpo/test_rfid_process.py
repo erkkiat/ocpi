@@ -7,7 +7,7 @@ api_factory = OCPIAPIRequestFactory()
 
 
 @pytest.mark.django_db
-def test_rfid_process_with_wrong_session_id():
+def test_rfid_charging_process_with_wrong_session_id():
     viewset = ChargePointViewSet()
     request = api_factory.post(reverse("chargepoint-start-transaction"))
     request.data = {"session_id": "NONTEXISTENT"}
