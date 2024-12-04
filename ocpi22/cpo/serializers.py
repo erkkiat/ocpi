@@ -560,7 +560,7 @@ class CurrencySerializer(serializers.Field):
             return currency
         return "EUR"
 
-    def to_internal_value(self, data):
+    def to_internal_value(self, data: str):
         if not isinstance(data, str):
             raise ValidationError("Currency must be a string value.")
 
