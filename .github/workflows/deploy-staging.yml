@@ -8,9 +8,14 @@ on:
     branches:
       - develop
 
+# Define the shared environment
+shared_environment: &shared_environment
+  environment: staging  # Change to 'production' for production workflows
+
 jobs:
   lint:
     name: Lint Code
+    <<: *shared_environment
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -29,6 +34,7 @@ jobs:
 
   test:
     name: Run Tests
+    <<: *shared_environment
     runs-on: ubuntu-latest
     needs: lint
     services:
@@ -62,6 +68,12 @@ jobs:
         with:
           python-version: 3.11
 
+      - name: Load Environment Variables from test.env
+        run: |
+          if [ -f test.env ]; then
+            export $(cat test.env | xargs)
+          fi
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
@@ -69,16 +81,17 @@ jobs:
           pip install pytest pytest-cov
 
       - name: Run Pytest
-        run: pytest --cov=.
+        run: pytest
 
       - name: Upload HTML Coverage Report
         uses: actions/upload-artifact@v3
         with:
           name: HTML Coverage Report
-          path: htmlcov/  # Upload the entire directory for download
+          path: htmlcov/
 
   build-and-push-staging:
     name: Build and Push Docker Images to Staging
+    <<: *shared_environment
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push'
@@ -93,8 +106,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: "${{ secrets.SMP_AWS_ACCESS_KEY_ID }}"
-          aws-secret-access-key: ${{ secrets.SMP_AWS_SECRET_ACCESS_KEY }}"
+          aws-access-key-id: ${{ secrets.SMP_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.SMP_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.SMP_AWS_REGION }}
 
       - name: Log in to Amazon ECR
