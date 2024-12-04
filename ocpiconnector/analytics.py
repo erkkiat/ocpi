@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from django.conf import settings
 
-from ocpi22 import logging as logging
 from ocpi22.models.session import Session
 import ocpi22.tasks as tasks
 

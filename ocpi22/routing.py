@@ -1,8 +1,8 @@
 import json
+from logging import getLogger
 
 from cachetools import cached
 
-import ocpi22.logging as logging
 from dataclasses import dataclass, asdict
 from typing import Optional, TypeAlias, Union
 from urllib.parse import urljoin
@@ -21,6 +21,8 @@ from ocpiconnector.exceptions import WrongRole
 
 from ocpiconnector.party import Party
 from util import OCPIVersion, reverse, with_trailing_slash, DistributedCache
+
+logger = getLogger(__name__)
 
 
 @dataclass
@@ -70,7 +72,7 @@ def find_credentials(party: Party) -> Optional["Credentials"]:  # noqa
     if roles_count:
         # We found a direct connection
         if roles_count > 1:
-            logging.error(
+            logger.error(
                 f"{settings.HOSTNAME}: Multiple Credentials for {str(party)} in the database"
             )
         role = roles.first()
@@ -93,7 +95,7 @@ def find_route_from_credentials(
     endpoint_count = endpoints.count()
     if endpoint_count:
         if endpoint_count > 1:
-            logging.error(
+            logger.error(
                 f"Multiple Endpoints for {credentials.party_str()} in the database"
             )
         endpoint = endpoints.first()
@@ -108,7 +110,6 @@ def find_route_from_credentials(
             to=credentials.get_party_for_role(OcpiRolesEnum.EMSP),
         )  # Todo: How to figure out the role, or is it relevant?
     error_text = f"Endpoint `{ocpi_module.value}` not found for party {credentials}"
-    logging.error(error_text)
     raise ValueError(error_text)
 
 
@@ -173,7 +174,7 @@ def find_route(
         route = find_route_from_credentials(credentials, ocpi_module, role=role)
     else:
         # Need a hub to route
-        logging.info(f"Routing message through hub {str(to)}")
+        logger.info(f"Routing message through hub {str(to)}")
         route = find_first_hub_route(ocpi_module)  # Nothing too fancy at this point
     if route and add_path:
         # Todo: This is suboptimal for caching, do this a level before
@@ -269,14 +270,14 @@ def route_ocpi_request(request: HttpRequest, party: Party):
         )
         if command_response_path in ocpi_url.path:
             route = route_command_response_to_msp(ocpi_url)
-            logging.info(f"Routing command response back to MSP party {route.to}")
+            logger.info(f"Routing command response back to MSP party {route.to}")
             return HttpResponse(
                 dict(status_text="ok"),
                 status=status.HTTP_200_OK,
                 content_type="application/json",
             )
         else:
-            logging.info(f"Routing to {party}, module {ocpi_url}")
+            logger.info(f"Routing to {party}, module {ocpi_url}")
             route = find_route(party, ocpi_url.module)
 
         if route and hasattr(request, "body") and hasattr(request, "headers"):
@@ -297,7 +298,7 @@ def route_ocpi_request(request: HttpRequest, party: Party):
                 data = process_incoming_remote_command_at_hub(request, data)
                 method = request.method
                 url = urljoin(with_trailing_slash(route.url), ocpi_url.parameters)
-                logging.info(f"Forwarding message to {str(party)} at {url}")
+                logger.info(f"Forwarding message to {str(party)} at {url}")
                 response: requests.Response = requests.request(
                     method=method, url=url, data=data, timeout=25, headers=out_headers
                 )
@@ -322,9 +323,8 @@ def route_ocpi_request(request: HttpRequest, party: Party):
             {"error": f"Unable to find route to {str(party)}"},
             status=status.HTTP_404_NOT_FOUND,
         )
-
-    except json.JSONDecodeError as e:
-        logging.error(f"{settings.HOSTNAME}: Unable to route request: {e}")
+    except json.JSONDecodeError:
+        logger.exception("Error decoding json")
     return JsonResponse(
         {"error": f"Unable to route to {str(party)}"},
         status=status.HTTP_406_NOT_ACCEPTABLE,

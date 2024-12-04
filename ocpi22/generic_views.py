@@ -1,4 +1,4 @@
-import ocpi22.logging as logging
+from logging import getLogger
 
 import redis
 from django.conf import settings
@@ -8,6 +8,8 @@ from rest_framework.response import Response
 
 from ocpi22.viewsets import FlowchartViewSet
 from ocpi22.util import MyMetadata, get_callbacks_parameter
+
+logger = getLogger(__name__)
 
 
 class WebhookViewSet(FlowchartViewSet):
@@ -57,10 +59,10 @@ class WebhookViewSet(FlowchartViewSet):
                     serializer.save()
                     return Response(self._get_callbacks())
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except redis.exceptions.ConnectionError as e:
-            logging.error(
+        except redis.exceptions.ConnectionError:
+            logger.exception(
                 f"{settings.HOSTNAME}: Cannot read and store callback settings  "
-                f"due to trouble connecting with Redis: {e}"
+                f"due to trouble connecting with Redis"
             )
             return Response(
                 dict(

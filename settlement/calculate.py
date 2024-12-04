@@ -1,3 +1,4 @@
+import logging
 from itertools import combinations
 from typing import Optional, Union
 
@@ -11,6 +12,8 @@ from django.conf import settings
 from settlement.dataclasses import InvoiceTotals, SettlementData, InvoiceData
 from ocpi22.credentials.util import get_entity_roles
 from util import convert_to_utc_midnight, convert_to_utc_end_of_day
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_invoice_data(
@@ -109,14 +112,12 @@ def settle(
 
     invoices = []
 
-    from ocpi22 import logging
-
     for p1, p2 in combinations(totals, 2):
         company1 = company_credentials(p1.cpo, p2.msp)
         company2 = company_credentials(p1.msp, p2.cpo)
         if company1 and company2:
             if p1.total > p2.total:
-                logging.info(
+                logger.info(
                     f"INVOICING: {p1} bills {p2} {p1.total - p2.total} {p1.currency}"
                 )
                 invoices.append(
@@ -131,7 +132,7 @@ def settle(
                     )
                 )
             elif p1.total <= p2.total:
-                logging.info(
+                logger.info(
                     f"INVOICING: {p2} bills {p1} {p2.total - p1.total} {p1.currency}"
                 )
                 invoices.append(
@@ -151,7 +152,7 @@ def settle(
     # Create the SettlementData for the remaining invoices which have no corresponding opposite invoices
     for x in totals:
         try:
-            logging.info(
+            logger.info(
                 f"INVOICING: Invoice {x} has no pair, so it will be invoiced solo."
             )
             who_bills = x.cpo
@@ -170,14 +171,10 @@ def settle(
                     totals=[x],
                 )
             )
-        except CredentialsRole.DoesNotExist as e:
-            from ocpi22 import logging
-
-            logging.error(f"*** {x} has no CredentialsRole for invoicing: {e}")
-        except (ValueError, AssertionError) as e:
-            from ocpi22 import logging
-
-            logging.error(
-                f"*** Unable to find Credentials for {x} to be able to invoice: {e}"
+        except CredentialsRole.DoesNotExist:
+            logger.exception(f"{x} has no CredentialsRole for invoicing")
+        except (ValueError, AssertionError):
+            logger.exception(
+                f"Unable to find Credentials for {x} to be able to invoice"
             )
     return invoices

@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Union
 
 from django.conf import settings
@@ -38,6 +39,8 @@ from ocpi22.util import (
     CiStringField,
 )
 from ocpiconnector.party import Party
+
+logger = getLogger(__name__)
 
 
 class CdrTokenSerializer(SerializerCleanedUp):
@@ -345,9 +348,8 @@ class CredentialsSerializer(serializers.ModelSerializer):
                 instance.add_role(role)
         else:
             # DO NOT allow changing the roles of an existing Credentials object, or other parties can pretend to be anyone
-            from ocpi22 import logging
 
-            logging.error(
+            logger.error(
                 f"Cannot update roles for existing Credentials object {instance}"
             )
 
