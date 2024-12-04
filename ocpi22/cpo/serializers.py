@@ -5,6 +5,7 @@ from typing import Union
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
+from django.db import transaction
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 
@@ -668,34 +669,38 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
             SolidTariff.objects.bulk_create(solid_tariffs)
 
-        currency = validated_data.get(CurrencySerializer.key)
+        with transaction.atomic():
+            currency = validated_data.get(CurrencySerializer.key)
 
-        tariff = Tariff.objects.create(
-            uid=validated_data.get("uid"),
-            ocpi_master=validated_data.get("ocpi_master"),
-            currency=currency,
-        )
-        te = TariffElement.objects.create(tariff=tariff)
-        per_kwh = validated_data.get(PriceKwhSerializer.key)
-        per_min = validated_data.get(PriceMinSerializer.key)
-        flat = validated_data.get(PriceFlatSerializer.key)
-        vat = validated_data.get(VatSerializer.key)
-
-        if per_kwh:
-            PriceComponent.objects.create(
-                tariff_element=te, type="ENERGY", price=per_kwh, vat=vat, step_size=1
+            tariff = Tariff.objects.create(
+                uid=validated_data.get("uid"),
+                ocpi_master=validated_data.get("ocpi_master"),
+                currency=currency,
             )
-        if per_min:
-            PriceComponent.objects.create(
-                tariff_element=te, type="TIME", price=per_min, vat=vat, step_size=1
-            )
-        if flat:
-            PriceComponent.objects.create(
-                tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
-            )
+            te = TariffElement.objects.create(tariff=tariff)
+            per_kwh = validated_data.get(PriceKwhSerializer.key)
+            per_min = validated_data.get(PriceMinSerializer.key)
+            flat = validated_data.get(PriceFlatSerializer.key)
+            vat = validated_data.get(VatSerializer.key)
 
-        create_solid_tariffs()
+            if per_kwh:
+                PriceComponent.objects.create(
+                    tariff_element=te,
+                    type="ENERGY",
+                    price=per_kwh,
+                    vat=vat,
+                    step_size=1,
+                )
+            if per_min:
+                PriceComponent.objects.create(
+                    tariff_element=te, type="TIME", price=per_min, vat=vat, step_size=1
+                )
+            if flat:
+                PriceComponent.objects.create(
+                    tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
+                )
 
+            create_solid_tariffs()
         return tariff
 
     def update(self, tariff: Tariff, validated_data: dict):
