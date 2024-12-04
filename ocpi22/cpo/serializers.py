@@ -556,9 +556,9 @@ class CurrencySerializer(serializers.Field):
 
     def to_representation(self, tariff: Tariff) -> str:
         currency = tariff.currency
-        if currency:
-            return currency
-        return "EUR"
+        if not currency:
+            raise ValidationError("Currency must not be None.")
+        return currency
 
     def to_internal_value(self, data: str):
         if not isinstance(data, str):
