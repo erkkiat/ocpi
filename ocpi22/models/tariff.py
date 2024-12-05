@@ -513,7 +513,7 @@ class SolidTariff(models.Model):
     price_flat = models.DecimalField(
         max_digits=8, decimal_places=4, blank=True, null=True
     )
-    vat = models.FloatField(blank=True, null=True)
+    vat_percentage = models.FloatField(blank=True, null=True)
     msp = models.ForeignKey(
         CredentialsRole,
         on_delete=models.CASCADE,

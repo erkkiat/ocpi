@@ -532,7 +532,7 @@ class CPOReserveNowWebhookSerializer(CallbacksSerializer):
 
 
 class VatSerializer(serializers.FloatField):
-    key = "vat"
+    key = "vat_percentage"
 
     def to_representation(self, tariff: Tariff) -> Union[int, str]:
         pe = tariff.tariff_elements.first()
@@ -657,7 +657,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     price_per_kwh=per_kwh,
                     price_per_min=per_min,
                     price_flat=flat,
-                    vat=vat,
+                    vat_percentage=vat,
                     msp=msp if msp else None,
                     operator=operator,
                     last_updated=datetime.now(),
@@ -758,7 +758,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
             "price_per_min": per_min,
             "price_flat": flat,
             "currency": currency,
-            "vat": vat,
+            "vat_percentage": vat,
         }
 
         msp_tariff_map = defaultdict(list)
@@ -804,7 +804,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
                         price_per_min=fields_to_update.get("price_per_min"),
                         price_flat=fields_to_update.get("price_flat"),
                         currency=fields_to_update.get("currency"),
-                        vat=fields_to_update.get("vat"),
+                        vat_percentage=fields_to_update.get("vat"),
                         archived=False,
                         msp=msp,
                         operator=operator,
