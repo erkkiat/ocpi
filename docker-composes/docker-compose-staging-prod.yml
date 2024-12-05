@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+
+  migrations:
+    image: "${DJANGO_APP_IMAGE}"
+    container_name: django-migrations
+    env_file:
+      - ./django-app.env
+    command: [ "python", "manage.py", "migrate", "--noinput" ]
+    restart: "no"
+
+  django-app:
+    image: "${DJANGO_APP_IMAGE}"
+    container_name: django-app
+    env_file:
+      - ./django-app.env
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/mediafiles
+    ports:
+      - "${DJANGO_PORT:-8000}:8000"
+    command: [ "django-app" ]
+    networks:
+      - app-network
+    depends_on:
+      - migrations
+
+  mqtt-subscriber:
+    image: "${MQTT_SUBSCRIBER_IMAGE}"
+    container_name: mqtt-subscriber
+    env_file:
+      - ./mqtt-subscriber.env
+    volumes:
+      - mqtt_logs:/var/log/mqtt
+    command: [ "mqtt-subscriber" ]
+    networks:
+      - app-network
+
+  celery-mqtt:
+    image: "${CELERY_MQTT_IMAGE}"
+    container_name: celery-mqtt
+    env_file:
+      - ./celery-mqtt.env
+    volumes:
+      - celery_logs:/var/log/celery
+    command: [ "celery-mqtt" ]
+    networks:
+      - app-network
+
+  celery-django:
+    image: "${CELERY_DJANGO_IMAGE}"
+    container_name: celery-django
+    env_file:
+      - ./celery-mqtt.env
+    volumes:
+      - celery_logs:/var/log/celery
+    command: [ "celery-django" ]
+    networks:
+      - app-network
+
+volumes:
+  static_volume:
+  media_volume:
+  celery_logs:
+  mqtt_logs:
+
+networks:
+  app-network:
