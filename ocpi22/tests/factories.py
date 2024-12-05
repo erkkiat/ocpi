@@ -299,11 +299,10 @@ class SolidTariffFactory(factory.Factory):
     price_per_kwh = 0.2
     price_per_min = 0.3
     price_flat = 0.3
-    vat = 0.2
+    vat_percentage = 0.2
     archived = False
     msp = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
     operator = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
 
-    last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
-    updated = factory.Faker("date_time", tzinfo=pytz.UTC)
-    created = factory.Faker("date_time", tzinfo=pytz.UTC)
+    last_updated_at = factory.Faker("date_time", tzinfo=pytz.UTC)
+    created_at = factory.Faker("date_time", tzinfo=pytz.UTC)
