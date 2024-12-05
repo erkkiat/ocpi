@@ -5,7 +5,7 @@ from ocpiconnector.settings.infra_services import get_db_url_user_and_token
 
 ENV = os.getenv("ENV", "production").lower()
 DEBUG = False
-HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
+HUBJECT_URL = "Add the hubject production base url"
 
 ALLOWED_HOSTS.extend(["*.smappee.com"])  # noqa
 MQTT_BROKER = os.getenv("MQTT_BROKER")
