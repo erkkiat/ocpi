@@ -531,9 +531,7 @@ class SolidTariff(models.Model):
 
     archived = models.BooleanField(default=False, verbose_name=_("Archived"))
 
-    last_updated = models.DateTimeField(
-        null=True, blank=True, verbose_name=_("Last updated")
+    last_updated_at = models.DateTimeField(
+        auto_now=True, verbose_name=_("Last_updated_at")
     )
-
-    updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
-    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created_at"))

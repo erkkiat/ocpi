@@ -1,5 +1,4 @@
 from collections import defaultdict
-from datetime import datetime
 from decimal import Decimal
 from typing import Union
 from zoneinfo import ZoneInfo
@@ -660,7 +659,6 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     vat_percentage=vat,
                     msp=msp if msp else None,
                     operator=operator,
-                    last_updated=datetime.now(),
                 )
                 for msp in (msps or [None])
             ]
@@ -773,7 +771,6 @@ class SolidTariffSerializer(SerializerCleanedUp):
                 msp_tariff_map[solid_tariff.msp.party_str()].append(solid_tariff)
                 current_saved_msps.add(solid_tariff.msp)
 
-            solid_tariff.last_updated = datetime.now()
             solid_tariff.archived = False
 
         msps = validated_data.get("msps")
@@ -808,7 +805,6 @@ class SolidTariffSerializer(SerializerCleanedUp):
                         archived=False,
                         msp=msp,
                         operator=operator,
-                        last_updated=datetime.now(),
                     )
                     for msp in msps_to_add
                 ]
@@ -816,7 +812,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
         SolidTariff.objects.bulk_update(
             solid_tariffs,
-            fields=list(fields_to_update.keys()) + ["last_updated", "msp", "archived"],
+            fields=list(fields_to_update.keys()) + ["msp", "archived"],
         )
 
 
