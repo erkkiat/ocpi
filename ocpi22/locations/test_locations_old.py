@@ -13,10 +13,12 @@ from unittest import TestCase
 
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.tests.factories import EvseFactory, LocationFactory
+from ocpiconnector.testutil import OCPIAPIRequestFactory
 
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
+api_factory = OCPIAPIRequestFactory()
 
 
 def load_json(filename, serializer):
