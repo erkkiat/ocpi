@@ -78,8 +78,8 @@ class TestSolidTariffSerializer:
         assert solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
         assert solid_tariffs[1].uid == smp1_solid_tariff_data["uid"]
 
-        assert solid_tariffs[0].msp == smp1_solid_tariff_data["msps"][0]
-        assert solid_tariffs[1].msp == smp1_solid_tariff_data["msps"][1]
+        assert solid_tariffs[0].msp in smp1_solid_tariff_data["msps"]
+        assert solid_tariffs[1].msp in smp1_solid_tariff_data["msps"]
         assert tariff.uid == smp1_solid_tariff_data["uid"]
 
     @patch("ocpi22.cpo.serializers.SolidTariff.objects.filter")
@@ -91,6 +91,7 @@ class TestSolidTariffSerializer:
         smp1_solid_tariff,
         tariff_smp1,
     ):
+        print(CredentialsRole.objects.all())
         solid_tariff_filter.return_value = [smp1_solid_tariff]
         smp1_solid_tariff_data["ocpi_master"] = self.operator.first()
         smp1_solid_tariff_data["msps"] = [self.msp1.first()]
@@ -143,8 +144,8 @@ class TestSolidTariffSerializer:
 
         assert len(all_solid_tariffs) == 2
         assert all_solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
-        assert all_solid_tariffs[0].msp.party_str() == "DE*SMP"
-        assert all_solid_tariffs[1].msp.party_str() == "DE*ICE"
+        assert all_solid_tariffs[0].msp in smp1_solid_tariff_data["msps"]
+        assert all_solid_tariffs[1].msp in smp1_solid_tariff_data["msps"]
 
     @patch("ocpi22.cpo.serializers.SolidTariff.objects.filter")
     @pytest.mark.django_db

@@ -735,8 +735,11 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
     def update_solid_tariff(self, tariff: Tariff, validated_data: dict):
         party: Party = get_our_party(OcpiRolesEnum.CPO)
+
         operator = CredentialsRole.get_if_exists(
-            country_code=party.country_code, party_id=party.party_id
+            country_code=party.country_code,
+            party_id=party.party_id,
+            multiple_is_ok_just_get_the_first_one=True,
         )
         if operator is None:
             raise ValueError(
