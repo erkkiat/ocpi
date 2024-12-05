@@ -711,25 +711,26 @@ class SolidTariffSerializer(SerializerCleanedUp):
                         setattr(pc, key, value)
                 pc.save()
 
-        te, _created = TariffElement.objects.get_or_create(tariff=tariff)
-        per_kwh = validated_data.get(PriceKwhSerializer.key)
-        per_min = validated_data.get(PriceMinSerializer.key)
-        flat = validated_data.get(PriceFlatSerializer.key)
-        vat = validated_data.get(VatSerializer.key)
+        with transaction.atomic():
+            te, _created = TariffElement.objects.get_or_create(tariff=tariff)
+            per_kwh = validated_data.get(PriceKwhSerializer.key)
+            per_min = validated_data.get(PriceMinSerializer.key)
+            flat = validated_data.get(PriceFlatSerializer.key)
+            vat = validated_data.get(VatSerializer.key)
 
-        price_components = (
-            (per_kwh, "ENERGY"),
-            (per_min, "TIME"),
-            (flat, "FLAT"),
-        )
-        for price, tariff_type in price_components:
-            if price is not None:
-                update_price_components(price, tariff_type)
+            price_components = (
+                (per_kwh, "ENERGY"),
+                (per_min, "TIME"),
+                (flat, "FLAT"),
+            )
+            for price, tariff_type in price_components:
+                if price is not None:
+                    update_price_components(price, tariff_type)
 
-        if vat is not None:
-            te.price_components.update(vat=vat)
+            if vat is not None:
+                te.price_components.update(vat=vat)
 
-        self.update_solid_tariff(tariff, validated_data)
+            self.update_solid_tariff(tariff, validated_data)
 
         return tariff
 
