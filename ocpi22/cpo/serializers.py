@@ -642,14 +642,12 @@ class SolidTariffSerializer(SerializerCleanedUp):
             msps = set(validated_data.get("msps", []))
             operator_country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
             operator_party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
-
-            try:
-                operator = CredentialsRole.objects.get(
-                    country_code=operator_country_code, party_id=operator_party_id
-                )
-            except (ValueError, CredentialsRole.DoesNotExist):
+            operator = CredentialsRole.get_if_exists(
+                country_code=operator_country_code, party_id=operator_party_id
+            )
+            if operator is None:
                 raise ValueError(
-                    f"Invalid or missing operator credentials: {operator_country_code}*{operator_party_id}"
+                    f"Operator : {operator_country_code}*{operator_party_id} does not exist"
                 )
 
             solid_tariffs = [
