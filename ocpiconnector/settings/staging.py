@@ -1,6 +1,8 @@
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
+from ocpiconnector.settings.infra_services import get_db_url_user_and_token
+
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
@@ -23,3 +25,15 @@ SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
 SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
+
+db_url, db_user, db_token = get_db_url_user_and_token()
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "ocpi",
+        "USER": db_user,
+        "PASSWORD": db_token,
+        "HOST": db_url,
+        "PORT": "3306",
+    }
+}
