@@ -16,7 +16,7 @@ def smp1_solid_tariff_data():
         "price_per_kwh": 0.52,
         "price_per_min": 0.42,
         "price_flat": 0.3,
-        "vat": 20.0,
+        "vat_percentage": 20.0,
     }
 
 
@@ -29,7 +29,7 @@ def smp2_solid_tariff_data():
         "price_per_kwh": 0.52,
         "price_per_min": 0.42,
         "price_flat": 0.3,
-        "vat": 20.0,
+        "vat_percentage": 20.0,
     }
 
 
@@ -42,7 +42,7 @@ def smp1_solid_tariff():
         price_per_kwh=0.52,
         price_per_min=0.42,
         price_flat=0.3,
-        vat=20.0,
+        vat_percentage=20.0,
     )
 
 
@@ -55,7 +55,7 @@ def smp2_solid_tariff():
         price_per_kwh=0.52,
         price_per_min=0.42,
         price_flat=0.3,
-        vat=20.0,
+        vat_percentage=20.0,
     )
 
 
@@ -68,7 +68,7 @@ def smp1_solid_tariff_with_msp1():
         price_per_kwh=0.52,
         price_per_min=0.42,
         price_flat=0.3,
-        vat=20.0,
+        vat_percentage=20.0,
         msp=CredentialsRoleFactory(country_code="DE", party_id="SMP"),
     )
 
