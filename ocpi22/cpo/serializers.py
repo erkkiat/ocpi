@@ -629,7 +629,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         required=False,
         help_text="The flat price per started charging session excluding tax",
     )
-    vat = VatSerializer(
+    vat_percentage = VatSerializer(
         source="*",
         required=False,
         allow_null=True,
@@ -737,15 +737,15 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
     def update_solid_tariff(self, tariff: Tariff, validated_data: dict):
         party: Party = get_our_party(OcpiRolesEnum.CPO)
+        operator = CredentialsRole.get_if_exists(
+            country_code=party.country_code, party_id=party.party_id
+        )
+        if operator is None:
+            raise ValueError(
+                f"Operator : {party.country_code}*{party.party_id} does not exist"
+            )
 
-        try:
-            operator = CredentialsRole.objects.filter(
-                country_code=party.country_code, party_id=party.party_id
-            ).first()
-        except (ValueError, CredentialsRole.DoesNotExist):
-            raise ValueError(f"Invalid or missing operator credentials: {str(party)}")
-
-        solid_tariffs = list(SolidTariff.objects.filter(uid=tariff.uid, archived=False))
+        solid_tariffs = SolidTariff.objects.filter(uid=tariff.uid, archived=False)
 
         per_kwh = validated_data.get(PriceKwhSerializer.key)
         per_min = validated_data.get(PriceMinSerializer.key)
