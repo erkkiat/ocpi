@@ -436,7 +436,7 @@ class PartyStrField(serializers.CharField):
                 raise ValidationError(
                     f"Invalid format for party ID, expected country_code*party_id, got {data}"
                 )
-            party = get_credentialsrole(party=Party(*data.split("*")))
+            party = get_credentialsrole(party=Party.from_str(data))
             if not party:
                 raise ValidationError(f"No party with id {data}")
             return party
