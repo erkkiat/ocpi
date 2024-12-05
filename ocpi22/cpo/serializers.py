@@ -606,7 +606,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         validators=[uid_validator],
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
     )
-    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES, default="EUR")
+    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES)
     price_per_kwh = PriceKwhSerializer(
         source="*",
         max_digits=8,
