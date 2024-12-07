@@ -495,7 +495,7 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
 
 
 class SolidTariff(models.Model):
-    uid = models.CharField(
+    external_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
     currency = models.CharField(

@@ -37,7 +37,7 @@ def smp2_solid_tariff_data():
 def smp1_solid_tariff():
     return SolidTariffFactory(
         id=1,
-        uid="SMP1",
+        external_id="SMP1",
         currency="EUR",
         price_per_kwh=0.52,
         price_per_min=0.42,
@@ -50,7 +50,7 @@ def smp1_solid_tariff():
 def smp2_solid_tariff():
     return SolidTariffFactory(
         id=2,
-        uid="SMP2",
+        external_id="SMP2",
         currency="EUR",
         price_per_kwh=0.52,
         price_per_min=0.42,
@@ -63,7 +63,7 @@ def smp2_solid_tariff():
 def smp1_solid_tariff_with_msp1():
     return SolidTariffFactory(
         id=1,
-        uid="SMP1",
+        external_id="SMP1",
         currency="EUR",
         price_per_kwh=0.52,
         price_per_min=0.42,

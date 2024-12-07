@@ -40,10 +40,10 @@ class TestSolidTariffSerializer:
         serializer = SolidTariffSerializer(smp1_solid_tariff_data)
         tariff = serializer.create(smp1_solid_tariff_data)
 
-        solid_tariffs = SolidTariff.objects.filter(uid=tariff.uid)
+        solid_tariffs = SolidTariff.objects.filter(external_id=tariff.uid)
 
         assert len(solid_tariffs) == 1
-        assert solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
+        assert solid_tariffs[0].external_id == smp1_solid_tariff_data["uid"]
         assert solid_tariffs[0].msp is None
         assert tariff.uid == smp1_solid_tariff_data["uid"]
 
@@ -55,10 +55,10 @@ class TestSolidTariffSerializer:
         serializer = SolidTariffSerializer(smp1_solid_tariff_data)
         tariff = serializer.create(smp1_solid_tariff_data)
 
-        solid_tariffs = SolidTariff.objects.filter(uid=tariff.uid).all()
+        solid_tariffs = SolidTariff.objects.filter(external_id=tariff.uid).all()
 
         assert len(solid_tariffs) == 1
-        assert solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
+        assert solid_tariffs[0].external_id == smp1_solid_tariff_data["uid"]
         assert solid_tariffs[0].msp == smp1_solid_tariff_data["msps"][0]
         assert tariff.uid == smp1_solid_tariff_data["uid"]
 
@@ -72,11 +72,11 @@ class TestSolidTariffSerializer:
         serializer = SolidTariffSerializer(smp1_solid_tariff_data)
         tariff = serializer.create(smp1_solid_tariff_data)
 
-        solid_tariffs = SolidTariff.objects.filter(uid=tariff.uid).all()
+        solid_tariffs = SolidTariff.objects.filter(external_id=tariff.uid).all()
 
         assert len(solid_tariffs) == 2
-        assert solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
-        assert solid_tariffs[1].uid == smp1_solid_tariff_data["uid"]
+        assert solid_tariffs[0].external_id == smp1_solid_tariff_data["uid"]
+        assert solid_tariffs[1].external_id == smp1_solid_tariff_data["uid"]
 
         assert solid_tariffs[0].msp in smp1_solid_tariff_data["msps"]
         assert solid_tariffs[1].msp in smp1_solid_tariff_data["msps"]
@@ -101,7 +101,7 @@ class TestSolidTariffSerializer:
         all_solid_tariffs = SolidTariff.objects.all()
 
         assert len(all_solid_tariffs) == 1
-        assert all_solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
+        assert all_solid_tariffs[0].external_id == smp1_solid_tariff_data["uid"]
         assert all_solid_tariffs[0].msp.party_str() == "DE*SMP"
 
     @patch("ocpi22.cpo.serializers.SolidTariff.objects.filter")
@@ -122,7 +122,7 @@ class TestSolidTariffSerializer:
         all_solid_tariffs = SolidTariff.objects.all()
 
         assert len(all_solid_tariffs) == 1
-        assert all_solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
+        assert all_solid_tariffs[0].external_id == smp1_solid_tariff_data["uid"]
         assert all_solid_tariffs[0].msp.party_str() == "DE*ICE"
 
     @patch("ocpi22.cpo.serializers.SolidTariff.objects.filter")
@@ -143,7 +143,7 @@ class TestSolidTariffSerializer:
         all_solid_tariffs = SolidTariff.objects.all()
 
         assert len(all_solid_tariffs) == 2
-        assert all_solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
+        assert all_solid_tariffs[0].external_id == smp1_solid_tariff_data["uid"]
         assert all_solid_tariffs[0].msp in smp1_solid_tariff_data["msps"]
         assert all_solid_tariffs[1].msp in smp1_solid_tariff_data["msps"]
 
@@ -169,5 +169,5 @@ class TestSolidTariffSerializer:
         all_solid_tariffs = SolidTariff.objects.all()
 
         assert len(all_solid_tariffs) == 1
-        assert all_solid_tariffs[0].uid == smp1_solid_tariff_data["uid"]
+        assert all_solid_tariffs[0].external_id == smp1_solid_tariff_data["uid"]
         assert all_solid_tariffs[0].msp.party_str() == "DE*SMP"

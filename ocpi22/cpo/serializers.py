@@ -651,7 +651,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
             solid_tariffs = [
                 SolidTariff(
-                    uid=validated_data.get("uid"),
+                    external_id=validated_data.get("uid"),
                     currency=currency,
                     price_per_kwh=per_kwh,
                     price_per_min=per_min,
@@ -747,7 +747,9 @@ class SolidTariffSerializer(SerializerCleanedUp):
                 f"Operator : {party.country_code}*{party.party_id} does not exist"
             )
 
-        solid_tariffs = SolidTariff.objects.filter(uid=tariff.uid, archived=False)
+        solid_tariffs = SolidTariff.objects.filter(
+            external_id=tariff.uid, archived=False
+        )
 
         per_kwh = validated_data.get(PriceKwhSerializer.key)
         per_min = validated_data.get(PriceMinSerializer.key)
@@ -800,7 +802,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
                 new_solid_tariffs = [
                     SolidTariff(
-                        uid=tariff.uid,
+                        external_id=tariff.uid,
                         price_per_kwh=fields_to_update.get("price_per_kwh"),
                         price_per_min=fields_to_update.get("price_per_min"),
                         price_flat=fields_to_update.get("price_flat"),

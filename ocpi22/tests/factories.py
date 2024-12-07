@@ -294,7 +294,7 @@ class SolidTariffFactory(factory.Factory):
     class Meta:
         model = SolidTariff
 
-    uid = f"SD{int(time.time())}"
+    external_id = f"SD{int(time.time())}"
     currency = "EUR"
     price_per_kwh = 0.2
     price_per_min = 0.3
