@@ -752,19 +752,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
             external_id=tariff.uid, archived=False
         )
 
-        per_kwh = validated_data.get(PriceKwhSerializer.key)
-        per_min = validated_data.get(PriceMinSerializer.key)
-        flat = validated_data.get(PriceFlatSerializer.key)
-        vat = validated_data.get(VatSerializer.key)
-        currency = validated_data.get(CurrencySerializer.key)
-
-        fields_to_update = {
-            "price_per_kwh": per_kwh,
-            "price_per_min": per_min,
-            "price_flat": flat,
-            "currency": currency,
-            "vat_percentage": vat,
-        }
+        fields_to_update = self.get_fields_to_update(validated_data)
 
         msp_tariff_map = defaultdict(list)
         current_saved_msps = set()
@@ -821,6 +809,21 @@ class SolidTariffSerializer(SerializerCleanedUp):
             solid_tariffs,
             fields=list(fields_to_update.keys()) + ["msp", "archived"],
         )
+
+    def get_fields_to_update(self, validated_data: dict):
+        per_kwh = validated_data.get(PriceKwhSerializer.key)
+        per_min = validated_data.get(PriceMinSerializer.key)
+        flat = validated_data.get(PriceFlatSerializer.key)
+        vat = validated_data.get(VatSerializer.key)
+        currency = validated_data.get(CurrencySerializer.key)
+
+        return {
+            "price_per_kwh": per_kwh,
+            "price_per_min": per_min,
+            "price_flat": flat,
+            "currency": currency,
+            "vat_percentage": vat,
+        }
 
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):
