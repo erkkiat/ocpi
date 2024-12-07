@@ -635,7 +635,9 @@ class SolidTariffSerializer(SerializerCleanedUp):
         allow_null=True,
         help_text="The Value Added Tax amount in percentage",
     )
-    msps = serializers.ListField(child=PartyStrField(), required=False)
+    msps = serializers.ListField(
+        child=PartyStrField(), required=True, allow_empty=False
+    )
 
     def create(self, validated_data):
         def create_solid_tariffs():
