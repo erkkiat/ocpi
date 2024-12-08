@@ -1,4 +1,3 @@
-from collections import defaultdict
 from decimal import Decimal
 from typing import Union
 from zoneinfo import ZoneInfo
@@ -12,7 +11,6 @@ from ocpi22.choices import (
     OcppStatusChoices,
     TOKEN_TYPE_CHOICES,
     AuthorizationEnum,
-    OcpiRolesEnum,
 )
 from ocpi22.commands.serializers import CommandResultBaseSerializer
 from ocpi22.cpo.util import _find_our_evse
@@ -36,11 +34,8 @@ from ocpi22.util import (
     fill_out_location_address,
     get_currency_choices,
 )
-from ocpiconnector.ocpi_identities import (
-    get_our_country_code,
-    get_our_party_id,
-    get_our_party,
-)
+from ocpiconnector.exceptions import PriceNotFoundError
+
 from ocpiconnector.party import Party
 
 
@@ -427,8 +422,6 @@ class StopTransactionSerializer(serializers.Serializer):
 
 class PartyStrField(serializers.CharField):
     def to_internal_value(self, data):
-        from ocpi22.models.credentials import CredentialsRole
-
         if isinstance(data, CredentialsRole):
             return data
         if isinstance(data, str):
@@ -443,8 +436,6 @@ class PartyStrField(serializers.CharField):
         raise ValidationError(f"Expected a party ID or CredentialsRole, got {data}")
 
     def to_representation(self, value):
-        from ocpi22.models.credentials import CredentialsRole
-
         assert isinstance(
             value, CredentialsRole
         ), f"Expected a CredentialsRole, got {value}"
@@ -640,19 +631,46 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
 
     def create(self, validated_data):
-        def create_solid_tariffs():
-            msps = set(validated_data.get("msps", []))
-            operator_country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
-            operator_party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
-            operator = CredentialsRole.get_if_exists(
-                country_code=operator_country_code, party_id=operator_party_id
-            )
-            if operator is None:
-                raise ValueError(
-                    f"Operator : {operator_country_code}*{operator_party_id} does not exist"
-                )
+        currency = validated_data.get(CurrencySerializer.key)
+        operator = validated_data.get("ocpi_master")
+        msps = set(validated_data.get("msps", []))
 
-            solid_tariffs = [
+        per_kwh = validated_data.get(PriceKwhSerializer.key)
+        per_min = validated_data.get(PriceMinSerializer.key)
+        flat = validated_data.get(PriceFlatSerializer.key)
+        vat = validated_data.get(VatSerializer.key)
+
+        with transaction.atomic():
+            for msp in msps:
+                external_id = self.get_uid(validated_data.get("uid"), msp)
+
+                tariff = Tariff.objects.create(
+                    uid=external_id,
+                    ocpi_master=validated_data.get("ocpi_master"),
+                    currency=currency,
+                )
+                te = TariffElement.objects.create(tariff=tariff)
+                if per_kwh:
+                    PriceComponent.objects.create(
+                        tariff_element=te,
+                        type="ENERGY",
+                        price=per_kwh,
+                        vat=vat,
+                        step_size=1,
+                    )
+                if per_min:
+                    PriceComponent.objects.create(
+                        tariff_element=te,
+                        type="TIME",
+                        price=per_min,
+                        vat=vat,
+                        step_size=1,
+                    )
+                if flat:
+                    PriceComponent.objects.create(
+                        tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
+                    )
+
                 SolidTariff(
                     external_id=validated_data.get("uid"),
                     currency=currency,
@@ -660,157 +678,57 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     price_per_min=per_min,
                     price_flat=flat,
                     vat_percentage=vat,
-                    msp=msp if msp else None,
+                    msp=msp,
                     operator=operator,
-                )
-                for msp in (msps or [None])
-            ]
+                ).save()
 
-            SolidTariff.objects.bulk_create(solid_tariffs)
-
-        with transaction.atomic():
-            currency = validated_data.get(CurrencySerializer.key)
-
-            tariff = Tariff.objects.create(
-                uid=validated_data.get("uid"),
-                ocpi_master=validated_data.get("ocpi_master"),
-                currency=currency,
-            )
-            te = TariffElement.objects.create(tariff=tariff)
-            per_kwh = validated_data.get(PriceKwhSerializer.key)
-            per_min = validated_data.get(PriceMinSerializer.key)
-            flat = validated_data.get(PriceFlatSerializer.key)
-            vat = validated_data.get(VatSerializer.key)
-
-            if per_kwh:
-                PriceComponent.objects.create(
-                    tariff_element=te,
-                    type="ENERGY",
-                    price=per_kwh,
-                    vat=vat,
-                    step_size=1,
-                )
-            if per_min:
-                PriceComponent.objects.create(
-                    tariff_element=te, type="TIME", price=per_min, vat=vat, step_size=1
-                )
-            if flat:
-                PriceComponent.objects.create(
-                    tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
-                )
-
-            create_solid_tariffs()
         return tariff
 
-    def update(self, tariff: Tariff, validated_data: dict):
+    def update(self, solid_tariff: SolidTariff, validated_data: dict):
         def update_price_components(price, tariff_type) -> None:
             data = dict(price=price, vat=vat, step_size=1)
             pc, created = PriceComponent.objects.get_or_create(
                 tariff_element=te, type=tariff_type, defaults=data
             )
             if not created:
-                for key, value in data.items():
-                    if value is not None:
-                        setattr(pc, key, value)
+                self.update_fields(pc, data, self.partial)
                 pc.save()
+
+        def update_solid_tariff():
+            self.update_fields(solid_tariff, fields_to_update, self.partial)
+            solid_tariff.save()
+
+        external_id = self.context.get("uid")
+        msp = self.context.get("msp")
+        tariff = Tariff.objects.get(uid=self.get_uid(external_id, msp))
+        solid_tariff = SolidTariff.objects.get(
+            external_id=external_id, archived=False, msp=msp
+        )
+        fields_to_update = self.get_fields_to_update(validated_data)
 
         with transaction.atomic():
             te, _created = TariffElement.objects.get_or_create(tariff=tariff)
-            per_kwh = validated_data.get(PriceKwhSerializer.key)
-            per_min = validated_data.get(PriceMinSerializer.key)
-            flat = validated_data.get(PriceFlatSerializer.key)
             vat = validated_data.get(VatSerializer.key)
 
             price_components = (
-                (per_kwh, "ENERGY"),
-                (per_min, "TIME"),
-                (flat, "FLAT"),
+                (fields_to_update["price_per_kwh"], "ENERGY"),
+                (fields_to_update["price_per_min"], "TIME"),
+                (fields_to_update["price_flat"], "FLAT"),
             )
             for price, tariff_type in price_components:
                 if price is not None:
                     update_price_components(price, tariff_type)
+                else:
+                    raise PriceNotFoundError(f"Price {tariff_type} not found")
 
+            if not self.partial:
+                te.price_components.update(vat=vat)
             if vat is not None:
                 te.price_components.update(vat=vat)
 
-            self.update_solid_tariff(tariff, validated_data)
+            update_solid_tariff()
 
         return tariff
-
-    def update_solid_tariff(self, tariff: Tariff, validated_data: dict):
-        party: Party = get_our_party(OcpiRolesEnum.CPO)
-
-        operator = CredentialsRole.get_if_exists(
-            country_code=party.country_code,
-            party_id=party.party_id,
-            multiple_is_ok_just_get_the_first_one=True,
-        )
-        if operator is None:
-            raise ValueError(
-                f"Operator : {party.country_code}*{party.party_id} does not exist"
-            )
-
-        solid_tariffs = SolidTariff.objects.filter(
-            external_id=tariff.uid, archived=False
-        )
-
-        fields_to_update = self.get_fields_to_update(validated_data)
-
-        msp_tariff_map = defaultdict(list)
-        current_saved_msps = set()
-
-        for solid_tariff in solid_tariffs:
-            for field, value in fields_to_update.items():
-                if value is not None:
-                    setattr(solid_tariff, field, value)
-
-            if solid_tariff.msp:
-                msp_tariff_map[solid_tariff.msp.party_str()].append(solid_tariff)
-                current_saved_msps.add(solid_tariff.msp)
-
-            solid_tariff.archived = False
-
-        msps = validated_data.get("msps")
-
-        if msps is not None:
-            if len(msps) == 0:
-                for i, solid_tariff in enumerate(solid_tariffs):
-                    solid_tariff.msp = None
-                    # Delete all redundant records
-                    if i != 0:
-                        solid_tariff.archived = True
-            else:
-                new_msps = set(msps)
-
-                msps_to_add = new_msps - current_saved_msps
-                msps_to_remove = current_saved_msps - new_msps
-
-                for solid_tariff in solid_tariffs:
-                    if solid_tariff.msp is None:
-                        solid_tariff.msp = msps_to_add.pop()
-                    elif solid_tariff.msp in msps_to_remove:
-                        solid_tariff.archived = True
-
-                new_solid_tariffs = [
-                    SolidTariff(
-                        external_id=tariff.uid,
-                        price_per_kwh=fields_to_update.get("price_per_kwh"),
-                        price_per_min=fields_to_update.get("price_per_min"),
-                        price_flat=fields_to_update.get("price_flat"),
-                        currency=fields_to_update.get("currency"),
-                        vat_percentage=fields_to_update.get("vat"),
-                        archived=False,
-                        msp=msp,
-                        operator=operator,
-                    )
-                    for msp in msps_to_add
-                ]
-                SolidTariff.objects.bulk_create(new_solid_tariffs)
-
-        SolidTariff.objects.bulk_update(
-            solid_tariffs,
-            fields=list(fields_to_update.keys()) + ["msp", "archived"],
-        )
 
     def get_fields_to_update(self, validated_data: dict):
         per_kwh = validated_data.get(PriceKwhSerializer.key)
@@ -826,6 +744,20 @@ class SolidTariffSerializer(SerializerCleanedUp):
             "currency": currency,
             "vat_percentage": vat,
         }
+
+    def get_uid(self, uid, msp):
+        if not uid:
+            return f"{msp.party_str()}*all"
+        return f"{msp.party_str()}*{uid}"
+
+    def update_fields(self, obj, data: dict, partial: bool):
+        for key, value in data.items():
+            if not partial:  # PUT
+                setattr(obj, key, value)
+            if value is not None:  # PATCH
+                setattr(obj, key, value)
+
+        return obj
 
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):

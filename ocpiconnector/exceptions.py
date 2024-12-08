@@ -33,3 +33,11 @@ class MspNotFoundError(Exception):
 
 class SolidTariffNotFoundError(Exception):
     pass
+
+
+class SolidTariffAlreadyExistsError(Exception):
+    pass
+
+
+class PriceNotFoundError(Exception):
+    pass

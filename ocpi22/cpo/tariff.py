@@ -1,4 +1,5 @@
 from django.db import IntegrityError
+from django.db.models import Q
 from rest_framework import status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -8,15 +9,20 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo.serializers import SolidTariffSerializer
-from ocpi22.models.tariff import Tariff
+from ocpi22.models.tariff import Tariff, SolidTariff
+from ocpiconnector.exceptions import (
+    MspNotFoundError,
+    SolidTariffAlreadyExistsError,
+    PriceNotFoundError,
+)
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
 
 
 class SolidTariffViewSet(
     mixins.ListModelMixin,
-    mixins.UpdateModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
     GenericViewSet,
 ):
     """
@@ -29,14 +35,12 @@ class SolidTariffViewSet(
 
     """
 
-    queryset = Tariff.objects.filter(archived=False).order_by("uid")
+    queryset = SolidTariff.objects.filter(archived=False).order_by("external_id")
     serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = "uid"
 
-    def put(
-        self, request, uid=None, partial=None, country_code=None, party_id=None
-    ) -> Response:
+    def create(self, request, uid=None, country_code=None, party_id=None) -> Response:
         try:
             data = request.data
             data = data.get(
@@ -45,37 +49,53 @@ class SolidTariffViewSet(
             uid = uid or request.data.get("id")
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
 
-            tariff = Tariff.get_if_exists(
-                uid__iexact=uid, ocpi_master=our_role, archived=False
+            msps = [
+                self.get_role_or_raise(msp) for msp in set(request.data.get("msps", []))
+            ]
+
+            existing_solid_tariffs = SolidTariff.objects.filter(
+                external_id__iexact=uid, operator=our_role, archived=False, msp__in=msps
             )
+            if existing_solid_tariffs.exists():
+                msps_with_sd = existing_solid_tariffs.all()
+                raise SolidTariffAlreadyExistsError(
+                    f"SolidTariff with id: {uid}, msps: {[sd.msp.party_str() for sd in msps_with_sd]} "
+                    f"already exists. Please use PUT/PATCH methods."
+                )
+
             serializer = SolidTariffSerializer(
                 data=data,
-                instance=tariff,
-                partial=partial,
                 context={"request": request, "party": Party(country_code, party_id)},
             )
             if serializer.is_valid():
                 tariff = serializer.save(ocpi_master=our_role)
                 tariff.send_updates()
                 http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
-                return Response(serializer.data, status=http_status)
+                return Response(
+                    {"status_message": "Tariffs successfully created."},
+                    status=http_status,
+                )
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except IntegrityError as e:
+        except (IntegrityError, SolidTariffAlreadyExistsError) as e:
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
-    def patch(self, request, uid=None):
-        return self.put(request, uid, partial=True)
-
-    @action(methods=["GET", "PATCH", "PUT"], detail=False, url_path="(?P<uid>[^/.]+)")
-    def by_id(self, request, uid) -> Response:
+    @action(
+        methods=["GET", "PATCH", "PUT"],
+        detail=False,
+        url_path="(?P<uid>[^/.]+)/(?P<msp_id>[^/.]+)",
+    )
+    def by_id(self, request, uid, msp_id) -> Response:
         try:
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-
-            tariff = Tariff.objects.get(
-                uid__iexact=uid, archived=False, ocpi_master=our_role
+            msp = Party.from_str(msp_id).get_role_if_exists()
+            solid_tariff = SolidTariff.objects.get(
+                Q(external_id__iexact=uid) | Q(external_id__isnull=True),
+                msp_id=msp.id,
+                archived=False,
+                operator=our_role,
             )
 
             assert request.data.get("uid") in (
@@ -84,21 +104,36 @@ class SolidTariffViewSet(
             ), "Different UID in request and URL"
 
             if request.method == "GET":
-                serializer = SolidTariffSerializer(tariff, context={"request": request})
+                serializer = SolidTariffSerializer(
+                    solid_tariff, context={"request": request}
+                )
                 return Response(serializer.data)
 
             partial = bool(request.method == "PATCH")
             serializer = SolidTariffSerializer(
-                tariff, data=request.data, partial=partial, context={"request": request}
+                solid_tariff,
+                data=request.data,
+                partial=partial,
+                context={"request": request, "uid": uid, "msp": msp},
             )
             if serializer.is_valid():
                 serializer.save(ocpi_master=our_role)
-                serializer = SolidTariffSerializer(Tariff.objects.get(uid=uid))
-                return Response(serializer.data)
+                serializer = SolidTariffSerializer(
+                    SolidTariff.objects.get(external_id=uid, archived=False, msp=msp)
+                )
+                return Response(
+                    {"status_message": "Tariffs successfully updated."},
+                    status=status.HTTP_200_OK,
+                )
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        except (IntegrityError, AssertionError, Tariff.DoesNotExist) as e:
+        except (
+            IntegrityError,
+            AssertionError,
+            Tariff.DoesNotExist,
+            PriceNotFoundError,
+        ) as e:
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
@@ -108,3 +143,10 @@ class SolidTariffViewSet(
         # Needed for OPTIONS to work in list view, could just return None
         if uid:
             return get_object_or_404(Tariff, uid=uid)
+
+    def get_role_or_raise(cls, msp):
+        party = Party.from_str(msp)
+        role = party.get_role_if_exists()
+        if not role:
+            raise MspNotFoundError(f"No MSP found for {msp}")
+        return role
