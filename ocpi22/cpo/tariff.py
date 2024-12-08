@@ -1,4 +1,5 @@
 from django.db import IntegrityError
+from django.forms import model_to_dict
 from rest_framework import status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -8,6 +9,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo.serializers import SolidTariffSerializer
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
 from ocpiconnector.exceptions import (
     MspNotFoundError,
@@ -67,11 +69,19 @@ class SolidTariffViewSet(
                 context={"request": request, "party": Party(country_code, party_id)},
             )
             if serializer.is_valid():
-                tariff = serializer.save(ocpi_master=our_role)
-                tariff.send_updates()
-                http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
+                tariffs, solid_tariffs = serializer.save(ocpi_master=our_role)
+                for tariff in tariffs:
+                    tariff.send_updates()
+                http_status = status.HTTP_200_OK if tariffs else status.HTTP_201_CREATED
                 return Response(
-                    {"status_message": "Tariffs successfully created."},
+                    self.get_response_data(
+                        [
+                            model_to_dict(
+                                solid_tariff, exclude=["id", "operator", "archived"]
+                            )
+                            for solid_tariff in solid_tariffs
+                        ]
+                    ),
                     status=http_status,
                 )
             else:
@@ -126,12 +136,18 @@ class SolidTariffViewSet(
                 context={"request": request, "uid": uid, "msp": msp},
             )
             if serializer.is_valid():
-                serializer.save(ocpi_master=our_role)
+                tariff, solid_tariff = serializer.save(ocpi_master=our_role)
                 serializer = SolidTariffSerializer(
                     SolidTariff.objects.get(external_id=uid, archived=False, msp=msp)
                 )
                 return Response(
-                    {"status_message": "Tariffs successfully updated."},
+                    self.get_response_data(
+                        [
+                            model_to_dict(
+                                solid_tariff, exclude=["id", "operator", "archived"]
+                            )
+                        ]
+                    ),
                     status=status.HTTP_200_OK,
                 )
             else:
@@ -160,6 +176,17 @@ class SolidTariffViewSet(
         # Needed for OPTIONS to work in list view, could just return None
         if uid:
             return get_object_or_404(Tariff, uid=uid)
+
+    def get_response_data(self, data_list: list):
+        for data in data_list:
+            msp = data["msp"]
+            data["msp"] = CredentialsRole.objects.get(id=msp).party_str()
+
+            external_id = data["external_id"]
+            del data["external_id"]
+            data["id"] = external_id
+
+        return data_list
 
     def get_role_or_raise(cls, msp):
         party = Party.from_str(msp)

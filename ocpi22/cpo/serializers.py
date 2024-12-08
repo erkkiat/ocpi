@@ -640,6 +640,9 @@ class SolidTariffSerializer(SerializerCleanedUp):
         flat = validated_data.get(PriceFlatSerializer.key)
         vat = validated_data.get(VatSerializer.key)
 
+        saved_tariffs = []
+        saved_solid_tariffs = []
+
         with transaction.atomic():
             for msp in msps:
                 external_id = self.get_uid(validated_data.get("uid"), msp)
@@ -671,7 +674,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
                         tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
                     )
 
-                SolidTariff(
+                sd = SolidTariff(
                     external_id=validated_data.get("uid"),
                     currency=currency,
                     price_per_kwh=per_kwh,
@@ -680,9 +683,13 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     vat_percentage=vat,
                     msp=msp,
                     operator=operator,
-                ).save()
+                )
+                sd.save()
+                saved_solid_tariffs.append(sd)
 
-        return tariff
+                saved_tariffs.append(tariff)
+
+        return saved_tariffs, saved_solid_tariffs
 
     def update(self, solid_tariff: SolidTariff, validated_data: dict):
         def update_price_components(price, tariff_type) -> None:
@@ -730,7 +737,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
 
             update_solid_tariff()
 
-        return tariff
+        return tariff, solid_tariff
 
     def get_fields_to_update(self, validated_data: dict):
         per_kwh = validated_data.get(PriceKwhSerializer.key)
