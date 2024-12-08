@@ -1,80 +1,96 @@
 import pytest
 
-from ocpi22.tests.factories import (
-    CredentialsRoleFactory,
-    TariffFactory,
-    SolidTariffFactory,
-)
+from ocpi22.tests.factories import CredentialsRoleFactory
 
 
 @pytest.fixture
-def smp1_solid_tariff_data():
+def msp1():
+    return CredentialsRoleFactory(country_code="DE", party_id="ICE")
+
+
+@pytest.fixture
+def msp2():
+    return CredentialsRoleFactory(country_code="DE", party_id="ICD")
+
+
+@pytest.fixture
+def operator():
+    return CredentialsRoleFactory(country_code="FI", party_id="CPO")
+
+
+@pytest.fixture
+def smp1_tariff():
     return {
-        "id": 1,
-        "uid": "SMP1",
+        "id": "SMP1",
         "currency": "EUR",
-        "price_per_kwh": 0.52,
+        "price_per_kwh": 0.690,
         "price_per_min": 0.42,
-        "price_flat": 0.3,
+        "price_flat": 0.56,
         "vat_percentage": 20.0,
+        "msps": ["DE*ICE", "DE*ICD"],
     }
 
 
 @pytest.fixture
-def smp2_solid_tariff_data():
+def smp1_updated_tariff():
     return {
-        "id": 2,
-        "uid": "SMP2",
+        "id": "SMP1",
         "currency": "EUR",
-        "price_per_kwh": 0.52,
+        "price_per_kwh": 0.703,
         "price_per_min": 0.42,
-        "price_flat": 0.3,
+        "price_flat": 0.56,
         "vat_percentage": 20.0,
+        "msps": ["DE*ICE"],
     }
 
 
 @pytest.fixture
-def smp1_solid_tariff():
-    return SolidTariffFactory(
-        id=1,
-        external_id="SMP1",
-        currency="EUR",
-        price_per_kwh=0.52,
-        price_per_min=0.42,
-        price_flat=0.3,
-        vat_percentage=20.0,
-    )
+def smp1_patched_tariff():
+    return {
+        "currency": "USD",
+    }
 
 
 @pytest.fixture
-def smp2_solid_tariff():
-    return SolidTariffFactory(
-        id=2,
-        external_id="SMP2",
-        currency="EUR",
-        price_per_kwh=0.52,
-        price_per_min=0.42,
-        price_flat=0.3,
-        vat_percentage=20.0,
-    )
+def solid_tariff_smp1_msp1_updated_data(operator, msp1):
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0.703,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "vat_percentage": 20.0,
+        "msp": msp1,
+        "operator": operator,
+        "archived": False,
+    }
 
 
 @pytest.fixture
-def smp1_solid_tariff_with_msp1():
-    return SolidTariffFactory(
-        id=1,
-        external_id="SMP1",
-        currency="EUR",
-        price_per_kwh=0.52,
-        price_per_min=0.42,
-        price_flat=0.3,
-        vat_percentage=20.0,
-        msp=CredentialsRoleFactory(country_code="DE", party_id="SMP"),
-    )
+def solid_tariff_smp1_msp1_data(operator, msp1):
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0.690,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "vat_percentage": 20.0,
+        "msp": msp1,
+        "operator": operator,
+        "archived": False,
+    }
 
 
 @pytest.fixture
-def tariff_smp1():
-    return TariffFactory(
-        uid="SMP1",
-    )
+def solid_tariff_smp1_msp2_data(operator, msp2):
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0.690,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "vat_percentage": 20.0,
+        "msp": msp2,
+        "operator": operator,
+        "archived": False,
+    }
