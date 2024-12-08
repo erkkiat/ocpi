@@ -32,6 +32,30 @@ def smp1_tariff():
 
 
 @pytest.fixture
+def smp1_tariff_data_with_no_external_id():
+    return {
+        "currency": "EUR",
+        "price_per_kwh": 0.703,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "vat_percentage": 20.0,
+        "msps": ["DE*ICE", "DE*ICD"],
+    }
+
+
+@pytest.fixture
+def smp1_tariff_updated_data_with_no_external_id():
+    return {
+        "currency": "EUR",
+        "price_per_kwh": 0.103,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "vat_percentage": 20.0,
+        "msps": ["DE*ICE", "DE*ICD"],
+    }
+
+
+@pytest.fixture
 def smp1_updated_tariff():
     return {
         "id": "SMP1",

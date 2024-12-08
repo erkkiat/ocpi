@@ -96,10 +96,50 @@ class TestSolidTariffSs:
         assert len(response.data) == 1
         assert response.data[0]["currency"] == smp1_patched_tariff["currency"]
 
-    def test_create_solid_tariffs_with_multiple_msps(self): ...
+    @pytest.mark.skip(reason="Cached function giving trouble here")
+    @pytest.mark.django_db
+    @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
+    @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
+    def test_create_solid_tariff_no_ext_id(
+        self,
+        mock_get_our_credentialsrole,
+        client,
+        smp1_tariff_data_with_no_external_id,
+        msp1,
+        msp2,
+    ):
+        mock_get_our_credentialsrole.return_value = msp1
+        url = reverse("solid-tariff-list")
+        response = client.post(url, smp1_tariff_data_with_no_external_id, format="json")
 
-    def test_update_solid_tariff_with_different_msp(self): ...
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 2
 
-    def test_create_solid_tariff_with_external_id_none(self): ...
+    @pytest.mark.skip(reason="Cached function giving trouble here")
+    @pytest.mark.django_db
+    @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
+    @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
+    def test_update_solid_tariff_no_ext_id(
+        self,
+        mock_get_our_credentialsrole,
+        client,
+        smp1_tariff_data_with_no_external_id,
+        smp1_tariff_updated_data_with_no_external_id,
+        msp1,
+        msp2,
+    ):
+        mock_get_our_credentialsrole.return_value = msp1
+        url = reverse("solid-tariff-list")
+        client.post(url, smp1_tariff_data_with_no_external_id, format="json")
 
-    def test_update_solid_tariff_with_external_id_none(self): ...
+        url = f"{reverse('solid-tariff-list')}/{msp1.party_str()}/"
+        response = client.put(
+            url, smp1_tariff_updated_data_with_no_external_id, format="json"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data) == 1
+        assert (
+            response.data[0]["price_per_kwh"]
+            == smp1_tariff_updated_data_with_no_external_id["price_per_kwh"]
+        )
