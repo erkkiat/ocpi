@@ -1,5 +1,4 @@
 from django.db import IntegrityError
-from django.db.models import Q
 from rest_framework import status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -91,17 +90,27 @@ class SolidTariffViewSet(
         try:
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
             msp = Party.from_str(msp_id).get_role_if_exists()
-            solid_tariff = SolidTariff.objects.get(
-                Q(external_id__iexact=uid) | Q(external_id__isnull=True),
-                msp_id=msp.id,
-                archived=False,
-                operator=our_role,
-            )
+            if uid is None:
+                solid_tariff = SolidTariff.objects.get(
+                    external_id__isnull=True,
+                    msp_id=msp.id,
+                    archived=False,
+                    operator=our_role,
+                )
+            else:
+                solid_tariff = SolidTariff.objects.get(
+                    external_id__iexact=uid,
+                    msp_id=msp.id,
+                    archived=False,
+                    operator=our_role,
+                )
 
             assert request.data.get("uid") in (
                 uid,
                 None,
             ), "Different UID in request and URL"
+
+            request.data["msps"] = [msp]
 
             if request.method == "GET":
                 serializer = SolidTariffSerializer(
@@ -137,6 +146,14 @@ class SolidTariffViewSet(
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
+
+    @action(
+        methods=["GET", "PATCH", "PUT"],
+        detail=False,
+        url_path="(?P<msp_id>[^/.]+)",
+    )
+    def by_msp_id(self, request, msp_id):
+        return self.by_id(request, None, msp_id)
 
     @staticmethod
     def get_object(uid=None) -> Tariff:

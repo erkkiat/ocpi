@@ -718,6 +718,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
             for price, tariff_type in price_components:
                 if price is not None:
                     update_price_components(price, tariff_type)
+                elif self.partial:
+                    continue
                 else:
                     raise PriceNotFoundError(f"Price {tariff_type} not found")
 
