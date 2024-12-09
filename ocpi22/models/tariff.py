@@ -5,6 +5,7 @@ from typing import Optional
 
 import pytz
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import QuerySet
 from django.db.models.signals import pre_save, post_save, pre_delete
@@ -512,6 +513,12 @@ class SolidTariff(models.Model):
     )
     price_flat = models.DecimalField(
         max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    parking_price_per_min = models.DecimalField(
+        max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    parking_grace_period = models.IntegerField(
+        blank=True, null=True, validators=[MinValueValidator(0)]
     )
     vat_percentage = models.FloatField(blank=True, null=True)
     msp = models.ForeignKey(
