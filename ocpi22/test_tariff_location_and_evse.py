@@ -2597,10 +2597,8 @@ class TestCpoApi(TestCase):
     # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(AuthorizeData.accept_authorization)])
     @patch("ocpi22.tokens.token_async.post_request", new_callable=AsyncMock)
     @patch("ocpi22.webhooks.requests.put")
-    @patch("ocpiconnector.analytics.send_session_update_to_analytics")
     def test_rfid_charging_flow(
         self,
-        _send_analytics: Mock,
         _webhook_post_mock: Mock,
         mock_post_request: Mock,
         _uuid4_mock: Mock,
