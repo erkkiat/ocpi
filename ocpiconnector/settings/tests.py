@@ -14,7 +14,6 @@ DATABASE_URL = os.environ.get(
 )
 SECRET_KEY = "BESTONEEVER"
 
-
 TEST_LOGGING = {
     **LOGGING,  # noqa
     "handlers": {
@@ -46,3 +45,6 @@ TEST_LOGGING = {
 }
 
 LOGGING = TEST_LOGGING
+REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [  # noqa
+    "rest_framework.renderers.JSONRenderer",
+]
