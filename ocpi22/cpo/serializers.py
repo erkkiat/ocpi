@@ -591,6 +591,11 @@ class PriceFlatSerializer(PriceSerializer):
     key = "price_flat"
 
 
+class ParkingPricePerMinSerializer(PriceSerializer):
+    tariff_type = "PARKING_TIME"
+    key = "parking_price_per_min"
+
+
 class SolidTariffSerializer(SerializerCleanedUp):
     id = serializers.CharField(
         source="uid",
@@ -620,6 +625,19 @@ class SolidTariffSerializer(SerializerCleanedUp):
         required=False,
         help_text="The flat price per started charging session excluding tax",
     )
+    parking_price_per_min = ParkingPricePerMinSerializer(
+        source="*",
+        max_digits=8,
+        decimal_places=4,
+        required=False,
+        help_text="The parking price per min excluding tax",
+    )
+    parking_grace_period = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        min_value=0,
+        help_text="The parking grace period in seconds",
+    )
     vat_percentage = VatSerializer(
         source="*",
         required=False,
@@ -639,6 +657,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
         per_min = validated_data.get(PriceMinSerializer.key)
         flat = validated_data.get(PriceFlatSerializer.key)
         vat = validated_data.get(VatSerializer.key)
+        parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
+        grace_period = validated_data.get("parking_grace_period")
 
         saved_tariffs = []
         saved_solid_tariffs = []
@@ -673,6 +693,14 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     PriceComponent.objects.create(
                         tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
                     )
+                if parking_price:
+                    PriceComponent.objects.create(
+                        tariff_element=te,
+                        type="PARKING_TIME",
+                        price=parking_price,
+                        vat=vat,
+                        step_size=1,
+                    )
 
                 sd = SolidTariff(
                     external_id=validated_data.get("uid"),
@@ -680,6 +708,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     price_per_kwh=per_kwh,
                     price_per_min=per_min,
                     price_flat=flat,
+                    parking_price_per_min=parking_price,
+                    parking_grace_period=grace_period,
                     vat_percentage=vat,
                     msp=msp,
                     operator=operator,
@@ -721,6 +751,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
                 (fields_to_update["price_per_kwh"], "ENERGY"),
                 (fields_to_update["price_per_min"], "TIME"),
                 (fields_to_update["price_flat"], "FLAT"),
+                (fields_to_update["parking_price_per_min"], "PARKING_TIME"),
             )
             for price, tariff_type in price_components:
                 if price is not None:
@@ -743,6 +774,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
         per_kwh = validated_data.get(PriceKwhSerializer.key)
         per_min = validated_data.get(PriceMinSerializer.key)
         flat = validated_data.get(PriceFlatSerializer.key)
+        parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
+        grace_period = validated_data.get("parking_grace_period")
         vat = validated_data.get(VatSerializer.key)
         currency = validated_data.get(CurrencySerializer.key)
 
@@ -750,6 +783,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
             "price_per_kwh": per_kwh,
             "price_per_min": per_min,
             "price_flat": flat,
+            "parking_price_per_min": parking_price,
+            "parking_grace_period": grace_period,
             "currency": currency,
             "vat_percentage": vat,
         }

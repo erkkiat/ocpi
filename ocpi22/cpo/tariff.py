@@ -98,7 +98,7 @@ class SolidTariffViewSet(
     )
     def by_id(self, request, uid, msp_id) -> Response:
         try:
-            our_role = CredentialsRole.objects.get(country_code="FI", party_id="CPO")
+            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
             msp = Party.from_str(msp_id).get_role_if_exists()
             if uid is None:
                 solid_tariff = SolidTariff.objects.get(
