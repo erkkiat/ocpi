@@ -320,7 +320,6 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
-    "ocpi22.middleware.ProfilerMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
@@ -572,3 +571,6 @@ try:
     INSTALLED_APPS = ["test_without_migrations"] + INSTALLED_APPS
 except Exception:
     pass
+
+MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
+MQTT_PORT = os.getenv("MQTT_PORT", 1883)

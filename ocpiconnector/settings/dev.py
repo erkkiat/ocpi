@@ -5,8 +5,11 @@ ENV = os.getenv("ENV", "development").lower()
 
 DEBUG = os.getenv("DEBUG", True)
 ALLOWED_HOSTS.extend(["*"])  # noqa
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
+MQTT_BROKER = os.getenv("MQTT_BROKER", "emqx")
+MQTT_PORT = os.getenv("MQTT_PORT", 1883)
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
+MQTT_SSL_VERIFY = os.getenv("MQTT_SSL_VERIFY", False)
 
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 

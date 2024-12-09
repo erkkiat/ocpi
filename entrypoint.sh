@@ -1,13 +1,37 @@
-#!/bin/sh
+#!/bin/bash
+set -e  # Exit immediately if a command exits with a non-zero status
 
-cd /code || return
-pip3 install -r requirements.txt
-#sleep 10
-#python manage.py makemigrations
-python3 manage.py migrate
-python3 manage.py migrate --database=gdpr_log gdpr_assist
-#python manage.py loaddata /code/data/providers.json
-python3 manage.py loaddata /code/ocpi22/data/initial.json
-#echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@myproject.com', 'admin')" | python manage.py shell
+WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
-exec "$@"
+case "$1" in
+    django-app)
+        echo "Running collectstatic..."
+        python manage.py collectstatic --noinput
+
+        # Apply migrations in development and staging environments
+        if [[ "$ENV" == "development" || "$ENV" == "staging" ]]; then
+            echo "Applying database migrations for $ENV environment..."
+            python manage.py migrate --noinput
+        fi
+
+        echo "Starting Django server..."
+        exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --reload --timeout 120
+        ;;
+    celery-django)
+        echo "Starting Celery worker for Django tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
+        exec celery -A ocpi22.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
+        ;;
+    mqtt-subscriber)
+        echo "Starting MQTT subscriber..."
+        exec python ocpi22/cpo/mqtt/mqtt_subscriber.py
+        ;;
+    celery-mqtt)
+        echo "Starting Celery worker for MQTT tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
+        exec celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
+        ;;
+    *)
+        echo "Unknown service: $1"
+        echo "Usage: django-server | celery-django | mqtt-subscriber | celery-mqtt"
+        exit 1
+        ;;
+esac
