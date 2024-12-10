@@ -24,6 +24,7 @@ class SolidTariffViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
     GenericViewSet,
 ):
     """
@@ -90,6 +91,41 @@ class SolidTariffViewSet(
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
+
+    def put(
+        self, request, uid=None, partial=None, country_code=None, party_id=None
+    ) -> Response:
+        try:
+            data = request.data
+            data = data.get(
+                "data", data
+            )  # Is the actual data on the top level or one level lower?
+            uid = uid or request.data.get("id")
+            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+
+            tariff = Tariff.get_if_exists(
+                uid__iexact=uid, ocpi_master=our_role, archived=False
+            )
+            serializer = SolidTariffSerializer(
+                data=data,
+                instance=tariff,
+                partial=partial,
+                context={"request": request, "party": Party(country_code, party_id)},
+            )
+            if serializer.is_valid():
+                tariff = serializer.save(ocpi_master=our_role)
+                tariff.send_updates()
+                http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
+                return Response(serializer.data, status=http_status)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError as e:
+            return Response(
+                {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def patch(self, request, uid=None):
+        return self.put(request, uid, partial=True)
 
     @action(
         methods=["GET", "PATCH", "PUT"],
