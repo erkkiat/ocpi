@@ -592,7 +592,7 @@ class PriceFlatSerializer(PriceSerializer):
 
 
 class SolidTariffSerializer(SerializerCleanedUp):
-    id = serializers.CharField(
+    external_id = serializers.CharField(
         source="uid",
         validators=[uid_validator],
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
