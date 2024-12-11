@@ -16,14 +16,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy everything from the current directory to /app in the container
+COPY . /app
 
-# Copy the application code and set execute permissions for scripts
-COPY . .
-RUN chmod +x entrypoint.sh fetch_secrets.sh
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Make scripts executable
+RUN chmod +x /app/entrypoint.sh /app/fetch_secrets.sh
 
 # Stage 2: Final Image
 FROM python:3.11-slim
