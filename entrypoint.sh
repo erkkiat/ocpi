@@ -7,13 +7,8 @@ case "$1" in
     django-app)
         echo "Running collectstatic..."
         python manage.py collectstatic --noinput
-
-        # Apply migrations in development and staging environments
-        if [[ "$ENV" == "development" || "$ENV" == "staging" ]]; then
-            echo "Applying database migrations for $ENV environment..."
-            python manage.py migrate --noinput
-        fi
-
+        echo "Applying migrations"
+        python manage.py migrate --noinput
         echo "Starting Django server..."
         exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --reload --timeout 120
         ;;
