@@ -351,7 +351,6 @@ def simulate_surrounding_world(func):
             patch("ocpi22.logging.error") as logging_error,
             patch("ocpi22.logging.info") as logging_info,
             patch("ocpi22.logging.warning") as logging_warning,
-            patch("ocpiconnector.analytics.send_session_update_to_analytics"),
             patch("ocpi22.ocpi.api.get_our_credentialsrole") as get_our_credentialsrole,
         ):
             simulation = Simulation(
