@@ -16,16 +16,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file
+# Copy the requirements file and install dependencies
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the application code and set execute permissions for scripts
 COPY . .
-
-RUN chmod +x ./fetch_secrets.sh ./entrypoint.sh
+RUN chmod +x entrypoint.sh fetch_secrets.sh
 
 # Stage 2: Final Image
 FROM python:3.11-slim
@@ -45,17 +43,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the entire Python environment from the build stage
+# Copy the application code and Python environment from the build stage
+COPY --from=build /app /app
 COPY --from=build /usr/local /usr/local
 
-# Copy the application code and scripts
-COPY --from=build /app/templates ./templates/
-COPY --from=build /app/fetch_secrets.sh ./fetch_secrets.sh
-COPY --from=build /app/entrypoint.sh ./entrypoint.sh
-COPY --from=build /app/ocpiconnector ./ocpiconnector
-
 # Expose the application port
-EXPOSE 8080
+EXPOSE 8000
 
 # Set the entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]
