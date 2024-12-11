@@ -48,7 +48,7 @@ COPY --from=build /app /app
 COPY --from=build /usr/local /usr/local
 
 # Expose the application port
-EXPOSE 8000
+EXPOSE 8080
 
 # Set the entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]
