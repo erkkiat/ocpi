@@ -159,12 +159,12 @@ class SolidTariffViewSet(
     @action(
         methods=["GET", "PATCH", "PUT"],
         detail=False,
-        url_path="(?P<msp_id>[^/.]+)/(?P<external_id>[^/.]+)",
+        url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<external_id>[^/.]+)",
     )
-    def by_id(self, request, external_id, msp_id) -> Response:
+    def by_id(self, request, external_id, country_code, party_id) -> Response:
         try:
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            msp = Party.from_str(msp_id).get_role_if_exists()
+            msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
             if msp is None:
                 raise ValueError("MSP not found")
             if external_id is None:
@@ -223,21 +223,21 @@ class SolidTariffViewSet(
         except (
             IntegrityError,
             AssertionError,
-            # Tariff.DoesNotExist,
-            # SolidTariff.DoesNotExist,
+            Tariff.DoesNotExist,
+            SolidTariff.DoesNotExist,
             PriceNotFoundError,
         ) as e:
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
-    # @action(
-    #     methods=["GET", "PATCH", "PUT"],
-    #     detail=False,
-    #     url_path="(?P<msp_id>[^/.]+)",
-    # )
-    # def by_msp_id(self, request, msp_id):
-    #     return self.by_id(request, None, msp_id)
+    @action(
+        methods=["GET", "PATCH", "PUT"],
+        detail=False,
+        url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)",
+    )
+    def by_msp_id(self, request, country_code, party_id):
+        return self.by_id(request, None, country_code, party_id)
 
     @staticmethod
     def get_object(uid=None) -> Tariff:

@@ -595,7 +595,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
     external_id = serializers.CharField(
         validators=[uid_validator],
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
-        required=False,
+        required=True,
     )
     currency = serializers.ChoiceField(choices=CURRENCY_CHOICES)
     price_per_kwh = PriceKwhSerializer(
