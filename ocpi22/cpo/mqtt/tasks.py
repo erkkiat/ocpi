@@ -37,7 +37,7 @@ register(
 
 
 class CeleryConfig:
-    broker_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    broker_url = os.environ["REDIS_URL"]
     result_backend = broker_url
     task_serializer = "orjson"
     accept_content = ["json"]

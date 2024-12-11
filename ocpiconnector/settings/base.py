@@ -5,7 +5,6 @@ from urllib.parse import urlparse
 
 from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
-from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
 
 from ocpiconnector.settings.configure_sentry import setup_sentry
@@ -320,7 +319,6 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
-    "ocpi22.middleware.ProfilerMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
 ]
 
@@ -551,15 +549,6 @@ MOESIF_MIDDLEWARE = {
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
-MESSAGE_TAGS = {
-    messages.DEBUG: "alert-secondary",
-    messages.INFO: "alert-info",
-    messages.SUCCESS: "alert-success",
-    messages.WARNING: "alert-warning",
-    messages.ERROR: "alert-danger",
-}
-SEND_DATA_TO_ANALYTICS = False
-
 HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
 HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
@@ -568,8 +557,5 @@ SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
 
 
-#  This is not needed in pytest let's fix this in pytest
-try:
-    INSTALLED_APPS = ["test_without_migrations"] + INSTALLED_APPS
-except Exception:
-    pass
+MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
+MQTT_PORT = os.getenv("MQTT_PORT", 1883)

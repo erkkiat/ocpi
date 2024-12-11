@@ -3,8 +3,7 @@ import random
 from datetime import timedelta, datetime
 from json import JSONDecodeError
 from logging import getLogger
-from typing import Optional, Union
-from unittest.mock import MagicMock
+from typing import Optional
 from urllib.parse import urlparse
 
 import celery
@@ -370,28 +369,7 @@ def check_still_alive(credentials_id: int = None) -> None:
             )
 
 
-@app.task(max_retries=5, default_retry_delay=120)
-def send_data_to_analytics(data: Union[dict, list], url):
-    if not zoined_token:
-        # logger.info(f'No Zoined token set => no update to analytics')
-        return
-    headers = {
-        "content-type": "application/json",
-        "Authorization": f"Bearer {zoined_token}",
-    }
-    # Todo: Async send
-    if isinstance(data, dict):
-        data = [data]
-    response = requests.post(url=url, json=data, headers=headers, timeout=5)
-    if response.status_code != 200:
-        logger.error(f"Unable to send update to analytics: {response.text}")
-    # else:
-    #     logger.info(f'Update sent to analytics: {response.text}')
-
-
 #  TODO This needs refactor will take care of it as soon as settings is up
-if settings.SEND_DATA_TO_ANALYTICS:
-    send_data_to_analytics = MagicMock()
 
 
 def send_simulated_cpo_response(session, response_url):

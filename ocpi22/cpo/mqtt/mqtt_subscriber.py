@@ -1,5 +1,7 @@
 import os
+import ssl
 import sys
+import time
 import uuid
 from logging import getLogger
 
@@ -105,23 +107,62 @@ def get_broker_and_port():
     return broker, int(port)
 
 
+def get_ssl_certified_client(client) -> mqtt.Client:
+    if not os.getenv("MQTT_SSL_VERIFY", True):
+        logger.warning(
+            f"Skipping SSL certificate verification for {os.getenv('ENV')}.."
+        )
+        client.tls_set(cert_reqs=ssl.CERT_NONE)
+        client.tls_insecure_set(True)
+        return client
+    # else
+    # TODO
+    # 1. read the secret from aws secret manager with boto
+    # 2. Save it in /tmp/mqtt.pem
+    # 3. Load it in the tls_set
+    # client.tls_set(ca_certs=cert_file, cert_reqs=ssl.CERT_REQUIRED)
+
+    # else:
+    return client
+
+
 def configure_client(client_id):
     username, password = get_broker_username_password()
     client = mqtt.Client(
         client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
     )
     client.username_pw_set(username, password)
+    client = get_ssl_certified_client(client)
     client.on_connect = on_connect
     client.on_message = on_message
     return client
 
 
-def connect_client():
+def connect_client(retries=5, delay=5):
     client_id = f"ROAMING_{uuid.uuid4()}"
     client = configure_client(client_id)
     broker_url, port = get_broker_and_port()
-    client.connect(broker_url, port)
-    return client
+
+    for attempt in range(retries):
+        try:
+            logger.info(
+                f"Attempting to connect to MQTT broker {broker_url}:{port} (attempt {attempt + 1}/{retries})..."
+            )
+            client.connect(broker_url, port)
+            logger.info(
+                f"Connected successfully to the MQTT broker {broker_url}:{port}"
+            )
+            return client
+        except Exception as e:
+            logger.error(f"Connection attempt {attempt + 1} failed: {e}")
+            if attempt < retries - 1:
+                logger.info(f"Retrying in {delay} seconds...")
+                time.sleep(delay)
+            else:
+                logger.error("Max retries reached. Giving up.")
+                raise ConnectionError(
+                    "Failed to connect to MQTT broker after retries."
+                ) from e
 
 
 def start_client(client, loop_forever=True):
@@ -138,8 +179,9 @@ def stop_and_disconnect(client):
 
 
 if __name__ == "__main__":
+    logger = getLogger(__name__)
     from ocpiconnector.settings.base import env_bool  # noqa
 
-    loop_forever = env_bool("MQTT_LOOP_FOREVER")
+    loop_forever = env_bool("MQTT_LOOP_FOREVER", True)
     mqtt_client = connect_client()
     start_client(mqtt_client, loop_forever)
