@@ -61,14 +61,23 @@ class SolidTariffViewSet(
                 msp=msp,
             )
             if existing_solid_tariff.exists():
-                raise SolidTariffAlreadyExistsError(
-                    f"SolidTariff with external_id: {external_id}, msp: {msp} already exists. Please use PUT/PATCH methods."
+                serializer = SolidTariffSerializer(
+                    data=data,
+                    instance=existing_solid_tariff,
+                    partial=False,
+                    context={
+                        "request": request,
+                        "party": Party(country_code, party_id),
+                    },
                 )
-
-            serializer = SolidTariffSerializer(
-                data=data,
-                context={"request": request, "party": Party(country_code, party_id)},
-            )
+            else:
+                serializer = SolidTariffSerializer(
+                    data=data,
+                    context={
+                        "request": request,
+                        "party": Party(country_code, party_id),
+                    },
+                )
             if serializer.is_valid():
                 tariff, solid_tariff = serializer.save(ocpi_master=our_role)
                 tariff.send_updates()
@@ -98,16 +107,33 @@ class SolidTariffViewSet(
             )  # Is the actual data on the top level or one level lower?
             external_id = external_id or request.data.get("external_id")
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+            msp = self.get_role_or_raise(request.data.get("msp"))
 
-            tariff = Tariff.get_if_exists(
-                uid__iexact=external_id, ocpi_master=our_role, archived=False
+            existing_solid_tariff = SolidTariff.objects.get_if_exists(
+                external_id__iexact=external_id,
+                operator=our_role,
+                archived=False,
+                msp=msp,
             )
-            serializer = SolidTariffSerializer(
-                data=data,
-                instance=tariff,
-                partial=partial,
-                context={"request": request, "party": Party(country_code, party_id)},
-            )
+
+            if not existing_solid_tariff:
+                serializer = SolidTariffSerializer(
+                    data=data,
+                    context={
+                        "request": request,
+                        "party": Party(country_code, party_id),
+                    },
+                )
+            else:
+                serializer = SolidTariffSerializer(
+                    data=data,
+                    instance=existing_solid_tariff,
+                    partial=partial,
+                    context={
+                        "request": request,
+                        "party": Party(country_code, party_id),
+                    },
+                )
             if serializer.is_valid():
                 tariff, solid_tariff = serializer.save(ocpi_master=our_role)
                 tariff.send_updates()
@@ -174,7 +200,7 @@ class SolidTariffViewSet(
                 solid_tariff,
                 data=request.data,
                 partial=partial,
-                context={"request": request, "external_id": external_id, "msp": msp},
+                context={"request": request},
             )
             if serializer.is_valid():
                 tariff, solid_tariff = serializer.save(ocpi_master=our_role)
