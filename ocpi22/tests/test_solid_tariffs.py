@@ -22,6 +22,11 @@ def tariff_smp1_msp1(operator):
 
 
 @pytest.fixture
+def tariff_smp1(operator):
+    return TariffFactory(uid="SMP1", ocpi_master=operator)
+
+
+@pytest.fixture
 def tariff_smp1_msp2(operator):
     return TariffFactory(uid="DE*ICD*SMP1", ocpi_master=operator)
 
@@ -89,3 +94,47 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["currency"] == smp1_patched_tariff["currency"]
+
+    @pytest.mark.django_db
+    @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
+    def test_create_solid_tariff_with_no_msp(
+        self, client, smp1_tariff, msp1, msp2, operator
+    ):
+        get_our_credentialsrole.cache_clear()
+        url = reverse("solid-tariff-list")
+        del smp1_tariff["msp"]
+        response = client.post(url, smp1_tariff, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["external_id"] == "SMP1"
+        with pytest.raises(KeyError):
+            assert response.data["msp"] is None
+        assert response.data["price_per_kwh"] == 0.69
+
+    @pytest.mark.django_db
+    @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
+    def test_update_solid_tariff_no_msp(
+        self,
+        client,
+        smp1_tariff,
+        solid_tariff_smp1_msp1_data,
+        solid_tariff_smp1_msp1_updated_data,
+        smp1_updated_tariff,
+        msp1,
+        tariff_smp1,
+    ):
+        get_our_credentialsrole.cache_clear()
+        del solid_tariff_smp1_msp1_data["msp"]
+        created_sd = SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
+
+        assert float(created_sd.price_per_kwh) == 0.6900
+
+        url = reverse("solid-tariff-list")
+        del smp1_updated_tariff["msp"]
+        response = client.put(url, smp1_updated_tariff, format="json")
+
+        with pytest.raises(KeyError):
+            assert response.data["msp"] is None
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["price_per_kwh"] == smp1_updated_tariff["price_per_kwh"]
