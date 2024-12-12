@@ -698,12 +698,10 @@ class SolidTariffSerializer(SerializerCleanedUp):
             self.update_fields(solid_tariff, fields_to_update, self.partial)
             solid_tariff.save()
 
-        external_id = validated_data.get("external_id")
-        msp = validated_data.get("msp")
+        external_id = solid_tariff.external_id
+        msp = solid_tariff.msp
         tariff = Tariff.objects.get_if_exists(uid=self.get_uid(external_id, msp))
-        solid_tariff = SolidTariff.objects.get_if_exists(
-            external_id=external_id, archived=False, msp=msp
-        )
+
         fields_to_update = self.get_fields_to_update(validated_data)
 
         with transaction.atomic():
