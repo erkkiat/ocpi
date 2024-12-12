@@ -5,6 +5,7 @@ from ocpiconnector.settings.infra_services import get_db_url_user_and_token
 
 ENV = os.getenv("ENV", "production").lower()
 DEBUG = False
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 SECURE_SSL_REDIRECT = True
 
@@ -25,6 +26,7 @@ SECURE_REFERRER_POLICY = "same-origin"
 
 
 HUBJECT_URL = "Add the hubject production base url"
+
 
 ALLOWED_HOSTS.extend(["*.smappee.com"])  # noqa
 MQTT_BROKER = os.getenv("MQTT_BROKER")

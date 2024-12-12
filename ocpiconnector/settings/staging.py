@@ -6,7 +6,7 @@ from ocpiconnector.settings.infra_services import get_db_url_user_and_token
 
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
-
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 SECURE_SSL_REDIRECT = True
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
