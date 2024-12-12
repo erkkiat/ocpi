@@ -3,8 +3,27 @@ import os  # noqa
 
 from ocpiconnector.settings.infra_services import get_db_url_user_and_token
 
+
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
+
+SECURE_SSL_REDIRECT = True
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+SECURE_HSTS_SECONDS = 300  # Enforce HTTPS for 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+X_FRAME_OPTIONS = "DENY"
+
+SECURE_REFERRER_POLICY = "same-origin"
+
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 
 ALLOWED_HOSTS.extend(["staging.solidroam.com"])  # noqa
