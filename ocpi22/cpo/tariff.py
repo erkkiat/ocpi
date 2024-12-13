@@ -161,7 +161,9 @@ class SolidTariffViewSet(
         detail=False,
         url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<external_id>[^/.]+)",
     )
-    def by_id(self, request, external_id, country_code, party_id) -> Response:
+    def get_or_update_by_msp_id_and_external_id(
+        self, request, external_id, country_code, party_id
+    ) -> Response:
         try:
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
             msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
@@ -234,8 +236,10 @@ class SolidTariffViewSet(
         detail=False,
         url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)",
     )
-    def by_msp_id(self, request, country_code, party_id):
-        return self.by_id(request, None, country_code, party_id)
+    def get_or_update_by_msp_id(self, request, country_code, party_id):
+        return self.get_or_update_by_msp_id_and_external_id(
+            request, None, country_code, party_id
+        )
 
     @staticmethod
     def get_object(uid=None) -> Tariff:
