@@ -1,6 +1,11 @@
 import pytest
-
+from rest_framework.test import APIClient
 from ocpi22.tests.factories import CredentialsRoleFactory
+
+
+@pytest.fixture
+def client():
+    return APIClient()
 
 
 @pytest.fixture
@@ -28,6 +33,18 @@ def smp1_tariff():
         "price_flat": 0.56,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
+    }
+
+
+@pytest.fixture
+def smp1_tariff_no_msp():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0.690,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "vat_percentage": 20.0,
     }
 
 
@@ -65,6 +82,18 @@ def smp1_updated_tariff():
         "price_flat": 0.56,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
+    }
+
+
+@pytest.fixture
+def smp1_updated_tariff_no_msp():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": "0.703",
+        "price_per_min": "0.42",
+        "price_flat": "0.56",
+        "vat_percentage": "20.0",
     }
 
 

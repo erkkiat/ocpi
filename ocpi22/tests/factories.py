@@ -1,5 +1,6 @@
 import random
 import time
+from zoneinfo import ZoneInfo
 
 import factory
 import pytz
@@ -304,5 +305,5 @@ class SolidTariffFactory(factory.Factory):
     msp = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
     operator = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
 
-    last_updated_at = factory.Faker("date_time", tzinfo=pytz.UTC)
-    created_at = factory.Faker("date_time", tzinfo=pytz.UTC)
+    last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))

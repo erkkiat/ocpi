@@ -166,7 +166,7 @@ class SolidTariffViewSet(
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
             msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
             if msp is None:
-                raise ValueError("MSP not found")
+                raise MspNotFoundError("MSP not found")
             if external_id is None:
                 solid_tariff = SolidTariff.objects.get(
                     external_id__isnull=True,
@@ -186,8 +186,6 @@ class SolidTariffViewSet(
                 external_id,
                 None,
             ), "Different external_id in request and URL"
-
-            request.data["msps"] = [msp]
 
             if request.method == "GET":
                 serializer = SolidTariffSerializer(
