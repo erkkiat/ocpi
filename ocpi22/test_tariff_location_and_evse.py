@@ -2007,7 +2007,7 @@ class TestCredentials(TestCase):
         assert headers.pop("X-Correlation-ID") != "", "Expecting a correlation ID"
         headers.pop("platform-revision")
 
-        assert kwargs["headers"] == expected_headers, "Headers differ from expected"
+        assert kwargs["headers"] == expected_headers
 
     @pytest.mark.skip("Fix me before production")
     def test_credentials_response(self):
