@@ -27,6 +27,8 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
 )
 
 db_url, db_user, db_token = get_db_url_user_and_token()
+print("Debugging")
+print(f"{db_url}::{db_user}::{db_token}")
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -37,3 +39,6 @@ DATABASES = {
         "PORT": "3306",
     }
 }
+
+print("From Config")
+print(DATABASES)
