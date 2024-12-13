@@ -52,7 +52,7 @@ class SolidTariffViewSet(
             )  # Is the actual data on the top level or one level lower?
             external_id = external_id or request.data.get("external_id")
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            msp = self.get_role_or_raise(request.data.get("msp"))
+            msp = self.get_msp(request.data.get("msp"))
 
             existing_solid_tariff = SolidTariff.objects.filter(
                 external_id__iexact=external_id,
@@ -107,7 +107,7 @@ class SolidTariffViewSet(
             )  # Is the actual data on the top level or one level lower?
             external_id = external_id or request.data.get("external_id")
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            msp = self.get_role_or_raise(request.data.get("msp"))
+            msp = self.get_msp(request.data.get("msp"))
 
             existing_solid_tariff = SolidTariff.objects.get_if_exists(
                 external_id__iexact=external_id,
@@ -251,7 +251,7 @@ class SolidTariffViewSet(
         data["msp"] = CredentialsRole.objects.get(id=msp).party_str()
         return data
 
-    def get_role_or_raise(cls, msp) -> CredentialsRole | None:
+    def get_msp(cls, msp) -> CredentialsRole | None:
         if not msp:
             return
         party = Party.from_str(msp)
