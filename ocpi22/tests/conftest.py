@@ -98,7 +98,7 @@ def smp1_updated_tariff_no_msp():
 
 
 @pytest.fixture
-def smp1_patched_tariff():
+def smp1_patch_tariff_payload():
     return {
         "currency": "USD",
     }

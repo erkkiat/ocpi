@@ -144,7 +144,7 @@ class TestSolidTariffs:
         mock_get_our_credentialsrole,
         client,
         smp1_tariff,
-        smp1_patched_tariff,
+        smp1_patch_tariff_payload,
         msp_de_ice,
         tariff_smp1_msp_de_ice,
         solid_tariff_smp1_msp1_data,
@@ -155,7 +155,7 @@ class TestSolidTariffs:
         SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
 
         patch_url = f"{reverse('solid-tariff-list')}{msp_de_ice.country_code}/{msp_de_ice.party_id}/{smp1_tariff['external_id']}/"
-        response = client.patch(patch_url, smp1_patched_tariff)
+        response = client.patch(patch_url, smp1_patch_tariff_payload)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_patch_response
