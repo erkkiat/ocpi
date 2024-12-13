@@ -166,7 +166,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     party_str.short_description = _("Parties")  # For admin UI
 
     @staticmethod
-    def base64(token: models.CharField):
+    def base64(token: str | models.CharField):
         return base64.b64encode(str(token).encode("ascii")).decode("ascii")
 
     def token_a_base64(self):
@@ -315,7 +315,9 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
     # ISO-3166 alpha-2 country code
     country_code = models.CharField(
-        max_length=2, choices=generic.countries.COUNTRY_CHOICES, verbose_name=_("Country code")
+        max_length=2,
+        choices=generic.countries.COUNTRY_CHOICES,
+        verbose_name=_("Country code"),
     )
 
     # ID of the party

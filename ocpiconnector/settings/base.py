@@ -300,6 +300,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
+    "ocpi22.middleware.OCPI221HeadersMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
