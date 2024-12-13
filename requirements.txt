@@ -2,9 +2,7 @@ cachetools~=5.5.0
 Django~=4.2.13
 humanize~=4.10.0
 pip~=24.2
-mysqlclient~=2.2.4
-pymysql~=1.1.1
-pymongo==4.9.1
+mysqlclient~=2.2.6
 psycopg2-binary~=2.9.9
 requests~=2.32.3
 tzlocal~=5.2
