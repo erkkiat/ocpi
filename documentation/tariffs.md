@@ -13,18 +13,21 @@ See [ST-33](https://solidroam.agilemaximum.com/item/33/refine/) for Hubject OICP
 
 ```mermaid
 graph TD
-    CPO(API consumer) -- SolidTariff --> API(Roaming API)
-    API -- SolidTariff --> DB[(Database)]
-    RN([Various <br/>Roaming Networks]) -- OCPI Tariff --> DB
-    DB -- SolidTariff --> F1(Generic <br/> OCPI Converter)
-    DB -- SolidTariff --> F2(Hubject <br/> OICP Converter)
-    F1 -- OCPI Tariff --> CACHE[(Fast <br/> Cache)]
-    F2 -- Hubject OICP <br/> PricingProductData --> CACHE
-    CACHE -- OCPI Tariff --> G(Gireve)
+    CPO(API consumer) -- SolidTariffs --> API(Roaming API)
+    API -- SolidTariffs --> DB[(Database)]
+    DB -- SolidTariff --> F1(MSP specific <br> OCPI Converter)
+    G -- Porsche Tariffs --> PM(Porsche MSP)
+    G -- Global Tariffs --> SM(Shell MSP)
+    DB -- SolidTariff --> F2(Hubject <br> OICP Converter)
+    F1 -- MSP Specific <br> Tariffs --> CACHE[(Fast <br> Cache)]
+    CACHE -- MSP Specific <br> OCPI Tariffs --> G(Gireve)
     CACHE -- PricingProductData --> H(Hubject)
-    G -- "OCPI Tariffs<br/>from other<br/>CPOs" -->DB
+    G2(Gireve) -- "OCPI Tariffs<br>from other<br>CPOs" -->DB
+    SC(Shell CPO) -- OCPI Tariffs <br> for Smappee --> G2
+    F2 -- Hubject OICP <br> PricingProductData --> CACHE
     style CPO fill:green,stroke:darkgreen,stroke-width:2px
     style G fill:slateblue,stroke:blue,stroke-width:2px,color:black
+    style G2 fill:slateblue,stroke:blue,stroke-width:2px,color:black
     style H fill:slateblue,stroke:blue,stroke-width:2px,color:black
     style RN fill:slateblue,stroke:blue,stroke-width:2px,color:black
 
