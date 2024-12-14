@@ -2,6 +2,7 @@ from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
 from ocpiconnector.settings.infra_services import get_db_url_user_and_token
+from ocpiconnector.settings import monkey_patch  # noqa
 
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
