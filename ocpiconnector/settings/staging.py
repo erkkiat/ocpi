@@ -1,13 +1,15 @@
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
-from ocpiconnector.settings.infra_services import get_db_url_user_and_token
+from ocpiconnector.settings.infra_services import (
+    get_db_url_user_and_token,
+    get_allowed_hosts,
+)
 
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
+ALLOWED_HOSTS = get_allowed_hosts()
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
-
-ALLOWED_HOSTS.extend(["staging.solidroam.com"])  # noqa
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtttest.smappee.net")
 MQTT_PORT = os.getenv("MQTT_PORT", 443)
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
