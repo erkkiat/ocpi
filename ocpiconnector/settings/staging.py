@@ -2,7 +2,6 @@ from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
 from ocpiconnector.settings.infra_services import get_db_url_user_and_token
-from ocpiconnector.settings import monkey_patch  # noqa
 
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
@@ -28,8 +27,6 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
 )
 
 db_url, db_user, db_token = get_db_url_user_and_token()
-print("Debugging")
-print(f"{db_url}::{db_user}::{db_token}")
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -41,5 +38,3 @@ DATABASES = {
         "OPTIONS": {"ssl_mode": "REQUIRED"},
     }
 }
-
-print(DATABASES)
