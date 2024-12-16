@@ -111,7 +111,6 @@ class TestSolidTariffs:
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_create_response
 
-    @pytest.mark.skip(reason="Cached function gives trouble here")
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
@@ -137,7 +136,6 @@ class TestSolidTariffs:
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_update_response
 
-    @pytest.mark.skip(reason="Cached function gives trouble here")
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
