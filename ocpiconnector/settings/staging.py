@@ -38,8 +38,8 @@ DATABASES = {
         "PASSWORD": db_token,
         "HOST": db_url,
         "PORT": "3306",
+        "OPTIONS": {"sslmode": "REQUIRED"},
     }
 }
 
-print("From Config")
 print(DATABASES)
