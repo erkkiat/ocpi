@@ -31,6 +31,8 @@ def smp1_tariff():
         "price_per_kwh": 0.690,
         "price_per_min": 0.42,
         "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
     }
@@ -44,6 +46,8 @@ def smp1_tariff_no_msp():
         "price_per_kwh": 0.690,
         "price_per_min": 0.42,
         "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": 20.0,
     }
 
@@ -55,6 +59,8 @@ def smp1_tariff_data_with_no_external_id():
         "price_per_kwh": 0.703,
         "price_per_min": 0.42,
         "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
     }
@@ -67,6 +73,8 @@ def smp1_tariff_updated_data_with_no_external_id():
         "price_per_kwh": 0.103,
         "price_per_min": 0.42,
         "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
     }
@@ -80,6 +88,8 @@ def smp1_updated_tariff():
         "price_per_kwh": 0.703,
         "price_per_min": 0.42,
         "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
     }
@@ -93,6 +103,8 @@ def smp1_updated_tariff_no_msp():
         "price_per_kwh": "0.703",
         "price_per_min": "0.42",
         "price_flat": "0.56",
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": "20.0",
     }
 
@@ -112,6 +124,8 @@ def solid_tariff_smp1_msp1_updated_data(operator_fi_cpo, msp_de_ice):
         "price_per_kwh": 0.703,
         "price_per_min": 0.42,
         "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": msp_de_ice,
         "operator": operator_fi_cpo,
@@ -127,6 +141,8 @@ def solid_tariff_smp1_msp1_data(operator_fi_cpo, msp_de_ice):
         "price_per_kwh": 0.690,
         "price_per_min": 0.42,
         "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": msp_de_ice,
         "operator": operator_fi_cpo,
@@ -142,6 +158,8 @@ def solid_tariff_smp1_msp2_data(operator_fi_cpo, msp_de_icd):
         "price_per_kwh": 0.690,
         "price_per_min": 0.42,
         "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": msp_de_icd,
         "operator": operator_fi_cpo,
