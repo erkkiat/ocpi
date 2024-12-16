@@ -1,3 +1,5 @@
+import uuid
+
 import cachetools
 
 from ocpiconnector.party import Party
@@ -35,6 +37,8 @@ def make_headers(
         "content-type": "application/json",
         "accept": "application/json",
         "platform-revision": get_platform_revision(),
+        "X-Request-ID": str(uuid.uuid4()),
+        "X-Correlation-ID": str(uuid.uuid4()),
     }
     if extra:
         for key, value in extra.items():

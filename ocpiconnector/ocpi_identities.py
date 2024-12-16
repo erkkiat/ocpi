@@ -105,7 +105,7 @@ class OCPIPlatform(metaclass=Singleton):
 
 
 ocpi_platform = OCPIPlatform()
-if len(ocpi_identities) > 1 and settings.ENV != "test":
+if len(ocpi_identities) > 1 and settings.ENV not in ["development", "test"]:
     raise ValueError(
         "This platform cannot handle multiple roles, "
         "since the object IDs can overlap when receiving objects from other platforms"

@@ -23,15 +23,11 @@ class NoCommonVersion(APIException):
     pass
 
 
-class TariffNotFoundError(Exception):
+class ConnectorTariffNotFoundError(Exception):
     pass
 
 
 class MspNotFoundError(Exception):
-    pass
-
-
-class SolidTariffNotFoundError(Exception):
     pass
 
 

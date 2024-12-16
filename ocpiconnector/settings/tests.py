@@ -6,14 +6,10 @@ HOSTNAME = "testserver.test"  # Remove this hostname later once the allowed host
 
 ALLOWED_HOSTS = ["testserver.test", "localhost", "127.0.0.1"]
 # noqa
-SEND_DATA_TO_ANALYTICS = (
-    True  # This is not needed, will refactor after the settings refactor
-)
 DATABASE_URL = os.environ.get(
     "DATABASE_URL", "postgres://test_user:test_password@localhost:5432/test_db"
 )
 SECRET_KEY = "BESTONEEVER"
-
 
 TEST_LOGGING = {
     **LOGGING,  # noqa
@@ -46,3 +42,6 @@ TEST_LOGGING = {
 }
 
 LOGGING = TEST_LOGGING
+REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [  # noqa
+    "rest_framework.renderers.JSONRenderer",
+]

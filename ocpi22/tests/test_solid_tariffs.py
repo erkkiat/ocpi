@@ -4,41 +4,112 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from rest_framework.test import APIClient
 
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.tests.factories import TariffFactory
+from ocpiconnector.ocpi_identities import get_our_credentialsrole
 
 
 @pytest.fixture
-def client():
-    return APIClient()
+def tariff_smp1_msp_de_ice(operator_fi_cpo):
+    return TariffFactory(uid="DE*ICE*SMP1", ocpi_master=operator_fi_cpo)
 
 
 @pytest.fixture
-def tariff_smp1_msp1(operator):
-    return TariffFactory(uid="DE*ICE*SMP1", ocpi_master=operator)
+def tariff_smp1(operator_fi_cpo):
+    return TariffFactory(uid="SMP1", ocpi_master=operator_fi_cpo)
 
 
 @pytest.fixture
-def tariff_smp1_msp2(operator):
-    return TariffFactory(uid="DE*ICD*SMP1", ocpi_master=operator)
+def tariff_smp1_msp_de_icd(operator_fi_cpo):
+    return TariffFactory(uid="DE*ICD*SMP1", ocpi_master=operator_fi_cpo)
+
+
+@pytest.fixture
+def smp1_create_response():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": "0.69",
+        "price_per_min": "0.42",
+        "price_flat": "0.56",
+        "parking_price_per_min": None,
+        "parking_grace_period": None,
+        "vat_percentage": "20.0",
+        "msp": "DE*ICE",
+    }
+
+
+@pytest.fixture
+def smp1_updated_tariff_no_msp_response():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": "0.703",
+        "parking_grace_period": None,
+        "parking_price_per_min": None,
+        "price_per_min": "0.42",
+        "price_flat": "0.56",
+        "vat_percentage": "20.0",
+    }
+
+
+@pytest.fixture
+def smp1_update_response():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": "0.703",
+        "price_per_min": "0.42",
+        "price_flat": "0.56",
+        "parking_price_per_min": None,
+        "parking_grace_period": None,
+        "vat_percentage": "20.0",
+        "msp": "DE*ICE",
+    }
+
+
+@pytest.fixture
+def smp1_patch_response_no_msp():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": "0.69",
+        "price_per_min": "0.42",
+        "price_flat": "0.56",
+        "parking_price_per_min": None,
+        "parking_grace_period": None,
+        "vat_percentage": "20.0",
+    }
+
+
+@pytest.fixture
+def smp1_patch_response():
+    return {
+        "external_id": "SMP1",
+        "currency": "USD",
+        "price_per_kwh": 0.69,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "parking_price_per_min": None,
+        "parking_grace_period": None,
+        "vat_percentage": 20.0,
+        "msp": "DE*ICE",
+    }
 
 
 class TestSolidTariffs:
-    @pytest.mark.skip(reason="Cached function gives trouble here")
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
     def test_create_solid_tariff(
-        self, mock_get_our_credentialsrole, client, smp1_tariff, msp1, msp2, operator
+        self, client, smp1_tariff, msp_de_ice, smp1_create_response
     ):
-        mock_get_our_credentialsrole.return_value = operator
+        get_our_credentialsrole.cache_clear()
         url = reverse("solid-tariff-list")
-        response = client.post(url, smp1_tariff, format="json")
+        response = client.post(url, smp1_tariff)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert response.json() == smp1_create_response
 
     @pytest.mark.skip(reason="Cached function gives trouble here")
     @pytest.mark.django_db
@@ -48,27 +119,23 @@ class TestSolidTariffs:
         self,
         mock_get_our_credentialsrole,
         client,
+        smp1_tariff,
         solid_tariff_smp1_msp1_data,
-        solid_tariff_smp1_msp2_data,
         solid_tariff_smp1_msp1_updated_data,
         smp1_updated_tariff,
-        msp1,
-        msp2,
-        operator,
-        tariff_smp1_msp1,
-        tariff_smp1_msp2,
+        msp_de_ice,
+        tariff_smp1_msp_de_ice,
+        smp1_update_response,
     ):
-        mock_get_our_credentialsrole.return_value = operator
-        url = f"{reverse('solid-tariff-list')}{solid_tariff_smp1_msp1_data['external_id']}/{msp1.party_str()}/"
-
+        get_our_credentialsrole.cache_clear()
+        mock_get_our_credentialsrole.return_value = msp_de_ice
         SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
-        SolidTariff.objects.create(**solid_tariff_smp1_msp2_data)
 
-        response = client.put(url, smp1_updated_tariff, format="json")
+        url = reverse("solid-tariff-list")
+        response = client.put(url, smp1_updated_tariff)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]["price_per_kwh"] == smp1_updated_tariff["price_per_kwh"]
+        assert response.json() == smp1_update_response
 
     @pytest.mark.skip(reason="Cached function gives trouble here")
     @pytest.mark.django_db
@@ -78,72 +145,60 @@ class TestSolidTariffs:
         self,
         mock_get_our_credentialsrole,
         client,
+        smp1_tariff,
+        smp1_patch_tariff_payload,
+        msp_de_ice,
+        tariff_smp1_msp_de_ice,
         solid_tariff_smp1_msp1_data,
-        solid_tariff_smp1_msp2_data,
-        solid_tariff_smp1_msp1_updated_data,
-        smp1_patched_tariff,
-        msp1,
-        msp2,
-        operator,
-        tariff_smp1_msp1,
-        tariff_smp1_msp2,
+        smp1_patch_response,
     ):
-        mock_get_our_credentialsrole.return_value = operator
-        url = f"{reverse('solid-tariff-list')}{solid_tariff_smp1_msp1_data['external_id']}/{msp1.party_str()}/"
-
+        get_our_credentialsrole.cache_clear()
+        mock_get_our_credentialsrole.return_value = msp_de_ice
         SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
-        SolidTariff.objects.create(**solid_tariff_smp1_msp2_data)
 
-        response = client.patch(url, smp1_patched_tariff, format="json")
+        patch_url = f"{reverse('solid-tariff-list')}{msp_de_ice.country_code}/{msp_de_ice.party_id}/{smp1_tariff['external_id']}/"
+        response = client.patch(patch_url, smp1_patch_tariff_payload)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]["currency"] == smp1_patched_tariff["currency"]
+        assert response.json() == smp1_patch_response
 
-    @pytest.mark.skip(reason="Cached function giving trouble here")
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
-    def test_create_solid_tariff_no_ext_id(
+    def test_create_solid_tariff_with_no_msp(
         self,
-        mock_get_our_credentialsrole,
         client,
-        smp1_tariff_data_with_no_external_id,
-        msp1,
-        msp2,
+        smp1_tariff_no_msp,
+        msp_de_ice,
+        msp_de_icd,
+        operator_fi_cpo,
+        smp1_patch_response_no_msp,
     ):
-        mock_get_our_credentialsrole.return_value = msp1
+        get_our_credentialsrole.cache_clear()
         url = reverse("solid-tariff-list")
-        response = client.post(url, smp1_tariff_data_with_no_external_id, format="json")
+        response = client.post(url, smp1_tariff_no_msp)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 2
+        assert response.json() == smp1_patch_response_no_msp
 
-    @pytest.mark.skip(reason="Cached function giving trouble here")
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
-    def test_update_solid_tariff_no_ext_id(
+    def test_update_solid_tariff_no_msp(
         self,
-        mock_get_our_credentialsrole,
         client,
-        smp1_tariff_data_with_no_external_id,
-        smp1_tariff_updated_data_with_no_external_id,
-        msp1,
-        msp2,
+        smp1_tariff,
+        solid_tariff_smp1_msp1_data,
+        solid_tariff_smp1_msp1_updated_data,
+        smp1_updated_tariff_no_msp_response,
+        smp1_updated_tariff_no_msp,
+        msp_de_ice,
+        tariff_smp1,
     ):
-        mock_get_our_credentialsrole.return_value = msp1
-        url = reverse("solid-tariff-list")
-        client.post(url, smp1_tariff_data_with_no_external_id, format="json")
+        get_our_credentialsrole.cache_clear()
+        del solid_tariff_smp1_msp1_data["msp"]
+        SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
 
-        url = f"{reverse('solid-tariff-list')}/{msp1.party_str()}/"
-        response = client.put(
-            url, smp1_tariff_updated_data_with_no_external_id, format="json"
-        )
+        url = reverse("solid-tariff-list")
+        response = client.put(url, smp1_updated_tariff_no_msp)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert (
-            response.data[0]["price_per_kwh"]
-            == smp1_tariff_updated_data_with_no_external_id["price_per_kwh"]
-        )
+        assert response.json() == smp1_updated_tariff_no_msp_response

@@ -24,6 +24,7 @@ class SolidTariffViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
     GenericViewSet,
 ):
     """
@@ -39,48 +40,53 @@ class SolidTariffViewSet(
     queryset = SolidTariff.objects.filter(archived=False).order_by("external_id")
     serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
-    lookup_field = "uid"
+    lookup_field = "external_id"
 
-    def create(self, request, uid=None, country_code=None, party_id=None) -> Response:
+    def create(
+        self, request, external_id=None, country_code=None, party_id=None
+    ) -> Response:
         try:
             data = request.data
             data = data.get(
                 "data", data
             )  # Is the actual data on the top level or one level lower?
-            uid = uid or request.data.get("id")
+            external_id = external_id or request.data.get("external_id")
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+            msp = self.get_msp(request.data.get("msp"))
 
-            msps = [
-                self.get_role_or_raise(msp) for msp in set(request.data.get("msps", []))
-            ]
-
-            existing_solid_tariffs = SolidTariff.objects.filter(
-                external_id__iexact=uid, operator=our_role, archived=False, msp__in=msps
+            existing_solid_tariff = SolidTariff.objects.filter(
+                external_id__iexact=external_id,
+                operator=our_role,
+                archived=False,
+                msp=msp,
             )
-            if existing_solid_tariffs.exists():
-                msps_with_sd = existing_solid_tariffs.all()
-                raise SolidTariffAlreadyExistsError(
-                    f"SolidTariff with id: {uid}, msps: {[sd.msp.party_str() for sd in msps_with_sd]} "
-                    f"already exists. Please use PUT/PATCH methods."
+            if existing_solid_tariff.exists():
+                serializer = SolidTariffSerializer(
+                    data=data,
+                    instance=existing_solid_tariff,
+                    partial=False,
+                    context={
+                        "request": request,
+                        "party": Party(country_code, party_id),
+                    },
                 )
-
-            serializer = SolidTariffSerializer(
-                data=data,
-                context={"request": request, "party": Party(country_code, party_id)},
-            )
+            else:
+                serializer = SolidTariffSerializer(
+                    data=data,
+                    context={
+                        "request": request,
+                        "party": Party(country_code, party_id),
+                    },
+                )
             if serializer.is_valid():
-                tariffs, solid_tariffs = serializer.save(ocpi_master=our_role)
-                for tariff in tariffs:
-                    tariff.send_updates()
-                http_status = status.HTTP_200_OK if tariffs else status.HTTP_201_CREATED
+                tariff, solid_tariff = serializer.save(ocpi_master=our_role)
+                tariff.send_updates()
+                http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
                 return Response(
                     self.get_response_data(
-                        [
-                            model_to_dict(
-                                solid_tariff, exclude=["id", "operator", "archived"]
-                            )
-                            for solid_tariff in solid_tariffs
-                        ]
+                        model_to_dict(
+                            solid_tariff, exclude=["id", "operator", "archived"]
+                        )
                     ),
                     status=http_status,
                 )
@@ -91,16 +97,79 @@ class SolidTariffViewSet(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
+    def put(
+        self, request, external_id=None, partial=None, country_code=None, party_id=None
+    ) -> Response:
+        try:
+            data = request.data
+            data = data.get(
+                "data", data
+            )  # Is the actual data on the top level or one level lower?
+            external_id = external_id or request.data.get("external_id")
+            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+            msp = self.get_msp(request.data.get("msp"))
+
+            existing_solid_tariff = SolidTariff.objects.get_if_exists(
+                external_id__iexact=external_id,
+                operator=our_role,
+                archived=False,
+                msp=msp,
+            )
+
+            if not existing_solid_tariff:
+                serializer = SolidTariffSerializer(
+                    data=data,
+                    context={
+                        "request": request,
+                        "party": Party(country_code, party_id),
+                    },
+                )
+            else:
+                serializer = SolidTariffSerializer(
+                    data=data,
+                    instance=existing_solid_tariff,
+                    partial=partial,
+                    context={
+                        "request": request,
+                        "party": Party(country_code, party_id),
+                    },
+                )
+            if serializer.is_valid():
+                tariff, solid_tariff = serializer.save(ocpi_master=our_role)
+                tariff.send_updates()
+                http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
+                return Response(
+                    self.get_response_data(
+                        model_to_dict(
+                            solid_tariff, exclude=["id", "operator", "archived"]
+                        )
+                    ),
+                    status=http_status,
+                )
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError as e:
+            return Response(
+                {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def patch(self, request, external_id=None):
+        return self.put(request, external_id, partial=True)
+
     @action(
         methods=["GET", "PATCH", "PUT"],
         detail=False,
-        url_path="(?P<uid>[^/.]+)/(?P<msp_id>[^/.]+)",
+        url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<external_id>[^/.]+)",
     )
-    def by_id(self, request, uid, msp_id) -> Response:
+    def get_or_update_by_msp_id_and_external_id(
+        self, request, external_id, country_code, party_id
+    ) -> Response:
         try:
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            msp = Party.from_str(msp_id).get_role_if_exists()
-            if uid is None:
+            msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
+            if msp is None:
+                raise MspNotFoundError("MSP not found")
+            if external_id is None:
                 solid_tariff = SolidTariff.objects.get(
                     external_id__isnull=True,
                     msp_id=msp.id,
@@ -109,18 +178,16 @@ class SolidTariffViewSet(
                 )
             else:
                 solid_tariff = SolidTariff.objects.get(
-                    external_id__iexact=uid,
+                    external_id__iexact=external_id,
                     msp_id=msp.id,
                     archived=False,
                     operator=our_role,
                 )
 
-            assert request.data.get("uid") in (
-                uid,
+            assert request.data.get("external_id") in (
+                external_id,
                 None,
-            ), "Different UID in request and URL"
-
-            request.data["msps"] = [msp]
+            ), "Different external_id in request and URL"
 
             if request.method == "GET":
                 serializer = SolidTariffSerializer(
@@ -133,20 +200,20 @@ class SolidTariffViewSet(
                 solid_tariff,
                 data=request.data,
                 partial=partial,
-                context={"request": request, "uid": uid, "msp": msp},
+                context={"request": request},
             )
             if serializer.is_valid():
                 tariff, solid_tariff = serializer.save(ocpi_master=our_role)
                 serializer = SolidTariffSerializer(
-                    SolidTariff.objects.get(external_id=uid, archived=False, msp=msp)
+                    SolidTariff.objects.get(
+                        external_id=external_id, archived=False, msp=msp
+                    )
                 )
                 return Response(
                     self.get_response_data(
-                        [
-                            model_to_dict(
-                                solid_tariff, exclude=["id", "operator", "archived"]
-                            )
-                        ]
+                        model_to_dict(
+                            solid_tariff, exclude=["id", "operator", "archived"]
+                        )
                     ),
                     status=status.HTTP_200_OK,
                 )
@@ -156,8 +223,8 @@ class SolidTariffViewSet(
         except (
             IntegrityError,
             AssertionError,
-            # Tariff.DoesNotExist,
-            # SolidTariff.DoesNotExist,
+            Tariff.DoesNotExist,
+            SolidTariff.DoesNotExist,
             PriceNotFoundError,
         ) as e:
             return Response(
@@ -167,10 +234,12 @@ class SolidTariffViewSet(
     @action(
         methods=["GET", "PATCH", "PUT"],
         detail=False,
-        url_path="(?P<msp_id>[^/.]+)",
+        url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)",
     )
-    def by_msp_id(self, request, msp_id):
-        return self.by_id(request, None, msp_id)
+    def get_or_update_by_msp_id(self, request, country_code, party_id):
+        return self.get_or_update_by_msp_id_and_external_id(
+            request, None, country_code, party_id
+        )
 
     @staticmethod
     def get_object(uid=None) -> Tariff:
@@ -178,18 +247,17 @@ class SolidTariffViewSet(
         if uid:
             return get_object_or_404(Tariff, uid=uid)
 
-    def get_response_data(self, data_list: list):
-        for data in data_list:
-            msp = data["msp"]
-            data["msp"] = CredentialsRole.objects.get(id=msp).party_str()
+    def get_response_data(self, data: dict):
+        msp = data["msp"]
+        if not msp:
+            del data["msp"]
+            return data
+        data["msp"] = CredentialsRole.objects.get(id=msp).party_str()
+        return data
 
-            external_id = data["external_id"]
-            del data["external_id"]
-            data["id"] = external_id
-
-        return data_list
-
-    def get_role_or_raise(cls, msp):
+    def get_msp(cls, msp) -> CredentialsRole | None:
+        if not msp:
+            return
         party = Party.from_str(msp)
         role = party.get_role_if_exists()
         if not role:

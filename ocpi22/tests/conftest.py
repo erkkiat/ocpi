@@ -1,33 +1,50 @@
 import pytest
-
+from rest_framework.test import APIClient
 from ocpi22.tests.factories import CredentialsRoleFactory
 
 
 @pytest.fixture
-def msp1():
+def client():
+    return APIClient()
+
+
+@pytest.fixture
+def msp_de_ice():
     return CredentialsRoleFactory(country_code="DE", party_id="ICE")
 
 
 @pytest.fixture
-def msp2():
+def msp_de_icd():
     return CredentialsRoleFactory(country_code="DE", party_id="ICD")
 
 
 @pytest.fixture
-def operator():
+def operator_fi_cpo():
     return CredentialsRoleFactory(country_code="FI", party_id="CPO")
 
 
 @pytest.fixture
 def smp1_tariff():
     return {
-        "id": "SMP1",
+        "external_id": "SMP1",
         "currency": "EUR",
         "price_per_kwh": 0.690,
         "price_per_min": 0.42,
         "price_flat": 0.56,
         "vat_percentage": 20.0,
-        "msps": ["DE*ICE", "DE*ICD"],
+        "msp": "DE*ICE",
+    }
+
+
+@pytest.fixture
+def smp1_tariff_no_msp():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0.690,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "vat_percentage": 20.0,
     }
 
 
@@ -39,7 +56,7 @@ def smp1_tariff_data_with_no_external_id():
         "price_per_min": 0.42,
         "price_flat": 0.56,
         "vat_percentage": 20.0,
-        "msps": ["DE*ICE", "DE*ICD"],
+        "msp": "DE*ICE",
     }
 
 
@@ -51,32 +68,44 @@ def smp1_tariff_updated_data_with_no_external_id():
         "price_per_min": 0.42,
         "price_flat": 0.56,
         "vat_percentage": 20.0,
-        "msps": ["DE*ICE", "DE*ICD"],
+        "msp": "DE*ICE",
     }
 
 
 @pytest.fixture
 def smp1_updated_tariff():
     return {
-        "id": "SMP1",
+        "external_id": "SMP1",
         "currency": "EUR",
         "price_per_kwh": 0.703,
         "price_per_min": 0.42,
         "price_flat": 0.56,
         "vat_percentage": 20.0,
-        "msps": ["DE*ICE"],
+        "msp": "DE*ICE",
     }
 
 
 @pytest.fixture
-def smp1_patched_tariff():
+def smp1_updated_tariff_no_msp():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": "0.703",
+        "price_per_min": "0.42",
+        "price_flat": "0.56",
+        "vat_percentage": "20.0",
+    }
+
+
+@pytest.fixture
+def smp1_patch_tariff_payload():
     return {
         "currency": "USD",
     }
 
 
 @pytest.fixture
-def solid_tariff_smp1_msp1_updated_data(operator, msp1):
+def solid_tariff_smp1_msp1_updated_data(operator_fi_cpo, msp_de_ice):
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -84,14 +113,14 @@ def solid_tariff_smp1_msp1_updated_data(operator, msp1):
         "price_per_min": 0.42,
         "price_flat": 0.56,
         "vat_percentage": 20.0,
-        "msp": msp1,
-        "operator": operator,
+        "msp": msp_de_ice,
+        "operator": operator_fi_cpo,
         "archived": False,
     }
 
 
 @pytest.fixture
-def solid_tariff_smp1_msp1_data(operator, msp1):
+def solid_tariff_smp1_msp1_data(operator_fi_cpo, msp_de_ice):
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -99,14 +128,14 @@ def solid_tariff_smp1_msp1_data(operator, msp1):
         "price_per_min": 0.42,
         "price_flat": 0.56,
         "vat_percentage": 20.0,
-        "msp": msp1,
-        "operator": operator,
+        "msp": msp_de_ice,
+        "operator": operator_fi_cpo,
         "archived": False,
     }
 
 
 @pytest.fixture
-def solid_tariff_smp1_msp2_data(operator, msp2):
+def solid_tariff_smp1_msp2_data(operator_fi_cpo, msp_de_icd):
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -114,7 +143,7 @@ def solid_tariff_smp1_msp2_data(operator, msp2):
         "price_per_min": 0.42,
         "price_flat": 0.56,
         "vat_percentage": 20.0,
-        "msp": msp2,
-        "operator": operator,
+        "msp": msp_de_icd,
+        "operator": operator_fi_cpo,
         "archived": False,
     }

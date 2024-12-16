@@ -9,7 +9,7 @@ import ocpi22.logging as logging
 from json import JSONDecodeError
 from pprint import pprint
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from rest_framework import status
 
 from ocpi22.ocpi.auth import OCPIPermission, check_auth_token
@@ -19,8 +19,6 @@ from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
 
 # For profiling
-import cProfile
-from django.utils.deprecation import MiddlewareMixin
 
 
 class OCPIHubMiddleware:
@@ -145,22 +143,6 @@ class ErrorLoggingMiddleware:
             raise
 
 
-class ProfilerMiddleware(MiddlewareMixin):
-    def process_request(self, request):
-        setattr(self, "pr", cProfile.Profile())
-        self.pr.enable()
-
-    def process_response(self, request, response):
-        self.pr.disable()
-        self.pr.dump_stats("profile_output.prof")
-        # s = io.StringIO()
-        # sortby = pstats.SortKey.CUMULATIVE
-        # ps = pstats.Stats(self.pr, stream=s).sort_stats(sortby)
-        # ps.print_stats()
-        # print(s.getvalue())
-        return response
-
-
 class EnabledUntilMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -174,4 +156,19 @@ class EnabledUntilMiddleware:
             )
             return render(request, "expired.html", {"expires_on": settings.EXPIRES_ON})
         response = self.get_response(request)
+        return response
+
+
+class OCPI221HeadersMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response: HttpResponse = self.get_response(request)
+
+        response.headers["X-Request-ID"] = request.headers.get("X-Request-ID", "")
+        response.headers["X-Correlation-ID"] = request.headers.get(
+            "X-Correlation-ID", ""
+        )
+
         return response

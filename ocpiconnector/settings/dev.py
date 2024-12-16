@@ -1,12 +1,16 @@
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
+from urllib.parse import urlparse
 
 ENV = os.getenv("ENV", "development").lower()
 
 DEBUG = os.getenv("DEBUG", True)
 ALLOWED_HOSTS.extend(["*"])  # noqa
-MQTT_BROKER = "localhost"
-MQTT_PORT = 1883
+MQTT_BROKER = os.getenv("MQTT_BROKER", "emqx")
+MQTT_PORT = os.getenv("MQTT_PORT", 1883)
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
+MQTT_SSL_VERIFY = os.getenv("MQTT_SSL_VERIFY", False)
 
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 
@@ -44,3 +48,20 @@ DEV_LOGGING = {
 }
 
 LOGGING = DEV_LOGGING
+#  Refactor this
+url = urlparse(DATABASE_URL)  # noqa
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql"
+        if url.scheme == "postgres"
+        else "django.db.backends.mysql",
+        "NAME": url.path[1:],  # Remove the leading '/'
+        "USER": url.username,
+        "PASSWORD": url.password,
+        "HOST": url.hostname,
+        "PORT": url.port,
+    }
+}
+
+DATABASES.update({"gdpr_log": DATABASES.get("default")})
