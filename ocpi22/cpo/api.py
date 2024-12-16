@@ -1379,7 +1379,7 @@ class ChargePointOperatorAPIView(routers.APIRootView):
             ),
             location_management=dict(
                 locations=request.build_absolute_uri(reverse("quick-location-list")),
-                tariffs=request.build_absolute_uri(reverse("quick-tariff-list")),
+                tariffs=request.build_absolute_uri(reverse("solid-tariff-list")),
             ),
             charging_session=dict(
                 authorize=request.build_absolute_uri(reverse("chargepoint-authorize")),

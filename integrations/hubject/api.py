@@ -3,7 +3,7 @@ from ninja import NinjaAPI
 
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
-from ocpiconnector.exceptions import TariffNotFoundError
+from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party
 
 api = NinjaAPI()
@@ -23,7 +23,7 @@ def update_oicp_evses_by_operator(request):
                 "message": f"No EvseDataRecords found for operator {str(party)}",
             }
 
-    except TariffNotFoundError:
+    except ConnectorTariffNotFoundError:
         return {
             "success": False,
             "message": "No tariff were found for one or more of the evses.",

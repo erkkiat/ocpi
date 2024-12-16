@@ -5,6 +5,7 @@ from typing import Optional
 
 import pytz
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import QuerySet
 from django.db.models.signals import pre_save, post_save, pre_delete
@@ -18,6 +19,7 @@ from ocpi22 import choices, logging
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, DYNAMIC_PRICE_SOURCE_CHOICES
 from ocpi22.credentials.util import find_endpoints_by_roles
 import ocpi22.tasks as tasks
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.util import (
     ModelUtilMixin,
     format_currency,
@@ -491,3 +493,54 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
                 credentials_id=credentials.id,
                 title="Tariff",
             )
+
+
+class SolidTariff(models.Model):
+    objects = PartnerManager()
+
+    external_id = models.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
+    )
+    currency = models.CharField(
+        max_length=3,
+        choices=CURRENCY_CHOICES,
+        verbose_name=_("Currency"),
+        default="EUR",
+    )
+    price_per_kwh = models.DecimalField(
+        max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    price_per_min = models.DecimalField(
+        max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    price_flat = models.DecimalField(
+        max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    parking_price_per_min = models.DecimalField(
+        max_digits=8, decimal_places=4, blank=True, null=True
+    )
+    parking_grace_period = models.IntegerField(
+        blank=True, null=True, validators=[MinValueValidator(0)]
+    )
+    vat_percentage = models.FloatField(blank=True, null=True)
+    msp = models.ForeignKey(
+        CredentialsRole,
+        on_delete=models.CASCADE,
+        related_name="msp_credentialsroles",
+        verbose_name=_("MSP details"),
+        null=True,
+        blank=True,
+    )
+    operator = models.ForeignKey(
+        CredentialsRole,
+        on_delete=models.CASCADE,
+        related_name="operator_credentialsroles",
+        verbose_name=_("CPO details"),
+    )
+
+    archived = models.BooleanField(default=False, verbose_name=_("Archived"))
+
+    last_updated_at = models.DateTimeField(
+        auto_now=True, verbose_name=_("Last_updated_at")
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created_at"))

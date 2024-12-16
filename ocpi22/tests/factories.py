@@ -1,5 +1,6 @@
 import random
 import time
+from zoneinfo import ZoneInfo
 
 import factory
 import pytz
@@ -30,7 +31,7 @@ from integrations.hubject.schemas import (
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import CredentialsRole, Credentials
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.tariff import Tariff
+from ocpi22.models.tariff import Tariff, SolidTariff
 
 
 class BusinessDetailsFactory(factory.django.DjangoModelFactory):
@@ -62,8 +63,8 @@ class CredentialsRoleFactory(factory.django.DjangoModelFactory):
 
     role = "CPO"
     business_details = factory.SubFactory(BusinessDetailsFactory)
-    country_code = "AW"
-    party_id = "ABC"
+    country_code = "FI"
+    party_id = "CPO"
     credentials = factory.SubFactory(CredentialsFactory)
 
 
@@ -288,3 +289,21 @@ class ERoamingPushEvseDataFactory(factory.Factory):
     OperatorEvseData = factory.SubFactory(
         "ocpi22.tests.factories.OperatorEvseDataFactory"
     )
+
+
+class SolidTariffFactory(factory.Factory):
+    class Meta:
+        model = SolidTariff
+
+    external_id = f"SD{int(time.time())}"
+    currency = "EUR"
+    price_per_kwh = 0.2
+    price_per_min = 0.3
+    price_flat = 0.3
+    vat_percentage = 0.2
+    archived = False
+    msp = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
+    operator = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
+
+    last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
