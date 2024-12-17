@@ -528,10 +528,9 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
-NINJA_EXTRA = NINJA_EXTRA = {
+NINJA_EXTRA = {
     "THROTTLE_RATES": {
-        "health_check": "60/minute",  # 5 requests per minute
-        "default": "60/minute",  # Default rate for all other endpoints
+        "health_check": "60/minute",
     },
-    "NUM_PROXIES": 1,  # Use this if the app is behind proxies or load balancers
+    "NUM_PROXIES": 1,
 }
