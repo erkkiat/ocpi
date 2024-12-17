@@ -8,7 +8,6 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
-from health_check import health_check_api
 from hub.admin_sites import hub_admin_site
 from hub.urls import urlpatterns as hub_urls
 
@@ -139,7 +138,6 @@ urlpatterns = [
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
     # path("__debug__/", include("debug_toolbar.urls")),
     path("api/hubject/2.3/", hubject_api.urls),
-    path("/health-check", health_check_api.urls),
 ]
 
 if settings.SERVE_STATIC_FILES or settings.DEBUG:
