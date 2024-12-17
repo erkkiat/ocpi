@@ -131,7 +131,7 @@ class TestSolidTariffs:
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
-    def test_get_solid_tariff(
+    def test_get_solid_tariff_success(
         self,
         mock_get_our_credentialsrole,
         client,
@@ -238,3 +238,21 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_updated_tariff_no_msp_response
+
+    @pytest.mark.parametrize(
+        "sd_type,expected_price",
+        [("ENERGY", 0.23), ("TIME", 0.34), ("PARKING_TIME", 0.45), ("FLAT", 0.56)],
+    )
+    def test_get_type(self, sd_type, expected_price):
+        sd = SolidTariff(
+            external_id="SMP1",
+            currency="EUR",
+            price_per_kwh=0.23,
+            price_per_min=0.34,
+            price_flat=0.56,
+            parking_price_per_min=0.45,
+            parking_grace_period=0.23,
+            vat_percentage=20,
+        )
+
+        assert sd.get_type(sd_type) == expected_price
