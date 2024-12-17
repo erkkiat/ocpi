@@ -1,10 +1,14 @@
+import os
+
 from ninja import NinjaAPI
 from ninja.security import HttpBasicAuth
 
 
 class BasicAuth(HttpBasicAuth):
     def authenticate(self, request, username, password):
-        if username == "admin" and password == "secret":
+        set_user = os.getenv("HEALTH-CHECK-USER")
+        set_password = os.getenv("HEALTH-CHECK-PASSWORD")
+        if username == set_user and password == set_password:
             return username
 
 
