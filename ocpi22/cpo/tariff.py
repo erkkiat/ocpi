@@ -63,7 +63,7 @@ class SolidTariffViewSet(
             if existing_solid_tariff.exists():
                 serializer = SolidTariffSerializer(
                     data=data,
-                    instance=existing_solid_tariff,
+                    instance=existing_solid_tariff.first(),
                     partial=False,
                     context={
                         "request": request,
@@ -127,7 +127,7 @@ class SolidTariffViewSet(
             else:
                 serializer = SolidTariffSerializer(
                     data=data,
-                    instance=existing_solid_tariff,
+                    instance=existing_solid_tariff.first(),
                     partial=partial,
                     context={
                         "request": request,

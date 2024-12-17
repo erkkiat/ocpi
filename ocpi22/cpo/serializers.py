@@ -33,7 +33,6 @@ from ocpi22.util import (
     fill_out_location_address,
     get_currency_choices,
 )
-from ocpiconnector.exceptions import PriceNotFoundError
 
 from ocpiconnector.party import Party
 
@@ -595,7 +594,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         required=True,
     )
-    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES)
+    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES, required=False)
     price_per_kwh = PriceKwhSerializer(
         source="*",
         max_digits=8,
@@ -742,8 +741,6 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     update_price_components(price, tariff_type)
                 elif self.partial:
                     continue
-                else:
-                    raise PriceNotFoundError(f"Price {tariff_type} not found")
 
             if not self.partial:
                 te.price_components.update(vat=vat)
