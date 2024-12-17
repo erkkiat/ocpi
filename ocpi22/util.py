@@ -192,6 +192,10 @@ CURRENCY_CHOICES = (
 )
 
 
+def get_currency_choices() -> dict:
+    return dict(CURRENCY_CHOICES)
+
+
 def apply_min_and_max(value: Any, minimum: Any, maximum: Any) -> Any:
     """
     >>> apply_min_and_max(10, 3, 9)

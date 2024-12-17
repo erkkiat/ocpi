@@ -30,7 +30,7 @@ from rest_framework.test import APIRequestFactory
 from ocpi22.cpo import test_data
 from ocpi22.cpo.api import LocationQuickViewSet
 from ocpi22.cpo.serializers import LocationQuickSerializer
-from ocpi22.cpo.tariff import TariffQuickViewSet
+from ocpi22.cpo.tariff import SolidTariffViewSet
 from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 
@@ -259,11 +259,11 @@ class TestQuickLocations(TestCase):
                 data = case["data"]
                 if case.get("method") == "PATCH":
                     response = send_patch(
-                        data, reverse("quick-tariff-list"), TariffQuickViewSet
+                        data, reverse("solid-tariff-list"), SolidTariffViewSet
                     )
                 else:
                     response = put(
-                        data, reverse("quick-tariff-list"), TariffQuickViewSet
+                        data, reverse("solid-tariff-list"), SolidTariffViewSet
                     )
                 self.assertEqual(
                     response.status_code,
@@ -278,7 +278,7 @@ class TestQuickLocations(TestCase):
                 )
 
         # The below needs some work
-        # response = get(reverse('quick-tariff-list'), TariffQuickViewSet)
+        # response = get(reverse('solid-tariff-list'), TariffQuickViewSet)
 
 
 class TestChargingPeriods(TestCase):

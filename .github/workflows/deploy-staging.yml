@@ -102,6 +102,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Check Docker Version
+        run: docker --version
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -129,7 +132,7 @@ jobs:
               full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
               echo "Building multi-architecture image for $service with tag: $IMAGE_TAG"
-              docker buildx build --platform linux/amd64,linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
+              docker buildx build --platform linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
 
               echo "Pushed multi-architecture image for $service to ECR: $full_image_url_with_tag"
           done

@@ -2,6 +2,8 @@ import doctest
 from datetime import datetime, timezone
 
 import pytest
+import pytz
+import time_machine
 from django.core.exceptions import ValidationError
 
 from integrations.hubject.schemas import (
@@ -22,12 +24,134 @@ from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
+from ocpi22.tests.factories import LocationFactory, EvseFactory
 
 
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite("integrations.solid_to_hubject_converter"))
     tests.addTests(doctest.DocTestSuite("integrations.hubject_to_ocpi_converter"))
     return tests
+
+
+@pytest.fixture
+@time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
+def helsinki2_evse(helsinki_connector):
+    helsinki_evse = EvseFactory(
+        status="RESERVED",
+        last_updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        created=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        capabilities=["RFID_READER", "RESERVABLE"],
+    )
+    helsinki_evse.connectors.set([helsinki_connector])
+    return helsinki_evse
+
+
+@pytest.fixture
+def helsinki2_location(
+    helsinki_ocpi_master,
+    helsinki_operator_details,
+    helsinki_sub_operator_details,
+    helsinki_owner_details,
+    helsinki2_evse,
+):
+    helsinki_location = LocationFactory(
+        publish=True,
+        name="Helsinki Supercharger",
+        address="Mannerheimintie 1",
+        city="Helsinki",
+        postal_code="00100",
+        state="Uusimaa",
+        country="FIN",
+        parking_type="ON_STREET",
+        latitude=60.1695,
+        longitude=24.9354,
+        time_zone="Europe/Helsinki",
+        ocpi_master=helsinki_ocpi_master,
+        operator=helsinki_operator_details,
+        suboperator=helsinki_sub_operator_details,
+        owner=helsinki_owner_details,
+        charging_when_closed=True,
+    )
+
+    helsinki_location.evses.add(helsinki2_evse)
+    return helsinki_location
+
+
+@pytest.fixture
+@time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
+def berlin_evse2_data(berlin_connector):
+    berlin_evse_data = EvseFactory(
+        uid="berlinevseuid",
+        evse_id="FI*ABC*1234*C0*CT",
+        status="",
+        last_updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        created=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        capabilities=None,
+    )
+    berlin_evse_data.connectors.set([berlin_connector])
+    return berlin_evse_data
+
+
+@pytest.fixture
+def berlin2_location(berlin_ocpi_master, berlin_evse2_data):
+    berlin_location = LocationFactory(
+        name="Berlin Location",
+        address="Ansgarstr. 4",
+        city="Wallenhorst",
+        postal_code="",
+        state="",
+        country="DEU",
+        latitude=0,
+        longitude=0,
+        time_zone="Europe/Berlin",
+        ocpi_master=berlin_ocpi_master,
+        operator=None,
+        suboperator=None,
+        owner=None,
+        charging_when_closed=True,
+    )
+    berlin_location.evses.set([berlin_evse2_data])
+    return berlin_location
+
+
+@pytest.fixture
+def emsdetten2_location(emsdetten_ocpi_master, emsdetten2_evse):
+    emsdetten_location = LocationFactory(
+        name="Emsdetten Location",
+        address="Südring 25",
+        city="Emsdetten",
+        postal_code="38170",
+        state="",
+        country="DEU",
+        latitude=9.360922,
+        longitude=47.662249,
+        time_zone="Europe/Berlin",
+        ocpi_master=emsdetten_ocpi_master,
+        operator=None,
+        suboperator=None,
+        owner=None,
+        charging_when_closed=True,
+    )
+    emsdetten_location.evses.set([emsdetten2_evse])
+    return emsdetten_location
+
+
+@pytest.fixture
+@time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
+def emsdetten2_evse(emsdetten_connector):
+    emsdetten_evse = EvseFactory(
+        uid="Eemsdettenevseuid",
+        evse_id="DE*CPO*1234*C2*CT",
+        status="",
+        last_updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        created=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        capabilities=None,
+    )
+    emsdetten_evse.connectors.set([emsdetten_connector])
+    return emsdetten_evse
 
 
 class TestMappings:
@@ -99,32 +223,32 @@ class TestMappings:
         )
 
     @pytest.mark.django_db
-    def test_map_location_to_eroaming_push_evse_data(self, helsinki_location):
-        evse_id = helsinki_location.evses.first().evse_id
+    def test_map_location_to_eroaming_push_evse_data(self, helsinki2_location):
+        evse_id = helsinki2_location.evses.first().evse_id
         expected_data = self.expected_helsinki_eroaming_push_evse_data(evse_id)
 
         helsinki_hubject_evse_data = ERoamingPushEvseData(
             ActionType=ActionType.insert,
             OperatorEvseData=self._ocpi_2_oicp_converter.convert_to_operator_evse_data(
-                helsinki_location
+                helsinki2_location
             ),
         )
-        assert helsinki_location.evses.count() == 1
+        assert helsinki2_location.evses.count() == 1
         assert (
             helsinki_hubject_evse_data.model_dump() == expected_data
         ), "The mapped OCPI Location data does not match the expected OICP data."
 
     @pytest.mark.django_db
-    def test_convert_to_eroaming_with_only_required_data(self, berlin_location):
-        evse_id = berlin_location.evses.first().evse_id
+    def test_convert_to_eroaming_with_only_required_data(self, berlin2_location):
+        evse_id = berlin2_location.evses.first().evse_id
         berlin_hubject_evse_data = ERoamingPushEvseData(
             ActionType=ActionType.insert,
             OperatorEvseData=TestMappings._ocpi_2_oicp_converter.convert_to_operator_evse_data(
-                berlin_location
+                berlin2_location
             ),
         )
 
-        assert berlin_location.evses.count() == 1
+        assert berlin2_location.evses.count() == 1
         assert (
             berlin_hubject_evse_data.model_dump()
             == self.expected_berlin_eroaming_push_evse_data(evse_id)
@@ -235,7 +359,7 @@ class TestMappings:
                         "ValueAddedServices": [ValueAddedService.Reservation],
                         "deltaType": None,
                         "lastUpdate": datetime(
-                            2024, 9, 22, 17, 32, 8, 599540, tzinfo=timezone.utc
+                            2024, 9, 22, 12, 30, 30, 0, tzinfo=timezone.utc
                         ),
                     }
                 ],
@@ -321,7 +445,7 @@ class TestMappings:
                         "ValueAddedServices": [ValueAddedService.None_],
                         "deltaType": None,
                         "lastUpdate": datetime(
-                            2024, 9, 22, 17, 32, 8, 599540, tzinfo=timezone.utc
+                            2024, 9, 22, 12, 30, 30, 0, tzinfo=timezone.utc
                         ),
                     }
                 ],

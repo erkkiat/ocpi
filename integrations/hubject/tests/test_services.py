@@ -2,7 +2,9 @@ from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
 import pytest
+import pytz
 import responses
+import time_machine
 from django.conf import settings
 from pydantic_core import PydanticSerializationError
 from requests import HTTPError
@@ -30,7 +32,129 @@ from integrations.hubject.schemas import (
     DynamicInfoAvailable,
 )
 from integrations.hubject.services import HubjectService
+from ocpi22.tests.factories import EvseFactory, LocationFactory
 from ocpiconnector.party import Party
+
+
+@pytest.fixture
+@time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
+def helsinki2_evse(helsinki_connector):
+    helsinki_evse = EvseFactory(
+        status="RESERVED",
+        last_updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        created=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        capabilities=["RFID_READER", "RESERVABLE"],
+    )
+    helsinki_evse.connectors.set([helsinki_connector])
+    return helsinki_evse
+
+
+@pytest.fixture
+def helsinki2_location(
+    helsinki_ocpi_master,
+    helsinki_operator_details,
+    helsinki_sub_operator_details,
+    helsinki_owner_details,
+    helsinki2_evse,
+):
+    helsinki_location = LocationFactory(
+        publish=True,
+        name="Helsinki Supercharger",
+        address="Mannerheimintie 1",
+        city="Helsinki",
+        postal_code="00100",
+        state="Uusimaa",
+        country="FIN",
+        parking_type="ON_STREET",
+        latitude=60.1695,
+        longitude=24.9354,
+        time_zone="Europe/Helsinki",
+        ocpi_master=helsinki_ocpi_master,
+        operator=helsinki_operator_details,
+        suboperator=helsinki_sub_operator_details,
+        owner=helsinki_owner_details,
+        charging_when_closed=True,
+    )
+
+    helsinki_location.evses.add(helsinki2_evse)
+    return helsinki_location
+
+
+@pytest.fixture
+@time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
+def berlin_evse2_data(berlin_connector):
+    berlin_evse_data = EvseFactory(
+        uid="berlinevseuid",
+        evse_id="FI*ABC*1234*C0*CT",
+        status="",
+        last_updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        created=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        capabilities=None,
+    )
+    berlin_evse_data.connectors.set([berlin_connector])
+    return berlin_evse_data
+
+
+@pytest.fixture
+def berlin2_location(berlin_ocpi_master, berlin_evse2_data):
+    berlin_location = LocationFactory(
+        name="Berlin Location",
+        address="Ansgarstr. 4",
+        city="Wallenhorst",
+        postal_code="",
+        state="",
+        country="DEU",
+        latitude=0,
+        longitude=0,
+        time_zone="Europe/Berlin",
+        ocpi_master=berlin_ocpi_master,
+        operator=None,
+        suboperator=None,
+        owner=None,
+        charging_when_closed=True,
+    )
+    berlin_location.evses.set([berlin_evse2_data])
+    return berlin_location
+
+
+@pytest.fixture
+def emsdetten2_location(emsdetten_ocpi_master, emsdetten2_evse):
+    emsdetten_location = LocationFactory(
+        name="Emsdetten Location",
+        address="Südring 25",
+        city="Emsdetten",
+        postal_code="38170",
+        state="",
+        country="DEU",
+        latitude=9.360922,
+        longitude=47.662249,
+        time_zone="Europe/Berlin",
+        ocpi_master=emsdetten_ocpi_master,
+        operator=None,
+        suboperator=None,
+        owner=None,
+        charging_when_closed=True,
+    )
+    emsdetten_location.evses.set([emsdetten2_evse])
+    return emsdetten_location
+
+
+@pytest.fixture
+@time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
+def emsdetten2_evse(emsdetten_connector):
+    emsdetten_evse = EvseFactory(
+        uid="Eemsdettenevseuid",
+        evse_id="DE*CPO*1234*C2*CT",
+        status="",
+        last_updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        updated=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        created=pytz.utc.localize(datetime(2024, 9, 22, 12, 30, 30, 0)),
+        capabilities=None,
+    )
+    emsdetten_evse.connectors.set([emsdetten_connector])
+    return emsdetten_evse
 
 
 class TestHubjectService:
@@ -41,24 +165,24 @@ class TestHubjectService:
     def test_get_operator_evse_dict(
         self,
         mock_locations,
-        berlin_location,
-        emsdetten_location,
+        berlin2_location,
+        emsdetten2_location,
         berlin_op_evse_data,
         emsdetten_op_evse_data,
         berlin_connector,
         emsdetten_connector,
         berlin_tariff,
         emsdetten_tariff,
-        berlin_evse_data,
-        emsdetten_evse,
+        berlin_evse2_data,
+        emsdetten2_evse,
     ):
-        berlin_location.evses_with_connectors = [berlin_evse_data]
-        emsdetten_location.evses_with_connectors = [emsdetten_evse]
+        berlin2_location.evses_with_connectors = [berlin_evse2_data]
+        emsdetten2_location.evses_with_connectors = [emsdetten2_evse]
 
-        berlin_evse_data.connectors_with_tariffs = [berlin_connector]
-        emsdetten_evse.connectors_with_tariffs = [emsdetten_connector]
+        berlin_evse2_data.connectors_with_tariffs = [berlin_connector]
+        emsdetten2_evse.connectors_with_tariffs = [emsdetten_connector]
 
-        mock_locations.return_value = [berlin_location, emsdetten_location]
+        mock_locations.return_value = [berlin2_location, emsdetten2_location]
 
         party = Party(country_code="DE", party_id="SMP")
         result = self.__hubject_service.get_operator_evse_data(party)
@@ -179,9 +303,9 @@ class TestHubjectService:
                 EvseDataRecord(
                     deltaType=None,
                     lastUpdate=datetime(
-                        2024, 9, 22, 17, 32, 8, 599540, tzinfo=timezone.utc
+                        2024, 9, 22, 12, 30, 30, 0, tzinfo=timezone.utc
                     ),
-                    EvseID=EvseID(root="AW*ABC*Eberlinevseuid"),
+                    EvseID=EvseID(root="FI*CPO*Eberlinevseuid"),
                     ChargingPoolID=None,
                     ChargingStationId=None,
                     ChargingStationNames=[
@@ -258,9 +382,9 @@ class TestHubjectService:
                 EvseDataRecord(
                     deltaType=None,
                     lastUpdate=datetime(
-                        2024, 9, 22, 17, 32, 8, 599540, tzinfo=timezone.utc
+                        2024, 9, 22, 12, 30, 30, 0, tzinfo=timezone.utc
                     ),
-                    EvseID=EvseID(root="AW*ABC*EEemsdettenevseuid"),
+                    EvseID=EvseID(root="FI*CPO*EEemsdettenevseuid"),
                     ChargingPoolID=None,
                     ChargingStationId=None,
                     ChargingStationNames=[

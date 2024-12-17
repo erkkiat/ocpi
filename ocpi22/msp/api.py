@@ -32,7 +32,7 @@ from ocpi22.commands.commands import (
     send_reserve_command,
 )
 from ocpi22.commands.serializers import CommandResultSerializer
-from ocpi22.cpo.serializers import TariffQuickSerializer
+from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.ocpi.serializers import InvoicingCallbackSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
@@ -860,7 +860,7 @@ class MspTariffQuickViewSet(
     """
 
     queryset = Tariff.objects.all().filter(archived=False).order_by("uid")
-    serializer_class = TariffQuickSerializer
+    serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = "uid"
 

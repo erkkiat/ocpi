@@ -1,7 +1,6 @@
 # Django settings for ocpiconnector project.
 import os
 from datetime import datetime, timedelta
-from urllib.parse import urlparse
 
 from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
@@ -145,37 +144,9 @@ DATABASE_URL = os.environ.get("DATABASE_URL", os.environ.get("JAWSDB_URL", ""))
 
 assert DATABASE_URL, "Please provide either a mysql or a postgres database URL"
 
-if "postgres" in DATABASE_URL:
-    url = urlparse(DATABASE_URL)
-
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql"
-            if url.scheme == "postgres"
-            else "django.db.backends.mysql",
-            "NAME": url.path[1:],  # Remove the leading '/'
-            "USER": url.username,
-            "PASSWORD": url.password,
-            "HOST": url.hostname,
-            "PORT": url.port,
-        }
-    }
-
-DATABASES.update({"gdpr_log": DATABASES.get("default")})
-
 # GDPR_LOG_DATABASE_NAME = 'default'
 # DATABASE_ROUTERS = ['gdpr_assist.routers.EventLogRouter']
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-
-# if os.environ.get('_system_arch') == 'arm64':  # This is an M1 or M2 chip, need to hack mysql to work
-#     print("*** Looks like this is an Apple M1/M2, let's hack the MySQL connection to work")
-#     import pymysql
-#
-#     # Fake PyMySQL's version and install as MySQLdb
-#     # https://adamj.eu/tech/2020/02/04/how-to-use-pymysql-with-django/
-#     pymysql.version_info = (2, 2, 0, "final", 0)
-#     pymysql.install_as_MySQLdb()
 
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
@@ -319,6 +290,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
+    "ocpi22.middleware.OCPI221HeadersMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
