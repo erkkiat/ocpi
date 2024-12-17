@@ -41,6 +41,23 @@ def smp1_create_response():
 
 
 @pytest.fixture
+def smp1_get_response():
+    return [
+        {
+            "external_id": "SMP1",
+            "currency": "EUR",
+            "price_per_kwh": 0.69,
+            "price_per_min": 0.42,
+            "price_flat": 0.56,
+            "parking_price_per_min": 0.54,
+            "parking_grace_period": 100,
+            "vat_percentage": 20.0,
+            "msp": "DE*ICE",
+        }
+    ]
+
+
+@pytest.fixture
 def smp1_updated_tariff_no_msp_response():
     return {
         "external_id": "SMP1",
@@ -110,6 +127,27 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_create_response
+
+    @pytest.mark.django_db
+    @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
+    @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
+    def test_get_solid_tariff_success(
+        self,
+        mock_get_our_credentialsrole,
+        client,
+        smp1_tariff,
+        msp_de_ice,
+        smp1_get_response,
+        solid_tariff_smp1_msp1_data,
+    ):
+        get_our_credentialsrole.cache_clear()
+        mock_get_our_credentialsrole.return_value = msp_de_ice
+        SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
+        url = reverse("solid-tariff-list")
+        response = client.get(url, smp1_tariff)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == smp1_get_response
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
@@ -200,3 +238,21 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_updated_tariff_no_msp_response
+
+    @pytest.mark.parametrize(
+        "sd_type,expected_price",
+        [("ENERGY", 0.23), ("TIME", 0.34), ("PARKING_TIME", 0.45), ("FLAT", 0.56)],
+    )
+    def test_get_type(self, sd_type, expected_price):
+        sd = SolidTariff(
+            external_id="SMP1",
+            currency="EUR",
+            price_per_kwh=0.23,
+            price_per_min=0.34,
+            price_flat=0.56,
+            parking_price_per_min=0.45,
+            parking_grace_period=0.23,
+            vat_percentage=20,
+        )
+
+        assert sd.get_type(sd_type) == expected_price
