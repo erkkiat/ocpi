@@ -1,5 +1,4 @@
 from decimal import Decimal
-from typing import Union
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -524,13 +523,8 @@ class CPOReserveNowWebhookSerializer(CallbacksSerializer):
 class VatSerializer(serializers.FloatField):
     key = "vat_percentage"
 
-    def to_representation(self, tariff: Tariff) -> Union[int, str]:
-        pe = tariff.tariff_elements.first()
-        # Iterate through the VATs for this Tariff and check if there are multiple different ones
-        vats = set(pe.price_components.values_list("vat", flat=True))
-        if len(vats) == 1:
-            return vats.pop()
-        return "Multiple"
+    def to_representation(self, solid_tariff: SolidTariff) -> float | None:
+        return solid_tariff.vat_percentage
 
     def to_internal_value(self, data):
         if isinstance(data, (float, int)):
@@ -567,9 +561,8 @@ class CurrencySerializer(serializers.Field):
 
 
 class PriceSerializer(serializers.DecimalField):
-    def to_representation(self, tariff: Tariff) -> Decimal:
-        pc = tariff.get_type(self.tariff_type)
-        return pc.price if pc else None
+    def to_representation(self, solid_tariff: SolidTariff) -> Decimal:
+        return solid_tariff.get_type(self.tariff_type)
 
     def to_internal_value(self, data):
         result = {self.key: data}

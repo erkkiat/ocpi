@@ -544,3 +544,16 @@ class SolidTariff(models.Model):
         auto_now=True, verbose_name=_("Last_updated_at")
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created_at"))
+
+    def get_type(self, tariff_type: str) -> Optional[object]:
+        match tariff_type:
+            case "ENERGY":
+                return self.price_per_kwh
+            case "TIME":
+                return self.price_per_min
+            case "FLAT":
+                return self.price_flat
+            case "PARKING_TIME":
+                return self.parking_price_per_min
+            case _:
+                return None
