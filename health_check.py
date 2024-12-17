@@ -11,6 +11,6 @@ class BasicAuth(HttpBasicAuth):
 health_check_api = NinjaAPI(auth=BasicAuth())
 
 
-@health_check_api.get("/health")
+@health_check_api.get("/")
 def health_check(request):
     return {"status": "Im alive"}
