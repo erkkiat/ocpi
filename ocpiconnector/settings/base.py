@@ -438,7 +438,6 @@ LOGGING = {
     },
 }
 
-
 # OAuth2
 LOGIN_URL = "/admin/login/"
 
@@ -527,6 +526,12 @@ HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
 
-
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
+NINJA_EXTRA = NINJA_EXTRA = {
+    "THROTTLE_RATES": {
+        "health_check": "60/minute",  # 5 requests per minute
+        "default": "60/minute",  # Default rate for all other endpoints
+    },
+    "NUM_PROXIES": 1,  # Use this if the app is behind proxies or load balancers
+}
