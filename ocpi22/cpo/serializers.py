@@ -641,7 +641,11 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
 
     def create(self, validated_data):
-        currency = validated_data.get(CurrencySerializer.key)
+        currency = (
+            validated_data.get(CurrencySerializer.key)
+            if validated_data.get(CurrencySerializer.key)
+            else settings.DEFAULT_CURRENCY
+        )
         operator = validated_data.get("ocpi_master")
         msp = validated_data.get("msp")
 
