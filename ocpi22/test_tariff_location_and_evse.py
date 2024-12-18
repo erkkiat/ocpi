@@ -2001,13 +2001,13 @@ class TestCredentials(TestCase):
             "Authorization": "Token OTE4Mjcz",
             "accept": "application/json",
             "content-type": "application/json",
-            "platform-revision": "***",
         }
+        headers = kwargs["headers"]
+        assert headers.pop("X-Request-ID") != "", "Expecting a request ID"
+        assert headers.pop("X-Correlation-ID") != "", "Expecting a correlation ID"
+        headers.pop("platform-revision")
 
-        self.assertTrue(
-            compare_dicts_recursively(kwargs["headers"], expected_headers),
-            "Headers differ from expected",
-        )
+        assert kwargs["headers"] == expected_headers
 
     @pytest.mark.skip("Fix me before production")
     def test_credentials_response(self):

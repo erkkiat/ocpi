@@ -14,7 +14,7 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.models.location import Location, Connector, Evse
-from ocpiconnector.exceptions import TariffNotFoundError
+from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 
@@ -61,7 +61,7 @@ class HubjectService:
             for evse in location.evses_with_connectors:
                 for connector in evse.connectors_with_tariffs:
                     if not connector.get_tariffs():
-                        raise TariffNotFoundError(
+                        raise ConnectorTariffNotFoundError(
                             evse.evse_id,
                             connector.standard,
                             f"No Tariff found for Evse {evse.evse_id} and connector {connector.standard}",

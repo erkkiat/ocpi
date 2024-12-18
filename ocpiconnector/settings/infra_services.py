@@ -15,3 +15,13 @@ def get_db_url_user_and_token():
         DBUsername=database_user,  # Your database username
     )
     return database_url, database_user, token
+
+
+def get_allowed_hosts():
+    allowed_hosts = os.getenv("ALLOWED_HOSTS")
+    if not allowed_hosts:
+        raise ValueError("Allowed hosts cannot be empty")
+    hosts = allowed_hosts.split(",")
+    if not hosts:
+        raise ValueError("Allowed hosts cannot be empty")
+    return hosts

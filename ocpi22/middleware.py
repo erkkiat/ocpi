@@ -9,7 +9,7 @@ import ocpi22.logging as logging
 from json import JSONDecodeError
 from pprint import pprint
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from rest_framework import status
 
 from ocpi22.ocpi.auth import OCPIPermission, check_auth_token
@@ -156,4 +156,19 @@ class EnabledUntilMiddleware:
             )
             return render(request, "expired.html", {"expires_on": settings.EXPIRES_ON})
         response = self.get_response(request)
+        return response
+
+
+class OCPI221HeadersMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response: HttpResponse = self.get_response(request)
+
+        response.headers["X-Request-ID"] = request.headers.get("X-Request-ID", "")
+        response.headers["X-Correlation-ID"] = request.headers.get(
+            "X-Correlation-ID", ""
+        )
+
         return response

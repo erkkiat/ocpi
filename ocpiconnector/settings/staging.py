@@ -1,12 +1,13 @@
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
-from ocpiconnector.settings.infra_services import get_db_url_user_and_token
-
+from ocpiconnector.settings.infra_services import (
+    get_db_url_user_and_token,
+    get_allowed_hosts,
+)
 
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 SECURE_SSL_REDIRECT = True
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -24,9 +25,8 @@ X_FRAME_OPTIONS = "DENY"
 
 SECURE_REFERRER_POLICY = "same-origin"
 
+ALLOWED_HOSTS = get_allowed_hosts()
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
-
-ALLOWED_HOSTS.extend(["staging.solidroam.com"])  # noqa
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtttest.smappee.net")
 MQTT_PORT = os.getenv("MQTT_PORT", 443)
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
@@ -54,5 +54,6 @@ DATABASES = {
         "PASSWORD": db_token,
         "HOST": db_url,
         "PORT": "3306",
+        "OPTIONS": {"ssl_mode": "REQUIRED"},
     }
 }
