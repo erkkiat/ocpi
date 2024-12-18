@@ -522,8 +522,8 @@ class CPOReserveNowWebhookSerializer(CallbacksSerializer):
 class VatSerializer(serializers.FloatField):
     key = "vat_percentage"
 
-    def to_representation(self, solid_tariff: SolidTariff) -> float | None:
-        return solid_tariff.vat_percentage
+    def to_representation(self, data) -> float | None:
+        return data
 
     def to_internal_value(self, data):
         if isinstance(data, (float, int)):
@@ -533,7 +533,7 @@ class VatSerializer(serializers.FloatField):
                 )
             if not 0 <= data <= 100:
                 raise ValidationError("VAT should be a percentage between 0 and 100")
-        return {self.key: data}
+        return data
 
 
 class CurrencySerializer(serializers.Field):
@@ -565,6 +565,8 @@ class PriceSerializer(serializers.DecimalField):
 
     def to_internal_value(self, data):
         result = {self.key: data}
+        if result is not None and float(data) < 0:
+            raise ValidationError(f"{self.key} cannot be negative.")
         return result
 
 
@@ -600,6 +602,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         max_digits=8,
         decimal_places=4,
         required=False,
+        allow_null=True,
         help_text="The price per kWh of electricity charged excluding tax",
     )
     price_per_min = PriceMinSerializer(
@@ -607,6 +610,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         max_digits=8,
         decimal_places=4,
         required=False,
+        allow_null=True,
         help_text="The price per minute of charging, excluding parking and tax",
     )
     price_flat = PriceFlatSerializer(
@@ -614,6 +618,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         max_digits=8,
         decimal_places=4,
         required=False,
+        allow_null=True,
         help_text="The flat price per started charging session excluding tax",
     )
     parking_price_per_min = ParkingPricePerMinSerializer(
@@ -621,6 +626,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         max_digits=8,
         decimal_places=4,
         required=False,
+        allow_null=True,
         help_text="The parking price per min excluding tax",
     )
     parking_grace_period = serializers.IntegerField(
@@ -630,7 +636,6 @@ class SolidTariffSerializer(SerializerCleanedUp):
         help_text="The parking grace period in seconds",
     )
     vat_percentage = VatSerializer(
-        source="*",
         required=False,
         allow_null=True,
         help_text="The Value Added Tax amount in percentage",
@@ -638,6 +643,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
     msp = PartyStrField(
         help_text="The party ID of the eMSP",
         required=False,
+        allow_null=True,
     )
 
     def create(self, validated_data):

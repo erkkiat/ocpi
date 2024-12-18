@@ -111,7 +111,7 @@ class SolidTariffViewSet(
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
             msp = self.get_msp(request.data.get("msp"))
 
-            existing_solid_tariff = SolidTariff.objects.get_if_exists(
+            existing_solid_tariff = SolidTariff.objects.filter(
                 external_id__iexact=external_id,
                 operator=our_role,
                 archived=False,
