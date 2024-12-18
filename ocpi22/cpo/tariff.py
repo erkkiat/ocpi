@@ -81,7 +81,9 @@ class SolidTariffViewSet(
             if serializer.is_valid():
                 tariff, solid_tariff = serializer.save(ocpi_master=our_role)
                 tariff.send_updates()
-                http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
+                http_status = (
+                    status.HTTP_200_OK if solid_tariff else status.HTTP_201_CREATED
+                )
                 return Response(
                     self.get_response_data(
                         model_to_dict(

@@ -594,7 +594,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         required=True,
     )
-    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES, required=False)
+    currency = serializers.ChoiceField(choices=CURRENCY_CHOICES)
     price_per_kwh = PriceKwhSerializer(
         source="*",
         max_digits=8,
@@ -641,11 +641,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
 
     def create(self, validated_data):
-        currency = (
-            validated_data.get(CurrencySerializer.key)
-            if validated_data.get(CurrencySerializer.key)
-            else settings.DEFAULT_CURRENCY
-        )
+        currency = validated_data.get(CurrencySerializer.key)
+
         operator = validated_data.get("ocpi_master")
         msp = validated_data.get("msp")
 
