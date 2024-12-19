@@ -2,8 +2,8 @@ from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
 from ocpiconnector.settings.infra_services import (
-    get_db_url_user_and_token,
     get_allowed_hosts,
+    RDSTokenManager,
 )
 
 ENV = os.getenv("ENV", "production").lower()
@@ -25,7 +25,7 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
 
-db_url, db_user, db_token = get_db_url_user_and_token()
+db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",

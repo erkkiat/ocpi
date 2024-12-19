@@ -1,6 +1,8 @@
 import os
 
 import boto3
+import time
+import threading
 
 
 def get_db_url_user_and_token():
@@ -25,3 +27,35 @@ def get_allowed_hosts():
     if not hosts:
         raise ValueError("Allowed hosts cannot be empty")
     return hosts
+
+
+class RDSTokenManager:
+    """Manages RDS token generation and caching."""
+
+    _token = None
+    _token_expiry = 0
+    _lock = threading.Lock()
+
+    @classmethod
+    def get_db_url_user_and_token(cls):
+        """Get the current RDS token or refresh it if expired."""
+
+        database_url = os.getenv("DATABASE_URL")
+        database_user = os.getenv("DATABASE_USER")
+        if not database_url or not database_user:
+            raise ValueError(
+                "Database url or user not found in the environment variable"
+            )
+
+        with cls._lock:
+            current_time = time.time()
+            if cls._token is None or current_time >= cls._token_expiry - 60:
+                # Refresh the token 1 minute before expiration
+                rds_client = boto3.client("rds", region_name="eu-west-1")
+                cls._token = rds_client.generate_db_auth_token(
+                    DBHostname=database_url,
+                    Port=3306,
+                    DBUsername=database_user,
+                )
+                cls._token_expiry = current_time + 12 * 60
+            return database_url, database_user, cls._token
