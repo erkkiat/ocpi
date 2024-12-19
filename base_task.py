@@ -8,7 +8,7 @@ from ocpiconnector.settings.infra_services import RDSTokenManager
 logger = logging.getLogger(__name__)
 
 
-class BaseRetryTask(Task):
+class RefreshTokenBaseTask(Task):
     """Base task to be used by rest of the tasks, mainly handles the db token and refresh
     when there is a connection failure due to the the expired/invalid token"""
 

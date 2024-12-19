@@ -21,6 +21,7 @@ from requests.auth import HTTPBasicAuth
 from rest_framework import status
 from sentry_sdk import capture_exception
 
+from base_task import RefreshTokenBaseTask
 from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.party import Party
@@ -38,7 +39,9 @@ RESULT_EXPIRE_TIME = os.environ.get(
     "RESULT_EXPIRE_TIME", 1
 )  # 1 second, we don't need the results of the tasks
 
-app = celery.Celery("ocpi22.tasks", result_expires=RESULT_EXPIRE_TIME)
+app = celery.Celery(
+    "ocpi22.tasks", task_cls=RefreshTokenBaseTask, result_expires=RESULT_EXPIRE_TIME
+)
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.
