@@ -9,6 +9,8 @@ from celery import shared_task, Celery
 from kombu import Queue, Exchange
 from kombu.serialization import register
 
+from base_task_services import RefreshTokenBaseTask
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
 import django
 
@@ -48,7 +50,7 @@ class CeleryConfig:
 
 
 # Todo: The tasks should be independent of Django, so we can run them in a separate process
-app = Celery("mqtt_tasks")
+app = Celery("mqtt_tasks", task_cls=RefreshTokenBaseTask)
 app.conf.task_queues = (
     Queue("HIGH", Exchange("HIGH"), routing_key="HIGH"),
     # Add other queues as needed
@@ -56,7 +58,7 @@ app.conf.task_queues = (
 app.config_from_object(CeleryConfig)
 app.autodiscover_tasks()
 
-
+from base_task_services import setup_worker_connection  # noqa
 from rest_framework.generics import get_object_or_404  # noqa
 
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum  # noqa
