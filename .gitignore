@@ -8,6 +8,7 @@ env.sh
 .idea
 .env*
 *.prof
+!.env-local
 *.db
 **/htmlcov/
 .coverage
