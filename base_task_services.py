@@ -1,5 +1,6 @@
 import logging
 from celery import Task
+from celery.signals import worker_process_init
 from django.db.utils import OperationalError
 from django.db import connections
 
@@ -45,3 +46,11 @@ class RefreshTokenBaseTask(Task):
             )
             connections["default"].settings_dict["PASSWORD"] = token
         super().before_start(task_id, args, kwargs)
+
+
+@worker_process_init.connect
+def setup_worker_connection(**kwargs):
+    """Ensure each worker process uses the latest RDS token."""
+    _, _, token = RDSTokenManager.get_db_url_user_and_token()
+    connection = connections["default"]
+    connection.settings_dict["PASSWORD"] = token

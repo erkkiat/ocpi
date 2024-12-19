@@ -9,7 +9,7 @@ from celery import shared_task, Celery
 from kombu import Queue, Exchange
 from kombu.serialization import register
 
-from base_task import RefreshTokenBaseTask
+from base_task_services import RefreshTokenBaseTask
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
 import django
@@ -58,6 +58,7 @@ app.conf.task_queues = (
 app.config_from_object(CeleryConfig)
 app.autodiscover_tasks()
 
+from base_task_services import setup_worker_connection  # noqa
 from rest_framework.generics import get_object_or_404  # noqa
 
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum  # noqa

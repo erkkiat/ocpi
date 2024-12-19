@@ -21,7 +21,7 @@ from requests.auth import HTTPBasicAuth
 from rest_framework import status
 from sentry_sdk import capture_exception
 
-from base_task import RefreshTokenBaseTask
+from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpiconnector.party import Party
@@ -52,6 +52,10 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 
 pull_hour = random.randint(0, 3)
 pull_minute = random.randint(0, 59)
+
+# Register celery signals
+# DO NOT REMOVE IT!!
+from base_task_services import setup_worker_connection  # noqa
 
 # print(f'Pulling all objects daily at {pull_hour:02d}:{pull_minute:02d}')
 
