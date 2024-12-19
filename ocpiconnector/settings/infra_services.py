@@ -44,6 +44,8 @@ class RDSTokenManager:
     @classmethod
     def get_db_url_user_and_token(cls):
         """Get the current RDS token or refresh it if expired."""
+        if os.getenv("ENV") in ["development", "test"]:
+            return
 
         database_url = os.getenv("DATABASE_URL")
         database_user = os.getenv("DATABASE_USER")
