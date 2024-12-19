@@ -1,9 +1,12 @@
+from django.db.backends.signals import connection_created
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
 from ocpiconnector.settings.infra_services import (
     get_allowed_hosts,
     RDSTokenManager,
+    refresh_token_on_failure,
 )
 
 ENV = os.getenv("ENV", "staging").lower()
@@ -40,3 +43,5 @@ DATABASES = {
         "OPTIONS": {"ssl_mode": "REQUIRED"},
     }
 }
+
+connection_created.connect(refresh_token_on_failure)
