@@ -230,7 +230,7 @@ class TestSolidTariffs:
         url = (
             f'{reverse("solid-tariff-list")}{invalid_country_code}/{invalid_party_id}/'
         )
-        response = client.get(url, headers={"Content-Type": "application/json"})
+        response = client.get(url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json() == {
@@ -253,7 +253,7 @@ class TestSolidTariffs:
         url = (
             f'{reverse("solid-tariff-list")}{invalid_country_code}/{invalid_party_id}/'
         )
-        response = client.get(url, headers={"Content-Type": "application/json"})
+        response = client.get(url)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json() == {
