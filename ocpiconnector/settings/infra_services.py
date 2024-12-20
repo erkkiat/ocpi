@@ -76,3 +76,12 @@ def refresh_token_on_failure(sender, connection, **kwargs):
         connection.settings_dict["PASSWORD"] = token
         connection.close()
         connection.connect()
+
+
+class LogHostHeaderMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        logger.info(f"DEBUG: Received Host header: {request.get_host()}")
+        return self.get_response(request)
