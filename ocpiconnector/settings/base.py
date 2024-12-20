@@ -281,7 +281,7 @@ TEMPLATE_LOADERS = (
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "logging_middleware.LogHostHeaderMiddleware"  # Remove it after testing
+    "ocpiconnector.logging_middleware.LogHostHeaderMiddleware"  # Remove it after testing
     "ocpi22.middleware.ErrorLoggingMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -418,7 +418,7 @@ LOGGING = {
         },
         "django.request": {
             "handlers": ["mail_admins", "console", "sentry"],
-            "level": "ERROR",
+            "level": "INFO",
             "propagate": False,
         },
         "django.db.backends": {
