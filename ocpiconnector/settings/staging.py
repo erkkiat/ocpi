@@ -1,9 +1,12 @@
+from django.db.backends.signals import connection_created
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
 from ocpiconnector.settings.infra_services import (
-    get_db_url_user_and_token,
     get_allowed_hosts,
+    RDSTokenManager,
+    refresh_token_on_failure,
 )
 
 ENV = os.getenv("ENV", "staging").lower()
@@ -35,6 +38,8 @@ os.environ["http_proxy"] = FIXIE_URL
 os.environ["https_proxy"] = FIXIE_URL
 os.environ["no_proxy"] = "localhost,127.0.0.1"
 
+CSRF_TRUSTED_ORIGINS = ["https://solidroam.f3-smappee.net"]
+
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
     "SMAPPEE_STATUS_UPDATE_TOPIC", "$share/session_group/session/+/statusupdates"
 )
@@ -42,7 +47,7 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
 
-db_url, db_user, db_token = get_db_url_user_and_token()
+db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -54,3 +59,5 @@ DATABASES = {
         "OPTIONS": {"ssl_mode": "REQUIRED"},
     }
 }
+
+connection_created.connect(refresh_token_on_failure)
