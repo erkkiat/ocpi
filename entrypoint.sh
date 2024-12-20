@@ -10,7 +10,7 @@ case "$1" in
         echo "Applying migrations"
         python manage.py migrate --noinput
         echo "Starting Django server..."
-        exec gunicorn ocpiconnector.wsgi:application --bind 127.0.0.1:8000 --timeout 120
+        exec gunicorn ocpiconnector.wsgi:application --bind 127.0.0.1:8000 --workers 4 --timeout 120
         ;;
     celery-django)
         echo "Starting Celery worker for Django tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
