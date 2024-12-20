@@ -281,7 +281,6 @@ TEMPLATE_LOADERS = (
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "ocpiconnector.logging_middleware.LogHostHeaderMiddleware"  # Remove it after testing
     "ocpi22.middleware.ErrorLoggingMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -292,6 +291,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
+    "ocpiconnector.settings.infra_services.LogHostHeaderMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
