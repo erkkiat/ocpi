@@ -24,6 +24,8 @@ os.environ["http_proxy"] = FIXIE_URL
 os.environ["https_proxy"] = FIXIE_URL
 os.environ["no_proxy"] = "localhost,127.0.0.1"
 
+CSRF_TRUSTED_ORIGINS = ["https://solidroam.f3-smappee.net"]
+
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
     "SMAPPEE_STATUS_UPDATE_TOPIC", "$share/session_group/session/+/statusupdates"
 )

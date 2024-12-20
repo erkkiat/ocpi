@@ -12,6 +12,7 @@ from ocpiconnector.settings.infra_services import (
 ENV = os.getenv("ENV", "production").lower()
 DEBUG = False
 HUBJECT_URL = "Add the hubject production base url"
+CSRF_TRUSTED_ORIGINS = ["https://solidroam.f1-smappee.net"]
 
 ALLOWED_HOSTS = get_allowed_hosts()
 
