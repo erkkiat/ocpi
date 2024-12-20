@@ -11,11 +11,7 @@ from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
-from ocpiconnector.exceptions import (
-    MspNotFoundError,
-    SolidTariffAlreadyExistsError,
-    PriceNotFoundError,
-)
+from ocpiconnector.exceptions import MspNotFoundError
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
 
@@ -94,7 +90,7 @@ class SolidTariffViewSet(
                 )
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except (IntegrityError, SolidTariffAlreadyExistsError) as e:
+        except (IntegrityError, MspNotFoundError) as e:
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
@@ -150,7 +146,7 @@ class SolidTariffViewSet(
                 )
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except IntegrityError as e:
+        except (IntegrityError, MspNotFoundError) as e:
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
@@ -170,7 +166,7 @@ class SolidTariffViewSet(
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
             msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
             if msp is None:
-                raise MspNotFoundError("MSP not found")
+                raise MspNotFoundError(f"No MSP found for {country_code}*{party_id}")
             if external_id is None:
                 solid_tariff = SolidTariff.objects.get(
                     external_id__isnull=True,
@@ -227,7 +223,6 @@ class SolidTariffViewSet(
             AssertionError,
             Tariff.DoesNotExist,
             SolidTariff.DoesNotExist,
-            PriceNotFoundError,
         ) as e:
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST

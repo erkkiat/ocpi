@@ -29,11 +29,3 @@ class ConnectorTariffNotFoundError(Exception):
 
 class MspNotFoundError(Exception):
     pass
-
-
-class SolidTariffAlreadyExistsError(Exception):
-    pass
-
-
-class PriceNotFoundError(Exception):
-    pass
