@@ -11,10 +11,27 @@ from ocpiconnector.settings.infra_services import (
 
 ENV = os.getenv("ENV", "production").lower()
 DEBUG = False
-HUBJECT_URL = "Add the hubject production base url"
-CSRF_TRUSTED_ORIGINS = ["https://solidroam.f1-smappee.net"]
 
+HUBJECT_URL = "Add the hubject production base url"
+
+CSRF_TRUSTED_ORIGINS = ["https://solidroam.f1-smappee.net"]
 ALLOWED_HOSTS = get_allowed_hosts()
+
+USE_X_FORWARDED_HOST = True
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_HSTS_SECONDS = 31536000  # Enforce HTTPS for 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "same-origin"
+
+
+HUBJECT_URL = "Add the hubject production base url"
+
 
 MQTT_BROKER = os.getenv("MQTT_BROKER")
 MQTT_PORT = os.getenv("MQTT_PORT", 443)
