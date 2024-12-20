@@ -281,6 +281,7 @@ TEMPLATE_LOADERS = (
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
+    "logging_middleware.LogHostHeaderMiddleware"  # Remove it after testing
     "ocpi22.middleware.ErrorLoggingMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
