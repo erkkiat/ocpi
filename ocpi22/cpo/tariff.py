@@ -223,6 +223,7 @@ class SolidTariffViewSet(
             AssertionError,
             Tariff.DoesNotExist,
             SolidTariff.DoesNotExist,
+            MspNotFoundError,
         ) as e:
             return Response(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
