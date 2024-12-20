@@ -8,24 +8,21 @@ from ocpiconnector.settings.infra_services import (
 
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
+
+ALLOWED_HOSTS = get_allowed_hosts()
+
+USE_X_FORWARDED_HOST = True
 SECURE_SSL_REDIRECT = True
-
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-
 SECURE_HSTS_SECONDS = 300  # Enforce HTTPS for 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
-
 SECURE_CONTENT_TYPE_NOSNIFF = True
-
 X_FRAME_OPTIONS = "DENY"
-
 SECURE_REFERRER_POLICY = "same-origin"
 
-ALLOWED_HOSTS = get_allowed_hosts()
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtttest.smappee.net")
 MQTT_PORT = os.getenv("MQTT_PORT", 443)
