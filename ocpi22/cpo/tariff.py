@@ -63,7 +63,7 @@ class SolidTariffViewSet(
             if existing_solid_tariff.exists():
                 serializer = SolidTariffSerializer(
                     data=data,
-                    instance=existing_solid_tariff,
+                    instance=existing_solid_tariff.first(),
                     partial=False,
                     context={
                         "request": request,
@@ -81,7 +81,9 @@ class SolidTariffViewSet(
             if serializer.is_valid():
                 tariff, solid_tariff = serializer.save(ocpi_master=our_role)
                 tariff.send_updates()
-                http_status = status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
+                http_status = (
+                    status.HTTP_200_OK if solid_tariff else status.HTTP_201_CREATED
+                )
                 return Response(
                     self.get_response_data(
                         model_to_dict(
@@ -109,7 +111,7 @@ class SolidTariffViewSet(
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
             msp = self.get_msp(request.data.get("msp"))
 
-            existing_solid_tariff = SolidTariff.objects.get_if_exists(
+            existing_solid_tariff = SolidTariff.objects.filter(
                 external_id__iexact=external_id,
                 operator=our_role,
                 archived=False,
@@ -127,7 +129,7 @@ class SolidTariffViewSet(
             else:
                 serializer = SolidTariffSerializer(
                     data=data,
-                    instance=existing_solid_tariff,
+                    instance=existing_solid_tariff.first(),
                     partial=partial,
                     context={
                         "request": request,
