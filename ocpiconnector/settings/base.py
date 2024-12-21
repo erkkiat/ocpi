@@ -291,7 +291,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
-    "ocpiconnector.settings.infra_services.LogHostHeaderMiddleware",
+    "ocpiconnector.logging_middleware.LoggingMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
