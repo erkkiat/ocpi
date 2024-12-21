@@ -17,7 +17,9 @@ HUBJECT_URL = "Add the hubject production base url"
 CSRF_TRUSTED_ORIGINS = ["https://solidroam.f1-smappee.net"]
 ALLOWED_HOSTS = get_allowed_hosts()
 
+USE_X_FORWARDED_PORT = True
 USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PROTO = True
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True

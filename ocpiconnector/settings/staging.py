@@ -13,8 +13,9 @@ ENV = os.getenv("ENV", "staging").lower()
 DEBUG = os.getenv("DEBUG", False)
 
 ALLOWED_HOSTS = get_allowed_hosts()
-HTTP_X_FORWARDED_PORT = True
+USE_X_FORWARDED_PORT = True
 USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PROTO = True
 SECURE_SSL_REDIRECT = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
