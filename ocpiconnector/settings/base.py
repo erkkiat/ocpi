@@ -291,7 +291,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
-    "ocpiconnector.settings.infra_services.LogHostHeaderMiddleware",
+    "ocpiconnector.logging_middleware.LoggingMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
@@ -373,67 +373,37 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "filters": {
-        "require_debug_false": {
-            "()": "django.utils.log.RequireDebugFalse",
-        },
-    },
     "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname} {message}",
-            "style": "{",
+        "json": {
+            "()": "ocpiconnector.logging_middleware.ORJSONFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
         },
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-        "mail_admins": {
-            "level": "ERROR",
-            "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler",
-            "formatter": "verbose",
-        },
-        "sentry": {
-            "level": "ERROR",
-            "class": "sentry_sdk.integrations.logging.EventHandler",
-            "formatter": "verbose",
+            "formatter": "json",  # Logs in JSON format
         },
     },
     "root": {
-        "handlers": ["console", "sentry"],
+        "handlers": ["console"],
         "level": "INFO",
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "sentry"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": True,
         },
         "django.request": {
-            "handlers": ["mail_admins", "console", "sentry"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
         },
-        "django.db.backends": {
+        "__main__": {  # Main module logger
             "handlers": ["console"],
-            "level": "WARNING",  # Log database queries above WARNING level
-            "propagate": False,
-        },
-        "sentry_sdk": {
-            "handlers": ["console"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-        "celery": {
-            "handlers": ["console", "sentry"],
-            "level": "ERROR",
+            "level": "DEBUG",
             "propagate": False,
         },
     },
