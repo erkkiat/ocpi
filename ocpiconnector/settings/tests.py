@@ -12,15 +12,9 @@ DATABASE_URL = os.environ.get(
 SECRET_KEY = "BESTONEEVER"
 
 TEST_LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "json": {
-            "()": "ocpiconnector.logging_middleware.ORJSONFormatter",
-            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
-        },
-    },
+    **LOGGING,  # noqa
     "handlers": {
+        **LOGGING["handlers"],  # noqa
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
@@ -28,10 +22,11 @@ TEST_LOGGING = {
         },
     },
     "loggers": {
+        **LOGGING["loggers"],  # noqa
         "django": {
             "handlers": ["console"],
             "level": "DEBUG",
-            "propagate": False,
+            "propagate": True,
         },
         "django.request": {
             "handlers": ["console"],
@@ -39,11 +34,6 @@ TEST_LOGGING = {
             "propagate": False,
         },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
-        "__main__": {
             "handlers": ["console"],
             "level": "DEBUG",
             "propagate": False,
