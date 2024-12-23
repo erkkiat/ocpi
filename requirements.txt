@@ -41,7 +41,6 @@ prometheus_client==0.21.0
 django-gdpr-assist~=1.4.2
 drf-yasg~=1.21.7
 django-ninja-jwt~=5.3.3
-django-test-without-migrations
 starlette~=0.39.1
 whitenoise~=6.7.0
 pre-commit==3.8.0
