@@ -8,6 +8,8 @@ from logging import getLogger
 import django
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
+from distutils.util import strtobool
+
 
 logger = getLogger("__name__")
 
@@ -108,7 +110,8 @@ def get_broker_and_port():
 
 
 def get_ssl_certified_client(client) -> mqtt.Client:
-    if not os.getenv("MQTT_SSL_VERIFY", True):
+    ssl_verify = strtobool(os.getenv("MQTT_SSL_VERIFY", True))
+    if not ssl_verify:
         logger.warning(
             f"Skipping SSL certificate verification for {os.getenv('ENV')}.."
         )
