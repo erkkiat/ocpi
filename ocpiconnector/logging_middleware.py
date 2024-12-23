@@ -5,7 +5,6 @@ from logging import getLogger
 
 import orjson
 from django.utils.deprecation import MiddlewareMixin
-from pythonjsonlogger.json import JsonFormatter
 
 
 class LoggingMiddleware(MiddlewareMixin):
@@ -121,8 +120,3 @@ class LoggingMiddleware(MiddlewareMixin):
         }
         data.update(self.clean_auth_headers(request))
         return data
-
-
-class ORJSONFormatter(JsonFormatter):
-    def format(self, record):
-        return orjson.dumps(record.__dict__).decode("utf-8")
