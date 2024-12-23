@@ -375,7 +375,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "json": {
-            "()": "ocpiconnector.logging_middleware.ORJSONFormatter",
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
             "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
         },
     },
