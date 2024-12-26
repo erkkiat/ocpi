@@ -6,7 +6,7 @@ class HealthCheckThrottle(AnonRateThrottle):
     scope = "health_check"
 
 
-health_check_api = NinjaAPI()
+health_check_api = NinjaAPI(urls_namespace="health-check")
 
 
 @health_check_api.get("/")
