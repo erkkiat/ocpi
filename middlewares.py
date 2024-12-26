@@ -12,7 +12,7 @@ class AllowHealthCheckMiddleware:
     def __call__(self, request):
         if request.path == "/health-check/":
             logging.info(
-                f"Health check from {request.META['HOST']}", extra=request.META
+                f"Health check from {request.META['HTTP_HOST']}", extra=request.META
             )
             return HttpResponse("OK", status=200)
         return self.get_response(request)
