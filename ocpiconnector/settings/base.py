@@ -281,6 +281,7 @@ TEMPLATE_LOADERS = (
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
+    "middlewares.AllowHealthCheckMiddleware",
     "ocpi22.middleware.ErrorLoggingMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
