@@ -292,6 +292,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
+    "ocpiconnector.logging_middleware.LoggingMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
@@ -373,71 +374,42 @@ SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "filters": {
-        "require_debug_false": {
-            "()": "django.utils.log.RequireDebugFalse",
-        },
-    },
     "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname} {message}",
-            "style": "{",
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
         },
     },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-        "mail_admins": {
-            "level": "ERROR",
-            "filters": ["require_debug_false"],
-            "class": "django.utils.log.AdminEmailHandler",
-            "formatter": "verbose",
-        },
-        "sentry": {
-            "level": "ERROR",
-            "class": "sentry_sdk.integrations.logging.EventHandler",
-            "formatter": "verbose",
+            "formatter": "json",  # Logs in JSON format
         },
     },
     "root": {
-        "handlers": ["console", "sentry"],
+        "handlers": ["console"],
         "level": "INFO",
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "sentry"],
+            "handlers": ["console"],
             "level": "INFO",
             "propagate": True,
         },
         "django.request": {
-            "handlers": ["mail_admins", "console", "sentry"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-        "django.db.backends": {
             "handlers": ["console"],
-            "level": "WARNING",  # Log database queries above WARNING level
+            "level": "INFO",
             "propagate": False,
         },
-        "sentry_sdk": {
+        "__main__": {  # Main module logger
             "handlers": ["console"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-        "celery": {
-            "handlers": ["console", "sentry"],
-            "level": "ERROR",
+            "level": "DEBUG",
             "propagate": False,
         },
     },
 }
+
 
 # OAuth2
 LOGIN_URL = "/admin/login/"
@@ -527,11 +499,6 @@ HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
 
+
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
-NINJA_EXTRA = {
-    "THROTTLE_RATES": {
-        "health_check": "60/minute",
-    },
-    "NUM_PROXIES": 1,
-}

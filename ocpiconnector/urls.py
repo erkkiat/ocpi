@@ -8,7 +8,7 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
-from health_check_api import health_check_api
+from health_check import health_check_api
 from hub.admin_sites import hub_admin_site
 from hub.urls import urlpatterns as hub_urls
 
