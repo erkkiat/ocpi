@@ -1,12 +1,9 @@
-from django.db.backends.signals import connection_created
-
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
 from ocpiconnector.settings.infra_services import (
     get_allowed_hosts,
     RDSTokenManager,
-    refresh_token_on_failure,
 )
 
 ENV = os.getenv("ENV", "production").lower()
@@ -51,7 +48,7 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
+        "ENGINE": "ocpiconnector.db_backends.mysql",
         "NAME": "ocpi",
         "USER": db_user,
         "PASSWORD": db_token,
@@ -59,5 +56,3 @@ DATABASES = {
         "PORT": "3306",
     }
 }
-
-connection_created.connect(refresh_token_on_failure)
