@@ -5,7 +5,6 @@ import boto3
 import time
 import threading
 
-from django.db.utils import OperationalError
 
 logger = getLogger(__name__)
 
@@ -50,15 +49,3 @@ class RDSTokenManager:
                 )
                 cls._token_expiry = current_time + 12 * 60
             return database_url, database_user, cls._token
-
-
-def refresh_token_on_failure(sender, connection, **kwargs):
-    """Refresh RDS token on database connection failure."""
-    try:
-        connection.cursor()
-    except OperationalError:
-        _, _, token = RDSTokenManager.get_db_url_user_and_token()
-        logger.warning("Database connection failed. Refreshing token and retrying...")
-        connection.settings_dict["PASSWORD"] = token
-        connection.close()
-        connection.connect()
