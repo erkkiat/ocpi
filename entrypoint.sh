@@ -18,7 +18,7 @@ case "$1" in
         ;;
     mqtt-subscriber)
         echo "Starting MQTT subscriber..."
-        exec python ocpi22/cpo/mqtt/mqtt_subscriber.py
+        exec python -m ocpi22.cpo.mqtt.mqtt_subscriber
         ;;
     celery-mqtt)
         echo "Starting Celery worker for MQTT tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
