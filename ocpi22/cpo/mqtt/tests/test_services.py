@@ -123,6 +123,24 @@ class TestMqttServices:
                     kwargs=message_dict, expires=35
                 )
 
+    def test_meter_values_from_wouter_successfully(
+        self, smappee_meter_message_from_wouter
+    ):
+        meter_values = MagicMock(spec=MeterValues)
+        decoded_message = _decode_message(smappee_meter_message_from_wouter)
+        message_dict = orjson.loads(decoded_message)
+        meter_values.model_dump.return_value = message_dict
+        with patch.object(
+            MeterValues, "model_validate_json", return_value=meter_values
+        ):
+            with patch.object(
+                process_meter_values, "apply_async"
+            ) as mock_process_meter_values_task:
+                process_meter_values_data(smappee_meter_message_from_wouter)
+                mock_process_meter_values_task.assert_called_once_with(
+                    kwargs=message_dict, expires=35
+                )
+
     @patch("ocpi22.cpo.mqtt.services._decode_message", return_value=None)
     @patch.object(EvseStatusUpdate, attribute="model_validate_json")
     @patch.object(save_and_send_evse_status_updates, attribute="apply_async")

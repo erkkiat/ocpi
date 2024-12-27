@@ -26,8 +26,8 @@ def process_meter_values_data(message) -> None:
         return
     try:
         meter_values = MeterValues.model_validate_json(decoded_meter_message)
-    except ValidationError:
-        logger.exception(f"Failed to validate {message.topic} message")
+    except ValidationError as e:
+        logger.exception(f"Failed to validate {message.topic} message: {e}")
         return
     try:
         process_meter_values.apply_async(
