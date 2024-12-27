@@ -23,10 +23,12 @@ COPY . /app
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Make scripts executable
+# Precompile Python files to bytecode and remove source files
+RUN python -m compileall -b /app && find /app -name '*.py' -exec rm {} +
+
 RUN chmod +x /app/entrypoint.sh /app/fetch_secrets.sh
 
-# Stage 2: Final Image
+# Stage 2: Final Distribution Image
 FROM python:3.11-slim
 
 # Set environment variables
@@ -48,8 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=build /app /app
 COPY --from=build /usr/local /usr/local
 
-# Expose the application port
-EXPOSE 8080
+RUN find /app -name '*.py' -exec rm -f {} +
 
-# Set the entrypoint
+EXPOSE 8000
 ENTRYPOINT ["/app/entrypoint.sh"]
