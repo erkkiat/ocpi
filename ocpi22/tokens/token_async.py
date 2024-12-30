@@ -6,9 +6,10 @@ from urllib.parse import urljoin
 import aiohttp
 import asyncio
 
+from aiohttp import ClientError
 from asgiref.sync import sync_to_async
 
-
+from integrations.hubject.services import HubjectService
 from ocpi22.choices import (
     OcpiRolesEnum,
     OcpiModuleEnum,
@@ -35,17 +36,23 @@ if TYPE_CHECKING:
 
 
 async def post_request(session, url, data, ocpi_master, headers=None) -> (int, dict):
-    headers = headers or {}
-    headers.update({"Content-Type": "application/json", "Accept:": "application/json"})
-    async with session.post(url, json=data, headers=headers) as response:
-        status = response.status
-        try:
-            json_data = await response.json()
-        except (aiohttp.ContentTypeError, json.JSONDecodeError):
-            logger.error(f"Cannot decode JSON response from url {url}")
-            json_data = None
+    try:
+        headers = headers or {}
+        headers.update(
+            {"Content-Type": "application/json", "Accept:": "application/json"}
+        )
+        async with session.post(url, json=data, headers=headers) as response:
+            status = response.status
+            try:
+                json_data = await response.json()
+            except (aiohttp.ContentTypeError, json.JSONDecodeError):
+                logger.error(f"Cannot decode JSON response from url {url}")
+                json_data = None
 
-        return status, json_data, ocpi_master
+            return status, json_data, ocpi_master
+    except ClientError:
+        logger.error(f"Cannot connect to {url} for token authorization")
+        return 0, None, None
 
 
 def process_task_result(successful_task):
@@ -109,6 +116,18 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
             for url, token_base64, country_code, party_id, credentials in parties
         ]
 
+        # Todo: Hubject authorize
+        tasks.append(
+            # Do SSL context per request, Hubject/Gireve separately
+            asyncio.create_task(
+                HubjectService().post_authorize_request(
+                    operator_id=str(sender),
+                    token_id=token_id,
+                ),
+                name="Hubject",
+            )
+        )
+
         while tasks:
             done_tasks, pending_tasks = await asyncio.wait(
                 tasks, return_when=asyncio.FIRST_COMPLETED
@@ -117,6 +136,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
             for task in done_tasks:
                 try:
+                    # Todo: Hubject authorize
                     result = process_task_result(task)
                     if result:
                         break

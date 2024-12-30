@@ -11,6 +11,12 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
+    ERoamingAuthorizeStart,
+    OperatorID,
+    Identification,
+    RFIDIdentification,
+    UID,
+    RFID,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.models.location import Location, Connector, Evse
@@ -89,9 +95,8 @@ class HubjectService:
             OperatorEvseData=operator_evse_data,
         )
 
-    def post_evse_full_load(
-        self, operator_id: str, payload: ERoamingPushEvseData
-    ) -> dict:
+    @staticmethod
+    def post_evse_full_load(operator_id: str, payload: ERoamingPushEvseData) -> dict:
         full_load_url = urljoin(
             with_trailing_slash(settings.HUBJECT_URL),
             f"evsepush/v23/operators/{operator_id}/data-records",
@@ -102,6 +107,46 @@ class HubjectService:
             payload_json = payload.model_dump_json()
 
             response = HubjectService.client.post(full_load_url, data=payload_json)
+            return response.json()
+        except PydanticSerializationError as e:
+            logging.error(e)
+            return {
+                "success": False,
+                "errorType": "Pydantic validation failed",
+                "error": e.args[0],
+            }
+        except HTTPError as exc:
+            logging.error(exc)
+            return {
+                "success": False,
+                "errorType": "HTTP request failed",
+                "error": exc.args[0],
+            }
+
+    @staticmethod
+    async def post_authorize_request(operator_id: str, token_id: str) -> dict:
+        url = urljoin(
+            with_trailing_slash(settings.HUBJECT_URL),
+            f"charging/v21/operators/{operator_id}/authorize/start",
+        )
+
+        try:
+            payload = ERoamingAuthorizeStart(
+                OperatorID=OperatorID(root=operator_id),
+                Identification=Identification(
+                    RFIDIdentification=RFIDIdentification(
+                        UID=UID(root=token_id),
+                        RFID=RFID.mifareCls,
+                        PrintedNumber=None,
+                        ExpiryDate=None,
+                        EvcoID=None,
+                    )
+                ),
+            )
+            payload_json = payload.model_dump_json()
+
+            response = HubjectService.client.post(url, data=payload_json)
+            print(response.json())
             return response.json()
         except PydanticSerializationError as e:
             logging.error(e)
