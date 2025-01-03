@@ -10,7 +10,7 @@ case "$1" in
         echo "Applying migrations"
         python manage.py migrate --noinput
         echo "Starting Django server..."
-        exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --reload --timeout 120
+        exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
         ;;
     celery-django)
         echo "Starting Celery worker for Django tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
@@ -18,7 +18,7 @@ case "$1" in
         ;;
     mqtt-subscriber)
         echo "Starting MQTT subscriber..."
-        exec python ocpi22/cpo/mqtt/mqtt_subscriber.py
+        exec python -m ocpi22.cpo.mqtt.mqtt_subscriber
         ;;
     celery-mqtt)
         echo "Starting Celery worker for MQTT tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"

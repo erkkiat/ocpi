@@ -18,7 +18,7 @@ TEST_LOGGING = {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
+            "formatter": "json",
         },
     },
     "loggers": {
@@ -36,10 +36,11 @@ TEST_LOGGING = {
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "handlers": ["console"],
             "level": "DEBUG",
-            "propagate": False,  # Prevent log propagation to isolate caplog behavior
+            "propagate": False,
         },
     },
 }
+
 
 LOGGING = TEST_LOGGING
 REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [  # noqa

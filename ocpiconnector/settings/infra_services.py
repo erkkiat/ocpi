@@ -5,23 +5,8 @@ import boto3
 import time
 import threading
 
-from django.db.utils import OperationalError
 
 logger = getLogger(__name__)
-
-
-def get_db_url_user_and_token():
-    rds_client = boto3.client("rds", region_name="eu-west-1")
-    database_url = os.getenv("DATABASE_URL")
-    database_user = os.getenv("DATABASE_USER")
-    if not database_url or not database_user:
-        raise ValueError("Database url or user not found in the environment variable")
-    token = rds_client.generate_db_auth_token(
-        DBHostname=database_url,
-        Port=3306,
-        DBUsername=database_user,  # Your database username
-    )
-    return database_url, database_user, token
 
 
 def get_allowed_hosts():
@@ -64,15 +49,3 @@ class RDSTokenManager:
                 )
                 cls._token_expiry = current_time + 12 * 60
             return database_url, database_user, cls._token
-
-
-def refresh_token_on_failure(sender, connection, **kwargs):
-    """Refresh RDS token on database connection failure."""
-    try:
-        connection.cursor()
-    except OperationalError:
-        _, _, token = RDSTokenManager.get_db_url_user_and_token()
-        logger.warning("Database connection failed. Refreshing token and retrying...")
-        connection.settings_dict["PASSWORD"] = token
-        connection.close()
-        connection.connect()
