@@ -218,7 +218,7 @@ def smp1_tariff_data_with_no_external_id():
 
 
 @pytest.fixture
-def smp1_tariff_updated_data_with_no_external_id():
+def smp1_tariff_update_data_with_no_external_id():
     return {
         "currency": "EUR",
         "price_per_kwh": 0.103,
@@ -232,7 +232,7 @@ def smp1_tariff_updated_data_with_no_external_id():
 
 
 @pytest.fixture
-def smp1_updated_tariff():
+def smp1_update_tariff():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -247,7 +247,7 @@ def smp1_updated_tariff():
 
 
 @pytest.fixture
-def smp1_updated_tariff_no_msp():
+def smp1_update_tariff_no_msp():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -268,7 +268,7 @@ def smp1_patch_tariff_payload():
 
 
 @pytest.fixture
-def solid_tariff_smp1_msp1_updated_data(operator_fi_cpo, msp_de_ice):
+def solid_tariff_smp1_msp1_update_data(operator_fi_cpo, msp_de_ice):
     return {
         "external_id": "SMP1",
         "currency": "EUR",
