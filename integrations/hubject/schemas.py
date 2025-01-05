@@ -743,11 +743,11 @@ class RFIDIdentification(BaseModel):
 
 
 class Identification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification] = None
-    RFIDIdentification: Optional[RFIDIdentification] = None
-    QRCodeIdentification: Optional[QRCodeIdentification] = None
-    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = None
-    RemoteIdentification: Optional[RemoteIdentification] = None
+    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification]
+    # RFIDIdentification: Optional[RFIDIdentification] = Field(default=None)
+    # QRCodeIdentification: Optional[QRCodeIdentification] = Field(default=None)
+    # PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = Field(default=None)
+    # RemoteIdentification: Optional[RemoteIdentification] = Field(default=None)
 
 
 class EvseDataRecord(BaseModel):

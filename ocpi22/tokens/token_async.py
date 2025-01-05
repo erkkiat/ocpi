@@ -136,12 +136,14 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
             for task in done_tasks:
                 try:
-                    # Todo: Hubject authorize
                     result = process_task_result(task)
                     if result:
-                        break
+                        break  # For loop
                 except Exception:
                     logger.exception(f"Task {task.get_name()} failed")
+
+            if result:
+                break  # While loop
 
             if not pending_tasks:
                 # No more tasks pending_tasks, break the loop
