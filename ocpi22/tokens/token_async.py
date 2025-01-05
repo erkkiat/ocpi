@@ -111,7 +111,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
                 ),
-                name=str(Party(country_code, party_id)),
+                name=f"{country_code}*{party_id}",
             )
             for url, token_base64, country_code, party_id, credentials in parties
         ]
@@ -153,7 +153,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
         # Cancel all pending_tasks tasks as we have found our successful task or there are no tasks left
         for task in pending_tasks:
-            logger.info(f"Cancelling task {task.get_name()}", task.cancel())
+            logger.debug(f"Cancelling task {task.get_name()}", task.cancel())
 
         return result
 

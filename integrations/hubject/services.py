@@ -39,8 +39,9 @@ def map_oicp_authorization_response_to_ocpi_221(
     oicp_response: dict, token_id: str
 ) -> dict | None:
     authorization_status = oicp_response.get("AuthorizationStatus")
-    status_ok = oicp_response.get("StatusCode", {}).get("Code") == "000"
-    country_code, party_id = oicp_response.get("ProviderID", "").split("*")
+    country_code, party_id = oicp_response.get("ProviderID", "*").split("*")
+    status_code = oicp_response.get("StatusCode", {}).get("Code")
+    status_ok = bool(status_code == "000")
 
     if authorization_status and status_ok:
         data = {
@@ -56,14 +57,20 @@ def map_oicp_authorization_response_to_ocpi_221(
                 "default_profile_type": "REGULAR",
                 "issuer": f"{country_code}*{party_id}",
                 "language": settings.LANGUAGE_CODE.upper(),
-                "last_updated": None,
                 "type": "RFID",
                 "uid": token_id,
                 "valid": True,
                 "whitelist": "NEVER",
+                "last_updated": datetime.now(pytz.utc).strftime(
+                    settings.OCPI_DATE_FORMAT
+                ),
             },
         }
         return {"data": data}
+
+    logger.info(
+        f"Hubject authorization failed with status code {status_code} and authorization status {authorization_status}"
+    )
     return None
 
 
