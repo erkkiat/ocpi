@@ -1,3 +1,5 @@
+import ssl
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
@@ -50,6 +52,7 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": REDIS_URL,
+        "OPTIONS": {"SSL": True, "SSL_CERT_REQS": ssl.CERT_NONE},
     },
 }
 
