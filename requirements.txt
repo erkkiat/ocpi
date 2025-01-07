@@ -16,8 +16,8 @@ django-filter==24.3
 django-environ~=0.11.2
 python-dateutil~=2.9.0.post0
 pyyaml==6.0.2
+hiredis==3.1.0
 celery~=5.4.0
-redis~=5.1.0
 aiohttp~=3.9.5  # 3.10 will break async Token validation
 gunicorn~=23.0.0
 slack-logger>=0.3.1,<1.0
