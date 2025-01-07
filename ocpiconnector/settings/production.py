@@ -1,3 +1,5 @@
+import ssl
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
@@ -46,11 +48,18 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
 )
 
 REDIS_URL = os.environ["REDIS_URL"]
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": REDIS_URL,
-    }
+        "LOCATION": REDIS_URL,  # Use `rediss://` for SSL
+        "OPTIONS": {
+            "PASSWORD": os.environ["REDIS_TOKEN"],  # Set the Redis password or token
+            "CONNECTION_POOL_KWARGS": {
+                "ssl_cert_reqs": ssl.CERT_NONE,  # Skip SSL verification
+            },
+        },
+    },
 }
 
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()

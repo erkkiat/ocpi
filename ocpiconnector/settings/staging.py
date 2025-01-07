@@ -1,3 +1,5 @@
+import ssl
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
@@ -51,9 +53,14 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": REDIS_URL,
-    }
+        "OPTIONS": {
+            "PASSWORD": os.environ["REDIS_TOKEN"],
+            "CONNECTION_POOL_KWARGS": {
+                "ssl_cert_reqs": ssl.CERT_NONE,
+            },
+        },
+    },
 }
-
 
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {
