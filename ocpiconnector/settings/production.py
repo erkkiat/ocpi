@@ -1,5 +1,3 @@
-import ssl
-
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
@@ -55,9 +53,6 @@ CACHES = {
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "PASSWORD": os.environ["REDIS_TOKEN"],
-            "CONNECTION_POOL_KWARGS": {
-                "ssl_cert_reqs": ssl.CERT_NONE,
-            },
         },
     },
 }
