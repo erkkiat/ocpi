@@ -44,6 +44,16 @@ SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
 SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
+REDIS_URL = os.getenv(
+    "REDIS_URL", "redis://master.solidroam-f3.kmy12p.euw1.cache.amazonaws.com:6379"
+)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+    }
+}
+
 
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {
