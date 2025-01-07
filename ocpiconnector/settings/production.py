@@ -52,11 +52,11 @@ REDIS_URL = os.environ["REDIS_URL"]
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": REDIS_URL,  # Use `rediss://` for SSL
+        "LOCATION": REDIS_URL,
         "OPTIONS": {
-            "PASSWORD": os.environ["REDIS_TOKEN"],  # Set the Redis password or token
+            "PASSWORD": os.environ["REDIS_TOKEN"],
             "CONNECTION_POOL_KWARGS": {
-                "ssl_cert_reqs": ssl.CERT_NONE,  # Skip SSL verification
+                "ssl_cert_reqs": ssl.CERT_NONE,
             },
         },
     },
