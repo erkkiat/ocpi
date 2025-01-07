@@ -28,9 +28,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 
-
 HUBJECT_URL = "Add the hubject production base url"
-
 
 MQTT_BROKER = os.getenv("MQTT_BROKER")
 MQTT_PORT = os.getenv("MQTT_PORT", 443)
@@ -45,15 +43,12 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
 
-REDIS_URL = os.environ["REDIS_URL"]
-
+_REDIS_HOST = os.environ["REDIS_URL"]
+REDIS_URL = f"rediss://:{os.environ['REDIS_TOKEN']}@{_REDIS_HOST}"
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "PASSWORD": os.environ["REDIS_TOKEN"],
-        },
     },
 }
 
