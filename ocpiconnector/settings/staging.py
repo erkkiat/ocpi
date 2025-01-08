@@ -1,4 +1,5 @@
 import ssl
+from distutils.util import strtobool
 
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
@@ -9,7 +10,7 @@ from ocpiconnector.settings.infra_services import (
 )
 
 ENV = os.getenv("ENV", "staging").lower()
-DEBUG = os.getenv("DEBUG", False)
+DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
 ALLOWED_HOSTS = get_allowed_hosts()
 USE_X_FORWARDED_PORT = True
