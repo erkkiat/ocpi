@@ -398,11 +398,6 @@ LOGGING = {
             "level": "INFO",
             "propagate": True,
         },
-        "django.security.csrf": {  # CSRF-specific logs
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
         "django.request": {
             "handlers": ["console"],
             "level": "INFO",
