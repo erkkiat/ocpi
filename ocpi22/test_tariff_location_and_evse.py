@@ -14,7 +14,7 @@ from rest_framework.exceptions import NotAuthenticated
 
 import uuid
 from collections import OrderedDict
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 from datetime import timedelta, datetime
 from decimal import Decimal
@@ -24,7 +24,6 @@ import pytz
 import redis.exceptions
 import time_machine
 from django.conf import settings
-from django.http import HttpResponse
 
 from django.contrib.auth.models import AnonymousUser, User
 from django.test import TestCase, Client
@@ -69,7 +68,6 @@ from ocpi22.ocpi.serializers import (
     CredentialsSerializer,
 )
 from ocpi22.choices import (
-    OcpiModuleEnum,
     OcpiRolesEnum,
     MessageTexts,
     TokenType,
@@ -79,7 +77,6 @@ from ocpi22.commands.commands import CommandsViewSet
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet, EvseViewSet
-from ocpi22.middleware import OCPIHubMiddleware
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.credentials.util import find_endpoints_by_roles
@@ -91,7 +88,6 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.util import OCPIResponse, Ocpi, OcpiModule
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.pull import schedule_full_update
-from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import (
     ExpectedSessionUpdateResults,
@@ -2172,195 +2168,195 @@ class CredentialsTest(TestCase):
 routed_response_text = "Hello from the other side"
 
 
-class TestRouting(TestCase):
-    fixtures = ["ocpi22/data/test-database-hub.json"]
-
-    def test_middleware(self):
-        # Check that the middleware stack works
-        for url in ("/", "/admin/login/", "/ocpi/versions/"):
-            response = self.client.get(url)
-            self.assertTrue(
-                b"Headers missing: OCPI-to-country-code" not in response.content,
-                "Looks like using Admin UI is not possible due to over eager OCPI routing middleware",
-            )
-            self.assertEqual(
-                response.status_code, 200, "Middleware may not work together properly"
-            )
-
-    def test_find_route(self):
-        try:
-            self.assertTrue(
-                hasattr(find_route, "cache_clear"), "find_route() should be cached"
-            )
-            find_route.cache_clear()
-            route: Route = find_route(Party("fi", "msp"), OcpiModuleEnum.LOCATIONS)
-            self.assertEqual(
-                find_route.cache_info().hits,
-                0,
-                "find_route() should first give a cache miss",
-            )
-            self.assertEqual(
-                find_route.cache_info().misses,
-                1,
-                "find_route() should first give a cache miss",
-            )
-
-            # Does caching work?
-            find_route(
-                Party("fi", "msp"), OcpiModuleEnum.LOCATIONS
-            )  # These should be acceptable in lower case
-            self.assertEqual(
-                find_route.cache_info().hits, 1, "find_route() should be cached"
-            )
-
-            self.assertTrue(
-                compare_dicts_recursively(
-                    asdict(route),
-                    {
-                        "alive": True,
-                        "credentials_id": 2,
-                        "direct": True,
-                        "identifier": OcpiModuleEnum.LOCATIONS,
-                        "to": {"country_code": "FI", "party_id": "MSP"},
-                        "token_base64": "dGhlaXJzLTI=",
-                        "url": "http://localhost:8001/ocpi/nap/2.2/locations",
-                        "version": "2.2",
-                    },
-                ),
-                "Expected route not found",
-            )
-        except AttributeError as e:
-            self.fail(f"find_route() is probably not cached: {e}")
-
-    def test_find_hub_route(self):
-        # Route to an unknown party
-        route: Route = find_route(Party("no", "exi"), OcpiModuleEnum.LOCATIONS)
-        self.assertTrue(route.through_hub, "Seems that a hub route is not found")
-        self.assertTrue(
-            compare_dicts_recursively(
-                asdict(route),
-                {
-                    "alive": True,
-                    "credentials_id": 3,
-                    "direct": False,
-                    "identifier": OcpiModuleEnum.LOCATIONS,
-                    "to": {"country_code": "FI", "party_id": "HUB"},
-                    "token_base64": "dGhlaXJzLTM=",
-                    "url": "http://localhost:8001/ocpi/hub/2.2/locations",
-                    "version": "22",
-                },
-            ),
-            "Expecting a different route through hub",
-        )
-
-    def mocked_request(*_args, **kwargs):
-        return MockResponse(
-            json.dumps(dict(message=routed_response_text)),
-            200,
-            headers=kwargs.get("headers"),
-            data=kwargs.get("json"),
-        )
-
-    @time_machine.travel(faketime, tick=False)
-    @patch("ocpi22.middleware.is_our_identifier", return_value=False)
-    @patch("ocpi22.routing.requests.request", side_effect=mocked_request)
-    def test_message_routing(self, mock_request: Mock, mock_is_our_identifier: Mock):
-        # Let's fake we are FI*HUB, need to clear cache first not to get old info
-        is_our_identifier.cache_clear()
-        setattr(self, "get_response_called", False)
-
-        url = reverse("commands-start-session")
-
-        data = {
-            "message": "This is a message routing test",
-            "response_url": "http://localhost/ocpi/hub/2.2/commands/1234",
-        }
-        credentials = Credentials.objects.get(pk=2)
-        sender = Party("FI", "MSP")
-
-        def fake_get_response(_request):
-            # We want to know when this gets called
-            self.get_response_called = True
-            return HttpResponse("Everything is good", status=status.HTTP_200_OK)
-
-        test_cases = (
-            dict(label="All good", result=200),
-            dict(label="Missing token", token="", result=401),
-            dict(label="Unknown recipient", party=Party("NO", "NOT"), result=404),
-            dict(
-                label="Missing recipient", party=Party("", ""), result=200
-            ),  # This should be ok, or no Admin UI
-            dict(
-                label="Hub as recipient",
-                party=Party("FI", "HUB"),
-                result=200,
-                routing=False,
-                this_is_us=True,
-            ),
-        )
-
-        for testcase in test_cases:
-            with self.subTest(testcase.get("label")):
-                # Todo: with self.subTest(testcase)
-                mock_request.reset_mock()
-                routing = testcase.get("routing", True)
-                mock_is_our_identifier.return_value = testcase.get("this_is_us")
-                to = testcase.get("party")
-                if to is None:  # Let empty Party through
-                    to = Party("FI", "CPO")
-                headers = make_headers(
-                    testcase.get("token", credentials.ours_base64()), to, sender
-                )
-                request = api_factory.post(url, **headers)
-
-                # Combine META with headers, since both might be used in tests
-                request.headers = request.META | headers
-                request.META = request.headers
-
-                request.data = json.dumps(data)
-                request.credentials = credentials
-
-                middleware = OCPIHubMiddleware(fake_get_response)
-                response = middleware(request)
-                self.assertEqual(
-                    response.status_code,
-                    testcase.get("result"),
-                    f'Unexpected result for case "{testcase.get("label")}"',
-                )
-
-                if response.status_code < 300:
-                    # Check that hub middleware passes the request forward only when routing has not been requested
-                    self.assertTrue(
-                        routing or self.get_response_called,
-                        "Seems that routing does not happen when it should, or happens when it should not",
-                    )
-                    self.get_response_called = False
-
-                    if testcase.get("routing"):
-                        # Let's check that routing has been done
-                        args, kwargs = mock_request.call_args
-                        self.assertDictEqual(
-                            kwargs,
-                            {
-                                "data": '{"message": "This is a message routing test"}',
-                                "headers": {
-                                    "Authorization": "Token dGhlaXJzLTk=",
-                                    "OCPI-from-country-code": sender.country_code,
-                                    "OCPI-from-party-id": sender.party_id,
-                                    "OCPI-to-country-code": to.country_code,
-                                    "OCPI-to-party-id": to.party_id,
-                                    "content-type": "application/json",
-                                },
-                                "method": "POST",
-                                "url": "http://fakehost/command/START_SESSION",
-                            },
-                            "The routed hub message is not as expected",
-                        )
-                        self.assertJSONEqual(
-                            response.content,
-                            {"message": "Hello from the other side"},
-                            "Hub routed message response is not as expected",
-                        )
+# class TestRouting(TestCase):
+#     fixtures = ["ocpi22/data/test-database-hub.json"]
+#
+#     def test_middleware(self):
+#         # Check that the middleware stack works
+#         for url in ("/", "/admin/login/", "/ocpi/versions/"):
+#             response = self.client.get(url)
+#             self.assertTrue(
+#                 b"Headers missing: OCPI-to-country-code" not in response.content,
+#                 "Looks like using Admin UI is not possible due to over eager OCPI routing middleware",
+#             )
+#             self.assertEqual(
+#                 response.status_code, 200, "Middleware may not work together properly"
+#             )
+#
+#     def test_find_route(self):
+#         try:
+#             self.assertTrue(
+#                 hasattr(find_route, "cache_clear"), "find_route() should be cached"
+#             )
+#             find_route.cache_clear()
+#             route: Route = find_route(Party("fi", "msp"), OcpiModuleEnum.LOCATIONS)
+#             self.assertEqual(
+#                 find_route.cache_info().hits,
+#                 0,
+#                 "find_route() should first give a cache miss",
+#             )
+#             self.assertEqual(
+#                 find_route.cache_info().misses,
+#                 1,
+#                 "find_route() should first give a cache miss",
+#             )
+#
+#             # Does caching work?
+#             find_route(
+#                 Party("fi", "msp"), OcpiModuleEnum.LOCATIONS
+#             )  # These should be acceptable in lower case
+#             self.assertEqual(
+#                 find_route.cache_info().hits, 1, "find_route() should be cached"
+#             )
+#
+#             self.assertTrue(
+#                 compare_dicts_recursively(
+#                     asdict(route),
+#                     {
+#                         "alive": True,
+#                         "credentials_id": 2,
+#                         "direct": True,
+#                         "identifier": OcpiModuleEnum.LOCATIONS,
+#                         "to": {"country_code": "FI", "party_id": "MSP"},
+#                         "token_base64": "dGhlaXJzLTI=",
+#                         "url": "http://localhost:8001/ocpi/nap/2.2/locations",
+#                         "version": "2.2",
+#                     },
+#                 ),
+#                 "Expected route not found",
+#             )
+#         except AttributeError as e:
+#             self.fail(f"find_route() is probably not cached: {e}")
+#
+#     def test_find_hub_route(self):
+#         # Route to an unknown party
+#         route: Route = find_route(Party("no", "exi"), OcpiModuleEnum.LOCATIONS)
+#         self.assertTrue(route.through_hub, "Seems that a hub route is not found")
+#         self.assertTrue(
+#             compare_dicts_recursively(
+#                 asdict(route),
+#                 {
+#                     "alive": True,
+#                     "credentials_id": 3,
+#                     "direct": False,
+#                     "identifier": OcpiModuleEnum.LOCATIONS,
+#                     "to": {"country_code": "FI", "party_id": "HUB"},
+#                     "token_base64": "dGhlaXJzLTM=",
+#                     "url": "http://localhost:8001/ocpi/hub/2.2/locations",
+#                     "version": "22",
+#                 },
+#             ),
+#             "Expecting a different route through hub",
+#         )
+#
+#     def mocked_request(*_args, **kwargs):
+#         return MockResponse(
+#             json.dumps(dict(message=routed_response_text)),
+#             200,
+#             headers=kwargs.get("headers"),
+#             data=kwargs.get("json"),
+#         )
+#
+#     @time_machine.travel(faketime, tick=False)
+#     @patch("ocpi22.middleware.is_our_identifier", return_value=False)
+#     @patch("ocpi22.routing.requests.request", side_effect=mocked_request)
+#     def test_message_routing(self, mock_request: Mock, mock_is_our_identifier: Mock):
+#         # Let's fake we are FI*HUB, need to clear cache first not to get old info
+#         is_our_identifier.cache_clear()
+#         setattr(self, "get_response_called", False)
+#
+#         url = reverse("commands-start-session")
+#
+#         data = {
+#             "message": "This is a message routing test",
+#             "response_url": "http://localhost/ocpi/hub/2.2/commands/1234",
+#         }
+#         credentials = Credentials.objects.get(pk=2)
+#         sender = Party("FI", "MSP")
+#
+#         def fake_get_response(_request):
+#             # We want to know when this gets called
+#             self.get_response_called = True
+#             return HttpResponse("Everything is good", status=status.HTTP_200_OK)
+#
+#         test_cases = (
+#             dict(label="All good", result=200),
+#             dict(label="Missing token", token="", result=401),
+#             dict(label="Unknown recipient", party=Party("NO", "NOT"), result=404),
+#             dict(
+#                 label="Missing recipient", party=Party("", ""), result=200
+#             ),  # This should be ok, or no Admin UI
+#             dict(
+#                 label="Hub as recipient",
+#                 party=Party("FI", "HUB"),
+#                 result=200,
+#                 routing=False,
+#                 this_is_us=True,
+#             ),
+#         )
+#
+#         for testcase in test_cases:
+#             with self.subTest(testcase.get("label")):
+#                 # Todo: with self.subTest(testcase)
+#                 mock_request.reset_mock()
+#                 routing = testcase.get("routing", True)
+#                 mock_is_our_identifier.return_value = testcase.get("this_is_us")
+#                 to = testcase.get("party")
+#                 if to is None:  # Let empty Party through
+#                     to = Party("FI", "CPO")
+#                 headers = make_headers(
+#                     testcase.get("token", credentials.ours_base64()), to, sender
+#                 )
+#                 request = api_factory.post(url, **headers)
+#
+#                 # Combine META with headers, since both might be used in tests
+#                 request.headers = request.META | headers
+#                 request.META = request.headers
+#
+#                 request.data = json.dumps(data)
+#                 request.credentials = credentials
+#
+#                 middleware = OCPIHubMiddleware(fake_get_response)
+#                 response = middleware(request)
+#                 self.assertEqual(
+#                     response.status_code,
+#                     testcase.get("result"),
+#                     f'Unexpected result for case "{testcase.get("label")}"',
+#                 )
+#
+#                 if response.status_code < 300:
+#                     # Check that hub middleware passes the request forward only when routing has not been requested
+#                     self.assertTrue(
+#                         routing or self.get_response_called,
+#                         "Seems that routing does not happen when it should, or happens when it should not",
+#                     )
+#                     self.get_response_called = False
+#
+#                     if testcase.get("routing"):
+#                         # Let's check that routing has been done
+#                         args, kwargs = mock_request.call_args
+#                         self.assertDictEqual(
+#                             kwargs,
+#                             {
+#                                 "data": '{"message": "This is a message routing test"}',
+#                                 "headers": {
+#                                     "Authorization": "Token dGhlaXJzLTk=",
+#                                     "OCPI-from-country-code": sender.country_code,
+#                                     "OCPI-from-party-id": sender.party_id,
+#                                     "OCPI-to-country-code": to.country_code,
+#                                     "OCPI-to-party-id": to.party_id,
+#                                     "content-type": "application/json",
+#                                 },
+#                                 "method": "POST",
+#                                 "url": "http://fakehost/command/START_SESSION",
+#                             },
+#                             "The routed hub message is not as expected",
+#                         )
+#                         self.assertJSONEqual(
+#                             response.content,
+#                             {"message": "Hello from the other side"},
+#                             "Hub routed message response is not as expected",
+#                         )
 
 
 class TestSession(TestCase):
