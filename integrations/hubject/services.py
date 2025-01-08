@@ -101,11 +101,16 @@ class HubjectService:
         try:
             logger.info(payload)
             payload_json = payload.model_dump_json()
+            logger.info(payload_json)
             logger.info("Logging hubject failure")
             logger.info(full_load_url)
             logger.info(f"Type payload json: {str(type(payload_json))}")
             logger.info("Payload json")
             response = HubjectService.client.post(full_load_url, data=payload_json)
+            logger.info("Status")
+            logger.info(response.status_code)
+            logger.info("body")
+            logger.info(response.text)
 
             return response.json()
         except PydanticSerializationError as e:
