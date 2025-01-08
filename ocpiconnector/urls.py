@@ -124,7 +124,7 @@ urlpatterns = [
     path(
         "admin/ocpi22/credentials/connection/new", new_connection, name="new-connection"
     ),
-    path("admin/", admin.site.urls),
+    path("portal/", admin.site.urls),
     path("hubadmin/", hub_admin_site.urls),
     path("issues/", views.issues, name="issues"),
     path("_nested_admin/", include("nested_admin.urls")),
