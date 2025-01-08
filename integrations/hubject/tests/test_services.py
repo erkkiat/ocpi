@@ -295,6 +295,26 @@ class TestHubjectService:
             "error": "serialization error",
         }
 
+    @responses.activate
+    def test_forbidden_response_for_post_evse_full_load(self, evse_full_load_payload):
+        operator_id = evse_full_load_payload.OperatorEvseData.OperatorID.root
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}evsepush/v23/operators/{operator_id}/data-records",
+            body="<html><head></head><body>Forbidden</body></html>",
+            status=403,
+        )
+        result = self.__hubject_service.post_evse_full_load(
+            operator_id, evse_full_load_payload
+        )
+
+        assert result == {
+            "success": False,
+            "errorType": "HTTP Error",
+            "error": "403 : <html><head></head><body>Forbidden</body></html>",
+        }
+
     def expected_berlin_op_evse_data_record(self):
         return OperatorEvseData(
             OperatorID=OperatorID(root="DE*SMP"),

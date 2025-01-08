@@ -102,7 +102,14 @@ class HubjectService:
             payload_json = payload.model_dump_json()
 
             response = HubjectService.client.post(full_load_url, data=payload_json)
-            return response.json()
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {
+                    "success": False,
+                    "errorType": "HTTP Error",
+                    "error": f"{response.status_code} : {response.text}",
+                }
         except PydanticSerializationError as e:
             logging.error(e)
             return {
