@@ -11,6 +11,7 @@ class AllowHealthCheckMiddleware:
 
     def __call__(self, request):
         if request.path == "/health-check/":
+            request.is_secure = lambda: True
             logging.info(
                 f"Health check from {request.META['HTTP_HOST']}", extra=request.META
             )
