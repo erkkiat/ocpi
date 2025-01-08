@@ -1,3 +1,5 @@
+import ssl
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
@@ -44,6 +46,15 @@ SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
 SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
+_REDIS_HOST = os.environ["REDIS_URL"]
+REDIS_URL = f"rediss://:{os.environ['REDIS_TOKEN']}@{_REDIS_HOST}"
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {"SSL": True, "SSL_CERT_REQS": ssl.CERT_NONE},
+    },
+}
 
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {

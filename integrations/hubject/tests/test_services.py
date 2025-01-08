@@ -10,6 +10,7 @@ from pydantic_core import PydanticSerializationError
 from requests import HTTPError
 from responses import matchers
 
+from integrations.hubject.client import HubjectClient
 from integrations.hubject.schemas import (
     ActionType,
     OperatorEvseData,
@@ -485,3 +486,8 @@ class TestHubjectService:
             OperatorName="Smappee Pvt Ltd",
             EvseDataRecord=[berlin_evse_data_record, emsdetten_evse_data_record],
         )
+
+
+class TestHubjectClient:
+    def test_hubject_client_init(self):
+        HubjectClient(rewrite_cert_files=True)
