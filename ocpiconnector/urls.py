@@ -3,6 +3,7 @@ from django.conf.urls import include
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path, re_path
+from django.views.decorators.csrf import csrf_exempt
 from django.views.i18n import set_language
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
@@ -124,7 +125,7 @@ urlpatterns = [
     path(
         "admin/ocpi22/credentials/connection/new", new_connection, name="new-connection"
     ),
-    path("admin/", admin.site.urls),
+    path("admin/", csrf_exempt(admin.site.urls)),  # debug
     path("hubadmin/", hub_admin_site.urls),
     path("issues/", views.issues, name="issues"),
     path("_nested_admin/", include("nested_admin.urls")),
