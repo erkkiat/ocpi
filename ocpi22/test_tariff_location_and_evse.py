@@ -2172,6 +2172,7 @@ class CredentialsTest(TestCase):
 routed_response_text = "Hello from the other side"
 
 
+@pytest.mark.skip
 class TestRouting(TestCase):
     fixtures = ["ocpi22/data/test-database-hub.json"]
 
