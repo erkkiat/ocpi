@@ -40,8 +40,7 @@ register(
 
 
 class CeleryConfig:
-    _redis_host = os.environ["REDIS_URL"]
-    broker_url = f"rediss://:{os.environ['REDIS_TOKEN']}@{_redis_host}"
+    broker_url = os.environ["REDIS_URL"]
     broker_transport_options = {
         "connection_class": SSLConnection,
         "ssl_cert_reqs": "none",
