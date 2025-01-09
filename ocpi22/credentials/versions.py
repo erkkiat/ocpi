@@ -8,23 +8,22 @@ from ocpi22.util import build_absolute_uri
 from util import reverse
 from ocpiconnector.ocpi_identities import ocpi_platform
 
-versions_url = None
-versions_url_221 = None
+
+def get_versions_url_221():
+    return build_absolute_uri(settings.OCPI_221_URL)
+
+
+def get_versions_url_22():
+    return build_absolute_uri(settings.OCPI_22_URL)
 
 
 def get_versions_dict():
     # Called often by hubinfo, make sure no excess steps
     # Cannot use caching due to changing requests
 
-    global versions_url, versions_url_221
-    if not versions_url:
-        versions_url = build_absolute_uri(settings.OCPI_22_URL)
-    if not versions_url_221:
-        versions_url_221 = build_absolute_uri(settings.OCPI_221_URL)
-
     return [
-        dict(version="2.2", url=versions_url),
-        dict(version="2.2.1", url=versions_url_221),
+        {"version": "2.2", "url": get_versions_url_22()},
+        {"version": "2.2.1", "url": get_versions_url_221()},
     ]
 
 
