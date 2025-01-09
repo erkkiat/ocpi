@@ -45,8 +45,7 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
 
-_REDIS_HOST = os.environ["REDIS_URL"]
-REDIS_URL = f"rediss://:{os.environ['REDIS_TOKEN']}@{_REDIS_HOST}"
+REDIS_URL = os.environ["REDIS_URL"]
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
