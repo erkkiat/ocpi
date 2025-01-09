@@ -9,7 +9,6 @@ import orjson
 from celery import shared_task, Celery
 from kombu import Queue, Exchange
 from kombu.serialization import register
-from redis import SSLConnection
 
 from base_task_services import RefreshTokenBaseTask
 
@@ -42,12 +41,7 @@ register(
 
 class CeleryConfig:
     broker_url = os.environ["REDIS_URL"]
-    broker_transport_options = {
-        "connection_class": SSLConnection,
-        "ssl": {
-            "ssl_cert_reqs": ssl.CERT_NONE,
-        },
-    }
+    broker_use_ssl = {"cert_reqs": ssl.CERT_NONE}
     result_backend = broker_url
     task_serializer = "orjson"
     accept_content = ["json"]
