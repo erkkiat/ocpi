@@ -12,8 +12,8 @@ from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
 
+from ocpi22.credentials.versions import versions_url_221
 from ocpiconnector.management.commands.serializers import VersionsSerializer
-from util import reverse
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
 from ocpi22.ocpi.serializers import CredentialsSerializer
@@ -156,7 +156,7 @@ class Command(BaseCommand):
 
             data_to_send = dict(
                 token=our_token,
-                url=f'http://{settings.HOSTNAME}{reverse("base-versions")}',
+                url=versions_url_221,
                 roles=roles,
             )
             url = find_endpoint_url(
