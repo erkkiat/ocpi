@@ -122,7 +122,9 @@ urlpatterns = [
     # path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     # path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path(
-        "admin/ocpi22/credentials/connection/new", new_connection, name="new-connection"
+        "portal/ocpi22/credentials/connection/new",
+        new_connection,
+        name="new-connection",
     ),
     path("portal/", admin.site.urls),
     path("hubadmin/", hub_admin_site.urls),
