@@ -12,7 +12,7 @@ from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
 
-from ocpi22.credentials.versions import versions_url_221
+from ocpi22.credentials.versions import get_versions_url_221
 from ocpiconnector.management.commands.serializers import VersionsSerializer
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
@@ -156,7 +156,7 @@ class Command(BaseCommand):
 
             data_to_send = dict(
                 token=our_token,
-                url=versions_url_221,
+                url=get_versions_url_221(),
                 roles=roles,
             )
             url = find_endpoint_url(
