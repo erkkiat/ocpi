@@ -91,7 +91,6 @@ from ocpiconnector.ocpi_identities import (
     get_our_credentialsrole,
 )
 from ocpiconnector.party import Party
-from premium import requires_premium
 
 logger = getLogger(__name__)
 
@@ -384,12 +383,10 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
         return None
 
     @ocpi_exception_handler
-    @requires_premium
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_sender_role(
         OcpiRolesEnum.EMSP
     )  # CPO should have the specific URL, no need to fetch using this endpoint
@@ -402,7 +399,6 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
-    @requires_premium
     def post(self, request, data, **_kwargs) -> OCPIResponse:
         serializer = CdrSerializer(data=data, context={"version": request.version})
         if serializer.is_valid():
@@ -446,7 +442,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         return "Credentials"
 
     @ocpi_exception_handler
-    @requires_premium
     def list(self, request, *_args, **_kwargs):
         if not hasattr(request, "credentials"):
             return OCPIResponse(
@@ -457,7 +452,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         return OCPIResponse(make_my_credentials_dict(request, request.credentials.ours))
 
     @ocpi_exception_handler
-    @requires_premium
     def delete(self, request: Request, *_args, **_kwargs):
         # Todo: Make sure deletition is not possible for others than owner
         if not hasattr(request, "credentials"):
@@ -475,7 +469,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         )
 
     @ocpi_exception_handler
-    @requires_premium
     @csrf_exempt
     def post(self, request: Request, *_args, **_kwargs):
         credentials: Credentials = getattr(request, "credentials", None)
@@ -519,7 +512,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         return OCPIResponse(data, http_status=status.HTTP_201_CREATED)
 
     @ocpi_exception_handler
-    @requires_premium
     @csrf_exempt
     def put(self, request: Request, *_args, **_kwargs):
         credentials: Credentials = getattr(request, "credentials", None)
@@ -581,12 +573,10 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
         return Tariff.objects.exclude(archived=True).order_by("created")
 
     @ocpi_exception_handler
-    @requires_premium
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_credentialsrole
     def get(self, request: Request, credentialsrole, uid, *_args, **_kwargs):
         """Handle a GET request for a specific Tariff"""
@@ -603,7 +593,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
             return get_object_or_404(Tariff, uid=uid)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_credentialsrole
     def put(
@@ -659,7 +648,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
 
     @ocpi_exception_handler
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
-    @requires_premium
     @requires_credentialsrole
     def delete(self, request, credentialsrole, uid, *_args, **_kwargs) -> OCPIResponse:
         """Process a DELETE rest call for a Tariff"""

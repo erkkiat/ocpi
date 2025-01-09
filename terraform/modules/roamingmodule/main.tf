@@ -26,7 +26,6 @@ resource "heroku_app" "roamingmodule" {
   region = var.region
 
   config_vars = merge({
-    PREMIUM = 1
     SCHEME = "http"
     DJANGO_SETTINGS_MODULE = "ocpiconnector.settings"
   }, var.extra_config_vars)
