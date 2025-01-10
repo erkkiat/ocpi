@@ -12,17 +12,18 @@ from django.conf import settings
 from django.core import exceptions
 from django.core.management.base import BaseCommand
 
-from ocpi22.credentials.versions import get_versions_url_221
 from ocpiconnector.management.commands.serializers import VersionsSerializer
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
 from ocpi22.ocpi.serializers import CredentialsSerializer
 from ocpi22.ocpi.util import ocpi_credentials_get, ocpi_credentials_post
 from ocpiconnector.exceptions import OCPIProtocolError, NoCommonVersion
-from ocpi22.util import generate_random_token
+from ocpi22.util import generate_random_token, build_absolute_uri
 from ocpiconnector.ocpi_identities import ROLE_OPTIONS
 
 from colorama import Style
+
+from util import reverse
 
 
 @cachetools.cached(cache=cachetools.Cache(maxsize=len(ROLE_OPTIONS)))
@@ -156,7 +157,7 @@ class Command(BaseCommand):
 
             data_to_send = dict(
                 token=our_token,
-                url=get_versions_url_221(),
+                url=build_absolute_uri(reverse("base-versions")),
                 roles=roles,
             )
             url = find_endpoint_url(
