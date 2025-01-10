@@ -1,5 +1,4 @@
 import os
-import ssl
 from datetime import datetime
 from enum import Enum
 from logging import getLogger
@@ -41,9 +40,9 @@ register(
 
 class CeleryConfig:
     broker_url = os.environ["REDIS_URL"]
-    broker_use_ssl = {
-        "ssl_cert_reqs": ssl.CERT_NONE,
-    }
+    # broker_use_ssl = {
+    #     "ssl_cert_reqs": ssl.CERT_NONE,
+    # }
     result_backend = broker_url
     task_serializer = "orjson"
     accept_content = ["json"]
