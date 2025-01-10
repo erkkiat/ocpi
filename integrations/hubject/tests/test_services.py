@@ -316,6 +316,43 @@ class TestHubjectService:
             "error": "403 : <html><head></head><body>Forbidden</body></html>",
         }
 
+    def test_get_default_tariffs_success(self, monkeypatch):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", "0.25")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", "USD")
+        monkeypatch.setattr(
+            "django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR"
+        )
+
+        result = self.__hubject_service.get_default_tariffs()
+
+        assert result.currency == "USD"
+        assert result.price == 0.25
+        assert result.price_component.value == "KILOWATT_HOUR"
+
+    def test_get_default_tariffs_missing_env_vars(self, monkeypatch):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", None)
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", None)
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", None)
+
+        with pytest.raises(ValueError) as excinfo:
+            self.__hubject_service.get_default_tariffs()
+        assert str(excinfo.value) == (
+            "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
+        )
+
+    def test_get_default_tariffs_partial_env_vars(self, monkeypatch):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", "0.25")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", None)
+        monkeypatch.setattr(
+            "django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR"
+        )
+
+        with pytest.raises(ValueError) as excinfo:
+            self.__hubject_service.get_default_tariffs()
+        assert str(excinfo.value) == (
+            "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
+        )
+
     def expected_berlin_op_evse_data_record(self):
         return OperatorEvseData(
             OperatorID=OperatorID(root="DE*SMP"),
