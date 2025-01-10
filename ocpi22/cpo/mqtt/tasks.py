@@ -42,10 +42,13 @@ register(
 class CeleryConfig:
     broker_url = os.environ["REDIS_URL"]
     # a bit hack but will refactor after it is working
+
     if os.environ["ENV"] in ["production", "staging"]:
-        broker_use_ssl = {
+        _ssl_configuration = {
             "ssl_cert_reqs": ssl.CERT_NONE,
         }
+        broker_use_ssl = _ssl_configuration
+        redis_backend_use_ssl = _ssl_configuration
     result_backend = broker_url
     task_serializer = "orjson"
     accept_content = ["json"]
