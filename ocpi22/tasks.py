@@ -48,7 +48,7 @@ app = celery.Celery(
 # - namespace='CELERY' means all celery-related configuration keys
 #   should have a `CELERY_` prefix.
 app.config_from_object("django.conf:settings", namespace="CELERY")
-# app.conf.task_default_queue = settings.CELERY_TASK_DEFAULT_QUEUE  # This is taken care of in production.py
+# app.conf.task_default_queue = "celery-django-mid"
 
 pull_hour = random.randint(0, 3)
 pull_minute = random.randint(0, 59)
