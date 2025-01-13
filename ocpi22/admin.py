@@ -781,10 +781,10 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
     actions = [admin_pull_all]
 
     def has_add_permission(self, request):
-        return settings.PREMIUM and super().has_add_permission(request)
+        return super().has_add_permission(request)
 
     def has_change_permission(self, request, obj=None):
-        return settings.PREMIUM and super().has_change_permission(request, obj=obj)
+        return super().has_change_permission(request, obj=obj)
 
     def last_update(self, obj):
         return naturaltime(obj.last_connection)

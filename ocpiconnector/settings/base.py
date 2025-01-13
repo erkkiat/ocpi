@@ -27,7 +27,6 @@ locale_formats.DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT_LOCALE", "D j.n
 DECIMAL_SEPARATOR = os.environ.get("DECIMAL_SEPARATOR", ",")
 DEFAULT_CURRENCY = os.environ.get("DEFAULT_CURRENCY", "EUR")
 
-PREMIUM = env_bool("PREMIUM", False)
 CPO_API = env_bool("CPO_API", False)
 MSP_API = env_bool("MSP_API", False)
 
