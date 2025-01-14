@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 ENV = os.getenv("ENV", "development").lower()
 
-DEBUG = os.getenv("DEBUG").lower() in ("1", "true", "yes")
+DEBUG = os.getenv("DEBUG") in ("1", "true", "True")
 ALLOWED_HOSTS.extend(["*"])  # noqa
 MQTT_BROKER = os.getenv("MQTT_BROKER", "emqx")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
