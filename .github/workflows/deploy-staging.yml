@@ -135,4 +135,14 @@ jobs:
               docker buildx build --platform linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
 
               echo "Pushed multi-architecture image for $service to ECR: $full_image_url_with_tag"
+          
+              for farm in f2 f3; do
+                env_image_url="$ECR_REPO_URL/solidroam-$service-$farm:$IMAGE_TAG"
+                
+                echo "Tagging image for environment $farm"
+                docker tag "$full_image_url_with_tag" "$env_image_url"
+                
+                echo "Pushing image for environment $farm"
+                docker push "$env_image_url"
+              done
           done
