@@ -64,6 +64,7 @@ app.conf.task_queues = (
     # Add other queues as needed
 )
 app.config_from_object(CeleryConfig)
+app.conf.task_default_queue = "HIGH"
 app.autodiscover_tasks()
 
 from base_task_services import setup_worker_connection  # noqa
