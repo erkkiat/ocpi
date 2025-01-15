@@ -22,7 +22,7 @@ case "$1" in
         ;;
     celery-mqtt)
         echo "Starting Celery worker for MQTT tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
-        exec celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=DEBUG --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
+        exec celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=DEBUG --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME -E
         ;;
     *)
         echo "Unknown service: $1"
