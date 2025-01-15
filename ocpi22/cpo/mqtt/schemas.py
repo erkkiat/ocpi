@@ -14,7 +14,9 @@ class Uid(RootModel):
 
 
 class MeterValues(BaseModel):
-    session_id: Optional[str] = Field(..., max_length=36, description="The unique identifier of the session.")
+    session_id: Optional[str] = Field(
+        ..., max_length=36, description="The unique identifier of the session."
+    )
     kwh: float = Field(..., description="The metered energy in kWh.")
     soc: Optional[float] = Field(None, description="The state of charge in percentage.")
     power: Optional[float] = Field(None, description="The power in kW.")
@@ -36,12 +38,12 @@ class EvseStatus(str, Enum):
 class EvseStatusUpdate(BaseModel):
     evse_uid: str
     status: EvseStatus
-    timestamp: Optional[str] = Field(None, description="The optional, but recommended timestamp of the status change.")
 
     class Config:
         json_encoders = {
             EvseStatus: lambda v: v.value,  # Convert Enum to its value
         }
+
 
 @dataclass
 class CachedSession:
