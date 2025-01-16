@@ -787,18 +787,18 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     def put(
         cls,
         request,
-        country_code=None,
-        party_id=None,
-        uid=None,
-        partial=False,
-        data=None,
-        tryagain=False,
+        uid,
+        *args,
         **kwargs,
     ) -> OCPIResponse:
+        country_code = kwargs.get("country_code", "")
+        party_id = kwargs.get("party_id", "")
+        data = kwargs.get("data", {})
+        partial = kwargs.get("partial", False)
+
         if not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse("session")
 
-        uid = uid or data.get("id")
         session: Session = Session.get_if_exists(
             uid__iexact=uid, ocpi_master=request.credentialsrole
         )
@@ -847,30 +847,6 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
                 http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
             )
 
-        # Input data doesn't validate
-        # Is the Location or EVSE missing?
-        if (
-            not tryagain
-            and "evse_uid" in data
-            and "location_id" in data
-            and ("evse_uid" in serializer.errors or "location_id" in serializer.errors)
-        ):
-            fetch_location(
-                country_code,
-                party_id,
-                serializer.initial_data.get("location_id"),
-                serializer.initial_data.get("evse_uid"),
-            )
-            # Try again, but avoid a loop
-            return cls.put(
-                request,
-                country_code=kwargs.pop("country_code", country_code),
-                party_id=kwargs.pop("party_id", party_id),
-                uid=kwargs.pop("uid", uid),
-                partial=partial,
-                tryagain=True,
-                **kwargs,
-            )
         logger.error(
             'Problem with PUT Session from '
             f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}'
@@ -882,8 +858,8 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
     @requires_last_updated
-    def patch(self, request, data, *args, **kwargs):
-        return self.put(request, data, *args, partial=True, **kwargs)
+    def patch(self, request, *args, **kwargs):
+        return self.put(request, *args, partial=True, **kwargs)
 
 
 class ClientInfoViewSet(mixins.ListModelMixin, GenericViewSet):
