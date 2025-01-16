@@ -148,4 +148,5 @@ jobs:
                   echo "Pushed image for $service to ECR: $full_image_url_with_tag"
               done
           done
+
         
