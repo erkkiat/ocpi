@@ -133,7 +133,7 @@ jobs:
 
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
               echo "Building multi-architecture image for $service with tag: $IMAGE_TAG"
-              docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" -f ./Dockerfile --load
+              docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" -f ./Dockerfile --load .
               for farm in $FARMS; do
                   repo_url="$ECR_REPO_URL/solidroam-$service-$farm"
                   full_image_url_with_tag="$repo_url:$IMAGE_TAG"
