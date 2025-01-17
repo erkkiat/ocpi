@@ -1,10 +1,12 @@
+from distutils.util import strtobool
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 from urllib.parse import urlparse
 
 ENV = os.getenv("ENV", "development").lower()
 
-DEBUG = os.getenv("DEBUG") in ("1", "true", "True")
+DEBUG = strtobool(os.getenv("DEBUG", "True"))
 ALLOWED_HOSTS.extend(["*"])  # noqa
 MQTT_BROKER = os.getenv("MQTT_BROKER", "emqx")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
