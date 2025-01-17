@@ -127,7 +127,6 @@ jobs:
 
       - name: Build and Push Multi-Architecture Images
         run: |
-          # Define the farms to which the images should be pushed
           FARMS="f2 f3"
 
           echo "Deploying to farms: $FARMS"
@@ -148,5 +147,3 @@ jobs:
                   echo "Pushed image for $service to ECR: $full_image_url_with_tag"
               done
           done
-
-        
