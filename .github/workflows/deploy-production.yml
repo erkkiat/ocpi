@@ -3,7 +3,7 @@ name: Develop to Master Release Workflow
 on:
   push:
     branches:
-      - master  # Triggered for all pushes to master (PR merges or direct commits)
+      - main
 
 jobs:
   lint:
