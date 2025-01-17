@@ -113,6 +113,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Git
         run: |
@@ -130,6 +132,7 @@ jobs:
       - name: Generate Enhanced Release Notes
         id: release_notes
         run: |
+          # Detect the previous tag
           if git describe --tags --abbrev=0 HEAD^ > /dev/null 2>&1; then
             PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
           else
@@ -138,20 +141,30 @@ jobs:
 
           echo "## Changes in This Release" > release_notes.txt
 
+          # Repository URL
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+
           if [ "$PREVIOUS_TAG" != "none" ]; then
+            # Iterate through commits to detect pull requests or regular commits
+            CHANGES_FOUND=false
             for commit in $(git log --pretty=format:"%H" ${PREVIOUS_TAG}..HEAD); do
               if git log -1 --pretty=%B $commit | grep -q "Merge pull request"; then
                 PR_NUMBER=$(git log -1 --pretty=%B $commit | grep -oE "#[0-9]+" | tr -d "#")
-                PR_URL="${{ github.server_url }}/${{ github.repository }}/pull/$PR_NUMBER"
-                COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s" $commit)
-                COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/$commit"
-                echo "- [$commit]($COMMIT_URL): $COMMIT_MESSAGE ([PR #$PR_NUMBER]($PR_URL))" >> release_notes.txt
+                PR_TITLE=$(git log -1 --pretty=%s $commit | sed -E 's/Merge pull request #[0-9]+ //')
+                PR_URL="${REPO_URL}/pull/$PR_NUMBER"
+                echo "- [PR #$PR_NUMBER]($PR_URL): $PR_TITLE" >> release_notes.txt
+                CHANGES_FOUND=true
               else
                 COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s" $commit)
-                COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/$commit"
+                COMMIT_URL="${REPO_URL}/commit/$commit"
                 echo "- [$commit]($COMMIT_URL): $COMMIT_MESSAGE" >> release_notes.txt
+                CHANGES_FOUND=true
               fi
             done
+
+            if [ "$CHANGES_FOUND" = false ]; then
+              echo "- No changes since the last release" >> release_notes.txt
+            fi
           else
             echo "- Initial release" >> release_notes.txt
           fi
