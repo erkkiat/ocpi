@@ -127,12 +127,23 @@ jobs:
 
       - name: Build and Push Multi-Architecture Images
         run: |
+          FARMS="f2 f3"
+
+          echo "Deploying to farms: $FARMS"
+
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-              repo_url="$ECR_REPO_URL/solidroam-$service-f3"
-              full_image_url_with_tag="$repo_url:$IMAGE_TAG"
-
               echo "Building multi-architecture image for $service with tag: $IMAGE_TAG"
-              docker buildx build --platform linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
+              docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" -f ./Dockerfile --load
+              for farm in $FARMS; do
+                  repo_url="$ECR_REPO_URL/solidroam-$service-$farm"
+                  full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
-              echo "Pushed multi-architecture image for $service to ECR: $full_image_url_with_tag"
+                  echo "Tagging image for $service to $repo_url"
+                  docker tag "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" "$full_image_url_with_tag"
+
+                  echo "Pushing image for $service to $repo_url"
+                  docker push "$full_image_url_with_tag"
+
+                  echo "Pushed image for $service to ECR: $full_image_url_with_tag"
+              done
           done
