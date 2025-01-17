@@ -1,4 +1,4 @@
-name: Develop to Master Release Workflow
+name: Develop to Main Release Workflow
 
 on:
   push:
