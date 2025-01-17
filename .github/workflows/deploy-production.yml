@@ -120,25 +120,37 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Determine Release Version
+        id: determine_version
+        run: |
+          DATE=$(date -u +"%Y-%m-%d")
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          RELEASE_VERSION="${DATE}-${COMMIT_SHA}"
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
+
       - name: Generate Enhanced Release Notes
         id: release_notes
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ || echo "none")
           echo "## Changes in This Release" > release_notes.txt
-
-          for commit in $(git log --pretty=format:"%H" ${PREVIOUS_TAG}..HEAD); do
-            if git log -1 --pretty=%B $commit | grep -q "Merge pull request"; then
-              PR_NUMBER=$(git log -1 --pretty=%B $commit | grep -oE "#[0-9]+" | tr -d "#")
-              PR_URL="${{ github.server_url }}/${{ github.repository }}/pull/$PR_NUMBER"
-              COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s" $commit)
-              COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/$commit"
-              echo "- [$commit]($COMMIT_URL): $COMMIT_MESSAGE ([PR #$PR_NUMBER]($PR_URL))" >> release_notes.txt
-            else
-              COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s" $commit)
-              COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/$commit"
-              echo "- [$commit]($COMMIT_URL): $COMMIT_MESSAGE" >> release_notes.txt
-            fi
-          done
+          
+          if [ "$PREVIOUS_TAG" != "none" ]; then
+            for commit in $(git log --pretty=format:"%H" ${PREVIOUS_TAG}..HEAD); do
+              if git log -1 --pretty=%B $commit | grep -q "Merge pull request"; then
+                PR_NUMBER=$(git log -1 --pretty=%B $commit | grep -oE "#[0-9]+" | tr -d "#")
+                PR_URL="${{ github.server_url }}/${{ github.repository }}/pull/$PR_NUMBER"
+                COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s" $commit)
+                COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/$commit"
+                echo "- [$commit]($COMMIT_URL): $COMMIT_MESSAGE ([PR #$PR_NUMBER]($PR_URL))" >> release_notes.txt
+              else
+                COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s" $commit)
+                COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/$commit"
+                echo "- [$commit]($COMMIT_URL): $COMMIT_MESSAGE" >> release_notes.txt
+              fi
+            done
+          else
+            echo "- Initial release" >> release_notes.txt
+          fi
 
           echo "RELEASE_NOTES=$(cat release_notes.txt)" >> $GITHUB_ENV
 
