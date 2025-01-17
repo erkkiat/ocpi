@@ -91,7 +91,7 @@ jobs:
 
       - name: Build and Push Docker Images
         run: |
-          IMAGE_TAG=$(date +%Y-%m-%d)-$GITHUB_RUN_NUMBER
+          IMAGE_TAG=$(date +%Y-%m-%d)-${{ github.sha }}
           repo_url="$ECR_REPO_URL/solidroam-$service-f1"
           full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
