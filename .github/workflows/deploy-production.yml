@@ -144,7 +144,15 @@ jobs:
 
           if [ "$PREVIOUS_TAG" != "none" ]; then
             CHANGES_FOUND=false
-            for commit in $(git log --pretty=format:"%H" ${PREVIOUS_TAG}..HEAD); do
+            for commit in $(git log --pretty=format:"%h" ${PREVIOUS_TAG}..HEAD); do
+              COMMIT_MESSAGE=$(git log -1 --pretty=%s $commit)
+
+              # Exclude branch merges (e.g., "Merge branch 'develop'")
+              if [[ "$COMMIT_MESSAGE" == Merge\ branch* ]]; then
+                continue
+              fi
+
+              # Process pull request merges
               if git log -1 --pretty=%B $commit | grep -q "Merge pull request"; then
                 PR_NUMBER=$(git log -1 --pretty=%B $commit | grep -oE "#[0-9]+" | tr -d "#")
                 PR_TITLE=$(git log -1 --pretty=%B $commit | sed -E 's/^Merge pull request #[0-9]+ //')
@@ -152,9 +160,9 @@ jobs:
                 echo "- [PR #$PR_NUMBER]($PR_URL): $PR_TITLE" >> release_notes.txt
                 CHANGES_FOUND=true
               else
-                COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s" $commit)
+                # Include meaningful regular commits not part of a PR
                 COMMIT_URL="${REPO_URL}/commit/$commit"
-                echo "- [Commit $commit]($COMMIT_URL): $COMMIT_MESSAGE" >> release_notes.txt
+                echo "- [$commit]($COMMIT_URL): $COMMIT_MESSAGE" >> release_notes.txt
                 CHANGES_FOUND=true
               fi
             done
@@ -170,7 +178,6 @@ jobs:
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
           cat release_notes.txt >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-      
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
