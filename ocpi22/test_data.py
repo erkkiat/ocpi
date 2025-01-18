@@ -10,13 +10,13 @@ class CredentialsData:
         "data": {
             "roles": [
                 {
-                    "business_details": {"name": "SolidRoam CPO", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": ""},
                     "country_code": "FI",
                     "party_id": "CPO",
                     "role": "CPO",
                 },
                 {
-                    "business_details": {"name": "SolidRoam CPO", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": ""},
                     "country_code": "FI",
                     "party_id": "MSP",
                     "role": "EMSP",
