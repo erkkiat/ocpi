@@ -470,7 +470,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
 
     @ocpi_exception_handler
     @csrf_exempt
-    def post(self, request: Request, *_args, **_kwargs):
+    def post(self, request: WSGIRequest, *_args, **_kwargs):
         credentials: Credentials = getattr(request, "credentials", None)
         assert credentials, "Posting to this endpoint requires OCPI Credentials"
         assert not credentials.theirs, "Credentials exist already, use PUT to update"

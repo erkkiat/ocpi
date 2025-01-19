@@ -88,6 +88,14 @@ class CredentialsData:
                 "party_id": "EXA",
                 "country_code": "NL",
                 "business_details": {"name": "Example Operator"},
+                "logo": {
+                    "url": "https://example.com/img/logo.jpg",
+                    "thumbnail": "https://example.com/img/logo_thumb.jpg",
+                    "category": "OPERATOR",
+                    "type": "jpeg",
+                    "width": 512,
+                    "height": 512,
+                },
             },
             {
                 "role": "EMSP",

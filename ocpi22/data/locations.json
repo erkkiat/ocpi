@@ -2,7 +2,6 @@
    {
       "pk" : 1,
       "fields" : {
-         "logo" : "",
          "name" : "Plugit Finland",
          "website" : ""
       },
@@ -11,7 +10,6 @@
    {
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
          "name" : "Recharge",
          "website" : ""
       },
@@ -21,8 +19,7 @@
       "pk" : 3,
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
-         "website" : "",
+                  "website" : "",
          "name" : "Tesla"
       }
    },
@@ -31,24 +28,21 @@
       "model" : "ocpi22.businessdetails",
       "fields" : {
          "name" : "Eki",
-         "website" : "http://www.chargerhub.eu/",
-         "logo" : ""
+         "website" : "http://www.chargerhub.eu/"
       }
    },
    {
       "pk" : 5,
       "fields" : {
          "name" : "Lidl",
-         "website" : "",
-         "logo" : ""
+         "website" : ""
       },
       "model" : "ocpi22.businessdetails"
    },
    {
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
-         "website" : "",
+                  "website" : "",
          "name" : "Business #1"
       },
       "pk" : 6
@@ -57,16 +51,14 @@
       "model" : "ocpi22.businessdetails",
       "fields" : {
          "name" : "Business #2",
-         "website" : "",
-         "logo" : ""
+         "website" : ""
       },
       "pk" : 7
    },
    {
       "pk" : 8,
       "fields" : {
-         "logo" : "",
-         "website" : "",
+                  "website" : "",
          "name" : "Business #3"
       },
       "model" : "ocpi22.businessdetails"
@@ -75,8 +67,7 @@
       "pk" : 9,
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
-         "name" : "Business #4",
+                  "name" : "Business #4",
          "website" : ""
       }
    },
@@ -84,16 +75,14 @@
       "pk" : 10,
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
-         "name" : "Business #6",
+                  "name" : "Business #6",
          "website" : ""
       }
    },
    {
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
-         "name" : "Business #7",
+                  "name" : "Business #7",
          "website" : ""
       },
       "pk" : 11
@@ -101,8 +90,7 @@
    {
       "pk" : 12,
       "fields" : {
-         "logo" : "",
-         "name" : "Business #8",
+                  "name" : "Business #8",
          "website" : ""
       },
       "model" : "ocpi22.businessdetails"
@@ -110,8 +98,7 @@
    {
       "pk" : 13,
       "fields" : {
-         "logo" : "",
-         "name" : "Business #9",
+                  "name" : "Business #9",
          "website" : ""
       },
       "model" : "ocpi22.businessdetails"
@@ -120,8 +107,7 @@
       "model" : "ocpi22.businessdetails",
       "fields" : {
          "name" : "Business #10",
-         "website" : "",
-         "logo" : ""
+         "website" : ""
       },
       "pk" : 14
    },
@@ -129,8 +115,7 @@
       "pk" : 15,
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
-         "name" : "Business #11",
+                  "name" : "Business #11",
          "website" : ""
       }
    },
@@ -138,16 +123,14 @@
       "pk" : 16,
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
-         "website" : "",
+                  "website" : "",
          "name" : "Business #12"
       }
    },
    {
       "fields" : {
          "name" : "Operator Name",
-         "website" : "",
-         "logo" : ""
+         "website" : ""
       },
       "model" : "ocpi22.businessdetails",
       "pk" : 17
@@ -156,8 +139,7 @@
       "pk" : 26,
       "fields" : {
          "website" : "",
-         "name" : "Warsaw Energy",
-         "logo" : ""
+         "name" : "Warsaw Energy"
       },
       "model" : "ocpi22.businessdetails"
    },
@@ -166,15 +148,13 @@
       "model" : "ocpi22.businessdetails",
       "fields" : {
          "name" : "Bigbusiness2",
-         "website" : "",
-         "logo" : ""
+         "website" : ""
       }
    },
    {
       "model" : "ocpi22.businessdetails",
       "fields" : {
-         "logo" : "",
-         "website" : "",
+                  "website" : "",
          "name" : "Bigbusiness"
       },
       "pk" : 47

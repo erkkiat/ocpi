@@ -1235,13 +1235,17 @@ class TariffTests(TestCase):
         business_details = BusinessDetails.objects.create(
             name="Test MSP",
             website="https://test.com",
-            logo="https://test.com/logo.png",
+            logo={
+                "url": "https://www.helsinki-supercharger.com/static/test_logo.png",
+                "category": "OPERATOR",
+                "type": "jpeg",
+            },
         )
         roles, _created = CredentialsRole.objects.get_or_create(
             role=role.value,
             country_code=country_code,
             party_id=party_id,
-            defaults=dict(business_details=business_details),
+            defaults={"business_details": business_details},
         )
         credentials.roles.add(roles)
         return credentials

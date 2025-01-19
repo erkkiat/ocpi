@@ -22,6 +22,7 @@ reservation_store = RedisStore("rsv", expiration=settings.REMOTE_COMMAND_EXPIRAT
 def store_reservation(reservation: Reservation):
     """
     Store the parameters of the received RESERVE_NOW command
+    >>> import pytz
     >>> store_reservation(Reservation('1', '2', '3', None, datetime(2020, 1, 1, tzinfo=pytz.utc)))
     >>> a = get_reservation('3')
     >>> bool(a.ocpp_reservation_id)

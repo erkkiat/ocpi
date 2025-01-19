@@ -2,7 +2,6 @@
    {
       "fields" : {
          "name" : "ChargerHub.eu",
-         "logo" : "",
          "website" : "http://www.chargerhub.eu/"
       },
       "pk" : 1,
@@ -13,13 +12,11 @@
       "model" : "ocpi22.businessdetails",
       "fields" : {
          "name" : "Tesla",
-         "logo" : "",
          "website" : "http://www.tesla.com/"
       }
    },
    {
       "fields" : {
-         "logo" : "",
          "name" : "Tesla",
          "website" : "http://www.tesla.com"
       },
