@@ -1,7 +1,6 @@
 import base64
 from unittest.mock import patch
 
-import pytest
 import time_machine
 from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
@@ -61,7 +60,6 @@ class CredentialsTests(BetterTestCase):
         setattr(request, "data", data)
         return request
 
-    @pytest.mark.skip("Fix me before production")
     @simulate_surrounding_world
     def test_credentials_post(self, simulation):
         token_a = "123"
