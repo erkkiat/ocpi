@@ -81,7 +81,7 @@ def check_auth_token(request, token: str) -> bool:
                 token_a=token_ascii, valid=True
             )
             if credentials_matches.exists():
-                if not request.registering_credentials:
+                if not getattr(request, "registering_credentials", None):
                     raise exceptions.NotAuthenticated(  # HTTP 401
                         f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
                     )
@@ -116,7 +116,9 @@ def check_auth_token(request, token: str) -> bool:
             request.ocpi_party = get_credentialsrole(
                 request.credentials, party=sender_party
             )
-            if not request.ocpi_party and not request.registering_credentials:
+            if not getattr(request, "ocpi_party", None) and not getattr(
+                request, "registering_credentials", None
+            ):
                 request.credentials = None
                 raise NotAuthenticated(
                     f"Sender party {sender_party} is not allowed for these credentials"
@@ -220,7 +222,8 @@ class OCPIPermission(DjangoModelPermissions):
 
         # Check for token authentication
         if check_auth_token(request, token) and (
-            request.registering_credentials or request.ocpi_party
+            getattr(request, "registering_credentials", None)
+            or getattr(request, "ocpi_party", None)
         ):
             return True
 
