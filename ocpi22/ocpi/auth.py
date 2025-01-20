@@ -99,6 +99,8 @@ def check_auth_token(request, token: str) -> bool:
                 )
 
         sender_party = get_sender_party(request.headers)
+        if not sender_party and credentials.roles.count() == 1:
+            sender_party = credentials.roles.first().get_party()
 
         if credentials.is_hub:
             # Implicit trust for hubs, since there is no hub authentication in OCPI 2.x
