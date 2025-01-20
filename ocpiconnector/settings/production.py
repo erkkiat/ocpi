@@ -1,5 +1,7 @@
 import ssl
 
+from redis.commands.graph.query_result import strtobool
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
@@ -9,7 +11,7 @@ from ocpiconnector.settings.infra_services import (
 )
 
 ENV = os.getenv("ENV", "production").lower()
-DEBUG = False
+DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
 HUBJECT_URL = "Add the hubject production base url"
 
