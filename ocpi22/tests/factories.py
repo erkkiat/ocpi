@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 import factory
 import pytz
+from faker import Faker
 
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
@@ -30,8 +31,35 @@ from integrations.hubject.schemas import (
 )
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import CredentialsRole, Credentials
+from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, SolidTariff
+
+fake = Faker()
+
+
+class OCPIImageFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = OCPIImage
+
+    url = factory.Faker("image_url")
+    thumbnail = factory.Maybe(
+        factory.Faker("boolean"), factory.Faker("image_url"), None
+    )
+    category = factory.LazyFunction(
+        lambda: fake.random_element(OCPIImageCategory.values)
+    )
+    image_type = factory.Faker("lexify", text="????")
+    width = factory.Maybe(
+        factory.Faker("boolean"),
+        factory.LazyFunction(lambda: fake.random_int(min=1, max=2000)),
+        None,
+    )
+    height = factory.Maybe(
+        factory.Faker("boolean"),
+        factory.LazyFunction(lambda: fake.random_int(min=1, max=2000)),
+        None,
+    )
 
 
 class BusinessDetailsFactory(factory.django.DjangoModelFactory):
@@ -40,7 +68,7 @@ class BusinessDetailsFactory(factory.django.DjangoModelFactory):
 
     name = factory.Faker("company")
     website = factory.Faker("url")
-    logo = factory.Faker("image_url")
+    logo = factory.SubFactory(OCPIImageFactory)
 
 
 class CredentialsFactory(factory.django.DjangoModelFactory):

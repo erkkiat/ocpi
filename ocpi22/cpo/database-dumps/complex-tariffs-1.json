@@ -188,8 +188,7 @@
     "pk": 1,
     "fields": {
       "name": "ChargerHub.EU",
-      "website": "",
-      "logo": ""
+      "website": ""
     }
   },
   {
@@ -197,8 +196,7 @@
     "pk": 2,
     "fields": {
       "name": "Lidl",
-      "website": "http://www.lidl.fi/",
-      "logo": ""
+      "website": "http://www.lidl.fi/"
     }
   },
   {
@@ -206,8 +204,7 @@
     "pk": 3,
     "fields": {
       "name": "GP Operator",
-      "website": "",
-      "logo": ""
+      "website": ""
     }
   },
   {

@@ -10,13 +10,13 @@ class CredentialsData:
         "data": {
             "roles": [
                 {
-                    "business_details": {"name": "SolidRoam CPO", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": ""},
                     "country_code": "FI",
                     "party_id": "CPO",
                     "role": "CPO",
                 },
                 {
-                    "business_details": {"name": "SolidRoam CPO", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": ""},
                     "country_code": "FI",
                     "party_id": "MSP",
                     "role": "EMSP",
@@ -88,6 +88,14 @@ class CredentialsData:
                 "party_id": "EXA",
                 "country_code": "NL",
                 "business_details": {"name": "Example Operator"},
+                "logo": {
+                    "url": "https://example.com/img/logo.jpg",
+                    "thumbnail": "https://example.com/img/logo_thumb.jpg",
+                    "category": "OPERATOR",
+                    "type": "jpeg",
+                    "width": 512,
+                    "height": 512,
+                },
             },
             {
                 "role": "EMSP",

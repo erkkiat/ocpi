@@ -18,6 +18,6 @@ class OCPIImage(models.Model):
         max_length=8,
         choices=OCPIImageCategory.choices,
     )
-    type = models.CharField(max_length=4)  # CiString
+    image_type = models.CharField(max_length=4)
     width = models.PositiveIntegerField(blank=True, null=True)
     height = models.PositiveIntegerField(blank=True, null=True)

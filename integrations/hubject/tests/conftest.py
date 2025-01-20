@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import factory
 import pytest
 import pytz
 
@@ -27,6 +28,7 @@ from ocpi22.tests.factories import (
     GeoCoordinatesFactory,
     ChargingFacilityFactory,
     TariffFactory,
+    OCPIImageFactory,
 )
 
 
@@ -35,7 +37,7 @@ def smappee_business_details():
     return BusinessDetailsFactory(
         name="Smappee Pvt Ltd",
         website="https://www.helsinki-supercharger.com",
-        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+        logo=factory.SubFactory(OCPIImageFactory),
     )
 
 
@@ -54,7 +56,7 @@ def helsinki_operator_details():
     return BusinessDetailsFactory(
         name="Helsinki Supercharger Operator",
         website="https://www.helsinki-supercharger.com",
-        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+        logo=factory.SubFactory(OCPIImageFactory),
     )
 
 
@@ -63,7 +65,7 @@ def helsinki_sub_operator_details(helsinki_ocpi_master):
     return BusinessDetailsFactory(
         name="Helsinki Supercharger Sub Operator",
         website="https://www.helsinki-supercharger.com",
-        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+        logo=factory.SubFactory(OCPIImageFactory),
     )
 
 
@@ -72,7 +74,7 @@ def helsinki_owner_details():
     return BusinessDetailsFactory(
         name="Smappee Pvt Ltd.",
         website="https://www.helsinki-supercharger.com",
-        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+        logo=factory.SubFactory(OCPIImageFactory),
     )
 
 

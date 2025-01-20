@@ -1,6 +1,7 @@
 from typing import Optional
 
 from ocpi22.models.business_details import BusinessDetails
+from ocpi22.models.image import OCPIImage
 
 
 def get_or_create_business_details(*_args, **kwargs) -> Optional[BusinessDetails]:
@@ -24,8 +25,17 @@ def get_or_create_business_details(*_args, **kwargs) -> Optional[BusinessDetails
     if not kwargs:
         return None
 
-    logo = kwargs.pop("logo", "")
+    image = None
+    logo = kwargs.pop("logo", None)
+    if logo and isinstance(logo, dict):
+        image, _created = OCPIImage.objects.get_or_create(
+            url=logo.pop("url", ""),
+            thumbnail=logo.pop("thumbnail", ""),
+            category=logo.pop("category", ""),
+            image_type=logo.pop("type", ""),
+            defaults=logo,
+        )
     business_details, _created = BusinessDetails.objects.get_or_create(
-        **kwargs, defaults=dict(logo=logo)
+        **kwargs, defaults=dict(logo=image)
     )
     return business_details
