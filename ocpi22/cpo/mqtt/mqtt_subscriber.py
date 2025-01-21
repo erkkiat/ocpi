@@ -129,7 +129,10 @@ def configure_client(client_id):
         client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
     )
     client.username_pw_set(username, password)
-    client = get_ssl_certified_client(client)
+    # for production internal lb works so it's open internally
+    # Only get verified ssl in case of staging and hosted on non-smappee infra
+    if os.getenv("ENV") in ["staging"]:
+        client = get_ssl_certified_client(client)
     client.on_connect = on_connect
     client.on_message = on_message
     return client
