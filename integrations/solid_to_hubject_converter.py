@@ -6,6 +6,7 @@ from typing import Optional
 import pytz
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db.models import Max
 
 from integrations.hubject.schemas import (
     OperatorEvseData,
@@ -250,6 +251,23 @@ class SolidToHubjectConverter:
                     ProductPriceCurrency=solid_tariff.currency,
                     ReferenceUnit=ReferenceUnit(root=ref_unit),
                 )
+
+    def __get_maximum_product_charging_power(self):
+        return (
+            Connector.objects.aggregate(Max("max_electric_power"))[
+                "max_electric_power__max"
+            ]
+            or 0
+        ) / 1000
+
+    def get_pricing_product_id(
+        self,
+        solid_tariff_id: str,
+        ref_unit: HubjectPriceComponent,
+        operator_id: str,
+        msp_id: str,
+    ) -> str:
+        return f"{operator_id}*{solid_tariff_id}*{ref_unit.value}*{msp_id}"
 
     def get_plug(self, connector_std: str) -> Plug:
         """
