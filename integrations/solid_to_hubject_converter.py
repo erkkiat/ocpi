@@ -25,9 +25,19 @@ from integrations.hubject.schemas import (
     ValueAddedService,
     AccessibilityLocation,
     PaymentOption,
+    HubjectDefaultTariff,
+    PricingProductData,
+    CurrencyID,
+    ReferenceUnit,
+    ProviderIDAsterisk,
+    PricingProductDataRecord,
+    HubjectPriceComponent,
+    AdditionalReference,
+    AdditionalReferenceChoice,
 )
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.tariff import SolidTariff
 
 
 class SolidToHubjectConverter:
@@ -161,6 +171,85 @@ class SolidToHubjectConverter:
             if location.owner
             else ""
         )
+
+    def convert_to_pricing_product_data(
+        self,
+        solid_tariffs: list[SolidTariff],
+        hubject_default_tariff: HubjectDefaultTariff,
+        operator_id: str,
+        operator_name: str,
+    ) -> PricingProductData:
+        return PricingProductData(
+            OperatorID=operator_id,
+            OperatorName=operator_name,
+            PricingDefaultPrice=hubject_default_tariff.price,
+            PricingDefaultPriceCurrency=CurrencyID(
+                root=hubject_default_tariff.currency
+            ),
+            PricingDefaultReferenceUnit=ReferenceUnit(
+                root=hubject_default_tariff.price_component
+            ),
+            PricingProductDataRecords=(
+                self.__convert_to_pricing_product_data_records(
+                    solid_tariff, operator_id
+                )
+                for solid_tariff in solid_tariffs
+            ),
+            # todo: Offer to all should not be used in production.
+            ProviderID=self.__get_provider_ids(solid_tariffs),
+        )
+
+    def __get_provider_ids(
+        self, solid_tariffs: list[SolidTariff]
+    ) -> ProviderIDAsterisk:
+        # Todo: when we have multiple providers we need to send a list
+        if solid_tariffs[0].msp is None:
+            return ProviderIDAsterisk(root="*")
+        return ProviderIDAsterisk(root=solid_tariffs[0].msp.party_str())
+
+    def __convert_to_pricing_product_data_records(
+        self,
+        solid_tariff: SolidTariff,
+        operator_id: str,
+    ) -> PricingProductDataRecord:
+        conditions = [
+            (
+                solid_tariff.price_per_kwh,
+                HubjectPriceComponent.KWH,
+                solid_tariff.price_per_kwh,
+            ),
+            (
+                solid_tariff.price_per_min,
+                HubjectPriceComponent.MINUTE,
+                solid_tariff.price_per_min,
+            ),
+        ]
+
+        for reference, ref_unit, price in conditions:
+            if reference is not None:
+                return PricingProductDataRecord(
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                            AdditionalReferenceUnit=ReferenceUnit(
+                                root=HubjectPriceComponent.HOUR.value
+                            ),
+                            PricePerAdditionalReferenceUnit=solid_tariff.price_flat,
+                        ),
+                    ],
+                    IsValid24hours=True,
+                    MaximumProductChargingPower=self.__get_maximum_product_charging_power(),
+                    PricePerReferenceUnit=price,
+                    ProductAvailabilityTimes=[],
+                    ProductID=self.get_pricing_product_id(
+                        solid_tariff.external_id,
+                        ref_unit,
+                        operator_id,
+                        solid_tariff.msp.party_str(),
+                    ),
+                    ProductPriceCurrency=solid_tariff.currency,
+                    ReferenceUnit=ReferenceUnit(root=ref_unit),
+                )
 
     def get_plug(self, connector_std: str) -> Plug:
         """
