@@ -11,7 +11,6 @@ from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import routers, status, mixins
 from rest_framework.generics import get_object_or_404
-from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -64,7 +63,6 @@ from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.rendering import RENDERERS
 from ocpi22.util import (
-    OnlyRawBrowsableAPIRenderer,
     OCPIVersioning,
     OCPIListModelMixin,
     generate_random_token,
@@ -436,7 +434,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     # The queryset tells Django REST how to determine access to these endpoints
     queryset = Credentials.objects.none()
     serializer_class = CredentialsSerializer
-    renderer_classes = [OnlyRawBrowsableAPIRenderer, JSONRenderer]
 
     def get_view_name(self):
         return "Credentials"
