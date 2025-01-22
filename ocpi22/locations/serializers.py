@@ -6,22 +6,33 @@ from rest_framework.exceptions import ValidationError
 from ocpi22.choices import OcpiModuleEnum, OCPIFacilityEnum, OCPICapabilityEnum
 from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
+from ocpi22.models.image import OCPIImage
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.serializers.hours import HoursSerializer
-from ocpi22.util import uid_validator, fetch_object
+from ocpi22.util import uid_validator, fetch_object, CiStringField
 from ocpi22.serializers.util import (
     HyperlinkedModelSerializerCleanedUp,
     UTCDateTimeField,
 )
 
 
+class OCPIImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OCPIImage
+        fields = ["url", "thumbnail", "category", "type", "width", "height"]
+
+    type = CiStringField(max_length=4, source="image_type")
+
+
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = BusinessDetails
         fields = ["name", "website", "logo"]
+
+    logo = OCPIImageSerializer(required=False)
 
     def create(self, data):
         if isinstance(data, BusinessDetails) or not data:

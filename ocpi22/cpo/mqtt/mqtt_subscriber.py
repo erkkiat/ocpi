@@ -59,14 +59,18 @@ def get_topic(topic_env_var):
     return topic
 
 
+meter_topic = get_topic("SMAPPEE_METER_VALUES_TOPIC")
+status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
+
+
 def on_message(client, userdata, message):
-    if "meter_values" in message.topic:
+    if meter_topic.split("/")[-1] in message.topic:
         logger.info("Received meter value message")
         process_meter_values_data(message)
         logger.info(
             f"Processed meter value message {message.payload} on topic {message.topic}"
         )
-    elif "status" in message.topic:
+    elif status_topic.split("/")[-1] in message.topic:
         logger.info("Received status update message")
         process_status_update_data(message)
         logger.info(
@@ -78,8 +82,6 @@ def on_message(client, userdata, message):
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
-    meter_topic = get_topic("SMAPPEE_METER_VALUES_TOPIC")
-    status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
     if rc == 0:
         logger.info("Connected successfully to the broker.")
         _subscribe(client, meter_topic)
@@ -127,7 +129,10 @@ def configure_client(client_id):
         client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
     )
     client.username_pw_set(username, password)
-    client = get_ssl_certified_client(client)
+    # for production internal lb works so it's open internally
+    # Only get verified ssl in case of staging and hosted on non-smappee infra
+    if os.getenv("ENV") in ["staging"]:
+        client = get_ssl_certified_client(client)
     client.on_connect = on_connect
     client.on_message = on_message
     return client

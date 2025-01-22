@@ -11,7 +11,6 @@ from rest_framework_csv.renderers import CSVRenderer
 from ocpi22.models.cdr import Cdr
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.util import StandardResultsSetPagination
-from premium import requires_premium
 from settlement.serializers import CsvCdrSerializer
 
 
@@ -92,7 +91,6 @@ class InvoiceReportViews(viewsets.GenericViewSet):
         name="Charging session list",
         url_path="list",
     )
-    @requires_premium
     def session_list(self, request) -> Response:
         """
         This is the full list of charging sessions filtered with the query parameters below.

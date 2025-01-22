@@ -43,11 +43,8 @@ def get_endpoints_dict(request=None, version=None) -> dict:
                 role=R,
                 url=build_absolute_uri(reverse("credentials-list", args=[version])),
             ),
-            dict(
-                identifier="credentials",
-                role=S,
-                url=build_absolute_uri(reverse("credentials-list", args=[version])),
-            ),
+            # Todo: Gireve will not accept us as a Credentials receiver, if there will be others requiring it,
+            #  figure out how to do it
             dict(
                 identifier="hubclientinfo",
                 role=R,

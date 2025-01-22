@@ -412,31 +412,26 @@ class NewConnection(forms.Form):
     view_name="the Credentials registration",
 )
 def new_connection(request):
-    if not settings.PREMIUM:
-        import premium
+    if request.method == "POST":
+        form = NewConnection(request.POST)
+        if form.is_valid():
+            from ocpiconnector.management.commands import exchange_credentials
 
-        premium.premium_message(request)
-    else:
-        if request.method == "POST":
-            form = NewConnection(request.POST)
-            if form.is_valid():
-                from ocpiconnector.management.commands import exchange_credentials
-
-                command = exchange_credentials.Command()
-                result = command.handle(
-                    token_a=form.cleaned_data.get("token_a"),
-                    versions_endpoint_url=form.cleaned_data.get("versions_url"),
-                )
-                if isinstance(result, OCPIResponse):
-                    result = result.data.get("status_message")
-                messages.success(
-                    request,
-                    result
-                    if isinstance(result, str)
-                    else _("A new connection has been established"),
-                )
-            else:
-                messages.error(request, form.errors)
+            command = exchange_credentials.Command()
+            result = command.handle(
+                token_a=form.cleaned_data.get("token_a"),
+                versions_endpoint_url=form.cleaned_data.get("versions_url"),
+            )
+            if isinstance(result, OCPIResponse):
+                result = result.data.get("status_message")
+            messages.success(
+                request,
+                result
+                if isinstance(result, str)
+                else _("A new connection has been established"),
+            )
+        else:
+            messages.error(request, form.errors)
 
     from util import reverse
 

@@ -58,7 +58,6 @@ from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 
 from ocpiconnector.ocpi_identities import get_our_party
-from premium import requires_premium
 
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
 
@@ -226,7 +225,6 @@ class MspRoamingViewSet(FlowchartViewSet):
         ).get(self.action_map.get("post"), None)
 
     @action(methods=("GET", "POST"), detail=False)
-    @requires_premium
     def reserve(self, request):
         """
         This call sends an OCPI ReserveNow command to the CPO. Reserving a charge point is optional.
@@ -306,7 +304,6 @@ class MspRoamingViewSet(FlowchartViewSet):
             )
 
     @action(methods=("GET", "POST"), detail=False)
-    @requires_premium
     def start_charging(self, request):
         """
         This call starts the charging transaction (which equals the OCPI session in the roaming network).
@@ -366,7 +363,6 @@ class MspRoamingViewSet(FlowchartViewSet):
             )
 
     @action(methods=("GET", "POST"), detail=False)
-    @requires_premium
     def session_status(self, request):
         """
         Poll the status of the ongoing session for this user.
@@ -450,7 +446,6 @@ class MspRoamingViewSet(FlowchartViewSet):
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=("GET", "POST"), detail=False)
-    @requires_premium
     def stop_charging(self, request):
         """
         This call stops the charging transaction.

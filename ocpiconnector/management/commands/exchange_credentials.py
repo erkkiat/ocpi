@@ -1,5 +1,6 @@
 import base64
 from json import JSONDecodeError
+from logging import getLogger
 
 import cachetools
 from rest_framework import status
@@ -25,12 +26,15 @@ from colorama import Style
 
 from util import reverse
 
+logger = getLogger(__name__)
+
 
 @cachetools.cached(cache=cachetools.Cache(maxsize=len(ROLE_OPTIONS)))
 def get_our_roles(source: dict = None) -> list:
     """
     Get the OCPI roles list of dicts for sending during Credentials exchange
 
+    >>> from util import reverse, HashableDict
     >>> get_our_roles(source=HashableDict(CPO='FI*EON', HUB='FI*HUB', \
     BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://example.com'))
     [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'HUB'}]
@@ -48,12 +52,12 @@ def get_our_roles(source: dict = None) -> list:
         country_code, party_id = source.get(role, "*").split("*")
         if country_code and party_id:
             roles.append(
-                dict(
-                    role=role,
-                    country_code=country_code,
-                    business_details=dict(name=business_name, website=website),
-                    party_id=party_id,
-                )
+                {
+                    "role": role,
+                    "country_code": country_code,
+                    "business_details": {"name": business_name, "website": website},
+                    "party_id": party_id,
+                }
             )
     return roles
     # Todo: Support multi-country CPOs / eMSPs

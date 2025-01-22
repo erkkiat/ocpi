@@ -111,7 +111,7 @@ class OcpiModule:
                 self.uid,
             ]
 
-            if settings.SEND_UPDATES and settings.PREMIUM:
+            if settings.SEND_UPDATES:
                 # Do we possess the role who controls the master data for this type of object or are we acting as HUB
                 if (
                     self.ocpi_object_owner not in ocpi_identities.roles

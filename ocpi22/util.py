@@ -333,7 +333,7 @@ def calculate_partition(coordinate):
 def is_our_identifier(party: Party, identities=None) -> bool:
     """
     Check if the given country_code and party_id match one of our identities
-    >>> test_identities = OCPIIdentities(source=dict(CPO='FI*CPO', EMSP='FI*MSP'))
+    >>> test_identities = OCPIIdentities(source={'CPO': 'FI*CPO', 'EMSP': 'FI*MSP'})
     >>> is_our_identifier(Party('FI', 'MSP'), identities=test_identities)
     True
     >>> is_our_identifier(Party('', 'MSP'), identities=test_identities)
@@ -479,6 +479,7 @@ class TimePeriod:
 
         @return: How many Seconds of this session is within this Tariff
 
+        >>> from datetime import datetime, timedelta
         >>> dt = datetime(2022, 1, 1, 0, 0)
         >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=60), dt + timedelta(seconds=3*60), )
         2022-01-01 00:01:00 - 2022-01-01 00:02:00, 60
@@ -563,7 +564,7 @@ class MyMetadata(SimpleMetadata):
 def build_absolute_uri(path) -> str:
     """
     >>> str(build_absolute_uri('my/path'))
-    'http://testserver.test:8000/my/path'
+    'http://testserver.test/my/path'
     """
     return str(Url(host=settings.HOSTNAME, path=path, scheme=settings.SCHEME))
 

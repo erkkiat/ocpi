@@ -32,7 +32,6 @@ from ocpi22.ocpi.util import (
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from ocpiconnector.ocpi_identities import ocpi_platform
-from premium import requires_premium
 from util import OCPIVersion
 
 evse_validator = RegexValidator(
@@ -71,7 +70,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return Location.objects.prefetch_related(*related).order_by("created")
 
     @ocpi_exception_handler
-    @requires_premium
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
@@ -81,7 +79,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         if uid:
             return get_object_or_404(Location, uid=uid)  # Todo: Data security risk?
 
-    @requires_premium
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
     @requires_last_updated
@@ -89,7 +86,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return self.put(*args, patch=True, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_credentialsrole
     def get(self, request, credentialsrole, uid, *_args, **_kwargs):
         """Respond to GET for a specified location"""
@@ -99,7 +95,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         )
         return OCPIResponse(serializer.data)
 
-    @requires_premium
     @ocpi_exception_handler
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_credentialsrole
@@ -214,13 +209,11 @@ class ConnectorViewSet(GenericViewSet):
         return "Connectors"
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_last_updated
     def patch(self, *args, **kwargs) -> OCPIResponse:
         return self.put(*args, patch=True, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_credentialsrole
     def get(
         self, request, credentialsrole, uid, evse_uid, connector_uid, *_args, **_kwargs
@@ -239,7 +232,6 @@ class ConnectorViewSet(GenericViewSet):
         return OCPIResponse(serializer.data)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_sender_role(OcpiRolesEnum.CPO)
     def put(
         self,
@@ -313,13 +305,11 @@ class EvseViewSet(GenericViewSet):
         return "Evse"
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_last_updated
     def patch(self, *args, **kwargs) -> OCPIResponse:
         return self.put(*args, patch=True, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_credentialsrole
     def get(
         self, request, credentialsrole, uid, evse_uid, *_args, **_kwargs
@@ -334,7 +324,6 @@ class EvseViewSet(GenericViewSet):
         return OCPIResponse(serializer.data)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_sender_role(OcpiRolesEnum.CPO)
     def put(
         self,
