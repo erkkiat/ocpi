@@ -11,7 +11,6 @@ from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import routers, status, mixins
 from rest_framework.generics import get_object_or_404
-from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -62,9 +61,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
-from ocpi22.rendering import RENDERERS
 from ocpi22.util import (
-    OnlyRawBrowsableAPIRenderer,
     OCPIVersioning,
     OCPIListModelMixin,
     generate_random_token,
@@ -127,7 +124,6 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     versioning_class = OCPIVersioning
     lookup_field = "uid"
-    renderer_classes = RENDERERS
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
@@ -359,7 +355,6 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
     serializer_class = CdrSerializer
     versioning_class = OCPIVersioning
     pagination_class = OCPIPaginationAndHeaders
-    renderer_classes = RENDERERS
 
     def get_queryset(self):
         if self.request.user.is_superuser:
@@ -436,7 +431,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     # The queryset tells Django REST how to determine access to these endpoints
     queryset = Credentials.objects.none()
     serializer_class = CredentialsSerializer
-    renderer_classes = [OnlyRawBrowsableAPIRenderer, JSONRenderer]
 
     def get_view_name(self):
         return "Credentials"
@@ -554,7 +548,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
     versioning_class = OCPIVersioning
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = "uid"
-    renderer_classes = RENDERERS
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
@@ -751,7 +744,6 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     lookup_field = "uid"
     queryset = Session.objects.all().order_by("created")
     serializer_class = SessionSerializer
-    renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
 
     def get_view_name(self):
