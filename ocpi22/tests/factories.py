@@ -42,24 +42,12 @@ class OCPIImageFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = OCPIImage
 
-    url = factory.Faker("image_url")
-    thumbnail = factory.Maybe(
-        factory.Faker("boolean"), factory.Faker("image_url"), None
-    )
-    category = factory.LazyFunction(
-        lambda: fake.random_element(OCPIImageCategory.values)
-    )
-    image_type = factory.Faker("lexify", text="????")
-    width = factory.Maybe(
-        factory.Faker("boolean"),
-        factory.LazyFunction(lambda: fake.random_int(min=1, max=2000)),
-        None,
-    )
-    height = factory.Maybe(
-        factory.Faker("boolean"),
-        factory.LazyFunction(lambda: fake.random_int(min=1, max=2000)),
-        None,
-    )
+    url = "https://example.com/image.jpg"
+    thumbnail = "https://example.com/thumbnail.jpg"
+    category = OCPIImageCategory.OPERATOR
+    image_type = "jpeg"
+    width = 800
+    height = 600
 
 
 class BusinessDetailsFactory(factory.django.DjangoModelFactory):
