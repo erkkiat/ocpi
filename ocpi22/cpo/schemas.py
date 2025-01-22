@@ -32,9 +32,7 @@ class HubjectDefaultTariff(BaseModel):
     def check_currency(cls, value):
         valid_currencies = {code for code, _ in CURRENCY_CHOICES}
         if value not in valid_currencies:
-            raise ValueError(
-                f"Invalid currency: {value}. Must be one of {valid_currencies}."
-            )
+            raise ValueError(f"Invalid currency: {value}.")
         return value
 
     @classmethod
