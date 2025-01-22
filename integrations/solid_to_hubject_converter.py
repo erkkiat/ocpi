@@ -135,7 +135,7 @@ class SolidToHubjectConverter:
             ),
             # todo : IsOpen24Hours usage of the charging when closed does not directly map to OCIP,
             IsOpen24Hours=location.charging_when_closed,
-            # todo : OpeningTimes missing in ocpi22,
+            # todo : OpeningTimes will be implemented later,
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
