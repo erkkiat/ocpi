@@ -16,7 +16,6 @@ from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.ocpi.auth import OcpiAuthTypes
-from ocpi22.rendering import RENDERERS
 from ocpi22.util import OCPIVersioning, OCPIListModelMixin
 from ocpi22.ocpi.util import (
     OCPIResponse,
@@ -43,7 +42,6 @@ evse_validator = RegexValidator(
 class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = "locations"
-    renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
     lookup_field = "uid"
     queryset = Location.objects.none()
@@ -195,7 +193,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 class ConnectorViewSet(GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = "connectors"
-    renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
     lookup_field = "uid"
     queryset = Connector.objects.none()
@@ -292,7 +289,6 @@ class ConnectorViewSet(GenericViewSet):
 class EvseViewSet(GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = "evses"
-    renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
     lookup_field = "uid"
     queryset = Evse.objects.none()
