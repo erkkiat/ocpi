@@ -14,6 +14,7 @@ from integrations.hubject.schemas import (
     PricingProductData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
+from integrations.hubject.schemas import HubjectDefaultTariff
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
@@ -128,6 +129,25 @@ class HubjectService:
                 "errorType": "HTTP request failed",
                 "error": exc.args[0],
             }
+
+    def get_default_tariffs(self):
+        default_price = settings.DEFAULT_OICP_PRICE
+        default_currency = settings.DEFAULT_OICP_CURRENCY
+        default_reference = settings.DEFAULT_OICP_PRICE_REFERENCE
+
+        if not (default_price and default_currency and default_reference):
+            raise ValueError(
+                "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
+            )
+
+        solid_price_component = HubjectDefaultTariff.get_price_component(
+            default_reference
+        )
+        return HubjectDefaultTariff(
+            currency=default_currency,
+            price_component=solid_price_component,
+            price=default_price,
+        )
 
     def get_all_pricing_products(self, party: Party) -> PricingProductData:
         solid_tariffs = SolidTariff.objects.filter(

@@ -10,6 +10,9 @@ from enum import Enum
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, confloat, conint, constr, RootModel
+from pydantic.v1 import validator
+
+from ocpi22.util import CURRENCY_CHOICES
 
 """
 Hubject OICP 2.3 data types
@@ -1120,6 +1123,48 @@ class OperatorEvseData(BaseModel):
 class ERoamingPushEvseData(BaseModel):
     ActionType: ActionType
     OperatorEvseData: OperatorEvseData
+
+
+class HubjectPriceComponent(Enum):
+    KWH = "KILOWATT_HOUR"
+    MINUTE = "MINUTE"
+    HOUR = "HOUR"
+
+
+class HubjectDefaultTariff(BaseModel):
+    currency: str = Field(
+        default="EUR",
+        description="The default currency of the tariff",
+        examples=["USD"],
+    )
+    price: float = Field(
+        default=..., description="The default price of the tariff", examples=[0.1]
+    )
+    price_component: HubjectPriceComponent = Field(
+        default=...,
+        description="The default price component of the tariff",
+        examples=["KILOWATT_HOUR", "MINUTE", "HOUR"],
+    )
+
+    @classmethod
+    @validator("currency")
+    def check_currency(cls, value):
+        valid_currencies = {code for code, _ in CURRENCY_CHOICES}
+        if value not in valid_currencies:
+            raise ValueError(f"Invalid currency: {value}.")
+        return value
+
+    @classmethod
+    def get_price_component(cls, price_component: str) -> HubjectPriceComponent:
+        match price_component:
+            case "KILOWATT_HOUR":
+                return HubjectPriceComponent.KWH
+            case "MINUTE":
+                return HubjectPriceComponent.MINUTE
+            case "HOUR":
+                return HubjectPriceComponent.HOUR
+            case _:
+                raise ValueError("Invalid price_component")
 
 
 # start this file from command line
