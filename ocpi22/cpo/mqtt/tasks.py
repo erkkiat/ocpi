@@ -11,6 +11,7 @@ from kombu import Queue, Exchange
 from kombu.serialization import register
 
 from base_task_services import RefreshTokenBaseTask
+from ocpi22.models.session import Session
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
 import django
@@ -84,6 +85,11 @@ logger = getLogger(__name__)
 
 @shared_task(queue="HIGH")
 def process_meter_values(session_id, kwh, soc, power, timestamp):
+    session = Session.get_if_exists(uid=session_id, raise_exception=True)
+    session.stop_kwh = kwh
+    session.last_updated = timestamp
+    session.save(update_fields=["stop_kwh", "last_updated"])
+
     session = get_cached_session(session_id)
     session.kwh = kwh
     store_session_cache(session)

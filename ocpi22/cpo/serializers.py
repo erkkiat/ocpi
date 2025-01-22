@@ -375,7 +375,6 @@ class MeterValuesSerializer(serializers.Serializer):
 class StartTransactionSerializer(serializers.Serializer):
     session_id = SessionIdSerializer(
         source="session",
-        required=False,
         help_text="The ID of the charging session on the CPO platform, "
         "you get this from the response of a successful authorize request",
     )
