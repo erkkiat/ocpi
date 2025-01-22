@@ -11,10 +11,14 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
+    PricingProductData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Location, Connector, Evse
+from ocpi22.models.tariff import SolidTariff
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
+from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 
@@ -124,3 +128,22 @@ class HubjectService:
                 "errorType": "HTTP request failed",
                 "error": exc.args[0],
             }
+
+    def get_all_pricing_products(self, party: Party) -> PricingProductData:
+        solid_tariffs = SolidTariff.objects.filter(
+            operator__country_code=party.country_code,
+            operator__party_id=party.party_id,
+        )
+
+        if len(solid_tariffs) == 0:
+            raise ValueError(f"No SolidTariffs found for {str(party)}")
+
+        solid_default_tariff = self.get_default_tariffs()
+
+        operator_name = solid_tariffs[0].operator.business_details.name
+        return HubjectService.converter.convert_to_pricing_product_data(
+            solid_tariffs,
+            solid_default_tariff,
+            get_our_identity(OcpiRolesEnum.CPO.value),
+            operator_name,
+        )
