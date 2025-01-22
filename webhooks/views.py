@@ -2,7 +2,7 @@ import markdown
 from django.utils.html import format_html
 
 from rest_framework import generics
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
