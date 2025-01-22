@@ -6,13 +6,13 @@ from pydantic.v1 import BaseModel, validator
 from ocpi22.util import CURRENCY_CHOICES
 
 
-class SolidPriceComponent(Enum):
+class HubjectPriceComponent(Enum):
     KWH = "KILOWATT_HOUR"
     MINUTE = "MINUTE"
     HOUR = "HOUR"
 
 
-class SolidDefaultTariff(BaseModel):
+class HubjectDefaultTariff(BaseModel):
     currency: str = Field(
         default="EUR",
         description="The default currency of the tariff",
@@ -21,8 +21,8 @@ class SolidDefaultTariff(BaseModel):
     price: float = Field(
         default=..., description="The default price of the tariff", examples=[0.1]
     )
-    price_component: SolidPriceComponent = Field(
-        default=SolidPriceComponent.KWH,
+    price_component: HubjectPriceComponent = Field(
+        default=...,
         description="The default price component of the tariff",
         examples=["KILOWATT_HOUR", "MINUTE", "HOUR"],
     )
@@ -38,13 +38,13 @@ class SolidDefaultTariff(BaseModel):
         return value
 
     @classmethod
-    def get_price_component(cls, price_component: str) -> SolidPriceComponent:
+    def get_price_component(cls, price_component: str) -> HubjectPriceComponent:
         match price_component:
             case "KILOWATT_HOUR":
-                return SolidPriceComponent.KWH
+                return HubjectPriceComponent.KWH
             case "MINUTE":
-                return SolidPriceComponent.MINUTE
+                return HubjectPriceComponent.MINUTE
             case "HOUR":
-                return SolidPriceComponent.HOUR
+                return HubjectPriceComponent.HOUR
             case _:
                 raise ValueError("Invalid price_component")

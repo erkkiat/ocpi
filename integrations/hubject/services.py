@@ -13,7 +13,7 @@ from integrations.hubject.schemas import (
     OperatorEvseData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
-from ocpi22.cpo.schemas import SolidDefaultTariff
+from ocpi22.cpo.schemas import HubjectDefaultTariff
 from ocpi22.models.location import Location, Connector, Evse
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.party import Party
@@ -136,10 +136,10 @@ class HubjectService:
                 "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
             )
 
-        solid_price_component = SolidDefaultTariff.get_price_component(
+        solid_price_component = HubjectDefaultTariff.get_price_component(
             default_reference
         )
-        return SolidDefaultTariff(
+        return HubjectDefaultTariff(
             currency=default_currency,
             price_component=solid_price_component,
             price=default_price,
