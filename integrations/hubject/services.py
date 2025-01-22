@@ -13,7 +13,7 @@ from integrations.hubject.schemas import (
     OperatorEvseData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
-from ocpi22.cpo.schemas import HubjectDefaultTariff
+from integrations.hubject.schemas import HubjectDefaultTariff
 from ocpi22.models.location import Location, Connector, Evse
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.party import Party
