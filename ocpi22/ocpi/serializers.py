@@ -187,11 +187,10 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def _delete_children(self, tariff: Tariff) -> None:
         """
-        Remove TariffElements and PriceComponents from object - cascade delete should be enabled in Tariff child models
+        Remove TariffElements and PriceComponents from object
         """
-
-        # noinspection PyUnresolvedReferences
         for te in tariff.tariff_elements.all():
+            te.price_components.all().delete()  # cascade delete doesn't seem to always work on Postgres
             te.delete()
 
     def _create_children(self, tariff: Tariff, tariff_elements: dict) -> None:
