@@ -1,6 +1,6 @@
 import uuid
 from copy import deepcopy
-from gettext import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from typing import Optional
 
 import pytz

@@ -4,7 +4,7 @@ from datetime import date
 import time
 from collections import OrderedDict
 from functools import lru_cache
-from gettext import gettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from itertools import chain
 from typing import Any, Union
 from urllib.parse import urljoin
