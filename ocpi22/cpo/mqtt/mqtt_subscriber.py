@@ -111,15 +111,9 @@ def get_broker_and_port():
     return broker, int(port)
 
 
-def get_ssl_certified_client(client) -> mqtt.Client:
-    ssl_verify = strtobool(os.getenv("MQTT_SSL_VERIFY", "True"))
-    if not ssl_verify:
-        logger.warning(
-            f"Skipping SSL certificate verification for {os.getenv('ENV')}.."
-        )
-        client.tls_set(cert_reqs=ssl.CERT_NONE)
-        client.tls_insecure_set(True)
-        return client
+def _configure_ssl(client) -> mqtt.Client:
+    client.tls_set(cert_reqs=ssl.CERT_NONE)
+    client.tls_insecure_set(True)
     return client
 
 
@@ -129,10 +123,8 @@ def configure_client(client_id):
         client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
     )
     client.username_pw_set(username, password)
-    # for production internal lb works so it's open internally
-    # Only get verified ssl in case of staging and hosted on non-smappee infra
-    if os.getenv("ENV") in ["staging"]:
-        client = get_ssl_certified_client(client)
+    if strtobool(os.getenv("MQTT_USE_SSL", "False")):
+        client = _configure_ssl(client)
     client.on_connect = on_connect
     client.on_message = on_message
     return client
