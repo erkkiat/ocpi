@@ -3,7 +3,7 @@ from itertools import chain
 from django.contrib import admin
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 import widgets
 from hub.admin_sites import hub_admin_site

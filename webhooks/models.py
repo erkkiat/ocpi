@@ -2,7 +2,7 @@ from django.db import models
 
 from webhooks.choices import WebhookEventChoices
 
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 from ocpi22.util import build_absolute_uri
 

@@ -19,7 +19,7 @@ from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHO
 from ocpi22.ocpi.util import OcpiModule, Ocpi, generate_cdr_uid
 from ocpiconnector.ocpi_identities import ocpi_platform
 
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 
 class Cdr(models.Model, ModelUtilMixin, OcpiModule):

@@ -11,7 +11,7 @@ from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.urls import NoReverseMatch
 from django.utils.html import format_html
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 import generic.countries
 from ocpi22 import choices
