@@ -9,9 +9,7 @@ import orjson
 from celery import shared_task, Celery
 from kombu import Queue, Exchange
 from kombu.serialization import register
-
 from base_task_services import RefreshTokenBaseTask
-from ocpi22.models.session import Session
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
 import django
