@@ -41,7 +41,11 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         return get_or_create_business_details(**data)
 
 
-class PowerTypeSerializer(serializers.CharField):
+class PowerTypeSerializer(serializers.ChoiceField):
+    def __init__(self, **kwargs):
+        kwargs["choices"] = Ocpi.POWERTYPE_CHOICES_221
+        super().__init__(**kwargs)
+
     def to_representation(self, power_type):
         version = self.context.get("version", None)  # Action required only for OCPI 2.2
         if version == "2.2":
@@ -49,7 +53,7 @@ class PowerTypeSerializer(serializers.CharField):
                 AC_2_PHASE="AC_1_PHASE",
                 AC_2_PHASE_SPLIT="AC_1_PHASE",
             ).get(power_type, power_type)
-        return power_type
+        return super().to_representation(power_type)
 
 
 class TariffField(serializers.StringRelatedField):
