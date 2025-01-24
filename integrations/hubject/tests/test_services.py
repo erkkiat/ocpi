@@ -31,9 +31,15 @@ from integrations.hubject.schemas import (
     Accessibility,
     AccessibilityLocation,
     DynamicInfoAvailable,
+    ProductID,
+    ProviderIDAsterisk,
+    ERoamingPushEVSEPricing,
 )
 from integrations.hubject.services import HubjectService
-from ocpi22.tests.factories import EvseFactory, LocationFactory
+from ocpi22.choices import OcpiRolesEnum
+from ocpi22.models.credentials import CredentialsRole
+from ocpi22.tests.factories import EvseFactory, LocationFactory, CredentialsRoleFactory
+from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 from ocpiconnector.party import Party
 
 
@@ -523,6 +529,191 @@ class TestHubjectService:
             OperatorName="Smappee Pvt Ltd",
             EvseDataRecord=[berlin_evse_data_record, emsdetten_evse_data_record],
         )
+
+
+class TestOICPEvsePricingPushService:
+    __hubject_service = HubjectService()
+    country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
+    party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
+    operator = CredentialsRole.objects.filter(
+        country_code=country_code, party_id=party_id
+    )
+    msp1 = CredentialsRole.objects.filter(country_code="DE", party_id="ICD")
+    msp2 = CredentialsRole.objects.filter(country_code="DE", party_id="ICE")
+
+    def setup_method(self):
+        CredentialsRoleFactory(
+            country_code=self.country_code,
+            party_id=self.party_id,
+        )
+        CredentialsRoleFactory(
+            country_code="DE",
+            party_id="ICE",
+        )
+        CredentialsRoleFactory(
+            country_code="DE",
+            party_id="ICD",
+        )
+
+    @pytest.mark.django_db
+    @patch("ocpi22.models.tariff.SolidTariff.objects.filter")
+    def test_get_evse_product_provider_maps(
+        self,
+        mock_filter,
+        berlin_evse_data,
+        berlin_connector,
+        smp1_ocpi_tariff,
+        smp1_solid_tariff,
+    ):
+        party = Party(country_code="FI", party_id="CPO")
+
+        mock_solid_tariff = MagicMock()
+        mock_filter.return_value = mock_solid_tariff
+
+        mock_solid_tariff.select_related.return_value = mock_solid_tariff
+        mock_solid_tariff.values.return_value = [
+            {
+                "external_id": "SMP1",
+                "price_per_kwh": 0.25,
+                "price_per_min": 0.05,
+                "msp__country_code": "DE",
+                "msp__party_id": "ICE",
+            }
+        ]
+
+        result = self.__hubject_service.get_evse_product_provider_maps(party)
+
+        key = f"{str(party)}*E{berlin_evse_data.uid}"
+        expected_result = {
+            key: [
+                [
+                    ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                    ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
+                ],
+                [ProviderIDAsterisk(root="DE*ICE"), ProviderIDAsterisk(root="DE*ICE")],
+            ]
+        }
+        assert result[key] == expected_result[key]
+
+    @pytest.mark.django_db
+    def test_evse_pricing_product_payload(self):
+        key = "FI*CPO*Evse1"
+        evse_product_id_provider_id_map = {
+            key: [
+                [
+                    ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                    ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
+                ],
+                [ProviderIDAsterisk(root="DE*ICE"), ProviderIDAsterisk(root="DE*ICE")],
+            ]
+        }
+
+        result = self.__hubject_service.get_evse_pricing_product_data_full_load_payload(
+            evse_product_id_provider_id_map
+        )
+
+        assert isinstance(result, ERoamingPushEVSEPricing)
+        assert len(result.EVSEPricing[0].EvseIDProductList) == 2
+        assert (
+            result.EVSEPricing[0].EvseIDProductList[0].root
+            == "FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"
+        )
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_evse_pricing_products_full_load(
+        self, evse_pricing_full_load_payload, hubject_successful_response
+    ):
+        operator_id = "FI*CPO"
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing",
+            json=hubject_successful_response,
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    evse_pricing_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        result = self.__hubject_service.post_evse_pricing_item_full_load(
+            operator_id, evse_pricing_full_load_payload
+        )
+
+        assert result == hubject_successful_response
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_evse_pricing_products_full_load_unsuccessful_response(
+        self, evse_pricing_full_load_payload, hubject_unsuccessful_response
+    ):
+        operator_id = "FI*CPO"
+
+        # edit the payload to generate a unsuccessful response from the hubject APIs
+        evse_pricing_full_load_payload.EVSEPricing = []
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing",
+            json=hubject_unsuccessful_response,
+            status=400,
+            match=[
+                matchers.json_params_matcher(
+                    evse_pricing_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        result = self.__hubject_service.post_evse_pricing_item_full_load(
+            operator_id, evse_pricing_full_load_payload
+        )
+
+        assert result == hubject_unsuccessful_response
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_evse_pricing_products_full_load_http_error(
+        self, evse_pricing_full_load_payload
+    ):
+        operator_id = "FI*CPO"
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing",
+            body=HTTPError("HTTP request failed"),
+            status=500,
+        )
+
+        with pytest.raises(HTTPError):
+            service = HubjectService()
+            result = service.post_evse_pricing_item_full_load(
+                operator_id, evse_pricing_full_load_payload
+            )
+
+            assert result == {
+                "success": False,
+                "errorType": "HTTP request failed",
+                "error": "HTTP request failed",
+            }
+
+    @pytest.mark.django_db
+    def test_post_evse_pricing_products_full_load_pydantic_error(self):
+        operator_id = "DE+MSP"
+
+        payload_mock = MagicMock()
+        payload_mock.model_dump_json.side_effect = PydanticSerializationError(
+            "serialization error"
+        )
+
+        result = self.__hubject_service.post_evse_pricing_item_full_load(
+            operator_id, payload_mock
+        )
+
+        assert result == {
+            "success": False,
+            "errorType": "Pydantic validation failed",
+            "error": "serialization error",
+        }
 
 
 class TestHubjectClient:

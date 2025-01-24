@@ -29,6 +29,7 @@ from ocpi22.tests.factories import (
     ChargingFacilityFactory,
     TariffFactory,
     OCPIImageFactory,
+    SolidTariffFactory,
 )
 
 
@@ -452,3 +453,13 @@ def hubject_unsuccessful_response():
             }
         ],
     }
+
+
+@pytest.fixture
+def smp1_ocpi_tariff():
+    return TariffFactory(uid="SMP1")
+
+
+@pytest.fixture
+def smp1_solid_tariff():
+    return SolidTariffFactory(external_id="SMP1")
