@@ -29,6 +29,8 @@ from ocpi22.tests.factories import (
     ChargingFacilityFactory,
     TariffFactory,
     OCPIImageFactory,
+    SolidTariffFactory,
+    ERoamingPushPricingProductDataFactory,
 )
 
 
@@ -452,3 +454,36 @@ def hubject_unsuccessful_response():
             }
         ],
     }
+
+
+@pytest.fixture
+def operator_fi_cpo():
+    return CredentialsRoleFactory(
+        country_code="FI",
+        party_id="CPO",
+        business_details=BusinessDetailsFactory(name="Smappee Pvt Ltd"),
+    )
+
+
+@pytest.fixture
+def msp_de_ice():
+    return CredentialsRoleFactory(country_code="DE", party_id="ICE")
+
+
+@pytest.fixture
+def smp1_solid_tariff(operator_fi_cpo, msp_de_ice):
+    return SolidTariffFactory(
+        external_id="SMP1", operator=operator_fi_cpo, msp=msp_de_ice
+    )
+
+
+@pytest.fixture
+def smp2_solid_tariff(operator_fi_cpo, msp_de_ice):
+    return SolidTariffFactory(
+        external_id="SMP2", operator=operator_fi_cpo, msp=msp_de_ice
+    )
+
+
+@pytest.fixture
+def pricing_products_full_load_payload():
+    return ERoamingPushPricingProductDataFactory()

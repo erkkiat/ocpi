@@ -12,6 +12,7 @@ from integrations.hubject.schemas import (
     ActionType,
     OperatorEvseData,
     PricingProductData,
+    ERoamingPushPricingProductData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -167,3 +168,40 @@ class HubjectService:
             get_our_identity(OcpiRolesEnum.CPO.value),
             operator_name,
         )
+
+    def get_push_pricing_product_data_payload(
+        self, pricing_product_data: PricingProductData, action_type: ActionType
+    ) -> ERoamingPushPricingProductData:
+        return ERoamingPushPricingProductData(
+            ActionType=action_type,
+            PricingProductData=pricing_product_data,
+        )
+
+    def post_pricing_products_full_load(
+        self, operator_id: str, payload: ERoamingPushPricingProductData
+    ) -> dict:
+        full_load_url = urljoin(
+            with_trailing_slash(settings.HUBJECT_URL),
+            f"dynamicpricing/v10/operators/{operator_id}/pricing-products",
+        )
+        response = {}
+
+        try:
+            payload_json = payload.model_dump_json()
+
+            response = HubjectService.client.post(full_load_url, data=payload_json)
+            return response.json()
+        except PydanticSerializationError as e:
+            logging.error(e)
+            return {
+                "success": False,
+                "errorType": "Pydantic validation failed",
+                "error": str(e),
+            }
+        except HTTPError as exc:
+            logging.error(exc)
+            return {
+                "success": False,
+                "errorType": "HTTP request failed",
+                "error": str(exc),
+            }

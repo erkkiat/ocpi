@@ -6,6 +6,7 @@ import pytz
 import responses
 import time_machine
 from django.conf import settings
+from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 from requests import HTTPError
 from responses import matchers
@@ -31,9 +32,19 @@ from integrations.hubject.schemas import (
     Accessibility,
     AccessibilityLocation,
     DynamicInfoAvailable,
+    ReferenceUnit,
+    HubjectPriceComponent,
+    AdditionalReference,
+    PricingProductDataRecord,
+    AdditionalReferenceChoice,
+    CurrencyID,
+    PricingProductData,
+    ERoamingPushPricingProductData,
 )
 from integrations.hubject.services import HubjectService
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.tests.factories import EvseFactory, LocationFactory
+from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 
 
@@ -522,6 +533,221 @@ class TestHubjectService:
             OperatorID=OperatorID(root="DE*SMP"),
             OperatorName="Smappee Pvt Ltd",
             EvseDataRecord=[berlin_evse_data_record, emsdetten_evse_data_record],
+        )
+
+
+class TestOICPDynamicPricingService:
+    __hubject_service = HubjectService()
+
+    @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
+    @pytest.mark.django_db
+    def test_get_all_pricing_products(
+        self, mock_solid_tariffs, smp1_solid_tariff, smp2_solid_tariff, monkeypatch
+    ):
+        monkeypatch.setenv("DEFAULT_OICP_PRICE", "0.3")
+        monkeypatch.setenv("DEFAULT_OICP_CURRENCY", "EUR")
+        monkeypatch.setenv("DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR")
+
+        expected_result = self.get_expected_pricing_product_data()
+
+        mock_solid_tariffs.return_value = [smp1_solid_tariff, smp2_solid_tariff]
+
+        result = self.__hubject_service.get_all_pricing_products(
+            get_our_party(OcpiRolesEnum.CPO)
+        )
+
+        assert result == expected_result
+
+    @pytest.mark.django_db
+    def test_get_all_pricing_products_with_invalid_env_variables(
+        self, monkeypatch, msp_de_ice
+    ):
+        monkeypatch.delenv("DEFAULT_OICP_PRICE")
+        monkeypatch.delenv("DEFAULT_OICP_CURRENCY")
+        monkeypatch.delenv("DEFAULT_OICP_PRICE_REFERENCE")
+
+        with pytest.raises(ValueError):
+            self.__hubject_service.get_all_pricing_products(
+                get_our_party(OcpiRolesEnum.CPO)
+            )
+
+    @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
+    @pytest.mark.django_db
+    def test_get_all_pricing_products_with_no_solid_tariffs(
+        self, mock_solid_tariffs, monkeypatch, msp_de_ice
+    ):
+        mock_solid_tariffs.return_value = []
+
+        with pytest.raises(ValueError):
+            self.__hubject_service.get_all_pricing_products(
+                get_our_party(OcpiRolesEnum.CPO)
+            )
+
+    def test_get_push_pricing_product_data_payload_valid(self):
+        pricing_product_data = MagicMock(spec=PricingProductData)
+        action_type = ActionType.fullLoad
+
+        result = self.__hubject_service.get_push_pricing_product_data_payload(
+            pricing_product_data, action_type
+        )
+
+        assert isinstance(result, ERoamingPushPricingProductData)
+        assert result.ActionType == action_type
+        assert result.PricingProductData == pricing_product_data
+
+    def test_get_push_pricing_product_data_payload_invalid_pricing_data(self):
+        pricing_product_data = None
+        action_type = ActionType.fullLoad
+
+        with pytest.raises(ValidationError):
+            self.__hubject_service.get_push_pricing_product_data_payload(
+                pricing_product_data, action_type
+            )
+
+    @responses.activate
+    def test_post_pricing_products_full_load(
+        self, pricing_products_full_load_payload, hubject_successful_response
+    ):
+        operator_id = (
+            pricing_products_full_load_payload.PricingProductData.OperatorID.root
+        )
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products",
+            json=hubject_successful_response,
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    pricing_products_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        result = self.__hubject_service.post_pricing_products_full_load(
+            operator_id, pricing_products_full_load_payload
+        )
+
+        assert result == hubject_successful_response
+
+    @responses.activate
+    def test_post_pricing_products_full_load_unsuccessful_response(
+        self, pricing_products_full_load_payload, hubject_unsuccessful_response
+    ):
+        operator_id = (
+            pricing_products_full_load_payload.PricingProductData.OperatorID.root
+        )
+
+        # edit the payload to generate a unsuccessful response from the hubject APIs
+        pricing_products_full_load_payload.PricingProductData.PricingDefaultPrice = None
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products",
+            json=hubject_unsuccessful_response,
+            status=400,
+            match=[
+                matchers.json_params_matcher(
+                    pricing_products_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        result = self.__hubject_service.post_pricing_products_full_load(
+            operator_id, pricing_products_full_load_payload
+        )
+
+        assert result == hubject_unsuccessful_response
+
+    @responses.activate
+    def test_post_pricing_products_full_load_http_error(
+        self, pricing_products_full_load_payload
+    ):
+        operator_id = (
+            pricing_products_full_load_payload.PricingProductData.OperatorID.root
+        )
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products",
+            body=HTTPError("HTTP request failed"),
+            status=500,
+        )
+
+        with pytest.raises(HTTPError):
+            service = HubjectService()
+            result = service.post_pricing_products_full_load(
+                operator_id, pricing_products_full_load_payload
+            )
+
+            assert result == {
+                "success": False,
+                "errorType": "HTTP request failed",
+                "error": "HTTP request failed",
+            }
+
+    def test_post_pricing_products_full_load_pydantic_error(self):
+        operator_id = "DE+MSP"
+
+        payload_mock = MagicMock()
+        payload_mock.model_dump_json.side_effect = PydanticSerializationError(
+            "serialization error"
+        )
+
+        result = self.__hubject_service.post_pricing_products_full_load(
+            operator_id, payload_mock
+        )
+
+        assert result == {
+            "success": False,
+            "errorType": "Pydantic validation failed",
+            "error": "serialization error",
+        }
+
+    def get_expected_pricing_product_data(self):
+        return PricingProductData(
+            OperatorID="FI*CPO",
+            OperatorName="Smappee Pvt Ltd",
+            PricingDefaultPrice=0.3,
+            PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
+            PricingDefaultReferenceUnit=ReferenceUnit(
+                root=HubjectPriceComponent.KWH.value
+            ),
+            PricingProductDataRecords=[
+                PricingProductDataRecord(
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=0.3,
+                        ),
+                    ],
+                    IsValid24hours=True,
+                    MaximumProductChargingPower=0.0,
+                    PricePerReferenceUnit=0.2,
+                    ProductAvailabilityTimes=[],
+                    ProductID="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE",
+                    ProductPriceCurrency="EUR",
+                    ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                ),
+                PricingProductDataRecord(
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(
+                                root=HubjectPriceComponent.HOUR.value
+                            ),
+                            PricePerAdditionalReferenceUnit=0.3,
+                        ),
+                    ],
+                    IsValid24hours=True,
+                    MaximumProductChargingPower=0.0,
+                    PricePerReferenceUnit=0.2,
+                    ProductAvailabilityTimes=[],
+                    ProductID="FI*CPO*SMP2*KILOWATT_HOUR*DE*ICE",
+                    ProductPriceCurrency="EUR",
+                    ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                ),
+            ],
+            ProviderID="DE*ICE",
         )
 
 
