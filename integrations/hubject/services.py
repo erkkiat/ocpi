@@ -185,6 +185,8 @@ class HubjectService:
             )
         )
 
+        print(solid_tariffs)
+
         solid_tariff_map = defaultdict(list)
         for solid_tariff in solid_tariffs:
             solid_tariff_map[solid_tariff["external_id"]].append(solid_tariff)
@@ -195,6 +197,7 @@ class HubjectService:
         for evse in evses:
             for connector in evse.connectors_with_tariffs:
                 tariff_uids = {tariff.uid for tariff in connector.tariff_ids.all()}
+                print(tariff_uids)
                 related_solid_tariffs = [
                     solid_tariff
                     for uid in tariff_uids

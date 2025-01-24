@@ -463,3 +463,13 @@ def smp1_ocpi_tariff():
 @pytest.fixture
 def smp1_solid_tariff():
     return SolidTariffFactory(external_id="SMP1")
+
+
+@pytest.fixture
+def msp_de_ice():
+    CredentialsRoleFactory(country_code="DE", party_id="ICE")
+
+
+@pytest.fixture
+def msp_de_icd():
+    CredentialsRoleFactory(country_code="DE", party_id="ICD")

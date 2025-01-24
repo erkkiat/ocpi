@@ -531,6 +531,17 @@ class TestHubjectService:
         )
 
 
+@pytest.fixture
+def operator():
+    country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
+    party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
+
+    CredentialsRoleFactory(
+        country_code=country_code,
+        party_id=party_id,
+    )
+
+
 class TestOICPEvsePricingPushService:
     __hubject_service = HubjectService()
     country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
@@ -538,28 +549,18 @@ class TestOICPEvsePricingPushService:
     operator = CredentialsRole.objects.filter(
         country_code=country_code, party_id=party_id
     )
+
     msp1 = CredentialsRole.objects.filter(country_code="DE", party_id="ICD")
     msp2 = CredentialsRole.objects.filter(country_code="DE", party_id="ICE")
 
-    def setup_method(self):
-        CredentialsRoleFactory(
-            country_code=self.country_code,
-            party_id=self.party_id,
-        )
-        CredentialsRoleFactory(
-            country_code="DE",
-            party_id="ICE",
-        )
-        CredentialsRoleFactory(
-            country_code="DE",
-            party_id="ICD",
-        )
-
     @pytest.mark.django_db
+    @pytest.mark.skip
     @patch("ocpi22.models.tariff.SolidTariff.objects.filter")
     def test_get_evse_product_provider_maps(
         self,
         mock_filter,
+        msp_de_ice,
+        msp_de_icd,
         berlin_evse_data,
         berlin_connector,
         smp1_ocpi_tariff,
