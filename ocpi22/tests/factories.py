@@ -313,7 +313,7 @@ class EvsePricingItemFactory(factory.Factory):
     class Meta:
         model = EVSEPricingItem
 
-    EvseID = "SD_EVSE_ID"
+    EvseID = "BE*SMP*ESDEVSEID"
     ProviderID = "DE*SMP"
     EvseIDProductList = ["SMP1"]
 
@@ -324,7 +324,7 @@ class ERoamingPushEVSEPricingFactory(factory.Factory):
 
     ActionType = ActionType.fullLoad
     EVSEPricing = factory.List(
-        factory.SubFactory("ocpi22.tests.factories.EvsePricingItemFactory")
+        [factory.SubFactory("ocpi22.tests.factories.EvsePricingItemFactory")]
     )
 
 
