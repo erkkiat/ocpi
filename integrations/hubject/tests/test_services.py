@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
@@ -544,9 +545,11 @@ class TestOICPDynamicPricingService:
     def test_get_all_pricing_products(
         self, mock_solid_tariffs, smp1_solid_tariff, smp2_solid_tariff, monkeypatch
     ):
-        monkeypatch.setenv("DEFAULT_OICP_PRICE", "0.3")
-        monkeypatch.setenv("DEFAULT_OICP_CURRENCY", "EUR")
-        monkeypatch.setenv("DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", "0.3")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", "EUR")
+        monkeypatch.setattr(
+            "django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR"
+        )
 
         expected_result = self.get_expected_pricing_product_data()
 
@@ -558,15 +561,26 @@ class TestOICPDynamicPricingService:
 
         assert result == expected_result
 
+    @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
     @pytest.mark.django_db
     def test_get_all_pricing_products_with_invalid_env_variables(
-        self, monkeypatch, msp_de_ice
+        self,
+        mock_solid_tariffs,
+        monkeypatch,
+        msp_de_ice,
+        smp1_solid_tariff,
+        smp2_solid_tariff,
     ):
-        monkeypatch.delenv("DEFAULT_OICP_PRICE")
-        monkeypatch.delenv("DEFAULT_OICP_CURRENCY")
-        monkeypatch.delenv("DEFAULT_OICP_PRICE_REFERENCE")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", None)
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", None)
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", None)
 
-        with pytest.raises(ValueError):
+        mock_solid_tariffs.return_value = [smp1_solid_tariff, smp2_solid_tariff]
+
+        with pytest.raises(
+            ValueError,
+            match="Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables",
+        ):
             self.__hubject_service.get_all_pricing_products(
                 get_our_party(OcpiRolesEnum.CPO)
             )
@@ -577,8 +591,11 @@ class TestOICPDynamicPricingService:
         self, mock_solid_tariffs, monkeypatch, msp_de_ice
     ):
         mock_solid_tariffs.return_value = []
+        expected_message = (
+            f"No SolidTariffs found for {str(get_our_party(OcpiRolesEnum.CPO))}"
+        )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
             self.__hubject_service.get_all_pricing_products(
                 get_our_party(OcpiRolesEnum.CPO)
             )
