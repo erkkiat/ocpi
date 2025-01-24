@@ -3266,7 +3266,10 @@ def put_session_data(data, create_authorization=True):
         authorization_reference = data.get("authorization_reference", "")
         Authorization.objects.create(authorization_reference=authorization_reference)
     return SessionViewSet.put(
-        request, country_code=data.get("country_code"), party_id=data.get("party_id")
+        request,
+        uid=data["id"],
+        country_code=data.get("country_code"),
+        party_id=data.get("party_id"),
     )
 
 
@@ -3308,13 +3311,10 @@ class TestPutSession(TestCase):
 
     @simulate_surrounding_world
     def test_put_session_to_wrong_evse(self, simulation):
-        with patch("ocpi22.ocpi.api.fetch_location") as mock_fetch_location:
-            mock_fetch_location.return_value = None
-            with simulation.assert_error_logged("There is no Location with UID"):
-                response = put_session_data(SessionData.wrong_evse)
-            mock_fetch_location.assert_called_once()
+        with simulation.assert_error_logged("There is no Location with UID"):
+            response = put_session_data(SessionData.wrong_evse)
 
-            # Todo: do the actual test
+        # Todo: do the actual test
 
         self.assertEqual(
             response.status_code,

@@ -32,7 +32,7 @@ MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtttest.smappee.net")
 MQTT_PORT = os.getenv("MQTT_PORT", 443)
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
-MQTT_SSL_VERIFY = os.getenv("MQTT_SSL_VERIFY", False)
+MQTT_USE_SSL = os.getenv("MQTT_USE_SSL", False)
 
 FIXIE_URL = os.getenv("FIXIE_URL", "")
 os.environ["http_proxy"] = FIXIE_URL

@@ -1,7 +1,7 @@
 from logging import getLogger
 from django.contrib.auth.models import User
 from django.http import HttpResponse
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 
 import os

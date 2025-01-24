@@ -851,7 +851,7 @@ class ChargePointViewSet(FlowchartViewSet):
             )
 
         except ObjectDoesNotExist as e:
-            logger.error(f"Exception in start_transaction(): {e}", request=request)
+            logger.error(f"Exception in start_transaction(): {e}")
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
         except EvseOccupied as e:
             stop_transaction_url = reverse("chargepoint-stop-transaction")
@@ -904,10 +904,10 @@ class ChargePointViewSet(FlowchartViewSet):
                 {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
+        except ObjectDoesNotExist as e:
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
         except (ValidationError, RuntimeError) as e:
-            logger.error(f"Exception in meter_values(): {e}", request=request)
+            logger.error(f"Exception in meter_values(): {e}")
             return Response(dict(status=str(e)), status=status.HTTP_409_CONFLICT)
 
     @action(methods=("GET", "POST"), detail=False)
@@ -1021,8 +1021,8 @@ class ChargePointViewSet(FlowchartViewSet):
                 {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        except (Evse.DoesNotExist, Token.DoesNotExist, Session.DoesNotExist) as e:
-            logger.error(f"Exception in stop_transaction(): {e}", request=request)
+        except ObjectDoesNotExist as e:
+            logger.error(f"Exception in stop_transaction(): {e}")
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
 
     @ocpi_exception_handler

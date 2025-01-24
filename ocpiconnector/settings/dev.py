@@ -12,7 +12,7 @@ MQTT_BROKER = os.getenv("MQTT_BROKER", "emqx")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
-MQTT_SSL_VERIFY = os.getenv("MQTT_SSL_VERIFY", False)
+MQTT_USE_SSL = os.getenv("MQTT_USE_SSL", False)
 
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 
