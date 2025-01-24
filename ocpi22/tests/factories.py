@@ -334,9 +334,9 @@ class PricingProductDataFactory(factory.Factory):
     PricingDefaultPrice = 0.43
     PricingDefaultPriceCurrency = "EUR"
     PricingDefaultReferenceUnit = "MINUTE"
-    PricingProductDataRecords = [
-        factory.SubFactory("ocpi22.tests.factories.PricingProductDataRecordFactory")
-    ]
+    PricingProductDataRecords = factory.List(
+        [factory.SubFactory("ocpi22.tests.factories.PricingProductDataRecordFactory")]
+    )
 
 
 class ERoamingPushPricingProductDataFactory(factory.Factory):
