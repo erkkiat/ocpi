@@ -1,6 +1,6 @@
 import uuid
 from copy import deepcopy
-from gettext import gettext as _
+from django.utils.translation import gettext_lazy as _, gettext
 from typing import Optional
 
 import pytz
@@ -328,13 +328,13 @@ class TariffElement(models.Model, ModelUtilMixin):
         )
         validity = ""
         if self.start_date or self.end_date:
-            validity = _(" (valid {date_range}").format(
+            validity = gettext(" (valid {date_range}").format(
                 date_range=humanize_date_range(self.start_date, self.end_date)
             )
         return (
             f" ({days_of_week_str}{times}){validity}"
             if days_of_week_str
-            else _(" (during {times})".format(times=times))
+            else gettext(" (during {times})".format(times=times))
             if times
             else ""
         )

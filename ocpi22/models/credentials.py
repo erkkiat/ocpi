@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytz
 from cachetools import cached, TTLCache
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 
 import generic.countries
