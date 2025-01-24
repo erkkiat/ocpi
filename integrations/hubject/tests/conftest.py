@@ -30,6 +30,7 @@ from ocpi22.tests.factories import (
     TariffFactory,
     OCPIImageFactory,
     SolidTariffFactory,
+    ERoamingPushEVSEPricingFactory,
 )
 
 
@@ -473,3 +474,8 @@ def msp_de_ice():
 @pytest.fixture
 def msp_de_icd():
     CredentialsRoleFactory(country_code="DE", party_id="ICD")
+
+
+@pytest.fixture
+def evse_pricing_full_load_payload():
+    return ERoamingPushEVSEPricingFactory()

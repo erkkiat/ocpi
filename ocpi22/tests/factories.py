@@ -28,6 +28,8 @@ from integrations.hubject.schemas import (
     AccessibilityLocation,
     ActionType,
     Accessibility,
+    ERoamingPushEVSEPricing,
+    EVSEPricingItem,
 )
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import CredentialsRole, Credentials
@@ -304,6 +306,25 @@ class ERoamingPushEvseDataFactory(factory.Factory):
     ActionType = ActionType.fullLoad
     OperatorEvseData = factory.SubFactory(
         "ocpi22.tests.factories.OperatorEvseDataFactory"
+    )
+
+
+class EvsePricingItemFactory(factory.Factory):
+    class Meta:
+        model = EVSEPricingItem
+
+    EvseID = "SD_EVSE_ID"
+    ProviderID = "DE*SMP"
+    EvseIDProductList = ["SMP1"]
+
+
+class ERoamingPushEVSEPricingFactory(factory.Factory):
+    class Meta:
+        model = ERoamingPushEVSEPricing
+
+    ActionType = ActionType.fullLoad
+    EVSEPricing = factory.List(
+        factory.SubFactory("ocpi22.tests.factories.EvsePricingItemFactory")
     )
 
 
