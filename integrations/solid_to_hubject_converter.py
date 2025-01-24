@@ -246,7 +246,7 @@ class SolidToHubjectConverter:
                         solid_tariff.external_id,
                         ref_unit,
                         operator_id,
-                        solid_tariff.msp.party_str(),
+                        solid_tariff.msp.party_str() if solid_tariff.msp else "",
                     ),
                     ProductPriceCurrency=solid_tariff.currency,
                     ReferenceUnit=ReferenceUnit(root=ref_unit),
