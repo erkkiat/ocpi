@@ -74,16 +74,13 @@ class HubjectClient:
         return self.session.get(url, **kwargs)
 
     def post(self, url, data=None, json=None, **kwargs):
-        return self.session.post(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        self.session.headers.update(self.headers)
+        return self.session.post(url, data=data, json=json, **kwargs)
 
     def put(self, url, data=None, json=None, **kwargs):
-        return self.session.put(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        self.session.headers.update(self.headers)
+        return self.session.put(url, data=data, json=json, **kwargs)
 
     def patch(self, url, data=None, json=None, **kwargs):
-        return self.session.patch(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        self.session.headers.update(self.headers)
+        return self.session.patch(url, data=data, json=json, **kwargs)
