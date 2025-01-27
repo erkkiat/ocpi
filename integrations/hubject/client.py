@@ -44,6 +44,7 @@ class HubjectClient:
         self.session = requests.Session()
         self.session.cert = (self.client_cert_path, self.key_path)
         self.session.verify = self.ca_cert_path
+        self.session.proxies = {"http": settings.FIXIE_URL, "https": settings.FIXIE_URL}
 
     def _save_cert_and_key(self):
         if not self.CLIENT_CERTIFICATE or not self.PRIVATE_KEY:
