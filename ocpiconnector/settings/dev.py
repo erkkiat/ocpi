@@ -33,7 +33,7 @@ DEV_LOGGING = {
         **LOGGING["loggers"],  # noqa
         "django": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True,
         },
         "django.request": {

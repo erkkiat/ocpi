@@ -44,7 +44,6 @@ class HubjectClient:
         self.session = requests.Session()
         self.session.cert = (self.client_cert_path, self.key_path)
         self.session.verify = self.ca_cert_path
-        self.headers = {"Content-type": "application/json"}
 
     def _save_cert_and_key(self):
         if not self.CLIENT_CERTIFICATE or not self.PRIVATE_KEY:
@@ -74,13 +73,11 @@ class HubjectClient:
         return self.session.get(url, **kwargs)
 
     def post(self, url, data=None, json=None, **kwargs):
-        self.session.headers.update(self.headers)
+        self.session.headers.update({"Content-Type": "application/json"})
         return self.session.post(url, data=data, json=json, **kwargs)
 
     def put(self, url, data=None, json=None, **kwargs):
-        self.session.headers.update(self.headers)
         return self.session.put(url, data=data, json=json, **kwargs)
 
     def patch(self, url, data=None, json=None, **kwargs):
-        self.session.headers.update(self.headers)
         return self.session.patch(url, data=data, json=json, **kwargs)

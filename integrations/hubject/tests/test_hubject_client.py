@@ -21,7 +21,7 @@ class TestHubjectClient:
             responses.POST, farm3_url, json={"message": "Success"}, status=200
         )
 
-        result = hubject_client.post(farm3_url)
+        result = hubject_client.post(farm3_url, json={"data": "Request body"})
 
         assert result.request.headers["Content-Type"] == "application/json"
 
@@ -31,7 +31,7 @@ class TestHubjectClient:
 
         responses.add(responses.PUT, farm3_url, json={"message": "Success"}, status=200)
 
-        result = hubject_client.put(farm3_url)
+        result = hubject_client.put(farm3_url, json={"data": "Request body"})
 
         assert result.request.headers["Content-Type"] == "application/json"
 
@@ -43,7 +43,7 @@ class TestHubjectClient:
             responses.PATCH, farm3_url, json={"message": "Success"}, status=200
         )
 
-        result = hubject_client.patch(farm3_url)
+        result = hubject_client.patch(farm3_url, json={"data": "Request body"})
 
         assert result.request.headers["Content-Type"] == "application/json"
 
