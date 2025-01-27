@@ -73,7 +73,6 @@ class HubjectClient:
         return self.session.get(url, **kwargs)
 
     def post(self, url, data=None, json=None, **kwargs):
-        self.session.headers.update({"Content-Type": "application/json"})
         return self.session.post(url, data=data, json=json, **kwargs)
 
     def put(self, url, data=None, json=None, **kwargs):
