@@ -651,7 +651,7 @@ class TestOICPDynamicPricingService:
         assert result == hubject_successful_response
 
     @responses.activate
-    def test_post_pricing_products_full_load_unsuccessful_response(
+    def test_post_pricing_products_full_load_returns_400_when_pricing_default_price_is_none(
         self, pricing_products_full_load_payload, hubject_unsuccessful_response
     ):
         operator_id = (
