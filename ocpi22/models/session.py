@@ -28,6 +28,7 @@ from ocpi22.choices import (
     TOKEN_TYPE_CHOICES,
 )
 from ocpi22.models import enum
+from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.util import (
@@ -168,6 +169,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             power,
             Decimal(hours) - Decimal(hours_so_far),
         )
+
+    cdr_token = models.ForeignKey(
+        CdrToken,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="sessions",
+        verbose_name=_("CDR token"),
+    )
 
     # Token used to start this charging session, including all the relevant information to identify the unique token.
     # Unique ID by which this Token can be identified.

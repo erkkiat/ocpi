@@ -12,6 +12,7 @@ import util
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
 from ocpi22.models import enum
+from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.msp.account import check_balance
@@ -81,6 +82,22 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             f'<a href="{util.reverse("session-by-id", args=[self.session_id])}">{self.session_id}</a>'
         )
 
+    cdr_token = models.ForeignKey(
+        "ocpi22.CdrToken",
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="cdrs",
+        verbose_name=_("CDR token"),
+    )
+
+    cdr_location = models.ForeignKey(
+        CdrLocation,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="cdrs",
+        verbose_name=_("CDR location"),
+    )
+
     # Token used to start this charging session, includes all the relevant information to identify the unique token.
     cdr_token_uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Token UID")
@@ -123,9 +140,18 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     # Location where the charging session took place, including only the relevant EVSE and Connector.
     # Uniquely identifies the location within the CPO’s platform (and suboperator platforms).
     # This field can never be changed, modified or renamed.
-    cdr_location_id = models.CharField(
+    cdr_location_uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Location ID")
     )
+
+    # Temporary change to make the cdr_location field work
+    @property
+    def cdr_location_id(self):
+        return self.cdr_location_uid
+
+    @cdr_location_id.setter
+    def cdr_location_id(self, value):
+        self.cdr_location_uid = value
 
     # Street/block name and house number if available.
     cdr_location_address = models.CharField(
