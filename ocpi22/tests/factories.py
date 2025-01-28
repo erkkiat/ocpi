@@ -1,5 +1,6 @@
 import random
 import time
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import factory
@@ -30,7 +31,8 @@ from integrations.hubject.schemas import (
     Accessibility,
 )
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import CredentialsRole, Credentials
+from ocpi22.models.cdr import Cdr
+from ocpi22.models.credentials import CredentialsRole, Credentials, Endpoint
 from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, SolidTariff
@@ -82,6 +84,13 @@ class CredentialsRoleFactory(factory.django.DjangoModelFactory):
     country_code = "FI"
     party_id = "CPO"
     credentials = factory.SubFactory(CredentialsFactory)
+
+
+class EndpointFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Endpoint
+
+    url = "http://localhost/ocpi/some/endpoint/"
 
 
 class LocationFactory(factory.django.DjangoModelFactory):
@@ -323,3 +332,59 @@ class SolidTariffFactory(factory.Factory):
 
     last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+
+
+class CdrFactory(factory.Factory):
+    class Meta:
+        model = Cdr
+
+    @factory.post_generation
+    def set_tariffs(self, create, extracted, **kwargs):
+        if not create:
+            # Skip if the instance is not saved to the database
+            return
+
+        # Ensure the instance is saved before setting M2M relationships
+        if self.pk is None:
+            self.save()
+
+        if extracted:
+            # Add the provided tariffs
+            for tariff in extracted:
+                self.tariffs.add(tariff)
+        else:
+            # Add a default Tariff if none are provided
+            self.tariffs.add(TariffFactory())
+
+    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
+    uid = "UID-12345"
+    start_date_time = datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC)
+    end_date_time = datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC)
+    session_id = "SESSION-123"
+    cdr_token_uid = "TOKEN-123"
+    cdr_token_type = "RFID"
+    cdr_token_contract_id = "CONTRACT-123"
+    auth_method = "WHITELIST"
+    authorization_reference = "AUTH-123"
+    cdr_location_id = "LOC-123"
+    cdr_location_address = "Alfred Nobellaan 22 App 150Z"
+    cdr_location_city = "Harelbeke"
+    cdr_location_postal_code = "8530"
+    cdr_location_country = "BEL"
+    cdr_location_latitude = "47.662249"
+    cdr_location_longitude = "9.360922"
+    cdr_location_name = "Location A"
+    cdr_location_evse_uid = "EVSE-123"
+    cdr_location_evse_id = f"{str(ocpi_master)}*E{cdr_location_evse_uid}"[:48]
+    cdr_location_connector_id = "1"
+    cdr_location_connector_standard = "IEC_62196_T2"
+    cdr_location_connector_format = "CABLE"
+    cdr_location_connector_power_type = "AC_3_PHASE"
+    currency = "EUR"
+    total_cost_excl_vat = 0.1
+    total_cost_incl_vat = 0.2
+    total_energy = 1.1
+    billed_to = factory.SubFactory(
+        CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
+    )
+    last_updated = datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC)
