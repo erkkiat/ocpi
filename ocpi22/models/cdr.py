@@ -251,17 +251,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Billed to"),
     )
 
-    # Has this CDR been billed as a part of an invoice? Null means it's not yet on any invoice
-    # This is not a part of OCPI, but a part of the settlement module
-    invoice = models.ForeignKey(
-        "settlement.Invoice",
-        on_delete=models.PROTECT,
-        related_name="cdrs",
-        blank=True,
-        null=True,
-        verbose_name=_("Invoice"),
-    )
-
     credentials = models.ForeignKey(
         "ocpi22.Credentials",
         on_delete=models.PROTECT,
