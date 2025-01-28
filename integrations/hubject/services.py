@@ -184,7 +184,6 @@ class HubjectService:
             with_trailing_slash(settings.HUBJECT_URL),
             f"dynamicpricing/v10/operators/{operator_id}/pricing-products",
         )
-        response = {}
 
         try:
             payload_json = payload.model_dump(mode="json")
