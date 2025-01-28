@@ -538,7 +538,7 @@ class TestHubjectService:
 
 
 class TestOICPDynamicPricingService:
-    __hubject_service = HubjectService()
+    hubject_service = HubjectService()
 
     @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
     @pytest.mark.django_db
@@ -555,7 +555,7 @@ class TestOICPDynamicPricingService:
 
         mock_solid_tariffs.return_value = [smp1_solid_tariff, smp2_solid_tariff]
 
-        result = self.__hubject_service.get_all_pricing_products(
+        result = self.hubject_service.get_all_pricing_products(
             get_our_party(OcpiRolesEnum.CPO)
         )
 
@@ -581,7 +581,7 @@ class TestOICPDynamicPricingService:
             ValueError,
             match="Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables",
         ):
-            self.__hubject_service.get_all_pricing_products(
+            self.hubject_service.get_all_pricing_products(
                 get_our_party(OcpiRolesEnum.CPO)
             )
 
@@ -596,7 +596,7 @@ class TestOICPDynamicPricingService:
         )
 
         with pytest.raises(ValueError, match=re.escape(expected_message)):
-            self.__hubject_service.get_all_pricing_products(
+            self.hubject_service.get_all_pricing_products(
                 get_our_party(OcpiRolesEnum.CPO)
             )
 
@@ -604,7 +604,7 @@ class TestOICPDynamicPricingService:
         pricing_product_data = MagicMock(spec=PricingProductData)
         action_type = ActionType.fullLoad
 
-        result = self.__hubject_service.get_push_pricing_product_data_payload(
+        result = self.hubject_service.get_push_pricing_product_data_payload(
             pricing_product_data, action_type
         )
 
@@ -617,7 +617,7 @@ class TestOICPDynamicPricingService:
         action_type = ActionType.fullLoad
 
         with pytest.raises(ValidationError):
-            self.__hubject_service.get_push_pricing_product_data_payload(
+            self.hubject_service.get_push_pricing_product_data_payload(
                 pricing_product_data, action_type
             )
 
@@ -640,7 +640,7 @@ class TestOICPDynamicPricingService:
                 )
             ],
         )
-        result = self.__hubject_service.post_pricing_products_full_load(
+        result = self.hubject_service.post_pricing_products_full_load(
             operator_id, pricing_products_full_load_payload
         )
 
@@ -668,7 +668,7 @@ class TestOICPDynamicPricingService:
                 )
             ],
         )
-        result = self.__hubject_service.post_pricing_products_full_load(
+        result = self.hubject_service.post_pricing_products_full_load(
             operator_id, pricing_products_full_load_payload
         )
 
@@ -709,7 +709,7 @@ class TestOICPDynamicPricingService:
             "serialization error"
         )
 
-        result = self.__hubject_service.post_pricing_products_full_load(
+        result = self.hubject_service.post_pricing_products_full_load(
             operator_id, payload_mock
         )
 
