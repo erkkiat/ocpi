@@ -97,12 +97,10 @@ class HubjectService:
             with_trailing_slash(settings.HUBJECT_URL),
             f"evsepush/v23/operators/{operator_id}/data-records",
         )
-        response = {}
-
         try:
-            payload_json = payload.model_dump_json()
+            payload_json = payload.model_dump(mode="json")
 
-            response = HubjectService.client.post(full_load_url, data=payload_json)
+            response = HubjectService.client.post(full_load_url, json=payload_json)
             if response.status_code == 200:
                 return response.json()
             else:
