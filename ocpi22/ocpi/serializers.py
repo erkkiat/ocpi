@@ -37,6 +37,7 @@ from ocpi22.util import (
     CiStringChoiceField,
     MultipleChoiceFieldList,
     CiStringField,
+    LanguageChoiceField,
 )
 from ocpiconnector.party import Party
 
@@ -80,8 +81,8 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     default_profile_type = CiStringChoiceField(
         required=False, choices=Token.PROFILE_TYPE_CHOICES
     )
-    language = CiStringChoiceField(
-        required=False, default="EN", choices=choices.LANGUAGE_CHOICES
+    language = LanguageChoiceField(
+        required=False, default="en", choices=choices.LANGUAGE_CHOICES
     )
     type = CiStringChoiceField(required=False, choices=choices.TOKEN_TYPE_CHOICES)
     last_updated = UTCDateTimeField(required=False)

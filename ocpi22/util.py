@@ -750,6 +750,17 @@ class CiStringChoiceField(serializers.ChoiceField):
         return super().to_internal_value(data.upper())
 
 
+class LanguageChoiceField(serializers.ChoiceField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_internal_value(self, data):
+        return super().to_internal_value(data.lower())
+
+    def to_representation(self, value):
+        return super().to_representation(value.lower())
+
+
 class MultipleChoiceFieldList(serializers.MultipleChoiceField):
     def to_representation(self, value):
         # The output needs to be JSON serializable, type "set" is not
