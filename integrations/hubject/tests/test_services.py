@@ -587,7 +587,7 @@ class TestOICPDynamicPricingService:
 
     @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
     @pytest.mark.django_db
-    def test_get_all_pricing_products_with_no_solid_tariffs(
+    def test_get_all_pricing_products_with_no_solid_tariffs_raises_value_error(
         self, mock_solid_tariffs, monkeypatch, msp_de_ice
     ):
         mock_solid_tariffs.return_value = []
@@ -705,7 +705,7 @@ class TestOICPDynamicPricingService:
         operator_id = "DE+MSP"
 
         payload_mock = MagicMock()
-        payload_mock.model_dump_json.side_effect = PydanticSerializationError(
+        payload_mock.model_dump.side_effect = PydanticSerializationError(
             "serialization error"
         )
 
