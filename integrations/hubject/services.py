@@ -117,14 +117,14 @@ class HubjectService:
                     "error": f"{response.status_code} : {response.text}",
                 }
         except PydanticSerializationError as e:
-            logging.error(e)
+            logger.exception("Pydantic validation failed")
             return {
                 "success": False,
                 "errorType": "Pydantic validation failed",
                 "error": e.args[0],
             }
         except HTTPError as exc:
-            logging.error(exc)
+            logger.exception("HTTP error occurred")
             return {
                 "success": False,
                 "errorType": "HTTP request failed",
@@ -192,14 +192,14 @@ class HubjectService:
             response = HubjectService.client.post(full_load_url, json=payload_json)
             return response.json()
         except PydanticSerializationError as e:
-            logging.error(e)
+            logger.exception("Pydantic validation failed")
             return {
                 "success": False,
                 "errorType": "Pydantic validation failed",
                 "error": str(e),
             }
         except HTTPError as exc:
-            logging.error(exc)
+            logger.exception("HTTP error occurred")
             return {
                 "success": False,
                 "errorType": "HTTP request failed",
