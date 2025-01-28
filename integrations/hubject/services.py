@@ -187,9 +187,9 @@ class HubjectService:
         response = {}
 
         try:
-            payload_json = payload.model_dump_json()
+            payload_json = payload.model_dump(mode="json")
 
-            response = HubjectService.client.post(full_load_url, data=payload_json)
+            response = HubjectService.client.post(full_load_url, json=payload_json)
             return response.json()
         except PydanticSerializationError as e:
             logging.error(e)
