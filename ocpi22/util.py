@@ -15,7 +15,7 @@ import pytz
 from cachetools.keys import hashkey
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 import cachetools
 import pycountry

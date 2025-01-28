@@ -10,7 +10,6 @@ from pydantic_core import PydanticSerializationError
 from requests import HTTPError
 from responses import matchers
 
-from integrations.hubject.client import HubjectClient
 from integrations.hubject.schemas import (
     ActionType,
     OperatorEvseData,
@@ -284,7 +283,7 @@ class TestHubjectService:
         operator_id = "DE+MSP"
 
         payload_mock = MagicMock()
-        payload_mock.model_dump_json.side_effect = PydanticSerializationError(
+        payload_mock.model_dump.side_effect = PydanticSerializationError(
             "serialization error"
         )
 
@@ -523,8 +522,3 @@ class TestHubjectService:
             OperatorName="Smappee Pvt Ltd",
             EvseDataRecord=[berlin_evse_data_record, emsdetten_evse_data_record],
         )
-
-
-class TestHubjectClient:
-    def test_hubject_client_init(self):
-        HubjectClient(rewrite_cert_files=True)

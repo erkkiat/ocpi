@@ -54,7 +54,6 @@ from ocpiconnector.testutil import (
     MockResponse,
     make_json_response,
 )
-from settlement.views import InvoiceReportViews
 from util import reverse
 
 from ocpi22.msp.api import MspRoamingViewSet
@@ -3984,23 +3983,6 @@ def post_cdr(data):
     request.user = get_fake_admin()
     request.version = "2.2.1"
     return CdrViewSet().post(request)
-
-
-class TestBillingList(TestCase):
-    fixtures = ["ocpi22/data/credentials.json"]
-
-    def test_empty_billing_list(self):
-        request = api_factory.get(reverse("billing-list"))
-        request.user = get_fake_admin()
-        request.query_params = {}
-        response = InvoiceReportViews().session_list(request)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.data,
-            OrderedDict(
-                [("count", 0), ("next", None), ("previous", None), ("results", [])]
-            ),
-        )
 
 
 class TestOCPIAuthentication(TestCase):
