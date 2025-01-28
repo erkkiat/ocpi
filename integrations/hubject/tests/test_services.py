@@ -283,7 +283,7 @@ class TestHubjectService:
         operator_id = "DE+MSP"
 
         payload_mock = MagicMock()
-        payload_mock.model_dump_json.side_effect = PydanticSerializationError(
+        payload_mock.model_dump.side_effect = PydanticSerializationError(
             "serialization error"
         )
 
