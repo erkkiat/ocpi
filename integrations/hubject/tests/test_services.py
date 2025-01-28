@@ -44,7 +44,11 @@ from integrations.hubject.schemas import (
 )
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
-from ocpi22.tests.factories import EvseFactory, LocationFactory
+from ocpi22.tests.factories import (
+    EvseFactory,
+    LocationFactory,
+    PricingProductDataFactory,
+)
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 
@@ -600,8 +604,8 @@ class TestOICPDynamicPricingService:
                 get_our_party(OcpiRolesEnum.CPO)
             )
 
-    def test_get_push_pricing_product_data_payload_valid(self):
-        pricing_product_data = MagicMock(spec=PricingProductData)
+    def test_get_push_pricing_product_data_payload_success(self):
+        pricing_product_data = PricingProductDataFactory()
         action_type = ActionType.fullLoad
 
         result = self.hubject_service.get_push_pricing_product_data_payload(
@@ -675,7 +679,7 @@ class TestOICPDynamicPricingService:
         assert result == hubject_unsuccessful_response
 
     @responses.activate
-    def test_post_pricing_products_full_load_http_error(
+    def test_post_pricing_products_full_load_raises_http_error(
         self, pricing_products_full_load_payload
     ):
         operator_id = (
