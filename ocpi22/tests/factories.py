@@ -34,10 +34,12 @@ from integrations.hubject.schemas import (
     PricingProductDataRecord,
 )
 from ocpi22.models.business_details import BusinessDetails
+from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials, Endpoint
 from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, SolidTariff
 
 fake = Faker()
@@ -408,7 +410,7 @@ class CdrFactory(factory.Factory):
     cdr_token_contract_id = "CONTRACT-123"
     auth_method = "WHITELIST"
     authorization_reference = "AUTH-123"
-    cdr_location_id = "LOC-123"
+    cdr_location_uid = "LOC-123"
     cdr_location_address = "Alfred Nobellaan 22 App 150Z"
     cdr_location_city = "Harelbeke"
     cdr_location_postal_code = "8530"
@@ -430,3 +432,47 @@ class CdrFactory(factory.Factory):
         CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
     )
     last_updated = datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC)
+
+
+class CdrTokenFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CdrToken
+
+    ocpi_master = factory.SubFactory(
+        CredentialsRoleFactory,
+        party_id="MSP",
+        role="EMSP",
+        business_details__name="Test MSP",
+    )
+    uid = "CDRTOKEN-12345"
+    token_type = "RFID"
+    contract_id = "CONTRACT-12345"
+
+
+class OCPISessionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Session
+
+    ocpi_master = factory.SubFactory(
+        CredentialsRoleFactory,
+        party_id="CPO",
+        role="CPO",
+        business_details__name="Test CPO",
+    )
+    uid = "SESSION-12345"
+    start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
+    end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+    start_kwh = 100.0
+    stop_kwh = 120.0
+    cdr_token = factory.SubFactory(CdrTokenFactory)
+    billed_to = factory.LazyAttribute(lambda obj: obj.cdr_token.ocpi_master)
+    auth_method = "AUTH_REQUEST"
+    authorization_reference = "AUTHORIZATION-12345"
+    connector = factory.SubFactory(ConnectorFactory)
+    evse = factory.LazyAttribute(lambda obj: obj.connector.evse)
+    location = factory.LazyAttribute(lambda obj: obj.connector.evse.location)
+    currency = "EUR"
+    total_cost_excl_vat = 10.0
+    total_cost_incl_vat = 12.0
+    status = Session.COMPLETED
+    last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)

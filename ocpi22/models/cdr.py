@@ -7,7 +7,6 @@ from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils.html import format_html
 import util
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
@@ -76,11 +75,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         default="",
         verbose_name=_("Session ID"),
     )
-
-    def session_url(self):
-        return format_html(
-            f'<a href="{util.reverse("session-by-id", args=[self.session_id])}">{self.session_id}</a>'
-        )
 
     cdr_token = models.ForeignKey(
         "ocpi22.CdrToken",
@@ -326,7 +320,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         return hours_minutes(self.total_time)
 
     @classmethod
-    def create_based_on_session(cls, session: Session):
+    def create_based_on_session(cls, session: Session) -> "Cdr":
         if not session.connector:
             logging.error(
                 f"Not creating a CDR from Session {session.uid} since no Connector is specified"

@@ -245,8 +245,8 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 class CdrCoordinatesSerializer(SerializerCleanedUp):
-    latitude = Coordinate(source="latitude")
-    longitude = Coordinate(source="longitude")
+    latitude = Coordinate()
+    longitude = Coordinate()
 
 
 class CdrLocationSerializer(serializers.ModelSerializer):
@@ -265,7 +265,7 @@ class CdrLocationSerializer(serializers.ModelSerializer):
             "connector_id",
             "connector_standard",
             "connector_format",
-            "connector_power_type"
+            "connector_power_type",
         ]
 
     id = serializers.CharField(source="uid")
@@ -323,10 +323,14 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                 )
                 tariff_list.append(tariff_serializer.create(tariff))
             cdr_location_data = validated_data.pop("cdr_location")
-            cdr_location, _created = CdrLocation.objects.get_or_create(**cdr_location_data)
+            cdr_location, _created = CdrLocation.objects.get_or_create(
+                **cdr_location_data
+            )
             cdr_token_data = validated_data.pop("cdr_token")
             cdr_token, _created = CdrToken.objects.get_or_create(**cdr_token_data)
-            cdr = Cdr.objects.create(**validated_data, cdr_location=cdr_location, cdr_token=cdr_token)
+            cdr = Cdr.objects.create(
+                **validated_data, cdr_location=cdr_location, cdr_token=cdr_token
+            )
             cdr.tariffs.set(tariff_list)
             return cdr
         except IntegrityError:
