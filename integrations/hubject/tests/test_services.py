@@ -372,6 +372,17 @@ class TestHubjectService:
             "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
         )
 
+    def test_get_default_tariffs_minus_ocip_price(self, monkeypatch):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", "-0.25")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", "EUR")
+        monkeypatch.setattr(
+            "django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR"
+        )
+
+        with pytest.raises(ValueError) as excinfo:
+            self.__hubject_service.get_default_tariffs()
+        assert str(excinfo.value) == ("DEFAULT_OICP_PRICE must be positive")
+
     @pytest.mark.django_db
     def test_get_operator_evse_data_without_locations_returns_none(self):
         party = get_our_party(OcpiRolesEnum.CPO)
@@ -410,6 +421,17 @@ class TestHubjectService:
 
         result = self.__hubject_service.get_operator_evse_data(party)
 
+        assert result is None
+
+    @pytest.mark.django_db
+    def test_get_evse_full_load_payload_without_operator_evse_data_returns_none(self):
+        party = get_our_party(OcpiRolesEnum.CPO)
+        Location.objects.filter(
+            ocpi_master__party_id=party.party_id,
+            ocpi_master__country_code=party.country_code,
+        ).delete()
+
+        result = self.__hubject_service.get_evse_full_load_payload(party)
         assert result is None
 
     def expected_berlin_op_evse_data_record(self):
