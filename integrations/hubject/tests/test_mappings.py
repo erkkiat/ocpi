@@ -20,6 +20,7 @@ from integrations.hubject.schemas import (
     Accessibility,
     AccessibilityLocation,
     HubjectPriceComponent,
+    ProviderIDAsterisk,
 )
 from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
@@ -383,6 +384,24 @@ class TestMappings:
             )
         )
         assert len(pricing_product_data_records) == 0
+
+    @pytest.mark.django_db
+    def test_get_provider_ids_for_solid_tariffs_with_msp(
+        self, smp1_solid_tariff_with_all_records
+    ):
+        result = self._ocpi_2_oicp_converter.get_provider_ids(
+            [smp1_solid_tariff_with_all_records]
+        )
+        assert result == ProviderIDAsterisk(root="FI*CPO")
+
+    @pytest.mark.django_db
+    def test_get_provider_ids_for_solid_tariffs_without_msp(
+        self, smp1_solid_tariff_without_msp
+    ):
+        result = self._ocpi_2_oicp_converter.get_provider_ids(
+            [smp1_solid_tariff_without_msp]
+        )
+        assert result == ProviderIDAsterisk(root="*")
 
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {

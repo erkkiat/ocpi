@@ -527,6 +527,11 @@ def smp1_solid_tariff_with_none_prices():
 
 
 @pytest.fixture
+def smp1_solid_tariff_without_msp():
+    return SolidTariffFactory(external_id="SMP1", msp=None)
+
+
+@pytest.fixture
 def pricing_product_data_record_successful_result():
     return [
         PricingProductDataRecord(

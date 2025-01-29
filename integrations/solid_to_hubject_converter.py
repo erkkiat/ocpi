@@ -198,12 +198,10 @@ class SolidToHubjectConverter:
                 )
             ],
             # todo: Offer to all should not be used in production.
-            ProviderID=self.__get_provider_ids(solid_tariffs),
+            ProviderID=self.get_provider_ids(solid_tariffs),
         )
 
-    def __get_provider_ids(
-        self, solid_tariffs: list[SolidTariff]
-    ) -> ProviderIDAsterisk:
+    def get_provider_ids(self, solid_tariffs: list[SolidTariff]) -> ProviderIDAsterisk:
         # Todo: when we have multiple providers we need to send a list
         if solid_tariffs[0].msp is None:
             return ProviderIDAsterisk(root="*")
