@@ -9,7 +9,6 @@ from integrations.hubject.schemas import (
     ValueAddedService,
     PaymentOption,
     EvseDataRecord,
-    OperatorID,
     GeoCoordinates,
 )
 from ocpi22.choices import OCPICapabilityEnum
@@ -236,8 +235,6 @@ class HubjectToOCPIConverter:
         """
         formatter = self.get_address_formatter(country)
         return formatter(street, house_number)
-
-    def get_operator(self, operator: OperatorID): ...
 
     def get_capabilities(
         self,

@@ -28,6 +28,9 @@ from integrations.hubject.schemas import (
     AccessibilityLocation,
     ActionType,
     Accessibility,
+    ERoamingPushPricingProductData,
+    PricingProductData,
+    PricingProductDataRecord,
 )
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import CredentialsRole, Credentials
@@ -304,6 +307,45 @@ class ERoamingPushEvseDataFactory(factory.Factory):
     ActionType = ActionType.fullLoad
     OperatorEvseData = factory.SubFactory(
         "ocpi22.tests.factories.OperatorEvseDataFactory"
+    )
+
+
+class PricingProductDataRecordFactory(factory.Factory):
+    class Meta:
+        model = PricingProductDataRecord
+
+    ProductID = "UNIQUE_TARIFF_ID"
+    ReferenceUnit = "MINUTE"
+    ProductPriceCurrency = "EUR"
+    PricePerReferenceUnit = 0.43
+    MaximumProductChargingPower = 1000
+    IsValid24hours = True
+    ProductAvailabilityTimes = []
+    AdditionalReferences = []
+
+
+class PricingProductDataFactory(factory.Factory):
+    class Meta:
+        model = PricingProductData
+
+    OperatorID = "BE*SMP"
+    OperatorName = "Smappee eRoam CPO"
+    ProviderID = "DE*ICE"
+    PricingDefaultPrice = 0.43
+    PricingDefaultPriceCurrency = "EUR"
+    PricingDefaultReferenceUnit = "MINUTE"
+    PricingProductDataRecords = factory.List(
+        [factory.SubFactory("ocpi22.tests.factories.PricingProductDataRecordFactory")]
+    )
+
+
+class ERoamingPushPricingProductDataFactory(factory.Factory):
+    class Meta:
+        model = ERoamingPushPricingProductData
+
+    ActionType = ActionType.fullLoad
+    PricingProductData = factory.SubFactory(
+        "ocpi22.tests.factories.PricingProductDataFactory"
     )
 
 
