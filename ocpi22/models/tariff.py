@@ -20,6 +20,7 @@ from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, DYNAMIC_PRICE_SOURCE_C
 from ocpi22.credentials.util import find_endpoints_by_roles
 import ocpi22.tasks as tasks
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.models.displaytext import DisplayText
 from ocpi22.util import (
     ModelUtilMixin,
     format_currency,
@@ -123,6 +124,10 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     # URL to a web page that contains an explanation of the tariff information in human readable form.
     tariff_alt_url = models.URLField(
         blank=True, default="", verbose_name=_("Tariff alternative URL")
+    )
+
+    tariff_alt_text = models.ManyToManyField(
+        DisplayText, blank=True, related_name="tariffs"
     )
 
     # When this field is set, a Charging Session with this tariff will at least cost this amount.

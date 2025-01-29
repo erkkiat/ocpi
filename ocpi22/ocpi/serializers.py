@@ -11,6 +11,7 @@ from ocpi22 import choices
 from ocpi22.choices import TOKEN_TYPE_CHOICES, CONNECTION_STATUS_CHOICES, OcpiRolesEnum
 from ocpi22.locations.util import get_or_create_business_details
 from serializers import DisplayTextSerializer
+from ocpi22.models.displaytext import DisplayText
 from util import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
@@ -137,11 +138,6 @@ class ElementsSerializer(SerializerCleanedUp):
     restrictions = RestrictionSerializer(source="*", required=False)
 
 
-class TariffAltTextSerializer(SerializerCleanedUp):
-    language = serializers.CharField(default="EN")
-    text = serializers.CharField(source="price")
-
-
 class MinPriceSerializer(SerializerCleanedUp):
     excl_vat = serializers.FloatField(source="min_price_excl_vat", default=None)
     incl_vat = serializers.FloatField(source="min_price_incl_vat", default=None)
@@ -183,7 +179,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         default=dict(max_price_excl_vat=None, max_price_incl_vat=None),
     )
 
-    tariff_alt_text = TariffAltTextSerializer(source="*", read_only=True)
+    tariff_alt_text = DisplayTextSerializer(many=True, required=False)
     last_updated = UTCDateTimeField(required=False)
 
     def _delete_children(self, tariff: Tariff) -> None:
@@ -203,17 +199,28 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def update(self, instance: Tariff, validated_data: dict) -> Tariff:
         tariff_elements = validated_data.pop("tariff_elements")
+        tariff_alt_text = validated_data.pop("tariff_alt_text", None)
         for key, value in validated_data.items():
             setattr(instance, key, value)
         instance.save()
         self._delete_children(instance)
         self._create_children(instance, tariff_elements)
+        if tariff_alt_text:
+            tariff_alt_texts = [
+                DisplayText.objects.get_or_create(**tat) for tat in tariff_alt_text
+            ]
+            instance.tariff_alt_text.set(tariff_alt_texts)
         return instance
 
     def create(self, validated_data: dict) -> Tariff:
         tariff_elements = validated_data.pop("tariff_elements")
+        tariff_alt_text = validated_data.pop("tariff_alt_text", [])
         tariff = Tariff.objects.create(**validated_data)
         self._create_children(tariff, tariff_elements)
+        tariff_alt_texts = [
+            DisplayText.objects.get_or_create(**tat)[0] for tat in tariff_alt_text
+        ]
+        tariff.tariff_alt_text.set(tariff_alt_texts)
         return tariff
 
 

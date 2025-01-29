@@ -195,7 +195,7 @@ expected_get_responses = {
                 "id": "T2",
                 "last_updated": "2022-01-08T07:52:37Z",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "0,26€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "0,26€/kWh"}],
                 "type": "REGULAR",
             },
             {
@@ -212,7 +212,7 @@ expected_get_responses = {
                 "id": "T3",
                 "last_updated": "2022-01-08T07:52:37Z",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "2€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "2€/kWh"}],
                 "type": "REGULAR",
             },
             {
@@ -229,7 +229,7 @@ expected_get_responses = {
                 "id": "T4",
                 "last_updated": "2022-01-08T07:52:37Z",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "2€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "2€/kWh"}],
                 "type": "REGULAR",
             },
         ],
@@ -256,7 +256,7 @@ expected_get_responses = {
                 ],
                 "id": "TTYPE2",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "0,22€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "0,22€/kWh"}],
                 "type": "REGULAR",
             },
             {
@@ -272,7 +272,7 @@ expected_get_responses = {
                 ],
                 "id": "TCCS",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "0,30€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "0,30€/kWh"}],
                 "type": "REGULAR",
             },
             {
@@ -288,7 +288,7 @@ expected_get_responses = {
                 ],
                 "id": "TCHADEMO",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "0,30€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "0,30€/kWh"}],
                 "type": "REGULAR",
             },
         ],
@@ -1102,7 +1102,7 @@ class CdrMessages:
                     ),
                     (
                         "tariff_alt_text",
-                        OrderedDict([("language", "EN"), ("text", "0,50€/kWh")]),
+                        [OrderedDict([("language", "EN"), ("text", "0,50€/kWh")])],
                     ),
                     ("country_code", "FI"),
                     ("party_id", "000"),
@@ -1183,7 +1183,7 @@ class CdrMessages:
                     ),
                     (
                         "tariff_alt_text",
-                        OrderedDict([("language", "EN"), ("text", "0,50€/kWh")]),
+                        [OrderedDict([("language", "EN"), ("text", "0,50€/kWh")])],
                     ),
                     ("country_code", "FI"),
                     ("party_id", "000"),
@@ -1449,7 +1449,7 @@ class StopTransactionResponses:
                         ),
                         (
                             "tariff_alt_text",
-                            dict([("language", "EN"), ("text", "0,50€/kWh")]),
+                            [dict([("language", "EN"), ("text", "0,50€/kWh")])],
                         ),
                         ("country_code", "FI"),
                         ("party_id", "CPO"),
@@ -1563,7 +1563,7 @@ class StopTransactionResponses:
                         ),
                         (
                             "tariff_alt_text",
-                            OrderedDict([("language", "EN"), ("text", "0,50€/kWh")]),
+                            [OrderedDict([("language", "EN"), ("text", "0,50€/kWh")])],
                         ),
                         ("country_code", "FI"),
                         ("party_id", "000"),
@@ -1702,12 +1702,14 @@ class StopTransactionResponses:
                                         ),
                                         (
                                             "tariff_alt_text",
-                                            OrderedDict(
-                                                [
-                                                    ("language", "EN"),
-                                                    ("text", "0,50€/kWh"),
-                                                ]
-                                            ),
+                                            [
+                                                OrderedDict(
+                                                    [
+                                                        ("language", "EN"),
+                                                        ("text", "0,50€/kWh"),
+                                                    ]
+                                                )
+                                            ],
                                         ),
                                         ("country_code", "FI"),
                                         ("party_id", "CPO"),
