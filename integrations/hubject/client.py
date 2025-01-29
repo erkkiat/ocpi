@@ -44,7 +44,8 @@ class HubjectClient:
         self.session = requests.Session()
         self.session.cert = (self.client_cert_path, self.key_path)
         self.session.verify = self.ca_cert_path
-        self.headers = {"Content-type": "application/json"}
+        # The Proxy URL is required for hubject. The IP address in Proxy URL is whitelisted in Hubject QA Env.
+        self.session.proxies = {"http": settings.FIXIE_URL, "https": settings.FIXIE_URL}
 
     def _save_cert_and_key(self):
         if not self.CLIENT_CERTIFICATE or not self.PRIVATE_KEY:
@@ -74,16 +75,10 @@ class HubjectClient:
         return self.session.get(url, **kwargs)
 
     def post(self, url, data=None, json=None, **kwargs):
-        return self.session.post(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        return self.session.post(url, data=data, json=json, **kwargs)
 
     def put(self, url, data=None, json=None, **kwargs):
-        return self.session.put(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        return self.session.put(url, data=data, json=json, **kwargs)
 
     def patch(self, url, data=None, json=None, **kwargs):
-        return self.session.patch(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        return self.session.patch(url, data=data, json=json, **kwargs)
