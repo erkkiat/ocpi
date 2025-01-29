@@ -678,34 +678,9 @@ class TestOICPDynamicPricingService:
 
         assert result == hubject_unsuccessful_response
 
-    @responses.activate
-    def test_post_pricing_products_full_load_raises_http_error(
-        self, pricing_products_full_load_payload
+    def test_post_pricing_products_full_load_pydantic_error_when_model_dump_to_json(
+        self, pricing_products_full_load_invalid_payload
     ):
-        operator_id = (
-            pricing_products_full_load_payload.PricingProductData.OperatorID.root
-        )
-
-        responses.add(
-            responses.POST,
-            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products",
-            body=HTTPError("HTTP request failed"),
-            status=500,
-        )
-
-        with pytest.raises(HTTPError):
-            service = HubjectService()
-            result = service.post_pricing_products_full_load(
-                operator_id, pricing_products_full_load_payload
-            )
-
-            assert result == {
-                "success": False,
-                "errorType": "HTTP request failed",
-                "error": "HTTP request failed",
-            }
-
-    def test_post_pricing_products_full_load_pydantic_error(self):
         operator_id = "DE+MSP"
 
         payload_mock = MagicMock()
@@ -714,7 +689,7 @@ class TestOICPDynamicPricingService:
         )
 
         result = self.hubject_service.post_pricing_products_full_load(
-            operator_id, payload_mock
+            operator_id, pricing_products_full_load_invalid_payload
         )
 
         assert result == {
