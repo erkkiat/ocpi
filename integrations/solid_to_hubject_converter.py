@@ -190,12 +190,13 @@ class SolidToHubjectConverter:
             PricingDefaultReferenceUnit=ReferenceUnit(
                 root=hubject_default_tariff.price_component
             ),
-            PricingProductDataRecords=(
-                self.__convert_to_pricing_product_data_records(
+            PricingProductDataRecords=[
+                record
+                for solid_tariff in solid_tariffs
+                for record in self.convert_to_pricing_product_data_records(
                     solid_tariff, operator_id
                 )
-                for solid_tariff in solid_tariffs
-            ),
+            ],
             # todo: Offer to all should not be used in production.
             ProviderID=self.__get_provider_ids(solid_tariffs),
         )
@@ -208,49 +209,51 @@ class SolidToHubjectConverter:
             return ProviderIDAsterisk(root="*")
         return ProviderIDAsterisk(root=solid_tariffs[0].msp.party_str())
 
-    def __convert_to_pricing_product_data_records(
+    def convert_to_pricing_product_data_records(
         self,
         solid_tariff: SolidTariff,
         operator_id: str,
-    ) -> PricingProductDataRecord:
+    ) -> list[PricingProductDataRecord]:
         conditions = [
             (
-                solid_tariff.price_per_kwh,
                 HubjectPriceComponent.KWH,
                 solid_tariff.price_per_kwh,
             ),
             (
-                solid_tariff.price_per_min,
                 HubjectPriceComponent.MINUTE,
                 solid_tariff.price_per_min,
             ),
         ]
 
-        for reference, ref_unit, price in conditions:
-            if reference is not None:
-                return PricingProductDataRecord(
-                    AdditionalReferences=[
-                        AdditionalReference(
-                            AdditionalReference=AdditionalReferenceChoice.START_FEE,
-                            AdditionalReferenceUnit=ReferenceUnit(
-                                root=HubjectPriceComponent.HOUR.value
+        pricing_product_data_records = []
+        for ref_unit, price in conditions:
+            if price is not None:
+                pricing_product_data_records.append(
+                    PricingProductDataRecord(
+                        AdditionalReferences=[
+                            AdditionalReference(
+                                AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                                AdditionalReferenceUnit=ReferenceUnit(
+                                    root=HubjectPriceComponent.HOUR.value
+                                ),
+                                PricePerAdditionalReferenceUnit=solid_tariff.price_flat,
                             ),
-                            PricePerAdditionalReferenceUnit=solid_tariff.price_flat,
+                        ],
+                        IsValid24hours=True,
+                        MaximumProductChargingPower=self.get_maximum_product_charging_power(),
+                        PricePerReferenceUnit=price,
+                        ProductAvailabilityTimes=[],
+                        ProductID=self.get_pricing_product_id(
+                            solid_tariff.external_id,
+                            ref_unit,
+                            operator_id,
+                            solid_tariff.msp.party_str() if solid_tariff.msp else "",
                         ),
-                    ],
-                    IsValid24hours=True,
-                    MaximumProductChargingPower=self.get_maximum_product_charging_power(),
-                    PricePerReferenceUnit=price,
-                    ProductAvailabilityTimes=[],
-                    ProductID=self.get_pricing_product_id(
-                        solid_tariff.external_id,
-                        ref_unit,
-                        operator_id,
-                        solid_tariff.msp.party_str() if solid_tariff.msp else "",
-                    ),
-                    ProductPriceCurrency=solid_tariff.currency,
-                    ReferenceUnit=ReferenceUnit(root=ref_unit),
+                        ProductPriceCurrency=solid_tariff.currency,
+                        ReferenceUnit=ReferenceUnit(root=ref_unit),
+                    )
                 )
+        return pricing_product_data_records
 
     def get_maximum_product_charging_power(self):
         return (

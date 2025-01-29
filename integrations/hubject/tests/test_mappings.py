@@ -355,6 +355,23 @@ class TestMappings:
         ):
             self._ocpi_2_oicp_converter.get_pricing_product_id(None, None, None, "")
 
+    @pytest.mark.django_db
+    def test_convert_to_pricing_product_data_records_success(
+        self,
+        smp1_solid_tariff_with_all_records,
+        pricing_product_data_record_successful_result,
+    ):
+        pricing_product_data_records = (
+            self._ocpi_2_oicp_converter.convert_to_pricing_product_data_records(
+                smp1_solid_tariff_with_all_records, "FI*CPO"
+            )
+        )
+        assert len(pricing_product_data_records) == 2
+        assert (
+            pricing_product_data_records
+            == pricing_product_data_record_successful_result
+        )
+
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {
             "ActionType": ActionType.insert,

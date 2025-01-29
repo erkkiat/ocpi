@@ -15,6 +15,11 @@ from integrations.hubject.schemas import (
     ValueAddedService,
     PowerType,
     PaymentOption,
+    PricingProductDataRecord,
+    AdditionalReference,
+    AdditionalReferenceChoice,
+    ReferenceUnit,
+    HubjectPriceComponent,
 )
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -507,3 +512,50 @@ def connector_max_electric_power_5kw():
 @pytest.fixture
 def connector_max_electric_power_none():
     return ConnectorFactory(max_electric_power=None)
+
+
+@pytest.fixture
+def smp1_solid_tariff_with_all_records():
+    return SolidTariffFactory(external_id="SMP1")
+
+
+@pytest.fixture
+def pricing_product_data_record_successful_result():
+    return [
+        PricingProductDataRecord(
+            AdditionalReferences=[
+                AdditionalReference(
+                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                    AdditionalReferenceUnit=ReferenceUnit(
+                        root=HubjectPriceComponent.HOUR.value
+                    ),
+                    PricePerAdditionalReferenceUnit=0.3,
+                ),
+            ],
+            IsValid24hours=True,
+            MaximumProductChargingPower=0,
+            PricePerReferenceUnit=0.2,
+            ProductAvailabilityTimes=[],
+            ProductID="FI*CPO*SMP1*KILOWATT_HOUR*FI*CPO",
+            ProductPriceCurrency="EUR",
+            ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+        ),
+        PricingProductDataRecord(
+            AdditionalReferences=[
+                AdditionalReference(
+                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                    AdditionalReferenceUnit=ReferenceUnit(
+                        root=HubjectPriceComponent.HOUR.value
+                    ),
+                    PricePerAdditionalReferenceUnit=0.3,
+                ),
+            ],
+            IsValid24hours=True,
+            MaximumProductChargingPower=0,
+            PricePerReferenceUnit=0.3,
+            ProductAvailabilityTimes=[],
+            ProductID="FI*CPO*SMP1*MINUTE*FI*CPO",
+            ProductPriceCurrency="EUR",
+            ReferenceUnit=ReferenceUnit(root="MINUTE"),
+        ),
+    ]
