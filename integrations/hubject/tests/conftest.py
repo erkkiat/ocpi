@@ -487,3 +487,23 @@ def smp2_solid_tariff(operator_fi_cpo, msp_de_ice):
 @pytest.fixture
 def pricing_products_full_load_payload():
     return ERoamingPushPricingProductDataFactory()
+
+
+@pytest.fixture
+def connector_max_electric_power_10kw():
+    return ConnectorFactory(max_electric_power=10000)
+
+
+@pytest.fixture
+def connector_max_electric_power_15kw():
+    return ConnectorFactory(max_electric_power=15000)
+
+
+@pytest.fixture
+def connector_max_electric_power_5kw():
+    return ConnectorFactory(max_electric_power=5000)
+
+
+@pytest.fixture
+def connector_max_electric_power_none():
+    return ConnectorFactory(max_electric_power=None)

@@ -239,7 +239,7 @@ class SolidToHubjectConverter:
                         ),
                     ],
                     IsValid24hours=True,
-                    MaximumProductChargingPower=self.__get_maximum_product_charging_power(),
+                    MaximumProductChargingPower=self.get_maximum_product_charging_power(),
                     PricePerReferenceUnit=price,
                     ProductAvailabilityTimes=[],
                     ProductID=self.get_pricing_product_id(
@@ -252,7 +252,7 @@ class SolidToHubjectConverter:
                     ReferenceUnit=ReferenceUnit(root=ref_unit),
                 )
 
-    def __get_maximum_product_charging_power(self):
+    def get_maximum_product_charging_power(self):
         return (
             Connector.objects.aggregate(Max("max_electric_power"))[
                 "max_electric_power__max"

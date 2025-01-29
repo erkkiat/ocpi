@@ -282,6 +282,36 @@ class TestMappings:
         with pytest.raises(ValidationError):
             self._ocpi_2_oicp_converter.get_timezone("Unknown")
 
+    @pytest.mark.django_db
+    def test_maximum_power_with_multiple_connectors(
+        self,
+        connector_max_electric_power_10kw,
+        connector_max_electric_power_15kw,
+        connector_max_electric_power_5kw,
+    ):
+        max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
+        assert max_power == 15
+
+    @pytest.mark.django_db
+    def test_maximum_power_with_no_connectors(self):
+        Connector.objects.all().delete()
+        max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
+        assert max_power == 0
+
+    @pytest.mark.django_db
+    def test_maximum_power_when_connector_max_electric_power_none(
+        self, connector_max_electric_power_none
+    ):
+        max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
+        assert max_power == 0
+
+    @pytest.mark.django_db
+    def test_maximum_power_when_connector_max_electric_power_none_and_connector_max_electric_power_10kw(
+        self, connector_max_electric_power_10kw, connector_max_electric_power_none
+    ):
+        max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
+        assert max_power == 10
+
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {
             "ActionType": ActionType.insert,
