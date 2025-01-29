@@ -476,26 +476,13 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
             dict(
                 fields=(
                     ("ocpi_master", "uid"),
-                    (
-                        "cdr_token__uid",
-                        "cdr_token__token_type",
-                        "cdr_token__contract_id",
-                    ),
+                    ("cdr_token",),
                 )
             ),
         ),
         (
             "Location",
-            dict(
-                fields=(
-                    (
-                        "cdr_location__name",
-                        "cdr_location__city",
-                        "cdr_location__country",
-                    ),
-                    ("cdr_location__evse_uid", "cdr_location__connector_id"),
-                )
-            ),
+            dict(fields=(("cdr_location",),)),
         ),
         (
             "Delivery",
@@ -575,7 +562,7 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
                 fields=(
                     ("ocpi_master",),
                     ("uid", "meter_id"),
-                    ("cdr_token__uid", "cdr_token__type", "cdr_token__contract_id"),
+                    ("cdr_token",),
                     ("location", "evse", "connector"),
                 )
             ),
@@ -602,10 +589,18 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
         "evse__evse_id",
         "evse__uid",
         "cdr_token__uid",
+        "cdr_token__contract_id",
         "uid",
         "authorization_reference",
     ]
-    readonly_fields = ["uid", "ocpi_master"]
+    readonly_fields = [
+        "uid",
+        "ocpi_master",
+        "cdr_token",
+        "location",
+        "evse",
+        "connector",
+    ]
     list_filter = ["status", "last_updated"]
 
     def has_add_permission(self, request, obj=None) -> bool:

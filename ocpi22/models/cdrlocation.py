@@ -99,3 +99,6 @@ class CdrLocation(models.Model):
             connector_power_type=session.connector.power_type,
         )
         return cdr_location
+
+    def __str__(self):
+        return f'"{self.name or "N/A"}" at {self.address}, {self.city}, {self.country}'

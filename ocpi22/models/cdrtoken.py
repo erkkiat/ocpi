@@ -22,9 +22,7 @@ class CdrToken(models.Model):
     # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
     # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
-    contract_id = models.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH
-    )
+    contract_id = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     def __str__(self):
-        return f"{self.uid} ({self.contract_id})"
+        return f'{str(self.ocpi_master)} / ID "{self.uid}" / contract: "{self.contract_id}"'
