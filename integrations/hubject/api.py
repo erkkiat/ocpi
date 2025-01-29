@@ -38,13 +38,20 @@ def update_oicp_evses_by_operator(request):
 )
 def start_pricing_product_full_load(request) -> dict:
     party = get_our_party(OcpiRolesEnum.CPO)
-    pricing_product_data: PricingProductData = hubject_service.get_all_pricing_products(
-        party
-    )
+    try:
+        pricing_product_data: PricingProductData = (
+            hubject_service.get_all_pricing_products(party)
+        )
 
-    payload = hubject_service.get_push_pricing_product_data_payload(
-        pricing_product_data, ActionType.fullLoad
-    )
-    return hubject_service.post_pricing_products_full_load(
-        get_our_identity(OcpiRolesEnum.CPO.value), payload
-    )
+        payload = hubject_service.get_push_pricing_product_data_payload(
+            pricing_product_data, ActionType.fullLoad
+        )
+
+        return hubject_service.post_pricing_products_full_load(
+            get_our_identity(OcpiRolesEnum.CPO.value), payload
+        )
+    except Exception:
+        return {
+            "success": False,
+            "message": "PricingProducts full load failed",
+        }

@@ -132,7 +132,7 @@ class HubjectService:
             }
 
     def get_default_tariffs(self):
-        default_price = settings.DEFAULT_OICP_PRICE
+        default_price = float(settings.DEFAULT_OICP_PRICE)
         default_currency = settings.DEFAULT_OICP_CURRENCY
         default_reference = settings.DEFAULT_OICP_PRICE_REFERENCE
 
