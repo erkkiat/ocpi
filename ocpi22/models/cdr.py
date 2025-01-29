@@ -371,9 +371,14 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             )
         cdr.tariffs.set(cdr_tariffs)
 
-        cdr.send_update_to_interested_parties(method="POST")
+        cdr.send_updates()
 
         return cdr
+
+    def send_updates(self, data=None, method="post", path_components=[]) -> None:
+        return self.send_update_to_interested_parties(
+            method=method, path_components=path_components
+        )
 
     @classmethod
     def session_changed(cls, instance: Session) -> None:
