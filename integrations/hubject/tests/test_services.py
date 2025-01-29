@@ -398,6 +398,20 @@ class TestHubjectService:
         with pytest.raises(ConnectorTariffNotFoundError):
             self.__hubject_service.get_operator_evse_data(party)
 
+    @pytest.mark.django_db
+    def test_get_operator_evse_data_without_evse_data_records_return_none(self):
+        party = get_our_party(OcpiRolesEnum.CPO)
+        Location.objects.filter(
+            ocpi_master__party_id=party.party_id,
+            ocpi_master__country_code=party.country_code,
+        ).delete()
+
+        LocationFactory()
+
+        result = self.__hubject_service.get_operator_evse_data(party)
+
+        assert result is None
+
     def expected_berlin_op_evse_data_record(self):
         return OperatorEvseData(
             OperatorID=OperatorID(root="DE*SMP"),
