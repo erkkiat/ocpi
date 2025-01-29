@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
@@ -675,11 +676,13 @@ class TestOICPDynamicPricingService:
         result = self.hubject_service.post_pricing_products_full_load(
             operator_id, pricing_products_full_load_payload
         )
+        response_content = json.loads(result["error"].split(":", 1)[1])
+        assert isinstance(response_content, dict)
+        assert response_content == hubject_unsuccessful_response
 
-        assert result == hubject_unsuccessful_response
-
+    @responses.activate
     def test_post_pricing_products_full_load_pydantic_error_when_model_dump_to_json(
-        self, pricing_products_full_load_invalid_payload
+        self, hubject_unsuccessful_response
     ):
         operator_id = "DE+MSP"
 
@@ -689,7 +692,7 @@ class TestOICPDynamicPricingService:
         )
 
         result = self.hubject_service.post_pricing_products_full_load(
-            operator_id, pricing_products_full_load_invalid_payload
+            operator_id, payload_mock
         )
 
         assert result == {

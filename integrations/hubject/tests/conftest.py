@@ -487,8 +487,3 @@ def smp2_solid_tariff(operator_fi_cpo, msp_de_ice):
 @pytest.fixture
 def pricing_products_full_load_payload():
     return ERoamingPushPricingProductDataFactory()
-
-
-@pytest.fixture
-def pricing_products_full_load_invalid_payload():
-    return ERoamingPushPricingProductDataFactory(PricingProductData=None)
