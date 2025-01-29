@@ -17,7 +17,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.msp.account import check_balance
 from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHOICES
-from ocpi22.ocpi.util import OcpiModule, Ocpi, generate_cdr_uid
+from ocpi22.ocpi.util import OcpiModule, generate_cdr_uid, Ocpi
 from ocpiconnector.ocpi_identities import ocpi_platform
 
 from django.utils.translation import gettext_lazy as _
@@ -105,7 +105,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def token_id(self):
-        return self.cdr_token_uid
+        return self.cdr_token.uid
 
     # Type of the token
     cdr_token_type = models.CharField(
@@ -296,7 +296,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     def __str__(self):
         return (
-            f"{self.end_date_time:%d.%m.%Y} - {self.cdr_token_uid} - "
+            f"{self.end_date_time:%d.%m.%Y} - {self.cdr_token.uid} - "
             f"{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)} - "
             f"{hours_minutes(self.total_time)}"
         )
@@ -341,31 +341,17 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         if not session.end_date_time:
             session.end_date_time = datetime.now(pytz.utc)
 
+        cdr_location = CdrLocation.get_or_create_from_session(session)
+
         cdr = cls.objects.create(
             uid=generate_cdr_uid(),
             start_date_time=session.start_date_time,
             end_date_time=session.end_date_time,
             session_id=session.uid,
-            cdr_token_uid=session.cdr_token_uid,
-            cdr_token_type=session.cdr_token_type,
-            cdr_token_contract_id=session.cdr_token_contract_id,
+            cdr_location=cdr_location,
+            cdr_token=session.cdr_token,
             auth_method=session.auth_method,
             authorization_reference=session.authorization_reference,
-            cdr_location_id=session.location.uid,
-            cdr_location_address=session.location.address,
-            cdr_location_name=session.location.name,
-            cdr_location_city=session.location.city,
-            cdr_location_postal_code=session.location.postal_code or "-",
-            cdr_location_country=session.location.country,
-            # Make sure coordinates have 6 decimals
-            cdr_location_latitude=f"{float(session.location.latitude):.6f}",
-            cdr_location_longitude=f"{float(session.location.longitude):.6f}",
-            cdr_location_evse_uid=session.evse.uid,
-            cdr_location_evse_id=session.evse.evse_id or "#NA",
-            cdr_location_connector_id=session.connector.uid,
-            cdr_location_connector_standard=session.connector.standard,
-            cdr_location_connector_format=session.connector.format,
-            cdr_location_connector_power_type=session.connector.power_type,
             currency=session.currency,
             total_cost_excl_vat=session.total_cost_excl_vat or 0.0,
             total_cost_incl_vat=session.total_cost_incl_vat or 0.0,

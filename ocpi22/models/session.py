@@ -58,9 +58,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     class Meta:
         verbose_name = _("session")
         verbose_name_plural = _("sessions")
-        indexes = [
-            models.Index(fields=["created", "status", "cdr_token_uid"]),
-        ]
 
     ocpi_module_name = OcpiModuleEnum.SESSIONS
     ocpi_serializer_class = "ocpi22.ocpi.serializers.SessionSerializer"
@@ -190,7 +187,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     @property
     def token_id(self):
         # For SessionAdmin
-        return self.cdr_token_uid
+        return self.cdr_token.uid
 
     # Type of the token
     cdr_token_type = models.CharField(
@@ -654,7 +651,10 @@ class TariffIdSerializer(serializers.Serializer):
         return instance.uid
 
     def to_internal_value(self, data):
-        return Tariff.objects.filter(uid=data).first()
+        tariff = Tariff.get_if_exists(uid=data, archived=False)
+        if not tariff:
+            raise serializers.ValidationError(f"Tariff with UID {data} not found")
+        return tariff
 
 
 class ChargingPeriodSerializer(serializers.Serializer):

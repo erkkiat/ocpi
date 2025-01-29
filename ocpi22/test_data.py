@@ -1780,7 +1780,13 @@ class SessionData:
         "party_id": "CPO",
         "currency": "PHP",
         "id": "123",
-        "cdr_token": {"contract_id": "789", "type": "APP_USER", "uid": "456"},
+        "cdr_token": {
+            "country_code": "FI",
+            "party_id": "MSP",
+            "contract_id": "789",
+            "type": "APP_USER",
+            "uid": "456",
+        },
         "location_id": "12",
         "evse_uid": {"evse_uid": "87da"},
         "start_date_time": "2022-01-01T12:00:00Z",
@@ -1791,6 +1797,8 @@ class SessionData:
         "authorization_reference": "FI*MSP-AUTH-REFERENCE",
         "cdr_token": OrderedDict(
             [
+                ("country_code", "FI"),
+                ("party_id", "MSP"),
                 ("uid", "SOME-ADHOC-TOKEN"),
                 ("type", "AD_HOC_USER"),
                 ("contract_id", "INTERNAL"),
@@ -1829,39 +1837,34 @@ class SessionData:
     }
 
     meter_values_1_webhook = {
+        "auth_method": "COMMAND",
         "country_code": "FI",
         "party_id": "CPO",
         "uid": "FI*CPO*S*MOCK-1",
         "start_date_time": "2022-01-01T12:00:00Z",
         "kwh": 123.45,
         "charging_periods": [
-            OrderedDict(
-                [
-                    ("start_date_time", "2022-01-01T12:00:00Z"),
-                    ("tariff", "EKI1"),
-                    (
-                        "dimensions",
-                        [
-                            OrderedDict([("type", "ENERGY"), ("volume", "123.4500")]),
-                            OrderedDict(
-                                [("type", "STATE_OF_CHARGE"), ("volume", "42.0000")]
-                            ),
-                            OrderedDict([("type", "POWER"), ("volume", "150.0000")]),
-                        ],
-                    ),
-                ]
-            )
+            {
+                "start_date_time": "2022-01-01T12:00:00Z",
+                "tariff": "EKI1",
+                "dimensions": [
+                    {"type": "ENERGY", "volume": "123.4500"},
+                    {"type": "STATE_OF_CHARGE", "volume": "42.0000"},
+                    {"type": "POWER", "volume": "150.0000"},
+                ],
+            }
         ],
         "total_time": "0.00",
         "display_total_time": "0 s",
         "cdr_token": OrderedDict(
             [
+                ("country_code", "FI"),
+                ("party_id", "MSP"),
                 ("uid", "SOME-ADHOC-TOKEN"),
                 ("type", "AD_HOC_USER"),
                 ("contract_id", "INTERNAL"),
             ]
         ),
-        "auth_method": "COMMAND",
         "authorization_reference": "FI*MSP-AUTH-REFERENCE",
         "location_id": "HELSINKI-1",
         "evse_uid": "HELSINKI-3",

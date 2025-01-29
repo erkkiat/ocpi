@@ -38,9 +38,8 @@ from rest_framework import status
 
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.models import enum
-from ocpi22.msp.account import Account
+from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
-from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
 from ocpiconnector.testutil import (
@@ -70,8 +69,6 @@ from ocpi22.ocpi.serializers import (
 from ocpi22.choices import (
     OcpiModuleEnum,
     OcpiRolesEnum,
-    MessageTexts,
-    TokenType,
     AuthorizationEnum,
 )
 from ocpi22.commands.commands import CommandsViewSet
@@ -94,7 +91,6 @@ from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import (
     ExpectedSessionUpdateResults,
-    CdrMessages,
     StopTransactionResponses,
     SessionData,
     RfidTestData,
@@ -111,7 +107,6 @@ from ocpi22.test_data import (
 from ocpi22.tokens.auth import (
     _get_authorization_from_sessions,
     _authorize_token,
-    TokenAuthorization,
 )
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -779,12 +774,18 @@ class ApiPutTests(TestCase):
         ), "Credentials should be linked to the new CredentialsRole"
         assert start_date_time.tzinfo == pytz.utc, "Start date time should be in UTC"
 
+        ocpi_master, _created = CredentialsRole.objects.get_or_create(
+            country_code="FI",
+            party_id="MSP",
+        )
+        cdr_token = CdrToken.objects.create(
+            ocpi_master=ocpi_master, uid="123", token_type="RFID", contract_id="123"
+        )
+
         session_params = dict(
             start_date_time=start_date_time,
-            cdr_token_uid="123",
-            cdr_token_type="RFID",
-            cdr_token_contract_id="123",
             auth_method="COMMAND",
+            cdr_token=cdr_token,
             location=location,
             evse=evse,
             currency="EUR",
@@ -1743,7 +1744,6 @@ class UpdatePartiesTest(TestCase):
     @simulate_surrounding_world
     def test_update_new_token(self, simulation):
         settings.SEND_UPDATES = True
-        settings.BACKGROUND_SEND = False
         credentialsrole = get_credentialsrole(None, Party("FI", "MSP"), create=True)
         token: Token = Token(
             ocpi_master=credentialsrole,
@@ -1755,14 +1755,17 @@ class UpdatePartiesTest(TestCase):
             last_updated=datetime.now(pytz.utc),
         )
         token.save()
-        token.send_updates()
+        with patch(
+            "ocpi22.ocpi.util.OcpiModule.send_background_update"
+        ) as mock_send_background_update:
+            token.send_updates()
 
         # Let's examine what send_updates() was actually sending
 
-        args_list = simulation.tasks_requests.put.call_args_list
-        self.assertEqual(len(args_list), 3, "Expecting three calls to requests.put()")
+        args_list = mock_send_background_update.call_args_list
+        assert len(args_list) == 3, "Expecting three calls to send_background_update()"
 
-        _, kwargs = args_list[1].args, args_list[1].kwargs
+        args, kwargs = args_list[1].args, args_list[1].kwargs
 
         expected_headers = {
             "Authorization": "Token "
@@ -1794,14 +1797,8 @@ class UpdatePartiesTest(TestCase):
         )
         assert isinstance(expected_headers, dict)
         assert isinstance(kwargs["headers"], dict)
-        self.assertTrue(
-            compare_dicts_recursively(kwargs["headers"], expected_headers),
-            "Headers differ from expected",
-        )
-        self.assertTrue(
-            compare_dicts_recursively(json.loads(kwargs["data"]), expected_data),
-            "JSON content differs from expected",
-        )
+        assert kwargs["headers"] == expected_headers
+        assert args[0] == expected_data
 
 
 def check_ok_result(
@@ -3300,13 +3297,9 @@ class TestPutSession(TestCase):
             status.HTTP_201_CREATED,
             "Creating a session with ChargingPeriods should succeed",
         )
-        simulation.webhook_requests.put.assert_called_once()
-        calls = simulation.webhook_requests.put.call_args_list
-        self.assertTrue(
-            compare_dicts_recursively(
-                calls[0].kwargs.get("json"), SessionData.meter_values_1_webhook
-            )
-        )
+        simulation.webhook_requests.post.assert_called_once()
+        calls = simulation.webhook_requests.post.call_args_list
+        assert dict(calls[0].kwargs.get("json")) == SessionData.meter_values_1_webhook
 
     @simulate_surrounding_world
     def test_put_session_to_wrong_evse(self, simulation):
@@ -3688,276 +3681,6 @@ def create_token(token_id, party: Party, user=None) -> Token:
         defaults=dict(customer=user),
     )
     return token
-
-
-class TestMspUserApi(TestCase):
-    fixtures = [
-        "ocpi22/data/credentials-2.json",
-        "ocpi22/data/test-database-msp-api.json",
-    ]
-    maxDiff = None
-    userdata = dict(
-        email="erkki.tapola@pohdinto.com",
-        firstname="Erkki",
-        lastname="Tapola",
-        telephone="+1234567890123456789",
-        password="qwerty",
-        confirm="qwerty",
-    )
-
-    def setUp(self):
-        os.environ["TEST"] = "1"
-        params = dict(email="rich@money.com", password="hello", confirm="hello")
-        initial_balance = 70
-        response = self._create_user(**params)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        user = User.objects.get(username=params.get("email"), email=params.get("email"))
-        # Check that account is created automatically and with zero balance
-        self.assertEquals(
-            user.accounts.count(), 1, "A new user doesn't get an account automatically"
-        )
-        account = user.accounts.first()
-        self.assertEquals(
-            account.balance, Decimal("0.0"), "User has some money out of nowhere"
-        )
-
-        # Clear out any Sessions which prevent new charging sessions
-        Session.objects.filter(status__in=[Session.PENDING, Session.ACTIVE]).update(
-            status=Session.COMPLETED
-        )
-
-        # Create a Session
-        evse = Evse.objects.all()[0]
-        uid = "test-transactions"
-        self.token_uid = "EKI1"
-        credentials = Credentials.objects.first()
-
-        with patch("ocpi22.tokens.auth.authorize_token") as authorize_token_mock:
-            party = Party("FI", "TST")
-            authorize_token_mock.return_value = TokenAuthorization(
-                allowed="ALLOWED",
-                info=MessageTexts.get("TOKEN_ACCEPTED"),
-                token=AdhocToken(
-                    True,
-                    party,
-                    self.token_uid,
-                    TokenType.AD_HOC_USER,
-                    credentials.roles.first(),
-                ),
-                billed_to=str(party),
-                authorization_reference="1234567890",
-                auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-            )
-            session = create_session(
-                uid=uid,
-                evse_uid=evse,
-                location_id=evse.location,
-                connector_id=evse.connectors.all().first().uid,
-                token_id=self.token_uid,
-                billed_to="FI*MSP",
-                start_kwh=0.0,
-                stop_kwh=100.0,
-                session_status=Session.ACTIVE,
-                credentials=credentials,
-                ocpi_master=credentials.roles.first(),
-            )
-            authorize_token_mock.assert_called_once()
-            self.assertTrue(bool(session))
-            session.calculate_price()
-            session.save()
-
-        self.user = user
-        self.account = account
-        self.initial_balance = initial_balance
-        self.session = session
-
-    @staticmethod
-    def _create_user(**data):
-        return send_create_user(data)
-
-    def test_create_user(self):
-        return  # Todo: remove test
-        userdata = self.userdata
-        # Make sure the user doesn't already exist
-        self.assertFalse(User.objects.filter(email=userdata.get("email")).count())
-
-        # Create a user successfully
-        response = self._create_user(**userdata)
-        expected_response_data = userdata.copy()
-        expected_response_data.pop("password")
-        expected_response_data.pop("confirm")
-        self.assertDictEqual(
-            response.data,
-            expected_response_data,
-            "Response for creating a user differs from expected",
-        )
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_201_CREATED,
-            "Creating a user should result in HTTP 201",
-        )
-        user = User.objects.get(
-            username=userdata.get("email")
-        )  # Username should equal email address
-        self.assertEqual(user.first_name, userdata.get("firstname"))
-        self.assertEqual(
-            user.accounts.count(), 1, "There should be one account created per user"
-        )
-
-        # Try to create a duplicate user
-        response = self._create_user(**userdata)
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_409_CONFLICT,
-            "Creating a duplicate user should result in HTTP 409",
-        )
-
-    def set_balance(self, amount):
-        self.account.transactions.all().delete()
-        self.account.deposit(amount)
-        self.assertEqual(
-            self.account.balance,
-            amount,
-            "Account balance differs from expected after a deposit",
-        )
-
-    @simulate_surrounding_world
-    def test_token_authorization_with_webhook(self, simulation: Simulation):
-        return  # Todo: remove test
-        simulation.webhook_requests.put.return_value = FakeResponse(
-            200, AuthorizeData.accept_authorization_msp
-        )
-
-        with patch("django.conf.settings.REQUIRE_WALLET_BALANCE", True):
-            token_id = "EKI1"
-            party = Party("DE", "TNM")
-            create_token(token_id, party, user=self.user)
-
-            with (
-                time_machine.travel(faketime, tick=False),
-                simulation.our_msp_role(party),
-            ):
-                response = msp_authorize(token_id, get_credentialsrole(None, party))
-
-            self.assertTrue(
-                compare_dicts_recursively(
-                    response.data, TokenAuthorizationData.authorization_response
-                )
-            )
-
-            method_calls = list(
-                map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
-            )
-
-            self.assertTrue(
-                compare_lists_recursively(
-                    method_calls, TokenAuthorizationData.authorization_webhook_calls
-                )
-            )
-
-    @simulate_surrounding_world
-    def test_cdrs_and_transactions(self, simulation: Simulation):
-        return  # Todo: remove test
-
-        simulation.webhook_requests.put.return_value = FakeResponse(
-            200, AuthorizeData.accept_authorization_msp
-        )
-        simulation.redis_store.get.side_effect = None
-        simulation.redis_store.get.return_value = ""
-
-        # Try to authorize charging with no money in account
-        with patch("django.conf.settings.REQUIRE_WALLET_BALANCE", True):
-            token_id = "EKI1"
-            role = get_our_credentialsrole(OcpiRolesEnum.EMSP)
-            Token.objects.filter(uid=token_id).update(
-                customer=self.user, ocpi_master=role
-            )
-            response = msp_authorize(token_id, role)
-            # Todo: Test authorize also with Location and Evses
-            print(response.data)
-            self.assertEquals(
-                response.data.get("data").get("allowed"),
-                "NO_CREDIT",
-                'Declined authorization should have allowed status "NO_CREDIT"',
-            )
-
-        #
-        # Try an RFID
-        #
-
-        simulation.webhook_requests.put.return_value = FakeResponse(
-            200, AuthorizeData.accept_authorization
-        )
-        # Anything should be fine, since we patch all HTTP calls
-        simulation.redis_store.get.return_value = "http://localhost/webhook/"
-        self.set_balance(self.initial_balance)
-
-        with (
-            patch("django.conf.settings.REQUIRE_WALLET_BALANCE", True),
-            patch("django.conf.settings.USE_ACCOUNTS", True),
-        ):
-            Token.objects.filter(uid=self.token_uid).update(customer=self.user)
-            cdr = Cdr.create_based_on_session(self.session)
-            self.assertEqual(
-                [cdr.total_cost_incl_vat, cdr.total_cost_excl_vat],
-                [62.0, 50.0],
-                "CDR cost seems to be off",
-            )
-
-            # Cleanup for next test
-            cdr.delete()
-
-            response = post_cdr(CdrMessages.test_transactions_rfid)
-            self.assertEquals(response.status_code, 201, "CDR PUT seems to have failed")
-            self.assertEqual(
-                self.account.balance,
-                self.initial_balance - cdr.total_cost_incl_vat,
-                "Account balance differs from expected after a charging session",
-            )
-
-        # Try to put a duplicate CDR
-
-        response = post_cdr(CdrMessages.test_transactions_rfid)
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_400_BAD_REQUEST,
-            "A duplicate CDR POST is expected to fail",
-        )
-        msg = response.data.get("status_message")
-        self.assertTrue(
-            "already exists" in msg, f"A duplicate CDR PUT is expected to fail: {msg}"
-        )
-
-    def test_cdrs_and_transactions2(self):
-        return  # Todo: remove test
-        # Charge using the mobile app and an APP_TOKEN
-
-        self.set_balance(self.initial_balance)
-
-        account = self.account
-        with patch("django.conf.settings.USE_ACCOUNTS", True):
-            app_token_id = CdrMessages.test_transactions_app_id.get("cdr_token").get(
-                "uid"
-            )
-            self.session.cdr_token_uid = app_token_id
-            self.session.save()
-            initial_balance = 70
-            account.app_token_id = app_token_id
-            account.deposit(initial_balance)
-            account.save()
-            previous_balance = account.balance
-            assert account.app_token_id == app_token_id, "Account app_token_id not set"
-            Account.objects.filter(app_token_id=self.session.cdr_token_uid).first()
-
-            response = post_cdr(CdrMessages.test_transactions_app_id)
-            cost = Decimal("6.20")
-            self.assertEquals(response.status_code, 201, "CDR PUT seems to have failed")
-            self.assertEqual(
-                account.balance,
-                previous_balance - cost,
-                "Account balance differs from expected after a charging session",
-            )
 
 
 def send_create_user(data):

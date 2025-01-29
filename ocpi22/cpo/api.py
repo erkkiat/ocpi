@@ -781,13 +781,13 @@ class ChargePointViewSet(FlowchartViewSet):
                     session.start_kwh = serializer.validated_data["start_kwh"]
                     session.stop_kwh = session.start_kwh
                     authorization: TokenAuthorization = authorize_token(
-                        session.cdr_token_uid
+                        session.cdr_token.uid
                     )
                     if not authorization:
                         return Response(
                             dict(
                                 status_text="Token is (no longer) valid",
-                                token_id=session.cdr_token_uid,
+                                token_id=session.cdr_token.uid,
                             ),
                             status=status.HTTP_401_UNAUTHORIZED,
                         )

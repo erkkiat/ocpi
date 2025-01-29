@@ -10,6 +10,7 @@ from rest_framework.exceptions import ValidationError
 from ocpi22 import choices
 from ocpi22.choices import TOKEN_TYPE_CHOICES, CONNECTION_STATUS_CHOICES, OcpiRolesEnum
 from ocpi22.locations.util import get_or_create_business_details
+from ocpi22.models.cdrtoken import CdrToken
 from serializers import DisplayTextSerializer
 from ocpi22.models.displaytext import DisplayText
 from util import default_error_messages
@@ -45,12 +46,30 @@ from ocpiconnector.party import Party
 logger = getLogger(__name__)
 
 
-class CdrTokenSerializer(SerializerCleanedUp):
-    uid = serializers.CharField(required=True, source="cdr_token_uid")
-    type = serializers.ChoiceField(
-        choices=TOKEN_TYPE_CHOICES, required=True, source="cdr_token_type"
-    )
-    contract_id = serializers.CharField(required=True, source="cdr_token_contract_id")
+class CdrTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CdrToken
+        fields = ["country_code", "party_id", "uid", "type", "contract_id"]
+
+    country_code = serializers.CharField(source="ocpi_master.country_code")
+    party_id = serializers.CharField(source="ocpi_master.party_id")
+    type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES, source="token_type")
+
+    def create(self, validated_data):
+        country_code = validated_data.pop("country_code")
+        party_id = validated_data.pop("party_id")
+
+        credentialsrole = get_credentialsrole(
+            credentials=None,
+            party=Party(country_code, party_id),
+            role=OcpiRolesEnum.EMSP,
+            create=True,
+        )
+
+        cdr_token, _created = CdrToken.objects.get_or_create(
+            ocpi_master=credentialsrole, **validated_data
+        )
+        return cdr_token
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -230,20 +249,20 @@ class CdrCoordinatesSerializer(SerializerCleanedUp):
 
 
 class CdrLocationSerializer(SerializerCleanedUp):
-    id = serializers.CharField(source="cdr_location_id")
-    address = serializers.CharField(source="cdr_location_address")
-    name = serializers.CharField(source="cdr_location_name", required=False)
-    city = serializers.CharField(source="cdr_location_city")
-    postal_code = serializers.CharField(source="cdr_location_postal_code")
-    country = serializers.CharField(source="cdr_location_country")
+    id = serializers.CharField(source="cdr_location.uid")
+    address = serializers.CharField(source="cdr_location.address")
+    name = serializers.CharField(source="cdr_location.name", required=False)
+    city = serializers.CharField(source="cdr_location.city")
+    postal_code = serializers.CharField(source="cdr_location.postal_code")
+    country = serializers.CharField(source="cdr_location.country")
     coordinates = CdrCoordinatesSerializer(source="*")
-    evse_uid = serializers.CharField(source="cdr_location_evse_uid")
-    evse_id = serializers.CharField(source="cdr_location_evse_id")
-    connector_id = serializers.CharField(source="cdr_location_connector_id")
-    connector_standard = serializers.CharField(source="cdr_location_connector_standard")
-    connector_format = serializers.CharField(source="cdr_location_connector_format")
+    evse_uid = serializers.CharField(source="cdr_location.evse.uid")
+    evse_id = serializers.CharField(source="cdr_location.evse.evse_id")
+    connector_id = serializers.CharField(source="cdr_location.connector.id")
+    connector_standard = serializers.CharField(source="cdr_location.connector.standard")
+    connector_format = serializers.CharField(source="cdr_location.connector.format")
     connector_power_type = serializers.CharField(
-        source="cdr_location_connector_power_type"
+        source="cdr_location.connector.power_type"
     )
 
 
@@ -497,7 +516,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     charging_periods = ChargingPeriodSerializer(
         many=True, source="chargingperiods", required=False
     )
-    cdr_token = CdrTokenSerializer(required=True, source="*")
+    cdr_token = CdrTokenSerializer(required=True)
     location_id = LocationIdDictSerializer(source="*")
     evse_uid = EvseUidDictSerializer(source="*")
     connector_id = ConnectorIdSerializer(source="*", required=False)
@@ -511,8 +530,19 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def create(self, validated_data):
         request = self.context.get("request")
+
+        cdr_token_data = validated_data.pop("cdr_token")
+        party = Party(**cdr_token_data.pop("ocpi_master"))
+        ocpi_master_msp = get_credentialsrole(
+            credentials=None, party=party, role=OcpiRolesEnum.EMSP, create=True
+        )
+        cdr_token, _created = CdrToken.objects.get_or_create(
+            **cdr_token_data, ocpi_master=ocpi_master_msp
+        )
+
         chargingperiods = validated_data.pop("chargingperiods", [])
         session = Session.objects.create(
+            cdr_token=cdr_token,
             credentials=request.credentials,
             billed_to=None,  # If we are CPO, we fill the billed_to elsewhere and MSP doesn't use it
             # ocpi_master=request.ocpi_party,

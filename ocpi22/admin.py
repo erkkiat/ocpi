@@ -476,7 +476,11 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
             dict(
                 fields=(
                     ("ocpi_master", "uid"),
-                    ("cdr_token_uid", "cdr_token_type", "cdr_token_contract_id"),
+                    (
+                        "cdr_token__uid",
+                        "cdr_token__token_type",
+                        "cdr_token__contract_id",
+                    ),
                 )
             ),
         ),
@@ -484,8 +488,12 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
             "Location",
             dict(
                 fields=(
-                    ("cdr_location_name", "cdr_location_city", "cdr_location_country"),
-                    ("cdr_location_evse_uid", "cdr_location_connector_id"),
+                    (
+                        "cdr_location__name",
+                        "cdr_location__city",
+                        "cdr_location__country",
+                    ),
+                    ("cdr_location__evse_uid", "cdr_location__connector_id"),
                 )
             ),
         ),
@@ -505,12 +513,12 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
     search_fields = [
         "session_id",
         "uid",
-        "cdr_location_evse_id",
-        "cdr_location_name",
-        "cdr_location_city",
-        "cdr_location_country",
-        "cdr_token_uid",
-        "cdr_token_contract_id",
+        "cdr_location__evse_id",
+        "cdr_location__name",
+        "cdr_location__city",
+        "cdr_location__country",
+        "cdr_token__uid",
+        "cdr_token__contract_id",
         "billed_to",
     ]
     autocomplete_fields = ["tariffs"]
@@ -567,7 +575,7 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
                 fields=(
                     ("ocpi_master",),
                     ("uid", "meter_id"),
-                    ("cdr_token_uid", "cdr_token_type", "cdr_token_contract_id"),
+                    ("cdr_token__uid", "cdr_token__type", "cdr_token__contract_id"),
                     ("location", "evse", "connector"),
                 )
             ),
@@ -593,7 +601,7 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
         "location__address",
         "evse__evse_id",
         "evse__uid",
-        "cdr_token_uid",
+        "cdr_token__uid",
         "uid",
         "authorization_reference",
     ]

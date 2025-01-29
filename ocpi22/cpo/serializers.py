@@ -90,9 +90,11 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     def get_token(session):
         return clear_empty(
             dict(
-                token_id=session.cdr_token_uid,
-                type=session.cdr_token_type,
-                contract_id=session.cdr_token_contract_id,
+                country_code=session.cdr_token.ocpi_master.country_code,
+                party_id=session.cdr_token.ocpi_master.party_id,
+                token_id=session.cdr_token.uid,
+                type=session.cdr_token.token_type,
+                contract_id=session.cdr_token.contract_id,
             )
         )
 

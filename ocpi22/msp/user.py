@@ -206,7 +206,7 @@ class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
         )
 
     location = serializers.SerializerMethodField()
-    token_id = serializers.CharField(source="cdr_token_uid")
+    token_id = serializers.CharField(source="cdr_token.uid")
     duration = serializers.SerializerMethodField()
 
     def get_location(self, instance: Cdr) -> dict:

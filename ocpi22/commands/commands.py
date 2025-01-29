@@ -262,7 +262,7 @@ class CommandsViewSet(GenericViewSet):
 
             session: Session = Session.get_if_exists(
                 Q(authorization_reference=authorization_reference)
-                | Q(cdr_token_uid=token)
+                | Q(cdr_token__uid=token)
                 | Q(uid=session_id)
             )
 
@@ -273,7 +273,7 @@ class CommandsViewSet(GenericViewSet):
                 )
 
             ocpi_response_url = serializer.validated_data.pop("response_url")
-            token_id = session.cdr_token_uid if session else get_token_id(token)
+            token_id = session.cdr_token.uid if session else get_token_id(token)
             evse_uid = (
                 session.evse.uid
                 if session
@@ -302,7 +302,7 @@ class CommandsViewSet(GenericViewSet):
                     reverse("chargepoint-remote-command-result", args=(command_id,))
                 ),
                 token_id=token_id,
-                token_type=session.cdr_token_type
+                token_type=session.cdr_token.token_type
                 if session
                 else get_token_type(token, TokenType.APP_USER),
                 authorization_reference=session.authorization_reference
