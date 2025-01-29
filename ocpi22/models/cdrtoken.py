@@ -13,7 +13,7 @@ class CdrToken(models.Model):
     # This is the field used by the CPO’s system (RFID reader on the Charge Point) to identify this token.
     # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
     # If this is a type=APP_USER Token, it will be a unique, by the eMSP, generated ID.
-    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH, unique=True)
+    uid = models.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     token_type = models.CharField(
         max_length=11, choices=TOKEN_TYPE_CHOICES, verbose_name=_("Token type")
@@ -23,7 +23,7 @@ class CdrToken(models.Model):
     # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
     # (http://emi3group.com/documents-links/) "Part 2: business objects."
     contract_id = models.CharField(
-        max_length=settings.OCPI_22_MAX_UID_LENGTH, unique=True
+        max_length=settings.OCPI_22_MAX_UID_LENGTH
     )
 
     def __str__(self):

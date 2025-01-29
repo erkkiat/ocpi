@@ -100,7 +100,7 @@ class Transaction(models.Model):
             return "No details available"
         return (
             f"Charged {cdr.total_energy} kWh at "
-            f'"{cdr.cdr_location_name}", {cdr.cdr_location_city}'
+            f'"{cdr.cdr_location.name}", {cdr.cdr_location.city}'
         )
 
 

@@ -203,7 +203,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def evse_id(self):
-        return self.cdr_location_evse_id
+        return self.cdr_location.evse_id
 
     # Identifier of the connector within the EVSE.
     cdr_location_connector_id = models.CharField(

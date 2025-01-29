@@ -10,6 +10,7 @@ from rest_framework.exceptions import ValidationError
 from ocpi22 import choices
 from ocpi22.choices import TOKEN_TYPE_CHOICES, CONNECTION_STATUS_CHOICES, OcpiRolesEnum
 from ocpi22.locations.util import get_or_create_business_details
+from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
 from serializers import DisplayTextSerializer
 from ocpi22.models.displaytext import DisplayText
@@ -244,26 +245,31 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
 
 class CdrCoordinatesSerializer(SerializerCleanedUp):
-    latitude = Coordinate(source="cdr_location_latitude")
-    longitude = Coordinate(source="cdr_location_longitude")
+    latitude = Coordinate(source="latitude")
+    longitude = Coordinate(source="longitude")
 
 
-class CdrLocationSerializer(SerializerCleanedUp):
-    id = serializers.CharField(source="cdr_location.uid")
-    address = serializers.CharField(source="cdr_location.address")
-    name = serializers.CharField(source="cdr_location.name", required=False)
-    city = serializers.CharField(source="cdr_location.city")
-    postal_code = serializers.CharField(source="cdr_location.postal_code")
-    country = serializers.CharField(source="cdr_location.country")
+class CdrLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CdrLocation
+        fields = [
+            "id",
+            "address",
+            "name",
+            "city",
+            "postal_code",
+            "country",
+            "coordinates",
+            "evse_uid",
+            "evse_id",
+            "connector_id",
+            "connector_standard",
+            "connector_format",
+            "connector_power_type"
+        ]
+
+    id = serializers.CharField(source="uid")
     coordinates = CdrCoordinatesSerializer(source="*")
-    evse_uid = serializers.CharField(source="cdr_location.evse.uid")
-    evse_id = serializers.CharField(source="cdr_location.evse.evse_id")
-    connector_id = serializers.CharField(source="cdr_location.connector.id")
-    connector_standard = serializers.CharField(source="cdr_location.connector.standard")
-    connector_format = serializers.CharField(source="cdr_location.connector.format")
-    connector_power_type = serializers.CharField(
-        source="cdr_location.connector.power_type"
-    )
 
 
 class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -295,10 +301,10 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     country_code = serializers.CharField(source="ocpi_master.country_code")
     party_id = serializers.CharField(source="ocpi_master.party_id")
 
-    cdr_token = CdrTokenSerializer(source="*")
+    cdr_token = CdrTokenSerializer()
     total_cost = TotalCostSerializer(source="*")
     tariffs = TariffSerializer(many=True, required=True)
-    cdr_location = CdrLocationSerializer(source="*")
+    cdr_location = CdrLocationSerializer()
     last_updated = UTCDateTimeField(required=False)
     start_date_time = UTCDateTimeField(required=True)
     end_date_time = UTCDateTimeField(required=True)
@@ -316,7 +322,11 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                     None, Party(**tariff.pop("ocpi_master")), role=OcpiRolesEnum.CPO
                 )
                 tariff_list.append(tariff_serializer.create(tariff))
-            cdr = Cdr.objects.create(**validated_data)
+            cdr_location_data = validated_data.pop("cdr_location")
+            cdr_location, _created = CdrLocation.objects.get_or_create(**cdr_location_data)
+            cdr_token_data = validated_data.pop("cdr_token")
+            cdr_token, _created = CdrToken.objects.get_or_create(**cdr_token_data)
+            cdr = Cdr.objects.create(**validated_data, cdr_location=cdr_location, cdr_token=cdr_token)
             cdr.tariffs.set(tariff_list)
             return cdr
         except IntegrityError:
@@ -560,6 +570,8 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         #  from the newly received Session object. If the new Session object does not contain charging_periods
         #  (field is omitted or contains any empty list), the charging_periods of the existing object
         #  SHALL be removed (replaced by the new empty list).
+
+        validated_data.pop("cdr_token", None)
 
         readonly_fields = ("uid", "location", "evse")
         for key in readonly_fields:

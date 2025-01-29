@@ -211,11 +211,11 @@ class BriefCdrSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def get_location(self, instance: Cdr) -> dict:
         return {
-            "name": instance.cdr_location_name,
-            "address": f"{instance.cdr_location_address}, {instance.cdr_location_city}, {instance.cdr_location_country}",
-            "evse_id": instance.cdr_location_evse_id,
-            "connector_id": instance.cdr_location_connector_id,
-            "standard": instance.get_cdr_location_connector_standard_display(),
+            "name": instance.cdr_location.name,
+            "address": f"{instance.cdr_location.address}, {instance.cdr_location.city}, {instance.cdr_location.country}",
+            "evse_id": instance.cdr_location.evse_id,
+            "connector_id": instance.cdr_location.connector_id,
+            "standard": instance.cdr_location.get_connector_standard_display(),
         }
 
     def get_duration(self, instance: Cdr) -> str:
