@@ -132,14 +132,18 @@ class HubjectService:
             }
 
     def get_default_tariffs(self):
-        default_price = float(settings.DEFAULT_OICP_PRICE)
-        default_currency = settings.DEFAULT_OICP_CURRENCY
-        default_reference = settings.DEFAULT_OICP_PRICE_REFERENCE
-
-        if not (default_price and default_currency and default_reference):
+        if not (
+            settings.DEFAULT_OICP_PRICE
+            and settings.DEFAULT_OICP_CURRENCY
+            and settings.DEFAULT_OICP_PRICE_REFERENCE
+        ):
             raise ValueError(
                 "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
             )
+
+        default_price = float(settings.DEFAULT_OICP_PRICE)
+        default_currency = settings.DEFAULT_OICP_CURRENCY
+        default_reference = settings.DEFAULT_OICP_PRICE_REFERENCE
 
         if default_price < 0:
             raise ValueError("DEFAULT_OICP_PRICE must be positive")

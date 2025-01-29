@@ -35,13 +35,14 @@ from integrations.hubject.schemas import (
     AccessibilityLocation,
     DynamicInfoAvailable,
     ReferenceUnit,
-    HubjectPriceComponent,
     AdditionalReference,
     PricingProductDataRecord,
     AdditionalReferenceChoice,
     CurrencyID,
     PricingProductData,
     ERoamingPushPricingProductData,
+    ProductID,
+    ProviderIDAsterisk,
 )
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
@@ -703,50 +704,78 @@ class TestOICPDynamicPricingService:
 
     def get_expected_pricing_product_data(self):
         return PricingProductData(
-            OperatorID="FI*CPO",
+            OperatorID=OperatorID(root="FI*CPO"),
             OperatorName="Smappee Pvt Ltd",
+            ProviderID=ProviderIDAsterisk(root="DE*ICE"),
             PricingDefaultPrice=0.3,
             PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
-            PricingDefaultReferenceUnit=ReferenceUnit(
-                root=HubjectPriceComponent.KWH.value
-            ),
+            PricingDefaultReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
             PricingProductDataRecords=[
                 PricingProductDataRecord(
+                    ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                    ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=0.2,
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
                     AdditionalReferences=[
                         AdditionalReference(
                             AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
                             PricePerAdditionalReferenceUnit=0.3,
-                        ),
+                        )
                     ],
-                    IsValid24hours=True,
-                    MaximumProductChargingPower=0.0,
-                    PricePerReferenceUnit=0.2,
-                    ProductAvailabilityTimes=[],
-                    ProductID="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE",
-                    ProductPriceCurrency="EUR",
-                    ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                 ),
                 PricingProductDataRecord(
+                    ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
+                    ReferenceUnit=ReferenceUnit(root="MINUTE"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=0.3,
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
                     AdditionalReferences=[
                         AdditionalReference(
                             AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
-                            AdditionalReferenceUnit=ReferenceUnit(
-                                root=HubjectPriceComponent.HOUR.value
-                            ),
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
                             PricePerAdditionalReferenceUnit=0.3,
-                        ),
+                        )
                     ],
-                    IsValid24hours=True,
-                    MaximumProductChargingPower=0.0,
-                    PricePerReferenceUnit=0.2,
-                    ProductAvailabilityTimes=[],
-                    ProductID="FI*CPO*SMP2*KILOWATT_HOUR*DE*ICE",
-                    ProductPriceCurrency="EUR",
+                ),
+                PricingProductDataRecord(
+                    ProductID=ProductID(root="FI*CPO*SMP2*KILOWATT_HOUR*DE*ICE"),
                     ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=0.2,
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=0.3,
+                        )
+                    ],
+                ),
+                PricingProductDataRecord(
+                    ProductID=ProductID(root="FI*CPO*SMP2*MINUTE*DE*ICE"),
+                    ReferenceUnit=ReferenceUnit(root="MINUTE"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=0.3,
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=0.3,
+                        )
+                    ],
                 ),
             ],
-            ProviderID="DE*ICE",
         )
 
 
