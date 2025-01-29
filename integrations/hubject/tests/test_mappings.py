@@ -19,6 +19,7 @@ from integrations.hubject.schemas import (
     CalibrationLawDataAvailability,
     Accessibility,
     AccessibilityLocation,
+    HubjectPriceComponent,
 )
 from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
@@ -311,6 +312,48 @@ class TestMappings:
     ):
         max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
         assert max_power == 10
+
+    @pytest.mark.parametrize(
+        "solid_tariff_id, ref_unit, operator_id, msp_id, expected",
+        [
+            (
+                "SMP1",
+                HubjectPriceComponent.MINUTE,
+                "BE*SMP",
+                "DE*ICE",
+                "BE*SMP*SMP1*MINUTE*DE*ICE",
+            ),
+            (
+                "SMP2",
+                HubjectPriceComponent.KWH,
+                "NL*CPO",
+                "FR*MSP",
+                "NL*CPO*SMP2*KILOWATT_HOUR*FR*MSP",
+            ),
+            (
+                "SMP3",
+                HubjectPriceComponent.HOUR,
+                "US*CPO",
+                "GB*MSP",
+                "US*CPO*SMP3*HOUR*GB*MSP",
+            ),
+            ("SMP3", HubjectPriceComponent.HOUR, "US*CPO", "", "US*CPO*SMP3*HOUR*"),
+        ],
+    )
+    def test_get_pricing_product_id(
+        self, solid_tariff_id, ref_unit, operator_id, msp_id, expected
+    ):
+        result = self._ocpi_2_oicp_converter.get_pricing_product_id(
+            solid_tariff_id, ref_unit, operator_id, msp_id
+        )
+        assert result == expected, f"Expected {expected}, but got {result}"
+
+    def test_get_pricing_product_id_raises_value_error_when_none_values_provided(self):
+        with pytest.raises(
+            ValueError,
+            match="Missing required fields {operator_id, price_reference, solid_tariff_external_id} for generating pricing product ID.",
+        ):
+            self._ocpi_2_oicp_converter.get_pricing_product_id(None, None, None, "")
 
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {

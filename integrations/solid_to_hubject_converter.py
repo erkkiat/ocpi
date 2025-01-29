@@ -267,6 +267,10 @@ class SolidToHubjectConverter:
         operator_id: str,
         msp_id: str,
     ) -> str:
+        if not operator_id or not solid_tariff_id or not ref_unit:
+            raise ValueError(
+                "Missing required fields {operator_id, price_reference, solid_tariff_external_id} for generating pricing product ID."
+            )
         return f"{operator_id}*{solid_tariff_id}*{ref_unit.value}*{msp_id}"
 
     def get_plug(self, connector_std: str) -> Plug:
