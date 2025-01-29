@@ -141,6 +141,9 @@ class HubjectService:
                 "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
             )
 
+        if default_price < 0:
+            raise ValueError("DEFAULT_OICP_PRICE must be positive")
+
         solid_price_component = HubjectDefaultTariff.get_price_component(
             default_reference
         )

@@ -20,6 +20,11 @@ from integrations.hubject.schemas import (
     AdditionalReferenceChoice,
     ReferenceUnit,
     HubjectPriceComponent,
+    PricingProductData,
+    OperatorID,
+    ProviderIDAsterisk,
+    CurrencyID,
+    ProductID,
 )
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -571,3 +576,49 @@ def pricing_product_data_record_successful_result():
             ReferenceUnit=ReferenceUnit(root="MINUTE"),
         ),
     ]
+
+
+@pytest.fixture
+def pricing_product_data_successful_result():
+    return PricingProductData(
+        OperatorID=OperatorID(root="FI*CPO"),
+        OperatorName="Smappee eRoam CPO",
+        ProviderID=ProviderIDAsterisk(root="FI*CPO"),
+        PricingDefaultPrice=0.3,
+        PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
+        PricingDefaultReferenceUnit=ReferenceUnit(root="HOUR"),
+        PricingProductDataRecords=[
+            PricingProductDataRecord(
+                ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*FI*CPO"),
+                ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                ProductPriceCurrency=CurrencyID(root="EUR"),
+                PricePerReferenceUnit=0.2,
+                MaximumProductChargingPower=0.0,
+                IsValid24hours=True,
+                ProductAvailabilityTimes=[],
+                AdditionalReferences=[
+                    AdditionalReference(
+                        AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                        AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                        PricePerAdditionalReferenceUnit=0.3,
+                    )
+                ],
+            ),
+            PricingProductDataRecord(
+                ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*FI*CPO"),
+                ReferenceUnit=ReferenceUnit(root="MINUTE"),
+                ProductPriceCurrency=CurrencyID(root="EUR"),
+                PricePerReferenceUnit=0.3,
+                MaximumProductChargingPower=0.0,
+                IsValid24hours=True,
+                ProductAvailabilityTimes=[],
+                AdditionalReferences=[
+                    AdditionalReference(
+                        AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                        AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                        PricePerAdditionalReferenceUnit=0.3,
+                    )
+                ],
+            ),
+        ],
+    )

@@ -21,6 +21,7 @@ from integrations.hubject.schemas import (
     AccessibilityLocation,
     HubjectPriceComponent,
     ProviderIDAsterisk,
+    HubjectDefaultTariff,
 )
 from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
@@ -402,6 +403,21 @@ class TestMappings:
             [smp1_solid_tariff_without_msp]
         )
         assert result == ProviderIDAsterisk(root="*")
+
+    @pytest.mark.django_db
+    def test_convert_to_pricing_product_data_success(
+        self, smp1_solid_tariff_with_all_records, pricing_product_data_successful_result
+    ):
+        default_tariff = HubjectDefaultTariff(
+            currency="EUR", price=0.3, price_component=HubjectPriceComponent.HOUR
+        )
+        result = self._ocpi_2_oicp_converter.convert_to_pricing_product_data(
+            [smp1_solid_tariff_with_all_records],
+            default_tariff,
+            "FI*CPO",
+            "Smappee eRoam CPO",
+        )
+        assert result == pricing_product_data_successful_result
 
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {
