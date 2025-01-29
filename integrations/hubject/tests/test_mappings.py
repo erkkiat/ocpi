@@ -274,7 +274,6 @@ class TestMappings:
             invalid_street_addr, invalid_country_code
         )
 
-        print(street, house_num)
         expected_value = "-"
         assert street == expected_value
         assert house_num == expected_value
@@ -371,6 +370,19 @@ class TestMappings:
             pricing_product_data_records
             == pricing_product_data_record_successful_result
         )
+
+    @pytest.mark.django_db
+    def test_convert_to_pricing_product_data_records_when_prices_are_none(
+        self,
+        smp1_solid_tariff_with_none_prices,
+        pricing_product_data_record_successful_result,
+    ):
+        pricing_product_data_records = (
+            self._ocpi_2_oicp_converter.convert_to_pricing_product_data_records(
+                smp1_solid_tariff_with_none_prices, "FI*CPO"
+            )
+        )
+        assert len(pricing_product_data_records) == 0
 
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {

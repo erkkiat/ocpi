@@ -520,6 +520,13 @@ def smp1_solid_tariff_with_all_records():
 
 
 @pytest.fixture
+def smp1_solid_tariff_with_none_prices():
+    return SolidTariffFactory(
+        external_id="SMP1", price_per_kwh=None, price_per_min=None
+    )
+
+
+@pytest.fixture
 def pricing_product_data_record_successful_result():
     return [
         PricingProductDataRecord(
