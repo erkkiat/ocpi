@@ -100,18 +100,18 @@ class Transaction(models.Model):
             return "No details available"
         return (
             f"Charged {cdr.total_energy} kWh at "
-            f'"{cdr.cdr_location_name}", {cdr.cdr_location_city}'
+            f'"{cdr.cdr_location.name}", {cdr.cdr_location.city}'
         )
 
 
 def get_user_account(session: Session) -> Optional[Account]:
     if not session:
         return None
-    token = Token.get_if_exists(uid=session.cdr_token_uid)
+    token = Token.get_if_exists(uid=session.cdr_token.uid)
     if token:
         if token.customer:
             return token.customer.accounts.first()
-    return Account.objects.filter(app_token_id=session.cdr_token_uid).first()
+    return Account.objects.filter(app_token_id=session.cdr_token.uid).first()
 
 
 def check_balance(session: Session):

@@ -140,7 +140,7 @@ def get_credentialsrole(
     credentials: Optional[Credentials] = None,
     party: Party = None,
     create=False,
-    role=None,
+    role: OcpiRolesEnum = None,
 ) -> Optional[CredentialsRole]:
     """
     Find the CredentialsRole for the given party and credentials
