@@ -439,6 +439,7 @@ class ErrorLoggingResponse(Response):
 
 def get_message_by_language(messages: list, language: str) -> str:
     """
+    >>> from ocpi22.choices import MessageTexts
     >>> get_message_by_language(MessageTexts.get('STOPPING_TO_CHARGE'), 'en')
     'Stopping charging session'
     >>> get_message_by_language(MessageTexts.get('STOPPING_TO_CHARGE'), 'FI')

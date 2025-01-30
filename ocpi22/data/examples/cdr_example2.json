@@ -19,6 +19,8 @@
     "postal_code": "-"
   },
   "cdr_token": {
+    "country_code": "FI",
+    "party_id": "MSP",
     "contract_id": "INTERNAL",
     "type": "OTHER",
     "uid": "FI*001*T*ADMIN*TOKEN"
