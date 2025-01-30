@@ -39,7 +39,7 @@ from rest_framework import status
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
-from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
+from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
 from ocpiconnector.testutil import (
@@ -348,6 +348,7 @@ class ApiPutTests(TestCase):
         request.credentials = credentials or self.credentials if authenticate else None
         request.credentialsrole = credentialsrole or request.credentials.roles.first()
         request.party_specified_in_url = True
+        request.ocpi_auth = OcpiAuthTypes.NONE
         viewset.request = request
         if credentials and authenticate:
             credentialsrole = credentialsrole or credentials.roles.first()
@@ -369,7 +370,6 @@ class ApiPutTests(TestCase):
         request.version = "2.2.1"
         return viewset().post(request)
 
-    @pytest.mark.skip("Fix me before production")
     @simulate_surrounding_world
     def test_put_location(self, simulation):
         url = reverse("location-list")
@@ -378,21 +378,6 @@ class ApiPutTests(TestCase):
         our_msp_role = get_credentialsrole(
             credentials, Party("FI", "MSP"), create=True, role=OcpiRolesEnum.EMSP
         )
-
-        # invalid_data = dict(country_code=self.location.ocpi_master.country_code,
-        #                     party_id=self.location.ocpi_master.party_id, id=123,
-        #                     address="Koekatu 1", city="Espoo", country="FIN",
-        #                     coordinates=dict(latitude=60.0, longitude=30.0), time_zone='Europe/Helsinki')
-        #
-        # with simulation.assert_error_logged('Country ID and Party ID need to match your credentials'):
-        #     response = self.put(url, invalid_data, 'FALSETOKEN', LocationViewSet, authenticate=False,
-        #                         credentialsrole=self.credentialsrole)
-        # self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED,
-        #                  'A Location PUT request should require OCPI authentication: '
-        #                  f'{response.data}')
-        # self.assertEqual(response.data['status_code'], Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-        #                  'The response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
-        #                  f'{response.data}')
 
         with simulation.assert_error_logged("This field is required"):
             response = self.put(
@@ -447,6 +432,16 @@ class ApiPutTests(TestCase):
                 "EVC",
                 status.HTTP_201_CREATED,
                 1000,
+                [],
+                1,
+                1,
+            ),
+            (
+                "location_example_parking_garage_opening_hours_bad_power_type",
+                "SE",
+                "EVC",
+                status.HTTP_400_BAD_REQUEST,
+                2001,
                 [],
                 1,
                 1,
@@ -532,8 +527,6 @@ class ApiPutTests(TestCase):
             with self.subTest("Putting location", filename=filename):
                 data = load_example(f"data/examples/{filename}.json")
 
-                # Clear up CredentialsRoles with the same country_code and party_id and create a fresh one
-                # CredentialsRole.objects.filter(country_code=country_code, party_id=party_id).delete()
                 role = get_credentialsrole(
                     cpo_credentials,
                     Party(country_code, party_id),
@@ -545,11 +538,6 @@ class ApiPutTests(TestCase):
                 for t in tariffs:
                     create_tariff(uid=t, ocpi_master=role)
 
-                # create_credentialsrole(Party(country_code, party_id), role=OcpiRolesEnum.CPO,
-                #                        business_name='Test Business', website='http://example.com',
-                #                        credentials=self.credentials)
-
-                # Send the request
                 response = self.put(
                     url,
                     data,
@@ -558,38 +546,18 @@ class ApiPutTests(TestCase):
                     credentials=cpo_credentials,
                 )
 
-                self.assertEqual(
-                    response.status_code,
-                    http_status,
-                    f"Expected a HTTP status code {http_status} "
-                    f"for {filename} case: {response.data}.",
-                )
-                self.assertEqual(
-                    response.data["status_code"],
-                    ocpi_status,
-                    f"Expected an OCPI status code {ocpi_status} "
-                    f"for {filename} case: {response.data}.",
-                )
+                assert response.status_code == http_status, filename
+                assert response.data["status_code"] == ocpi_status, filename
 
                 if evses:
                     uid = data.get("id").upper()
                     try:
                         location = Location.objects.get(uid=uid)
-                        # print(f"Evses: {location.evses.count()}")
-                        self.assertEqual(
-                            location.evses.count(),
-                            evses,
-                            f"There should be {evses} evses after {filename} case.",
-                        )
+                        assert location.evses.count() == evses, filename
                         connector_count = 0
                         for evse in location.evses.all():
                             connector_count += evse.connectors.count()
-                        # print(f"Connectors: {connector_count}")
-                        self.assertEqual(
-                            connector_count,
-                            connectors,
-                            f"There should be {connectors} connectors after {filename} case.",
-                        )
+                        assert connector_count == connectors, filename
                     except Location.DoesNotExist:
                         print(
                             f"Unable to fetch Location {uid} created from file {filename}."
@@ -859,7 +827,6 @@ class ApiPutTests(TestCase):
                     f"Total cost including VAT doesn't match in case {filename}",
                 )
 
-    @pytest.mark.skip("Fix me before production")
     @patch(
         "ocpi22.util.redis_store.get",
         side_effect=lambda x: {
@@ -890,14 +857,14 @@ class ApiPutTests(TestCase):
                 status.HTTP_201_CREATED,
                 1000,
                 1,
-                "http://testserver.test:8000/ocpi/2.2.1/cdrs/BE/BEC/12345",
+                "http://testserver.test/ocpi/2.2.1/cdrs/BE/BEC/12345",
             ),
             (
                 "cdr_example2",
                 status.HTTP_201_CREATED,
                 1000,
                 1,
-                "http://testserver.test:8000/ocpi/2.2.1/cdrs/FI/000/8297d92ff7d047c68727750b3b8ca559",
+                "http://testserver.test/ocpi/2.2.1/cdrs/FI/000/8297d92ff7d047c68727750b3b8ca559",
             ),
         )
 
@@ -926,20 +893,18 @@ class ApiPutTests(TestCase):
                 response = self.post(url, data, token_base64, viewset)
                 if response.status_code >= 300:
                     print(f'status_text: "{response.status_text}" for {filename} case.')
-                self.assertEqual(
-                    response.headers.get("Location"),
+                assert response.headers.get("Location") == cdr_url, (
+                    filename,
+                    response.status_text,
                     cdr_url,
-                    f"Expected a Location header with different content for {filename} case.",
                 )
-                self.assertEqual(
-                    response.status_code,
-                    http_status,
-                    f"Expected a HTTP status code {http_status} for {filename} case.",
+                assert response.status_code == http_status, (
+                    filename,
+                    response.status_text,
                 )
-                self.assertEqual(
-                    response.data["status_code"],
-                    ocpi_status,
-                    f"Expected an OCPI status code {ocpi_status} for {filename} case.",
+                assert response.data["status_code"] == ocpi_status, (
+                    filename,
+                    response.status_text,
                 )
 
                 # Verify the saved data
@@ -949,44 +914,28 @@ class ApiPutTests(TestCase):
 
                 # Check that all Tariffs are archived, so that they won't be modified
                 for t in saved_cdr.tariffs.all():
-                    self.assertTrue(
-                        t.archived,
-                        "All Tariffs referred to by CDRs must be archived so that they are not modified anymore",
-                    )
+                    assert t.archived, filename
 
                 # Make sure that the received last_updated timestamp will be stored and not overwritten by datetime.utcnow()
-                self.assertEqual(
-                    saved_data.get("last_updated"),
-                    data.get("last_updated"),
-                    "Last_updated is not stored from the incoming data",
-                )
+                assert saved_data.get("last_updated") == data.get(
+                    "last_updated"
+                ), filename
 
                 # Check that Tariffs are created and are serialized correctly
                 tariffs = saved_data.get("tariffs")
                 elements = tariffs[0].get("elements")
                 price_components = elements[0].get("price_components")
 
-                self.assertTrue(
-                    tariffs, "Tariffs are not stored from the incoming data"
-                )
-                self.assertTrue(
-                    elements, "TariffElements are not stored from the incoming data"
-                )
-                self.assertTrue(
-                    price_components,
-                    "PriceComponents are not stored from the incoming data",
-                )
+                assert tariffs, filename
+                assert elements, filename
+                assert price_components, filename
 
                 # Compare first PriceComponent from JSON data and the saved data
                 first_json_price_component = (
                     data.get("tariffs")[0].get("elements")[0].get("price_components")[0]
                 )
                 first_price_component = dict(price_components[0])
-                self.assertDictEqual(
-                    first_price_component,
-                    first_json_price_component,
-                    "PriceComponent is not stored accurately",
-                )
+                assert first_price_component == first_json_price_component, filename
 
                 saved_data = json.loads(json.dumps(saved_data))
                 # Remove non-OCPI and unsupported fields
@@ -1002,8 +951,9 @@ class ApiPutTests(TestCase):
                     data.pop(i, None)
                 # saved_data['tariffs'][0].pop('detail_url')
                 for t in range(0, len(saved_data["tariffs"])):
-                    del saved_data["tariffs"][t]["tariff_alt_text"]
-                self.assertEqual(saved_data, data)
+                    if "tariff_alt_text" in saved_data["tariffs"][t]:
+                        del saved_data["tariffs"][t]["tariff_alt_text"]
+                assert saved_data == data, filename
 
     def test_put_token(self):
         url = reverse("token-list")

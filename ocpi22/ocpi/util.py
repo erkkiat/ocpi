@@ -399,9 +399,10 @@ class Ocpi:
         ("DC", "DC", 3),
     )
 
-    POWERTYPE_CHOICES_221 = (
+    POWERTYPE_CHOICES_221 = [
         (x[0], x[1]) for x in _POWERTYPE_DATA
-    )  # For model: (('AC_1_PHASE', 'AC 1-phase'), ... )
+    ]  # For model choices: (('AC_1_PHASE', 'AC 1-phase'), ... )
+
     POWERTYPE_PHASES = dict(
         (x[0], x[2]) for x in _POWERTYPE_DATA
     )  # For power calculation: (('AC_1_PHASE', 1), ... )
