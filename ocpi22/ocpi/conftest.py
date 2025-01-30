@@ -8,17 +8,11 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
 from ocpi22.tests.factories import (
-    CdrFactory,
     CredentialsFactory,
     CredentialsRoleFactory,
     EndpointFactory,
     BusinessDetailsFactory,
 )
-
-
-@pytest.fixture
-def default_cdr():
-    return CdrFactory()
 
 
 @pytest.fixture
