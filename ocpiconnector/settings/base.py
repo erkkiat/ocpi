@@ -21,6 +21,11 @@ DEBUG = env_bool("DEBUG", False)
 
 RENDER_ONLY_JSON = env_bool("RENDER_ONLY_JSON", False)
 
+FIXIE_URL = os.getenv("FIXIE_URL", "")
+os.environ["https_proxy"] = FIXIE_URL
+os.environ["http_proxy"] = FIXIE_URL
+os.environ["no_proxy"] = "localhost,127.0.0.1"
+
 DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT", "%d.%m.%Y %H:%M")
 DATE_FORMAT = os.environ.get("DATE_FORMAT", "%d.%m.%Y")
 locale_formats.DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT_LOCALE", "D j.n.Y H:i")
