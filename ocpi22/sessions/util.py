@@ -128,9 +128,8 @@ def create_session(
 
     from ocpi22.models.credentials import CredentialsRole
 
-    assert (
-        billed_to and billed_to != "*" and isinstance(billed_to, CredentialsRole)
-    ), "Unable to bill session without billed_to"
+    if not (billed_to and billed_to != "*" and isinstance(billed_to, CredentialsRole)):
+        raise ValueError("Unable to bill session without billed_to partner")
 
     currency = currency or os.environ.get("CPO_CURRENCY", "EUR")
     if connector and connector.tariff_ids:

@@ -45,30 +45,19 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name = _("Billing record")
         verbose_name_plural = _("Billing records")
 
-    # The party responsible for the master data for this object
-    # The country_code and party_id can be found through the CredentialsRole
     ocpi_master = models.ForeignKey(
         "ocpi22.CredentialsRole", related_name="cdrs", on_delete=models.PROTECT
     )
 
-    # Uniquely identifies the CDR within the CPOs platform (and suboperator platforms).
-    # This field can never be changed, modified or renamed.
     uid = models.CharField(max_length=39, db_index=True, verbose_name=_("UID"))
 
-    # Start timestamp of the charging session, or in-case of a reservation
-    # (before the start of a session) the start of the reservation.
     start_date_time = models.DateTimeField(verbose_name=_("Start date and time"))
     reservation_start_date_time = models.DateTimeField(
         blank=True, null=True, verbose_name=_("Reservation start date and time")
     )
 
-    # The timestamp when the session was completed/finished, charging might have finished before
-    # the session ends, for example: EV is full, but parking cost also has to be paid.
     end_date_time = models.DateTimeField(verbose_name=_("End date and time"))
 
-    # Unique ID of the Session for which this CDR is sent. Is only allowed to be omitted
-    # when the CPO has not implemented the Sessions module or this CDR is the result of a reservation
-    # that never became a charging session, thus no OCPI Session.
     session_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         blank=True,
@@ -92,7 +81,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("CDR location"),
     )
 
-    # Token used to start this charging session, includes all the relevant information to identify the unique token.
     cdr_token_uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Token UID")
     )
@@ -101,29 +89,20 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def token_id(self):
         return self.cdr_token.uid
 
-    # Type of the token
     cdr_token_type = models.CharField(
         max_length=11, choices=TOKEN_TYPE_CHOICES, verbose_name=_("Token type")
     )
 
-    # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
-    # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
-    # (http://emi3group.com/documents-links/) "Part 2: business objects."
     cdr_token_contract_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Token contract ID")
     )
 
-    # Method used for authentication.
     auth_method = models.CharField(
         max_length=12,
         choices=enum.AUTH_METHOD_CHOICES,
         verbose_name=_("Authentication method"),
     )
 
-    # Reference to the authorization given by the eMSP. When the eMSP provided an authorization_reference in either:
-    # real-time authorization or StartSession, this field SHALL contain the same value.
-    # When different authorization_reference values have been given by the eMSP that are relevant to this Session,
-    # the last given value SHALL be used here.
     authorization_reference = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         blank=True,
@@ -131,14 +110,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Authorization reference"),
     )
 
-    # Location where the charging session took place, including only the relevant EVSE and Connector.
-    # Uniquely identifies the location within the CPO’s platform (and suboperator platforms).
-    # This field can never be changed, modified or renamed.
     cdr_location_uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Location ID")
     )
 
-    # Temporary change to make the cdr_location field work
     @property
     def cdr_location_id(self):
         return self.cdr_location_uid
@@ -147,35 +122,28 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def cdr_location_id(self, value):
         self.cdr_location_uid = value
 
-    # Street/block name and house number if available.
     cdr_location_address = models.CharField(
         max_length=45, verbose_name=_("Location address")
     )
 
-    # Display name of the location.
     cdr_location_name = models.CharField(
         max_length=255, blank=True, null=True, verbose_name=_("Location name")
     )
 
-    # City or town.
     cdr_location_city = models.CharField(max_length=45, verbose_name=_("Location city"))
 
-    # Postal code of the location.
     cdr_location_postal_code = models.CharField(
         max_length=10, blank=True, default="", verbose_name=_("Location postal code")
     )
 
-    # State only to be used when relevant.
     cdr_location_state = models.CharField(
         max_length=20, blank=True, verbose_name=_("Location state")
     )
 
-    # ISO 3166-1 alpha-3 code for the country of this location.
     cdr_location_country = models.CharField(
         max_length=3, verbose_name=_("Location country")
     )
 
-    # Coordinates of the location.
     cdr_location_latitude = models.CharField(
         max_length=10, verbose_name=_("Location latitude")
     )
@@ -183,75 +151,57 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         max_length=11, verbose_name=_("Location longitude")
     )
 
-    # Uniquely identifies the EVSE within the CPO’s platform (and suboperator platforms).
-    # For example a database unique ID or the actual EVSE ID. This field can never be changed, modified or renamed.
-    # This is the technical identification of the EVSE, not to be used as human readable identification,
-    # use the field: evse_id for that.
     cdr_location_evse_uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("EVSE UID")
     )
 
-    # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
-    # (http://emi3group.com/documents-links/) "Part 2: business objects.".
     cdr_location_evse_id = models.CharField(max_length=48, verbose_name=_("EVSE ID"))
 
     @property
     def evse_id(self):
         return self.cdr_location.evse_id
 
-    # Identifier of the connector within the EVSE.
     cdr_location_connector_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Connector ID")
     )
 
-    # The standard of the installed connector.
     cdr_location_connector_standard = models.CharField(
         max_length=21,
         choices=Ocpi.STANDARD_CHOICES,
         verbose_name=_("Connector standard"),
     )
 
-    # The format (socket/cable) of the installed connector.
     cdr_location_connector_format = models.CharField(
         max_length=6, choices=Ocpi.FORMAT_CHOICES, verbose_name=_("Connector format")
     )
 
-    # The power type of the connector (AC/DC, phases)
     cdr_location_connector_power_type = models.CharField(
         max_length=16,
         choices=Ocpi.POWERTYPE_CHOICES_221,
         verbose_name=_("Connector power type"),
     )
 
-    # Currency of the CDR in ISO 4217 Code.
     currency = models.CharField(
         max_length=3, choices=CURRENCY_CHOICES, verbose_name=_("Currency")
     )
 
     # TODO: !!!!! ADD base_currency AND cost_in_base_currency
 
-    # List of relevant Tariff Elements, see: Tariff. When relevant, a Free of Charge tariff
-    # should also be in this list, and point to a defined Free of Charge Tariff.
     tariffs = models.ManyToManyField("Tariff", blank=True, verbose_name=_("Tariffs"))
 
-    # Total sum of all the costs of this transaction in the specified currency.
     total_cost_excl_vat = models.FloatField(verbose_name=_("Total cost excl. VAT"))
     total_cost_incl_vat = models.FloatField(
         blank=True, null=True, verbose_name=_("Total cost incl. VAT")
     )
 
-    # Total energy charged, in kWh.
     total_energy = models.FloatField(verbose_name=_("Total energy"))
 
-    # Total duration of the charging session (including the duration of charging and not charging), in hours.
     @property
     def total_time(self) -> float:
         return round(
             (self.end_date_time - self.start_date_time).total_seconds() / 3600.0, 3
         )
 
-    # When set to true, this is a Credit CDR, and the field credit_reference_id needs to be set as well.
-    # Todo: Make a "create credit CDR" management command
     credit = models.BooleanField(default=False, verbose_name=_("Credit"))
     credit_reference = models.ForeignKey(
         "ocpi22.Cdr",
@@ -261,7 +211,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Credit reference"),
     )
 
-    # The party who will be billed for the transaction
     billed_to = models.ForeignKey(
         "ocpi22.CredentialsRole",
         on_delete=models.PROTECT,
@@ -279,12 +228,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Credentials"),
     )
 
-    # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Last updated")
     )
 
-    # Django automatic dates
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
