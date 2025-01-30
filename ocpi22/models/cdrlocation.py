@@ -61,7 +61,7 @@ class CdrLocation(models.Model):
     @classmethod
     def get_or_create_from_session(cls, session: Session):
         cdr_location, _created = cls.objects.get_or_create(
-            id=session.location.id,
+            uid=session.location.uid,
             name=session.location.name,
             address=session.location.address,
             city=session.location.city,

@@ -1,4 +1,3 @@
-import random
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -34,6 +33,7 @@ from integrations.hubject.schemas import (
     PricingProductDataRecord,
 )
 from ocpi22.models.business_details import BusinessDetails
+from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials, Endpoint
@@ -110,12 +110,8 @@ class LocationFactory(factory.django.DjangoModelFactory):
     postal_code = "8530"
     state = ""
     country = "FIN"
-    latitude = factory.LazyAttribute(
-        lambda x: round(random.uniform(-90, 90), random.randint(1, 6))
-    )
-    longitude = factory.LazyAttribute(
-        lambda x: round(random.uniform(-180, 180), random.randint(1, 6))
-    )
+    latitude = "47.662249"
+    longitude = "9.360922"
     time_zone = "Europe/Helsinki"
     ocpi_master = factory.SubFactory(CredentialsRoleFactory)
     operator = factory.SubFactory(BusinessDetailsFactory)
@@ -447,6 +443,27 @@ class CdrTokenFactory(factory.django.DjangoModelFactory):
     uid = "CDRTOKEN-12345"
     token_type = "RFID"
     contract_id = "CONTRACT-12345"
+
+
+class CdrLocationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CdrLocation
+
+    uid = "LOC-12345"
+    name = "Location A"
+    address = "Alfred Nobellaan 22 App 150Z"
+    city = "Harelbeke"
+    postal_code = "8530"
+    state = ""
+    country = "BEL"
+    latitude = "47.662249"
+    longitude = "9.360922"
+    evse_uid = "12345"
+    evse_id = "FI*MSP*E12345"
+    connector_id = "1"
+    connector_standard = "IEC_62196_T2"
+    connector_format = "CABLE"
+    connector_power_type = "AC_3_PHASE"
 
 
 class OCPISessionFactory(factory.django.DjangoModelFactory):
