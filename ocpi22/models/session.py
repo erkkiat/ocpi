@@ -28,6 +28,7 @@ from ocpi22.choices import (
     TOKEN_TYPE_CHOICES,
 )
 from ocpi22.models import enum
+from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
 from ocpi22.util import (
@@ -57,9 +58,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     class Meta:
         verbose_name = _("session")
         verbose_name_plural = _("sessions")
-        indexes = [
-            models.Index(fields=["created", "status", "cdr_token_uid"]),
-        ]
 
     ocpi_module_name = OcpiModuleEnum.SESSIONS
     ocpi_serializer_class = "ocpi22.ocpi.serializers.SessionSerializer"
@@ -70,18 +68,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     objects = PartnerManager()
 
-    # The party responsible for the master data for this object
-    # The country_code and party_id can be found through the CredentialsRole
     ocpi_master = models.ForeignKey(
         "ocpi22.CredentialsRole", related_name="sessions", on_delete=models.PROTECT
     )
 
-    # The unique id that identifies the charging session in the CPO platform.
     uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
 
-    # The optional ID of the reservation, if this session is based on one
     reservation_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         blank=True,
@@ -95,15 +89,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         id = f"{self.ocpi_master.country_code}{self.ocpi_master.party_id}{self.reservation_id}"
         return str_to_deterministic_int(id, limit=10)
 
-    # The timestamp when the session became ACTIVE in the Charge Point.
-    # When the session is still PENDING, this field SHALL be set to the time the Session was
-    # created at the Charge Point.
-    # Todo: When a Session goes from PENDING to ACTIVE, this field SHALL be update to the moment the Session went to ACTIVE in the Charge Point.
     start_date_time = models.DateTimeField()
     reservation_start_date_time = models.DateTimeField(blank=True, null=True)
 
-    # The timestamp when the session was completed/finished, charging might have finished before the session ends,
-    # for example: EV is full, but parking cost also has to be paid.
     end_date_time = models.DateTimeField(blank=True, null=True)
 
     @property
@@ -113,10 +101,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             (self.end_date_time or now) - self.start_date_time
         ).total_seconds() / 3600
 
-    # How many kWh are in the charge point meter at the start of the session
     start_kwh = models.FloatField(default=0.0)
 
-    # How many kWh were charged.
     stop_kwh = models.FloatField(default=0.0)
 
     @property
@@ -169,11 +155,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             Decimal(hours) - Decimal(hours_so_far),
         )
 
-    # Token used to start this charging session, including all the relevant information to identify the unique token.
-    # Unique ID by which this Token can be identified.
-    # This is the field used by the CPO’s system (RFID reader on the Charge Point) to identify this token.
-    # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
-    # If this is a type=APP_USER Token, it will be a unique, by the eMSP, generated ID.
+    cdr_token = models.ForeignKey(
+        CdrToken,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="sessions",
+        verbose_name=_("CDR token"),
+    )
+
     cdr_token_uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Token UID")
     )
@@ -181,31 +170,22 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     @property
     def token_id(self):
         # For SessionAdmin
-        return self.cdr_token_uid
+        return self.cdr_token.uid
 
-    # Type of the token
     cdr_token_type = models.CharField(
         max_length=11, choices=TOKEN_TYPE_CHOICES, verbose_name=_("Token type")
     )
 
-    # Uniquely identifies the EV driver contract token within the eMSP’s platform (and suboperator platforms).
-    # Recommended to follow the specification for eMA ID from "eMI3 standard version V1.0"
-    # (http://emi3group.com/documents-links/) "Part 2: business objects."
     cdr_token_contract_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Token contract ID")
     )
 
-    # Method used for authentication.
     auth_method = models.CharField(
         max_length=12,
         choices=enum.AUTH_METHOD_CHOICES,
         verbose_name="Authentication method",
     )
 
-    # Reference to the authorization given by the eMSP. Todo: When the eMSP provided an authorization_reference in either:
-    # Todo: real-time authorization or StartSession, this field SHALL contain the same value.
-    # When different authorization_reference values have been given by the eMSP that are relevant to this Session,
-    # the last given value SHALL be used here.
     authorization_reference = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         blank=True,
@@ -213,7 +193,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name="Authorization reference",
     )
 
-    # Location.id of the Location object of this CPO, on which the charging session is/was happening.
     location = models.ForeignKey(
         Location,
         on_delete=models.PROTECT,
@@ -221,12 +200,10 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Location"),
     )
 
-    # EVSE.uid of the EVSE of this Location on which the charging session is/was happening.
     evse = models.ForeignKey(
         Evse, on_delete=models.PROTECT, related_name="sessions", verbose_name=_("EVSE")
     )
 
-    # Connector.id of the Connector of this Location the charging session is/was happening.
     connector = models.ForeignKey(
         Connector,
         on_delete=models.PROTECT,
@@ -236,19 +213,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Connector"),
     )
 
-    # Optional identification of the kWh meter.
     meter_id = models.CharField(
         max_length=255, blank=True, null=True, verbose_name=_("Meter ID")
     )
 
-    # ISO-4217 code of the currency of this tariff
     currency = models.CharField(
         max_length=3, choices=CURRENCY_CHOICES, verbose_name=_("Currency")
     )
 
-    # The total cost of the session in the specified currency. This is the price that the eMSP will
-    # have to pay to the CPO. A total_cost of 0.00 means free of charge. When omitted, i.e. no price
-    # information is given in the Session object, it does not imply the session is/was free of charge.
     total_cost_excl_vat = models.FloatField(
         blank=True, null=True, verbose_name=_("Total cost excl. VAT")
     )
@@ -262,22 +234,11 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     PENDING = "PENDING"
     RESERVATION = "RESERVATION"
 
-    # The status of this session
     STATUS_CHOICES = (
-        # The session has been accepted and is active. All pre-conditions were met: Communication between EV and EVSE
-        # (for example: cable plugged in correctly), EV or driver is authorized. EV is being charged,
-        # or can be charged. Energy is, or is not, being transfered.
         ("ACTIVE", _("Active")),
-        # The session has been finished successfully.
-        # Todo: No more modifications will be made to the Session object using this state.
         ("COMPLETED", _("Completed")),
-        # The Session object using this state is declared invalid and will not be billed.
         ("INVALID", _("Failed")),
-        # The session is pending, it has not yet started. Not all pre-conditions are met.
-        # This is the initial state. The session might never become an active session.
         ("PENDING", _("Pending")),
-        # The session is started due to a reservation, charging has not yet started.
-        # The session might never become an active session.
         ("RESERVATION", _("Reservation")),
     )
     status = models.CharField(
@@ -294,7 +255,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def __hash__(self):
         return util.member_hash(self)
 
-    # The MSP or HUB which sent us the messages resulting in this Session
     credentials = models.ForeignKey(
         "ocpi22.Credentials",
         on_delete=models.PROTECT,
@@ -303,7 +263,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Credentials"),
     )
 
-    # The party who will be billed for this Session
     billed_to = models.ForeignKey(
         "ocpi22.CredentialsRole",
         on_delete=models.PROTECT,
@@ -313,7 +272,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Billed to"),
     )
 
-    # The payment for this session (only on MSP platform)
     payment = models.ForeignKey(
         "payment.Payment",
         on_delete=models.PROTECT,
@@ -322,10 +280,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Payment"),
     )
 
-    # Store the (error) message from CPO
     message = models.JSONField(null=True, blank=True, verbose_name=_("Message"))
 
-    # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Last updated")
     )
@@ -347,7 +303,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def status_display(self):
         return "" if self.status != self.INVALID else "warning"
 
-    # Django automatic dates
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
@@ -355,13 +310,8 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         # Needed for running self.clean() when doing a save() or create()
         self.stop_kwh = Decimal(round(self.stop_kwh, 3))
         self.start_kwh = Decimal(round(self.start_kwh, 3))
-        # self.full_clean()
-        return super().save(*args, **kwargs)
 
-    # def set_status(self, status: str):
-    #     if self.status != Session.ACTIVE:
-    #         self.status = Session.ACTIVE
-    #         self.save(update_fields=['status'])
+        return super().save(*args, **kwargs)
 
     def calculate_price(self, connector=None, tariffs: Tariff = None) -> bool:
         """
@@ -406,7 +356,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             # Todo: Prevent START_SESSION on a Connector where the price cannot be calculated
             # Todo: Even better, mark the EVSE inoperative, or prevent making it available
             return False
-        # Calculate the session duration using either a stored end time or the current time
+
         result_incl_vat: float = 0.0
         result_excl_vat: float = 0.0
 
@@ -645,7 +595,10 @@ class TariffIdSerializer(serializers.Serializer):
         return instance.uid
 
     def to_internal_value(self, data):
-        return Tariff.objects.filter(uid=data).first()
+        tariff = Tariff.get_if_exists(uid=data, archived=False)
+        if not tariff:
+            raise serializers.ValidationError(f"Tariff with UID {data} not found")
+        return tariff
 
 
 class ChargingPeriodSerializer(serializers.Serializer):

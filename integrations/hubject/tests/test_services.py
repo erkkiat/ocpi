@@ -1,3 +1,5 @@
+import json
+import re
 from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
@@ -6,11 +8,11 @@ import pytz
 import responses
 import time_machine
 from django.conf import settings
+from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 from requests import HTTPError
 from responses import matchers
 
-from integrations.hubject.client import HubjectClient
 from integrations.hubject.schemas import (
     ActionType,
     OperatorEvseData,
@@ -31,9 +33,26 @@ from integrations.hubject.schemas import (
     Accessibility,
     AccessibilityLocation,
     DynamicInfoAvailable,
+    ReferenceUnit,
+    AdditionalReference,
+    PricingProductDataRecord,
+    AdditionalReferenceChoice,
+    CurrencyID,
+    PricingProductData,
+    ERoamingPushPricingProductData,
+    ProductID,
+    ProviderIDAsterisk,
 )
 from integrations.hubject.services import HubjectService
-from ocpi22.tests.factories import EvseFactory, LocationFactory
+from ocpi22.choices import OcpiRolesEnum
+from ocpi22.models.location import Location
+from ocpi22.tests.factories import (
+    EvseFactory,
+    LocationFactory,
+    PricingProductDataFactory,
+)
+from ocpiconnector.exceptions import ConnectorTariffNotFoundError
+from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 
 
@@ -284,7 +303,7 @@ class TestHubjectService:
         operator_id = "DE+MSP"
 
         payload_mock = MagicMock()
-        payload_mock.model_dump_json.side_effect = PydanticSerializationError(
+        payload_mock.model_dump.side_effect = PydanticSerializationError(
             "serialization error"
         )
 
@@ -352,6 +371,68 @@ class TestHubjectService:
         assert str(excinfo.value) == (
             "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
         )
+
+    def test_get_default_tariffs_minus_ocip_price(self, monkeypatch):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", "-0.25")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", "EUR")
+        monkeypatch.setattr(
+            "django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR"
+        )
+
+        with pytest.raises(ValueError) as excinfo:
+            self.__hubject_service.get_default_tariffs()
+        assert str(excinfo.value) == ("DEFAULT_OICP_PRICE must be positive")
+
+    @pytest.mark.django_db
+    def test_get_operator_evse_data_without_locations_returns_none(self):
+        party = get_our_party(OcpiRolesEnum.CPO)
+        Location.objects.filter(
+            ocpi_master__party_id=party.party_id,
+            ocpi_master__country_code=party.country_code,
+        ).delete()
+
+        result = self.__hubject_service.get_operator_evse_data(party)
+
+        assert result is None
+
+    @pytest.mark.django_db
+    def test_get_operator_evse_data_raises_connector_tariff_not_found_when_no_tariffs_assigned_to_evses(
+        self, helsinki_location
+    ):
+        party = get_our_party(OcpiRolesEnum.CPO)
+
+        evse = helsinki_location.evses.first()
+        connector = evse.connectors.first()
+        connector.tariff_ids.set([])
+        connector.save()
+
+        with pytest.raises(ConnectorTariffNotFoundError):
+            self.__hubject_service.get_operator_evse_data(party)
+
+    @pytest.mark.django_db
+    def test_get_operator_evse_data_without_evse_data_records_return_none(self):
+        party = get_our_party(OcpiRolesEnum.CPO)
+        Location.objects.filter(
+            ocpi_master__party_id=party.party_id,
+            ocpi_master__country_code=party.country_code,
+        ).delete()
+
+        LocationFactory()
+
+        result = self.__hubject_service.get_operator_evse_data(party)
+
+        assert result is None
+
+    @pytest.mark.django_db
+    def test_get_evse_full_load_payload_without_operator_evse_data_returns_none(self):
+        party = get_our_party(OcpiRolesEnum.CPO)
+        Location.objects.filter(
+            ocpi_master__party_id=party.party_id,
+            ocpi_master__country_code=party.country_code,
+        ).delete()
+
+        result = self.__hubject_service.get_evse_full_load_payload(party)
+        assert result is None
 
     def expected_berlin_op_evse_data_record(self):
         return OperatorEvseData(
@@ -525,6 +606,237 @@ class TestHubjectService:
         )
 
 
-class TestHubjectClient:
-    def test_hubject_client_init(self):
-        HubjectClient(rewrite_cert_files=True)
+class TestOICPDynamicPricingService:
+    hubject_service = HubjectService()
+
+    @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
+    @pytest.mark.django_db
+    def test_get_all_pricing_products(
+        self, mock_solid_tariffs, smp1_solid_tariff, smp2_solid_tariff, monkeypatch
+    ):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", "0.3")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", "EUR")
+        monkeypatch.setattr(
+            "django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR"
+        )
+
+        expected_result = self.get_expected_pricing_product_data()
+
+        mock_solid_tariffs.return_value = [smp1_solid_tariff, smp2_solid_tariff]
+
+        result = self.hubject_service.get_all_pricing_products(
+            get_our_party(OcpiRolesEnum.CPO)
+        )
+
+        assert result == expected_result
+
+    @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
+    @pytest.mark.django_db
+    def test_get_all_pricing_products_with_invalid_env_variables(
+        self,
+        mock_solid_tariffs,
+        monkeypatch,
+        msp_de_ice,
+        smp1_solid_tariff,
+        smp2_solid_tariff,
+    ):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", None)
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", None)
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", None)
+
+        mock_solid_tariffs.return_value = [smp1_solid_tariff, smp2_solid_tariff]
+
+        with pytest.raises(
+            ValueError,
+            match="Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables",
+        ):
+            self.hubject_service.get_all_pricing_products(
+                get_our_party(OcpiRolesEnum.CPO)
+            )
+
+    @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
+    @pytest.mark.django_db
+    def test_get_all_pricing_products_with_no_solid_tariffs_raises_value_error(
+        self, mock_solid_tariffs, monkeypatch, msp_de_ice
+    ):
+        mock_solid_tariffs.return_value = []
+        expected_message = (
+            f"No SolidTariffs found for {str(get_our_party(OcpiRolesEnum.CPO))}"
+        )
+
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            self.hubject_service.get_all_pricing_products(
+                get_our_party(OcpiRolesEnum.CPO)
+            )
+
+    def test_get_push_pricing_product_data_payload_success(self):
+        pricing_product_data = PricingProductDataFactory()
+        action_type = ActionType.fullLoad
+
+        result = self.hubject_service.get_push_pricing_product_data_payload(
+            pricing_product_data, action_type
+        )
+
+        assert isinstance(result, ERoamingPushPricingProductData)
+        assert result.ActionType == action_type
+        assert result.PricingProductData == pricing_product_data
+
+    def test_get_push_pricing_product_data_payload_invalid_pricing_data(self):
+        pricing_product_data = None
+        action_type = ActionType.fullLoad
+
+        with pytest.raises(ValidationError):
+            self.hubject_service.get_push_pricing_product_data_payload(
+                pricing_product_data, action_type
+            )
+
+    @responses.activate
+    def test_post_pricing_products_full_load(
+        self, pricing_products_full_load_payload, hubject_successful_response
+    ):
+        operator_id = (
+            pricing_products_full_load_payload.PricingProductData.OperatorID.root
+        )
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products",
+            json=hubject_successful_response,
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    pricing_products_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        result = self.hubject_service.post_pricing_products_full_load(
+            operator_id, pricing_products_full_load_payload
+        )
+
+        assert result == hubject_successful_response
+
+    @responses.activate
+    def test_post_pricing_products_full_load_returns_400_when_pricing_default_price_is_none(
+        self, pricing_products_full_load_payload, hubject_unsuccessful_response
+    ):
+        operator_id = (
+            pricing_products_full_load_payload.PricingProductData.OperatorID.root
+        )
+
+        # edit the payload to generate a unsuccessful response from the hubject APIs
+        pricing_products_full_load_payload.PricingProductData.PricingDefaultPrice = None
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products",
+            json=hubject_unsuccessful_response,
+            status=400,
+            match=[
+                matchers.json_params_matcher(
+                    pricing_products_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        result = self.hubject_service.post_pricing_products_full_load(
+            operator_id, pricing_products_full_load_payload
+        )
+        response_content = json.loads(result["error"].split(":", 1)[1])
+        assert isinstance(response_content, dict)
+        assert response_content == hubject_unsuccessful_response
+
+    @responses.activate
+    def test_post_pricing_products_full_load_pydantic_error_when_model_dump_to_json(
+        self, hubject_unsuccessful_response
+    ):
+        operator_id = "DE+MSP"
+
+        payload_mock = MagicMock()
+        payload_mock.model_dump.side_effect = PydanticSerializationError(
+            "serialization error"
+        )
+
+        result = self.hubject_service.post_pricing_products_full_load(
+            operator_id, payload_mock
+        )
+
+        assert result == {
+            "success": False,
+            "errorType": "Pydantic validation failed",
+            "error": "serialization error",
+        }
+
+    def get_expected_pricing_product_data(self):
+        return PricingProductData(
+            OperatorID=OperatorID(root="FI*CPO"),
+            OperatorName="Smappee Pvt Ltd",
+            ProviderID=ProviderIDAsterisk(root="DE*ICE"),
+            PricingDefaultPrice=0.3,
+            PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
+            PricingDefaultReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+            PricingProductDataRecords=[
+                PricingProductDataRecord(
+                    ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                    ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=0.2,
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=0.3,
+                        )
+                    ],
+                ),
+                PricingProductDataRecord(
+                    ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
+                    ReferenceUnit=ReferenceUnit(root="MINUTE"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=0.3,
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=0.3,
+                        )
+                    ],
+                ),
+                PricingProductDataRecord(
+                    ProductID=ProductID(root="FI*CPO*SMP2*KILOWATT_HOUR*DE*ICE"),
+                    ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=0.2,
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=0.3,
+                        )
+                    ],
+                ),
+                PricingProductDataRecord(
+                    ProductID=ProductID(root="FI*CPO*SMP2*MINUTE*DE*ICE"),
+                    ReferenceUnit=ReferenceUnit(root="MINUTE"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=0.3,
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=0.3,
+                        )
+                    ],
+                ),
+            ],
+        )

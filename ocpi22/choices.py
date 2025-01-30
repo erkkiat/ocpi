@@ -447,7 +447,7 @@ LANGUAGES_ISO_2 = {
     iso2[:2].upper() for iso2, iso3 in langcodes.data_dicts.LANGUAGE_ALPHA3.items()
 }
 LANGUAGE_CHOICES = [
-    (iso2, _(langcodes.Language.get(iso2).display_name("en")))
+    (iso2.lower(), _(langcodes.Language.get(iso2).display_name("en")))
     for iso2 in LANGUAGES_ISO_2
 ]
 LANGUAGE_CHOICES.sort(key=lambda x: x[1])

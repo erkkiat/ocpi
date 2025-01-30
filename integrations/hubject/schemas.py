@@ -111,7 +111,7 @@ class EvcoID(RootModel):
         ...,
         pattern=r"^(([A-Za-z]{2}\-?[A-Za-z0-9]{3}\-?C[A-Za-z0-9]{8}\-?[\d|A-Za-z])|([A-Za-z]{2}[\*|\-]?[A-Za-z0-9]{3}[\*|\-]?[A-Za-z0-9]{6}[\*|\-]?[\d|X]))$",
         description="A string that `MUST` be valid with respect to the following regular expression: ISO | DIN.\n\n^(([A-Za-z]{2}\\-?[A-Za-z0-9]{3}\\-?C[A-Za-z0-9]{8}\\-?[\\d|A-Za-z])|([A-Za-z]{2}[\\*|\\-]?[A-Za-z0-9]{3}[\\*|\\-]?[A-Za-z0-9]{6}[\\*|\\-]?[\\d|X]))$\nThe expression validates the string as EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the EvcoID is provided corresponding to ISO, the instance part MUST be eight characters long and MUST be provided with a prepended “C”. The optional separating character MUST be “-“.\n\nIn case the EvcoID is provided corresponding to DIN, the instance part MUST be six characters long. The optional separating character can either be “*” or “-“.\n\nExamples ISO: “DE-8EO-CAet5e4XY-3”, “DE8EOCAet5e43X1”\n\nExamples DIN: “DE*8EO*Aet5e4*3”, “DE-8EO-Aet5e4-3”, “DE8EOAet5e43”\n",
-        example="DE*8EO*Aet5e4*3",
+        examples=["DE*8EO*Aet5e4*3"],
     )
 
 
@@ -120,7 +120,7 @@ class Google(BaseModel):
         ...,
         pattern=r"^-?1?\d{1,2}\.\d{1,6}\s*\,?\s*-?1?\d{1,2}\.\d{1,6}$",
         description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}\\s*\\,?\\s*-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as geo coordinates with respect to the Google standard. The string contains latitude and longitude (in this sequence) separated by a space.\n\nExample: “47.662249 9.360922”\n",
-        example="47.662249 9.360922",
+        examples=["47.662249 9.360922"],
     )
 
 
@@ -129,13 +129,13 @@ class DecimalDegree(BaseModel):
         ...,
         pattern=r"^-?1?\d{1,2}\.\d{1,6}$",
         description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as a geo coordinate (longitude or latitude) with decimal degree syntax.\n\nExamples: “9.360922”, “-21.568201”\n",
-        example="9.360922",
+        examples=["9.360922"],
     )
     Latitude: str = Field(
         ...,
         pattern=r"^-?1?\d{1,2}\.\d{1,6}$",
         description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}\\.\\d{1,6}$`\nThe expression validates the string as a geo coordinate (longitude or latitude) with decimal degree syntax.\n\nExamples: “9.360922”, “-21.568201”\n",
-        example="9.360922",
+        examples=["9.360922"],
     )
 
 
@@ -144,13 +144,13 @@ class DegreeMinuteSeconds(BaseModel):
         ...,
         pattern=r"^-?1?\d{1,2}°[ ]?\d{1,2}\'[ ]?\d{1,2}\.\d+\'\'$",
         description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}°[ ]?\\d{1,2}'[ ]?\\d{1,2}\\.\\d+''$`\nThe expression validates the string as a geo coordinate (longitude or latitude) consisting of degree, minutes, and seconds\n\nExamples: “9°21'39.32''”, “-21°34'23.16''\n",
-        example="9°21'39.32''",
+        examples=["9°21'39.32''"],
     )
     Latitude: str = Field(
         ...,
         pattern=r"^-?1?\d{1,2}°[ ]?\d{1,2}\'[ ]?\d{1,2}\.\d+\'\'$",
         description="A string that `MUST` be valid with respect to the following regular expression:\n\n`^-?1?\\d{1,2}°[ ]?\\d{1,2}'[ ]?\\d{1,2}\\.\\d+''$`\nThe expression validates the string as a geo coordinate (longitude or latitude) consisting of degree, minutes, and seconds\n\nExamples: “9°21'39.32''”, “-21°34'23.16''\n",
-        example="9°21'39.32''",
+        examples=["9°21'39.32''"],
     )
 
 
@@ -168,7 +168,7 @@ class CurrencyID(RootModel):
     root: str = Field(
         ...,
         description="The ProductPriceCurrencyType allows for the list of active codes of the official ISO 4217 currency names.\n\nFor the full list of active codes of the official ISO 4217 currencies, see: [https://www.iso.org/iso-4217-currency-codes.html](https://www.iso.org/iso-4217-currency-codes.html)\n\nExamples:\n\n| Option | Description |\n| ------ | ----------- |\n| EUR | Euro |\n| CHF | Swiss franc |\n| CAD | Canadian Dollar |\n| GBP | Pound sterling\n",
-        example="EUR",
+        examples=["EUR"],
     )
 
 
@@ -183,7 +183,7 @@ class ProductID(RootModel):
     root: str = Field(
         ...,
         description="The ProductIDType defines some standard values (see below). The type however also supports custom ProductIDs that can be specified by partners (as a string of 50 characters maximum length).\n| Option | Description |\n|--------|-------------|\n| Standard Price | Standard Price |\n| AC1 | Product for AC 1 Phase charging |\n| AC3 | Product for AC 3 Phase charging |\n| DC | Product for DC charging |\n| CustomProductID | There is no option “CustomProductID”, this sample option is meant to indicates that custom product ID specifications by partners (as a string of 50 characters maximum length) are allowed as well.|\n",
-        example="AC1",
+        examples=["AC1"],
     )
 
 
@@ -196,7 +196,7 @@ class SessionID(RootModel):
         Field(
             ...,
             description="The Hubject SessionID that identifies the process\n\nA string that `MUST` be valid with respect to the following regular expression:\n\n`^[A-Za-z0-9]{8}(-[A-Za-z0-9]{4}){3}-[A-Za-z0-9]{12}$`\n\nThe expression validates the string as a GUID.\n\nExample: “b2688855-7f00-0002-6d8e-48d883f6abb6”\n",
-            example="b2688855-7f00-0002-6d8e-48d883f6abb6",
+            examples=["b2688855-7f00-0002-6d8e-48d883f6abb6"],
         )
     )
 
@@ -266,15 +266,15 @@ class LegacyHashData(BaseModel):
     Function: Function1 = Field(
         ...,
         description="Function used for hashing of the PIN at the partner.",
-        example="SHA-1",
+        examples=["SHA-1"],
     )
     Salt: Optional[str] = Field(
         None,
         description="The salt value used by the partner for hashing the PIN.",
-        example="example-salt",
+        examples=["example-salt"],
     )
     Value: Optional[str] = Field(
-        None, description="PIN hash at the partner.", example="a5ghdhf73h"
+        None, description="PIN hash at the partner.", examples=["a5ghdhf73h"]
     )
 
 
@@ -283,7 +283,7 @@ class HashedPIN(BaseModel):
         ...,
         pattern=r"^[0-9A-Za-z\\.+/=\\$]{10,100}$",
         description="Hash value created by partner\n\nThe expression validates the string as a hash function result value with a length between 10 and 100 characters\n\nExample: “a5ghdhf73h”\n",
-        example="a5ghdhf73h",
+        examples=["a5ghdhf73h"],
     )
     Function: Function
     LegacyHashData: Optional[LegacyHashData] = None
@@ -300,7 +300,7 @@ class ProviderID(RootModel):
         ...,
         pattern=r"^([A-Za-z]{2}\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\*|-]?[A-Za-z0-9]{3})$",
         description="The ProviderID is defined by Hubject and is used to identify the EMP\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN\n\n`^([A-Za-z]{2}\\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\\*|-]?[A-Za-z0-9]{3})$`\n\nThe expression validates the string as ProviderID including the preceding country code, which is part of EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the ProviderID is provided corresponding to ISO, the country code `MUST` be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “-” is optional.\n\nExamples ISO: “DE8EO”, “DE-8EO”\n\nExamples DIN: “DE8EO”, “DE*8EO”, “DE-8EO”\n",
-        example="DE-8EO",
+        examples=["DE-8EO"],
     )
 
 
@@ -309,7 +309,7 @@ class OperatorID(RootModel):
         ...,
         pattern=r"^(([A-Za-z]{2}\*?[A-Za-z0-9]{3})|(\+?[0-9]{1,3}\*[0-9]{3}))$",
         description="A string that MUST be valid with respect to the following regular expression: ISO | DIN\n\n^(([A-Za-z]{2}\\*?[A-Za-z0-9]{3})|(\\+?[0-9]{1,3}\\*[0-9]{3}))$\nThe expression validates the string as OperatorID including the preceding country code, which is part of EvseID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118. In case the OperatorID is provided corresponding to ISO, the country code MUST be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “*” is optional.\n\nIn case the OperatorID is provided corresponding to DIN, the country code MUST be provided according to the international telecommunication numbering plan (ITU-T E.164:11/2010) and the separator character “*” is mandatory.\n\nExamples ISO: “DE*A36”, “DEA36”\n\nExample DIN: “+49*536”\n",
-        example="+49*536",
+        examples=["+49*536"],
     )
 
 
@@ -318,7 +318,7 @@ class EvseID(RootModel):
         ...,
         pattern=r"^(([A-Za-z]{2}\*?[A-Za-z0-9]{3}\*?E[A-Za-z0-9\*]{1,30})|(\+?[0-9]{1,3}\*[0-9]{3}\*[0-9\*]{1,32}))$",
         description="The ID that identifies the charging spot.\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN.\n\n`^(([A-Za-z]{2}\\*?[A-Za-z0-9]{3}\\*?E[A-Za-z0-9\\*]{1,30})|(\\+?[0-9]{1,3}\\*[0-9]{3}\\*[0-9\\*]{1,32}))$`\nThe expression validates the string as EvseID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the EvseID is provided corresponding to ISO, the country code MUST be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “*” is optional. Furthermore the ID MUST provide an “E” after the OperatorID in order to identify the ID as ISO EvseID without doubt.\n\nIn case the EvseID is provided corresponding to DIN, the country code MUST be provided according to the international telecommunication numbering plan (ITU-T E.164:11/2010) and the separator character “*” is mandatory.\n\nExamples ISO: “DE*AB7*E840*6487”, “DEAB7E8406487”\n\nExample DIN: “+49*810*000*438”\n",
-        example="+49*810*000*438",
+        examples=["+49*810*000*438"],
     )
 
 
@@ -326,7 +326,7 @@ class UID(RootModel):
     root: constr(pattern=r"^([0-9A-F]{8,8}|[0-9A-F]{14,14}|[0-9A-F]{20,20})$") = Field(
         ...,
         description="Authentication data details. The data structure differs depending on the authentication technology\n\nThe expression validates the string as a unique RFID with a length of 8, 14 or 20 characters.\n\nExamples: “7568290FFF765F”\n",
-        example="7568290FFF765F",
+        examples=["7568290FFF765F"],
     )
 
 
@@ -334,7 +334,7 @@ class ReferenceUnit(RootModel):
     root: str = Field(
         ...,
         description="Default Reference Unit in time or kWh\n\n| Option | Description |\n| ------ | ----------- |\n| HOUR | Defined Reference Unit Type |\n| KILOWATT_HOUR | Defined Reference Unit Type |\n| MINUTE | Defined Reference Unit Type |\n",
-        example="HOUR",
+        examples=["HOUR"],
     )
 
 
@@ -352,7 +352,7 @@ class ProviderIDAsterisk(RootModel):
         ...,
         pattern=r"^([A-Za-z]{2}\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\*|-]?[A-Za-z0-9]{3})|\*$",
         description="The ProviderID is defined by Hubject and is used to identify the EMP\n\nA string that `MUST` be valid with respect to the following regular expression: ISO | DIN\n\n`^([A-Za-z]{2}\\-?[A-Za-z0-9]{3}|[A-Za-z]{2}[\\*|-]?[A-Za-z0-9]{3})$`\n\nThe expression validates the string as ProviderID including the preceding country code, which is part of EvcoID. It supports both definitions DIN SPEC 91286:2011-11 as well as ISO 15118-1.\n\nIn case the ProviderID is provided corresponding to ISO, the country code `MUST` be provided as Alpha-2-Code (DIN EN ISO-3166-1) and the separator character “-” is optional.\n\nExamples ISO: “DE8EO”, “DE-8EO”\n\nExamples DIN: “DE8EO”, “DE*8EO”, “DE-8EO”\n\n In case the data is to be made available for all EMPs (e.g. for Offer-to-All prices), the asterix character (*) can be set as the value in this field.\n \n",
-        example="DE-8EO",
+        examples=["DE-8EO"],
     )
 
 
@@ -384,7 +384,7 @@ class ProductAvailabilityTime(BaseModel):
     )
 
 
-class AdditionalReference1(Enum):
+class AdditionalReferenceChoice(Enum):
     START_FEE = "START FEE"
     FIXED_FEE = "FIXED FEE"
     PARKING_FEE = "PARKING FEE"
@@ -393,7 +393,7 @@ class AdditionalReference1(Enum):
 
 
 class AdditionalReference(BaseModel):
-    AdditionalReference: AdditionalReference1 = Field(
+    AdditionalReference: AdditionalReferenceChoice = Field(
         ...,
         description='Additional pricing components to be considered in addition to the base pricing\n\n| Option | Description |\n| ------ | ----------- |\n| START FEE | Can be used in case a fixed fee is charged for the initiation of the charging session. This is a fee charged on top of the main base price defined in the field "PricePerReferenceUnit" for any particular pricing product. |\n| FIXED FEE | Can be used if a single price is charged irrespective of charging duration or energy consumption (for instance if all sessions are to be charged a single fixed fee). When used, the value set in the field "PricePerReferenceUnit" for the main base price of respective pricing product SHOULD be set to zero. |\n| PARKING FEE | Can be used in case sessions are to be charged for both parking and charging. When used, it needs to be specified in the corresponding service offer on the HBS Portal when parking applies (e.g. from session start to charging start and charging end to session end or for the entire session duration, or x-minutes after charging end, etc) |\n| MINIMUM FEE | Can be used in case there is a minimum fee to be paid for all charging sessions. When used, this implies that the eventual price to be paid cannot be less than this minimum fee but can however be a price above/greater than the minimum fee. |\n| MAXIMUM FEE | Can be used in case there is a maximum fee to be charged for all charging sessions. When used, this implies that the eventual price to be paid cannot be more than this maximum fee but can however be a price below/lower than the maximum fee. |\n',
     )
@@ -445,7 +445,7 @@ class Address(BaseModel):
         Field(
             None,
             description="`[U][T][C][+,-][0-9][0-9][:][0-9][0-9]`\nThe expression validates a string as a Time zone with UTC offset.\n\nExamples:\n\nUTC+01:00\n\nUTC-05:00\n",
-            example="UTC-05:00",
+            examples=["UTC-05:00"],
         )
     )
 
@@ -753,7 +753,7 @@ class EvseDataRecord(BaseModel):
     ] = Field(
         None,
         description="VSEs may be grouped by using a charging pool id according to emi³ standard definition. The Evse Pool ID MUST match the following structure (the notation corresponds to the augmented Backus-Naur Form (ABNF) as defined in RFC5234):\n<Evse Pool ID> = <Country Code> <S> <Spot Operator ID> <S> <ID Type> <Pool ID>\n\nwith:\n\n<Country Code> = 2 ALPHA ; two character country code according to ISO-3166-1 (Alpha-2-Code).\n\n<Spot Operator ID> = 3 (ALPHA / DIGIT); three alphanumeric characters.\n\n<ID Type> = “P”; one character “P” indicating that this ID represents a “Pool”.\n\n<Pool Instance> = (ALPHA / DIGIT) 1 * 30 ( 1*(ALPHA / DIGIT) [/ <S>] ); between 1 and 31sequence of alphanumeric characters, including additional optional separators. Starts with alphanumeric character referring to a specific Pool in EVSE Operator data system.\n\nALPHA = %x41-5A / %x61-7A; according to RFC 5234 (7-Bit ASCII).\n\nDIGIT = %x30-39; according to RFC 5234 (7-Bit ASCII).\n\n<S> = *1 ( “*” ); optional separator\n\nAn example for a valid Evse Pool ID is “IT*123*P456*AB789” with :\n\n“IT” indicating Italy,\n\n“123” representing a particular Spot Operator,\n\n“P” indicating the Pool, and\n\n“456*AB789” representing one of its POOL.\n\nNote\n\nIn contrast to the eMA ID, no check digit is specified for the Evse Pool ID in this document. Alpha characters SHALL be interpreted case insensitively. emi³ strongly recommends that implementations SHOULD - use the separator between Country Code and Spot Operator ID - use the separator between Spot Operator ID and ID type\nThis leads to the following regular expression:\n\n`([A-Za-z]{2}\\*?[A-Za-z0-9]{3}\\*?P[A-Za-z0-9\\*]{1,30})`\n\nThis regular expression is similar to that of the ISO EvseIDType but E is replaced with P to indicate a pool.\n",
-        example="IT*123*P456*AB789",
+        examples=["IT*123*P456*AB789"],
     )
     ChargingStationId: Optional[str] = Field(
         None, description="The ID that identifies the charging station."
@@ -882,7 +882,7 @@ class ERoamingAuthorizeRemoteReservationStart(BaseModel):
     Identification: Identification
     PartnerProductID: Optional[ProductID] = None
     Duration: Optional[conint(ge=1, le=99)] = Field(
-        None, description="Duration of reservation in minutes", example=10
+        None, description="Duration of reservation in minutes", examples=[10]
     )
 
 
