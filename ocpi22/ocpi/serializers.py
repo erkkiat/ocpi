@@ -327,6 +327,10 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                 **cdr_location_data
             )
             cdr_token_data = validated_data.pop("cdr_token")
+            cdr_token_ocpi_master = cdr_token_data.pop("ocpi_master")
+            cdr_token_data["ocpi_master"] = get_credentialsrole(
+                None, Party(**cdr_token_ocpi_master), role=OcpiRolesEnum.EMSP
+            )
             cdr_token, _created = CdrToken.objects.get_or_create(**cdr_token_data)
             cdr = Cdr.objects.create(
                 **validated_data, cdr_location=cdr_location, cdr_token=cdr_token
