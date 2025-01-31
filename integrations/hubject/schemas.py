@@ -9,8 +9,15 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, confloat, conint, constr, RootModel
-from pydantic.v1 import validator
+from pydantic import (
+    BaseModel,
+    Field,
+    confloat,
+    conint,
+    constr,
+    RootModel,
+    field_validator,
+)
 
 from ocpi22.util import CURRENCY_CHOICES
 
@@ -1146,8 +1153,8 @@ class HubjectDefaultTariff(BaseModel):
         examples=["KILOWATT_HOUR", "MINUTE", "HOUR"],
     )
 
+    @field_validator("currency")
     @classmethod
-    @validator("currency")
     def check_currency(cls, value):
         valid_currencies = {code for code, _ in CURRENCY_CHOICES}
         if value not in valid_currencies:
