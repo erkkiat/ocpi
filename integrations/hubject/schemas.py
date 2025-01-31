@@ -1165,18 +1165,3 @@ class HubjectDefaultTariff(BaseModel):
                 return HubjectPriceComponent.HOUR
             case _:
                 raise ValueError("Invalid price_component")
-
-
-# start this file from command line
-if __name__ == "__main__":
-    import sys
-    import json
-    from pydantic import ValidationError
-
-    # validate the schema
-    try:
-        ERoamingPushEvseData.parse_raw(sys.stdin.read())
-    except ValidationError as e:
-        print(json.dumps(e.errors(), indent=2))
-        sys.exit(1)
-    sys.exit(0)
