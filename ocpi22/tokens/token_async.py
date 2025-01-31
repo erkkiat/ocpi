@@ -45,6 +45,7 @@ async def post_request(session, url, data, ocpi_master, headers=None) -> (int, d
             logger.error(f"Cannot decode JSON response from url {url}")
             json_data = None
 
+        logger.info(f"Response from {url} status: {status} data: {json_data}")
         return status, json_data, ocpi_master
 
 
@@ -177,6 +178,12 @@ def authorize_with_msps_sync(
         if location
         else {}
     )
+
+    formatted_parties = [
+        f"{country_code}*{party_id}: {url}"
+        for url, _token_base64, country_code, party_id, _credentials in parties
+    ]
+    logger.info(f"Authorizing token {token} with MSPs {', '.join(formatted_parties)}")
 
     response = asyncio.run(authorize_with_msps(token, data, parties))
     if response:
