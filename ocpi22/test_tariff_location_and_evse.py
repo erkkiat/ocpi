@@ -304,7 +304,6 @@ class ApiPutTests(TestCase):
             data, dict
         ), f'There should be a dict element "data" in the Location: {response.data}'
 
-        # Coordinates
         coordinates = data.get("coordinates")
         assert isinstance(coordinates, dict)
         latitude = coordinates.get("latitude")
@@ -324,7 +323,6 @@ class ApiPutTests(TestCase):
             len(decimals) == 6
         ), "e-clearing.net: There should be exactly 6 decimals in longitude"
 
-        # EVSES
         evses = data.get("evses")
         assert isinstance(evses, list), "Location EVSEs should be a list"
         for evse in evses:

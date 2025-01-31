@@ -12,28 +12,40 @@ from unittest import TestCase
 
 
 from ocpi22.locations.serializers import LocationSerializer221
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import EvseFactory, LocationFactory
-from ocpiconnector.testutil import OCPIAPIRequestFactory
 
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
-api_factory = OCPIAPIRequestFactory()
 
 
 def load_json(filename, serializer):
     with open(filename) as fp:
         data = json.load(fp)
-        return serializer(data).data
+        return serializer(data=data)
 
 
 class TestLocations(TestCase):
-    @pytest.mark.skip(reason="Fix me!")
-    def test_serialization(self):
-        _ = load_json(
+    @pytest.mark.django_db
+    def test_serialization_of_ocpi_specification_example(self):
+        get_credentialsrole.cache_clear()
+        serializer = load_json(
             "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
             LocationSerializer221,
         )
+        if serializer.is_valid():
+            serializer.save()
+
+    @pytest.mark.django_db
+    def test_serialization_to_update_existing_location(self):
+        get_credentialsrole.cache_clear()
+        serializer = load_json(
+            "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
+            LocationSerializer221,
+        )
+        if serializer.is_valid():
+            serializer.save()
 
 
 @pytest.mark.django_db
