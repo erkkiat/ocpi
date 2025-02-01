@@ -38,3 +38,18 @@ def cdr_receiver_credentials():
     )
 
     return credentials
+
+
+@pytest.fixture
+def default_credentials():
+    credentials = CredentialsFactory()
+    CredentialsRoleFactory(credentials=credentials)
+
+    EndpointFactory(
+        credentials=credentials,
+        identifier=OcpiModuleEnum.CDRS.value,
+        role=EndpointRoleEnum.RECEIVER,
+        url="https://example.com/ocpi/cdrs",
+    )
+
+    return credentials
