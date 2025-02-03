@@ -10,6 +10,7 @@ from ocpi22.models.image import OCPIImage
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.serializers.hours import HoursSerializer
 from ocpi22.util import uid_validator, fetch_object, CiStringField
@@ -17,6 +18,7 @@ from ocpi22.serializers.util import (
     HyperlinkedModelSerializerCleanedUp,
     UTCDateTimeField,
 )
+from ocpiconnector.party import Party
 
 
 class OCPIImageSerializer(serializers.ModelSerializer):
@@ -327,10 +329,29 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             validated_data["longitude"] = coordinates.get("longitude")
         return validated_data
 
+    @staticmethod
+    def process_ocpi_master(validated_data: dict):
+        if isinstance(validated_data, dict):
+            ocpi_master_data = validated_data.get("ocpi_master", validated_data)
+            if isinstance(ocpi_master_data, dict):
+                country_code = ocpi_master_data.get("country_code")
+                party_id = ocpi_master_data.get("party_id")
+                ocpi_master = get_credentialsrole(
+                    None, party=Party(country_code, party_id), create=True
+                )
+                validated_data["ocpi_master"] = ocpi_master
+        return validated_data
+
+    def to_representation(self, location: dict):
+        if isinstance(location, dict):
+            location = self.process_coordinates(location)
+        return super().to_representation(location)
+
     def create(self, validated_data: dict):
         with transaction.atomic():
             # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
+            validated_data = self.process_ocpi_master(validated_data)
             evses = validated_data.pop("evses", [])
             opening_times = validated_data.pop("opening_times", None)
             publish_allowed_to = validated_data.pop("publish_allowed_to", [])
@@ -403,6 +424,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
         # Pop out all elements which are not directly understood by Location, and process them separately
         validated_data = self.process_coordinates(validated_data)
+        validated_data = self.process_ocpi_master(validated_data)
         evses = validated_data.pop("evses", [])
         opening_times = validated_data.pop("opening_times", None)
         publish_allowed_to = validated_data.pop("publish_allowed_to", [])
