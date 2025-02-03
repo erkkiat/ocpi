@@ -344,7 +344,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
     def to_representation(self, validated_data: dict):
         if isinstance(validated_data, dict):
-            location = self.process_coordinates(validated_data)
+            validated_data = self.process_coordinates(validated_data)
         return super().to_representation(validated_data)
 
     def create(self, validated_data: dict):
