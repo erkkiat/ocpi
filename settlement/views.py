@@ -29,7 +29,7 @@ def get_date_range(params: dict) -> tuple[date, date]:
     return calculate_first_and_last_day(month, year)
 
 
-class InvoiceReportViews(viewsets.GenericViewSet):
+class CdrReportViews(viewsets.GenericViewSet):
     # Todo: Limit access based on privileges set by admin
 
     model = Cdr

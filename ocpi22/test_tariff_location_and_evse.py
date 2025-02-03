@@ -55,7 +55,7 @@ from ocpiconnector.testutil import (
     get_fake_admin,
     BetterTestCase,
 )
-from settlement.views import InvoiceReportViews
+from settlement.views import CdrReportViews
 from util import reverse
 
 from ocpi22.msp.api import MspRoamingViewSet
@@ -3655,7 +3655,7 @@ class TestInvoiceReportView(TestCase):
         request = api_factory.get(reverse("billing-list"))
         request.user = get_fake_admin()
         request.query_params = {}
-        response = InvoiceReportViews().session_list(request)
+        response = CdrReportViews().session_list(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.data,

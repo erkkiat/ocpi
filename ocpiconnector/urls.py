@@ -44,7 +44,7 @@ from ocpi22.msp.api import (
 from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
 from ocpi22.views import home
 from payment.views import PaymentViewSet
-from settlement.views import InvoiceReportViews
+from settlement.views import CdrReportViews
 from webhooks.urls import urlpatterns as webhooks_urls
 from integrations.hubject.api import api as hubject_api
 
@@ -62,7 +62,7 @@ cpo_router.register(r"webhook", CpoReserveNowWebhookViewSet, basename="cpo")
 cpo_router.register(r"webhook", CpoStartWebhookViewSet, basename="cpo-start")
 cpo_router.register(r"webhook", CpoStopWebhookViewSet, basename="cpo-stop")
 cpo_router.register(r"webhook", InvoiceWebhookViewSet, basename="cpo-invoicing")
-cpo_router.register(r"reports/billing", InvoiceReportViews, basename="billing")
+cpo_router.register(r"reports/billing", CdrReportViews, basename="billing")
 
 msp_router = MSPRouter()
 msp_router.register(r"roaming", MspRoamingViewSet, basename="roaming")
