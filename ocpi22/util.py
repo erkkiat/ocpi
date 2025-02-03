@@ -48,8 +48,6 @@ from ocpiconnector.party import Party
 from util import format_url, RedisStore, redis_store, with_trailing_slash
 
 
-# slack_logger.init()
-
 logger = getLogger(__name__)
 
 
