@@ -9,8 +9,6 @@ from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
 from health_check import health_check_api
-from hub.admin_sites import hub_admin_site
-from hub.urls import urlpatterns as hub_urls
 
 from ocpi22 import msp, views
 import ocpi22.cpo.tariff
@@ -104,7 +102,6 @@ urlpatterns = [
     path("lang/", set_language, name="admin_set_language"),
     path("", home),
     path("", include(root_router.urls), name="root-view"),
-    path("hub/", include(hub_urls)),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.locations.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.ocpi.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.commands.urls")),
@@ -125,7 +122,6 @@ urlpatterns = [
         name="new-connection",
     ),
     path("portal/", admin.site.urls),
-    path("hubadmin/", hub_admin_site.urls),
     path("issues/", views.issues, name="issues"),
     path("_nested_admin/", include("nested_admin.urls")),
     path(
