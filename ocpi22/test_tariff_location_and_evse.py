@@ -3648,10 +3648,10 @@ def post_cdr(data):
     return CdrViewSet().post(request)
 
 
-class TestBillingList(TestCase):
+class TestInvoiceReportView(TestCase):
     fixtures = ["ocpi22/data/credentials.json"]
 
-    def test_empty_billing_list(self):
+    def test_that_empty_billing_list_works_without_errors(self):
         request = api_factory.get(reverse("billing-list"))
         request.user = get_fake_admin()
         request.query_params = {}
