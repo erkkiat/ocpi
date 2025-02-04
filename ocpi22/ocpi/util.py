@@ -5,6 +5,9 @@ from collections import OrderedDict
 from urllib.parse import urljoin
 
 from logging import getLogger
+
+from django.core.exceptions import ValidationError
+from django.db import models
 from django.utils.datetime_safe import datetime
 from typing import Union
 
@@ -22,6 +25,7 @@ from rest_framework.response import Response
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.routing import find_route
 from ocpiconnector.exceptions import OCPIProtocolError
+from ocpiconnector.manager import PartnerManager
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
     ocpi_platform,
@@ -627,3 +631,39 @@ def recursive_update_last_updated(obj):
                 (x for x in obj.connectors.all()),
             )
         )
+
+
+class ImmutableManager(PartnerManager):
+    def update(self, *args, **kwargs):
+        raise ValidationError(
+            f"Updates are not allowed on {self.__class__.__name__} model."
+        )
+
+    def bulk_update(self, *args, **kwargs):
+        raise ValidationError(
+            f"Bulk updates are not allowed on {self.__class__.__name__} model."
+        )
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError(
+            f"Deletes are not allowed on {self.__class__.__name__} model."
+        )
+
+
+class ImmutableModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = ImmutableManager()
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError(
+                f"{self.__class__.__name__} instances cannot be modified after creation."
+            )
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError(f"{self.__class__.__name__} instances cannot be deleted.")
+
+    class Meta:
+        abstract = True

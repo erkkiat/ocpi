@@ -126,6 +126,24 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
+    def test_post_solid_tariffs_by_resending_same_request_twice_creates_single_record_in_database(
+        self,
+        client,
+        smp1_solid_tariff_with_all_records,
+        msp_de_ice,
+        smp1_solid_tariff_response_with_all_records,
+        operator_fi_cpo,
+    ):
+        SolidTariff.objects.all().delete()
+        url = reverse("solid-tariff-list")
+
+        client.post(url, smp1_solid_tariff_with_all_records)
+        client.post(url, smp1_solid_tariff_with_all_records)
+
+        assert SolidTariff.objects.all().count() == 1
+
+    @pytest.mark.django_db
+    @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     def test_post_solid_tariffs_with_minimal_records_returns_status_code_200(
         self,
         client,
@@ -241,6 +259,7 @@ class TestSolidTariffs:
         msp_de_ice,
         smp1_update_response,
     ):
+        SolidTariff.objects.all().delete()
         SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
 
         url = reverse("solid-tariff-list")
@@ -248,6 +267,12 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_update_response
+        assert (
+            SolidTariff.objects.filter(
+                external_id=smp1_update_tariff_data["external_id"]
+            ).count()
+            == 2
+        )
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
@@ -266,6 +291,12 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_solid_tariff_response_with_minimal_records
+        assert (
+            SolidTariff.objects.filter(
+                external_id=smp1_msp1_solid_tariff_with_all_records["external_id"]
+            ).count()
+            == 2
+        )
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
@@ -284,6 +315,12 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_solid_tariff_response_with_zero_pricing
+        assert (
+            SolidTariff.objects.filter(
+                external_id=smp1_solid_tariff_zero_pricing["external_id"]
+            ).count()
+            == 2
+        )
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
@@ -325,7 +362,6 @@ class TestSolidTariffs:
     def test_put_solid_tariff_no_msp_returns_status_code_200(
         self,
         client,
-        smp1_tariff,
         solid_tariff_smp1_msp1_data,
         solid_tariff_smp1_msp1_update_data,
         smp1_update_tariff_without_msp_response,
@@ -341,6 +377,12 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_update_tariff_without_msp_response
+        assert (
+            SolidTariff.objects.filter(
+                external_id=smp1_update_tariff_no_msp["external_id"]
+            ).count()
+            == 2
+        )
 
     @pytest.mark.parametrize(
         "sd_type,expected_price",
