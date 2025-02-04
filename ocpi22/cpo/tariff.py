@@ -122,9 +122,6 @@ class SolidTariffViewSet(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
-    def patch(self, request, external_id=None):
-        return self.put(request, external_id, partial=True)
-
     @action(
         methods=["GET", "PUT"],
         detail=False,
