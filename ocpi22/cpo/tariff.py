@@ -56,15 +56,18 @@ class SolidTariffViewSet(
                 },
             )
             if serializer.is_valid():
-                tariff, solid_tariff = serializer.save(ocpi_master=our_role)
-                tariff.send_updates()
+                saved_data_dict = serializer.save(ocpi_master=our_role)
+                saved_data_dict["tariff"].send_updates()
                 http_status = (
-                    status.HTTP_200_OK if solid_tariff else status.HTTP_201_CREATED
+                    status.HTTP_200_OK
+                    if saved_data_dict["solid_tariff"]
+                    else status.HTTP_201_CREATED
                 )
                 return Response(
                     self.get_response_data(
                         model_to_dict(
-                            solid_tariff, exclude=["id", "operator", "archived"]
+                            saved_data_dict["solid_tariff"],
+                            exclude=["id", "operator", "archived"],
                         )
                     ),
                     status=http_status,
@@ -95,16 +98,19 @@ class SolidTariffViewSet(
             )
 
             if serializer.is_valid():
-                data = serializer.save(ocpi_master=our_role)
-                if data["created"]:
-                    data["tariff"].send_updates()
+                saved_data_dict = serializer.save(ocpi_master=our_role)
+                if saved_data_dict["created"]:
+                    saved_data_dict["tariff"].send_updates()
                 http_status = (
-                    status.HTTP_200_OK if data["tariff"] else status.HTTP_201_CREATED
+                    status.HTTP_200_OK
+                    if saved_data_dict["tariff"]
+                    else status.HTTP_201_CREATED
                 )
                 return Response(
                     self.get_response_data(
                         model_to_dict(
-                            data["solid_tariff"], exclude=["id", "operator", "archived"]
+                            saved_data_dict["solid_tariff"],
+                            exclude=["id", "operator", "archived"],
                         )
                     ),
                     status=http_status,
