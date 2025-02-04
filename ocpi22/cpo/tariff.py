@@ -221,7 +221,8 @@ class SolidTariffViewSet(
         if not msp:
             del data["msp"]
             return data
-        data["msp"] = CredentialsRole.objects.get(id=msp).party_str()
+        msp_db = CredentialsRole.objects.get_if_exists(id=msp)
+        data["msp"] = msp_db.party_str() if msp_db else ""
         return data
 
     def get_msp(cls, msp) -> CredentialsRole | None:
