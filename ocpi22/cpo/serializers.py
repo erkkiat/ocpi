@@ -648,15 +648,6 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
 
     def create(self, validated_data):
-        def update_or_create_price_components(price, tariff_type) -> None:
-            data = dict(price=price, vat=vat, step_size=1)
-            pc, created = PriceComponent.objects.get_or_create(
-                tariff_element=te, type=tariff_type, defaults=data
-            )
-            if not created:
-                self.update_fields(pc, data, self.partial)
-                pc.save()
-
         currency = validated_data.get(CurrencySerializer.key)
 
         operator = validated_data.get("ocpi_master")
@@ -689,6 +680,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
                     ocpi_master=validated_data.get("ocpi_master"),
                     currency=currency,
                 )
+            else:
+                tariff = tariff.first()
             te, _created = TariffElement.objects.get_or_create(tariff=tariff)
             if per_kwh:
                 PriceComponent.objects.update_or_create(

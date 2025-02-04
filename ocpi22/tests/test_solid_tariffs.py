@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 
 from ocpi22.models.tariff import SolidTariff
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import TariffFactory
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 
@@ -28,6 +29,7 @@ def tariff_smp1_msp_de_icd(operator_fi_cpo):
 @pytest.fixture(autouse=True)
 def clear_cache():
     get_our_credentialsrole.cache_clear()
+    get_credentialsrole.cache_clear()
 
 
 @pytest.fixture
@@ -234,7 +236,7 @@ class TestSolidTariffs:
     def test_put_solid_tariff_with_all_valid_records_returns_status_code_200(
         self,
         client,
-        smp1_update_tariff,
+        smp1_update_tariff_data,
         solid_tariff_smp1_msp1_data,
         msp_de_ice,
         smp1_update_response,
@@ -242,7 +244,7 @@ class TestSolidTariffs:
         SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
 
         url = reverse("solid-tariff-list")
-        response = client.put(url, smp1_update_tariff)
+        response = client.put(url, smp1_update_tariff_data)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_update_response
@@ -303,7 +305,7 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_create_solid_tariff_with_no_msp(
+    def test_post_solid_tariff_with_no_msp_returns_status_code_200(
         self,
         client,
         smp1_tariff_no_msp,
@@ -320,7 +322,7 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_put_solid_tariff_no_msp(
+    def test_put_solid_tariff_no_msp_returns_status_code_200(
         self,
         client,
         smp1_tariff,

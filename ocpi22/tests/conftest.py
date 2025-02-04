@@ -232,7 +232,7 @@ def smp1_tariff_update_data_with_no_external_id():
 
 
 @pytest.fixture
-def smp1_update_tariff():
+def smp1_update_tariff_data():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
