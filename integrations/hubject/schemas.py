@@ -19,7 +19,7 @@ from pydantic import (
     field_validator,
 )
 
-from ocpi22.util import CURRENCY_CHOICES
+from ocpi22.util import VALID_CURRENCY_CODE_SET
 
 """
 Hubject OICP 2.3 data types
@@ -1156,8 +1156,7 @@ class HubjectDefaultTariff(BaseModel):
     @field_validator("currency")
     @classmethod
     def check_currency(cls, value):
-        valid_currencies = {code for code, _ in CURRENCY_CHOICES}
-        if value not in valid_currencies:
+        if value not in VALID_CURRENCY_CODE_SET:
             raise ValueError(f"Invalid currency: {value}.")
         return value
 
