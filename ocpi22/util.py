@@ -189,6 +189,33 @@ CURRENCY_CHOICES = (
     ("UAH", "Ukrainian hryvnia"),
 )
 
+VALID_CURRENCY_CODE_SET = {
+    "PHP",
+    "CZK",
+    "RUB",
+    "USD",
+    "TRY",
+    "HUF",
+    "RSD",
+    "UAH",
+    "MDL",
+    "HRK",
+    "BGN",
+    "CHF",
+    "GBP",
+    "RON",
+    "SEK",
+    "EUR",
+    "BYN",
+    "NOK",
+    "PLN",
+    "MKD",
+    "BAM",
+    "DKK",
+    "ALL",
+    "ISK",
+}
+
 
 def get_currency_choices() -> dict:
     return dict(CURRENCY_CHOICES)

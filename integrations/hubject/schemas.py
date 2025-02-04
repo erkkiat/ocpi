@@ -9,10 +9,17 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, confloat, conint, constr, RootModel
-from pydantic.v1 import validator
+from pydantic import (
+    BaseModel,
+    Field,
+    confloat,
+    conint,
+    constr,
+    RootModel,
+    field_validator,
+)
 
-from ocpi22.util import CURRENCY_CHOICES
+from ocpi22.util import VALID_CURRENCY_CODE_SET
 
 """
 Hubject OICP 2.3 data types
@@ -1146,11 +1153,10 @@ class HubjectDefaultTariff(BaseModel):
         examples=["KILOWATT_HOUR", "MINUTE", "HOUR"],
     )
 
+    @field_validator("currency")
     @classmethod
-    @validator("currency")
     def check_currency(cls, value):
-        valid_currencies = {code for code, _ in CURRENCY_CHOICES}
-        if value not in valid_currencies:
+        if value not in VALID_CURRENCY_CODE_SET:
             raise ValueError(f"Invalid currency: {value}.")
         return value
 
@@ -1165,18 +1171,3 @@ class HubjectDefaultTariff(BaseModel):
                 return HubjectPriceComponent.HOUR
             case _:
                 raise ValueError("Invalid price_component")
-
-
-# start this file from command line
-if __name__ == "__main__":
-    import sys
-    import json
-    from pydantic import ValidationError
-
-    # validate the schema
-    try:
-        ERoamingPushEvseData.parse_raw(sys.stdin.read())
-    except ValidationError as e:
-        print(json.dumps(e.errors(), indent=2))
-        sys.exit(1)
-    sys.exit(0)
