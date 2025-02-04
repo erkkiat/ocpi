@@ -562,3 +562,7 @@ class SolidTariff(models.Model):
                 return self.parking_price_per_min
             case _:
                 return None
+
+    @staticmethod
+    def is_duplicate(data: dict) -> bool:
+        return SolidTariff.objects.filter(**data).exists()
