@@ -23,7 +23,6 @@ from integrations.hubject.schemas import (
     ProviderIDAsterisk,
     HubjectDefaultTariff,
 )
-from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
@@ -32,7 +31,6 @@ from ocpi22.tests.factories import LocationFactory, EvseFactory
 
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite("integrations.solid_to_hubject_converter"))
-    tests.addTests(doctest.DocTestSuite("integrations.hubject_to_ocpi_converter"))
     return tests
 
 
@@ -159,7 +157,6 @@ def emsdetten2_evse(emsdetten_connector):
 
 class TestMappings:
     _ocpi_2_oicp_converter = SolidToHubjectConverter()
-    _oicp_to_ocpi_converter = HubjectToOCPIConverter()
 
     def test_map_connector_std_choices_to_plug_unknown(self):
         with pytest.raises(ValidationError):
