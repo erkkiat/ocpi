@@ -53,3 +53,10 @@ def default_credentials():
     )
 
     return credentials
+
+
+@pytest.fixture(autouse=True)
+def enable_db_access_for_doctests(request, django_db_blocker):
+    """Allow database access for doctests only."""
+    if request.node.getparent(pytest.DoctestItem):
+        django_db_blocker.unblock()
