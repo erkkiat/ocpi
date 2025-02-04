@@ -46,34 +46,15 @@ class SolidTariffViewSet(
             data = data.get(
                 "data", data
             )  # Is the actual data on the top level or one level lower?
-            external_id = external_id or request.data.get("external_id")
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            msp = self.get_msp(request.data.get("msp"))
 
-            existing_solid_tariff = SolidTariff.objects.filter(
-                external_id__iexact=external_id,
-                operator=our_role,
-                archived=False,
-                msp=msp,
+            serializer = SolidTariffSerializer(
+                data=data,
+                context={
+                    "request": request,
+                    "party": Party(country_code, party_id),
+                },
             )
-            if existing_solid_tariff.exists():
-                serializer = SolidTariffSerializer(
-                    data=data,
-                    instance=existing_solid_tariff.first(),
-                    partial=False,
-                    context={
-                        "request": request,
-                        "party": Party(country_code, party_id),
-                    },
-                )
-            else:
-                serializer = SolidTariffSerializer(
-                    data=data,
-                    context={
-                        "request": request,
-                        "party": Party(country_code, party_id),
-                    },
-                )
             if serializer.is_valid():
                 tariff, solid_tariff = serializer.save(ocpi_master=our_role)
                 tariff.send_updates()
@@ -103,35 +84,16 @@ class SolidTariffViewSet(
             data = data.get(
                 "data", data
             )  # Is the actual data on the top level or one level lower?
-            external_id = external_id or request.data.get("external_id")
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            msp = self.get_msp(request.data.get("msp"))
 
-            existing_solid_tariff = SolidTariff.objects.filter(
-                external_id__iexact=external_id,
-                operator=our_role,
-                archived=False,
-                msp=msp,
+            serializer = SolidTariffSerializer(
+                data=data,
+                context={
+                    "request": request,
+                    "party": Party(country_code, party_id),
+                },
             )
 
-            if not existing_solid_tariff:
-                serializer = SolidTariffSerializer(
-                    data=data,
-                    context={
-                        "request": request,
-                        "party": Party(country_code, party_id),
-                    },
-                )
-            else:
-                serializer = SolidTariffSerializer(
-                    data=data,
-                    instance=existing_solid_tariff.first(),
-                    partial=partial,
-                    context={
-                        "request": request,
-                        "party": Party(country_code, party_id),
-                    },
-                )
             if serializer.is_valid():
                 tariff, solid_tariff = serializer.save(ocpi_master=our_role)
                 tariff.send_updates()

@@ -724,25 +724,37 @@ class SolidTariffSerializer(SerializerCleanedUp):
                 self.update_fields(pc, data, self.partial)
                 pc.save()
 
-        def update_solid_tariff():
-            self.update_fields(solid_tariff, fields_to_update, self.partial)
+        def create_immutable_solid_tariff():
+            solid_tariff = SolidTariff(
+                external_id=validated_data["external_id"],
+                currency=data.get("currency"),
+                price_per_kwh=data.get("price_per_kwh"),
+                price_per_min=data.get("price_per_min"),
+                price_flat=data.get("price_flat"),
+                parking_price_per_min=data.get("parking_price_per_min"),
+                parking_grace_period=data.get("parking_grace_period"),
+                vat_percentage=data.get("vat_percentage"),
+                msp=data.get("msp"),
+                operator=data.get("operator"),
+            )
             solid_tariff.save()
 
-        external_id = solid_tariff.external_id
-        msp = solid_tariff.msp
-        tariff = Tariff.objects.get_if_exists(uid=self.get_uid(external_id, msp))
+        data = self.get_data_as_dict(validated_data)
 
-        fields_to_update = self.get_fields_to_update(validated_data)
+        # Todo: This is going to be immutable in the upcoming PRs
+        tariff = Tariff.objects.get_if_exists(
+            uid=self.get_uid(validated_data["external_id"], data.get("msp"))
+        )
 
         with transaction.atomic():
             te, _created = TariffElement.objects.get_or_create(tariff=tariff)
             vat = validated_data.get(VatSerializer.key)
 
             price_components = (
-                (fields_to_update["price_per_kwh"], "ENERGY"),
-                (fields_to_update["price_per_min"], "TIME"),
-                (fields_to_update["price_flat"], "FLAT"),
-                (fields_to_update["parking_price_per_min"], "PARKING_TIME"),
+                (data["price_per_kwh"], "ENERGY"),
+                (data["price_per_min"], "TIME"),
+                (data["price_flat"], "FLAT"),
+                (data["parking_price_per_min"], "PARKING_TIME"),
             )
             for price, tariff_type in price_components:
                 if price is not None:
@@ -755,11 +767,11 @@ class SolidTariffSerializer(SerializerCleanedUp):
             if vat is not None:
                 te.price_components.update(vat=vat)
 
-            update_solid_tariff()
+            create_immutable_solid_tariff()
 
         return tariff, solid_tariff
 
-    def get_fields_to_update(self, validated_data: dict):
+    def get_data_as_dict(self, validated_data: dict):
         per_kwh = validated_data.get(PriceKwhSerializer.key)
         per_min = validated_data.get(PriceMinSerializer.key)
         flat = validated_data.get(PriceFlatSerializer.key)
@@ -767,6 +779,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
         grace_period = validated_data.get("parking_grace_period")
         vat = validated_data.get(VatSerializer.key)
         currency = validated_data.get(CurrencySerializer.key)
+        operator = validated_data.get("ocpi_master")
+        msp = validated_data.get("msp")
 
         return {
             "price_per_kwh": per_kwh,
@@ -776,6 +790,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
             "parking_grace_period": grace_period,
             "currency": currency,
             "vat_percentage": vat,
+            "operator": operator,
+            "msp": msp,
         }
 
     def get_uid(self, uid, msp):
