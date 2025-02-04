@@ -636,17 +636,17 @@ def recursive_update_last_updated(obj):
 class ImmutableManager(PartnerManager):
     def update(self, *args, **kwargs):
         raise ValidationError(
-            f"Updates are not allowed on {self.__class__.__name__} model."
+            f"Updates are not allowed on {self.__class__.__name__} model"
         )
 
     def bulk_update(self, *args, **kwargs):
         raise ValidationError(
-            f"Bulk updates are not allowed on {self.__class__.__name__} model."
+            f"Bulk updates are not allowed on {self.__class__.__name__} model"
         )
 
     def delete(self, *args, **kwargs):
         raise ValidationError(
-            f"Deletes are not allowed on {self.__class__.__name__} model."
+            f"Deletes are not allowed on {self.__class__.__name__} model"
         )
 
 
@@ -658,12 +658,12 @@ class ImmutableModel(models.Model):
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError(
-                f"{self.__class__.__name__} instances cannot be modified after creation."
+                f"{self.__class__.__name__} instances cannot be modified after creation"
             )
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        raise ValidationError(f"{self.__class__.__name__} instances cannot be deleted.")
+        raise ValidationError(f"{self.__class__.__name__} instances cannot be deleted")
 
     class Meta:
         abstract = True

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -401,3 +402,27 @@ class TestSolidTariffs:
         )
 
         assert sd.get_type(sd_type) == expected_price
+
+    @pytest.fixture()
+    def solid_tariff_smp1_msp1(self, solid_tariff_smp1_msp1_data):
+        return SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
+
+    @pytest.mark.django_db
+    def test_solid_tariff_save_raises_validation_error_when_solid_tariff_pk_exists(
+        self, solid_tariff_smp1_msp1_data, solid_tariff_smp1_msp1
+    ):
+        with pytest.raises(
+            ValidationError,
+            match="SolidTariff instances cannot be modified after creation.",
+        ):
+            solid_tariff_smp1_msp1.currency = "LKR"
+            solid_tariff_smp1_msp1.save()
+
+    @pytest.mark.django_db
+    def test_solid_tariff_delete_raises_validation_error_when_immutable(
+        self, solid_tariff_smp1_msp1_data, solid_tariff_smp1_msp1
+    ):
+        with pytest.raises(
+            ValidationError, match="SolidTariff instances cannot be deleted"
+        ):
+            solid_tariff_smp1_msp1.delete()
