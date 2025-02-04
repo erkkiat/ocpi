@@ -95,24 +95,20 @@ class SolidTariffViewSet(
             )
 
             if serializer.is_valid():
-                tariff, solid_tariff = serializer.save(ocpi_master=our_role)
-                if tariff and solid_tariff:
-                    tariff.send_updates()
-                    http_status = (
-                        status.HTTP_200_OK if tariff else status.HTTP_201_CREATED
-                    )
-                    return Response(
-                        self.get_response_data(
-                            model_to_dict(
-                                solid_tariff, exclude=["id", "operator", "archived"]
-                            )
-                        ),
-                        status=http_status,
-                    )
-                else:
-                    return Response(
-                        "Already exists", status=status.HTTP_400_BAD_REQUEST
-                    )
+                data = serializer.save(ocpi_master=our_role)
+                if data["created"]:
+                    data["tariff"].send_updates()
+                http_status = (
+                    status.HTTP_200_OK if data["tariff"] else status.HTTP_201_CREATED
+                )
+                return Response(
+                    self.get_response_data(
+                        model_to_dict(
+                            data["solid_tariff"], exclude=["id", "operator", "archived"]
+                        )
+                    ),
+                    status=http_status,
+                )
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except (IntegrityError, MspNotFoundError) as e:
