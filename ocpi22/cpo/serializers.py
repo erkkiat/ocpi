@@ -660,8 +660,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
         parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
         grace_period = validated_data.get("parking_grace_period")
 
-        per_hr = per_min * 60 if per_min else None
-        parking_price_per_hr = parking_price * 60 if parking_price else None
+        per_hr = float(per_min) * 60 if per_min else None
+        parking_price_per_hr = float(parking_price) * 60 if parking_price else None
 
         data = self.get_data_as_dict(validated_data)
         if SolidTariff.is_duplicate(data):
