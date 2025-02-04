@@ -101,6 +101,7 @@ class TokenAuthorization:
         Party(country_code='', party_id='')
         >>> TokenAuthorization.get_token_owner(dict(country_code='FI', party_id='EON'))
         Party(country_code='FI', party_id='EON')
+
         @param token:
         @return:
         """

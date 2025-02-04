@@ -4,7 +4,7 @@ import base64
 import doctest
 import json
 import os
-from typing import Optional, Mapping, Any
+from typing import Optional
 from urllib.parse import urljoin
 
 import pytest
@@ -14,7 +14,7 @@ from rest_framework.exceptions import NotAuthenticated
 
 import uuid
 from collections import OrderedDict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 
 from datetime import timedelta, datetime
 from decimal import Decimal
@@ -52,7 +52,10 @@ from ocpiconnector.testutil import (
     MockUuid4,
     MockResponse,
     make_json_response,
+    get_fake_admin,
+    BetterTestCase,
 )
+from settlement.views import CdrReportViews
 from util import reverse
 
 from ocpi22.msp.api import MspRoamingViewSet
@@ -304,7 +307,6 @@ class ApiPutTests(TestCase):
             data, dict
         ), f'There should be a dict element "data" in the Location: {response.data}'
 
-        # Coordinates
         coordinates = data.get("coordinates")
         assert isinstance(coordinates, dict)
         latitude = coordinates.get("latitude")
@@ -324,7 +326,6 @@ class ApiPutTests(TestCase):
             len(decimals) == 6
         ), "e-clearing.net: There should be exactly 6 decimals in longitude"
 
-        # EVSES
         evses = data.get("evses")
         assert isinstance(evses, list), "Location EVSEs should be a list"
         for evse in evses:
@@ -3639,23 +3640,29 @@ def send_create_user(data):
     return UserViewSet().register(request)
 
 
-@dataclass
-class FakeUser:
-    username: str
-    is_staff: bool
-    is_superuser: bool
-
-
-def get_fake_admin():
-    return FakeUser("admin", True, True)
-
-
 def post_cdr(data):
     request = api_factory.post(reverse("cdr-list"))
     request.data = data
     request.user = get_fake_admin()
     request.version = "2.2.1"
     return CdrViewSet().post(request)
+
+
+class TestInvoiceReportView(TestCase):
+    fixtures = ["ocpi22/data/credentials.json"]
+
+    def test_that_empty_billing_list_works_without_errors(self):
+        request = api_factory.get(reverse("billing-list"))
+        request.user = get_fake_admin()
+        request.query_params = {}
+        response = CdrReportViews().session_list(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data,
+            OrderedDict(
+                [("count", 0), ("next", None), ("previous", None), ("results", [])]
+            ),
+        )
 
 
 class TestOCPIAuthentication(TestCase):
@@ -3777,20 +3784,6 @@ class TestTasks(TestCase):
             check_still_alive(self.credentials_id)
         credentials = Credentials.objects.get(pk=self.credentials_id)
         self.assertEqual(credentials.last_connection, None)
-
-
-class BetterTestCase(
-    TestCase
-):  # Seeing first how this works before during a big refactoring
-    def assertDictEqual(
-        self, d1: Mapping[Any, object], d2: Mapping[Any, object], msg: Any = ...
-    ) -> None:
-        self.assertTrue(compare_dicts_recursively(d1, d2), msg)
-
-    def assertListEqual(
-        self, list1: list[Any], list2: list[Any], msg: Any = ...
-    ) -> None:
-        self.assertTrue(compare_lists_recursively(list1, list2), msg)
 
 
 class TokenAuthorizationTests(BetterTestCase):

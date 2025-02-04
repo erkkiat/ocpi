@@ -48,8 +48,6 @@ from ocpiconnector.party import Party
 from util import format_url, RedisStore, redis_store, with_trailing_slash
 
 
-# slack_logger.init()
-
 logger = getLogger(__name__)
 
 
@@ -333,6 +331,7 @@ def calculate_partition(coordinate):
 def is_our_identifier(party: Party, identities=None) -> bool:
     """
     Check if the given country_code and party_id match one of our identities
+    >>> from ocpiconnector.ocpi_identities import OCPIIdentities
     >>> test_identities = OCPIIdentities(source={'CPO': 'FI*CPO', 'EMSP': 'FI*MSP'})
     >>> is_our_identifier(Party('FI', 'MSP'), identities=test_identities)
     True
