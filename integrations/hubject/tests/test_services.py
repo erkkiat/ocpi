@@ -392,18 +392,16 @@ class TestHubjectService:
         assert default_tariff.currency == "USD"
 
     def test_hubject_default_raises_validation_error_given_invalid_currency(self):
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="Invalid currency: INV"):
             HubjectDefaultTariff(
                 currency="INV", price=0.34, price_component=HubjectPriceComponent.KWH
             )
-            assert str(excinfo.value) == "Invalid currency: INV."
 
     def test_hubject_default_raises_validation_error_given_blank_currency(self):
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="Invalid currency: "):
             HubjectDefaultTariff(
                 currency="", price=0.34, price_component=HubjectPriceComponent.KWH
             )
-            assert str(excinfo.value) == "Invalid currency: ."
 
     @pytest.mark.parametrize(
         "price_component, expected",
