@@ -118,7 +118,7 @@ def smp1_patch_response():
 class TestSolidTariffs:
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_create_solid_tariff_success(
+    def test_post_solid_tariffs_with_all_valid_records_returns_status_code_200(
         self,
         client,
         smp1_solid_tariff_with_all_records,
@@ -136,7 +136,7 @@ class TestSolidTariffs:
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
-    def test_create_solid_tariff_success_with_minimal_records(
+    def test_post_solid_tariffs_with_minimal_records_returns_status_code_200(
         self,
         mock_get_our_credentialsrole,
         client,
@@ -156,7 +156,7 @@ class TestSolidTariffs:
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
-    def test_create_solid_tariff_success_with_zero_pricing(
+    def test_post_solid_tariffs_with_zero_pricing_returns_status_code_200(
         self,
         mock_get_our_credentialsrole,
         client,
@@ -168,7 +168,6 @@ class TestSolidTariffs:
         mock_get_our_credentialsrole.return_value = msp_de_ice
         url = reverse("solid-tariff-list")
         response = client.post(url, smp1_solid_tariff_zero_pricing)
-        print(response.json())
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_solid_tariff_response_with_zero_pricing
@@ -176,7 +175,7 @@ class TestSolidTariffs:
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
-    def test_create_solid_tariff_success_with_minus_pricing(
+    def test_post_solid_tariff_with_minus_pricing_returns_status_code_400(
         self,
         mock_get_our_credentialsrole,
         client,
@@ -195,7 +194,7 @@ class TestSolidTariffs:
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     @patch("ocpiconnector.ocpi_identities.get_our_credentialsrole")
-    def test_get_solid_tariff_success(
+    def test_get_solid_tariffs_returns_expected_data_records(
         self,
         mock_get_our_credentialsrole,
         client,
