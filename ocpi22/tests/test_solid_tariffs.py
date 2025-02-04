@@ -105,21 +105,6 @@ def smp1_create_response_no_msp():
     }
 
 
-@pytest.fixture
-def smp1_patch_response():
-    return {
-        "external_id": "SMP1",
-        "currency": "USD",
-        "price_per_kwh": 0.69,
-        "price_per_min": 0.42,
-        "price_flat": 0.56,
-        "parking_price_per_min": 0.54,
-        "parking_grace_period": 100,
-        "vat_percentage": 20.0,
-        "msp": "DE*ICE",
-    }
-
-
 class TestSolidTariffs:
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
@@ -148,7 +133,6 @@ class TestSolidTariffs:
     ):
         url = reverse("solid-tariff-list")
         response = client.post(url, smp1_solid_tariff_minimal_records)
-        print(response.json())
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_solid_tariff_response_with_minimal_records
@@ -247,7 +231,7 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_update_solid_tariff(
+    def test_put_solid_tariff_with_all_valid_records_returns_status_code_200(
         self,
         client,
         smp1_update_tariff,
@@ -265,7 +249,7 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_update_solid_tariff_success_with_minimal_records(
+    def test_put_solid_tariff_with_minimal_records_returns_status_code_200(
         self,
         client,
         smp1_msp1_solid_tariff_with_all_records,
@@ -283,7 +267,7 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_update_solid_tariff_success_with_zero_pricing(
+    def test_put_solid_tariff_with_zero_pricing_returns_status_code_200(
         self,
         client,
         smp1_solid_tariff_zero_pricing,
@@ -301,9 +285,8 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_update_solid_tariff_success_with_minus_pricing(
+    def test_put_solid_tariff_with_minus_pricing_returns_status_code_400(
         self,
-        mock_get_our_credentialsrole,
         client,
         smp1_solid_tariff_minus_pricing,
         msp_de_ice,
@@ -317,26 +300,6 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json() == smp1_solid_tariff_response_with_minus_pricing
-
-    @pytest.mark.django_db
-    @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_patch_solid_tariff(
-        self,
-        client,
-        smp1_tariff,
-        smp1_patch_tariff_payload,
-        msp_de_ice,
-        tariff_smp1_msp_de_ice,
-        solid_tariff_smp1_msp1_data,
-        smp1_patch_response,
-    ):
-        SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
-
-        patch_url = f"{reverse('solid-tariff-list')}{msp_de_ice.country_code}/{msp_de_ice.party_id}/{smp1_tariff['external_id']}/"
-        response = client.patch(patch_url, smp1_patch_tariff_payload)
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_patch_response
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
@@ -357,7 +320,7 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
-    def test_update_solid_tariff_no_msp(
+    def test_put_solid_tariff_no_msp(
         self,
         client,
         smp1_tariff,

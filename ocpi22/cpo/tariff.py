@@ -126,7 +126,7 @@ class SolidTariffViewSet(
         return self.put(request, external_id, partial=True)
 
     @action(
-        methods=["GET", "PATCH", "PUT"],
+        methods=["GET", "PUT"],
         detail=False,
         url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<external_id>[^/.]+)",
     )
@@ -164,11 +164,10 @@ class SolidTariffViewSet(
                 )
                 return Response(serializer.data)
 
-            partial = bool(request.method == "PATCH")
             serializer = SolidTariffSerializer(
                 solid_tariff,
                 data=request.data,
-                partial=partial,
+                partial=False,
                 context={"request": request},
             )
             if serializer.is_valid():
@@ -201,7 +200,7 @@ class SolidTariffViewSet(
             )
 
     @action(
-        methods=["GET", "PATCH", "PUT"],
+        methods=["GET", "PUT"],
         detail=False,
         url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)",
     )
