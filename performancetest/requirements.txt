@@ -1,4 +1,0 @@
-locust
-pytz
-requests
-icecream

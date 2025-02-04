@@ -119,7 +119,7 @@ def reverse(s, args=None, request=None, version=None, kwargs=None) -> str:
     if kwargs:
         kwargs["version"] = version
     else:
-        version_args = [version, *args]
+        version_args = [str(version), *args]
     try:
         return django_reverse(s, args=version_args, request=request, kwargs=kwargs)
     except NoReverseMatch:
