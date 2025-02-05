@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
 from django.utils.translation import gettext_lazy as _
-from moesifpythonrequest.start_capture.start_capture import StartCapture
 
 from ocpiconnector.settings.configure_sentry import setup_sentry
 
@@ -495,9 +494,6 @@ MOESIF_MIDDLEWARE = {
     "CAPTURE_OUTGOING_REQUESTS": True,  # Set to True to also capture outgoing calls to 3rd parties.
     "IDENTIFY_USER": identify_user,  # Optional hook to link API calls to users
 }
-
-if MOESIF_MIDDLEWARE.get("APPLICATION_ID"):
-    StartCapture().start_capture_outgoing(MOESIF_MIDDLEWARE)
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
