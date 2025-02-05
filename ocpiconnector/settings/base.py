@@ -328,7 +328,6 @@ INSTALLED_APPS = [
     "ocpi22",
     "ocpiconnector",
     "webhooks",
-    "hub",
     "settlement",
     "django.contrib.admin",
     "whitenoise",

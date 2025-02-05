@@ -42,6 +42,8 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     ProductID,
     ProviderIDAsterisk,
+    HubjectDefaultTariff,
+    HubjectPriceComponent,
 )
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
@@ -382,6 +384,44 @@ class TestHubjectService:
         with pytest.raises(ValueError) as excinfo:
             self.__hubject_service.get_default_tariffs()
         assert str(excinfo.value) == ("DEFAULT_OICP_PRICE must be positive")
+
+    def test_hubject_default_returns_currency_success(self):
+        default_tariff = HubjectDefaultTariff(
+            currency="USD", price=0.34, price_component=HubjectPriceComponent.KWH
+        )
+        assert default_tariff.currency == "USD"
+
+    def test_hubject_default_raises_validation_error_given_invalid_currency(self):
+        with pytest.raises(ValueError) as excinfo:
+            HubjectDefaultTariff(
+                currency="INV", price=0.34, price_component=HubjectPriceComponent.KWH
+            )
+            assert str(excinfo.value) == "Invalid currency: INV."
+
+    def test_hubject_default_raises_validation_error_given_blank_currency(self):
+        with pytest.raises(ValueError) as excinfo:
+            HubjectDefaultTariff(
+                currency="", price=0.34, price_component=HubjectPriceComponent.KWH
+            )
+            assert str(excinfo.value) == "Invalid currency: ."
+
+    @pytest.mark.parametrize(
+        "price_component, expected",
+        [
+            ("KILOWATT_HOUR", HubjectPriceComponent.KWH),
+            ("MINUTE", HubjectPriceComponent.MINUTE),
+            ("HOUR", HubjectPriceComponent.HOUR),
+        ],
+    )
+    def test_get_price_component_success(self, price_component, expected):
+        price_component = HubjectDefaultTariff.get_price_component(price_component)
+        assert price_component == expected
+
+    def test_get_price_component_raises_value_error_when_given_invalid_price_component(
+        self,
+    ):
+        with pytest.raises(ValueError):
+            HubjectDefaultTariff.get_price_component("INVALID")
 
     @pytest.mark.django_db
     def test_get_operator_evse_data_without_locations_returns_none(self):
