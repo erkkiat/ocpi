@@ -1,4 +1,5 @@
 from django.db import IntegrityError
+from django.db.models import Subquery, OuterRef, Q
 from django.forms import model_to_dict
 from rest_framework import status, mixins
 from rest_framework.decorators import action
@@ -37,6 +38,25 @@ class SolidTariffViewSet(
     serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
+
+    def list(self, request, *args, **kwargs):
+        try:
+            latest_solid_tariffs = SolidTariff.objects.filter(
+                id=Subquery(
+                    SolidTariff.objects.filter(external_id=OuterRef("external_id"))
+                    .filter(Q(msp__id=OuterRef("msp__id")) | Q(msp__isnull=True))
+                    .order_by("-created_at")
+                    .values("id")[:1]
+                )
+            ).order_by("external_id")
+            serializer = SolidTariffSerializer(
+                latest_solid_tariffs, many=True, context={"request": request}
+            )
+            return Response(serializer.data)
+        except Exception as e:
+            return Response(
+                {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
+            )
 
     def create(
         self, request, external_id=None, country_code=None, party_id=None
@@ -136,19 +156,19 @@ class SolidTariffViewSet(
             if msp is None:
                 raise MspNotFoundError(f"No MSP found for {country_code}*{party_id}")
             if external_id is None:
-                solid_tariff = SolidTariff.objects.get(
+                solid_tariff = SolidTariff.objects.filter(
                     external_id__isnull=True,
                     msp_id=msp.id,
                     archived=False,
                     operator=our_role,
-                )
+                ).latest("created_at")
             else:
-                solid_tariff = SolidTariff.objects.get(
+                solid_tariff = SolidTariff.objects.filter(
                     external_id__iexact=external_id,
                     msp_id=msp.id,
                     archived=False,
                     operator=our_role,
-                )
+                ).latest("created_at")
 
             assert request.data.get("external_id") in (
                 external_id,
