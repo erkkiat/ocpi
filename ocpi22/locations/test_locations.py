@@ -80,21 +80,21 @@ def test_pre_save_always_saves_emi3_standard_evse_id():
 
 @pytest.mark.django_db
 class TestPublicAndNonPublicLocations:
-    mocked_function_name = "ocpi22.ocpi.util.OcpiModule.send_all_updates"
+    mock_send_all_updates_name = "ocpi22.ocpi.util.OcpiModule.send_all_updates"
 
     def test_that_exclusive_location_is_not_pushed(self):
-        with patch(self.mocked_function_name) as mock_send:
+        with patch(self.mock_send_all_updates_name) as mock_send_all_updates:
             location = LocationFactory(publish=False)
             location.send_updates()
 
-        assert mock_send.called is False
+        assert mock_send_all_updates.called is False
 
     def test_that_public_location_is_pushed(self):
-        with patch(self.mocked_function_name) as mock_send:
+        with patch(self.mock_send_all_updates_name) as mock_send_all_updates:
             location = LocationFactory(publish=True)
             location.send_updates()
 
-        assert mock_send.called is True
+        assert mock_send_all_updates.called is True
 
     @staticmethod
     def get_location_list(credentials: Credentials):
