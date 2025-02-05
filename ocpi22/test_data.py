@@ -2255,23 +2255,6 @@ class CpoApiData:
     ]
 
 
-class LocationData:
-    webhook_calls = [
-        ("3256", "AVAILABLE"),
-        ("3257", "RESERVED"),
-        ("3256", "AVAILABLE"),
-        ("3257", "RESERVED"),
-        ("3256", "AVAILABLE"),
-        ("3257", "RESERVED"),
-        ("eccb8dd9-4189-433e-b100-cc0945dd17dc", "AVAILABLE"),
-        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
-        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
-        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
-        ("8c1b3487-61ac-40a7-a367-21eee99dbd90", "AVAILABLE"),
-        ("4534ad5f-45be-428b-bfd0-fa489dda932d", "AVAILABLE"),
-    ]
-
-
 class TariffData:
     expected_delete_calls = [
         {

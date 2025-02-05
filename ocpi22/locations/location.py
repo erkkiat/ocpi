@@ -63,19 +63,22 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             return (
                 Location.objects.prefetch_related(*related)
                 .partner_filter(self.request)
+                .exclude(publish=False)
                 .order_by("created")
             )
-        return Location.objects.prefetch_related(*related).order_by("created")
+        return (
+            Location.objects.prefetch_related(*related)
+            .exclude(publish=False)
+            .order_by("created")
+        )
 
     @ocpi_exception_handler
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
     @staticmethod
-    def get_object(uid=None) -> Location:
-        # Needed for OPTIONS to work in list view, could just return None
-        if uid:
-            return get_object_or_404(Location, uid=uid)  # Todo: Data security risk?
+    def get_object(uid=None) -> None:
+        pass
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
@@ -132,7 +135,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         assert (
             uid
         ), "Location ID is a required parameter for LocationViewSet.save_or_update()"
-        existing_location: Location = self.get_queryset().get_if_exists(
+        existing_location: Location = Location.get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )
 
