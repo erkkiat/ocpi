@@ -690,29 +690,29 @@ class SolidTariffSerializer(SerializerCleanedUp):
                 PriceComponent.objects.update_or_create(
                     tariff_element=te,
                     type="ENERGY",
-                    price=per_kwh,
-                    vat=vat,
-                    step_size=1,
+                    defaults={"price": per_kwh, "vat": vat, "step_size": 1},
                 )
             if per_min:
                 PriceComponent.objects.update_or_create(
                     tariff_element=te,
                     type="TIME",
-                    price=per_hr,
-                    vat=vat,
-                    step_size=1,
+                    defaults={"price": per_hr, "vat": vat, "step_size": 1},
                 )
             if flat:
                 PriceComponent.objects.update_or_create(
-                    tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
+                    tariff_element=te,
+                    type="FLAT",
+                    defaults={"price": flat, "vat": vat, "step_size": 1},
                 )
             if parking_price:
                 PriceComponent.objects.update_or_create(
                     tariff_element=te,
                     type="PARKING_TIME",
-                    price=parking_price_per_hr,
-                    vat=vat,
-                    step_size=1,
+                    defaults={
+                        "price": parking_price_per_hr,
+                        "vat": vat,
+                        "step_size": 1,
+                    },
                 )
 
             solid_tariff = SolidTariff(
