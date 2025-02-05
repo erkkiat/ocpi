@@ -45,7 +45,7 @@ async def post_request(session, url, data, ocpi_master, headers=None) -> (int, d
             logger.error(f"Cannot decode JSON response from url {url}")
             json_data = None
 
-        logger.info(f"Response from {url} status: {status} data: {json_data}")
+        logger.info("Response from %s status: %s", url, status, extra=json_data)
         return status, json_data, ocpi_master
 
 
