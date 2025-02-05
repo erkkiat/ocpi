@@ -77,7 +77,8 @@ class SolidTariffViewSet(
             )
             if serializer.is_valid():
                 saved_data_dict = serializer.save(ocpi_master=our_role)
-                saved_data_dict["tariff"].send_updates()
+                if saved_data_dict["created"]:
+                    saved_data_dict["tariff"].send_updates()
                 http_status = (
                     status.HTTP_200_OK
                     if saved_data_dict["solid_tariff"]
