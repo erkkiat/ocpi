@@ -13,3 +13,6 @@ class SolidTariffRepository:
                 .values("id")[:1]
             )
         ).all()
+
+    def is_duplicate(self, **kwargs) -> bool:
+        return SolidTariff.objects.filter(**kwargs).exists()
