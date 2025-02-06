@@ -356,7 +356,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             self.session_id = value.uid
         elif isinstance(value, str):
             self.session_id = value
-        raise ValueError(f"Session must be a Session object or a string, not '{value}'")
+        raise TypeError(
+            f"Session must be a Session object or a string, not '{type(value)}'"
+        )
 
 
 @receiver(post_save, sender=Session)
