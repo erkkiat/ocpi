@@ -1,6 +1,5 @@
 import pytest
 
-from ocpi22.models.cdr import Cdr
 from ocpi22.models.session import Session
 from ocpi22.tests.factories import OCPISessionFactory, TariffFactory
 
