@@ -28,7 +28,7 @@ from ocpi22.util import (
     hours_minutes,
     build_absolute_uri,
 )
-from ocpi22.ocpi.util import OcpiModule, Ocpi, ImmutableModel
+from ocpi22.ocpi.util import OcpiModule, Ocpi
 from ocpiconnector.manager import PartnerManager
 from ocpiconnector.ocpi_identities import get_our_party, ocpi_platform
 from ocpiconnector.util import (
@@ -500,7 +500,7 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
             )
 
 
-class SolidTariff(ImmutableModel):
+class SolidTariff(models.Model):
     external_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
