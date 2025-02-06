@@ -41,7 +41,10 @@ class SolidTariffViewSet(
     service = SolidTariffService()
 
     def list(self, request, *args, **kwargs):
-        self.service.get_all_latest_solid_tariffs()
+        serializer = SolidTariffSerializer(
+            self.service.get_all_latest_solid_tariffs(), many=True
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(
         self, request, external_id=None, country_code=None, party_id=None

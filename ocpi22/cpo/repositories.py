@@ -12,4 +12,4 @@ class SolidTariffRepository:
                 .order_by("-created_at")
                 .values("id")[:1]
             )
-        )
+        ).all()
