@@ -562,5 +562,5 @@ class SolidTariff(models.Model):
                 return None
 
     @staticmethod
-    def is_duplicate(data: dict) -> bool:
-        return SolidTariff.objects.filter(**data).exists()
+    def is_duplicate(**kwargs) -> bool:
+        return SolidTariff.objects.filter(**kwargs).exists()

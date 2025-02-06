@@ -24,26 +24,27 @@ class SolidTariffService:
         per_min = validated_data.get(PriceMinSerializer.key)
         flat = validated_data.get(PriceFlatSerializer.key)
         parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
-        grace_period = validated_data.get("parking_grace_period")
         vat = validated_data.get(VatSerializer.key)
         currency = validated_data.get(CurrencySerializer.key)
-        operator = validated_data.get("ocpi_master")
+        grace_period = validated_data.get("parking_grace_period")
+
+        operator = validated_data.pop("ocpi_master")
+
+        validated_data["operator"] = operator
         msp = validated_data.get("msp")
         external_id = validated_data.get("external_id")
 
         per_hr = float(per_min) * 60 if per_min else None
         parking_price_per_hr = float(parking_price) * 60 if parking_price else None
 
-        if SolidTariff.is_duplicate(validated_data):
+        if SolidTariff.is_duplicate(**validated_data):
             solid_tariff = SolidTariff.objects.filter(**validated_data).first()
-            tariff = Tariff.objects.filter(
-                uid=validated_data.get("external_id")
-            ).first()
+            tariff = Tariff.objects.filter(uid=external_id).first()
             return {"tariff": tariff, "solid_tariff": solid_tariff, "created": False}
 
         with transaction.atomic():
             # Todo: This is going to be immutable in the upcoming PRs
-            tariff = Tariff.objects.filter(uid=validated_data["external_id"])
+            tariff = Tariff.objects.filter(uid=external_id)
 
             if not tariff.exists():
                 tariff = Tariff.objects.create(
