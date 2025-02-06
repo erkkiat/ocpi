@@ -43,6 +43,7 @@ from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
+from ocpi22.tests.factories import TariffFactory
 from ocpiconnector.testutil import (
     compare_dicts_recursively,
     OCPIAPIRequestFactory,
@@ -885,13 +886,16 @@ class ApiPutTests(TestCase):
                 country_code = data.get("country_code")
                 party_id = data.get("party_id")
 
-                create_credentialsrole(
+                ocpi_master = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
                     website="http://example.com",
                     role=OcpiRolesEnum.CPO,
                     credentials=self.credentials,
                 )
+
+                for tariff in data.get("tariffs"):
+                    TariffFactory(uid=tariff.get("id"), ocpi_master=ocpi_master)
 
                 # Send the request
                 response = self.post(url, data, token_base64, viewset)
@@ -1277,7 +1281,7 @@ class CdrTests(TestCase):
         )
         self.assertEqual(session.total_cost_excl_vat, 3.21, "Price doesn't seem right.")
 
-        cdr1: Cdr = Cdr.create_based_on_session(session)
+        cdr1: Cdr = Cdr.from_session(session)
 
         simulation.tasks_requests.post.assert_called_once()
 
@@ -1311,7 +1315,7 @@ class CdrTests(TestCase):
         #
 
         simulation.reset()
-        cdr: Cdr = Cdr.create_based_on_session(session)
+        cdr: Cdr = Cdr.from_session(session)
         simulation.tasks_requests.post.assert_called_once()
 
         self.assertTrue(

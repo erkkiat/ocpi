@@ -288,6 +288,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
             "authorization_reference",
             "cdr_location",
             "tariffs",
+            "charging_periods",
             "total_cost",
             "total_energy",
             "currency",
@@ -300,7 +301,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     id = serializers.CharField(source="uid")
     country_code = serializers.CharField(source="ocpi_master.country_code")
     party_id = serializers.CharField(source="ocpi_master.party_id")
-
+    charging_periods = serializers.JSONField()
     cdr_token = CdrTokenSerializer()
     total_cost = TotalCostSerializer(source="*")
     tariffs = TariffSerializer(many=True, required=True)
