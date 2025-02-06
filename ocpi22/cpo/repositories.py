@@ -4,8 +4,7 @@ from ocpi22.models.tariff import SolidTariff
 
 
 class SolidTariffRepository:
-    @classmethod
-    def get_latest_with_unique_external_id_and_msp(cls) -> QuerySet:
+    def get_latest_with_unique_external_id_and_msp(self) -> QuerySet:
         return SolidTariff.objects.filter(
             id=Subquery(
                 SolidTariff.objects.filter(external_id=OuterRef("external_id"))

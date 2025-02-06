@@ -9,6 +9,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.cpo.serializers import SolidTariffSerializer
+from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
 from ocpiconnector.exceptions import MspNotFoundError
@@ -37,8 +38,10 @@ class SolidTariffViewSet(
     serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
+    service = SolidTariffService()
 
-    def list(self, request, *args, **kwargs): ...
+    def list(self, request, *args, **kwargs):
+        self.service.get_all_latest_solid_tariffs()
 
     def create(
         self, request, external_id=None, country_code=None, party_id=None
