@@ -14,5 +14,5 @@ class SolidTariffRepository:
             )
         ).all()
 
-    def is_duplicate(self, **kwargs) -> bool:
+    def exists(self, **kwargs) -> bool:
         return SolidTariff.objects.filter(**kwargs).exists()

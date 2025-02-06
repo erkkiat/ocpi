@@ -37,7 +37,7 @@ class SolidTariffService:
         per_hr = float(per_min) * 60 if per_min else None
         parking_price_per_hr = float(parking_price) * 60 if parking_price else None
 
-        if self.solid_tariff_repository.is_duplicate(**validated_data):
+        if self.solid_tariff_repository.exists(**validated_data):
             solid_tariff = SolidTariff.objects.get(**validated_data)
             tariff = Tariff.objects.filter(uid=external_id).first()
             return {"tariff": tariff, "solid_tariff": solid_tariff, "created": False}
