@@ -892,7 +892,7 @@ class ApiPutTests(TestCase):
                 )
 
                 for tariff in data.get("tariffs"):
-                    TariffFactory(uid=tariff.get('id'), ocpi_master=ocpi_master)
+                    TariffFactory(uid=tariff.get("id"), ocpi_master=ocpi_master)
 
                 # Send the request
                 response = self.post(url, data, token_base64, viewset)
@@ -1278,7 +1278,7 @@ class CdrTests(TestCase):
         )
         self.assertEqual(session.total_cost_excl_vat, 3.21, "Price doesn't seem right.")
 
-        cdr1: Cdr = Cdr.create_based_on_session(session)
+        cdr1: Cdr = Cdr.from_session(session)
 
         simulation.tasks_requests.post.assert_called_once()
 
@@ -1312,7 +1312,7 @@ class CdrTests(TestCase):
         #
 
         simulation.reset()
-        cdr: Cdr = Cdr.create_based_on_session(session)
+        cdr: Cdr = Cdr.from_session(session)
         simulation.tasks_requests.post.assert_called_once()
 
         self.assertTrue(

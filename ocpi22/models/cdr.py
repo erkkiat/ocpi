@@ -228,9 +228,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Credentials"),
     )
 
-    charging_periods = models.JSONField(
-        null=True, verbose_name=_("Charging periods")
-    )
+    charging_periods = models.JSONField(null=True, verbose_name=_("Charging periods"))
 
     last_updated = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Last updated")
@@ -271,7 +269,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         return hours_minutes(self.total_time)
 
     @classmethod
-    def create_based_on_session(cls, session: Session) -> "Cdr":
+    def from_session(cls, session: Session) -> "Cdr":
         if not session.connector:
             logging.error(
                 f"Not creating a CDR from Session {session.uid} since no Connector is specified"
@@ -287,13 +285,17 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
             session.end_date_time = datetime.now(pytz.utc)
 
         cdr_location = CdrLocation.get_or_create_from_session(session)
-        charging_periods_json = ChargingPeriodSerializer(session.chargingperiods, many=True).data
+        charging_periods_json = ChargingPeriodSerializer(
+            session.chargingperiods, many=True
+        ).data
 
         if not charging_periods_json:
             session.update_charging_periods(
                 kwh=session.kwh, timestamp=session.start_date_time
             )
-            charging_periods_json = ChargingPeriodSerializer(session.chargingperiods.all(), many=True).data
+            charging_periods_json = ChargingPeriodSerializer(
+                session.chargingperiods.all(), many=True
+            ).data
 
         cdr = cls.objects.create(
             uid=generate_cdr_uid(),
@@ -337,7 +339,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def session_changed(cls, instance: Session) -> None:
         if instance.status == Session.COMPLETED and instance.is_ours():
             if not Cdr.objects.filter(session_id=instance.uid).exists():
-                Cdr.create_based_on_session(instance)
+                Cdr.from_session(instance)
 
     def cost(self) -> str:
         return format_cost(
