@@ -5,7 +5,7 @@ from ocpi22.models.session import Session
 from ocpi22.tests.factories import OCPISessionFactory, TariffFactory
 
 
-def create_ocpi_session(cdr_receiver_credentials) -> Session:
+def create_ocpi_session_with_tariff() -> Session:
     session: Session = OCPISessionFactory()
     tariff = TariffFactory(uid="D9931A36-49A3-4C22-BA87-0E3C1792887B")
     session.connector.tariff_ids.set([tariff])
@@ -13,13 +13,8 @@ def create_ocpi_session(cdr_receiver_credentials) -> Session:
 
 
 @pytest.fixture
-def default_ocpi_session(cdr_receiver_credentials) -> Session:
-    return create_ocpi_session(cdr_receiver_credentials)
-
-
-@pytest.fixture
-def default_ocpi_session_and_cdr(cdr_receiver_credentials) -> (Cdr, Session):
-    session = create_ocpi_session(cdr_receiver_credentials)
+def completed_session(cdr_receiver_credentials) -> Session:
+    session = create_ocpi_session_with_tariff()
     session.status = Session.COMPLETED
     session.save()
-    return session, Cdr.objects.get(session_id=session.uid)
+    return session
