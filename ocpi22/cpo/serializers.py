@@ -2,7 +2,6 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
-from django.db import transaction
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 
@@ -12,12 +11,13 @@ from ocpi22.choices import (
     AuthorizationEnum,
 )
 from ocpi22.commands.serializers import CommandResultBaseSerializer
+from ocpi22.cpo.services import SolidTariffService
 from ocpi22.cpo.util import _find_our_evse
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Evse, Connector, Location
 from ocpi22.models.session import Session
-from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent, SolidTariff
+from ocpi22.models.tariff import Tariff, SolidTariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.serializers.util import (
@@ -592,6 +592,7 @@ class ParkingPricePerMinSerializer(PriceSerializer):
 
 
 class SolidTariffSerializer(SerializerCleanedUp):
+    service = SolidTariffService()
     external_id = serializers.CharField(
         validators=[uid_validator],
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
@@ -648,127 +649,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
 
     def create(self, validated_data):
-        currency = validated_data.get(CurrencySerializer.key)
-
-        operator = validated_data.get("ocpi_master")
-        msp = validated_data.get("msp")
-
-        per_kwh = validated_data.get(PriceKwhSerializer.key)
-        per_min = validated_data.get(PriceMinSerializer.key)
-        flat = validated_data.get(PriceFlatSerializer.key)
-        vat = validated_data.get(VatSerializer.key)
-        parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
-        grace_period = validated_data.get("parking_grace_period")
-
-        per_hr = float(per_min) * 60 if per_min else None
-        parking_price_per_hr = float(parking_price) * 60 if parking_price else None
-
-        data = self.get_data_as_dict(validated_data)
-        if SolidTariff.is_duplicate(data):
-            solid_tariff = SolidTariff.objects.filter(**data).first()
-            tariff = Tariff.objects.filter(
-                uid=validated_data.get("external_id")
-            ).first()
-            return {"tariff": tariff, "solid_tariff": solid_tariff, "created": False}
-
-        with transaction.atomic():
-            external_id = validated_data.get("external_id")
-
-            # Todo: This is going to be immutable in the upcoming PRs
-            tariff = Tariff.objects.filter(uid=validated_data["external_id"])
-
-            if not tariff.exists():
-                tariff = Tariff.objects.create(
-                    uid=external_id,
-                    ocpi_master=validated_data.get("ocpi_master"),
-                    currency=currency,
-                )
-            else:
-                tariff = tariff.first()
-            te, _created = TariffElement.objects.get_or_create(tariff=tariff)
-            if per_kwh:
-                PriceComponent.objects.update_or_create(
-                    tariff_element=te,
-                    type="ENERGY",
-                    defaults={"price": per_kwh, "vat": vat, "step_size": 1},
-                )
-            if per_min:
-                PriceComponent.objects.update_or_create(
-                    tariff_element=te,
-                    type="TIME",
-                    defaults={"price": per_hr, "vat": vat, "step_size": 1},
-                )
-            if flat:
-                PriceComponent.objects.update_or_create(
-                    tariff_element=te,
-                    type="FLAT",
-                    defaults={"price": flat, "vat": vat, "step_size": 1},
-                )
-            if parking_price:
-                PriceComponent.objects.update_or_create(
-                    tariff_element=te,
-                    type="PARKING_TIME",
-                    defaults={
-                        "price": parking_price_per_hr,
-                        "vat": vat,
-                        "step_size": 1,
-                    },
-                )
-
-            solid_tariff = SolidTariff(
-                external_id=validated_data.get("external_id"),
-                currency=currency,
-                price_per_kwh=per_kwh,
-                price_per_min=per_min,
-                price_flat=flat,
-                parking_price_per_min=parking_price,
-                parking_grace_period=grace_period,
-                vat_percentage=vat,
-                msp=msp,
-                operator=operator,
-            )
-            solid_tariff.save()
-
-        return {"tariff": tariff, "solid_tariff": solid_tariff, "created": True}
-
-    def get_data_as_dict(self, validated_data: dict) -> dict:
-        per_kwh = validated_data.get(PriceKwhSerializer.key)
-        per_min = validated_data.get(PriceMinSerializer.key)
-        flat = validated_data.get(PriceFlatSerializer.key)
-        parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
-        grace_period = validated_data.get("parking_grace_period")
-        vat = validated_data.get(VatSerializer.key)
-        currency = validated_data.get(CurrencySerializer.key)
-        operator = validated_data.get("ocpi_master")
-        msp = validated_data.get("msp")
-        external_id = validated_data.get("external_id")
-
-        return {
-            "external_id": external_id,
-            "price_per_kwh": per_kwh,
-            "price_per_min": per_min,
-            "price_flat": flat,
-            "parking_price_per_min": parking_price,
-            "parking_grace_period": grace_period,
-            "currency": currency,
-            "vat_percentage": vat,
-            "operator": operator,
-            "msp": msp,
-        }
-
-    def get_uid(self, uid, msp):
-        if not msp:
-            return uid
-        return f"{msp.party_str()}*{uid or 'all'}"
-
-    def update_fields(self, obj, data: dict, partial: bool):
-        for key, value in data.items():
-            if not partial:  # PUT
-                setattr(obj, key, value)
-            if value is not None:  # PATCH
-                setattr(obj, key, value)
-
-        return obj
+        return self.service.create(validated_data)
 
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):
