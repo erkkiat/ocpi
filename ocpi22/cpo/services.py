@@ -1,6 +1,7 @@
 from django.db import transaction
 
 from ocpi22.cpo.repositories import SolidTariffRepository
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import SolidTariff, Tariff, TariffElement, PriceComponent
 
 
@@ -99,3 +100,13 @@ class SolidTariffService:
             solid_tariff.save()
 
         return {"tariff": tariff, "solid_tariff": solid_tariff, "created": True}
+
+    def delete_by_msp_and_external_id(
+        self, msp: CredentialsRole, external_id: str
+    ) -> bool:
+        return self.solid_tariff_repository.delete_all_by_external_id_msp(
+            external_id, msp
+        )
+
+    def delete_by_external_id(self, external_id: str) -> bool:
+        return self.solid_tariff_repository.delete_all_by_external_id(external_id)

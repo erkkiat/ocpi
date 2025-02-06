@@ -16,6 +16,7 @@ from django.db.models import QuerySet
 from django.utils.module_loading import import_string
 from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from ocpi22.choices import OcpiRolesEnum
 from rest_framework.response import Response
@@ -628,3 +629,12 @@ def recursive_update_last_updated(obj):
                 (x for x in obj.connectors.all()),
             )
         )
+
+
+class CannotModify(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS or request.method == "POST":
+            return True
+        elif request.method == "DELETE" and request.user.is_superuser:
+            return True
+        return False

@@ -4,6 +4,7 @@ from rest_framework import status, mixins
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
@@ -12,6 +13,7 @@ from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
+from ocpi22.ocpi.util import CannotModify
 from ocpiconnector.exceptions import MspNotFoundError
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -39,6 +41,7 @@ class SolidTariffViewSet(
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
     service = SolidTariffService()
+    permission_classes = [IsAuthenticated, CannotModify]
 
     def list(self, request, *args, **kwargs):
         serializer = SolidTariffSerializer(
@@ -88,55 +91,12 @@ class SolidTariffViewSet(
                 {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
             )
 
-    def put(
-        self, request, external_id=None, partial=None, country_code=None, party_id=None
-    ) -> Response:
-        try:
-            data = request.data
-            data = data.get(
-                "data", data
-            )  # Is the actual data on the top level or one level lower?
-            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-
-            serializer = SolidTariffSerializer(
-                data=data,
-                context={
-                    "request": request,
-                    "party": Party(country_code, party_id),
-                },
-            )
-
-            if serializer.is_valid():
-                saved_data_dict = serializer.save(ocpi_master=our_role)
-                if saved_data_dict["created"]:
-                    saved_data_dict["tariff"].send_updates()
-                http_status = (
-                    status.HTTP_200_OK
-                    if saved_data_dict["tariff"]
-                    else status.HTTP_201_CREATED
-                )
-                return Response(
-                    self.get_response_data(
-                        model_to_dict(
-                            saved_data_dict["solid_tariff"],
-                            exclude=["id", "operator", "archived"],
-                        )
-                    ),
-                    status=http_status,
-                )
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except (IntegrityError, MspNotFoundError) as e:
-            return Response(
-                {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
-
     @action(
-        methods=["GET", "PUT"],
+        methods=["GET"],
         detail=False,
         url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<external_id>[^/.]+)",
     )
-    def get_or_update_by_msp_id_and_external_id(
+    def get_by_msp_id_and_external_id(
         self, request, external_id, country_code, party_id
     ) -> Response:
         try:
@@ -206,14 +166,44 @@ class SolidTariffViewSet(
             )
 
     @action(
-        methods=["GET", "PUT"],
+        methods=["GET"],
         detail=False,
         url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)",
     )
-    def get_or_update_by_msp_id(self, request, country_code, party_id):
-        return self.get_or_update_by_msp_id_and_external_id(
-            request, None, country_code, party_id
-        )
+    def get_by_msp_id(self, request, country_code, party_id):
+        return self.get_by_msp_id_and_external_id(request, None, country_code, party_id)
+
+    @action(
+        methods=["DELETE"],
+        detail=False,
+        url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<external_id>[^/.]+)",
+    )
+    def delete_by_msp_and_external_id(
+        self, request, country_code, party_id, external_id
+    ):
+        msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
+        if not msp:
+            return Response(
+                {"status": str(f"Partner {country_code}*{party_id} is not found")},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        _deleted = self.service.delete_by_msp_and_external_id(msp, external_id)
+
+        if _deleted:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+    @action(
+        methods=["DELETE"],
+        detail=False,
+        url_path="(?P<external_id>[^/.]+)",
+    )
+    def delete_by_external_id(self, request, external_id):
+        _deleted = self.service.delete_by_external_id(external_id)
+
+        if _deleted:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
     @staticmethod
     def get_object(uid=None) -> Tariff:
