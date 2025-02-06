@@ -132,9 +132,9 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         version="2.2.1",
         credentials=None,
     ):
-        assert (
-            uid
-        ), "Location ID is a required parameter for LocationViewSet.save_or_update()"
+        if not uid:
+            raise ValueError("Location ID is a required parameter for LocationViewSet.save_or_update()")
+
         existing_location: Location = Location.get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )

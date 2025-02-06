@@ -94,7 +94,7 @@ class TestPublicAndNonPublicLocations:
             location = LocationFactory(publish=True)
             location.send_updates()
 
-        assert mock_send_all_updates.called is True
+        assert mock_send_all_updates.called
 
     @staticmethod
     def get_location_list(credentials: Credentials):
