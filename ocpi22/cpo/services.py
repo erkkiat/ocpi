@@ -50,7 +50,7 @@ class SolidTariffService:
             if not tariff.exists():
                 tariff = Tariff.objects.create(
                     uid=external_id,
-                    ocpi_master=validated_data.get("ocpi_master"),
+                    ocpi_master=operator,
                     currency=currency,
                 )
             else:
