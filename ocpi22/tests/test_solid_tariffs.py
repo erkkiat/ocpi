@@ -110,17 +110,16 @@ def smp1_create_response_no_msp():
 
 class TestSolidTariffs:
     @pytest.mark.django_db
-    @patch("ocpi22.cpo.tariff.SolidTariffViewSet.permission_classes", [AllowAny])
     def test_post_solid_tariffs_with_all_valid_records_returns_status_code_200(
         self,
-        client,
+        normal_user_client,
         smp1_solid_tariff_with_all_records_json,
         msp_de_ice,
         smp1_solid_tariff_with_all_records_response,
         operator_fi_cpo,
     ):
         url = reverse("solid-tariff-list")
-        response = client.post(url, smp1_solid_tariff_with_all_records_json)
+        response = normal_user_client.post(url, smp1_solid_tariff_with_all_records_json)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_solid_tariff_with_all_records_response

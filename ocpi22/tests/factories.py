@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 import factory
 import pytz
+from django.contrib.auth.models import User
 from faker import Faker
 
 from integrations.hubject.schemas import (
@@ -43,6 +44,24 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, SolidTariff
 
 fake = Faker()
+
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    username = "SolidRoamUser"
+    email = "user@solidroam.com"
+    password = factory.PostGenerationMethodCall("set_password", "test.user")
+
+
+class StaffUserFactory(UserFactory):
+    is_staff = True
+
+
+class SuperUserFactory(UserFactory):
+    is_superuser = True
+    is_staff = True
 
 
 class OCPIImageFactory(factory.django.DjangoModelFactory):
