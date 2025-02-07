@@ -375,7 +375,7 @@ class ERoamingPushPricingProductDataFactory(factory.Factory):
     )
 
 
-class SolidTariffFactory(factory.Factory):
+class SolidTariffFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SolidTariff
 
