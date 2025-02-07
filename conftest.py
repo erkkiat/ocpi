@@ -10,6 +10,7 @@ from ocpi22.tests.factories import (
     EndpointFactory,
     UserFactory,
     SuperUserFactory,
+    StaffUserFactory,
 )
 
 
@@ -21,7 +22,7 @@ def client():
 
 
 @pytest.fixture
-def normal_user_client():
+def normal_user_client(db):
     client = APIClient()
     normal_user = UserFactory()
     client.force_authenticate(user=normal_user)
@@ -29,15 +30,15 @@ def normal_user_client():
 
 
 @pytest.fixture
-def admin_user_client():
-    admin_user = SuperUserFactory()
+def admin_user_client(db):
+    admin_user = StaffUserFactory()
     client = APIClient()
     client.force_authenticate(user=admin_user)
     return client
 
 
 @pytest.fixture
-def super_user_client():
+def super_user_client(db):
     super_user = SuperUserFactory()
     client = APIClient()
     client.force_authenticate(user=super_user)

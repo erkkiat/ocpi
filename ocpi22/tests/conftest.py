@@ -1,4 +1,5 @@
 import pytest
+
 from ocpi22.tests.factories import CredentialsRoleFactory, SolidTariffFactory
 
 
@@ -244,7 +245,7 @@ def smp1_tariff_update_data_with_no_external_id():
 
 
 @pytest.fixture
-def smp1_update_tariff_json():
+def smp1_update_solid_tariff_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -259,7 +260,7 @@ def smp1_update_tariff_json():
 
 
 @pytest.fixture
-def smp1_update_tariff_no_msp():
+def smp1_update_tariff_without_msp():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -297,7 +298,7 @@ def solid_tariff_smp1_msp1_update_data(operator_fi_cpo, msp_de_ice):
 
 
 @pytest.fixture
-def solid_tariff_smp1_msp1_data(operator_fi_cpo, msp_de_ice):
+def solid_tariff_smp1_msp1_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -307,8 +308,8 @@ def solid_tariff_smp1_msp1_data(operator_fi_cpo, msp_de_ice):
         "parking_price_per_min": 0.54,
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
-        "msp": msp_de_ice,
-        "operator": operator_fi_cpo,
+        "msp": "DE*ICE",
+        "operator": "FI*CPO",
         "archived": False,
     }
 

@@ -30,33 +30,34 @@ def clear_cache():
 
 
 @pytest.fixture
-def solid_tariff_smp1_msp1(solid_tariff_smp1_msp1_data):
+def solid_tariff_smp1_msp1(msp_de_ice, operator_fi_cpo):
     return SolidTariffFactory(
-        external_id=solid_tariff_smp1_msp1_data["external_id"],
-        currency=solid_tariff_smp1_msp1_data["currency"],
-        price_per_kwh=solid_tariff_smp1_msp1_data["price_per_kwh"],
-        price_per_min=solid_tariff_smp1_msp1_data["price_per_min"],
-        price_flat=solid_tariff_smp1_msp1_data["price_flat"],
-        parking_price_per_min=solid_tariff_smp1_msp1_data["parking_price_per_min"],
-        parking_grace_period=solid_tariff_smp1_msp1_data["parking_grace_period"],
-        msp=solid_tariff_smp1_msp1_data["msp"],
-        operator=solid_tariff_smp1_msp1_data["operator"],
-        archived=solid_tariff_smp1_msp1_data["archived"],
+        external_id="SMP1",
+        currency="EUR",
+        price_per_kwh=0.690,
+        price_per_min=0.42,
+        price_flat=0.56,
+        parking_price_per_min=0.54,
+        parking_grace_period=100,
+        vat_percentage=20.0,
+        msp=msp_de_ice,
+        operator=operator_fi_cpo,
+        archived=False,
     )
 
 
 @pytest.fixture
-def solid_tariff_smp1_without_msp(solid_tariff_smp1_msp1_data):
+def solid_tariff_smp1_without_msp():
     return SolidTariffFactory(
-        external_id=solid_tariff_smp1_msp1_data["external_id"],
-        currency=solid_tariff_smp1_msp1_data["currency"],
-        price_per_kwh=solid_tariff_smp1_msp1_data["price_per_kwh"],
-        price_per_min=solid_tariff_smp1_msp1_data["price_per_min"],
-        price_flat=solid_tariff_smp1_msp1_data["price_flat"],
-        parking_price_per_min=solid_tariff_smp1_msp1_data["parking_price_per_min"],
-        parking_grace_period=solid_tariff_smp1_msp1_data["parking_grace_period"],
-        operator=solid_tariff_smp1_msp1_data["operator"],
-        archived=solid_tariff_smp1_msp1_data["archived"],
+        external_id="SMP1",
+        currency="EUR",
+        price_per_kwh=0.690,
+        price_per_min=0.42,
+        price_flat=0.56,
+        parking_price_per_min=0.54,
+        parking_grace_period=100,
+        vat_percentage=20.0,
+        archived=False,
     )
 
 
@@ -177,7 +178,7 @@ class TestSolidTariffs:
         assert response.status_code == status.HTTP_200_OK
 
     def test_normal_user_can_create_solid_tariff_returns_200_ok(
-        self, normal_user_client, smp1_solid_tariff_with_all_records_json
+        self, normal_user_client, smp1_solid_tariff_with_all_records_json, msp_de_ice
     ):
         url = reverse("solid-tariff-list")
         response = normal_user_client.post(url, smp1_solid_tariff_with_all_records_json)
@@ -210,7 +211,7 @@ class TestSolidTariffs:
         assert response.status_code == status.HTTP_200_OK
 
     def test_admin_user_can_create_solid_tariff_200_ok(
-        self, admin_user_client, smp1_solid_tariff_with_all_records_json
+        self, admin_user_client, smp1_solid_tariff_with_all_records_json, msp_de_ice
     ):
         url = reverse("solid-tariff-list")
         response = admin_user_client.post(url, smp1_solid_tariff_with_all_records_json)
@@ -243,7 +244,7 @@ class TestSolidTariffs:
         assert response.status_code == status.HTTP_200_OK
 
     def test_super_user_can_create_solid_tariff_200_ok(
-        self, super_user_client, smp1_solid_tariff_with_all_records_json
+        self, super_user_client, smp1_solid_tariff_with_all_records_json, msp_de_ice
     ):
         url = reverse("solid-tariff-list")
         response = super_user_client.post(url, smp1_solid_tariff_with_all_records_json)
@@ -264,7 +265,10 @@ class TestSolidTariffs:
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
     def test_super_user_can_delete_solid_tariff_by_external_id_204_no_content(
-        self, super_user_client, smp1_solid_tariff_with_all_records_json
+        self,
+        super_user_client,
+        smp1_solid_tariff_with_all_records_json,
+        solid_tariff_smp1_msp1,
     ):
         url = f'{reverse("solid-tariff-list")}SMP1/'
         response = super_user_client.delete(url)
@@ -344,10 +348,8 @@ class TestSolidTariffs:
 
     @pytest.mark.django_db
     def test_get_solid_tariffs_returns_expected_data_records(
-        self, normal_user_client, smp1_get_response, solid_tariff_smp1_msp1_data
+        self, normal_user_client, smp1_get_response, solid_tariff_smp1_msp1
     ):
-        SolidTariff.objects.create(**solid_tariff_smp1_msp1_data)
-
         url = reverse("solid-tariff-list")
         response = normal_user_client.get(url)
 
@@ -400,20 +402,20 @@ class TestSolidTariffs:
     def test_update_solid_tariff_with_all_valid_records_create_a_new_solid_tariff(
         self,
         normal_user_client,
-        smp1_update_tariff_json,
-        solid_tariff_smp1_msp1_data,
+        smp1_update_solid_tariff_json,
+        solid_tariff_smp1_msp1_json,
         msp_de_ice,
         smp1_update_response,
         solid_tariff_smp1_msp1,
     ):
         url = reverse("solid-tariff-list")
-        response = normal_user_client.post(url, smp1_update_tariff_json)
+        response = normal_user_client.post(url, smp1_update_solid_tariff_json)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_update_response
         assert (
             SolidTariff.objects.filter(
-                external_id=smp1_update_tariff_json["external_id"]
+                external_id=smp1_update_solid_tariff_json["external_id"]
             ).count()
             == 2
         )
@@ -492,23 +494,21 @@ class TestSolidTariffs:
         assert response.json() == smp1_create_response_no_msp
 
     @pytest.mark.django_db
-    def test_update_solid_tariff_no_msp_returns_create_a_new_solid_tariff(
+    def test_update_solid_tariff_no_msp_create_a_new_solid_tariff(
         self,
         normal_user_client,
         smp1_update_tariff_without_msp_response,
-        smp1_update_tariff_no_msp,
+        smp1_update_tariff_without_msp,
         solid_tariff_smp1_without_msp,
-        msp_de_ice,
-        tariff_smp1,
     ):
         url = reverse("solid-tariff-list")
-        response = normal_user_client.post(url, smp1_update_tariff_no_msp)
+        response = normal_user_client.post(url, smp1_update_tariff_without_msp)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_update_tariff_without_msp_response
         assert (
             SolidTariff.objects.filter(
-                external_id=smp1_update_tariff_no_msp["external_id"]
+                external_id=smp1_update_tariff_without_msp["external_id"]
             ).count()
             == 2
         )
