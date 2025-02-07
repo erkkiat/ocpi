@@ -8,6 +8,9 @@ from ocpi22.tests.factories import (
     BusinessDetailsFactory,
     CredentialsRoleFactory,
     EndpointFactory,
+    UserFactory,
+    SuperUserFactory,
+    StaffUserFactory,
 )
 
 
@@ -15,6 +18,38 @@ from ocpi22.tests.factories import (
 def client():
     client = APIClient()
     client.credentials()
+    return client
+
+
+@pytest.fixture
+def normal_user(db):
+    user = UserFactory()
+    return user
+
+
+@pytest.fixture
+def super_user(db):
+    user = SuperUserFactory()
+    return user
+
+
+@pytest.fixture
+def admin_user(db):
+    user = StaffUserFactory()
+    return user
+
+
+@pytest.fixture
+def normal_user_client(normal_user):
+    client = APIClient()
+    client.force_authenticate(user=normal_user)
+    return client
+
+
+@pytest.fixture
+def super_user_client(super_user):
+    client = APIClient()
+    client.force_authenticate(user=super_user)
     return client
 
 
