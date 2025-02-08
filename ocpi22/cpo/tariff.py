@@ -36,7 +36,7 @@ class SolidTariffViewSet(
 
     """
 
-    queryset = SolidTariff.objects.filter(archived=False).order_by("external_id")
+    queryset = SolidTariff.objects.all().order_by("external_id")
     serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
