@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from django.db import transaction
 
@@ -36,7 +38,9 @@ class SolidTariffService:
         validated_data["operator"] = operator
         msp = validated_data.get("msp")
         external_id = validated_data.get("external_id")
-        last_updated = validated_data.get("last_updated_utc")
+        last_updated = validated_data.get(
+            "last_updated", datetime.now(tz=ZoneInfo("UTC"))
+        )
 
         per_hr = float(per_min) * 60 if per_min else None
         parking_price_per_hr = float(parking_price) * 60 if parking_price else None
