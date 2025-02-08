@@ -14,6 +14,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from ocpi22.cpo.repositories import TariffRepository
 from ocpi22.cpo.session_cache import get_cached_session
 from ocpi22.decorators import (
     requires_sender_role,
@@ -548,6 +549,7 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
     versioning_class = OCPIVersioning
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = "uid"
+    repository = TariffRepository()
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
@@ -557,13 +559,10 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
         return "Tariffs"
 
     def get_queryset(self):
+        queryset = self.repository.get_latest_tariffs_from_solid_tariffs()
         if ocpi_platform.is_hub and hasattr(self, "request"):
-            return (
-                Tariff.objects.partner_filter(self.request)
-                .exclude(archived=True)
-                .order_by("created")
-            )
-        return Tariff.objects.exclude(archived=True).order_by("created")
+            return queryset.partner_filter(self.request)
+        return queryset
 
     @ocpi_exception_handler
     def list(self, *args, **kwargs):

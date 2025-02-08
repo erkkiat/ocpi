@@ -80,6 +80,7 @@ class PartnerManager(models.Manager):
     def get_queryset(self):
         return PartnerQuerySet(self.model, using=self._db)
 
+    # TODO: Request should not have come until here. Discuss with Eki on how to decouple this from request
     def partner_filter(self, request):
         return self.get_queryset().partner_filter(request)
 

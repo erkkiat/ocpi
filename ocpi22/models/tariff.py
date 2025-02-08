@@ -45,6 +45,7 @@ from ocpiconnector.util import (
 #  If 6 minutes were used, 10 minutes (2 blocks of step_size) will be billed.
 
 
+# Tariff is an immutable model
 class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = "ocpi22.ocpi.api.TariffSerializer"
     ocpi_module_name = OcpiModuleEnum.TARIFFS
@@ -500,6 +501,7 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
             )
 
 
+# SolidTariff is an immutable model
 class SolidTariff(models.Model):
     objects = PartnerManager()
 
@@ -531,7 +533,7 @@ class SolidTariff(models.Model):
     msp = models.ForeignKey(
         CredentialsRole,
         on_delete=models.CASCADE,
-        related_name="msp_credentialsroles",
+        related_name="msp_credentialsrole",
         verbose_name=_("MSP details"),
         null=True,
         blank=True,
@@ -539,14 +541,14 @@ class SolidTariff(models.Model):
     operator = models.ForeignKey(
         CredentialsRole,
         on_delete=models.CASCADE,
-        related_name="operator_credentialsroles",
+        related_name="operator_credentialsrole",
         verbose_name=_("CPO details"),
     )
 
     ocpi_tariff = models.ForeignKey(
         Tariff,
         on_delete=models.PROTECT,
-        related_name="tariffs",
+        related_name="tariff",
         verbose_name=_("Tariff"),
     )
 

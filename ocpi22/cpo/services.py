@@ -46,7 +46,7 @@ class SolidTariffService:
             return {"tariff": tariff, "solid_tariff": solid_tariff, "created": False}
 
         with transaction.atomic():
-            random_ocpi_tariff_id = uuid.uuid4()
+            random_ocpi_tariff_id = str(uuid.uuid4())
             tariff = Tariff.objects.create(
                 uid=random_ocpi_tariff_id,
                 ocpi_master=operator,
@@ -58,29 +58,25 @@ class SolidTariffService:
                 PriceComponent.objects.create(
                     tariff_element=te,
                     type="ENERGY",
-                    defaults={"price": per_kwh, "vat": vat, "step_size": 1},
+                    price=per_kwh,
+                    vat=vat,
+                    step_size=1,
                 )
             if per_min:
                 PriceComponent.objects.create(
-                    tariff_element=te,
-                    type="TIME",
-                    defaults={"price": per_hr, "vat": vat, "step_size": 1},
+                    tariff_element=te, type="TIME", price=per_hr, vat=vat, step_size=1
                 )
             if flat:
                 PriceComponent.objects.create(
-                    tariff_element=te,
-                    type="FLAT",
-                    defaults={"price": flat, "vat": vat, "step_size": 1},
+                    tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
                 )
             if parking_price:
                 PriceComponent.objects.create(
                     tariff_element=te,
                     type="PARKING_TIME",
-                    defaults={
-                        "price": parking_price_per_hr,
-                        "vat": vat,
-                        "step_size": 1,
-                    },
+                    price=parking_price_per_hr,
+                    vat=vat,
+                    step_size=1,
                 )
 
             solid_tariff = SolidTariff(

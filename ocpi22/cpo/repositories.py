@@ -1,7 +1,7 @@
 from django.db.models import Subquery, OuterRef, Q, QuerySet
 
 from ocpi22.models.credentials import CredentialsRole
-from ocpi22.models.tariff import SolidTariff
+from ocpi22.models.tariff import SolidTariff, Tariff
 
 
 class SolidTariffRepository:
@@ -10,7 +10,7 @@ class SolidTariffRepository:
             id=Subquery(
                 SolidTariff.objects.filter(external_id=OuterRef("external_id"))
                 .filter(Q(msp__id=OuterRef("msp__id")) | Q(msp__isnull=True))
-                .order_by("-created_at")
+                .order_by("-created")
                 .values("id")[:1]
             )
         ).all()
@@ -43,3 +43,20 @@ class SolidTariffRepository:
             external_id=external_id
         ).delete()
         return deleted
+
+
+class TariffRepository:
+    # TODO: I want to avoid coupling SolidTariffRepository here.
+    solid_tariff_repository = SolidTariffRepository()
+
+    def get_latest_tariffs_from_solid_tariffs(self):
+        latest_solid_tariffs = (
+            self.solid_tariff_repository.get_latest_with_unique_external_id_and_msp()
+        )
+        return (
+            Tariff.objects.filter(
+                id__in=latest_solid_tariffs.values_list("ocpi_tariff_id", flat=True)
+            )
+            .exclude(archived=True)
+            .order_by("created")
+        )
