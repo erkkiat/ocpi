@@ -179,7 +179,9 @@ class TariffFactory(factory.django.DjangoModelFactory):
 
         def add_price_components(tariff_element):
             PriceComponentFactory(tariff_element=tariff_element)
-            PriceComponentFactory(tariff_element=tariff_element, type="TIME", price=0.3, step_size=1)
+            PriceComponentFactory(
+                tariff_element=tariff_element, type="TIME", price=0.3, step_size=1
+            )
 
         if extracted:
             for tariffelement in extracted:
@@ -417,7 +419,6 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
     price_per_min = 0.3
     price_flat = 0.3
     vat_percentage = 0.2
-    archived = False
     msp = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"
     )
@@ -425,8 +426,8 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
         CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
     )
 
-    last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
-    created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    last_updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    created = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
 
 
 class CdrFactory(factory.Factory):
