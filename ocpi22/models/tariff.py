@@ -543,8 +543,6 @@ class SolidTariff(models.Model):
         verbose_name=_("CPO details"),
     )
 
-    archived = models.BooleanField(default=False, verbose_name=_("Archived"))
-
     last_updated_at = models.DateTimeField(
         auto_now=True, verbose_name=_("Last_updated_at")
     )
