@@ -543,10 +543,17 @@ class SolidTariff(models.Model):
         verbose_name=_("CPO details"),
     )
 
-    last_updated_at = models.DateTimeField(
+    ocpi_tariff = models.ForeignKey(
+        Tariff,
+        on_delete=models.PROTECT,
+        related_name="tariffs",
+        verbose_name=_("Tariff"),
+    )
+
+    last_updated = models.DateTimeField(
         auto_now=True, verbose_name=_("Last_updated_at")
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created_at"))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created_at"))
 
     def get_type(self, tariff_type: str) -> Optional[object]:
         match tariff_type:
