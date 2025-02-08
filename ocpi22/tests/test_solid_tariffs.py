@@ -1,4 +1,7 @@
+from datetime import datetime
+
 import pytest
+import time_machine
 from django.urls import reverse
 from rest_framework import status
 
@@ -40,6 +43,7 @@ def solid_tariff_smp1_msp1(msp_de_ice, operator_fi_cpo):
         parking_price_per_min=0.54,
         parking_grace_period=100,
         vat_percentage=20.0,
+        last_updated=datetime(2024, 9, 22, 12, 30, 30, 0),
         msp=msp_de_ice,
         operator=operator_fi_cpo,
     )
@@ -56,6 +60,7 @@ def solid_tariff_smp1_without_msp():
         parking_price_per_min=0.54,
         parking_grace_period=100,
         vat_percentage=20.0,
+        last_updated=datetime(2024, 9, 22, 12, 30, 30, 0),
     )
 
 
@@ -87,6 +92,7 @@ def smp1_get_response():
             "parking_grace_period": 100,
             "vat_percentage": 20.0,
             "msp": "DE*ICE",
+            "last_updated": "2024-09-22T12:30:30Z",
         }
     ]
 
@@ -102,6 +108,7 @@ def smp1_update_tariff_without_msp_response():
         "price_per_min": "0.42",
         "price_flat": "0.56",
         "vat_percentage": "20.0",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -117,6 +124,7 @@ def smp1_update_response():
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "msp": "DE*ICE",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -131,6 +139,7 @@ def smp1_create_response_no_msp():
         "parking_price_per_min": "0.54",
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -284,8 +293,6 @@ class TestSolidTariffs:
         url = reverse("solid-tariff-list")
         response = normal_user_client.post(url, smp1_solid_tariff_with_all_records_json)
 
-        print(response.json())
-
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_solid_tariff_with_all_records_response
 
@@ -305,6 +312,7 @@ class TestSolidTariffs:
         assert SolidTariff.objects.all().count() == 1
 
     @pytest.mark.django_db
+    @time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
     def test_post_solid_tariffs_with_minimal_records_returns_status_code_200(
         self,
         normal_user_client,
@@ -357,10 +365,11 @@ class TestSolidTariffs:
         assert response.json() == smp1_get_response
 
     @pytest.mark.django_db
+    @time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
     def test_get_solid_tariff_with_invalid_msp_returns_status_code_400(
         self,
         normal_user_client,
-        smp1_tariff_no_msp,
+        smp1_tariff_no_msp_json,
         msp_de_ice,
         msp_de_icd,
         operator_fi_cpo,
@@ -381,7 +390,7 @@ class TestSolidTariffs:
     def test_get_solid_tariff_with_invalid_msp_with_external_id_returns_status_code_400(
         self,
         normal_user_client,
-        smp1_tariff_no_msp,
+        smp1_tariff_no_msp_json,
         msp_de_ice,
         msp_de_icd,
         operator_fi_cpo,
@@ -421,6 +430,7 @@ class TestSolidTariffs:
         )
 
     @pytest.mark.django_db
+    @time_machine.travel(datetime(2024, 9, 22, 12, 30, 30), tick=False)
     def test_update_solid_tariff_with_minimal_records_create_a_new_solid_tariff(
         self,
         normal_user_client,
@@ -481,14 +491,14 @@ class TestSolidTariffs:
     def test_post_solid_tariff_with_no_msp_returns_status_code_200(
         self,
         normal_user_client,
-        smp1_tariff_no_msp,
+        smp1_tariff_no_msp_json,
         msp_de_ice,
         msp_de_icd,
         operator_fi_cpo,
         smp1_create_response_no_msp,
     ):
         url = reverse("solid-tariff-list")
-        response = normal_user_client.post(url, smp1_tariff_no_msp)
+        response = normal_user_client.post(url, smp1_tariff_no_msp_json)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_create_response_no_msp
