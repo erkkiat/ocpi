@@ -199,7 +199,9 @@ class TariffFactory(factory.django.DjangoModelFactory):
     min_price_incl_vat = 0.2
     max_price_excl_vat = 0.8
     max_price_incl_vat = 0.9
-    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
+    ocpi_master = factory.SubFactory(
+        CredentialsRoleFactory, role="CPO", country_code="FI", party_id="MSP"
+    )
 
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -423,7 +425,7 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
         CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"
     )
     operator = factory.SubFactory(
-        CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
+        CredentialsRoleFactory, role="CPO", country_code="FI", party_id="MSP"
     )
     ocpi_tariff = factory.SubFactory(TariffFactory)
 

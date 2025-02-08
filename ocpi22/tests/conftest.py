@@ -34,9 +34,7 @@ def smp1_solid_tariff_with_all_records_json():
 
 
 @pytest.fixture
-def smp1_msp1_solid_tariff_with_all_records(
-    self, solid_tariff_smp1_msp1_data, msp_de_ice, operator_fi_cpo
-):
+def smp1_msp1_solid_tariff_with_all_records(self, msp_de_ice, operator_fi_cpo):
     return SolidTariffFactory(
         external_id="SMP1",
         currency="EUR",
@@ -47,7 +45,6 @@ def smp1_msp1_solid_tariff_with_all_records(
         parking_grace_period=100,
         msp=msp_de_ice,
         operator=operator_fi_cpo,
-        archived=False,
     )
 
 
@@ -86,7 +83,6 @@ def smp1_solid_tariff_minimal_records(operator_fi_cpo):
         parking_grace_period=None,
         msp=None,
         operator=operator_fi_cpo,
-        archived=False,
     )
 
 
@@ -293,7 +289,6 @@ def solid_tariff_smp1_msp1_update_data(operator_fi_cpo, msp_de_ice):
         "vat_percentage": 20.0,
         "msp": msp_de_ice,
         "operator": operator_fi_cpo,
-        "archived": False,
     }
 
 
@@ -310,7 +305,6 @@ def solid_tariff_smp1_msp1_json():
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
         "operator": "FI*CPO",
-        "archived": False,
     }
 
 
@@ -327,5 +321,4 @@ def solid_tariff_smp1_msp2_data(operator_fi_cpo, msp_de_icd):
         "vat_percentage": 20.0,
         "msp": msp_de_icd,
         "operator": operator_fi_cpo,
-        "archived": False,
     }

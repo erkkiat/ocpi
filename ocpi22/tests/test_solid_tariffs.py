@@ -42,7 +42,6 @@ def solid_tariff_smp1_msp1(msp_de_ice, operator_fi_cpo):
         vat_percentage=20.0,
         msp=msp_de_ice,
         operator=operator_fi_cpo,
-        archived=False,
     )
 
 
@@ -57,7 +56,6 @@ def solid_tariff_smp1_without_msp():
         parking_price_per_min=0.54,
         parking_grace_period=100,
         vat_percentage=20.0,
-        archived=False,
     )
 
 
@@ -285,6 +283,8 @@ class TestSolidTariffs:
     ):
         url = reverse("solid-tariff-list")
         response = normal_user_client.post(url, smp1_solid_tariff_with_all_records_json)
+
+        print(response.json())
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_solid_tariff_with_all_records_response
