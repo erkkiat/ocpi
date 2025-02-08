@@ -425,6 +425,7 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
     operator = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
     )
+    ocpi_tariff = factory.SubFactory(TariffFactory)
 
     last_updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
