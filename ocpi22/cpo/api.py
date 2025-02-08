@@ -1002,9 +1002,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.models.cdr import Cdr
 
-                    Cdr.create_based_on_session(
-                        session
-                    )  # Todo: Do this in a celery task
+                    Cdr.from_session(session)  # Todo: Do this in a celery task
 
                     session_serializer = CpoSessionSerializer(
                         instance=session,

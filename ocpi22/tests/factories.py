@@ -41,7 +41,7 @@ from ocpi22.models.credentials import CredentialsRole, Credentials, Endpoint
 from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.tariff import Tariff, SolidTariff
+from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
 
 fake = Faker()
 
@@ -153,14 +153,46 @@ class EvseFactory(factory.django.DjangoModelFactory):
     capabilities = ["RFID_READER", "RESERVABLE"]
 
 
+class TariffElementFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = TariffElement
+
+
+class PriceComponentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PriceComponent
+
+    type = "ENERGY"
+    step_size = 1
+    price = 0.4
+    vat = 20
+
+
 class TariffFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Tariff
 
+    @factory.post_generation
+    def build_tariff(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        def add_price_components(tariff_element):
+            PriceComponentFactory(tariff_element=tariff_element)
+            PriceComponentFactory(tariff_element=tariff_element, type="TIME", price=0.3, step_size=1)
+
+        if extracted:
+            for tariffelement in extracted:
+                te = TariffElementFactory(tariff=self, **tariffelement)
+                add_price_components(te)
+        else:
+            te = TariffElementFactory(tariff=self)
+            add_price_components(te)
+
     uid = factory.Faker("uuid4")
     currency = "EUR"
     type = "AD_HOC_PAYMENT"
-    tariff_alt_url = "https://smappee.com/tariffs/"
+    tariff_alt_url = "https://solidroam.com/tariffs/"
     min_price_excl_vat = 0.1
     min_price_incl_vat = 0.2
     max_price_excl_vat = 0.8
@@ -514,5 +546,5 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     currency = "EUR"
     total_cost_excl_vat = 10.0
     total_cost_incl_vat = 12.0
-    status = Session.COMPLETED
+    status = Session.ACTIVE
     last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)

@@ -4,6 +4,7 @@ import base64
 import doctest
 import json
 import os
+from logging import getLogger
 from typing import Optional
 from urllib.parse import urljoin
 
@@ -42,6 +43,7 @@ from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
+from ocpi22.tests.factories import TariffFactory
 from ocpiconnector.testutil import (
     compare_dicts_recursively,
     OCPIAPIRequestFactory,
@@ -102,7 +104,6 @@ from ocpi22.test_data import (
     CredentialsData,
     CpoApiData,
     TokenAuthorizationData,
-    LocationData,
     TariffData,
     AdhocTokenData,
     AuthorizeData,
@@ -125,6 +126,9 @@ faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = OCPIAPIRequestFactory()
+
+
+logger = getLogger(__name__)
 
 
 def load_tests(_loader, tests, _ignore):
@@ -406,6 +410,7 @@ class ApiPutTests(TestCase):
                 ["11", "12", "13"],
                 2,
                 3,
+                [("3256", "AVAILABLE"), ("3257", "RESERVED")],
             ),
             (
                 "location_example_added_connector",
@@ -416,6 +421,7 @@ class ApiPutTests(TestCase):
                 [],
                 2,
                 4,
+                [("3256", "AVAILABLE"), ("3257", "RESERVED")],
             ),
             (
                 "location_example_added_evse",
@@ -426,6 +432,7 @@ class ApiPutTests(TestCase):
                 [],
                 3,
                 5,
+                [("3256", "AVAILABLE"), ("3257", "RESERVED"), ("3299", "RESERVED")],
             ),
             (
                 "location_example_parking_garage_opening_hours",
@@ -436,6 +443,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [("eccb8dd9-4189-433e-b100-cc0945dd17dc", "AVAILABLE")],
             ),
             (
                 "location_example_parking_garage_opening_hours_bad_power_type",
@@ -446,6 +454,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [],
             ),
             (
                 "location_example_uc2_destination_charger",
@@ -456,6 +465,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
             ),
             (
                 "location_example_uc3_destination_charger_not_published",
@@ -466,16 +476,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-            ),
-            (
-                "location_example_uc3_destination_charger_not_published",
-                "NL",
-                "ALF",
-                status.HTTP_200_OK,
-                1000,
-                [],
-                1,
-                1,
+                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
             ),
             # Todo: Implement parking_restrictions
             (
@@ -487,6 +488,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [("8c1b3487-61ac-40a7-a367-21eee99dbd90", "AVAILABLE")],
             ),
             # Todo: Check for publish_allowed_to below
             (
@@ -498,6 +500,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [("4534ad5f-45be-428b-bfd0-fa489dda932d", "AVAILABLE")],
             ),
         )
 
@@ -522,8 +525,9 @@ class ApiPutTests(TestCase):
             http_status,
             ocpi_status,
             tariffs,
-            evses,
-            connectors,
+            expected_evse_count,
+            expected_connector_count,
+            expected_webhook_parameters,
         ) in testcases:
             with self.subTest("Putting location", filename=filename):
                 data = load_example(f"data/examples/{filename}.json")
@@ -539,6 +543,8 @@ class ApiPutTests(TestCase):
                 for t in tariffs:
                     create_tariff(uid=t, ocpi_master=role)
 
+                simulation.reset()
+
                 response = self.put(
                     url,
                     data,
@@ -550,15 +556,15 @@ class ApiPutTests(TestCase):
                 assert response.status_code == http_status, filename
                 assert response.data["status_code"] == ocpi_status, filename
 
-                if evses:
+                if expected_evse_count:
                     uid = data.get("id").upper()
                     try:
                         location = Location.objects.get(uid=uid)
-                        assert location.evses.count() == evses, filename
+                        assert location.evses.count() == expected_evse_count, filename
                         connector_count = 0
                         for evse in location.evses.all():
                             connector_count += evse.connectors.count()
-                        assert connector_count == connectors, filename
+                        assert connector_count == expected_connector_count, filename
                     except Location.DoesNotExist:
                         print(
                             f"Unable to fetch Location {uid} created from file {filename}."
@@ -566,16 +572,14 @@ class ApiPutTests(TestCase):
                         self.fail(
                             f'Possible options are: {", ".join([location.uid for location in Location.objects.all()])}'
                         )
-
-        method_calls = list(
-            map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
-        )
-        comparison = [
-            (x.get("json").get("evse_id"), x.get("json").get("status"))
-            for x in method_calls
-        ]
-        print(comparison)
-        assert comparison == LocationData.webhook_calls
+                method_calls = list(
+                    map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
+                )
+                calls = [
+                    (x.get("json").get("evse_id"), x.get("json").get("status"))
+                    for x in method_calls
+                ]
+                assert calls == expected_webhook_parameters, filename
 
     def test_put_tariff(self):
         url = reverse("tariff-list")
@@ -882,13 +886,16 @@ class ApiPutTests(TestCase):
                 country_code = data.get("country_code")
                 party_id = data.get("party_id")
 
-                create_credentialsrole(
+                ocpi_master = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
                     website="http://example.com",
                     role=OcpiRolesEnum.CPO,
                     credentials=self.credentials,
                 )
+
+                for tariff in data.get("tariffs"):
+                    TariffFactory(uid=tariff.get("id"), ocpi_master=ocpi_master)
 
                 # Send the request
                 response = self.post(url, data, token_base64, viewset)
@@ -1274,7 +1281,7 @@ class CdrTests(TestCase):
         )
         self.assertEqual(session.total_cost_excl_vat, 3.21, "Price doesn't seem right.")
 
-        cdr1: Cdr = Cdr.create_based_on_session(session)
+        cdr1: Cdr = Cdr.from_session(session)
 
         simulation.tasks_requests.post.assert_called_once()
 
@@ -1308,7 +1315,7 @@ class CdrTests(TestCase):
         #
 
         simulation.reset()
-        cdr: Cdr = Cdr.create_based_on_session(session)
+        cdr: Cdr = Cdr.from_session(session)
         simulation.tasks_requests.post.assert_called_once()
 
         self.assertTrue(
