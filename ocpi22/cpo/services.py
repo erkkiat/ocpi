@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import transaction
 
 from ocpi22.cpo.repositories import SolidTariffRepository
@@ -44,38 +46,34 @@ class SolidTariffService:
             return {"tariff": tariff, "solid_tariff": solid_tariff, "created": False}
 
         with transaction.atomic():
-            # Todo: This is going to be immutable in the upcoming PRs
-            tariff = Tariff.objects.filter(uid=external_id)
+            random_ocpi_tariff_id = uuid.uuid4()
+            tariff = Tariff.objects.create(
+                uid=random_ocpi_tariff_id,
+                ocpi_master=operator,
+                currency=currency,
+            )
 
-            if not tariff.exists():
-                tariff = Tariff.objects.create(
-                    uid=external_id,
-                    ocpi_master=operator,
-                    currency=currency,
-                )
-            else:
-                tariff = tariff.first()
             te, _created = TariffElement.objects.get_or_create(tariff=tariff)
             if per_kwh:
-                PriceComponent.objects.update_or_create(
+                PriceComponent.objects.create(
                     tariff_element=te,
                     type="ENERGY",
                     defaults={"price": per_kwh, "vat": vat, "step_size": 1},
                 )
             if per_min:
-                PriceComponent.objects.update_or_create(
+                PriceComponent.objects.create(
                     tariff_element=te,
                     type="TIME",
                     defaults={"price": per_hr, "vat": vat, "step_size": 1},
                 )
             if flat:
-                PriceComponent.objects.update_or_create(
+                PriceComponent.objects.create(
                     tariff_element=te,
                     type="FLAT",
                     defaults={"price": flat, "vat": vat, "step_size": 1},
                 )
             if parking_price:
-                PriceComponent.objects.update_or_create(
+                PriceComponent.objects.create(
                     tariff_element=te,
                     type="PARKING_TIME",
                     defaults={
@@ -94,6 +92,7 @@ class SolidTariffService:
                 parking_price_per_min=parking_price,
                 parking_grace_period=grace_period,
                 vat_percentage=vat,
+                ocpi_tariff=tariff,
                 msp=msp,
                 operator=operator,
             )
