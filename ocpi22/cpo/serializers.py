@@ -647,6 +647,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         required=False,
         allow_null=True,
     )
+    last_updated_utc = UTCDateTimeField(required=False)
 
     def create(self, validated_data):
         return self.service.create(validated_data)

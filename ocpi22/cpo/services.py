@@ -36,6 +36,7 @@ class SolidTariffService:
         validated_data["operator"] = operator
         msp = validated_data.get("msp")
         external_id = validated_data.get("external_id")
+        last_updated = validated_data.get("last_updated_utc")
 
         per_hr = float(per_min) * 60 if per_min else None
         parking_price_per_hr = float(parking_price) * 60 if parking_price else None
@@ -79,7 +80,7 @@ class SolidTariffService:
                     step_size=1,
                 )
 
-            solid_tariff = SolidTariff(
+            solid_tariff = SolidTariff.objects.create(
                 external_id=external_id,
                 currency=currency,
                 price_per_kwh=per_kwh,
@@ -90,9 +91,9 @@ class SolidTariffService:
                 vat_percentage=vat,
                 ocpi_tariff=tariff,
                 msp=msp,
+                last_updated=last_updated,
                 operator=operator,
             )
-            solid_tariff.save()
 
         return {"tariff": tariff, "solid_tariff": solid_tariff, "created": True}
 
