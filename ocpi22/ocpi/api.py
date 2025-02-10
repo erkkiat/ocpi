@@ -567,16 +567,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
             )
         return Tariff.objects.exclude(archived=True).order_by("created")
 
-    # TODO: We have to filter out stale tariffs. But we have following problems.
-    #     1. We do not know if a tariff has created by the CPO after an update (Using SolidTariffs API)
-    #     2. How do we know if the ocpi tariff is shared by other CPOs(We are the MSP here.)
-
-    # def get_queryset(self):
-    #     queryset = self.repository.get_latest_tariffs_from_solid_tariffs()
-    #     if ocpi_platform.is_hub and hasattr(self, "request"):
-    #         return queryset.partner_filter(self.request)
-    #     return queryset
-
     @ocpi_exception_handler
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
