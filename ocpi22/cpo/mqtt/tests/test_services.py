@@ -7,6 +7,7 @@ import pytest
 import time_machine
 from kombu.exceptions import OperationalError
 
+from ocpi22.cpo.api import process_meter_values
 from ocpi22.cpo.mqtt.schemas import MeterValues, EvseStatusUpdate
 from ocpi22.cpo.mqtt.services import (
     _decode_message,
@@ -14,7 +15,13 @@ from ocpi22.cpo.mqtt.services import (
     process_status_update_data,
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
-from ocpi22.tests.factories import OCPISessionFactory, ConnectorFactory, LocationFactory, EvseFactory, TariffFactory
+from ocpi22.tests.factories import (
+    OCPISessionFactory,
+    ConnectorFactory,
+    LocationFactory,
+    EvseFactory,
+    TariffFactory,
+)
 from ocpiconnector.party import Party
 
 
@@ -36,13 +43,18 @@ class TestMqttServices:
         )
 
     def test_process_meter_values_data_exits_early_if_decode_message_fails(
-        self,
-        smappee_meter_message
+        self, smappee_meter_message
     ):
         smappee_meter_message.payload = b"\x80"
-        with patch("ocpi22.cpo.mqtt.services._decode_message", return_value=None) as mock_decode_message, \
-                patch.object(MeterValues, attribute="model_validate_json") as mock_model_validate_json, \
-                patch("ocpi22.tasks.send_ocpi_request") as mock_process_meter_values_task:
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services._decode_message", return_value=None
+            ) as mock_decode_message,
+            patch.object(
+                MeterValues, attribute="model_validate_json"
+            ) as mock_model_validate_json,
+            patch("ocpi22.tasks.send_ocpi_request") as mock_process_meter_values_task,
+        ):
             assert process_meter_values_data(smappee_meter_message) is None
         mock_decode_message.assert_called_once_with(smappee_meter_message)
         mock_model_validate_json.assert_not_called()
@@ -126,25 +138,51 @@ class TestMqttServices:
             ) as mock_send_background_update:
                 process_meter_values_data(smappee_meter_message)
                 mock_send_background_update.assert_called_once_with(
-                    {'country_code': 'FI', 'party_id': 'CPO', 'id': '94f5993d-232a-4916-a801-4e408c24c9cc',
-                     'start_date_time': '2021-01-01T10:00:00Z', 'end_date_time': '2021-01-01T12:00:00Z', 'kwh': 1.1,
-                     'charging_periods': [{'start_date_time': '2021-01-01T10:00:00Z',
-                                           'tariff_id': 'TARIFF1',
-                                           'dimensions': [{'type': 'ENERGY', 'volume': '1.1000'},
-                                                          {'type': 'STATE_OF_CHARGE', 'volume': '1.1000'},
-                                                          {'type': 'POWER', 'volume': '2.2000'},
-                                                          {'type': 'TIME', 'volume': '10020.3728'}]}],
-                     'cdr_token': OrderedDict(
-                         [('country_code', 'FI'), ('party_id', 'MSP'), ('uid', 'CDRTOKEN-12345'), ('type', 'RFID'),
-                          ('contract_id', 'CONTRACT-12345')]), 'auth_method': 'AUTH_REQUEST',
-                     'authorization_reference': 'AUTHORIZATION-12345',
-                     'location_id': 'LOCATION1', 'evse_uid': 'EVSE1',
-                     'connector_id': '1', 'currency': 'EUR',
-                     'total_cost': OrderedDict([('excl_vat', 0.8), ('incl_vat', 0.9)]), 'status': 'ACTIVE',
-                     'last_updated': '2025-02-11T09:00:00Z'},
-                    'https://example.com/ocpi/sessions/FI/CPO/94f5993d-232a-4916-a801-4e408c24c9cc',
-                    'QUJD', to=Party(country_code='FI', party_id='MSP'),
-                    sender=Party(country_code='FI', party_id='CPO'), method='put'
+                    {
+                        "country_code": "FI",
+                        "party_id": "CPO",
+                        "id": "94f5993d-232a-4916-a801-4e408c24c9cc",
+                        "start_date_time": "2021-01-01T10:00:00Z",
+                        "end_date_time": "2021-01-01T12:00:00Z",
+                        "kwh": 1.1,
+                        "charging_periods": [
+                            {
+                                "start_date_time": "2021-01-01T10:00:00Z",
+                                "tariff_id": "TARIFF1",
+                                "dimensions": [
+                                    {"type": "ENERGY", "volume": "1.1000"},
+                                    {"type": "STATE_OF_CHARGE", "volume": "1.1000"},
+                                    {"type": "POWER", "volume": "2.2000"},
+                                    {"type": "TIME", "volume": "10020.3728"},
+                                ],
+                            }
+                        ],
+                        "cdr_token": OrderedDict(
+                            [
+                                ("country_code", "FI"),
+                                ("party_id", "MSP"),
+                                ("uid", "CDRTOKEN-12345"),
+                                ("type", "RFID"),
+                                ("contract_id", "CONTRACT-12345"),
+                            ]
+                        ),
+                        "auth_method": "AUTH_REQUEST",
+                        "authorization_reference": "AUTHORIZATION-12345",
+                        "location_id": "LOCATION1",
+                        "evse_uid": "EVSE1",
+                        "connector_id": "1",
+                        "currency": "EUR",
+                        "total_cost": OrderedDict(
+                            [("excl_vat", 0.8), ("incl_vat", 0.9)]
+                        ),
+                        "status": "ACTIVE",
+                        "last_updated": "2025-02-11T09:00:00Z",
+                    },
+                    "https://example.com/ocpi/sessions/FI/CPO/94f5993d-232a-4916-a801-4e408c24c9cc",
+                    "QUJD",
+                    to=Party(country_code="FI", party_id="MSP"),
+                    sender=Party(country_code="FI", party_id="CPO"),
+                    method="put",
                 )
 
     @pytest.mark.django_db
@@ -155,14 +193,14 @@ class TestMqttServices:
         decoded_message = _decode_message(smappee_meter_message)
         message_dict = orjson.loads(decoded_message)
         meter_values.model_dump.return_value = message_dict
-        OCPISessionFactory(
-            uid="94f5993d-232a-4916-a801-4e408c24c9cc"
-        )
+        OCPISessionFactory(uid="94f5993d-232a-4916-a801-4e408c24c9cc")
 
-        with patch("ocpiconnector.settings.base.OCPI_221_SESSION_PUT_ONLY", True), \
-                patch(
-                    "ocpi22.ocpi.util.OcpiModule.send_background_update"
-                ) as mock_send_background_update:
+        with (
+            patch("ocpiconnector.settings.base.OCPI_221_SESSION_PUT_ONLY", True),
+            patch(
+                "ocpi22.ocpi.util.OcpiModule.send_background_update"
+            ) as mock_send_background_update,
+        ):
             process_meter_values_data(smappee_meter_message)
             mock_send_background_update.assert_called_once()
             assert mock_send_background_update.call_args.kwargs["method"] == "put"
