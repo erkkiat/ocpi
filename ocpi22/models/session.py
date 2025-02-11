@@ -27,10 +27,12 @@ from ocpi22.choices import (
     CdrDimensionEnum,
     TOKEN_TYPE_CHOICES,
 )
+from ocpi22.locations.serializers import TariffField
 from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.util import (
     ModelUtilMixin,
     hours_minutes,
@@ -44,6 +46,7 @@ from ocpi22.util import (
 from ocpi22.serializers.util import SerializerCleanedUp, UTCDateTimeField
 from ocpi22.ocpi.util import OcpiModule
 from ocpiconnector.manager import PartnerManager
+from ocpiconnector.party import Party
 
 
 class Session(models.Model, ModelUtilMixin, OcpiModule):
@@ -592,24 +595,49 @@ class CdrDimensionSerializer(serializers.ModelSerializer):
         fields = ("type", "volume")
 
 
-class TariffIdSerializer(serializers.Serializer):
-    def to_representation(self, instance):
-        if isinstance(instance, Tariff):
-            return instance.uid
-        else:
-            return instance
+# class TariffIdSerializer(serializers.Field):
+#     def to_representation(self, value):
+#         return value.uid
+#
+#     def to_internal_value(self, data):
+#         if not isinstance(data, str):
+#             raise serializers.ValidationError("Tariff must be provided as a string representing its uid.")
+#         if len(data) > settings.OCPI_22_MAX_UID_LENGTH:
+#             raise serializers.ValidationError(f"Tariff uid {data} is too long.")
+#         ocpi_master = get_ocpi_master(self, role=OcpiRolesEnum.CPO)
+#         return Tariff.get_if_exists(uid=data, ocpi_master=ocpi_master, archived=False, raise_exception=True)
+
+
+class ChargingPeriodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChargingPeriod
+        fields = ("start_date_time", "tariff_id", "dimensions")
+
+    start_date_time = UTCDateTimeField(required=False)
+    tariff_id = TariffField(required=False, source="tariff")
+    dimensions = CdrDimensionSerializer(many=True)
 
     def to_internal_value(self, data):
-        tariff = Tariff.get_if_exists(uid=data, archived=False)
-        if not tariff:
-            raise serializers.ValidationError(f"Tariff with UID {data} not found")
-        return tariff
+        # ocpi_master = self.get_ocpi_master()
+        self.tariff_id = data
+        return super().to_internal_value(data)
 
 
-class ChargingPeriodSerializer(serializers.Serializer):
-    start_date_time = UTCDateTimeField(required=False)
-    tariff_id = TariffIdSerializer(required=False, source="tariff.uid")
-    dimensions = CdrDimensionSerializer(many=True)
+# def get_ocpi_master(obj, role):
+#     if hasattr(obj, "ocpi_master"):
+#         return obj.ocpi_master
+#     data = getattr(obj, "initial_data", {})
+#     country_code = data.get("country_code")
+#     party_id = data.get("party_id")
+#     if country_code and party_id:
+#         return get_credentialsrole(
+#             credentials=None,
+#             party=Party(country_code, party_id),
+#             role=role,
+#             create=True
+#         )
+#     if hasattr(obj, "parent"):
+#         return get_ocpi_master(obj.parent, role)
 
 
 class TotalCostSerializer(SerializerCleanedUp):

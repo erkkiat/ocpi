@@ -51,7 +51,7 @@ def smappee_meter_message(smappee_meter_topic):
             "kwh": 1.1,
             "soc": 1.1,
             "power": 2.2,
-            "timestamp": "2022-02-22T22:22:22",
+            "timestamp": "2022-02-22T22:22:22Z",
         }
     )
     message.qos = 1

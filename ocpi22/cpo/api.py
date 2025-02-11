@@ -295,9 +295,12 @@ def applying_tariff_element(
         return True
 
     location_timezone = session_instance.location.get_timezone()
-    timestamp = timestamp.astimezone(location_timezone) or datetime.now(
-        tz=location_timezone
-    )
+    if isinstance(timestamp, str):
+        timestamp = datetime.fromisoformat(timestamp)
+    else:
+        timestamp = timestamp.astimezone(location_timezone) or datetime.now(
+            tz=location_timezone
+        )
     weekday = timestamp.weekday()
     tariffs = (
         session_instance.connector.get_tariffs()
@@ -337,17 +340,22 @@ def create_charging_periods(session: Session):
 
 def process_meter_values(
     request,
-    serializer,
     kwh,
     power=None,
     soc=None,
     session=None,
+    session_id=None,
     timestamp=None,
 ):
     next_url = reverse("chargepoint-stop-transaction")
-    timestamp = timestamp or datetime.now(pytz.utc)
+    if isinstance(timestamp, str):
+        timestamp = datetime.fromisoformat(timestamp)
+    else:
+        timestamp = timestamp or datetime.now(pytz.utc)
 
-    # We found a valid Session
+    if session_id and not session:
+        session = Session.get_if_exists(uid=session_id)
+
     if session and session.status == Session.ACTIVE:
         try:
             Session.objects.prefetch_related("chargingperiods").get(pk=session.pk)
@@ -361,8 +369,6 @@ def process_meter_values(
         session.stop_kwh = kwh
         session.update_last_updated()
 
-        # with Timer() as t:
-        # store_meter_values(request, session, serializer.validated_data)
         session.update_charging_periods(
             Decimal(kwh) - session.start_kwh, soc, power, timestamp
         )
@@ -377,28 +383,31 @@ def process_meter_values(
             ]
         )
 
-        session_charging_periods = [
-            cp for cp in session.chargingperiods.order_by("start_date_time")
-        ]
-        session.send_updates(session_charging_periods, method="patch")
+        session.send_updates()  # Until Gireve implements OCPI 2.2.1 Session PATCH
 
-        messages.success(
-            request,
-            f"You have updated the OCPI Session **{markdown_escape(session.uid)}** "
-            f"with {kwh} kWh.",
-        )
-        messages.info(
-            request,
-            "It's good to send the kWh and power values frequently "
-            "enough, so that the driver can see the up-to-date status "
-            "from the mobile application. For DC charging, "
-            "please update the State of Charge as well.",
-        )
-        messages.success(
-            request,
-            f"When you're done, next you can "
-            f'<a href="{next_url}">stop the Session</a>.',
-        )
+        # session_charging_periods = [
+        #     cp for cp in session.chargingperiods.order_by("start_date_time")
+        # ]
+        # session.send_updates(session_charging_periods, method="patch")
+
+        if request:
+            messages.success(
+                request,
+                f"You have updated the OCPI Session **{markdown_escape(session.uid)}** "
+                f"with {kwh} kWh.",
+            )
+            messages.info(
+                request,
+                "It's good to send the kWh and power values frequently "
+                "enough, so that the driver can see the up-to-date status "
+                "from the mobile application. For DC charging, "
+                "please update the State of Charge as well.",
+            )
+            messages.success(
+                request,
+                f"When you're done, next you can "
+                f'<a href="{next_url}">stop the Session</a>.',
+            )
 
         return Response(
             dict(
@@ -892,7 +901,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 )
                 if serializer.is_valid():
                     return process_meter_values(
-                        request, serializer, **serializer.validated_data
+                        request, **serializer.validated_data
                     )
                 else:
                     return Response(
