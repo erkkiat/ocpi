@@ -32,7 +32,6 @@ from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.util import (
     ModelUtilMixin,
     hours_minutes,
@@ -46,7 +45,6 @@ from ocpi22.util import (
 from ocpi22.serializers.util import SerializerCleanedUp, UTCDateTimeField
 from ocpi22.ocpi.util import OcpiModule
 from ocpiconnector.manager import PartnerManager
-from ocpiconnector.party import Party
 
 
 class Session(models.Model, ModelUtilMixin, OcpiModule):
@@ -133,13 +131,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             else active_charging_period.start_date_time
         )
 
-        if timestamp.utcoffset() != timedelta(
-            0
-        ):
+        if timestamp.utcoffset() != timedelta(0):
             raise ValidationError("Timestamp {timestamp} should be UTC")
-        if start_date_time.utcoffset() != timedelta(
-            0
-        ):
+        if start_date_time.utcoffset() != timedelta(0):
             raise ValidationError(f"Start date time {start_date_time} should be UTC")
 
         def _sum(dimension_type: CdrDimensionEnum) -> float:
