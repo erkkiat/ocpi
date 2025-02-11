@@ -17,6 +17,7 @@ from celery.schedules import crontab
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
+from requests import RequestException
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
 from sentry_sdk import capture_exception
@@ -305,7 +306,7 @@ def pull_objects(
             pull_objects(
                 object_list, limit, delay, total_objects, credentials_id, **kwargs
             )
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+    except RequestException:
         logger.exception("Unable to pull objects")
 
 
