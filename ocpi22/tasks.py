@@ -122,6 +122,7 @@ else:
     max_retries=5,
 )
 def send_ocpi_request(
+    self,
     data,
     url: str,
     token_base64: str,
