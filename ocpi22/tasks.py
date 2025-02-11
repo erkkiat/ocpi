@@ -161,31 +161,11 @@ def send_ocpi_request(
             )
 
         result: requests.Response = function(**kwargs)
-
-        if result.status_code >= status.HTTP_400_BAD_REQUEST:
-            logger.error(
-                f"{settings.HOSTNAME}: Request failed, {url}: {result.status_code} - {result.reason}"
-            )
-            write_to_file(result.text)
-        else:
-            logger.info(
-                f"Sending {method.upper()} {title} request to {url}, "
-                f"response {result.status_code} (time {result.elapsed})"
-            )
-
-        # Todo: This needs to be done some other way than starting the Django logic
-        #       We want to refresh the last connection time, but only if the request was successful
-        # if credentials_id:
-        #     from ocpi22.models.credentials import Credentials
-        #
-        #     credentials = Credentials.get_if_exists(pk=credentials_id)
-        #     if credentials:
-        #         credentials.update_last_connection()
-
-        # # Log the response to Sentry
-        # if hasattr(result, 'data') and result.data:
-        #     sentry_sdk.set_context('result', result.json())
-
+        result.raise_for_status()
+        logger.info(
+            f"Sending {method.upper()} {title} request to {url}, "
+            f"response {result.status_code} (time {result.elapsed})"
+        )
         try:
             result_json = result.json()
         except requests.exceptions.JSONDecodeError:
