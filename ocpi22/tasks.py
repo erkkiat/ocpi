@@ -135,10 +135,6 @@ def send_ocpi_request(
     title=None,
     **kwargs,
 ) -> Optional[dict]:
-    def write_to_file(text):
-        with open("error-response.html", "w") as f:
-            f.write(text)
-
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
@@ -169,7 +165,6 @@ def send_ocpi_request(
         try:
             result_json = result.json()
         except requests.exceptions.JSONDecodeError:
-            write_to_file(result.text)
             logger.exception(f"Unable to decode JSON response from {url}")
             result_json = dict()
         return dict(
