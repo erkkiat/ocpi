@@ -115,7 +115,12 @@ else:
     logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
 
 
-@shared_task
+@shared_task(
+    bind=True,
+    autoretry_for=(requests.exceptions.RequestException,),
+    retry_backoff=15,
+    max_retries=5,
+)
 def send_ocpi_request(
     data,
     url: str,
