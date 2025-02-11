@@ -187,11 +187,9 @@ class SolidTariffViewSet(
                 {"status": str(f"Partner {country_code}*{party_id} is not found")},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        _deleted = self.service.delete_by_msp_and_external_id(msp, external_id)
+        self.service.delete_by_msp_and_external_id(msp, external_id)
 
-        if _deleted:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         methods=["DELETE"],
