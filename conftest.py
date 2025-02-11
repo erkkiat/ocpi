@@ -24,7 +24,7 @@ def client():
 def msp_credentials_with_endpoints():
     cleanup_credentialsrole(Party("FI", "MSP"))
 
-    credentials = CredentialsFactory()
+    credentials = CredentialsFactory(theirs="ABC", ours="DEF")
     business_details = BusinessDetailsFactory(name="Test MSP")
     CredentialsRoleFactory(
         credentials=credentials,

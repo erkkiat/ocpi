@@ -354,9 +354,9 @@ def process_meter_values(
         timestamp = timestamp or datetime.now(pytz.utc)
 
     if session_id and not session:
-        session = Session.get_if_exists(uid=session_id)
+        session = Session.get_if_exists(uid=session_id, raise_exception=True)
 
-    if session and session.status == Session.ACTIVE:
+    if session.status == Session.ACTIVE:
         try:
             Session.objects.prefetch_related("chargingperiods").get(pk=session.pk)
         except Session.DoesNotExist:

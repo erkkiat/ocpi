@@ -1079,15 +1079,6 @@ class ApiPutTests(TestCase):
             403,
         ], "A Location request should require OCPI authentication."
 
-    def _create_credentials(self, country_code, party_id):
-        roles, _created = CredentialsRole.objects.get_or_create(
-            role="CPO",
-            country_code=country_code,
-            party_id=party_id,
-            defaults=dict(business_details=self.business_details),
-        )
-        self.credentials.roles.add(roles)
-
 
 class TariffTests(TestCase):
     fixtures = ["ocpi22/data/credentials.json", "ocpi22/data/defaulttariffs.json"]
@@ -1184,29 +1175,6 @@ class TariffTests(TestCase):
             compare_lists_recursively(method_calls, TariffData.expected_delete_calls),
             "send_ocpi_request should be called with the correct parameters",
         )
-
-    @staticmethod
-    def _create_credentials(
-        country_code: str, party_id: str, role: OcpiRolesEnum
-    ) -> Credentials:
-        credentials = Credentials.objects.create(version=221)
-        business_details = BusinessDetails.objects.create(
-            name="Test MSP",
-            website="https://test.com",
-            logo={
-                "url": "https://www.helsinki-supercharger.com/static/test_logo.png",
-                "category": "OPERATOR",
-                "type": "jpeg",
-            },
-        )
-        roles, _created = CredentialsRole.objects.get_or_create(
-            role=role.value,
-            country_code=country_code,
-            party_id=party_id,
-            defaults={"business_details": business_details},
-        )
-        credentials.roles.add(roles)
-        return credentials
 
 
 class CdrTests(TestCase):
