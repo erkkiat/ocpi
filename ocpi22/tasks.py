@@ -1,7 +1,6 @@
 import os
 import random
 from datetime import timedelta, datetime
-from json import JSONDecodeError
 from logging import getLogger
 from typing import Optional
 from urllib.parse import urlparse
@@ -20,7 +19,6 @@ from django.utils.module_loading import import_string
 from requests import RequestException
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
-from sentry_sdk import capture_exception
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
@@ -139,53 +137,36 @@ def send_ocpi_request(
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
-    try:
-        headers = make_headers(token_base64, to=to, sender=sender)
+    headers = make_headers(token_base64, to=to, sender=sender)
 
-        # Log the message to Sentry
-        # sentry_sdk.set_context('data', data)
+    # Log the message to Sentry
+    # sentry_sdk.set_context('data', data)
 
-        if isinstance(data, dict):
-            kwargs.update(dict(url=url, json=data, headers=headers))
-        else:
-            kwargs.update(dict(url=url, data=data, headers=headers))
+    if isinstance(data, dict):
+        kwargs.update(dict(url=url, json=data, headers=headers))
+    else:
+        kwargs.update(dict(url=url, data=data, headers=headers))
 
-        # Call the specified method in requests, for example, if method == 'put', call requests.put
-        function = getattr(requests, method.lower())
-        if not function:
-            raise NotImplementedError(
-                f"Method {method} is not supported for send_ocpi_request"
-            )
-
-        result: requests.Response = function(**kwargs)
-        result.raise_for_status()
-        logger.info(
-            f"Sending {method.upper()} {title} request to {url}, "
-            f"response {result.status_code} (time {result.elapsed})"
+    # Call the specified method in requests, for example, if method == 'put', call requests.put
+    function = getattr(requests, method.lower())
+    if not function:
+        raise NotImplementedError(
+            f"Method {method} is not supported for send_ocpi_request"
         )
-        try:
-            result_json = result.json()
-        except requests.exceptions.JSONDecodeError:
-            logger.exception(f"Unable to decode JSON response from {url}")
-            result_json = dict()
-        return dict(
-            status_code=result.status_code,
-            json=result_json,
-            headers=dict(result.headers) if result.headers else {},
-            sender=dict(country_code=to_country_code, party_id=to_party_id),
-        )
-    except (IOError, JSONDecodeError) as e:
-        logger.exception(f"Unable to send an OCPI request to {str(to)} at {url}")
 
-        # Todo: This also needs to be done some other way than starting the Django logic
-        # from ocpi22.models.credentials import Credentials
-        #
-        # if credentials_id:
-        #     Credentials.objects.filter(
-        #         pk=credentials_id, connection_status=choices.CONNECTED
-        #     ).update(connection_status=choices.OFFLINE)
-        capture_exception(e)
-        return None
+    result: requests.Response = function(**kwargs)
+    result.raise_for_status()
+    logger.info(
+        f"Sending {method.upper()} {title} request to {url}, "
+        f"response {result.status_code} (time {result.elapsed})"
+    )
+    result_json = result.json()
+    return dict(
+        status_code=result.status_code,
+        json=result_json,
+        headers=dict(result.headers) if result.headers else {},
+        sender=dict(country_code=to_country_code, party_id=to_party_id),
+    )
 
 
 @shared_task(max_retries=2, retry_backoff=2)
