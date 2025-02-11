@@ -534,14 +534,14 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
     if date_from:
         import dateutil.parser
 
-        date_from: datetime = dateutil.parser.parse(date_from, ignoretz=True)
+        date_from: datetime = dateutil.parser.parse(date_from).replace(tzinfo=pytz.UTC)
         queryset = queryset.filter(last_updated__gte=date_from)
     date_to: str = request.GET.get("date_to")
     if date_to:
         import dateutil.parser
 
-        date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
-        queryset = queryset.filter(last_updated__lt=date_to)
+        date_to: datetime = dateutil.parser.parse(date_to)
+        queryset = queryset.filter(last_updated__lt=date_to).replace(tzinfo=pytz.UTC)
 
     return queryset
 
