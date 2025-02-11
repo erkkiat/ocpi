@@ -81,7 +81,6 @@ from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet, EvseViewSet
 from ocpi22.middleware import OCPIHubMiddleware
-from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location, Evse, Connector
