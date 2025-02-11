@@ -631,7 +631,7 @@ def recursive_update_last_updated(obj):
         )
 
 
-class CannotModify(BasePermission):
+class IsModificationAllowed(BasePermission):
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS or request.method == "POST":
             return True
