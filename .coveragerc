@@ -1,32 +1,35 @@
 [run]
 omit = */migrations/*
+       */settings/*
        */tests/*
+       *test_*.py
+       *_test.py
+       */test.py
+       test.py
        wsgi.py
        */conftest.py
        .venv/*
        venv/*
        manage.py
-       prod.py
-       dev.py
+       */admin.py
+       */__init__.py
 
 [report]
 omit = */migrations/*
+       */settings/*
        */tests/*
+       *test_*.py
+       *_test.py
+       */test.py
+       test.py
        wsgi.py
        */conftest.py
-       root_fixtures.py
-       */admin.py
-       */__init__.py
        .venv/*
        venv/*
        manage.py
-       prod.py
-       dev.py
+       */admin.py
+       */__init__.py
+
 exclude_lines =
     pragma: no cover
     if TYPE_CHECKING:
-
-
-
-
-

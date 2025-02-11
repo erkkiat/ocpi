@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import wraps
 from types import FunctionType
-from typing import Union, Iterable
+from typing import Union, Iterable, Mapping, Any
 from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import AnonymousUser
@@ -13,9 +13,9 @@ from django.contrib.auth.models import AnonymousUser
 from requests import Response
 from rest_framework.test import APIRequestFactory
 
-from django.test import Client
+from django.test import Client, TestCase
 
-from ocpi22.models.credentials import Credentials
+from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.test_data import expected_get_responses, expected_get_headers
@@ -126,13 +126,23 @@ class OCPIAPIRequestFactory(APIRequestFactory):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def request(self, sender: Party = None, **kwargs):
-        ocpi_party = get_credentialsrole(None, sender, create=True) if sender else None
+    def request(
+        self, sender: Party | CredentialsRole = None, to: Party = None, **kwargs
+    ):
+        if isinstance(sender, CredentialsRole):
+            ocpi_party = sender
+        else:
+            ocpi_party = (
+                get_credentialsrole(None, sender, create=True) if sender else None
+            )
         credentials = (
             ocpi_party.credentials if ocpi_party else Credentials.objects.first()
         )
+        assert credentials
         headers = make_headers(
-            credentials.ours_base64(), to=Party("FI", "CPO"), sender=sender
+            credentials.ours_base64(),
+            to=to or Party("FI", "CPO"),
+            sender=ocpi_party.get_party() if ocpi_party else Party("FI", "HUB"),
         )
         headers.update(kwargs)
         request = super().request(**headers)
@@ -434,3 +444,29 @@ def make_json_response(data, status_code=200) -> Response:
     data_str = json.dumps(data).encode("UTF-8")
     response._content = data_str
     return response
+
+
+@dataclass
+class FakeUser:
+    username: str
+    is_staff: bool
+    is_superuser: bool
+    is_authenticated: bool = True
+
+
+def get_fake_admin():
+    return FakeUser("admin", True, True)
+
+
+class BetterTestCase(
+    TestCase
+):  # Seeing first how this works before during a big refactoring
+    def assertDictEqual(
+        self, d1: Mapping[Any, object], d2: Mapping[Any, object], msg: Any = ...
+    ) -> None:
+        self.assertTrue(compare_dicts_recursively(d1, d2), msg)
+
+    def assertListEqual(
+        self, list1: list[Any], list2: list[Any], msg: Any = ...
+    ) -> None:
+        self.assertTrue(compare_lists_recursively(list1, list2), msg)

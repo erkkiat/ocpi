@@ -98,7 +98,7 @@ class OcpiModule:
                 # Send update only once
                 setattr(self, "update_sent", True)
 
-    def send_updates(self, data=None, method="put", path_components=None) -> None:
+    def send_updates(self, data=None, method="put", path_components=[]) -> None:
         """
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
@@ -136,7 +136,7 @@ class OcpiModule:
                 setattr(self, "updates_sent", True)
 
     def send_all_updates(
-        self, data=None, method="put", path_components=None, ocpi_module_name=None
+        self, data=None, method="put", path_components=[], ocpi_module_name=None
     ) -> bool:
         if not settings.SEND_UPDATES:
             return True
@@ -200,7 +200,7 @@ class OcpiModule:
                 args, retry=False, title=f"{cls.ocpi_module_name.value} update"
             )
         else:
-            logger.warning(f"Skipping send for {cls}")
+            logger.error(f"Skipping send for {cls} due to missing parameters")
 
     def send_hub_updates(self) -> None:
         if ocpi_platform.is_hub and settings.SEND_UPDATES:
@@ -237,14 +237,8 @@ class OcpiModule:
         return serializer.data
 
     def route_single_update_message(
-        self, method, to, data=None, path_components=None
+        self, method, to, data=None, path_components=[]
     ) -> None:
-        path_components = path_components or [
-            self.ocpi_master.country_code,
-            self.ocpi_master.party_id,
-            self.uid,
-        ]
-
         sender = Party(*(self.get_owner_identity().split("*")))
         route = find_route(
             to, self.ocpi_module_name, add_path="/".join(path_components)
@@ -405,9 +399,10 @@ class Ocpi:
         ("DC", "DC", 3),
     )
 
-    POWERTYPE_CHOICES_221 = (
+    POWERTYPE_CHOICES_221 = [
         (x[0], x[1]) for x in _POWERTYPE_DATA
-    )  # For model: (('AC_1_PHASE', 'AC 1-phase'), ... )
+    ]  # For model choices: (('AC_1_PHASE', 'AC 1-phase'), ... )
+
     POWERTYPE_PHASES = dict(
         (x[0], x[2]) for x in _POWERTYPE_DATA
     )  # For power calculation: (('AC_1_PHASE', 1), ... )

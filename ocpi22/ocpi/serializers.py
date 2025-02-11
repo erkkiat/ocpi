@@ -10,7 +10,10 @@ from rest_framework.exceptions import ValidationError
 from ocpi22 import choices
 from ocpi22.choices import TOKEN_TYPE_CHOICES, CONNECTION_STATUS_CHOICES, OcpiRolesEnum
 from ocpi22.locations.util import get_or_create_business_details
+from ocpi22.models.cdrlocation import CdrLocation
+from ocpi22.models.cdrtoken import CdrToken
 from serializers import DisplayTextSerializer
+from ocpi22.models.displaytext import DisplayText
 from util import default_error_messages
 from ocpi22.locations.serializers import BusinessDetailsSerializer, Coordinate
 from ocpi22.models.cdr import Cdr
@@ -37,18 +40,37 @@ from ocpi22.util import (
     CiStringChoiceField,
     MultipleChoiceFieldList,
     CiStringField,
+    LanguageChoiceField,
 )
 from ocpiconnector.party import Party
 
 logger = getLogger(__name__)
 
 
-class CdrTokenSerializer(SerializerCleanedUp):
-    uid = serializers.CharField(required=True, source="cdr_token_uid")
-    type = serializers.ChoiceField(
-        choices=TOKEN_TYPE_CHOICES, required=True, source="cdr_token_type"
-    )
-    contract_id = serializers.CharField(required=True, source="cdr_token_contract_id")
+class CdrTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CdrToken
+        fields = ["country_code", "party_id", "uid", "type", "contract_id"]
+
+    country_code = serializers.CharField(source="ocpi_master.country_code")
+    party_id = serializers.CharField(source="ocpi_master.party_id")
+    type = serializers.ChoiceField(choices=TOKEN_TYPE_CHOICES, source="token_type")
+
+    def create(self, validated_data):
+        country_code = validated_data.pop("country_code")
+        party_id = validated_data.pop("party_id")
+
+        credentialsrole = get_credentialsrole(
+            credentials=None,
+            party=Party(country_code, party_id),
+            role=OcpiRolesEnum.EMSP,
+            create=True,
+        )
+
+        cdr_token, _created = CdrToken.objects.get_or_create(
+            ocpi_master=credentialsrole, **validated_data
+        )
+        return cdr_token
 
 
 class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -80,8 +102,8 @@ class TokenSerializer(HyperlinkedModelSerializerCleanedUp):
     default_profile_type = CiStringChoiceField(
         required=False, choices=Token.PROFILE_TYPE_CHOICES
     )
-    language = CiStringChoiceField(
-        required=False, default="EN", choices=choices.LANGUAGE_CHOICES
+    language = LanguageChoiceField(
+        required=False, default="en", choices=choices.LANGUAGE_CHOICES
     )
     type = CiStringChoiceField(required=False, choices=choices.TOKEN_TYPE_CHOICES)
     last_updated = UTCDateTimeField(required=False)
@@ -136,11 +158,6 @@ class ElementsSerializer(SerializerCleanedUp):
     restrictions = RestrictionSerializer(source="*", required=False)
 
 
-class TariffAltTextSerializer(SerializerCleanedUp):
-    language = serializers.CharField(default="EN")
-    text = serializers.CharField(source="price")
-
-
 class MinPriceSerializer(SerializerCleanedUp):
     excl_vat = serializers.FloatField(source="min_price_excl_vat", default=None)
     incl_vat = serializers.FloatField(source="min_price_incl_vat", default=None)
@@ -182,7 +199,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         default=dict(max_price_excl_vat=None, max_price_incl_vat=None),
     )
 
-    tariff_alt_text = TariffAltTextSerializer(source="*", read_only=True)
+    tariff_alt_text = DisplayTextSerializer(many=True, required=False)
     last_updated = UTCDateTimeField(required=False)
 
     def _delete_children(self, tariff: Tariff) -> None:
@@ -202,41 +219,57 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def update(self, instance: Tariff, validated_data: dict) -> Tariff:
         tariff_elements = validated_data.pop("tariff_elements")
+        tariff_alt_text = validated_data.pop("tariff_alt_text", None)
         for key, value in validated_data.items():
             setattr(instance, key, value)
         instance.save()
         self._delete_children(instance)
         self._create_children(instance, tariff_elements)
+        if tariff_alt_text:
+            tariff_alt_texts = [
+                DisplayText.objects.get_or_create(**tat) for tat in tariff_alt_text
+            ]
+            instance.tariff_alt_text.set(tariff_alt_texts)
         return instance
 
     def create(self, validated_data: dict) -> Tariff:
         tariff_elements = validated_data.pop("tariff_elements")
+        tariff_alt_text = validated_data.pop("tariff_alt_text", [])
         tariff = Tariff.objects.create(**validated_data)
         self._create_children(tariff, tariff_elements)
+        tariff_alt_texts = [
+            DisplayText.objects.get_or_create(**tat)[0] for tat in tariff_alt_text
+        ]
+        tariff.tariff_alt_text.set(tariff_alt_texts)
         return tariff
 
 
 class CdrCoordinatesSerializer(SerializerCleanedUp):
-    latitude = Coordinate(source="cdr_location_latitude")
-    longitude = Coordinate(source="cdr_location_longitude")
+    latitude = Coordinate()
+    longitude = Coordinate()
 
 
-class CdrLocationSerializer(SerializerCleanedUp):
-    id = serializers.CharField(source="cdr_location_id")
-    address = serializers.CharField(source="cdr_location_address")
-    name = serializers.CharField(source="cdr_location_name", required=False)
-    city = serializers.CharField(source="cdr_location_city")
-    postal_code = serializers.CharField(source="cdr_location_postal_code")
-    country = serializers.CharField(source="cdr_location_country")
+class CdrLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CdrLocation
+        fields = [
+            "id",
+            "address",
+            "name",
+            "city",
+            "postal_code",
+            "country",
+            "coordinates",
+            "evse_uid",
+            "evse_id",
+            "connector_id",
+            "connector_standard",
+            "connector_format",
+            "connector_power_type",
+        ]
+
+    id = serializers.CharField(source="uid")
     coordinates = CdrCoordinatesSerializer(source="*")
-    evse_uid = serializers.CharField(source="cdr_location_evse_uid")
-    evse_id = serializers.CharField(source="cdr_location_evse_id")
-    connector_id = serializers.CharField(source="cdr_location_connector_id")
-    connector_standard = serializers.CharField(source="cdr_location_connector_standard")
-    connector_format = serializers.CharField(source="cdr_location_connector_format")
-    connector_power_type = serializers.CharField(
-        source="cdr_location_connector_power_type"
-    )
 
 
 class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -255,6 +288,7 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
             "authorization_reference",
             "cdr_location",
             "tariffs",
+            "charging_periods",
             "total_cost",
             "total_energy",
             "currency",
@@ -267,11 +301,11 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
     id = serializers.CharField(source="uid")
     country_code = serializers.CharField(source="ocpi_master.country_code")
     party_id = serializers.CharField(source="ocpi_master.party_id")
-
-    cdr_token = CdrTokenSerializer(source="*")
+    charging_periods = serializers.JSONField()
+    cdr_token = CdrTokenSerializer()
     total_cost = TotalCostSerializer(source="*")
     tariffs = TariffSerializer(many=True, required=True)
-    cdr_location = CdrLocationSerializer(source="*")
+    cdr_location = CdrLocationSerializer()
     last_updated = UTCDateTimeField(required=False)
     start_date_time = UTCDateTimeField(required=True)
     end_date_time = UTCDateTimeField(required=True)
@@ -289,7 +323,19 @@ class CdrSerializer(HyperlinkedModelSerializerCleanedUp):
                     None, Party(**tariff.pop("ocpi_master")), role=OcpiRolesEnum.CPO
                 )
                 tariff_list.append(tariff_serializer.create(tariff))
-            cdr = Cdr.objects.create(**validated_data)
+            cdr_location_data = validated_data.pop("cdr_location")
+            cdr_location, _created = CdrLocation.objects.get_or_create(
+                **cdr_location_data
+            )
+            cdr_token_data = validated_data.pop("cdr_token")
+            cdr_token_ocpi_master = cdr_token_data.pop("ocpi_master")
+            cdr_token_data["ocpi_master"] = get_credentialsrole(
+                None, Party(**cdr_token_ocpi_master), role=OcpiRolesEnum.EMSP
+            )
+            cdr_token, _created = CdrToken.objects.get_or_create(**cdr_token_data)
+            cdr = Cdr.objects.create(
+                **validated_data, cdr_location=cdr_location, cdr_token=cdr_token
+            )
             cdr.tariffs.set(tariff_list)
             return cdr
         except IntegrityError:
@@ -489,7 +535,7 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
     charging_periods = ChargingPeriodSerializer(
         many=True, source="chargingperiods", required=False
     )
-    cdr_token = CdrTokenSerializer(required=True, source="*")
+    cdr_token = CdrTokenSerializer(required=True)
     location_id = LocationIdDictSerializer(source="*")
     evse_uid = EvseUidDictSerializer(source="*")
     connector_id = ConnectorIdSerializer(source="*", required=False)
@@ -503,8 +549,19 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def create(self, validated_data):
         request = self.context.get("request")
+
+        cdr_token_data = validated_data.pop("cdr_token")
+        party = Party(**cdr_token_data.pop("ocpi_master"))
+        ocpi_master_msp = get_credentialsrole(
+            credentials=None, party=party, role=OcpiRolesEnum.EMSP, create=True
+        )
+        cdr_token, _created = CdrToken.objects.get_or_create(
+            **cdr_token_data, ocpi_master=ocpi_master_msp
+        )
+
         chargingperiods = validated_data.pop("chargingperiods", [])
         session = Session.objects.create(
+            cdr_token=cdr_token,
             credentials=request.credentials,
             billed_to=None,  # If we are CPO, we fill the billed_to elsewhere and MSP doesn't use it
             # ocpi_master=request.ocpi_party,
@@ -522,6 +579,8 @@ class SessionSerializer(HyperlinkedModelSerializerCleanedUp):
         #  from the newly received Session object. If the new Session object does not contain charging_periods
         #  (field is omitted or contains any empty list), the charging_periods of the existing object
         #  SHALL be removed (replaced by the new empty list).
+
+        validated_data.pop("cdr_token", None)
 
         readonly_fields = ("uid", "location", "evse")
         for key in readonly_fields:

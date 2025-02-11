@@ -100,29 +100,16 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     upper_case_fields = ["postal_code", "country", "uid"]
 
-    # The party that owns this Location
-    # The country_code and party_id can be found through the CredentialsRole
     ocpi_master = models.ForeignKey(
         "ocpi22.CredentialsRole", related_name="locations", on_delete=models.PROTECT
     )
 
-    # Uniquely identifies the location within the CPOs platform (and suboperator platforms).
-    # This field can never be changed, modified or renamed.
     uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
 
-    # Defines if a Location may be published on an website or app etc.
-    # When this is set to false, only tokens identified in the field:
-    # publish_allowed_to are allowed to be shown this Location.
-    # When the same location has EVSEs that may be published and may not be published,
-    # two 'Locations' should be created.
     publish = models.BooleanField(default=True, verbose_name=_("Publish"))
 
-    # Defines the set of values that identify a token to which a Location might be published.
-    # At least one of the following fields SHALL be set: uid, visual_number, or group_id.
-    #
-    # When uid is set, type SHALL also be set.
     publish_allowed_to = models.ManyToManyField(
         "Token",
         related_name="locations",
@@ -130,38 +117,30 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         verbose_name=_("Publish allowed to"),
     )
 
-    # Display name of the location
     name = models.CharField(max_length=255, blank=True, verbose_name=_("Name"))
 
-    # Street/block name and house number if available.
     address = models.CharField(
         max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, verbose_name=_("Address")
     )
 
-    # City or town
     city = models.CharField(
         max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH, verbose_name=_("City")
     )
 
-    # Postal code of the location, may only be omitted when the location has no postal code:
-    # in some countries charging locations at highways don’t have postal codes.
     postal_code = models.CharField(
         max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
         blank=True,
         verbose_name=_("Postal code"),
     )
 
-    # State or province of the location, only to be used when relevant
     state = models.CharField(max_length=20, blank=True, verbose_name=_("State"))
 
-    # ISO 3166-1 alpha-3 code for the country of this location
     country = models.CharField(
         max_length=3,
         choices=generic.countries.COUNTRIES_ISO_3,
         verbose_name=_("Country"),
     )
 
-    # This class defines the geo location of the Charge Point. The geodetic system to be used is WGS 84.
     latitude = models.FloatField(verbose_name=_("Latitude"))
     longitude = models.FloatField(verbose_name=_("Longitude"))
 
@@ -179,10 +158,6 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     # An index for fast lookup, first 4 digits from long
     long_partition = models.SmallIntegerField(db_index=True, null=True, blank=True)
 
-    # Geographical location of related points relevant to the user
-    # related_locations
-
-    # The general type of parking at the charge point location
     PARKING_CHOICES = (
         ("ALONG_MOTORWAY", "Along a motorway"),
         ("PARKING_GARAGE", "Parking garage"),
@@ -198,12 +173,6 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         choices=PARKING_CHOICES,
         verbose_name=_("Parking type"),
     )
-
-    # List of EVSEs that belong to this Location
-    # evses (comes automatically from Evse class)
-
-    # Human-readable directions on how to reach the location
-    # directions
 
     operator = models.ForeignKey(
         BusinessDetails,
@@ -230,7 +199,6 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         verbose_name=_("Owner"),
     )
 
-    # Optional list of facilities this charging location directly belongs to
     facilities = MultipleChoiceCharField(
         max_length=284,
         null=True,
@@ -241,8 +209,7 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     )
 
     # Todo: get time zone based on coordinates
-    # One of IANA tzdata’s TZ-values representing the time zone of the location.
-    # Examples: "Europe/Oslo", "Europe/Zurich". (http://www.iana.org/time-zones)
+
     time_zone = models.CharField(
         max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
         validators=[validate_timezone],
@@ -257,13 +224,8 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     def get_timezone(self):
         return tz.gettz(str(self.time_zone))
 
-    # The times when the EVSEs at the location can be accessed for charging
-    # opening_times
-
-    # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 
-    # Django automatic dates
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
@@ -334,6 +296,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
                 )
         return ", ".join(set(results))
 
+    def send_updates(self, *args, **kwargs) -> None:
+        if self.publish:
+            super().send_updates(*args, **kwargs)
+
 
 class Evse(models.Model, ModelUtilMixin):
     class Meta:
@@ -345,21 +311,11 @@ class Evse(models.Model, ModelUtilMixin):
 
     objects = PartnerManager()
 
-    # Uniquely identifies the EVSE within the CPOs platform (and suboperator platforms).
-    # For example a database ID or the actual "EVSE ID". This field can never be changed, modified or renamed.
-    # This is the 'technical' identification of the EVSE, not to be used as 'human-readable' identification,
-    # use the field evse_id for that.
-    # This field is named uid instead of id, because id could be confused with evse_id which is an eMI3 defined field.
     uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         validators=[uid_validator],
         db_index=True,
     )
-
-    # Compliant with the following specification for EVSE ID from "eMI3 standard version V1.0"
-    # (http://emi3group.com/documents-links/) "Part 2: business objects."
-    # Optional because: if an evse_id is to be re-used in the real world,
-    # the evse_id can be removed from an EVSE object if the status is set to REMOVED.
 
     evse_id = models.CharField(
         max_length=48, blank=True, default="", verbose_name=_("EVSE ID")
@@ -375,7 +331,6 @@ class Evse(models.Model, ModelUtilMixin):
     RESERVED = "RESERVED"
     UNKNOWN = "UNKNOWN"
 
-    # Indicates the current status of the EVSE
     STATUS_CHOICES = (
         (AVAILABLE, _("Available")),
         (BLOCKED, _("Physically blocked")),
@@ -407,12 +362,10 @@ class Evse(models.Model, ModelUtilMixin):
         verbose_name=_("Location"),
     )
 
-    # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Last updated")
     )
 
-    # Django automatic dates
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
@@ -494,9 +447,6 @@ class Evse(models.Model, ModelUtilMixin):
 
 
 class Connector(models.Model, ModelUtilMixin):
-    # Identifier of the Connector within the EVSE. Two Connectors may have the same id
-    # as long as they do not belong to the same EVSE object.
-
     class Meta:
         verbose_name = _("connector")
         verbose_name_plural = _("connectors")
@@ -526,7 +476,6 @@ class Connector(models.Model, ModelUtilMixin):
         null=True, blank=True, verbose_name=_("Maximum electric power")
     )
 
-    # If you want the default tariffs to be in use when needed use get_tariffs() instead of accessing tariff_ids
     tariff_ids = models.ManyToManyField(
         "Tariff", related_name="connectors", blank=True, verbose_name=_("Tariffs")
     )
@@ -535,10 +484,8 @@ class Connector(models.Model, ModelUtilMixin):
         blank=True, default="", verbose_name=_("Terms and conditions")
     )
 
-    # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(null=True, blank=True)
 
-    # Django automatic dates
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 

@@ -775,7 +775,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
 
     @classmethod
     @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.CPO)
+    @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     def put(
         cls,
         request,

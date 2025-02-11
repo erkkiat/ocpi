@@ -48,8 +48,6 @@ from ocpiconnector.party import Party
 from util import format_url, RedisStore, redis_store, with_trailing_slash
 
 
-# slack_logger.init()
-
 logger = getLogger(__name__)
 
 
@@ -190,6 +188,33 @@ CURRENCY_CHOICES = (
     ("TRY", "Turkish lira"),
     ("UAH", "Ukrainian hryvnia"),
 )
+
+VALID_CURRENCY_CODE_SET = {
+    "PHP",
+    "CZK",
+    "RUB",
+    "USD",
+    "TRY",
+    "HUF",
+    "RSD",
+    "UAH",
+    "MDL",
+    "HRK",
+    "BGN",
+    "CHF",
+    "GBP",
+    "RON",
+    "SEK",
+    "EUR",
+    "BYN",
+    "NOK",
+    "PLN",
+    "MKD",
+    "BAM",
+    "DKK",
+    "ALL",
+    "ISK",
+}
 
 
 def get_currency_choices() -> dict:
@@ -333,6 +358,7 @@ def calculate_partition(coordinate):
 def is_our_identifier(party: Party, identities=None) -> bool:
     """
     Check if the given country_code and party_id match one of our identities
+    >>> from ocpiconnector.ocpi_identities import OCPIIdentities
     >>> test_identities = OCPIIdentities(source={'CPO': 'FI*CPO', 'EMSP': 'FI*MSP'})
     >>> is_our_identifier(Party('FI', 'MSP'), identities=test_identities)
     True
@@ -748,6 +774,17 @@ class CiStringChoiceField(serializers.ChoiceField):
 
     def to_internal_value(self, data):
         return super().to_internal_value(data.upper())
+
+
+class LanguageChoiceField(serializers.ChoiceField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_internal_value(self, data):
+        return super().to_internal_value(data.lower())
+
+    def to_representation(self, value):
+        return super().to_representation(value.lower())
 
 
 class MultipleChoiceFieldList(serializers.MultipleChoiceField):

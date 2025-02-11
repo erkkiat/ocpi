@@ -34,11 +34,6 @@ MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 MQTT_USE_SSL = os.getenv("MQTT_USE_SSL", False)
 
-FIXIE_URL = os.getenv("FIXIE_URL", "")
-os.environ["http_proxy"] = FIXIE_URL
-os.environ["https_proxy"] = FIXIE_URL
-os.environ["no_proxy"] = "localhost,127.0.0.1"
-
 CSRF_TRUSTED_ORIGINS = ["https://solidroam.f3-smappee.net"]
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(

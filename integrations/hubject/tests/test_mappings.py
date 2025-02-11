@@ -19,8 +19,10 @@ from integrations.hubject.schemas import (
     CalibrationLawDataAvailability,
     Accessibility,
     AccessibilityLocation,
+    HubjectPriceComponent,
+    ProviderIDAsterisk,
+    HubjectDefaultTariff,
 )
-from integrations.hubject_to_ocpi_converter import HubjectToOCPIConverter
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.models.location import Connector
@@ -29,7 +31,6 @@ from ocpi22.tests.factories import LocationFactory, EvseFactory
 
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite("integrations.solid_to_hubject_converter"))
-    tests.addTests(doctest.DocTestSuite("integrations.hubject_to_ocpi_converter"))
     return tests
 
 
@@ -156,7 +157,6 @@ def emsdetten2_evse(emsdetten_connector):
 
 class TestMappings:
     _ocpi_2_oicp_converter = SolidToHubjectConverter()
-    _oicp_to_ocpi_converter = HubjectToOCPIConverter()
 
     def test_map_connector_std_choices_to_plug_unknown(self):
         with pytest.raises(ValidationError):
@@ -273,7 +273,6 @@ class TestMappings:
             invalid_street_addr, invalid_country_code
         )
 
-        print(street, house_num)
         expected_value = "-"
         assert street == expected_value
         assert house_num == expected_value
@@ -281,6 +280,141 @@ class TestMappings:
     def test_invalid_timzone(self):
         with pytest.raises(ValidationError):
             self._ocpi_2_oicp_converter.get_timezone("Unknown")
+
+    @pytest.mark.django_db
+    def test_maximum_power_with_multiple_connectors(
+        self,
+        connector_max_electric_power_10kw,
+        connector_max_electric_power_15kw,
+        connector_max_electric_power_5kw,
+    ):
+        max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
+        assert max_power == 15
+
+    @pytest.mark.django_db
+    def test_maximum_power_with_no_connectors(self):
+        Connector.objects.all().delete()
+        max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
+        assert max_power == 0
+
+    @pytest.mark.django_db
+    def test_maximum_power_when_connector_max_electric_power_none(
+        self, connector_max_electric_power_none
+    ):
+        max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
+        assert max_power == 0
+
+    @pytest.mark.django_db
+    def test_maximum_power_when_connector_max_electric_power_none_and_connector_max_electric_power_10kw(
+        self, connector_max_electric_power_10kw, connector_max_electric_power_none
+    ):
+        max_power = self._ocpi_2_oicp_converter.get_maximum_product_charging_power()
+        assert max_power == 10
+
+    @pytest.mark.parametrize(
+        "solid_tariff_id, ref_unit, operator_id, msp_id, expected",
+        [
+            (
+                "SMP1",
+                HubjectPriceComponent.MINUTE,
+                "BE*SMP",
+                "DE*ICE",
+                "BE*SMP*SMP1*MINUTE*DE*ICE",
+            ),
+            (
+                "SMP2",
+                HubjectPriceComponent.KWH,
+                "NL*CPO",
+                "FR*MSP",
+                "NL*CPO*SMP2*KILOWATT_HOUR*FR*MSP",
+            ),
+            (
+                "SMP3",
+                HubjectPriceComponent.HOUR,
+                "US*CPO",
+                "GB*MSP",
+                "US*CPO*SMP3*HOUR*GB*MSP",
+            ),
+            ("SMP3", HubjectPriceComponent.HOUR, "US*CPO", "", "US*CPO*SMP3*HOUR*"),
+        ],
+    )
+    def test_get_pricing_product_id(
+        self, solid_tariff_id, ref_unit, operator_id, msp_id, expected
+    ):
+        result = self._ocpi_2_oicp_converter.get_pricing_product_id(
+            solid_tariff_id, ref_unit, operator_id, msp_id
+        )
+        assert result == expected, f"Expected {expected}, but got {result}"
+
+    def test_get_pricing_product_id_raises_value_error_when_none_values_provided(self):
+        with pytest.raises(
+            ValueError,
+            match="Missing required fields {operator_id, price_reference, solid_tariff_external_id} for generating pricing product ID.",
+        ):
+            self._ocpi_2_oicp_converter.get_pricing_product_id(None, None, None, "")
+
+    @pytest.mark.django_db
+    def test_convert_to_pricing_product_data_records_success(
+        self,
+        smp1_solid_tariff_with_all_records,
+        pricing_product_data_record_successful_result,
+    ):
+        pricing_product_data_records = (
+            self._ocpi_2_oicp_converter.convert_to_pricing_product_data_records(
+                smp1_solid_tariff_with_all_records, "FI*CPO"
+            )
+        )
+        assert len(pricing_product_data_records) == 2
+        assert (
+            pricing_product_data_records
+            == pricing_product_data_record_successful_result
+        )
+
+    @pytest.mark.django_db
+    def test_convert_to_pricing_product_data_records_when_prices_are_none(
+        self,
+        smp1_solid_tariff_with_none_prices,
+        pricing_product_data_record_successful_result,
+    ):
+        pricing_product_data_records = (
+            self._ocpi_2_oicp_converter.convert_to_pricing_product_data_records(
+                smp1_solid_tariff_with_none_prices, "FI*CPO"
+            )
+        )
+        assert len(pricing_product_data_records) == 0
+
+    @pytest.mark.django_db
+    def test_get_provider_ids_for_solid_tariffs_with_msp(
+        self, smp1_solid_tariff_with_all_records
+    ):
+        result = self._ocpi_2_oicp_converter.get_provider_ids(
+            [smp1_solid_tariff_with_all_records]
+        )
+        assert result == ProviderIDAsterisk(root="FI*CPO")
+
+    @pytest.mark.django_db
+    def test_get_provider_ids_for_solid_tariffs_without_msp(
+        self, smp1_solid_tariff_without_msp
+    ):
+        result = self._ocpi_2_oicp_converter.get_provider_ids(
+            [smp1_solid_tariff_without_msp]
+        )
+        assert result == ProviderIDAsterisk(root="*")
+
+    @pytest.mark.django_db
+    def test_convert_to_pricing_product_data_success(
+        self, smp1_solid_tariff_with_all_records, pricing_product_data_successful_result
+    ):
+        default_tariff = HubjectDefaultTariff(
+            currency="EUR", price=0.3, price_component=HubjectPriceComponent.HOUR
+        )
+        result = self._ocpi_2_oicp_converter.convert_to_pricing_product_data(
+            [smp1_solid_tariff_with_all_records],
+            default_tariff,
+            "FI*CPO",
+            "Smappee eRoam CPO",
+        )
+        assert result == pricing_product_data_successful_result
 
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {
