@@ -196,7 +196,6 @@ class TestMqttServices:
         OCPISessionFactory(uid="94f5993d-232a-4916-a801-4e408c24c9cc")
 
         with (
-            patch("ocpiconnector.settings.base.OCPI_221_SESSION_PUT_ONLY", True),
             patch(
                 "ocpi22.ocpi.util.OcpiModule.send_background_update"
             ) as mock_send_background_update,
