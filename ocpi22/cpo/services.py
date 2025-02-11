@@ -11,7 +11,7 @@ class SolidTariffService:
     def get_all_latest_solid_tariffs(self):
         return self.solid_tariff_repository.get_latest_with_unique_external_id_and_msp()
 
-    def create(self, validated_data: dict) -> dict:
+    def create(self, validated_data: dict) -> tuple[SolidTariff, bool]:
         from ocpi22.cpo.serializers import (
             CurrencySerializer,
             PriceKwhSerializer,
@@ -40,8 +40,7 @@ class SolidTariffService:
 
         if self.solid_tariff_repository.exists(**validated_data):
             solid_tariff = SolidTariff.objects.get(**validated_data)
-            tariff = Tariff.objects.filter(uid=external_id).first()
-            return {"tariff": tariff, "solid_tariff": solid_tariff, "created": False}
+            return (solid_tariff, False)
 
         with transaction.atomic():
             # Todo: This is going to be immutable in the upcoming PRs
@@ -99,7 +98,7 @@ class SolidTariffService:
             )
             solid_tariff.save()
 
-        return {"tariff": tariff, "solid_tariff": solid_tariff, "created": True}
+        return (solid_tariff, True)
 
     def delete_by_msp_and_external_id(
         self, msp: CredentialsRole, external_id: str
