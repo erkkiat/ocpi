@@ -2,7 +2,6 @@ import os
 import random
 from datetime import timedelta, datetime
 from logging import getLogger
-from typing import Optional
 from urllib.parse import urlparse
 
 import celery
@@ -16,7 +15,7 @@ from celery.schedules import crontab
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
-from requests import RequestException
+from requests import RequestException, Response
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
 
@@ -132,7 +131,7 @@ def send_ocpi_request(
     credentials_id=None,
     title=None,
     **kwargs,
-) -> Optional[dict]:
+) -> Response:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
@@ -157,7 +156,7 @@ def send_ocpi_request(
             f"Sending {method.upper()} {title} request to {url}, "
             f"response {response.status_code} (time {response.elapsed})"
         )
-        return response.json()
+        return response
     if response.status_code >= 300 and env in ["staging", "development"]:
         logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
         raise self.retry(
@@ -200,13 +199,13 @@ def pull_objects(
             if "limit=" not in url:
                 url = f"{url}?limit={limit}"
             response = send_ocpi_request(data=dict(), url=url, **kwargs)
-            if response and response.get("status_code") == status.HTTP_400_BAD_REQUEST:
+            if response and response.status_code < 300:
                 next_url, _rel = (
                     response.get("headers").get("Link", ";").strip("<>").split(";")
                 )
                 model = obj.get("model")
                 viewset = import_string(obj.get("viewset"))
-                items = response.get("json", {}).get("data", [])
+                items = response.json().get("data", [])
                 total_objects += len(items)
                 for i in items:
                     try:
