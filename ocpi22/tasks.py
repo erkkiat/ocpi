@@ -161,15 +161,12 @@ def send_ocpi_request(
     if response.status_code >= 300 and env in ["staging", "development"]:
         logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
         raise self.retry(
-            exc=Exception(
-                f"Retrying ocpi request send for {response.url}: {response.status_code}: {response.reason}"
-            )
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
         )
     if response.status_code >= 500 and env == "production":
+        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
         raise self.retry(
-            exc=Exception(
-                f"Retrying ocpi request send for {response.url}: {response.status_code}: {response.reason}"
-            )
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
         )
 
 
