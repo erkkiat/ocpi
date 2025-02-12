@@ -518,8 +518,6 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         queryset = apply_ocpi22_filters(request, queryset)
-        if not queryset or not queryset.count():
-            return None
         return super().paginate_queryset(queryset, request, view)
 
 
@@ -540,8 +538,8 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
     if date_to:
         import dateutil.parser
 
-        date_to: datetime = dateutil.parser.parse(date_to)
-        queryset = queryset.filter(last_updated__lt=date_to).replace(tzinfo=pytz.UTC)
+        date_to: datetime = dateutil.parser.parse(date_to).replace(tzinfo=pytz.UTC)
+        queryset = queryset.filter(last_updated__lt=date_to)
 
     return queryset
 
