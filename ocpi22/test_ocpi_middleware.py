@@ -31,4 +31,4 @@ def test_ocpi_221_middleware_sets_ocpi_mandatory_headers(client):
         ("X-Request-ID", static_uuid),
         ("X-Correlation-ID", static_uuid),
     ):
-        assert response.get(key) == value, (key, value)
+        assert response.get(key) == value
