@@ -398,6 +398,11 @@ class FakeResponse:
     def text(self):
         return self.data
 
+    def raise_for_status(self):
+        response = Response()
+        response.status_code = self.status_code
+        response.raise_for_status()
+
 
 class MockUuid4:
     number: int
