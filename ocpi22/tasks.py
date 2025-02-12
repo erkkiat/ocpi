@@ -138,9 +138,6 @@ def send_ocpi_request(
 
     headers = make_headers(token_base64, to=to, sender=sender)
 
-    # Log the message to Sentry
-    # sentry_sdk.set_context('data', data)
-
     if isinstance(data, dict):
         kwargs.update(dict(url=url, json=data, headers=headers))
     else:
@@ -155,7 +152,7 @@ def send_ocpi_request(
 
     response: requests.Response = function(**kwargs)
     env = os.environ["ENV"]
-    if response.ok:
+    if 200 <= response.status_code < 300:
         logger.info(
             f"Sending {method.upper()} {title} request to {url}, "
             f"response {response.status_code} (time {response.elapsed})"
