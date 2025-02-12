@@ -309,7 +309,6 @@ class LocationAdmin(SolidNestedModelAdmin):
         (
             "Address",
             dict(
-                # classes=('collapse',),  # Todo: Study collapsible accordions for admin
                 fields=(
                     "uid",
                     "name",
@@ -317,6 +316,7 @@ class LocationAdmin(SolidNestedModelAdmin):
                     ("postal_code", "city"),
                     ("state", "country"),
                     ("latitude", "longitude", "time_zone"),
+                    "publish",
                 )
             ),
         ),

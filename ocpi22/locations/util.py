@@ -9,14 +9,10 @@ def get_or_create_business_details(*_args, **kwargs) -> Optional[BusinessDetails
     Find a BusinessDetails object and create it based on name and optional website.
     No duplicates are allowed to be created.
 
-    >>> before = BusinessDetails.objects.all().count()
-    >>> get_or_create_business_details(name='Test', website='http://test.com')
-    <BusinessDetails: Test>
-    >>> get_or_create_business_details(name='Test', website='http://test.com')
-    <BusinessDetails: Test>
-    >>> after = BusinessDetails.objects.all().count()
-    >>> after - before
-    1
+    >>> b1 = get_or_create_business_details(name='Test', website='http://test.com')
+    >>> b2 = get_or_create_business_details(name='Test', website='http://test.com')
+    >>> b1.pk == b2.pk
+    True
 
     @param _args:
     @param kwargs:
