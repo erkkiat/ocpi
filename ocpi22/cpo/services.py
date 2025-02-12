@@ -38,20 +38,22 @@ class SolidTariffService:
         per_hr = float(per_min) * 60 if per_min else None
         parking_price_per_hr = float(parking_price) * 60 if parking_price else None
 
+        # Prepare the missing keys from user
+        expected_keys = [
+            "price_per_kwh",
+            "price_per_min",
+            "price_flat",
+            "parking_price_per_min",
+            "vat_percentage",
+            "parking_grace_period",
+            "msp",
+        ]
+
+        for key in expected_keys:
+            if validated_data.get(key) is None:
+                validated_data[f"{key}__isnull"] = True
+
         if self.solid_tariff_repository.exists(**validated_data):
-            expected_keys = [
-                "price_per_kwh",
-                "price_per_min",
-                "price_flat",
-                "parking_price_per_min",
-                "vat_percentage",
-                "parking_grace_period",
-            ]
-
-            for key in expected_keys:
-                if validated_data.get(key) is None:
-                    validated_data[f"{key}__isnull"] = True
-
             solid_tariff = SolidTariff.objects.get(**validated_data)
             return (solid_tariff, False)
 
