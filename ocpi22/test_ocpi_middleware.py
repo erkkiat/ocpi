@@ -11,7 +11,7 @@ from ocpi22.ocpi.headers import uuid as ocpi_uuid
 
 
 @pytest.mark.django_db
-def test_ocpi_221_middleware_sets_x_request_id_and_correlation_id_headers(client):
+def test_ocpi_221_middleware_sets_ocpi_mandatory_headers(client):
     token = "ABC123"
     static_uuid = "123"
     CredentialsFactory(ours=token)
@@ -23,5 +23,12 @@ def test_ocpi_221_middleware_sets_x_request_id_and_correlation_id_headers(client
         reverse("token-list"), headers=headers
     )  # Ensure this URL is handled by your view
 
-    assert response.get("X-Request-ID") == static_uuid
-    assert response.get("X-Correlation-ID") == static_uuid
+    for key, value in (
+        ("OCPI-to-country-code", "FI"),
+        ("OCPI-to-party-id", "MSP"),
+        ("OCPI-from-country-code", "FI"),
+        ("OCPI-from-party-id", "CPO"),
+        ("X-Request-ID", static_uuid),
+        ("X-Correlation-ID", static_uuid),
+    ):
+        assert response.get(key) == value, (key, value)
