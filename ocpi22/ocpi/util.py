@@ -634,5 +634,6 @@ class IsModificationAllowed(BasePermission):
         if request.method in SAFE_METHODS or request.method == "POST":
             return True
         elif request.method == "DELETE" and request.user.is_superuser:
-            return True
+            if request.user.has_perm("ocpi22.models.tariff.SolidTariff"):
+                return True
         return False
