@@ -1157,7 +1157,7 @@ class HubjectDefaultTariff(BaseModel):
     @classmethod
     def check_currency(cls, value):
         if value not in VALID_CURRENCY_CODE_SET:
-            raise ValueError(f"Invalid currency: {value}.")
+            raise ValueError(f"Invalid currency: {value}")
         return value
 
     @classmethod
