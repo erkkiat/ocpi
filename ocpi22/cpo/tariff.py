@@ -69,7 +69,9 @@ class SolidTariffViewSet(
             if serializer.is_valid():
                 solid_tariff, created = serializer.save(ocpi_master=our_role)
                 if created:
-                    solid_tariff.ocpi_tariff.send_updates()
+                    # TODO: At the moment solid tariff does not have the link to ocpi tariff. This is coming on the next PR
+                    # solid_tariff.ocpi_tariff.send_updates()
+                    pass
                 http_status = (
                     status.HTTP_200_OK if solid_tariff else status.HTTP_201_CREATED
                 )

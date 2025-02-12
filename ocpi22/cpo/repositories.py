@@ -16,18 +16,6 @@ class SolidTariffRepository:
         ).all()
 
     def exists(self, **kwargs) -> bool:
-        expected_keys = [
-            "price_per_kwh",
-            "price_per_min",
-            "price_flat",
-            "parking_price_per_min",
-            "vat_percentage",
-            "parking_grace_period",
-        ]
-
-        for key in expected_keys:
-            if kwargs.get(key) is None:
-                kwargs[f"{key}__isnull"] = True
         return SolidTariff.objects.filter(**kwargs).exists()
 
     def delete_all_by_external_id_msp(
