@@ -99,6 +99,8 @@ class SolidTariffService:
                     },
                 )
 
+            tariff.post_process_after_update_or_create()
+
             solid_tariff = SolidTariff(
                 external_id=external_id,
                 currency=currency,
