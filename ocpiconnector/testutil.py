@@ -131,7 +131,6 @@ class OCPIAPIRequestFactory(APIRequestFactory):
     ):
         if isinstance(sender, CredentialsRole):
             ocpi_party = sender
-            sender = sender.get_party()
         else:
             ocpi_party = (
                 get_credentialsrole(None, sender, create=True) if sender else None
