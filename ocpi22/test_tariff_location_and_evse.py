@@ -2113,7 +2113,7 @@ class CredentialsTest(TestCase):
         self.assertGreater(find_endpoints_by_roles.cache_info().currsize, 0)
         c: Credentials = Credentials.objects.get(pk=2)
         c.update_last_updated()
-        c.atomic_post_save()
+        c.post_process_after_update_or_create()
         self.assertFalse(
             find_endpoints_by_roles.cache_info().currsize,
             "There should be nothing in endpoint cache after changing a Credentials",
