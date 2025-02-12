@@ -110,8 +110,6 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     publish = models.BooleanField(default=True, verbose_name=_("Publish"))
 
-    #
-
     publish_allowed_to = models.ManyToManyField(
         "Token",
         related_name="locations",
@@ -297,6 +295,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
                     f"{connector.get_standard_display()}: {connector.tariff()}"
                 )
         return ", ".join(set(results))
+
+    def send_updates(self, *args, **kwargs) -> None:
+        if self.publish:
+            super().send_updates(*args, **kwargs)
 
 
 class Evse(models.Model, ModelUtilMixin):
