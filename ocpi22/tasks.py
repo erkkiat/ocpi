@@ -116,9 +116,8 @@ else:
 
 @shared_task(
     bind=True,
-    autoretry_for=(requests.exceptions.RequestException,),
-    retry_backoff=15,
-    max_retries=5,
+    retry_backoff=60,
+    max_retries=10,
 )
 def send_ocpi_request(
     self,
@@ -154,19 +153,27 @@ def send_ocpi_request(
             f"Method {method} is not supported for send_ocpi_request"
         )
 
-    result: requests.Response = function(**kwargs)
-    result.raise_for_status()
-    logger.info(
-        f"Sending {method.upper()} {title} request to {url}, "
-        f"response {result.status_code} (time {result.elapsed})"
-    )
-    result_json = result.json()
-    return dict(
-        status_code=result.status_code,
-        json=result_json,
-        headers=dict(result.headers) if result.headers else {},
-        sender=dict(country_code=to_country_code, party_id=to_party_id),
-    )
+    response: requests.Response = function(**kwargs)
+    env = os.environ["ENV"]
+    if response.ok:
+        logger.info(
+            f"Sending {method.upper()} {title} request to {url}, "
+            f"response {response.status_code} (time {response.elapsed})"
+        )
+        return response.json()
+    if response.status_code >= 300 and env in ["staging", "development"]:
+        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        raise self.retry(
+            exc=Exception(
+                f"Retrying ocpi request send for {response.url}: {response.status_code}: {response.reason}"
+            )
+        )
+    if response.status_code >= 500 and env == "production":
+        raise self.retry(
+            exc=Exception(
+                f"Retrying ocpi request send for {response.url}: {response.status_code}: {response.reason}"
+            )
+        )
 
 
 @shared_task(max_retries=2, retry_backoff=2)
@@ -199,7 +206,7 @@ def pull_objects(
             if "limit=" not in url:
                 url = f"{url}?limit={limit}"
             response = send_ocpi_request(data=dict(), url=url, **kwargs)
-            if response and response.get("status_code") < status.HTTP_400_BAD_REQUEST:
+            if response and response.get("status_code") == status.HTTP_400_BAD_REQUEST:
                 next_url, _rel = (
                     response.get("headers").get("Link", ";").strip("<>").split(";")
                 )
