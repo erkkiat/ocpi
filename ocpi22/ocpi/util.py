@@ -520,8 +520,6 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         queryset = apply_ocpi22_filters(request, queryset)
-        if not queryset or not queryset.count():
-            return None
         return super().paginate_queryset(queryset, request, view)
 
 
@@ -536,13 +534,13 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
     if date_from:
         import dateutil.parser
 
-        date_from: datetime = dateutil.parser.parse(date_from, ignoretz=True)
+        date_from: datetime = dateutil.parser.parse(date_from).replace(tzinfo=pytz.UTC)
         queryset = queryset.filter(last_updated__gte=date_from)
     date_to: str = request.GET.get("date_to")
     if date_to:
         import dateutil.parser
 
-        date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
+        date_to: datetime = dateutil.parser.parse(date_to).replace(tzinfo=pytz.UTC)
         queryset = queryset.filter(last_updated__lt=date_to)
 
     return queryset
@@ -631,10 +629,15 @@ def recursive_update_last_updated(obj):
         )
 
 
-class CannotModify(BasePermission):
+class IsModificationAllowed(BasePermission):
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS or request.method == "POST":
             return True
         elif request.method == "DELETE" and request.user.is_superuser:
-            return True
+            from ocpi22.models.tariff import SolidTariff
+
+            if request.user.has_perm(
+                f"{SolidTariff._meta.app_label}.delete_solidtariff"
+            ):
+                return True
         return False

@@ -1,4 +1,4 @@
-from django.db.models import Subquery, OuterRef, Q, QuerySet
+from django.db.models import Q, QuerySet, Max
 
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import SolidTariff, Tariff
@@ -6,28 +6,20 @@ from ocpi22.models.tariff import SolidTariff, Tariff
 
 class SolidTariffRepository:
     def get_latest_with_unique_external_id_and_msp(self) -> QuerySet:
+        latest_tariffs = (
+            SolidTariff.objects.filter(Q(msp__isnull=True) | Q(msp__id__isnull=False))
+            .values("external_id", "msp_id")
+            .annotate(latest_created=Max("created_at"))
+        )
+
         return SolidTariff.objects.filter(
-            id=Subquery(
-                SolidTariff.objects.filter(external_id=OuterRef("external_id"))
-                .filter(Q(msp__id=OuterRef("msp__id")) | Q(msp__isnull=True))
-                .order_by("-created")
-                .values("id")[:1]
+            Q(
+                external_id__in=[entry["external_id"] for entry in latest_tariffs],
+                created_at__in=[entry["latest_created"] for entry in latest_tariffs],
             )
-        ).all()
+        )
 
     def exists(self, **kwargs) -> bool:
-        expected_keys = [
-            "price_per_kwh",
-            "price_per_min",
-            "price_flat",
-            "parking_price_per_min",
-            "vat_percentage",
-            "parking_grace_period",
-        ]
-
-        for key in expected_keys:
-            if kwargs.get(key) is None:
-                kwargs[f"{key}__isnull"] = True
         return SolidTariff.objects.filter(**kwargs).exists()
 
     def delete_all_by_external_id_msp(

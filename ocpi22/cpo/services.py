@@ -15,7 +15,7 @@ class SolidTariffService:
     def get_all_latest_solid_tariffs(self):
         return self.solid_tariff_repository.get_latest_with_unique_external_id_and_msp()
 
-    def create(self, validated_data: dict) -> dict:
+    def create(self, validated_data: dict) -> tuple[SolidTariff, bool]:
         from ocpi22.cpo.serializers import (
             CurrencySerializer,
             PriceKwhSerializer,
@@ -45,10 +45,24 @@ class SolidTariffService:
         per_hr = float(per_min) * 60 if per_min else None
         parking_price_per_hr = float(parking_price) * 60 if parking_price else None
 
+        # Prepare the missing keys from user
+        expected_keys = [
+            "price_per_kwh",
+            "price_per_min",
+            "price_flat",
+            "parking_price_per_min",
+            "vat_percentage",
+            "parking_grace_period",
+            "msp",
+        ]
+
+        for key in expected_keys:
+            if validated_data.get(key) is None:
+                validated_data[f"{key}__isnull"] = True
+
         if self.solid_tariff_repository.exists(**validated_data):
             solid_tariff = SolidTariff.objects.get(**validated_data)
-            tariff = Tariff.objects.filter(uid=external_id).first()
-            return {"tariff": tariff, "solid_tariff": solid_tariff, "created": False}
+            return (solid_tariff, False)
 
         with transaction.atomic():
             random_ocpi_tariff_id = str(uuid.uuid4())
@@ -99,7 +113,7 @@ class SolidTariffService:
                 operator=operator,
             )
 
-        return {"tariff": tariff, "solid_tariff": solid_tariff, "created": True}
+        return (solid_tariff, True)
 
     def delete_by_msp_and_external_id(
         self, msp: CredentialsRole, external_id: str

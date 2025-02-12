@@ -13,7 +13,7 @@ from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
-from ocpi22.ocpi.util import CannotModify
+from ocpi22.ocpi.util import IsModificationAllowed
 from ocpiconnector.exceptions import MspNotFoundError
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -41,7 +41,7 @@ class SolidTariffViewSet(
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
     service = SolidTariffService()
-    permission_classes = [IsAuthenticated, CannotModify]
+    permission_classes = [IsAuthenticated, IsModificationAllowed]
 
     def list(self, request, *args, **kwargs):
         serializer = SolidTariffSerializer(
@@ -67,19 +67,19 @@ class SolidTariffViewSet(
                 },
             )
             if serializer.is_valid():
-                saved_data_dict = serializer.save(ocpi_master=our_role)
-                if saved_data_dict["created"]:
-                    saved_data_dict["tariff"].send_updates()
+                solid_tariff, created = serializer.save(ocpi_master=our_role)
+                if created:
+                    # TODO: At the moment solid tariff does not have the link to ocpi tariff. This is coming on the next PR
+                    # solid_tariff.ocpi_tariff.send_updates()
+                    pass
                 http_status = (
-                    status.HTTP_200_OK
-                    if saved_data_dict["solid_tariff"]
-                    else status.HTTP_201_CREATED
+                    status.HTTP_200_OK if solid_tariff else status.HTTP_201_CREATED
                 )
                 return Response(
                     self.get_response_data(
                         model_to_dict(
-                            saved_data_dict["solid_tariff"],
-                            exclude=["id", "operator", "ocpi_tariff"],
+                            solid_tariff,
+                            exclude=["id", "operator", "archived", "ocpi_tariff"],
                         )
                     ),
                     status=http_status,
@@ -187,11 +187,9 @@ class SolidTariffViewSet(
                 {"status": str(f"Partner {country_code}*{party_id} is not found")},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        _deleted = self.service.delete_by_msp_and_external_id(msp, external_id)
+        self.service.delete_by_msp_and_external_id(msp, external_id)
 
-        if _deleted:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         methods=["DELETE"],
