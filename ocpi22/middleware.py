@@ -14,7 +14,7 @@ from rest_framework import status
 
 from ocpi22.ocpi.auth import OCPIPermission, check_auth_token
 from ocpi22.ocpi.util import format_ocpi_response
-from ocpi22.ocpi.util_party import get_sender_party, get_to_party, secondary_header_name
+from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
 
@@ -181,7 +181,7 @@ class OCPI221HeadersMiddleware:
             ),
         ):
             response.headers[response_key] = request.headers.get(
-                secondary_header_name(request_key), request.META.get(request_meta_key)
+                request_key, request.META.get(request_meta_key)
             )
 
         return response
