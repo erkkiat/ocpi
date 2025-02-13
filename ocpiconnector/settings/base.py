@@ -294,10 +294,10 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",  # Make sure this stays above OCPIHubMiddleware
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.locale.LocaleMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "ocpiconnector.logging_middleware.LoggingMiddleware",
 ]
 
