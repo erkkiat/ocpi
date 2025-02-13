@@ -3,4 +3,4 @@ build:
     db: Dockerfile
     web: Dockerfile
 run:
-  web: gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:$PORT --reload --timeout 120
+  web: gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:$PORT --reload --timeout 120 --forwarded-allow-ips="*"

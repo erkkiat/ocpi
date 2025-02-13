@@ -186,6 +186,5 @@ class OCPI221HeadersMiddleware:
 
         response.headers["X-Request-ID"] = request.headers.get("X-Request-ID")
         response.headers["X-Hello"] = "Eki"
-        raise
 
         return response
