@@ -156,7 +156,7 @@ def send_ocpi_request(
             f"Sending {method.upper()} {title} request to {url}, "
             f"response {response.status_code} (time {response.elapsed})"
         )
-        return response
+        return response.json()
     if response.status_code >= 300 and env in ["staging", "development"]:
         logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
         raise self.retry(
