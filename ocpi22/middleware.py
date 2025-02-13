@@ -164,27 +164,27 @@ class OCPI221HeadersMiddleware:
     def __call__(self, request):
         response: HttpResponse = self.get_response(request)
 
-        # for request_key, response_key, request_meta_key in (
-        #     ("X-Request-ID", "X-Request-ID", "HTTP_X_REQUEST_ID"),
-        #     ("X-Correlation-ID", "X-Correlation-ID", "HTTP_X_CORRELATION_ID"),
-        #     ("OCPI-To-Party-Id", "OCPI-From-Party-Id", "HTTP_OCPI_TO_PARTY_ID"),
-        #     (
-        #         "OCPI-To-Country-Code",
-        #         "OCPI-From-Country-Code",
-        #         "HTTP_OCPI_TO_COUNTRY_CODE",
-        #     ),
-        #     ("OCPI-From-Party-Id", "OCPI-To-Party-Id", "HTTP_OCPI_FROM_PARTY_ID"),
-        #     (
-        #         "OCPI-From-Country-Code",
-        #         "OCPI-To-Country-Code",
-        #         "HTTP_OCPI_FROM_COUNTRY_CODE",
-        #     ),
-        # ):
-        #     response.headers[response_key] = request.headers.get(
-        #         request_key, request.META.get(request_meta_key, "")
-        #     )
+        for request_key, response_key, request_meta_key in (
+            ("X-Request-ID", "X-Request-ID", "HTTP_X_REQUEST_ID"),
+            ("X-Correlation-ID", "X-Correlation-ID", "HTTP_X_CORRELATION_ID"),
+            ("OCPI-To-Party-Id", "OCPI-From-Party-Id", "HTTP_OCPI_TO_PARTY_ID"),
+            (
+                "OCPI-To-Country-Code",
+                "OCPI-From-Country-Code",
+                "HTTP_OCPI_TO_COUNTRY_CODE",
+            ),
+            ("OCPI-From-Party-Id", "OCPI-To-Party-Id", "HTTP_OCPI_FROM_PARTY_ID"),
+            (
+                "OCPI-From-Country-Code",
+                "OCPI-To-Country-Code",
+                "HTTP_OCPI_FROM_COUNTRY_CODE",
+            ),
+        ):
+            response.headers[response_key] = request.headers.get(
+                request_key, request.META.get(request_meta_key, "")
+            )
 
-        response.headers["X-Request-ID"] = request.headers.get("X-Request-ID")
-        response.headers["X-Hello"] = "Eki"
+        # response.headers["X-Request-ID"] = request.headers.get("X-Request-ID")
+        # response.headers["X-Hello"] = "Eki"
 
         return response
