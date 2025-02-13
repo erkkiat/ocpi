@@ -284,6 +284,7 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE = [
+    "ocpi22.middleware.OCPI221HeadersMiddleware",
     "middlewares.AllowHealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -296,7 +297,6 @@ MIDDLEWARE = [
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.UserActivityMiddleware",
-    "ocpi22.middleware.OCPI221HeadersMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "ocpiconnector.logging_middleware.LoggingMiddleware",
 ]
