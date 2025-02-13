@@ -500,7 +500,7 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
         next_url = self.get_next_link()
         if next_url:
-            headers["Link"] = '<{next_url}; rel="next">'.format(
+            headers["Link"] = '<{next_url}>; rel="next"'.format(
                 next_url=self.get_next_link()
             )
 
@@ -590,7 +590,7 @@ def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwa
         token_base64
     )  # No routing headers for Credentials or Versions
     response = function(url, headers=headers, timeout=timeout, *args, **kwargs)
-    if response.status_code not in (200, 201):
+    if False or response.status_code not in (200, 201):
         raise OCPIProtocolError(
             f"Got OCPI response {response.status_code} for {method.upper()} {url}: {response.reason} - {response.text}",
             errno=response.status_code,
