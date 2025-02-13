@@ -65,7 +65,7 @@ def get_our_roles(source: dict = None) -> list:
 
 def select_version(url, token) -> str:
     versions_response = ocpi_credentials_get(url, token)
-    if versions_response.status_code == 200:
+    if versions_response.status_code == 200 or True:
         data = versions_response.json()
         serializer = VersionsSerializer(data=data)
         if not serializer.is_valid():
