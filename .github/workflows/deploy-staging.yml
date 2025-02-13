@@ -125,20 +125,26 @@ jobs:
           IMAGE_TAG="${BRANCH_NAME}-${PR_NUMBER}-${COMMIT_HASH}"
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
 
-      - name: Build and Push Multi-Architecture Images
+      - name: Build Base Image Once
+        run: |
+          echo "Building base image once with tag: $IMAGE_TAG"
+          docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" -f ./Dockerfile --load .
+
+      - name: Tag and Push Multi-Architecture Images for Each Service
         run: |
           FARMS="f2 f3"
 
           echo "Deploying to farms: $FARMS"
 
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-              echo "Building multi-architecture image for $service with tag: $IMAGE_TAG"
-              docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" -f ./Dockerfile --load .
+              echo "Tagging image for $service from the base image"
+              docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG"
+
               for farm in $FARMS; do
                   repo_url="$ECR_REPO_URL/solidroam-$service-$farm"
                   full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
-                  echo "Tagging image for $service to $repo_url"
+                  echo "Tagging image for farm $farm"
                   docker tag "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" "$full_image_url_with_tag"
 
                   echo "Pushing image for $service to $repo_url"
