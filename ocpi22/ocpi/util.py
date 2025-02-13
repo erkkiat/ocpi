@@ -79,7 +79,7 @@ class OcpiModule:
         if self.is_ours():
             recursive_update_last_updated(self)
 
-    def atomic_post_save(self, *_args, **_kwargs) -> None:
+    def post_process_after_update_or_create(self, *_args, **_kwargs) -> None:
         assert (
             hasattr(self, "ocpi_serializer_class")
             and hasattr(self, "ocpi_module_name")
@@ -518,8 +518,6 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         queryset = apply_ocpi22_filters(request, queryset)
-        if not queryset or not queryset.count():
-            return None
         return super().paginate_queryset(queryset, request, view)
 
 
@@ -534,13 +532,13 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
     if date_from:
         import dateutil.parser
 
-        date_from: datetime = dateutil.parser.parse(date_from, ignoretz=True)
+        date_from: datetime = dateutil.parser.parse(date_from).replace(tzinfo=pytz.UTC)
         queryset = queryset.filter(last_updated__gte=date_from)
     date_to: str = request.GET.get("date_to")
     if date_to:
         import dateutil.parser
 
-        date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
+        date_to: datetime = dateutil.parser.parse(date_to).replace(tzinfo=pytz.UTC)
         queryset = queryset.filter(last_updated__lt=date_to)
 
     return queryset

@@ -2,7 +2,6 @@ import os
 import random
 from datetime import timedelta, datetime
 from logging import getLogger
-from typing import Optional
 from urllib.parse import urlparse
 
 import celery
@@ -16,7 +15,7 @@ from celery.schedules import crontab
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
-from requests import RequestException
+from requests import RequestException, Response
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
 
@@ -116,9 +115,8 @@ else:
 
 @shared_task(
     bind=True,
-    autoretry_for=(requests.exceptions.RequestException,),
-    retry_backoff=15,
-    max_retries=5,
+    retry_backoff=5,
+    max_retries=10,
 )
 def send_ocpi_request(
     self,
@@ -133,14 +131,11 @@ def send_ocpi_request(
     credentials_id=None,
     title=None,
     **kwargs,
-) -> Optional[dict]:
+) -> Response:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
     headers = make_headers(token_base64, to=to, sender=sender)
-
-    # Log the message to Sentry
-    # sentry_sdk.set_context('data', data)
 
     if isinstance(data, dict):
         kwargs.update(dict(url=url, json=data, headers=headers))
@@ -154,19 +149,25 @@ def send_ocpi_request(
             f"Method {method} is not supported for send_ocpi_request"
         )
 
-    result: requests.Response = function(**kwargs)
-    result.raise_for_status()
-    logger.info(
-        f"Sending {method.upper()} {title} request to {url}, "
-        f"response {result.status_code} (time {result.elapsed})"
-    )
-    result_json = result.json()
-    return dict(
-        status_code=result.status_code,
-        json=result_json,
-        headers=dict(result.headers) if result.headers else {},
-        sender=dict(country_code=to_country_code, party_id=to_party_id),
-    )
+    response: requests.Response = function(**kwargs)
+    env = os.environ["ENV"]
+    if 200 <= response.status_code < 300:
+        logger.info(
+            f"Sending {method.upper()} {title} request to {url}, "
+            f"response {response.status_code} (time {response.elapsed})"
+        )
+        if self.request.is_eager:
+            return response.json()
+    if response.status_code >= 300 and env in ["staging", "development"]:
+        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        raise self.retry(
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+        )
+    if response.status_code >= 500 and env == "production":
+        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        raise self.retry(
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+        )
 
 
 @shared_task(max_retries=2, retry_backoff=2)
@@ -199,13 +200,13 @@ def pull_objects(
             if "limit=" not in url:
                 url = f"{url}?limit={limit}"
             response = send_ocpi_request(data=dict(), url=url, **kwargs)
-            if response and response.get("status_code") < status.HTTP_400_BAD_REQUEST:
+            if response and response.status_code < 300:
                 next_url, _rel = (
-                    response.get("headers").get("Link", ";").strip("<>").split(";")
+                    response.headers.get("Link", ";").strip("<>").split(";")
                 )
                 model = obj.get("model")
                 viewset = import_string(obj.get("viewset"))
-                items = response.get("json", {}).get("data", [])
+                items = response.json().get("data", [])
                 total_objects += len(items)
                 for i in items:
                     try:
