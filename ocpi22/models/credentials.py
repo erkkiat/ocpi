@@ -150,7 +150,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.change_fields_to_upper_case()
         return super(self.__class__, self).save(*args, **kwargs)
 
-    def atomic_post_save(self, *_args, **_kwargs) -> None:
+    def post_process_after_update_or_create(self, *_args, **_kwargs) -> None:
         """This should trigger when Credentials is modified in Admin UI or pushed over HubClientInfo"""
         find_endpoints_by_roles.cache_clear()
         # from ocpi22.pull import schedule_full_update
@@ -456,7 +456,7 @@ def credentials_post_save(sender, instance, *_args, raw, **_kwargs):
         return
     credentials: Credentials = instance
     if credentials.is_complete():
-        credentials.atomic_post_save()
+        credentials.post_process_after_update_or_create()
 
 
 @receiver(pre_delete, sender=Credentials)

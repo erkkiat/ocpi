@@ -18,8 +18,6 @@ from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
 
-# For profiling
-
 
 class OCPIHubMiddleware:
     def __init__(self, get_response):
@@ -166,9 +164,14 @@ class OCPI221HeadersMiddleware:
     def __call__(self, request):
         response: HttpResponse = self.get_response(request)
 
-        response.headers["X-Request-ID"] = request.headers.get("X-Request-ID", "")
-        response.headers["X-Correlation-ID"] = request.headers.get(
-            "X-Correlation-ID", ""
-        )
+        for request_key, response_key in (
+            ("X-Request-ID", "X-Request-ID"),
+            ("X-Correlation-ID", "X-Correlation-ID"),
+            ("OCPI-To-Party-Id", "OCPI-From-Party-Id"),
+            ("OCPI-To-Country-Code", "OCPI-From-Country-Code"),
+            ("OCPI-From-Party-Id", "OCPI-To-Party-Id"),
+            ("OCPI-From-Country-Code", "OCPI-To-Country-Code"),
+        ):
+            response.headers[response_key] = request.headers.get(request_key, "")
 
         return response

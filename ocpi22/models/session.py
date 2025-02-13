@@ -617,23 +617,6 @@ class ChargingPeriodSerializer(serializers.ModelSerializer):
         return super().to_internal_value(data)
 
 
-# def get_ocpi_master(obj, role):
-#     if hasattr(obj, "ocpi_master"):
-#         return obj.ocpi_master
-#     data = getattr(obj, "initial_data", {})
-#     country_code = data.get("country_code")
-#     party_id = data.get("party_id")
-#     if country_code and party_id:
-#         return get_credentialsrole(
-#             credentials=None,
-#             party=Party(country_code, party_id),
-#             role=role,
-#             create=True
-#         )
-#     if hasattr(obj, "parent"):
-#         return get_ocpi_master(obj.parent, role)
-
-
 class TotalCostSerializer(SerializerCleanedUp):
     excl_vat = serializers.FloatField(source="total_cost_excl_vat", required=False)
     incl_vat = serializers.FloatField(source="total_cost_incl_vat", required=False)
