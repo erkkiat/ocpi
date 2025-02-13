@@ -201,7 +201,7 @@ def pull_objects(
             response = send_ocpi_request(data=dict(), url=url, **kwargs)
             if response and response.status_code < 300:
                 next_url, _rel = (
-                    response.get("headers").get("Link", ";").strip("<>").split(";")
+                    response.headers.get("Link", ";").strip("<>").split(";")
                 )
                 model = obj.get("model")
                 viewset = import_string(obj.get("viewset"))
