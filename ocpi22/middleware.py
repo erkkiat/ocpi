@@ -14,7 +14,7 @@ from rest_framework import status
 
 from ocpi22.ocpi.auth import OCPIPermission, check_auth_token
 from ocpi22.ocpi.util import format_ocpi_response
-from ocpi22.ocpi.util_party import get_sender_party, get_to_party
+from ocpi22.ocpi.util_party import get_sender_party, get_to_party, secondary_header_name
 from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
 
@@ -164,14 +164,24 @@ class OCPI221HeadersMiddleware:
     def __call__(self, request):
         response: HttpResponse = self.get_response(request)
 
-        for request_key, response_key in (
-            ("X-Request-ID", "X-Request-ID"),
-            ("X-Correlation-ID", "X-Correlation-ID"),
-            ("OCPI-To-Party-Id", "OCPI-From-Party-Id"),
-            ("OCPI-To-Country-Code", "OCPI-From-Country-Code"),
-            ("OCPI-From-Party-Id", "OCPI-To-Party-Id"),
-            ("OCPI-From-Country-Code", "OCPI-To-Country-Code"),
+        for request_key, response_key, request_meta_key in (
+            ("X-Request-ID", "X-Request-ID", "HTTP_X_REQUEST_ID"),
+            ("X-Correlation-ID", "X-Correlation-ID", "HTTP_X_CORRELATION_ID"),
+            ("OCPI-To-Party-Id", "OCPI-From-Party-Id", "HTTP_OCPI_TO_PARTY_ID"),
+            (
+                "OCPI-To-Country-Code",
+                "OCPI-From-Country-Code",
+                "HTTP_OCPI_TO_COUNTRY_CODE",
+            ),
+            ("OCPI-From-Party-Id", "OCPI-To-Party-Id", "HTTP_OCPI_FROM_PARTY_ID"),
+            (
+                "OCPI-From-Country-Code",
+                "OCPI-To-Country-Code",
+                "HTTP_OCPI_FROM_COUNTRY_CODE",
+            ),
         ):
-            response.headers[response_key] = request.headers.get(request_key, "")
+            response.headers[response_key] = request.headers.get(
+                secondary_header_name(request_key), request.META.get(request_meta_key)
+            )
 
         return response
