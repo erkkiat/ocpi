@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt /app/
 
 # Install dependencies using BuildKit caching for faster installs
-RUN --mount=type=cache,target=/root/.cache/pip pip install --no-cache-dir --upgrade pip && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Now copy the rest of the app (this prevents unnecessary invalidation of cache)
@@ -26,7 +27,7 @@ COPY . /app
 
 # Compile Python files and remove unneeded sources
 RUN python -m compileall -b . && \
-    find . -name '*.py' ! -name 'manage.py' -exec rm -f {} +
+    find . -name '*.py' ! -name 'manage.py' -delete
 
 RUN chmod +x /app/entrypoint.sh /app/fetch_secrets.sh
 
@@ -51,7 +52,7 @@ COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3
 COPY --from=build /usr/local/bin /usr/local/bin
 
 # Remove unnecessary Python source files in one step
-RUN find . -name '*.py' ! -name 'manage.py' -exec rm -f {} +
+RUN find . -name '*.py' ! -name 'manage.py' -delete
 
 EXPOSE 8000
 ENTRYPOINT ["/app/entrypoint.sh"]
