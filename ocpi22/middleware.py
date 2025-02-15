@@ -180,11 +180,10 @@ class OCPI221HeadersMiddleware:
                 "HTTP_OCPI_FROM_COUNTRY_CODE",
             ),
         ):
-            response.headers[response_key] = request.headers.get(
+            value = request.headers.get(
                 request_key, request.META.get(request_meta_key, "")
             )
-
-        # response.headers["X-Request-ID"] = request.headers.get("X-Request-ID")
-        # response.headers["X-Hello"] = "Eki"
+            if value:
+                response.headers[response_key] = value
 
         return response
