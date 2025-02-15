@@ -1,6 +1,7 @@
 # Django settings for ocpiconnector project.
 import os
 from datetime import datetime, timedelta
+from distutils.util import strtobool
 
 from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
