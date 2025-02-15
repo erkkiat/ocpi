@@ -383,7 +383,9 @@ def process_meter_values(
             ]
         )
 
-        session.send_updates()  # Until Gireve implements OCPI 2.2.1 Session PATCH
+        session.send_updates(
+            method="put"
+        )  # Until Gireve implements OCPI 2.2.1 Session PATCH
 
         # session_charging_periods = [
         #     cp for cp in session.chargingperiods.order_by("start_date_time")
@@ -900,9 +902,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     context={"version": request.version, "request": request},
                 )
                 if serializer.is_valid():
-                    return process_meter_values(
-                        request, **serializer.validated_data
-                    )
+                    return process_meter_values(request, **serializer.validated_data)
                 else:
                     return Response(
                         data=serializer.errors, status=status.HTTP_400_BAD_REQUEST
