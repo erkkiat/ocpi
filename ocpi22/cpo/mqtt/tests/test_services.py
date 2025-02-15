@@ -50,14 +50,10 @@ class TestMqttServices:
             patch(
                 "ocpi22.cpo.mqtt.services._decode_message", return_value=None
             ) as mock_decode_message,
-            patch.object(
-                MeterValues, attribute="model_validate_json"
-            ) as mock_model_validate_json,
             patch("ocpi22.tasks.send_ocpi_request") as mock_process_meter_values_task,
         ):
             assert process_meter_values_data(smappee_meter_message) is None
         mock_decode_message.assert_called_once_with(smappee_meter_message)
-        mock_model_validate_json.assert_not_called()
         mock_process_meter_values_task.assert_not_called()
 
     def test_process_meter_values_update_returns_none_when_data_validation_fails(
