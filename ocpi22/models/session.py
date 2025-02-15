@@ -589,19 +589,6 @@ class CdrDimensionSerializer(serializers.ModelSerializer):
         fields = ("type", "volume")
 
 
-# class TariffIdSerializer(serializers.Field):
-#     def to_representation(self, value):
-#         return value.uid
-#
-#     def to_internal_value(self, data):
-#         if not isinstance(data, str):
-#             raise serializers.ValidationError("Tariff must be provided as a string representing its uid.")
-#         if len(data) > settings.OCPI_22_MAX_UID_LENGTH:
-#             raise serializers.ValidationError(f"Tariff uid {data} is too long.")
-#         ocpi_master = get_ocpi_master(self, role=OcpiRolesEnum.CPO)
-#         return Tariff.get_if_exists(uid=data, ocpi_master=ocpi_master, archived=False, raise_exception=True)
-
-
 class ChargingPeriodSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChargingPeriod
