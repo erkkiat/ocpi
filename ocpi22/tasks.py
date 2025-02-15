@@ -115,7 +115,7 @@ else:
 
 @shared_task(
     bind=True,
-    retry_backoff=1,
+    retry_backoff=True,
     max_retries=10,
 )
 def send_ocpi_request(
