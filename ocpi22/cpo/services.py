@@ -15,7 +15,7 @@ class SolidTariffService:
     def get_all_latest_solid_tariffs(self):
         return self.solid_tariff_repository.get_latest_with_unique_external_id_and_msp()
 
-    def create(self, validated_data: dict) -> tuple[SolidTariff, bool]:
+    def create(self, validated_data: dict) -> SolidTariff:
         from ocpi22.cpo.serializers import (
             CurrencySerializer,
             PriceKwhSerializer,
@@ -62,7 +62,7 @@ class SolidTariffService:
 
         if self.solid_tariff_repository.exists(**validated_data):
             solid_tariff = SolidTariff.objects.get(**validated_data)
-            return (solid_tariff, False)
+            return solid_tariff
 
         with transaction.atomic():
             random_ocpi_tariff_id = str(uuid.uuid4())
@@ -113,7 +113,7 @@ class SolidTariffService:
                 operator=operator,
             )
 
-        return (solid_tariff, True)
+        return solid_tariff
 
     def delete_by_msp_and_external_id(
         self, msp: CredentialsRole, external_id: str

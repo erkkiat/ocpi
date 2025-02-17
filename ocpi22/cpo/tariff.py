@@ -13,7 +13,7 @@ from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
-from ocpi22.ocpi.util import IsModificationAllowed
+from ocpi22.ocpi.util import IsModificationAllowed, logger
 from ocpiconnector.exceptions import MspNotFoundError
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -67,11 +67,13 @@ class SolidTariffViewSet(
                 },
             )
             if serializer.is_valid():
-                solid_tariff, created = serializer.save(ocpi_master=our_role)
-                if created:
-                    # TODO: At the moment solid tariff does not have the link to ocpi tariff. This is coming on the next PR
-                    # solid_tariff.ocpi_tariff.send_updates()
-                    pass
+                validated_data = serializer.validated_data
+                validated_data["ocpi_master"] = our_role
+                solid_tariff = self.service.create(validated_data)
+                if solid_tariff.ocpi_tariff:
+                    solid_tariff.ocpi_tariff.send_updates()
+                else:
+                    logger.error("Tariff send updates failed.")
                 http_status = (
                     status.HTTP_200_OK if solid_tariff else status.HTTP_201_CREATED
                 )
