@@ -390,7 +390,7 @@ class TestMappings:
         result = self._ocpi_2_oicp_converter.get_provider_ids(
             [smp1_solid_tariff_with_all_records]
         )
-        assert result == ProviderIDAsterisk(root="FI*CPO")
+        assert result == ProviderIDAsterisk(root="DE*ICE")
 
     @pytest.mark.django_db
     def test_get_provider_ids_for_solid_tariffs_without_msp(
