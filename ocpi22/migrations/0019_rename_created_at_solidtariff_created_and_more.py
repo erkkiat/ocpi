@@ -19,7 +19,6 @@ class Migration(migrations.Migration):
     dependencies = [
         ('ocpi22', '0018_cdr_charging_periods'),
     ]
-    # TODO run script to fix the data currently in database
     operations = [
         migrations.RenameField(
             model_name='solidtariff',
