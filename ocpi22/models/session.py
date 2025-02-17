@@ -130,13 +130,9 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
             else active_charging_period.start_date_time
         )
 
-        if timestamp.utcoffset() != timedelta(
-            0
-        ):
+        if timestamp.utcoffset() != timedelta(0):
             raise ValidationError("Timestamp {timestamp} should be UTC")
-        if start_date_time.utcoffset() != timedelta(
-            0
-        ):
+        if start_date_time.utcoffset() != timedelta(0):
             raise ValidationError(f"Start date time {start_date_time} should be UTC")
 
         def _sum(dimension_type: CdrDimensionEnum) -> float:
@@ -608,7 +604,7 @@ class TariffIdSerializer(serializers.Serializer):
 
 class ChargingPeriodSerializer(serializers.Serializer):
     start_date_time = UTCDateTimeField(required=False)
-    tariff_id = TariffIdSerializer(required=False, source="tariff.uid")
+    tariff_id = TariffIdSerializer(required=False, source="tariff")
     dimensions = CdrDimensionSerializer(many=True)
 
 

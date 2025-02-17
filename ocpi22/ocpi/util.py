@@ -81,7 +81,7 @@ class OcpiModule:
         if self.is_ours():
             recursive_update_last_updated(self)
 
-    def atomic_post_save(self, *_args, **_kwargs) -> None:
+    def post_process_after_update_or_create(self, *_args, **_kwargs) -> None:
         assert (
             hasattr(self, "ocpi_serializer_class")
             and hasattr(self, "ocpi_module_name")
