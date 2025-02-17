@@ -109,8 +109,8 @@ class UserActivityMiddleware:
             except ValueError:
                 pass
 
-            response = self.get_response(request)
-            return response
+        response = self.get_response(request)
+        return response
 
 
 class ErrorLoggingMiddleware:
