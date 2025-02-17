@@ -631,7 +631,11 @@ def recursive_update_last_updated(obj):
 
 class IsModificationAllowed(BasePermission):
     def has_permission(self, request, view):
-        if request.method in SAFE_METHODS or request.method == "POST":
+        if (
+            request.method in SAFE_METHODS
+            or request.method == "POST"
+            or request.method == "PUT"
+        ):
             return True
         elif request.method == "DELETE" and request.user.is_superuser:
             from ocpi22.models.tariff import SolidTariff
