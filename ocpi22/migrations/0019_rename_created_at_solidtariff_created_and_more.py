@@ -3,6 +3,16 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
+def populate_ocpi_tariff(apps, schema_editor):
+    SolidTariff = apps.get_model("ocpi22", "SolidTariff")
+    Tariff = apps.get_model("ocpi22", "Tariff")
+
+    default_tariff = Tariff.objects.first()
+
+    for solid_tariff in SolidTariff.objects.all():
+        if solid_tariff.ocpi_tariff_id is None:
+            solid_tariff.ocpi_tariff = default_tariff
+            solid_tariff.save()
 
 class Migration(migrations.Migration):
 
@@ -44,4 +54,5 @@ class Migration(migrations.Migration):
             name='operator',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='operator_credentialsrole', to='ocpi22.credentialsrole', verbose_name='CPO details'),
         ),
+        migrations.RunPython(populate_ocpi_tariff),
     ]
