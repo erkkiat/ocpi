@@ -81,7 +81,7 @@ class SolidTariffViewSet(
                     self.get_response_data(
                         model_to_dict(
                             solid_tariff,
-                            exclude=["id", "operator", "archived", "ocpi_tariff"],
+                            exclude=["id", "operator", "ocpi_tariff"],
                         )
                     ),
                     status=http_status,
@@ -147,9 +147,7 @@ class SolidTariffViewSet(
                 )
                 return Response(
                     self.get_response_data(
-                        model_to_dict(
-                            solid_tariff, exclude=["id", "operator", "archived"]
-                        )
+                        model_to_dict(solid_tariff, exclude=["id", "operator"])
                     ),
                     status=status.HTTP_200_OK,
                 )
