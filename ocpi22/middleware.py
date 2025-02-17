@@ -103,12 +103,14 @@ class UserActivityMiddleware:
         if request.user.is_authenticated:
             logging.log_user_activity(request.user.username)
         else:
-            party = get_sender_party(request.META)
-            if party:
+            try:
+                party = get_sender_party(request.META)
                 logging.log_ocpi_activity(str(party))
+            except ValueError:
+                pass
 
-        response = self.get_response(request)
-        return response
+            response = self.get_response(request)
+            return response
 
 
 class ErrorLoggingMiddleware:
@@ -119,7 +121,10 @@ class ErrorLoggingMiddleware:
         try:
             response = self.get_response(request)
             if response.status_code >= 405:
-                party = get_sender_party(request.META)
+                try:
+                    party = get_sender_party(request.META)
+                except ValueError:
+                    party = None
                 if party:
                     logging.error(
                         f"Returning status code {response.status_code} for party {str(party)}."
