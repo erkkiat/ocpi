@@ -553,7 +553,7 @@ def pricing_product_data_record_successful_result():
             MaximumProductChargingPower=0,
             PricePerReferenceUnit=0.2,
             ProductAvailabilityTimes=[],
-            ProductID="FI*CPO*SMP1*KILOWATT_HOUR*FI*CPO",
+            ProductID="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE",
             ProductPriceCurrency="EUR",
             ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
         ),
@@ -571,7 +571,7 @@ def pricing_product_data_record_successful_result():
             MaximumProductChargingPower=0,
             PricePerReferenceUnit=0.3,
             ProductAvailabilityTimes=[],
-            ProductID="FI*CPO*SMP1*MINUTE*FI*CPO",
+            ProductID="FI*CPO*SMP1*MINUTE*DE*ICE",
             ProductPriceCurrency="EUR",
             ReferenceUnit=ReferenceUnit(root="MINUTE"),
         ),
@@ -583,13 +583,13 @@ def pricing_product_data_successful_result():
     return PricingProductData(
         OperatorID=OperatorID(root="FI*CPO"),
         OperatorName="Smappee eRoam CPO",
-        ProviderID=ProviderIDAsterisk(root="FI*CPO"),
+        ProviderID=ProviderIDAsterisk(root="DE*ICE"),
         PricingDefaultPrice=0.3,
         PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
         PricingDefaultReferenceUnit=ReferenceUnit(root="HOUR"),
         PricingProductDataRecords=[
             PricingProductDataRecord(
-                ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*FI*CPO"),
+                ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
                 ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                 ProductPriceCurrency=CurrencyID(root="EUR"),
                 PricePerReferenceUnit=0.2,
@@ -605,7 +605,7 @@ def pricing_product_data_successful_result():
                 ],
             ),
             PricingProductDataRecord(
-                ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*FI*CPO"),
+                ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
                 ReferenceUnit=ReferenceUnit(root="MINUTE"),
                 ProductPriceCurrency=CurrencyID(root="EUR"),
                 PricePerReferenceUnit=0.3,
