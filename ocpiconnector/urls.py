@@ -3,14 +3,13 @@ from django.conf.urls import include
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path, re_path
-from django.views.i18n import set_language
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
 from health_check import health_check_api
 
-from ocpi22 import msp, views
+from ocpi22 import msp
 import ocpi22.cpo.tariff
 from ocpi22.msp.map import MapViewSet
 from ocpi22.msp.user import UserViewSet
@@ -45,7 +44,6 @@ from ocpi22.credentials.versions import VersionsViewSet, BaseRouter
 from ocpi22.views import home
 from payment.views import PaymentViewSet
 from settlement.views import CdrReportViews
-from webhooks.urls import urlpatterns as webhooks_urls
 from integrations.hubject.api import api as hubject_api
 
 ocpi_router = OCPIRouter()
@@ -100,10 +98,7 @@ schema_view = get_schema_view(
 
 # urlpatterns = i18n_patterns(
 urlpatterns = [
-    path("18n/", include("django.conf.urls.i18n")),
-    path("lang/", set_language, name="admin_set_language"),
     path("", home),
-    path("", include(root_router.urls), name="root-view"),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.locations.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.ocpi.urls")),
     re_path(r"^ocpi/(?P<version>[1-2.]+)/", include("ocpi22.commands.urls")),
@@ -112,30 +107,15 @@ urlpatterns = [
     ),
     path("api/cpo/v2/", include(cpo_router.urls), name="cpo-interface"),
     path("api/msp/v1/", include(msp_router.urls), name="msp-interface"),
-    path("webhooks/", include(webhooks_urls)),
     path("ocpi/", include(common_router.urls)),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
-    # JWT token operations
-    # path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    # path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path(
         "portal/ocpi22/credentials/connection/new",
         new_connection,
         name="new-connection",
     ),
     path("portal/", admin.site.urls),
-    path("issues/", views.issues, name="issues"),
     path("_nested_admin/", include("nested_admin.urls")),
-    path(
-        "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
-    ),
-    path(
-        "swagger/",
-        schema_view.with_ui("swagger", cache_timeout=0),
-        name="schema-swagger-ui",
-    ),
-    path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
-    # path("__debug__/", include("debug_toolbar.urls")),
     path("api/hubject/2.3/", hubject_api.urls),
     path("/health-check", health_check_api.urls),
 ]
