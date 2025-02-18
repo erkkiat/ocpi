@@ -22,36 +22,24 @@ def client():
 
 
 @pytest.fixture
-def super_user():
-    return SuperUserFactory()
-
-
-@pytest.fixture
-def normal_user():
-    return UserFactory()
-
-
-@pytest.fixture
-def admin_user():
-    return StaffUserFactory()
-
-
-@pytest.fixture
-def normal_user_client(db, normal_user):
+def normal_user_client(db):
     client = APIClient()
+    normal_user = UserFactory()
     client.force_authenticate(user=normal_user)
     return client
 
 
 @pytest.fixture
-def admin_user_client(db, admin_user):
+def admin_user_client(db):
+    admin_user = StaffUserFactory()
     client = APIClient()
     client.force_authenticate(user=admin_user)
     return client
 
 
 @pytest.fixture
-def super_user_client(db, super_user):
+def super_user_client(db):
+    super_user = SuperUserFactory()
     client = APIClient()
     client.force_authenticate(user=super_user)
     return client

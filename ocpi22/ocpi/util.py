@@ -6,7 +6,6 @@ from urllib.parse import urljoin
 
 from logging import getLogger
 
-from django.contrib.auth.models import Permission
 from django.utils.datetime_safe import datetime
 from typing import Union
 
@@ -632,32 +631,13 @@ def recursive_update_last_updated(obj):
 
 class IsModificationAllowed(BasePermission):
     def has_permission(self, request, view):
-        if (
-            request.method in SAFE_METHODS
-            or request.method == "POST"
-            or request.method == "PUT"
-        ):
+        if request.method in SAFE_METHODS or request.method == "POST":
             return True
         elif request.method == "DELETE" and request.user.is_superuser:
-            return True
-        return False
+            from ocpi22.models.tariff import SolidTariff
 
-
-class HasSolidTariffDeletePermission(BasePermission):
-    def has_permission(self, request, view):
-        if (
-            request.method in SAFE_METHODS
-            or request.method == "POST"
-            or request.method == "PUT"
-        ):
-            return True
-        if request.method == "DELETE" and request.user.is_superuser:
-            delete_permission = Permission.objects.filter(
-                codename="delete_solidtariff"
-            ).first()
-            if (
-                delete_permission
-                and delete_permission in request.user.user_permissions.all()
+            if request.user.has_perm(
+                f"{SolidTariff._meta.app_label}.delete_solidtariff"
             ):
                 return True
         return False
