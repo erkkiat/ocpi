@@ -13,7 +13,7 @@ from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
-from ocpi22.ocpi.util import IsModificationAllowed
+from ocpi22.ocpi.util import IsModificationAllowed, HasSolidTariffDeletePermission
 from ocpiconnector.exceptions import MspNotFoundError
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -40,7 +40,11 @@ class SolidTariffViewSet(
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
     service = SolidTariffService()
-    permission_classes = [IsAuthenticated, IsModificationAllowed]
+    permission_classes = [
+        IsAuthenticated,
+        IsModificationAllowed,
+        HasSolidTariffDeletePermission,
+    ]
 
     def list(self, request, *args, **kwargs):
         serializer = SolidTariffSerializer(

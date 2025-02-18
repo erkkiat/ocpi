@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 
 from logging import getLogger
 
+from django.contrib.auth.models import Permission
 from django.utils.datetime_safe import datetime
 from typing import Union
 
@@ -638,10 +639,25 @@ class IsModificationAllowed(BasePermission):
         ):
             return True
         elif request.method == "DELETE" and request.user.is_superuser:
-            from ocpi22.models.tariff import SolidTariff
+            return True
+        return False
 
-            if request.user.has_perm(
-                f"{SolidTariff._meta.app_label}.delete_solidtariff"
+
+class HasSolidTariffDeletePermission(BasePermission):
+    def has_permission(self, request, view):
+        if (
+            request.method in SAFE_METHODS
+            or request.method == "POST"
+            or request.method == "PUT"
+        ):
+            return True
+        if request.method == "DELETE" and request.user.is_superuser:
+            delete_permission = Permission.objects.filter(
+                codename="delete_solidtariff"
+            ).first()
+            if (
+                delete_permission
+                and delete_permission in request.user.user_permissions.all()
             ):
                 return True
         return False

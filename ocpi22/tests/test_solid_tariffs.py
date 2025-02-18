@@ -1,4 +1,5 @@
 import pytest
+from django.contrib.auth.models import Permission
 from django.urls import reverse
 from rest_framework import status
 
@@ -136,6 +137,17 @@ def smp1_create_response_no_msp():
     }
 
 
+@pytest.fixture
+def delete_permissions_for_super_user(super_user):
+    super_user.user_permissions.set([])
+
+
+@pytest.fixture
+def super_user_with_delete_solid_tariff_permission(super_user):
+    permission = Permission.objects.get(codename="delete_solidtariff")
+    super_user.user_permissions.set([permission])
+
+
 class TestSolidTariffs:
     def test_unauthenticated_user_cannot_get_solid_tariff_returns_401_unauthorized(
         self, client
@@ -268,18 +280,47 @@ class TestSolidTariffs:
         )
         assert response.status_code == status.HTTP_200_OK
 
-    def test_super_user_cannot_delete_all_solid_tariffs_405_method_not_allowed(
-        self, super_user_client, smp1_solid_tariff_with_all_records_json
+    @pytest.mark.django_db
+    def test_super_user_cannot_delete_all_solid_tariffs_with_delete_permission_405_method_not_allowed(
+        self,
+        super_user_client,
+        smp1_solid_tariff_with_all_records_json,
+        super_user_with_delete_solid_tariff_permission,
     ):
         url = reverse("solid-tariff-list")
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+    def test_super_user_can_delete_solid_tariff_by_external_id_with_delete_solid_tariff_permission_return_204_no_content(
+        self,
+        super_user_client,
+        smp1_solid_tariff_with_all_records_json,
+        delete_permissions_for_super_user,
+        super_user,
+        solid_tariff_smp1_msp1,
+    ):
+        permission = Permission.objects.get(codename="delete_solidtariff")
+        super_user.user_permissions.set([permission])
+        url = f'{reverse("solid-tariff-list")}SMP1/'
+        response = super_user_client.delete(url)
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_super_user_cannot_delete_solid_tariff_by_external_id_without_delete_solid_tariff_permission_return_403_forbidden(
+        self,
+        super_user_client,
+        delete_permissions_for_super_user,
+        solid_tariff_smp1_msp1,
+    ):
+        url = f'{reverse("solid-tariff-list")}SMP1/'
+        response = super_user_client.delete(url)
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_super_user_can_delete_solid_tariff_by_external_id_204_no_content(
         self,
         super_user_client,
         smp1_solid_tariff_with_all_records_json,
         solid_tariff_smp1_msp1,
+        super_user_with_delete_solid_tariff_permission,
     ):
         url = f'{reverse("solid-tariff-list")}SMP1/'
         response = super_user_client.delete(url)
