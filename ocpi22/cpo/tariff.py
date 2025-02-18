@@ -13,7 +13,7 @@ from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
-from ocpi22.ocpi.util import IsModificationAllowed
+from ocpi22.ocpi.util import IsModificationAllowed, HasSolidTariffDeletePermission
 from ocpiconnector.exceptions import MspNotFoundError
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -22,7 +22,6 @@ from ocpiconnector.party import Party
 class SolidTariffViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
     mixins.UpdateModelMixin,
     GenericViewSet,
 ):
@@ -41,7 +40,11 @@ class SolidTariffViewSet(
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
     service = SolidTariffService()
-    permission_classes = [IsAuthenticated, IsModificationAllowed]
+    permission_classes = [
+        IsAuthenticated,
+        IsModificationAllowed,
+        HasSolidTariffDeletePermission,
+    ]
 
     def list(self, request, *args, **kwargs):
         serializer = SolidTariffSerializer(
@@ -49,7 +52,7 @@ class SolidTariffViewSet(
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def create(
+    def put(
         self, request, external_id=None, country_code=None, party_id=None
     ) -> Response:
         try:
@@ -67,7 +70,9 @@ class SolidTariffViewSet(
                 },
             )
             if serializer.is_valid():
-                solid_tariff, created = serializer.save(ocpi_master=our_role)
+                validated_data = serializer.validated_data
+                validated_data["ocpi_master"] = our_role
+                solid_tariff, created = serializer.create(validated_data)
                 if created:
                     # TODO: At the moment solid tariff does not have the link to ocpi tariff. This is coming on the next PR
                     # solid_tariff.ocpi_tariff.send_updates()
