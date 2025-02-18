@@ -47,7 +47,7 @@ class TestMqttTasks:
         monkeypatch.setenv("CPO", "FI*CPO")
         with patch.object(Evse, "send_status_updates") as mock_send_status_updates:
             save_and_send_evse_status_updates("100000002", "Available")
-            assert mock_send_status_updates.assert_not_called()
+            mock_send_status_updates.assert_not_called()
 
     def test_save_and_send_evse_status_updates_saves_status(
         self, monkeypatch, db, create_evse
