@@ -22,7 +22,6 @@ from ocpiconnector.party import Party
 class SolidTariffViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
     mixins.UpdateModelMixin,
     GenericViewSet,
 ):
@@ -49,7 +48,7 @@ class SolidTariffViewSet(
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def create(
+    def put(
         self, request, external_id=None, country_code=None, party_id=None
     ) -> Response:
         try:
