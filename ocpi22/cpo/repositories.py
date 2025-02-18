@@ -9,7 +9,7 @@ class SolidTariffRepository:
         latest_tariffs = (
             SolidTariff.objects.filter(Q(msp__isnull=True) | Q(msp__id__isnull=False))
             .values("external_id", "msp_id")
-            .annotate(latest_created=Max("created_at"))
+            .annotate(latest_created=Max("created"))
         )
 
         return SolidTariff.objects.filter(

@@ -111,14 +111,14 @@ class SolidTariffViewSet(
                     msp_id=msp.id,
                     archived=False,
                     operator=our_role,
-                ).latest("created_at")
+                ).latest("created")
             else:
                 solid_tariff = SolidTariff.objects.filter(
                     external_id__iexact=external_id,
                     msp_id=msp.id,
                     archived=False,
                     operator=our_role,
-                ).latest("created_at")
+                ).latest("created")
 
             assert request.data.get("external_id") in (
                 external_id,
