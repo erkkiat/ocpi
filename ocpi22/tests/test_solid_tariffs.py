@@ -1,8 +1,12 @@
+import json
+
 import pytest
 from django.contrib.auth.models import Permission
+from django.core.serializers import serialize
 from django.urls import reverse
 from rest_framework import status
 
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import TariffFactory, SolidTariffFactory
@@ -355,6 +359,10 @@ class TestSolidTariffs:
         normal_user_client.put(url, smp1_solid_tariff_with_all_records_json)
 
         assert SolidTariff.objects.all().count() == 1
+        json_data = serialize("json", SolidTariff.objects.all())
+        assert self.verify_saved_model_json_and_expected(
+            json_data, smp1_solid_tariff_with_all_records_json
+        )
 
     @pytest.mark.django_db
     def test_put_solid_tariffs_with_minimal_records_returns_status_code_200(
@@ -471,6 +479,18 @@ class TestSolidTariffs:
             ).count()
             == 2
         )
+        json_data = serialize(
+            "json",
+            (
+                SolidTariff.objects.filter(
+                    external_id=smp1_update_solid_tariff_json["external_id"]
+                ).order_by("-created_at")
+            ),
+        )
+
+        assert self.verify_saved_model_json_and_expected(
+            json_data, solid_tariff_smp1_msp1
+        )
 
     @pytest.mark.django_db
     def test_update_solid_tariff_with_minimal_records_create_a_new_solid_tariff(
@@ -492,6 +512,18 @@ class TestSolidTariffs:
             ).count()
             == 2
         )
+        json_data = serialize(
+            "json",
+            (
+                SolidTariff.objects.filter(
+                    external_id=smp1_solid_tariff_minimal_records_json["external_id"]
+                ).order_by("-created_at")
+            ),
+        )
+
+        assert self.verify_saved_model_json_and_expected(
+            json_data, smp1_solid_tariff_minimal_records_json
+        )
 
     @pytest.mark.django_db
     def test_update_solid_tariff_with_zero_pricing_create_a_new_solid_tariff(
@@ -512,6 +544,18 @@ class TestSolidTariffs:
                 external_id=smp1_solid_tariff_zero_pricing_json["external_id"]
             ).count()
             == 2
+        )
+        json_data = serialize(
+            "json",
+            (
+                SolidTariff.objects.filter(
+                    external_id=smp1_solid_tariff_zero_pricing_json["external_id"]
+                ).order_by("-created_at")
+            ),
+        )
+
+        assert self.verify_saved_model_json_and_expected(
+            json_data, smp1_solid_tariff_zero_pricing_json
         )
 
     @pytest.mark.django_db
@@ -564,6 +608,18 @@ class TestSolidTariffs:
             ).count()
             == 2
         )
+        json_data = serialize(
+            "json",
+            (
+                SolidTariff.objects.filter(
+                    external_id=smp1_update_tariff_without_msp["external_id"]
+                ).order_by("-created_at")
+            ),
+        )
+
+        assert self.verify_saved_model_json_and_expected(
+            json_data, smp1_update_tariff_without_msp
+        )
 
     @pytest.mark.parametrize(
         "sd_type,expected_price",
@@ -582,3 +638,35 @@ class TestSolidTariffs:
         )
 
         assert sd.get_type(sd_type) == expected_price
+
+    def verify_saved_model_json_and_expected(self, json_data, expected_json):
+        saved_data = json.loads(json_data)[0]["fields"]
+
+        saved_data["price_per_kwh"] = (
+            float(saved_data["price_per_kwh"])
+            if saved_data["price_per_kwh"] is not None
+            else None
+        )
+        saved_data["price_per_min"] = (
+            float(saved_data["price_per_min"])
+            if saved_data["price_per_min"] is not None
+            else None
+        )
+        saved_data["price_flat"] = (
+            float(saved_data["price_flat"])
+            if saved_data["price_flat"] is not None
+            else None
+        )
+        saved_data["parking_price_per_min"] = (
+            float(saved_data["parking_price_per_min"])
+            if saved_data["parking_price_per_min"] is not None
+            else None
+        )
+
+        if saved_data["msp"] == 1:
+            saved_data["msp"] = CredentialsRole.objects.get(id=1)
+
+        return (
+            saved_data == expected_json,
+            f"Mismatch:\nExpected: {expected_json}\nActual: {saved_data}",
+        )
