@@ -15,7 +15,7 @@ class SolidTariffRepository:
         return SolidTariff.objects.filter(
             Q(
                 external_id__in=[entry["external_id"] for entry in latest_tariffs],
-                created_at__in=[entry["latest_created"] for entry in latest_tariffs],
+                created__in=[entry["latest_created"] for entry in latest_tariffs],
             )
         )
 

@@ -49,7 +49,7 @@ def smp1_solid_tariff_with_all_records_without_msp_json():
 
 
 @pytest.fixture
-def smp1_msp1_solid_tariff_with_all_records(self, msp_de_ice, operator_fi_cpo):
+def smp1_msp1_solid_tariff_with_all_records(msp_de_ice, operator_fi_cpo):
     return SolidTariffFactory(
         external_id="SMP1",
         currency="EUR",

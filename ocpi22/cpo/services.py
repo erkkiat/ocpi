@@ -89,7 +89,7 @@ class SolidTariffService:
         if validated_data.get("msp") is not None:
             temp_validated_data = validated_data.copy()
             temp_validated_data.pop("msp")
-            return SolidTariff.objects.get(**temp_validated_data)
+            return SolidTariff.objects.get_if_exists(**temp_validated_data)
         return None
 
     def _create_new_tariff(

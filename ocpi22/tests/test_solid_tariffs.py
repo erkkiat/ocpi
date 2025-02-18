@@ -298,6 +298,7 @@ class TestSolidTariffs:
         normal_user_client,
         msp_de_ice,
         operator_fi_cpo,
+        smp1_msp1_solid_tariff_with_all_records,
         smp1_solid_tariff_with_all_records_json,
         smp1_solid_tariff_with_all_records_response,
     ):
