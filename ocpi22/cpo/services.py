@@ -28,7 +28,7 @@ class SolidTariffService:
 
         self._set_missing_fields(validated_data)
 
-        solid_tariff = self._get_existing_tariff(validated_data)
+        solid_tariff = SolidTariff.objects.get_if_exists(**validated_data)
         if solid_tariff:
             return solid_tariff
 
@@ -83,15 +83,6 @@ class SolidTariffService:
             if validated_data.get(key) is None:
                 validated_data[f"{key}__isnull"] = True
 
-    def _get_existing_tariff(self, validated_data) -> SolidTariff | None:
-        if self.solid_tariff_repository.exists(**validated_data):
-            return SolidTariff.objects.get(**validated_data)
-        if validated_data.get("msp") is not None:
-            temp_validated_data = validated_data.copy()
-            temp_validated_data.pop("msp")
-            return SolidTariff.objects.get_if_exists(**temp_validated_data)
-        return None
-
     def _create_new_tariff(
         self,
         validated_data,
@@ -134,12 +125,16 @@ class SolidTariffService:
                 operator=operator,
             )
 
+    def _get_ocpi_uid(self):
+        # TODO: MSP specific ocpi tariffs requirement is not satisfied here.
+        #  check https://github.com/solidroam/ocpiconnector/issues/253 for more details.
+        return str(uuid.uuid4())
+
     def _create_ocpi_tariff(self, operator, currency) -> Tariff:
-        random_ocpi_tariff_id = str(uuid.uuid4())
+        random_ocpi_tariff_id = self._get_ocpi_uid()
         tariff = Tariff.objects.create(
             uid=random_ocpi_tariff_id, ocpi_master=operator, currency=currency
         )
-        TariffElement.objects.get_or_create(tariff=tariff)
         return tariff
 
     def _create_price_components(

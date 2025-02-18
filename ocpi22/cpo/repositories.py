@@ -19,9 +19,6 @@ class SolidTariffRepository:
             )
         )
 
-    def exists(self, **kwargs) -> bool:
-        return SolidTariff.objects.filter(**kwargs).exists()
-
     def delete_all_by_external_id_msp(
         self, external_id: str, msp: CredentialsRole
     ) -> bool:
