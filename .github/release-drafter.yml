@@ -1,0 +1,18 @@
+name-template: 'Release $NEXT_PATCH_VERSION'
+tag-template: 'v$NEXT_PATCH_VERSION'
+categories:
+  - title: '🚀 Features'
+    labels: [ 'feature', 'enhancement' ]
+  - title: '🐛 Bug Fixes'
+    labels: [ 'bug', 'fix' ]
+  - title: '🛠 Maintenance'
+    labels: [ 'chore', 'refactor', 'tech' ]
+
+version-resolver:
+  major:
+    labels: [ 'major', 'breaking-change' ]  # If PR has 'major', bump major (e.g., v1.0.0 → v2.0.0)
+  minor:
+    labels: [ 'feature', 'enhancement' ]  # Bumps minor (e.g., v1.2.0 → v1.3.0)
+  patch:
+    labels: [ 'bug', 'fix' ]  # Bumps patch (e.g., v1.2.3 → v1.2.4)
+  default: patch  # Default bump if no labels match
