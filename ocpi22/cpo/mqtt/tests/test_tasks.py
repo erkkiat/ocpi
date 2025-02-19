@@ -16,10 +16,10 @@ class TestMqttTasks:
     @pytest.fixture
     def create_evse(self):
         def _create_evse(uid, status):
-            creedential_role = CredentialsRoleFactory(
+            credentialsrole = CredentialsRoleFactory(
                 country_code="FI", role="CPO", party_id="CPO"
             )
-            location = LocationFactory(ocpi_master=creedential_role)
+            location = LocationFactory(ocpi_master=credentialsrole)
             evse = EvseFactory(uid=uid, location=location, status=status)
             return evse
 
