@@ -552,8 +552,10 @@ class SolidTariff(models.Model):
         verbose_name=_("Tariff"),
     )
 
-    last_updated = models.DateTimeField(verbose_name=_("Last_updated_at"))
-    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created_at"))
+    last_updated_at = models.DateTimeField(verbose_name=_("Last updated timestamp"))
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name=_("Created timestamp")
+    )
 
     def get_type(self, tariff_type: str) -> Optional[object]:
         match tariff_type:
