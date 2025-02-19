@@ -59,6 +59,7 @@ class LoggingMiddleware(MiddlewareMixin):
             "response_message": HTTPStatus(response.status_code).phrase,
             "response_duration": processing_time,
             "response_data": response_data,
+            "response_headers": response.headers,
         }
 
     def clean_auth_headers(self, request):

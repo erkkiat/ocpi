@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 import factory
 import pytz
+from django.contrib.auth.models import User
 from faker import Faker
 
 from integrations.hubject.schemas import (
@@ -43,6 +44,24 @@ from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
 
 fake = Faker()
+
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    username = "SolidRoamUser"
+    email = "user@solidroam.com"
+    password = factory.PostGenerationMethodCall("set_password", "test.user")
+
+
+class StaffUserFactory(UserFactory):
+    is_staff = True
+
+
+class SuperUserFactory(UserFactory):
+    is_superuser = True
+    is_staff = True
 
 
 class OCPIImageFactory(factory.django.DjangoModelFactory):
@@ -388,7 +407,7 @@ class ERoamingPushPricingProductDataFactory(factory.Factory):
     )
 
 
-class SolidTariffFactory(factory.Factory):
+class SolidTariffFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SolidTariff
 
@@ -399,8 +418,12 @@ class SolidTariffFactory(factory.Factory):
     price_flat = 0.3
     vat_percentage = 0.2
     archived = False
-    msp = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
-    operator = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
+    msp = factory.SubFactory(
+        CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"
+    )
+    operator = factory.SubFactory(
+        CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
+    )
 
     last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))

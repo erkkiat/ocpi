@@ -1,11 +1,6 @@
 import pytest
-from rest_framework.test import APIClient
-from ocpi22.tests.factories import CredentialsRoleFactory
 
-
-@pytest.fixture
-def client():
-    return APIClient()
+from ocpi22.tests.factories import CredentialsRoleFactory, SolidTariffFactory
 
 
 @pytest.fixture
@@ -24,7 +19,7 @@ def operator_fi_cpo():
 
 
 @pytest.fixture
-def smp1_solid_tariff_with_all_records():
+def smp1_solid_tariff_with_all_records_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -39,23 +34,25 @@ def smp1_solid_tariff_with_all_records():
 
 
 @pytest.fixture
-def smp1_msp1_solid_tariff_with_all_records(msp_de_ice, operator_fi_cpo):
-    return {
-        "external_id": "SMP1",
-        "currency": "EUR",
-        "price_per_kwh": 0.690,
-        "price_per_min": 0.42,
-        "price_flat": 0.56,
-        "parking_price_per_min": 0.54,
-        "parking_grace_period": 100,
-        "vat_percentage": 20.0,
-        "msp": msp_de_ice,
-        "operator": operator_fi_cpo,
-    }
+def smp1_msp1_solid_tariff_with_all_records(
+    self, solid_tariff_smp1_msp1_data, msp_de_ice, operator_fi_cpo
+):
+    return SolidTariffFactory(
+        external_id="SMP1",
+        currency="EUR",
+        price_per_kwh=0.690,
+        price_per_min=0.42,
+        price_flat=0.56,
+        parking_price_per_min=0.54,
+        parking_grace_period=100,
+        msp=msp_de_ice,
+        operator=operator_fi_cpo,
+        archived=False,
+    )
 
 
 @pytest.fixture
-def smp1_solid_tariff_response_with_all_records():
+def smp1_solid_tariff_with_all_records_response():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -70,7 +67,7 @@ def smp1_solid_tariff_response_with_all_records():
 
 
 @pytest.fixture
-def smp1_solid_tariff_minimal_records():
+def smp1_solid_tariff_minimal_records_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -78,7 +75,23 @@ def smp1_solid_tariff_minimal_records():
 
 
 @pytest.fixture
-def smp1_solid_tariff_response_with_minimal_records():
+def smp1_solid_tariff_minimal_records(operator_fi_cpo):
+    return SolidTariffFactory(
+        external_id="SMP1",
+        currency="EUR",
+        price_per_kwh=None,
+        price_per_min=None,
+        price_flat=None,
+        parking_price_per_min=None,
+        parking_grace_period=None,
+        msp=None,
+        operator=operator_fi_cpo,
+        archived=False,
+    )
+
+
+@pytest.fixture
+def smp1_solid_tariff_with_minimal_records_response():
     return {
         "currency": "EUR",
         "external_id": "SMP1",
@@ -92,7 +105,7 @@ def smp1_solid_tariff_response_with_minimal_records():
 
 
 @pytest.fixture
-def smp1_solid_tariff_zero_pricing():
+def smp1_solid_tariff_zero_pricing_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -106,7 +119,7 @@ def smp1_solid_tariff_zero_pricing():
 
 
 @pytest.fixture
-def smp1_solid_tariff_response_with_zero_pricing():
+def smp1_solid_tariff_with_zero_pricing_response():
     return {
         "currency": "EUR",
         "external_id": "SMP1",
@@ -120,7 +133,7 @@ def smp1_solid_tariff_response_with_zero_pricing():
 
 
 @pytest.fixture
-def smp1_solid_tariff_minus_pricing():
+def smp1_solid_tariff_minus_pricing_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -134,7 +147,7 @@ def smp1_solid_tariff_minus_pricing():
 
 
 @pytest.fixture
-def smp1_solid_tariff_response_with_minus_pricing():
+def smp1_solid_tariff_with_minus_pricing_response():
     return {
         "price_per_kwh": ["price_per_kwh cannot be negative."],
         "price_per_min": ["price_per_min cannot be negative."],
@@ -232,7 +245,7 @@ def smp1_tariff_update_data_with_no_external_id():
 
 
 @pytest.fixture
-def smp1_update_tariff():
+def smp1_update_solid_tariff_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -247,7 +260,7 @@ def smp1_update_tariff():
 
 
 @pytest.fixture
-def smp1_update_tariff_no_msp():
+def smp1_update_tariff_without_msp():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -285,7 +298,7 @@ def solid_tariff_smp1_msp1_update_data(operator_fi_cpo, msp_de_ice):
 
 
 @pytest.fixture
-def solid_tariff_smp1_msp1_data(operator_fi_cpo, msp_de_ice):
+def solid_tariff_smp1_msp1_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -295,8 +308,8 @@ def solid_tariff_smp1_msp1_data(operator_fi_cpo, msp_de_ice):
         "parking_price_per_min": 0.54,
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
-        "msp": msp_de_ice,
-        "operator": operator_fi_cpo,
+        "msp": "DE*ICE",
+        "operator": "FI*CPO",
         "archived": False,
     }
 
