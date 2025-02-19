@@ -20,7 +20,7 @@ class MeterValues(BaseModel):
     kwh: float = Field(..., description="The metered energy in kWh.")
     soc: Optional[float] = Field(None, description="The state of charge in percentage.")
     power: Optional[float] = Field(None, description="The power in kW.")
-    timestamp: str = Field(..., description="The timestamp of the meter value.")
+    timestamp: datetime = Field(..., description="The timestamp of the meter value.")
 
 
 class EvseStatus(str, Enum):
