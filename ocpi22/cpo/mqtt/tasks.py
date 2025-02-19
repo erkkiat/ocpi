@@ -1,6 +1,7 @@
 import os
 import ssl
 from datetime import datetime
+from distutils.util import strtobool
 from enum import Enum
 from logging import getLogger
 from zoneinfo import ZoneInfo
@@ -54,6 +55,7 @@ class CeleryConfig:
     worker_concurrency = 4
     task_time_limit = 15
     task_soft_time_limit = 10
+    task_always_eager = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "False"))
 
 
 # Todo: The tasks should be independent of Django, so we can run them in a separate process
