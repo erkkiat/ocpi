@@ -12,7 +12,7 @@ def create_ocpi_session_with_tariff() -> Session:
 
 
 @pytest.fixture
-def completed_session(cdr_receiver_credentials) -> Session:
+def completed_session(msp_credentials_with_endpoints) -> Session:
     session = create_ocpi_session_with_tariff()
     session.status = Session.COMPLETED
     session.save()

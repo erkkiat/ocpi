@@ -7,7 +7,9 @@ from ocpi22.ocpi.auth import get_credentialsrole
 
 
 @pytest.mark.django_db
-def test_cdr_send_update_url_to_be_without_path_components(cdr_receiver_credentials, completed_session):
+def test_cdr_send_update_url_to_be_without_path_components(
+    msp_credentials_with_endpoints, completed_session
+):
     get_credentialsrole.cache_clear()
     cdr = Cdr.objects.get(session_id=completed_session.uid)
 
