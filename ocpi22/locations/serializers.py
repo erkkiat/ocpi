@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.transaction import atomic
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -347,9 +348,9 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             validated_data = self.process_coordinates(validated_data)
         return super().to_representation(validated_data)
 
+    @atomic
     def create(self, validated_data: dict):
         with transaction.atomic():
-            # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
             validated_data = self.process_ocpi_master(validated_data)
             evses = validated_data.pop("evses", [])
@@ -365,25 +366,39 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 data=validated_data.pop("owner", None)
             )
 
-            location = Location.objects.create(
+            created_location = Location.objects.create(
                 **validated_data,
                 operator=operator,
                 suboperator=suboperator,
                 owner=owner,
             )
-            location.publish_allowed_to.set(publish_allowed_to)
+            created_location.publish_allowed_to.set(publish_allowed_to)
 
             for e in evses:
                 connectors = e.pop("connectors", [])
-                evse = Evse.objects.create(**e, location=location)
+                evse = Evse.get_if_exists(
+                    uid=e.get("uid"), location__ocpi_master=created_location.ocpi_master
+                )
+                if evse:
+                    for key, value in e.items():
+                        if key not in {"uid", "evse_id"}:
+                            setattr(evse, key, value)
+                    if evse.location != created_location:
+                        evse.location = created_location
+                    evse.save()
+                else:
+                    evse = Evse.objects.create(**e, location=created_location)
 
-                # Capabilities
-                # evse.capabilities.set(capabilities)
-
-                # Connectors
                 for c in connectors:
                     tariff_ids = c.pop("tariff_ids", [])
-                    connector = Connector.objects.create(**c, evse=evse)
+                    connector = Connector.get_if_exists(uid=c.get("uid"), evse=evse)
+                    if connector:
+                        for key, value in c.items():
+                            if key != "uid":
+                                setattr(connector, key, value)
+                        connector.save()
+                    else:
+                        connector = Connector.objects.create(**c, evse=evse)
 
                     # Tariffs
                     tariffs = []
@@ -391,30 +406,30 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                         try:
                             tariff = Tariff.objects.get(
                                 uid=t,
-                                ocpi_master__country_code=location.ocpi_master.country_code,
-                                ocpi_master__party_id=location.ocpi_master.party_id,
+                                ocpi_master__country_code=created_location.ocpi_master.country_code,
+                                ocpi_master__party_id=created_location.ocpi_master.party_id,
                                 archived=False,
                             )
                             tariffs.append(tariff)
                         except Tariff.DoesNotExist:
                             # Todo: Fetch Tariffs from other party
                             raise ValidationError(
-                                f"Tariff `{t}` for {location.ocpi_master.country_code}*"
-                                f"{location.ocpi_master.party_id} does not exist in our database"
+                                f"Tariff `{t}` for {created_location.ocpi_master.country_code}*"
+                                f"{created_location.ocpi_master.party_id} does not exist in our database"
                             )
                     connector.tariff_ids.set(tariffs)
 
-            # Opening times
             if opening_times:
                 serializer = HoursSerializer(data=opening_times)
                 if serializer.is_valid():
                     hours = serializer.save()
-                    location.opening_times = hours
+                    created_location.opening_times = hours
                 else:
                     raise ValidationError(serializer.errors)
 
-            return location
+            return created_location
 
+    @atomic
     def update(self, location: Location, validated_data: dict) -> Location:
         readonly_fields = {
             "country_code",
@@ -449,7 +464,11 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             connectors = e.pop("connectors", [])
             capabilities = e.pop("capabilities", None)
             try:
-                evse = Evse.objects.get(uid=e.get("uid"), location=location)
+                evse = Evse.objects.get(
+                    uid=e.get("uid"), location__ocpi_master=location.ocpi_master
+                )
+                if evse.location != location:
+                    evse.location = location
                 if capabilities is not None:
                     evse.capabilities = capabilities
                 for key, value in e.items():
