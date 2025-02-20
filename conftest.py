@@ -27,7 +27,7 @@ def super_user():
 
 
 @pytest.fixture
-def normal_user():
+def authenticated_user():
     return UserFactory()
 
 
@@ -37,9 +37,9 @@ def admin_user():
 
 
 @pytest.fixture
-def normal_user_client(db, normal_user):
+def authenticated_user_client(db, authenticated_user):
     client = APIClient()
-    client.force_authenticate(user=normal_user)
+    client.force_authenticate(user=authenticated_user)
     return client
 
 
