@@ -16,7 +16,7 @@ TEST_LOGGING = {
     "handlers": {
         **LOGGING["handlers"],  # noqa
         "console": {
-            "level": "DEBUG",
+            "level": "INFO",
             "class": "logging.StreamHandler",
             "formatter": "json",
         },
@@ -25,17 +25,17 @@ TEST_LOGGING = {
         **LOGGING["loggers"],  # noqa
         "django": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": True,
         },
         "django.request": {
             "handlers": ["console"],
-            "level": "WARNING",
+            "level": "INFO",
             "propagate": False,
         },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": False,
         },
     },
