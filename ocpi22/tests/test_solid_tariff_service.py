@@ -11,8 +11,7 @@ def solid_tariff_service_instance():
 @pytest.mark.parametrize(
     "validated_data, expected_missing",
     [
-        # Case: All fields are present (no "__isnull" should be added)
-        (
+        pytest.param(
             {
                 "price_per_kwh": 0.5,
                 "price_per_min": 0.2,
@@ -23,9 +22,9 @@ def solid_tariff_service_instance():
                 "msp": "DE*ICE",
             },
             [],
+            id="All fields are present",
         ),
-        # Case: Some fields are missing or None
-        (
+        pytest.param(
             {
                 "price_per_kwh": None,
                 "price_per_min": 0.2,
@@ -36,9 +35,9 @@ def solid_tariff_service_instance():
                 "msp": None,
             },
             ["price_per_kwh", "price_flat", "vat_percentage", "msp"],
+            id="Some fields are missing or None",
         ),
-        # Case: All fields are missing
-        (
+        pytest.param(
             {},
             [
                 "price_per_kwh",
@@ -49,6 +48,7 @@ def solid_tariff_service_instance():
                 "parking_grace_period",
                 "msp",
             ],
+            id="All fields are missing",
         ),
     ],
 )
@@ -71,14 +71,14 @@ def test_set_missing_fields(
 @pytest.mark.parametrize(
     "per_minute_value, expected_result",
     [
-        (0.5, 30.0),  # 0.5 per minute should be converted to 30.0 per hour
-        (1.0, 60.0),  # 1.0 per minute should be converted to 60.0 per hour
-        (None, None),  # If None is passed, the result should also be None
-        ("", None),  # If an empty string is passed, the result should be None
+        (0.5, 30.0),
+        (1.0, 60.0),
+        (None, None),
+        ("", None),
         (
             "invalid",
             None,
-        ),  # If an invalid string is passed, the result should also be None
+        ),
     ],
 )
 def test_convert_to_hourly(

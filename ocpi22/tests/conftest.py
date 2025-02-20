@@ -30,7 +30,7 @@ def smp1_solid_tariff_with_all_records_json():
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -61,7 +61,7 @@ def smp1_solid_tariff_with_all_records_response():
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "msp": "DE*ICE",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -99,7 +99,7 @@ def smp1_solid_tariff_with_minimal_records_response():
         "price_per_kwh": None,
         "price_per_min": None,
         "vat_percentage": None,
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -114,7 +114,7 @@ def smp1_solid_tariff_zero_pricing_json():
         "parking_price_per_min": 0,
         "parking_grace_period": 0,
         "vat_percentage": 0,
-        "last_updated": "2025-02-08T20:32:26.468217Z",
+        "last_updated_at": "2025-02-08T20:32:26.468217Z",
     }
 
 
@@ -129,7 +129,7 @@ def smp1_solid_tariff_with_zero_pricing_response():
         "price_per_kwh": "0",
         "price_per_min": "0",
         "vat_percentage": "0",
-        "last_updated": "2025-02-08T20:32:26.468217Z",
+        "last_updated_at": "2025-02-08T20:32:26.468217Z",
     }
 
 
@@ -214,7 +214,7 @@ def smp1_tariff_no_msp_json():
         "parking_price_per_min": 0.54,
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -229,7 +229,7 @@ def smp1_tariff_data_with_no_external_id():
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -259,7 +259,7 @@ def smp1_update_solid_tariff_json():
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -274,7 +274,7 @@ def smp1_update_tariff_without_msp():
         "parking_price_per_min": 0.54,
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -298,7 +298,7 @@ def solid_tariff_smp1_msp1_update_data(operator_fi_cpo, msp_de_ice):
         "vat_percentage": 20.0,
         "msp": msp_de_ice,
         "operator": operator_fi_cpo,
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -315,7 +315,7 @@ def solid_tariff_smp1_msp1_json():
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
         "operator": "FI*CPO",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -332,5 +332,5 @@ def solid_tariff_smp1_msp2_data(operator_fi_cpo, msp_de_icd):
         "vat_percentage": 20.0,
         "msp": msp_de_icd,
         "operator": operator_fi_cpo,
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
