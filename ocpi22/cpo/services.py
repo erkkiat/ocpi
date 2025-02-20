@@ -67,7 +67,10 @@ class SolidTariffService:
         return per_kwh, per_min, flat, parking_price, vat, currency, grace_period
 
     def _convert_to_hourly(self, per_minute_value):
-        return float(per_minute_value) * 60 if per_minute_value else None
+        try:
+            return float(per_minute_value) * 60 if per_minute_value else None
+        except (ValueError, TypeError):
+            return None
 
     def _set_missing_fields(self, validated_data):
         expected_keys = [
@@ -82,6 +85,7 @@ class SolidTariffService:
         for key in expected_keys:
             if validated_data.get(key) is None:
                 validated_data[f"{key}__isnull"] = True
+                validated_data.pop(key, None)
 
     def _create_new_tariff(
         self,
