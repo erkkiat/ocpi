@@ -119,7 +119,7 @@ def reverse(s, args=None, request=None, version=None, kwargs=None) -> str:
     if kwargs:
         kwargs["version"] = version
     else:
-        version_args = [version, *args]
+        version_args = [str(version), *args]
     try:
         return django_reverse(s, args=version_args, request=request, kwargs=kwargs)
     except NoReverseMatch:
@@ -439,6 +439,7 @@ class ErrorLoggingResponse(Response):
 
 def get_message_by_language(messages: list, language: str) -> str:
     """
+    >>> from ocpi22.choices import MessageTexts
     >>> get_message_by_language(MessageTexts.get('STOPPING_TO_CHARGE'), 'en')
     'Stopping charging session'
     >>> get_message_by_language(MessageTexts.get('STOPPING_TO_CHARGE'), 'FI')

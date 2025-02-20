@@ -1,9 +1,10 @@
-import random
 import time
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import factory
 import pytz
+from django.contrib.auth.models import User
 from faker import Faker
 
 from integrations.hubject.schemas import (
@@ -28,16 +29,41 @@ from integrations.hubject.schemas import (
     AccessibilityLocation,
     ActionType,
     Accessibility,
+    ERoamingPushPricingProductData,
+    PricingProductData,
+    PricingProductDataRecord,
     ERoamingPushEVSEPricing,
     EVSEPricingItem,
 )
 from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import CredentialsRole, Credentials
+from ocpi22.models.cdrlocation import CdrLocation
+from ocpi22.models.cdrtoken import CdrToken
+from ocpi22.models.cdr import Cdr
+from ocpi22.models.credentials import CredentialsRole, Credentials, Endpoint
 from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.tariff import Tariff, SolidTariff
+from ocpi22.models.session import Session
+from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
 
 fake = Faker()
+
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    username = "SolidRoamUser"
+    email = "user@solidroam.com"
+    password = factory.PostGenerationMethodCall("set_password", "test.user")
+
+
+class StaffUserFactory(UserFactory):
+    is_staff = True
+
+
+class SuperUserFactory(UserFactory):
+    is_superuser = True
+    is_staff = True
 
 
 class OCPIImageFactory(factory.django.DjangoModelFactory):
@@ -86,6 +112,13 @@ class CredentialsRoleFactory(factory.django.DjangoModelFactory):
     credentials = factory.SubFactory(CredentialsFactory)
 
 
+class EndpointFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Endpoint
+
+    url = "http://localhost/ocpi/some/endpoint/"
+
+
 class LocationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Location
@@ -98,12 +131,8 @@ class LocationFactory(factory.django.DjangoModelFactory):
     postal_code = "8530"
     state = ""
     country = "FIN"
-    latitude = factory.LazyAttribute(
-        lambda x: round(random.uniform(-90, 90), random.randint(1, 6))
-    )
-    longitude = factory.LazyAttribute(
-        lambda x: round(random.uniform(-180, 180), random.randint(1, 6))
-    )
+    latitude = "47.662249"
+    longitude = "9.360922"
     time_zone = "Europe/Helsinki"
     ocpi_master = factory.SubFactory(CredentialsRoleFactory)
     operator = factory.SubFactory(BusinessDetailsFactory)
@@ -126,14 +155,48 @@ class EvseFactory(factory.django.DjangoModelFactory):
     capabilities = ["RFID_READER", "RESERVABLE"]
 
 
+class TariffElementFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = TariffElement
+
+
+class PriceComponentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PriceComponent
+
+    type = "ENERGY"
+    step_size = 1
+    price = 0.4
+    vat = 20
+
+
 class TariffFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Tariff
 
+    @factory.post_generation
+    def build_tariff(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        def add_price_components(tariff_element):
+            PriceComponentFactory(tariff_element=tariff_element)
+            PriceComponentFactory(
+                tariff_element=tariff_element, type="TIME", price=0.3, step_size=1
+            )
+
+        if extracted:
+            for tariffelement in extracted:
+                te = TariffElementFactory(tariff=self, **tariffelement)
+                add_price_components(te)
+        else:
+            te = TariffElementFactory(tariff=self)
+            add_price_components(te)
+
     uid = factory.Faker("uuid4")
     currency = "EUR"
     type = "AD_HOC_PAYMENT"
-    tariff_alt_url = "https://smappee.com/tariffs/"
+    tariff_alt_url = "https://solidroam.com/tariffs/"
     min_price_excl_vat = 0.1
     min_price_incl_vat = 0.2
     max_price_excl_vat = 0.8
@@ -328,7 +391,46 @@ class ERoamingPushEVSEPricingFactory(factory.Factory):
     )
 
 
-class SolidTariffFactory(factory.Factory):
+class PricingProductDataRecordFactory(factory.Factory):
+    class Meta:
+        model = PricingProductDataRecord
+
+    ProductID = "UNIQUE_TARIFF_ID"
+    ReferenceUnit = "MINUTE"
+    ProductPriceCurrency = "EUR"
+    PricePerReferenceUnit = 0.43
+    MaximumProductChargingPower = 1000
+    IsValid24hours = True
+    ProductAvailabilityTimes = []
+    AdditionalReferences = []
+
+
+class PricingProductDataFactory(factory.Factory):
+    class Meta:
+        model = PricingProductData
+
+    OperatorID = "BE*SMP"
+    OperatorName = "Smappee eRoam CPO"
+    ProviderID = "DE*ICE"
+    PricingDefaultPrice = 0.43
+    PricingDefaultPriceCurrency = "EUR"
+    PricingDefaultReferenceUnit = "MINUTE"
+    PricingProductDataRecords = factory.List(
+        [factory.SubFactory("ocpi22.tests.factories.PricingProductDataRecordFactory")]
+    )
+
+
+class ERoamingPushPricingProductDataFactory(factory.Factory):
+    class Meta:
+        model = ERoamingPushPricingProductData
+
+    ActionType = ActionType.fullLoad
+    PricingProductData = factory.SubFactory(
+        "ocpi22.tests.factories.PricingProductDataFactory"
+    )
+
+
+class SolidTariffFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SolidTariff
 
@@ -339,8 +441,133 @@ class SolidTariffFactory(factory.Factory):
     price_flat = 0.3
     vat_percentage = 0.2
     archived = False
-    msp = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
-    operator = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
+    msp = factory.SubFactory(
+        CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"
+    )
+    operator = factory.SubFactory(
+        CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
+    )
 
     last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+
+
+class CdrFactory(factory.Factory):
+    class Meta:
+        model = Cdr
+
+    @factory.post_generation
+    def set_tariffs(self, create, extracted, **kwargs):
+        if not create:
+            # Skip if the instance is not saved to the database
+            return
+
+        # Ensure the instance is saved before setting M2M relationships
+        if self.pk is None:
+            self.save()
+
+        if extracted:
+            # Add the provided tariffs
+            for tariff in extracted:
+                self.tariffs.add(tariff)
+        else:
+            # Add a default Tariff if none are provided
+            self.tariffs.add(TariffFactory())
+
+    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
+    uid = "UID-12345"
+    start_date_time = datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC)
+    end_date_time = datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC)
+    session_id = "SESSION-123"
+    cdr_token_uid = "TOKEN-123"
+    cdr_token_type = "RFID"
+    cdr_token_contract_id = "CONTRACT-123"
+    auth_method = "WHITELIST"
+    authorization_reference = "AUTH-123"
+    cdr_location_uid = "LOC-123"
+    cdr_location_address = "Alfred Nobellaan 22 App 150Z"
+    cdr_location_city = "Harelbeke"
+    cdr_location_postal_code = "8530"
+    cdr_location_country = "BEL"
+    cdr_location_latitude = "47.662249"
+    cdr_location_longitude = "9.360922"
+    cdr_location_name = "Location A"
+    cdr_location_evse_uid = "EVSE-123"
+    cdr_location_evse_id = f"{str(ocpi_master)}*E{cdr_location_evse_uid}"[:48]
+    cdr_location_connector_id = "1"
+    cdr_location_connector_standard = "IEC_62196_T2"
+    cdr_location_connector_format = "CABLE"
+    cdr_location_connector_power_type = "AC_3_PHASE"
+    currency = "EUR"
+    total_cost_excl_vat = 0.1
+    total_cost_incl_vat = 0.2
+    total_energy = 1.1
+    billed_to = factory.SubFactory(
+        CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
+    )
+    last_updated = datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC)
+
+
+class CdrTokenFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CdrToken
+
+    ocpi_master = factory.SubFactory(
+        CredentialsRoleFactory,
+        party_id="MSP",
+        role="EMSP",
+        business_details__name="Test MSP",
+    )
+    uid = "CDRTOKEN-12345"
+    token_type = "RFID"
+    contract_id = "CONTRACT-12345"
+
+
+class CdrLocationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CdrLocation
+
+    uid = "LOC-12345"
+    name = "Location A"
+    address = "Alfred Nobellaan 22 App 150Z"
+    city = "Harelbeke"
+    postal_code = "8530"
+    state = ""
+    country = "BEL"
+    latitude = "47.662249"
+    longitude = "9.360922"
+    evse_uid = "12345"
+    evse_id = "FI*MSP*E12345"
+    connector_id = "1"
+    connector_standard = "IEC_62196_T2"
+    connector_format = "CABLE"
+    connector_power_type = "AC_3_PHASE"
+
+
+class OCPISessionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Session
+
+    ocpi_master = factory.SubFactory(
+        CredentialsRoleFactory,
+        party_id="CPO",
+        role="CPO",
+        business_details__name="Test CPO",
+    )
+    uid = "SESSION-12345"
+    start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
+    end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+    start_kwh = 100.0
+    stop_kwh = 120.0
+    cdr_token = factory.SubFactory(CdrTokenFactory)
+    billed_to = factory.LazyAttribute(lambda obj: obj.cdr_token.ocpi_master)
+    auth_method = "AUTH_REQUEST"
+    authorization_reference = "AUTHORIZATION-12345"
+    connector = factory.SubFactory(ConnectorFactory)
+    evse = factory.LazyAttribute(lambda obj: obj.connector.evse)
+    location = factory.LazyAttribute(lambda obj: obj.connector.evse.location)
+    currency = "EUR"
+    total_cost_excl_vat = 10.0
+    total_cost_incl_vat = 12.0
+    status = Session.ACTIVE
+    last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)

@@ -4,7 +4,8 @@ import base64
 import doctest
 import json
 import os
-from typing import Optional, Mapping, Any
+from logging import getLogger
+from typing import Optional
 from urllib.parse import urljoin
 
 import pytest
@@ -14,7 +15,7 @@ from rest_framework.exceptions import NotAuthenticated
 
 import uuid
 from collections import OrderedDict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 
 from datetime import timedelta, datetime
 from decimal import Decimal
@@ -38,11 +39,11 @@ from rest_framework import status
 
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.models import enum
-from ocpi22.msp.account import Account
-from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token
-from ocpi22.ocpi.dataclasses import AdhocToken
+from ocpi22.models.cdrtoken import CdrToken
+from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
+from ocpi22.tests.factories import TariffFactory
 from ocpiconnector.testutil import (
     compare_dicts_recursively,
     OCPIAPIRequestFactory,
@@ -53,8 +54,10 @@ from ocpiconnector.testutil import (
     MockUuid4,
     MockResponse,
     make_json_response,
+    get_fake_admin,
+    BetterTestCase,
 )
-from settlement.views import InvoiceReportViews
+from settlement.views import CdrReportViews
 from util import reverse
 
 from ocpi22.msp.api import MspRoamingViewSet
@@ -71,8 +74,6 @@ from ocpi22.ocpi.serializers import (
 from ocpi22.choices import (
     OcpiModuleEnum,
     OcpiRolesEnum,
-    MessageTexts,
-    TokenType,
     AuthorizationEnum,
 )
 from ocpi22.commands.commands import CommandsViewSet
@@ -95,7 +96,6 @@ from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.test_data import (
     ExpectedSessionUpdateResults,
-    CdrMessages,
     StopTransactionResponses,
     SessionData,
     RfidTestData,
@@ -104,7 +104,6 @@ from ocpi22.test_data import (
     CredentialsData,
     CpoApiData,
     TokenAuthorizationData,
-    LocationData,
     TariffData,
     AdhocTokenData,
     AuthorizeData,
@@ -112,7 +111,6 @@ from ocpi22.test_data import (
 from ocpi22.tokens.auth import (
     _get_authorization_from_sessions,
     _authorize_token,
-    TokenAuthorization,
 )
 from ocpi22.tokens.util import get_admin_token
 from ocpi22.util import is_our_identifier
@@ -128,6 +126,9 @@ faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = OCPIAPIRequestFactory()
+
+
+logger = getLogger(__name__)
 
 
 def load_tests(_loader, tests, _ignore):
@@ -310,7 +311,6 @@ class ApiPutTests(TestCase):
             data, dict
         ), f'There should be a dict element "data" in the Location: {response.data}'
 
-        # Coordinates
         coordinates = data.get("coordinates")
         assert isinstance(coordinates, dict)
         latitude = coordinates.get("latitude")
@@ -330,7 +330,6 @@ class ApiPutTests(TestCase):
             len(decimals) == 6
         ), "e-clearing.net: There should be exactly 6 decimals in longitude"
 
-        # EVSES
         evses = data.get("evses")
         assert isinstance(evses, list), "Location EVSEs should be a list"
         for evse in evses:
@@ -354,6 +353,7 @@ class ApiPutTests(TestCase):
         request.credentials = credentials or self.credentials if authenticate else None
         request.credentialsrole = credentialsrole or request.credentials.roles.first()
         request.party_specified_in_url = True
+        request.ocpi_auth = OcpiAuthTypes.NONE
         viewset.request = request
         if credentials and authenticate:
             credentialsrole = credentialsrole or credentials.roles.first()
@@ -375,7 +375,6 @@ class ApiPutTests(TestCase):
         request.version = "2.2.1"
         return viewset().post(request)
 
-    @pytest.mark.skip("Fix me before production")
     @simulate_surrounding_world
     def test_put_location(self, simulation):
         url = reverse("location-list")
@@ -384,21 +383,6 @@ class ApiPutTests(TestCase):
         our_msp_role = get_credentialsrole(
             credentials, Party("FI", "MSP"), create=True, role=OcpiRolesEnum.EMSP
         )
-
-        # invalid_data = dict(country_code=self.location.ocpi_master.country_code,
-        #                     party_id=self.location.ocpi_master.party_id, id=123,
-        #                     address="Koekatu 1", city="Espoo", country="FIN",
-        #                     coordinates=dict(latitude=60.0, longitude=30.0), time_zone='Europe/Helsinki')
-        #
-        # with simulation.assert_error_logged('Country ID and Party ID need to match your credentials'):
-        #     response = self.put(url, invalid_data, 'FALSETOKEN', LocationViewSet, authenticate=False,
-        #                         credentialsrole=self.credentialsrole)
-        # self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED,
-        #                  'A Location PUT request should require OCPI authentication: '
-        #                  f'{response.data}')
-        # self.assertEqual(response.data['status_code'], Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-        #                  'The response OCPI status should be INVALID_OR_MISSING_PARAMETERS. '
-        #                  f'{response.data}')
 
         with simulation.assert_error_logged("This field is required"):
             response = self.put(
@@ -426,6 +410,7 @@ class ApiPutTests(TestCase):
                 ["11", "12", "13"],
                 2,
                 3,
+                [("3256", "AVAILABLE"), ("3257", "RESERVED")],
             ),
             (
                 "location_example_added_connector",
@@ -436,6 +421,7 @@ class ApiPutTests(TestCase):
                 [],
                 2,
                 4,
+                [("3256", "AVAILABLE"), ("3257", "RESERVED")],
             ),
             (
                 "location_example_added_evse",
@@ -446,6 +432,7 @@ class ApiPutTests(TestCase):
                 [],
                 3,
                 5,
+                [("3256", "AVAILABLE"), ("3257", "RESERVED"), ("3299", "RESERVED")],
             ),
             (
                 "location_example_parking_garage_opening_hours",
@@ -456,6 +443,18 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [("eccb8dd9-4189-433e-b100-cc0945dd17dc", "AVAILABLE")],
+            ),
+            (
+                "location_example_parking_garage_opening_hours_bad_power_type",
+                "SE",
+                "EVC",
+                status.HTTP_400_BAD_REQUEST,
+                2001,
+                [],
+                1,
+                1,
+                [],
             ),
             (
                 "location_example_uc2_destination_charger",
@@ -466,6 +465,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
             ),
             (
                 "location_example_uc3_destination_charger_not_published",
@@ -476,16 +476,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-            ),
-            (
-                "location_example_uc3_destination_charger_not_published",
-                "NL",
-                "ALF",
-                status.HTTP_200_OK,
-                1000,
-                [],
-                1,
-                1,
+                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
             ),
             # Todo: Implement parking_restrictions
             (
@@ -497,6 +488,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [("8c1b3487-61ac-40a7-a367-21eee99dbd90", "AVAILABLE")],
             ),
             # Todo: Check for publish_allowed_to below
             (
@@ -508,6 +500,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
+                [("4534ad5f-45be-428b-bfd0-fa489dda932d", "AVAILABLE")],
             ),
         )
 
@@ -532,14 +525,13 @@ class ApiPutTests(TestCase):
             http_status,
             ocpi_status,
             tariffs,
-            evses,
-            connectors,
+            expected_evse_count,
+            expected_connector_count,
+            expected_webhook_parameters,
         ) in testcases:
             with self.subTest("Putting location", filename=filename):
                 data = load_example(f"data/examples/{filename}.json")
 
-                # Clear up CredentialsRoles with the same country_code and party_id and create a fresh one
-                # CredentialsRole.objects.filter(country_code=country_code, party_id=party_id).delete()
                 role = get_credentialsrole(
                     cpo_credentials,
                     Party(country_code, party_id),
@@ -551,11 +543,8 @@ class ApiPutTests(TestCase):
                 for t in tariffs:
                     create_tariff(uid=t, ocpi_master=role)
 
-                # create_credentialsrole(Party(country_code, party_id), role=OcpiRolesEnum.CPO,
-                #                        business_name='Test Business', website='http://example.com',
-                #                        credentials=self.credentials)
+                simulation.reset()
 
-                # Send the request
                 response = self.put(
                     url,
                     data,
@@ -564,38 +553,18 @@ class ApiPutTests(TestCase):
                     credentials=cpo_credentials,
                 )
 
-                self.assertEqual(
-                    response.status_code,
-                    http_status,
-                    f"Expected a HTTP status code {http_status} "
-                    f"for {filename} case: {response.data}.",
-                )
-                self.assertEqual(
-                    response.data["status_code"],
-                    ocpi_status,
-                    f"Expected an OCPI status code {ocpi_status} "
-                    f"for {filename} case: {response.data}.",
-                )
+                assert response.status_code == http_status, filename
+                assert response.data["status_code"] == ocpi_status, filename
 
-                if evses:
+                if expected_evse_count:
                     uid = data.get("id").upper()
                     try:
                         location = Location.objects.get(uid=uid)
-                        # print(f"Evses: {location.evses.count()}")
-                        self.assertEqual(
-                            location.evses.count(),
-                            evses,
-                            f"There should be {evses} evses after {filename} case.",
-                        )
+                        assert location.evses.count() == expected_evse_count, filename
                         connector_count = 0
                         for evse in location.evses.all():
                             connector_count += evse.connectors.count()
-                        # print(f"Connectors: {connector_count}")
-                        self.assertEqual(
-                            connector_count,
-                            connectors,
-                            f"There should be {connectors} connectors after {filename} case.",
-                        )
+                        assert connector_count == expected_connector_count, filename
                     except Location.DoesNotExist:
                         print(
                             f"Unable to fetch Location {uid} created from file {filename}."
@@ -603,16 +572,14 @@ class ApiPutTests(TestCase):
                         self.fail(
                             f'Possible options are: {", ".join([location.uid for location in Location.objects.all()])}'
                         )
-
-        method_calls = list(
-            map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
-        )
-        comparison = [
-            (x.get("json").get("evse_id"), x.get("json").get("status"))
-            for x in method_calls
-        ]
-        print(comparison)
-        assert comparison == LocationData.webhook_calls
+                method_calls = list(
+                    map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
+                )
+                calls = [
+                    (x.get("json").get("evse_id"), x.get("json").get("status"))
+                    for x in method_calls
+                ]
+                assert calls == expected_webhook_parameters, filename
 
     def test_put_tariff(self):
         url = reverse("tariff-list")
@@ -780,12 +747,18 @@ class ApiPutTests(TestCase):
         ), "Credentials should be linked to the new CredentialsRole"
         assert start_date_time.tzinfo == pytz.utc, "Start date time should be in UTC"
 
+        ocpi_master, _created = CredentialsRole.objects.get_or_create(
+            country_code="FI",
+            party_id="MSP",
+        )
+        cdr_token = CdrToken.objects.create(
+            ocpi_master=ocpi_master, uid="123", token_type="RFID", contract_id="123"
+        )
+
         session_params = dict(
             start_date_time=start_date_time,
-            cdr_token_uid="123",
-            cdr_token_type="RFID",
-            cdr_token_contract_id="123",
             auth_method="COMMAND",
+            cdr_token=cdr_token,
             location=location,
             evse=evse,
             currency="EUR",
@@ -859,7 +832,6 @@ class ApiPutTests(TestCase):
                     f"Total cost including VAT doesn't match in case {filename}",
                 )
 
-    @pytest.mark.skip("Fix me before production")
     @patch(
         "ocpi22.util.redis_store.get",
         side_effect=lambda x: {
@@ -890,14 +862,14 @@ class ApiPutTests(TestCase):
                 status.HTTP_201_CREATED,
                 1000,
                 1,
-                "http://testserver.test:8000/ocpi/2.2.1/cdrs/BE/BEC/12345",
+                "http://testserver.test/ocpi/2.2.1/cdrs/BE/BEC/12345",
             ),
             (
                 "cdr_example2",
                 status.HTTP_201_CREATED,
                 1000,
                 1,
-                "http://testserver.test:8000/ocpi/2.2.1/cdrs/FI/000/8297d92ff7d047c68727750b3b8ca559",
+                "http://testserver.test/ocpi/2.2.1/cdrs/FI/000/8297d92ff7d047c68727750b3b8ca559",
             ),
         )
 
@@ -914,7 +886,7 @@ class ApiPutTests(TestCase):
                 country_code = data.get("country_code")
                 party_id = data.get("party_id")
 
-                create_credentialsrole(
+                ocpi_master = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
                     website="http://example.com",
@@ -922,24 +894,25 @@ class ApiPutTests(TestCase):
                     credentials=self.credentials,
                 )
 
+                for tariff in data.get("tariffs"):
+                    TariffFactory(uid=tariff.get("id"), ocpi_master=ocpi_master)
+
                 # Send the request
                 response = self.post(url, data, token_base64, viewset)
                 if response.status_code >= 300:
                     print(f'status_text: "{response.status_text}" for {filename} case.')
-                self.assertEqual(
-                    response.headers.get("Location"),
+                assert response.headers.get("Location") == cdr_url, (
+                    filename,
+                    response.status_text,
                     cdr_url,
-                    f"Expected a Location header with different content for {filename} case.",
                 )
-                self.assertEqual(
-                    response.status_code,
-                    http_status,
-                    f"Expected a HTTP status code {http_status} for {filename} case.",
+                assert response.status_code == http_status, (
+                    filename,
+                    response.status_text,
                 )
-                self.assertEqual(
-                    response.data["status_code"],
-                    ocpi_status,
-                    f"Expected an OCPI status code {ocpi_status} for {filename} case.",
+                assert response.data["status_code"] == ocpi_status, (
+                    filename,
+                    response.status_text,
                 )
 
                 # Verify the saved data
@@ -949,44 +922,28 @@ class ApiPutTests(TestCase):
 
                 # Check that all Tariffs are archived, so that they won't be modified
                 for t in saved_cdr.tariffs.all():
-                    self.assertTrue(
-                        t.archived,
-                        "All Tariffs referred to by CDRs must be archived so that they are not modified anymore",
-                    )
+                    assert t.archived, filename
 
                 # Make sure that the received last_updated timestamp will be stored and not overwritten by datetime.utcnow()
-                self.assertEqual(
-                    saved_data.get("last_updated"),
-                    data.get("last_updated"),
-                    "Last_updated is not stored from the incoming data",
-                )
+                assert saved_data.get("last_updated") == data.get(
+                    "last_updated"
+                ), filename
 
                 # Check that Tariffs are created and are serialized correctly
                 tariffs = saved_data.get("tariffs")
                 elements = tariffs[0].get("elements")
                 price_components = elements[0].get("price_components")
 
-                self.assertTrue(
-                    tariffs, "Tariffs are not stored from the incoming data"
-                )
-                self.assertTrue(
-                    elements, "TariffElements are not stored from the incoming data"
-                )
-                self.assertTrue(
-                    price_components,
-                    "PriceComponents are not stored from the incoming data",
-                )
+                assert tariffs, filename
+                assert elements, filename
+                assert price_components, filename
 
                 # Compare first PriceComponent from JSON data and the saved data
                 first_json_price_component = (
                     data.get("tariffs")[0].get("elements")[0].get("price_components")[0]
                 )
                 first_price_component = dict(price_components[0])
-                self.assertDictEqual(
-                    first_price_component,
-                    first_json_price_component,
-                    "PriceComponent is not stored accurately",
-                )
+                assert first_price_component == first_json_price_component, filename
 
                 saved_data = json.loads(json.dumps(saved_data))
                 # Remove non-OCPI and unsupported fields
@@ -1002,8 +959,9 @@ class ApiPutTests(TestCase):
                     data.pop(i, None)
                 # saved_data['tariffs'][0].pop('detail_url')
                 for t in range(0, len(saved_data["tariffs"])):
-                    del saved_data["tariffs"][t]["tariff_alt_text"]
-                self.assertEqual(saved_data, data)
+                    if "tariff_alt_text" in saved_data["tariffs"][t]:
+                        del saved_data["tariffs"][t]["tariff_alt_text"]
+                assert saved_data == data, filename
 
     def test_put_token(self):
         url = reverse("token-list")
@@ -1323,7 +1281,7 @@ class CdrTests(TestCase):
         )
         self.assertEqual(session.total_cost_excl_vat, 3.21, "Price doesn't seem right.")
 
-        cdr1: Cdr = Cdr.create_based_on_session(session)
+        cdr1: Cdr = Cdr.from_session(session)
 
         simulation.tasks_requests.post.assert_called_once()
 
@@ -1357,7 +1315,7 @@ class CdrTests(TestCase):
         #
 
         simulation.reset()
-        cdr: Cdr = Cdr.create_based_on_session(session)
+        cdr: Cdr = Cdr.from_session(session)
         simulation.tasks_requests.post.assert_called_once()
 
         self.assertTrue(
@@ -1744,7 +1702,6 @@ class UpdatePartiesTest(TestCase):
     @simulate_surrounding_world
     def test_update_new_token(self, simulation):
         settings.SEND_UPDATES = True
-        settings.BACKGROUND_SEND = False
         credentialsrole = get_credentialsrole(None, Party("FI", "MSP"), create=True)
         token: Token = Token(
             ocpi_master=credentialsrole,
@@ -1756,14 +1713,17 @@ class UpdatePartiesTest(TestCase):
             last_updated=datetime.now(pytz.utc),
         )
         token.save()
-        token.send_updates()
+        with patch(
+            "ocpi22.ocpi.util.OcpiModule.send_background_update"
+        ) as mock_send_background_update:
+            token.send_updates()
 
         # Let's examine what send_updates() was actually sending
 
-        args_list = simulation.tasks_requests.put.call_args_list
-        self.assertEqual(len(args_list), 3, "Expecting three calls to requests.put()")
+        args_list = mock_send_background_update.call_args_list
+        assert len(args_list) == 3, "Expecting three calls to send_background_update()"
 
-        _, kwargs = args_list[1].args, args_list[1].kwargs
+        args, kwargs = args_list[1].args, args_list[1].kwargs
 
         expected_headers = {
             "Authorization": "Token "
@@ -1795,14 +1755,8 @@ class UpdatePartiesTest(TestCase):
         )
         assert isinstance(expected_headers, dict)
         assert isinstance(kwargs["headers"], dict)
-        self.assertTrue(
-            compare_dicts_recursively(kwargs["headers"], expected_headers),
-            "Headers differ from expected",
-        )
-        self.assertTrue(
-            compare_dicts_recursively(json.loads(kwargs["data"]), expected_data),
-            "JSON content differs from expected",
-        )
+        assert kwargs["headers"] == expected_headers
+        assert args[0] == expected_data
 
 
 def check_ok_result(
@@ -2166,7 +2120,7 @@ class CredentialsTest(TestCase):
         self.assertGreater(find_endpoints_by_roles.cache_info().currsize, 0)
         c: Credentials = Credentials.objects.get(pk=2)
         c.update_last_updated()
-        c.atomic_post_save()
+        c.post_process_after_update_or_create()
         self.assertFalse(
             find_endpoints_by_roles.cache_info().currsize,
             "There should be nothing in endpoint cache after changing a Credentials",
@@ -3301,13 +3255,9 @@ class TestPutSession(TestCase):
             status.HTTP_201_CREATED,
             "Creating a session with ChargingPeriods should succeed",
         )
-        simulation.webhook_requests.put.assert_called_once()
-        calls = simulation.webhook_requests.put.call_args_list
-        self.assertTrue(
-            compare_dicts_recursively(
-                calls[0].kwargs.get("json"), SessionData.meter_values_1_webhook
-            )
-        )
+        simulation.webhook_requests.post.assert_called_once()
+        calls = simulation.webhook_requests.post.call_args_list
+        assert dict(calls[0].kwargs.get("json")) == SessionData.meter_values_1_webhook
 
     @simulate_surrounding_world
     def test_put_session_to_wrong_evse(self, simulation):
@@ -3691,291 +3641,10 @@ def create_token(token_id, party: Party, user=None) -> Token:
     return token
 
 
-class TestMspUserApi(TestCase):
-    fixtures = [
-        "ocpi22/data/credentials-2.json",
-        "ocpi22/data/test-database-msp-api.json",
-    ]
-    maxDiff = None
-    userdata = dict(
-        email="erkki.tapola@pohdinto.com",
-        firstname="Erkki",
-        lastname="Tapola",
-        telephone="+1234567890123456789",
-        password="qwerty",
-        confirm="qwerty",
-    )
-
-    def setUp(self):
-        os.environ["TEST"] = "1"
-        params = dict(email="rich@money.com", password="hello", confirm="hello")
-        initial_balance = 70
-        response = self._create_user(**params)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        user = User.objects.get(username=params.get("email"), email=params.get("email"))
-        # Check that account is created automatically and with zero balance
-        self.assertEquals(
-            user.accounts.count(), 1, "A new user doesn't get an account automatically"
-        )
-        account = user.accounts.first()
-        self.assertEquals(
-            account.balance, Decimal("0.0"), "User has some money out of nowhere"
-        )
-
-        # Clear out any Sessions which prevent new charging sessions
-        Session.objects.filter(status__in=[Session.PENDING, Session.ACTIVE]).update(
-            status=Session.COMPLETED
-        )
-
-        # Create a Session
-        evse = Evse.objects.all()[0]
-        uid = "test-transactions"
-        self.token_uid = "EKI1"
-        credentials = Credentials.objects.first()
-
-        with patch("ocpi22.tokens.auth.authorize_token") as authorize_token_mock:
-            party = Party("FI", "TST")
-            authorize_token_mock.return_value = TokenAuthorization(
-                allowed="ALLOWED",
-                info=MessageTexts.get("TOKEN_ACCEPTED"),
-                token=AdhocToken(
-                    True,
-                    party,
-                    self.token_uid,
-                    TokenType.AD_HOC_USER,
-                    credentials.roles.first(),
-                ),
-                billed_to=str(party),
-                authorization_reference="1234567890",
-                auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-            )
-            session = create_session(
-                uid=uid,
-                evse_uid=evse,
-                location_id=evse.location,
-                connector_id=evse.connectors.all().first().uid,
-                token_id=self.token_uid,
-                billed_to="FI*MSP",
-                start_kwh=0.0,
-                stop_kwh=100.0,
-                session_status=Session.ACTIVE,
-                credentials=credentials,
-                ocpi_master=credentials.roles.first(),
-            )
-            authorize_token_mock.assert_called_once()
-            self.assertTrue(bool(session))
-            session.calculate_price()
-            session.save()
-
-        self.user = user
-        self.account = account
-        self.initial_balance = initial_balance
-        self.session = session
-
-    @staticmethod
-    def _create_user(**data):
-        return send_create_user(data)
-
-    def test_create_user(self):
-        return  # Todo: remove test
-        userdata = self.userdata
-        # Make sure the user doesn't already exist
-        self.assertFalse(User.objects.filter(email=userdata.get("email")).count())
-
-        # Create a user successfully
-        response = self._create_user(**userdata)
-        expected_response_data = userdata.copy()
-        expected_response_data.pop("password")
-        expected_response_data.pop("confirm")
-        self.assertDictEqual(
-            response.data,
-            expected_response_data,
-            "Response for creating a user differs from expected",
-        )
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_201_CREATED,
-            "Creating a user should result in HTTP 201",
-        )
-        user = User.objects.get(
-            username=userdata.get("email")
-        )  # Username should equal email address
-        self.assertEqual(user.first_name, userdata.get("firstname"))
-        self.assertEqual(
-            user.accounts.count(), 1, "There should be one account created per user"
-        )
-
-        # Try to create a duplicate user
-        response = self._create_user(**userdata)
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_409_CONFLICT,
-            "Creating a duplicate user should result in HTTP 409",
-        )
-
-    def set_balance(self, amount):
-        self.account.transactions.all().delete()
-        self.account.deposit(amount)
-        self.assertEqual(
-            self.account.balance,
-            amount,
-            "Account balance differs from expected after a deposit",
-        )
-
-    @simulate_surrounding_world
-    def test_token_authorization_with_webhook(self, simulation: Simulation):
-        return  # Todo: remove test
-        simulation.webhook_requests.put.return_value = FakeResponse(
-            200, AuthorizeData.accept_authorization_msp
-        )
-
-        with patch("django.conf.settings.REQUIRE_WALLET_BALANCE", True):
-            token_id = "EKI1"
-            party = Party("DE", "TNM")
-            create_token(token_id, party, user=self.user)
-
-            with (
-                time_machine.travel(faketime, tick=False),
-                simulation.our_msp_role(party),
-            ):
-                response = msp_authorize(token_id, get_credentialsrole(None, party))
-
-            self.assertTrue(
-                compare_dicts_recursively(
-                    response.data, TokenAuthorizationData.authorization_response
-                )
-            )
-
-            method_calls = list(
-                map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
-            )
-
-            self.assertTrue(
-                compare_lists_recursively(
-                    method_calls, TokenAuthorizationData.authorization_webhook_calls
-                )
-            )
-
-    @simulate_surrounding_world
-    def test_cdrs_and_transactions(self, simulation: Simulation):
-        return  # Todo: remove test
-
-        simulation.webhook_requests.put.return_value = FakeResponse(
-            200, AuthorizeData.accept_authorization_msp
-        )
-        simulation.redis_store.get.side_effect = None
-        simulation.redis_store.get.return_value = ""
-
-        # Try to authorize charging with no money in account
-        with patch("django.conf.settings.REQUIRE_WALLET_BALANCE", True):
-            token_id = "EKI1"
-            role = get_our_credentialsrole(OcpiRolesEnum.EMSP)
-            Token.objects.filter(uid=token_id).update(
-                customer=self.user, ocpi_master=role
-            )
-            response = msp_authorize(token_id, role)
-            # Todo: Test authorize also with Location and Evses
-            print(response.data)
-            self.assertEquals(
-                response.data.get("data").get("allowed"),
-                "NO_CREDIT",
-                'Declined authorization should have allowed status "NO_CREDIT"',
-            )
-
-        #
-        # Try an RFID
-        #
-
-        simulation.webhook_requests.put.return_value = FakeResponse(
-            200, AuthorizeData.accept_authorization
-        )
-        # Anything should be fine, since we patch all HTTP calls
-        simulation.redis_store.get.return_value = "http://localhost/webhook/"
-        self.set_balance(self.initial_balance)
-
-        with (
-            patch("django.conf.settings.REQUIRE_WALLET_BALANCE", True),
-            patch("django.conf.settings.USE_ACCOUNTS", True),
-        ):
-            Token.objects.filter(uid=self.token_uid).update(customer=self.user)
-            cdr = Cdr.create_based_on_session(self.session)
-            self.assertEqual(
-                [cdr.total_cost_incl_vat, cdr.total_cost_excl_vat],
-                [62.0, 50.0],
-                "CDR cost seems to be off",
-            )
-
-            # Cleanup for next test
-            cdr.delete()
-
-            response = post_cdr(CdrMessages.test_transactions_rfid)
-            self.assertEquals(response.status_code, 201, "CDR PUT seems to have failed")
-            self.assertEqual(
-                self.account.balance,
-                self.initial_balance - cdr.total_cost_incl_vat,
-                "Account balance differs from expected after a charging session",
-            )
-
-        # Try to put a duplicate CDR
-
-        response = post_cdr(CdrMessages.test_transactions_rfid)
-        self.assertEqual(
-            response.status_code,
-            status.HTTP_400_BAD_REQUEST,
-            "A duplicate CDR POST is expected to fail",
-        )
-        msg = response.data.get("status_message")
-        self.assertTrue(
-            "already exists" in msg, f"A duplicate CDR PUT is expected to fail: {msg}"
-        )
-
-    def test_cdrs_and_transactions2(self):
-        return  # Todo: remove test
-        # Charge using the mobile app and an APP_TOKEN
-
-        self.set_balance(self.initial_balance)
-
-        account = self.account
-        with patch("django.conf.settings.USE_ACCOUNTS", True):
-            app_token_id = CdrMessages.test_transactions_app_id.get("cdr_token").get(
-                "uid"
-            )
-            self.session.cdr_token_uid = app_token_id
-            self.session.save()
-            initial_balance = 70
-            account.app_token_id = app_token_id
-            account.deposit(initial_balance)
-            account.save()
-            previous_balance = account.balance
-            assert account.app_token_id == app_token_id, "Account app_token_id not set"
-            Account.objects.filter(app_token_id=self.session.cdr_token_uid).first()
-
-            response = post_cdr(CdrMessages.test_transactions_app_id)
-            cost = Decimal("6.20")
-            self.assertEquals(response.status_code, 201, "CDR PUT seems to have failed")
-            self.assertEqual(
-                account.balance,
-                previous_balance - cost,
-                "Account balance differs from expected after a charging session",
-            )
-
-
 def send_create_user(data):
     request = api_factory.post(reverse("user-register"))
     request.data = data
     return UserViewSet().register(request)
-
-
-@dataclass
-class FakeUser:
-    username: str
-    is_staff: bool
-    is_superuser: bool
-
-
-def get_fake_admin():
-    return FakeUser("admin", True, True)
 
 
 def post_cdr(data):
@@ -3986,14 +3655,14 @@ def post_cdr(data):
     return CdrViewSet().post(request)
 
 
-class TestBillingList(TestCase):
+class TestInvoiceReportView(TestCase):
     fixtures = ["ocpi22/data/credentials.json"]
 
-    def test_empty_billing_list(self):
+    def test_that_empty_billing_list_works_without_errors(self):
         request = api_factory.get(reverse("billing-list"))
         request.user = get_fake_admin()
         request.query_params = {}
-        response = InvoiceReportViews().session_list(request)
+        response = CdrReportViews().session_list(request)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.data,
@@ -4122,20 +3791,6 @@ class TestTasks(TestCase):
             check_still_alive(self.credentials_id)
         credentials = Credentials.objects.get(pk=self.credentials_id)
         self.assertEqual(credentials.last_connection, None)
-
-
-class BetterTestCase(
-    TestCase
-):  # Seeing first how this works before during a big refactoring
-    def assertDictEqual(
-        self, d1: Mapping[Any, object], d2: Mapping[Any, object], msg: Any = ...
-    ) -> None:
-        self.assertTrue(compare_dicts_recursively(d1, d2), msg)
-
-    def assertListEqual(
-        self, list1: list[Any], list2: list[Any], msg: Any = ...
-    ) -> None:
-        self.assertTrue(compare_lists_recursively(list1, list2), msg)
 
 
 class TokenAuthorizationTests(BetterTestCase):

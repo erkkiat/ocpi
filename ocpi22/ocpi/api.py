@@ -178,6 +178,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         if serializer.is_valid():
             created_token = serializer.save(ocpi_master=credentialsrole)
             logger.info(f'{"Creating" if created else "Updating"} {created_token}')
+            created_token.post_process_after_update_or_create()
             created_token.send_hub_updates()
             return OCPIResponse(
                 serializer.data,
@@ -775,7 +776,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
 
     @classmethod
     @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.CPO)
+    @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     def put(
         cls,
         request,

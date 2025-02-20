@@ -1,9 +1,13 @@
 from rest_framework import serializers
 
+from ocpi22 import choices
+from ocpi22.models.displaytext import DisplayText
+from ocpi22.util import LanguageChoiceField
 
-class DisplayTextSerializer(serializers.Serializer):
-    # Language Code ISO 639-1.
-    language = serializers.CharField(max_length=2)
 
-    # Text to be displayed to a end user. No markup, html etc. allowed.
-    text = serializers.CharField(max_length=512)
+class DisplayTextSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DisplayText
+        fields = ["language", "text"]
+
+    language = LanguageChoiceField(required=False, choices=choices.LANGUAGE_CHOICES)

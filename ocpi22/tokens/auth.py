@@ -42,42 +42,6 @@ def token_post_save(sender, instance: Token, *_args, raw, **_kwargs):
     _get_authorization_from_sessions.cache_clear()
 
 
-def get_or_create_session_by_token_uid(
-    token_uid: str, location, max_age_minutes=15
-) -> Session:
-    """
-    TO BE REPLACED BY get_session_by_token_uid()
-
-    Get the most recent session for a given token within the last max_age_minutes
-    @param token_uid: Token UID, not Token.pk
-    @param max_age_minutes: How old the session can be
-    @param location: Location where the charging would take place
-    @return: Session or if not found, None
-    """
-
-    def get_existing_session():
-        time_start = datetime.now(pytz.utc) - timedelta(minutes=max_age_minutes)
-        sessions = Session.objects.filter(
-            Q(cdr_token_uid=token_uid)
-            & Q(status=Session.PENDING)
-            & Q(created__gte=time_start)
-        ).order_by("-created")
-        return sessions.first()
-
-    session = get_existing_session()
-    if not session:
-        authorization = authorize_token(token_uid, location)
-        session = Session.objects.create(
-            cdr_token_uid=token_uid,
-            authorization_reference=authorization.authorization_reference,
-            auth_method=authorization.auth_method,
-            billed_to=authorization.billed_to,
-            status=Session.PENDING,
-            location=location,
-        )
-    return session
-
-
 def get_session_by_token_uid(
     token_uid: str, max_age_minutes, statuses=(Session.PENDING, Session.ACTIVE)
 ) -> Optional[Session]:
@@ -92,7 +56,9 @@ def get_session_by_token_uid(
     """
     time_start = datetime.now(pytz.utc) - timedelta(minutes=max_age_minutes)
     sessions = Session.objects.filter(
-        Q(cdr_token_uid=token_uid) & Q(status__in=statuses) & Q(created__gte=time_start)
+        Q(cdr_token__uid=token_uid)
+        & Q(status__in=statuses)
+        & Q(created__gte=time_start)
     ).order_by("-created")
     return sessions.first()
 
@@ -107,7 +73,7 @@ def _get_authorization_from_sessions(token_uid) -> (Party, str, str, str):
             session.auth_method,
             session.authorization_reference,
             session.get_party(),
-            session.cdr_token_type,
+            session.cdr_token.type,
         )
     return None, None, None, None
 
@@ -135,6 +101,7 @@ class TokenAuthorization:
         Party(country_code='', party_id='')
         >>> TokenAuthorization.get_token_owner(dict(country_code='FI', party_id='EON'))
         Party(country_code='FI', party_id='EON')
+
         @param token:
         @return:
         """

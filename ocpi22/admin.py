@@ -56,7 +56,19 @@ class AdminUtilityMixin:
     last_update.short_description = "Last update"
 
 
-class TokenAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class SolidModelAdmin(admin.ModelAdmin, AdminUtilityMixin):
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        obj.post_process_after_update_or_create()
+
+
+class SolidNestedModelAdmin(NestedModelAdmin, AdminUtilityMixin):
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        obj.post_process_after_update_or_create()
+
+
+class TokenAdmin(SolidModelAdmin):
     model = Token
     search_fields = [
         "ocpi_master__country_code",
@@ -239,7 +251,7 @@ class EvseAdminForm(forms.ModelForm):
         fields = "__all__"
 
 
-class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
+class LocationAdmin(SolidNestedModelAdmin):
     class EvseInline(NestedStackedInline):
         model = Evse
         form = EvseAdminForm
@@ -297,7 +309,6 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
         (
             "Address",
             dict(
-                # classes=('collapse',),  # Todo: Study collapsible accordions for admin
                 fields=(
                     "uid",
                     "name",
@@ -305,6 +316,7 @@ class LocationAdmin(NestedModelAdmin, AdminUtilityMixin):
                     ("postal_code", "city"),
                     ("state", "country"),
                     ("latitude", "longitude", "time_zone"),
+                    "publish",
                 )
             ),
         ),
@@ -365,7 +377,7 @@ class EvseAdminForm(forms.ModelForm):
         return self.cleaned_data["uid"]
 
 
-class EvseAdmin(NestedModelAdmin, AdminUtilityMixin):
+class EvseAdmin(SolidNestedModelAdmin):
     form = EvseAdminForm
     model = Evse
     # Todo: In API, return most recent of last_updated and updated, but only owner can PATCH last_updated
@@ -437,7 +449,7 @@ class EvseAdmin(NestedModelAdmin, AdminUtilityMixin):
 
 
 @admin.register(BusinessDetails)
-class BusinessDetailsAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class BusinessDetailsAdmin(SolidModelAdmin):
     model = BusinessDetails
     list_display = [
         "name",
@@ -449,7 +461,7 @@ class BusinessDetailsAdmin(admin.ModelAdmin, AdminUtilityMixin):
     search_fields = ["name", "website"]
 
 
-class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class CdrAdmin(SolidModelAdmin):
     model = Cdr
     ordering = ("-start_date_time",)
     if ocpi_platform.is_cpo:
@@ -476,18 +488,13 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
             dict(
                 fields=(
                     ("ocpi_master", "uid"),
-                    ("cdr_token_uid", "cdr_token_type", "cdr_token_contract_id"),
+                    ("cdr_token",),
                 )
             ),
         ),
         (
             "Location",
-            dict(
-                fields=(
-                    ("cdr_location_name", "cdr_location_city", "cdr_location_country"),
-                    ("cdr_location_evse_uid", "cdr_location_connector_id"),
-                )
-            ),
+            dict(fields=(("cdr_location",),)),
         ),
         (
             "Delivery",
@@ -505,12 +512,12 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
     search_fields = [
         "session_id",
         "uid",
-        "cdr_location_evse_id",
-        "cdr_location_name",
-        "cdr_location_city",
-        "cdr_location_country",
-        "cdr_token_uid",
-        "cdr_token_contract_id",
+        "cdr_location__evse_id",
+        "cdr_location__name",
+        "cdr_location__city",
+        "cdr_location__country",
+        "cdr_token__uid",
+        "cdr_token__contract_id",
         "billed_to",
     ]
     autocomplete_fields = ["tariffs"]
@@ -536,7 +543,7 @@ class CdrAdmin(admin.ModelAdmin, AdminUtilityMixin):
         )
 
 
-class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
+class SessionAdmin(SolidNestedModelAdmin):
     class ChargingPeriodInline(NestedStackedInline):
         model = ChargingPeriod
 
@@ -567,7 +574,7 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
                 fields=(
                     ("ocpi_master",),
                     ("uid", "meter_id"),
-                    ("cdr_token_uid", "cdr_token_type", "cdr_token_contract_id"),
+                    ("cdr_token",),
                     ("location", "evse", "connector"),
                 )
             ),
@@ -593,11 +600,19 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
         "location__address",
         "evse__evse_id",
         "evse__uid",
-        "cdr_token_uid",
+        "cdr_token__uid",
+        "cdr_token__contract_id",
         "uid",
         "authorization_reference",
     ]
-    readonly_fields = ["uid", "ocpi_master"]
+    readonly_fields = [
+        "uid",
+        "ocpi_master",
+        "cdr_token",
+        "location",
+        "evse",
+        "connector",
+    ]
     list_filter = ["status", "last_updated"]
 
     def has_add_permission(self, request, obj=None) -> bool:
@@ -619,7 +634,7 @@ class SessionAdmin(NestedModelAdmin, AdminUtilityMixin):
         return super().response_post_save_change(request, obj)
 
 
-class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
+class TariffAdmin(SolidNestedModelAdmin):
     class ElementsInline(NestedStackedInline):
         class PriceComponentsInline(NestedTabularInline):
             model = PriceComponent
@@ -752,7 +767,7 @@ class TariffAdmin(NestedModelAdmin, AdminUtilityMixin):
         super().save_model(request, obj, form, change)
 
 
-class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class CredentialsAdmin(SolidModelAdmin):
     class CredentialRolesInline(admin.TabularInline):
         model = CredentialsRole
 
@@ -820,7 +835,7 @@ class CredentialsAdmin(admin.ModelAdmin, AdminUtilityMixin):
 
 
 @admin.register(CredentialsRole)
-class CredentialsRoleAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class CredentialsRoleAdmin(SolidModelAdmin):
     model = CredentialsRole
     list_display = ["party_long", "role", "business_details"]
     fields = ["business_details", "agreed_parties"]
@@ -835,7 +850,7 @@ class CredentialsRoleAdmin(admin.ModelAdmin, AdminUtilityMixin):
 
 
 @admin.register(DefaultTariffs)
-class DefaultTariffsAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class DefaultTariffsAdmin(SolidModelAdmin):
     model = DefaultTariffs
     list_display = ["standard", "tariff_list"]
     autocomplete_fields = ["tariffs"]
@@ -844,7 +859,7 @@ class DefaultTariffsAdmin(admin.ModelAdmin, AdminUtilityMixin):
 
 
 @admin.register(DynamicPrice)
-class DynamicPriceAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class DynamicPriceAdmin(SolidModelAdmin):
     model = DynamicPrice
     ordering = ["-start_datetime"]
     list_display = ["dynamic_price_source", "price", "start_datetime", "end_datetime"]
@@ -866,7 +881,7 @@ class MyPersonalDataAdmin(PersonalDataAdmin, AdminUtilityMixin):
 
 
 # @admin.register(User)
-class UserAdmin(NestedModelAdmin, AdminUtilityMixin):
+class UserAdmin(SolidNestedModelAdmin):
     class AccountAdmin(NestedStackedInline):
         class TransactionInline(NestedTabularInline):
             model = Transaction
@@ -905,7 +920,7 @@ class UserAdmin(NestedModelAdmin, AdminUtilityMixin):
 
 
 @admin.register(Payment)
-class PaymentAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class PaymentAdmin(SolidModelAdmin):
     model = Payment
     exclude = []
     list_display = ("status", "email", "amount", "currency", "created")
@@ -916,7 +931,7 @@ class PaymentAdmin(admin.ModelAdmin, AdminUtilityMixin):
 
 
 @admin.register(Authorization)
-class AuthorizationAdmin(admin.ModelAdmin, AdminUtilityMixin):
+class AuthorizationAdmin(SolidModelAdmin):
     model = Authorization
     exclude = []
     list_display = ("authorization_reference", "session", "max_price", "created")
