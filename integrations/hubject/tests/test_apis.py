@@ -2,8 +2,10 @@ import pytest
 from django.conf import settings
 import responses
 
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Connector, Location
 from ocpi22.tests.factories import LocationFactory, EvseFactory, ConnectorFactory
+from ocpiconnector.ocpi_identities import get_our_party
 
 
 @pytest.fixture
@@ -59,4 +61,35 @@ class TestHubjectApi:
         assert response.json() == {
             "success": False,
             "message": "No tariff were found for one or more of the evses.",
+        }
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_start_pricing_products_full_load_returns_200_OK(
+        self, client, hubject_successful_response, smp1_solid_tariff
+    ):
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/FI*CPO/pricing-products",
+            json=hubject_successful_response,
+            status=200,
+        )
+
+        url = "/api/hubject/2.3/pricing-products/full-load/"
+        response = client.post(url)
+        assert response.status_code == 200
+        assert response.json() == hubject_successful_response
+
+    @pytest.mark.django_db
+    def test_start_pricing_products_full_load_returns_no_solid_tariffs_found(
+        self, client, hubject_successful_response
+    ):
+        party = get_our_party(OcpiRolesEnum.CPO)
+
+        url = "/api/hubject/2.3/pricing-products/full-load/"
+        response = client.post(url)
+        assert response.status_code == 200
+        assert response.json() == {
+            "success": False,
+            "message": f"No Solid Tariffs found for {str(party)}",
         }

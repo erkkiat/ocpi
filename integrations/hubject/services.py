@@ -162,7 +162,7 @@ class HubjectService:
         )
 
         if len(solid_tariffs) == 0:
-            raise ValueError(f"No SolidTariffs found for {str(party)}")
+            raise SolidTariff.DoesNotExist(f"No SolidTariffs found for {str(party)}")
 
         solid_default_tariff = self.get_default_tariffs()
 
