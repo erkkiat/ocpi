@@ -24,6 +24,8 @@ def update_oicp_evses_by_operator(request):
                 "message": f"No EvseDataRecords found for operator {str(party)}",
             }
 
+        print(payload)
+
     except ConnectorTariffNotFoundError:
         return {
             "success": False,
