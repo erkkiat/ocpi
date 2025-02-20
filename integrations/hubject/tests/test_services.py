@@ -846,7 +846,7 @@ class TestOICPDynamicPricingService:
             }
         ]
 
-        result = self.__hubject_service.get_evse_product_provider_maps(party)
+        result = self.hubject_service.get_evse_product_provider_maps(party)
 
         key = f"{str(party)}*E{berlin_evse_data.uid}"
         expected_result = {
@@ -873,7 +873,7 @@ class TestOICPDynamicPricingService:
             ]
         }
 
-        result = self.__hubject_service.get_evse_pricing_product_data_full_load_payload(
+        result = self.hubject_service.get_evse_pricing_product_data_full_load_payload(
             evse_product_id_provider_id_map
         )
 
@@ -902,7 +902,7 @@ class TestOICPDynamicPricingService:
                 )
             ],
         )
-        result = self.__hubject_service.post_evse_pricing_item_full_load(
+        result = self.hubject_service.post_evse_pricing_item_full_load(
             operator_id, evse_pricing_full_load_payload
         )
 
@@ -929,7 +929,7 @@ class TestOICPDynamicPricingService:
                 )
             ],
         )
-        result = self.__hubject_service.post_evse_pricing_item_full_load(
+        result = self.hubject_service.post_evse_pricing_item_full_load(
             operator_id, evse_pricing_full_load_payload
         )
 
@@ -970,7 +970,7 @@ class TestOICPDynamicPricingService:
             "serialization error"
         )
 
-        result = self.__hubject_service.post_evse_pricing_item_full_load(
+        result = self.hubject_service.post_evse_pricing_item_full_load(
             operator_id, payload_mock
         )
 
