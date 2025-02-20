@@ -658,7 +658,7 @@ class ApiPutTests(TestCase):
                     Party(country_code, party_id),
                     role=OcpiRolesEnum.CPO,
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     credentials=self.credentials,
                 )
 
@@ -889,7 +889,7 @@ class ApiPutTests(TestCase):
                 ocpi_master = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     role=OcpiRolesEnum.CPO,
                     credentials=self.credentials,
                 )
@@ -984,7 +984,7 @@ class ApiPutTests(TestCase):
                 credentialsrole = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     role=OcpiRolesEnum.EMSP,
                     credentials=self.credentials,
                 )

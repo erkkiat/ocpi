@@ -7,7 +7,9 @@ from ocpi22.ocpi.auth import get_credentialsrole
 
 
 @pytest.mark.django_db
-def test_cdr_send_update_url_to_be_without_path_components(cdr_receiver_credentials, completed_session):
+def test_cdr_send_update_url_to_be_without_path_components(
+    cdr_receiver_credentials, completed_session
+):
     get_credentialsrole.cache_clear()
     cdr = Cdr.objects.get(session_id=completed_session.uid)
 
@@ -15,4 +17,4 @@ def test_cdr_send_update_url_to_be_without_path_components(cdr_receiver_credenti
         cdr.send_updates()
 
     assert mock_send.called_once()
-    assert mock_send.call_args.args[1] == "https://example.com/ocpi/cdrs"
+    assert mock_send.call_args.args[1] == "https://localhost/ocpi/cdrs"

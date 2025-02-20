@@ -61,7 +61,7 @@ def cdr_receiver_credentials():
         credentials=credentials,
         identifier=OcpiModuleEnum.CDRS.value,
         role=EndpointRoleEnum.RECEIVER,
-        url="https://example.com/ocpi/cdrs",
+        url="https://localhost/ocpi/cdrs",
     )
 
     return credentials
@@ -76,7 +76,7 @@ def default_credentials():
         credentials=credentials,
         identifier=OcpiModuleEnum.CDRS.value,
         role=EndpointRoleEnum.RECEIVER,
-        url="https://example.com/ocpi/cdrs",
+        url="https://localhost/ocpi/cdrs",
     )
 
     return credentials
