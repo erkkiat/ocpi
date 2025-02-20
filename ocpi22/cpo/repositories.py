@@ -9,13 +9,13 @@ class SolidTariffRepository:
         latest_tariffs = (
             SolidTariff.objects.filter(Q(msp__isnull=True) | Q(msp__id__isnull=False))
             .values("external_id", "msp_id")
-            .annotate(latest_created=Max("created"))
+            .annotate(latest_created=Max("created_at"))
         )
 
         return SolidTariff.objects.filter(
             Q(
                 external_id__in=[entry["external_id"] for entry in latest_tariffs],
-                created__in=[entry["latest_created"] for entry in latest_tariffs],
+                created_at__in=[entry["latest_created"] for entry in latest_tariffs],
             )
         )
 

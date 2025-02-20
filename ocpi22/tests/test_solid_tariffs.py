@@ -222,9 +222,9 @@ class TestSolidTariffs:
     ):
         url = reverse("solid-tariff-list")
         response = (
-            getattr(normal_user_client, method)(url, payload)
+            getattr(normal_user_client, str(method))(url, payload)
             if payload
-            else getattr(normal_user_client, method)(url)
+            else getattr(normal_user_client, str(method))(url)
         )
         assert response.status_code == expected_status
 
