@@ -160,34 +160,42 @@ def tariff1(cpo_credentials):
     return TariffFactory(uid="TARIFF1", ocpi_master=cpo_credentials)
 
 
-@pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize(
-    "location_id, evse_id, expected_status_code",
-    [
-        ("LOCATION1", "EVSE1", 201),
-        ("LOCATION2", "EVSE1", 201),
-        ("LOCATION1", "EVSE1", 200),
-    ],
-)
-def test_moving_an_evse_between_locations_succeeds(
-    location_id, evse_id, expected_status_code, super_user_client, tariff1
-):
-    location = LocationFactory(uid=location_id)
-    evse = EvseFactory(uid=evse_id, location=location)
-    connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff1])
-    serializer = LocationSerializer221(instance=location)
-    data = serializer.data
+@pytest.mark.django_db
+def test_moving_an_evse_between_locations_succeeds(super_user_client, tariff1):
+    def create_location_and_evse_data(
+        created_location_id, created_or_moved_evse_id
+    ) -> str:
+        location = LocationFactory(uid=created_location_id)
+        evse = EvseFactory(uid=created_or_moved_evse_id, location=location)
+        connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff1])
+        serializer = LocationSerializer221(instance=location)
+        resulting_data = serializer.data
+        evse.delete()
+        location.delete()
+        connector.delete()
+        return resulting_data
 
-    evse.delete()
-    location.delete()
-    connector.delete()
+    testcases = [
+        ("1", "1", None, 201),
+        ("2", "1", "1", 201),
+        ("1", "1", "2", 200),
+    ]
+    for location_id, evse_id, previous_location_id, expected_status_code in testcases:
+        if previous_location_id:
+            previous_location = Location.objects.get(uid=previous_location_id)
+            assert previous_location.evses.first().uid == evse_id
 
-    response = super_user_client.put(
-        reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
-        data,
-        format="json",
-    )
-    assert response.status_code == expected_status_code
+        data = create_location_and_evse_data(location_id, evse_id)
+        response = super_user_client.put(
+            reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
+            data,
+            format="json",
+        )
+        assert response.status_code == expected_status_code
 
-    saved_evse = Evse.objects.get(uid=evse_id)
-    assert saved_evse.location.uid == location_id
+        saved_evse = Evse.objects.get(uid=evse_id)
+        assert saved_evse.location.uid == location_id
+
+        if previous_location_id:
+            previous_location = Location.objects.get(uid=previous_location_id)
+            assert not previous_location.evses.exists()
