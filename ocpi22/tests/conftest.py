@@ -35,6 +35,20 @@ def smp1_solid_tariff_with_all_records_json():
 
 
 @pytest.fixture
+def smp1_solid_tariff_with_all_records_without_msp_json():
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0.690,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
+        "vat_percentage": 20.0,
+    }
+
+
+@pytest.fixture
 def smp1_msp1_solid_tariff_with_all_records(msp_de_ice, operator_fi_cpo):
     return SolidTariffFactory(
         external_id="SMP1",
