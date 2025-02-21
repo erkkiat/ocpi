@@ -155,19 +155,31 @@ def cpo_credentials():
     return CredentialsRoleFactory(country_code="FI", party_id="CPO")
 
 
+@pytest.fixture
+def tariff1(cpo_credentials):
+    return TariffFactory(uid="TARIFF1", ocpi_master=cpo_credentials)
+
+
 @pytest.mark.django_db(transaction=True)
-# @pytest.mark.parametrize()
-def test_evse_moves_when_put_within_a_new_location_succeeds(
-    super_user_client, cpo_credentials
+@pytest.mark.parametrize(
+    "location_id, evse_id, expected_status_code",
+    [
+        ("LOCATION1", "EVSE1", 201),
+        ("LOCATION2", "EVSE1", 201),
+        ("LOCATION1", "EVSE1", 200),
+    ],
+)
+def test_moving_an_evse_between_locations_succeeds(
+    location_id, evse_id, expected_status_code, super_user_client, tariff1
 ):
-    location1 = LocationFactory(uid="LOCATION1")
-    evse = EvseFactory(uid="EVSE1", location=location1)
-    tariff = TariffFactory(uid="TARIFF1", ocpi_master=cpo_credentials)
-    connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff])
-    serializer = LocationSerializer221(instance=location1)
+    location = LocationFactory(uid=location_id)
+    evse = EvseFactory(uid=evse_id, location=location)
+    connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff1])
+    serializer = LocationSerializer221(instance=location)
     data = serializer.data
+
     evse.delete()
-    location1.delete()
+    location.delete()
     connector.delete()
 
     response = super_user_client.put(
@@ -175,57 +187,7 @@ def test_evse_moves_when_put_within_a_new_location_succeeds(
         data,
         format="json",
     )
-    assert response.status_code == 201
+    assert response.status_code == expected_status_code
 
-    saved_evse = Evse.objects.get(uid="EVSE1")
-    assert saved_evse.location.uid == "LOCATION1"
-
-    location2 = LocationFactory(uid="LOCATION2")
-    evse.location = location2
-    serializer = LocationSerializer221(instance=location2)
-    data = serializer.data
-    response = super_user_client.put(
-        reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
-        data,
-        format="json",
-    )
-    assert response.status_code == 201
-    saved_evse = Evse.objects.get(uid="EVSE1")
-    assert saved_evse.location.uid == "LOCATION1"
-
-    saved_evse.location = location1
-    serializer = LocationSerializer221(instance=location1)
-    data = serializer.data
-    response = super_user_client.put(
-        reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
-        data,
-        format="json",
-    )
-    assert response.status_code == 200
-    saved_evse = Evse.objects.get(uid="EVSE1")
-    assert saved_evse.location.uid == "LOCATION1"
-
-    # sender_party = Party("BE", "BEC")
-    # sender_credentialsrole = CredentialsRoleFactory(
-    #     country_code=sender_party.country_code, party_id=sender_party.party_id, credentials=CredentialsFactory()
-    # )
-    # cpo_credentialsrole = CredentialsRoleFactory(country_code="FI", party_id="CPO", credentials=CredentialsFactory())
-    # for uid in range(11,14):
-    #     TariffFactory(uid=uid, ocpi_master=sender_credentialsrole)
-    # with open("ocpi22/data/examples/location_example_added_evse.json") as fp:
-    #     data = json.load(fp)
-    # request = api_factory.put(
-    #     reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
-    #     data=s, content_type="application/json", sender=sender_credentialsrole,
-    #     headers=make_headers(sender_credentialsrole.credentials.ours_base64(), to=Party("FI", "CPO"), sender=sender_party)
-    # )
-    # CredentialsRoleFactory(country_code="FI", party_id="CPO")
-    # response = LocationViewSet().put(request, data=data, country_code="FI", party_id="CPO", uid=data.get("id"))
-
-    # with open("ocpi22/data/examples/location_example_moved_evse.json") as fp:
-    #     data = json.load(fp)
-    # response = super_user_client.put(
-    #     reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
-    #     data=data, format="json"
-    # )
-    # assert response.status_code == 200
+    saved_evse = Evse.objects.get(uid=evse_id)
+    assert saved_evse.location.uid == location_id
