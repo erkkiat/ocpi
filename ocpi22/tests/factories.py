@@ -429,7 +429,7 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
     )
     ocpi_tariff = factory.SubFactory(TariffFactory)
 
-    last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    last_updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
 
 
