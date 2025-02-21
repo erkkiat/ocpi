@@ -211,40 +211,43 @@ class TestSolidTariffs:
         "method, payload, expected_status",
         [
             pytest.param(
-                "get", None, status.HTTP_200_OK, id="normal_user_can_get_solid_tariff"
+                "get",
+                None,
+                status.HTTP_200_OK,
+                id="authenticated_user_can_get_solid_tariff",
             ),
             pytest.param(
                 "post",
                 {"external_id": "SMP1", "currency": "EUR"},
                 status.HTTP_405_METHOD_NOT_ALLOWED,
-                id="normal_user_cannot_post_solid_tariff",
+                id="authenticated_user_cannot_post_solid_tariff",
             ),
             pytest.param(
                 "put",
                 {"external_id": "SMP1", "currency": "EUR"},
                 status.HTTP_200_OK,
-                id="normal_user_can_put_solid_tariff",
+                id="authenticated_user_can_put_solid_tariff",
             ),
             pytest.param(
                 "delete",
                 {"external_id": "SMP1", "currency": "EUR"},
                 status.HTTP_403_FORBIDDEN,
-                id="normal_user_cannot_delete_solid_tariff",
+                id="authenticated_user_cannot_delete_solid_tariff",
             ),
         ],
     )
-    def test_normal_user_http_methods_on_solid_tariffs(
-        self, normal_user_client, method, payload, expected_status
+    def test_authenticated_user_http_methods_on_solid_tariffs(
+        self, authenticated_user_client, method, payload, expected_status
     ):
         url = reverse("solid-tariff-list")
         response = (
-            getattr(normal_user_client, str(method))(url, payload)
+            getattr(authenticated_user_client, str(method))(url, payload)
             if payload
-            else getattr(normal_user_client, str(method))(url)
+            else getattr(authenticated_user_client, str(method))(url)
         )
         assert response.status_code == expected_status
 
-    def test_normal_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
+    def test_authenticated_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
         self, authenticated_user_client, smp1_solid_tariff_with_all_records_json
     ):
         url = f'{reverse("solid-tariff-list")}SMP1/'
