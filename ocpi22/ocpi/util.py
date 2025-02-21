@@ -503,7 +503,7 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
         next_url = self.get_next_link()
         if next_url:
-            headers["Link"] = '<{next_url}; rel="next">'.format(
+            headers["Link"] = '<{next_url}>; rel="next"'.format(
                 next_url=self.get_next_link()
             )
 

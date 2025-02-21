@@ -51,42 +51,42 @@ def ocpi_exception_handler(func):
             Tariff.DoesNotExist: dict(msg="Cannot find the specified Tariff: {}"),
             NotFound: dict(msg="Cannot find the specified object: {}"),
             ValidationError: dict(
-                msg="Validation error: {}",
+                msg="{}",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             ),
             IntegrityError: dict(
-                msg="Database integrity error: {}",
+                msg="{}",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             ),
             KeyError: dict(
-                msg="Key error: {}",
+                msg="{}",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             ),
             AssertionError: dict(
-                msg="Data is not matching requirements: {}",
+                msg="{}",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             ),
             ValueError: dict(
-                msg="ValueError: {}",
+                msg="{}",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             ),
             OSError: dict(
-                msg="Error: {}",
+                msg="{}",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             ),
             APIException: dict(
-                msg="API error: {}",
+                msg="{}",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             ),
             OCPIProtocolError: dict(
-                msg="OCPI protocol error: {}",
+                msg="{}",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             ),
@@ -107,7 +107,7 @@ def ocpi_exception_handler(func):
                 http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
             result = EXCEPTION_MAPPINGS.get(type(e), default_response)
-            error_message = result.get("msg", "An exception has occurred: {}").format(e)
+            error_message = result.get("msg", "{}").format(e)
             return OCPIBadRequestResponse(
                 str(e),
                 status_message=error_message,

@@ -124,3 +124,19 @@ class TestPublicAndNonPublicLocations:
             location.get("id") == public_location.uid
             for location in response.data.get("data")
         ), "A public location should be listed when GETting the OCPI Locations list"
+
+
+@pytest.mark.django_db
+def test_location_put_when_uid_does_not_match_between_url_parameters_and_body_data_fails(
+    super_user_client,
+):
+    serializer = LocationSerializer221(instance=LocationFactory())
+    response = super_user_client.put(
+        reverse("location-by-id", args=["2.2.1", "FI", "CPO", "wrong-uid"]),
+        json=serializer.data,
+    )
+    assert response.status_code == 400
+    assert (
+        "Location ID in URL does not match Location ID in payload"
+        in response.data.get("status_message")
+    )
