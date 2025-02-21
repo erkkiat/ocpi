@@ -40,7 +40,7 @@ class CredentialsData:
         "theirs": "9e80a9c4-28be-11e9-b210-d663bd873d93",
         "token_a": "",
         "updated": datetime(2022, 1, 1, 12, 0, tzinfo=timezone.utc),
-        "url": "https://ocpi.example.com/versions/",
+        "url": "https://localhost/versions/",
         "valid": True,
         "version": "221",
     }
@@ -81,7 +81,7 @@ class CredentialsData:
 
     example = {
         "token": "9e80a9c4-28be-11e9-b210-d663bd873d93",
-        "url": "https://ocpi.example.com/versions/",
+        "url": "https://localhost/versions/",
         "roles": [
             {
                 "role": "CPO",
@@ -89,8 +89,8 @@ class CredentialsData:
                 "country_code": "NL",
                 "business_details": {"name": "Example Operator"},
                 "logo": {
-                    "url": "https://example.com/img/logo.jpg",
-                    "thumbnail": "https://example.com/img/logo_thumb.jpg",
+                    "url": "https://localhost/img/logo.jpg",
+                    "thumbnail": "https://localhost/img/logo_thumb.jpg",
                     "category": "OPERATOR",
                     "type": "jpeg",
                     "width": 512,
