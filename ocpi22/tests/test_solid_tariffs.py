@@ -48,7 +48,7 @@ def solid_tariff_smp1_msp1(msp_de_ice, operator_fi_cpo):
         parking_price_per_min=0.54,
         parking_grace_period=100,
         vat_percentage=20.0,
-        last_updated=datetime(2024, 9, 22, 12, 30, 30, 0),
+        last_updated_at=datetime(2024, 9, 22, 12, 30, 30, 0),
         msp=msp_de_ice,
         operator=operator_fi_cpo,
     )
@@ -65,7 +65,7 @@ def solid_tariff_smp1_without_msp():
         parking_price_per_min=0.54,
         parking_grace_period=100,
         vat_percentage=20.0,
-        last_updated=datetime(2024, 9, 22, 12, 30, 30, 0),
+        last_updated_at=datetime(2024, 9, 22, 12, 30, 30, 0),
     )
 
 
@@ -97,7 +97,7 @@ def smp1_get_response():
             "parking_grace_period": 100,
             "vat_percentage": 20.0,
             "msp": "DE*ICE",
-            "last_updated": "2024-09-22T12:30:30Z",
+            "last_updated_at": "2024-09-22T12:30:30Z",
         }
     ]
 
@@ -113,7 +113,7 @@ def smp1_update_tariff_without_msp_response():
         "price_per_min": "0.42",
         "price_flat": "0.56",
         "vat_percentage": "20.0",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -129,7 +129,7 @@ def smp1_update_response():
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "msp": "DE*ICE",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
@@ -144,7 +144,7 @@ def smp1_create_response_no_msp():
         "parking_price_per_min": "0.54",
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
-        "last_updated": "2024-09-22T12:30:30Z",
+        "last_updated_at": "2024-09-22T12:30:30Z",
     }
 
 
