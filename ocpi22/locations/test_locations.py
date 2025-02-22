@@ -24,12 +24,10 @@ from ocpi22.tests.factories import (
     ConnectorFactory,
 )
 from ocpiconnector.party import Party
-from ocpiconnector.testutil import OCPIAPIRequestFactory
 from util import reverse
 
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
-api_factory = OCPIAPIRequestFactory()
 dirname = os.path.dirname(os.path.abspath(__file__))
 
 
