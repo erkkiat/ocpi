@@ -13,7 +13,7 @@ from unittest import TestCase
 
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import Credentials
-from ocpi22.models.location import Location, Evse
+from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.tests.factories import (
@@ -160,21 +160,36 @@ def tariff1(cpo_credentials):
     return TariffFactory(uid="TARIFF1", ocpi_master=cpo_credentials)
 
 
+def change_data(instance, changes):
+    if not changes:
+        return
+    for key, value in changes.items():
+        setattr(instance, key, value)
+    instance.save()
+
+
+def create_location_and_evse_data(
+    created_location_id,
+    created_or_moved_evse_id,
+    tariff,
+    changed_evse_data=None,
+    changed_connector_data=None,
+) -> dict:
+    location = LocationFactory(uid=created_location_id)
+    evse = EvseFactory(uid=created_or_moved_evse_id, location=location)
+    change_data(evse, changed_evse_data)
+    connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff])
+    change_data(connector, changed_connector_data)
+    serializer = LocationSerializer221(instance=location)
+    resulting_data = serializer.data
+    evse.delete()
+    location.delete()
+    connector.delete()
+    return resulting_data
+
+
 @pytest.mark.django_db
 def test_moving_an_evse_between_locations_succeeds(super_user_client, tariff1):
-    def create_location_and_evse_data(
-        created_location_id, created_or_moved_evse_id
-    ) -> str:
-        location = LocationFactory(uid=created_location_id)
-        evse = EvseFactory(uid=created_or_moved_evse_id, location=location)
-        connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff1])
-        serializer = LocationSerializer221(instance=location)
-        resulting_data = serializer.data
-        evse.delete()
-        location.delete()
-        connector.delete()
-        return resulting_data
-
     testcases = [
         ("1", "1", None, 201),
         ("2", "1", "1", 201),
@@ -185,7 +200,7 @@ def test_moving_an_evse_between_locations_succeeds(super_user_client, tariff1):
             previous_location = Location.objects.get(uid=previous_location_id)
             assert previous_location.evses.first().uid == evse_id
 
-        data = create_location_and_evse_data(location_id, evse_id)
+        data = create_location_and_evse_data(location_id, evse_id, tariff1)
         response = super_user_client.put(
             reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
             data,
@@ -199,3 +214,43 @@ def test_moving_an_evse_between_locations_succeeds(super_user_client, tariff1):
         if previous_location_id:
             previous_location = Location.objects.get(uid=previous_location_id)
             assert not previous_location.evses.exists()
+
+
+@pytest.mark.django_db
+def test_updating_an_evse_while_moving_it_to_a_new_location(super_user_client, tariff1):
+    testcases = [("1", "1", None, 201), ("2", "1", dict(status="INOPERATIVE"), 201)]
+    for location_id, evse_id, changed_evse_data, expected_status_code in testcases:
+        data = create_location_and_evse_data(
+            location_id, evse_id, tariff1, changed_evse_data=changed_evse_data
+        )
+        response = super_user_client.put(
+            reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
+            data,
+            format="json",
+        )
+        assert response.status_code == expected_status_code
+        if changed_evse_data:
+            saved_evse = Evse.objects.get(uid=evse_id)
+            for key, value in changed_evse_data.items():
+                assert getattr(saved_evse, key) == value
+
+
+@pytest.mark.django_db
+def test_updating_a_connector_while_moving_it_to_a_new_location(
+    super_user_client, tariff1
+):
+    testcases = [("1", "1", None), ("2", "1", dict(power_type="AC_1_PHASE"))]
+    for location_id, evse_id, changed_connector_data in testcases:
+        data = create_location_and_evse_data(
+            location_id, evse_id, tariff1, changed_connector_data=changed_connector_data
+        )
+        response = super_user_client.put(
+            reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
+            data,
+            format="json",
+        )
+        assert response.status_code == 201
+        if changed_connector_data:
+            saved_connector = Connector.objects.get(uid="1")
+            for key, value in changed_connector_data.items():
+                assert getattr(saved_connector, key) == value
