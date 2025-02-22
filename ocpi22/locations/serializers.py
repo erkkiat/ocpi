@@ -382,24 +382,24 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 data=validated_data.pop("owner", None)
             )
 
-            created_location = Location.objects.create(
+            location = Location.objects.create(
                 **validated_data,
                 operator=operator,
                 suboperator=suboperator,
                 owner=owner,
             )
-            created_location.publish_allowed_to.set(publish_allowed_to)
+            location.publish_allowed_to.set(publish_allowed_to)
 
-            for data in evses:
-                connectors = data.pop("connectors", [])
+            for e in evses:
+                connectors = e.pop("connectors", [])
                 evse = Evse.get_if_exists(
-                    uid=data.get("uid"),
-                    location__ocpi_master=created_location.ocpi_master,
+                    uid=e.get("uid"),
+                    location__ocpi_master=location.ocpi_master,
                 )
                 if evse:
-                    self.update_evse(evse, data, created_location)
+                    self.update_evse(evse, e, location)
                 else:
-                    evse = Evse.objects.create(**data, location=created_location)
+                    evse = Evse.objects.create(**e, location=location)
 
                 for c in connectors:
                     tariff_ids = c.pop("tariff_ids", [])
@@ -409,22 +409,21 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                     else:
                         connector = Connector.objects.create(**c, evse=evse)
 
-                    # Tariffs
                     tariffs = []
                     for t in tariff_ids:
                         try:
                             tariff = Tariff.objects.get(
                                 uid=t,
-                                ocpi_master__country_code=created_location.ocpi_master.country_code,
-                                ocpi_master__party_id=created_location.ocpi_master.party_id,
+                                ocpi_master__country_code=location.ocpi_master.country_code,
+                                ocpi_master__party_id=location.ocpi_master.party_id,
                                 archived=False,
                             )
                             tariffs.append(tariff)
                         except Tariff.DoesNotExist:
                             # Todo: Fetch Tariffs from other party
                             raise ValidationError(
-                                f"Tariff `{t}` for {created_location.ocpi_master.country_code}*"
-                                f"{created_location.ocpi_master.party_id} does not exist in our database"
+                                f"Tariff `{t}` for {location.ocpi_master.country_code}*"
+                                f"{location.ocpi_master.party_id} does not exist in our database"
                             )
                     connector.tariff_ids.set(tariffs)
 
@@ -432,11 +431,11 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 serializer = HoursSerializer(data=opening_times)
                 if serializer.is_valid():
                     hours = serializer.save()
-                    created_location.opening_times = hours
+                    location.opening_times = hours
                 else:
                     raise ValidationError(serializer.errors)
 
-            return created_location
+            return location
 
     @atomic
     def update(self, location: Location, validated_data: dict) -> Location:
@@ -469,16 +468,16 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
         location.save()
 
-        for data in evses:
-            connectors = data.pop("connectors", [])
-            capabilities = data.pop("capabilities", None)
+        for e in evses:
+            connectors = e.pop("connectors", [])
+            capabilities = e.pop("capabilities", None)
             evse = Evse.get_if_exists(
-                uid=data.get("uid"), location__ocpi_master=location.ocpi_master
+                uid=e.get("uid"), location__ocpi_master=location.ocpi_master
             )
             if evse:
-                self.update_evse(evse, data, location)
+                self.update_evse(evse, e, location)
             else:
-                evse = Evse.objects.create(**data, location=location)
+                evse = Evse.objects.create(**e, location=location)
 
             if capabilities is not None:
                 evse.capabilities = capabilities
