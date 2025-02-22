@@ -171,21 +171,35 @@ def change_data(instance, changes):
 def create_and_send_location_and_evse_data(
     client_,
     created_location_id,
-    created_or_moved_evse_id,
+    created_or_moved_evse_ids: list,
     tariff,
-    changed_evse_data=None,
-    changed_connector_data=None,
+    changed_evse_data: dict = None,
+    changed_connector_data: dict = None,  # Use evse_id as key, connector.uid is always "1"
 ):
-    location = LocationFactory(uid=created_location_id)
-    evse = EvseFactory(uid=created_or_moved_evse_id, location=location)
-    change_data(evse, changed_evse_data)
-    connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff])
-    change_data(connector, changed_connector_data)
+    evses = {}
+    connectors = {}
+    changed_evse_data = changed_evse_data or {}
+    changed_connector_data = changed_connector_data or {}
+
+    location = LocationFactory(
+        uid=created_location_id, name=f"Location #{created_location_id}"
+    )
+    for evse_id in created_or_moved_evse_ids:
+        evse = EvseFactory(uid=evse_id, location=location)
+        evses[evse_id] = evse
+        connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff])
+        connectors[evse_id] = connector
+    for uid, change in changed_evse_data.items():
+        change_data(evses[uid], change)
+    for uid, change in changed_connector_data.items():
+        change_data(connectors[uid], change)
     serializer = LocationSerializer221(instance=location)
     data = serializer.data
-    evse.delete()
+    for connector in connectors.values():
+        connector.delete()
+    for evse in evses.values():
+        evse.delete()
     location.delete()
-    connector.delete()
     response = client_.put(
         reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
         data,
@@ -207,7 +221,7 @@ def test_moving_an_evse_between_locations_succeeds(super_user_client, tariff1):
             assert previous_location.evses.first().uid == evse_id
 
         response = create_and_send_location_and_evse_data(
-            super_user_client, location_id, evse_id, tariff1
+            super_user_client, location_id, [evse_id], tariff1
         )
         assert response.status_code == expected_status_code
 
@@ -226,9 +240,9 @@ def test_updating_an_evse_while_moving_it_to_a_new_location(super_user_client, t
         response = create_and_send_location_and_evse_data(
             super_user_client,
             location_id,
-            evse_id,
+            [evse_id],
             tariff1,
-            changed_evse_data=changed_evse_data,
+            changed_evse_data={evse_id: changed_evse_data},
         )
         assert response.status_code == expected_status_code
         if changed_evse_data:
@@ -246,9 +260,9 @@ def test_updating_a_connector_while_moving_it_to_a_new_location(
         response = create_and_send_location_and_evse_data(
             super_user_client,
             location_id,
-            evse_id,
+            [evse_id],
             tariff1,
-            changed_connector_data=changed_connector_data,
+            changed_connector_data={evse_id: changed_connector_data},
         )
         assert response.status_code == 201
         if changed_connector_data:
@@ -270,9 +284,9 @@ def test_updating_an_evse_while_moving_it_to_an_existing_location(
         response = create_and_send_location_and_evse_data(
             super_user_client,
             location_id,
-            evse_id,
+            [evse_id],
             tariff1,
-            changed_evse_data=changed_evse_data,
+            changed_evse_data={evse_id: changed_evse_data},
         )
         assert response.status_code == expected_status_code
         if changed_evse_data:
@@ -299,9 +313,56 @@ def test_updating_a_connector_while_moving_it_to_an_existing_location(
         response = create_and_send_location_and_evse_data(
             super_user_client,
             location_id,
-            evse_id,
+            [evse_id],
             tariff1,
-            changed_connector_data=changed_connector_data,
+            changed_connector_data={evse_id: changed_connector_data},
+        )
+        assert response.status_code == expected_response_code
+        if changed_connector_data:
+            saved_connector = Connector.objects.get(uid="1")
+            for key, value in changed_connector_data.items():
+                assert getattr(saved_connector, key) == value
+
+
+@pytest.mark.django_db
+def test_adding_an_evse_to_an_existing_location(super_user_client, tariff1):
+    response = create_and_send_location_and_evse_data(
+        super_user_client, "1", ["1"], tariff1
+    )
+    assert response.status_code == 201
+    location1 = Location.objects.get(uid="1")
+    assert location1.evses.count() == 1
+    response = create_and_send_location_and_evse_data(
+        super_user_client, "1", ["1", "2"], tariff1
+    )
+    assert response.status_code == 200
+    evse1 = Evse.objects.get(uid="1")
+    assert evse1.location.uid == "1"
+    evse2 = Evse.objects.get(uid="2")
+    assert evse2.location.uid == "1"
+    location1 = Location.objects.get(uid="1")
+    assert location1.evses.count() == 2
+
+
+@pytest.mark.django_db
+def test_adding_a_connector_to_an_existing_evse(super_user_client, tariff1):
+    testcases = [
+        ("1", "1", None, 201),
+        ("2", "1", None, 201),
+        ("1", "1", dict(power_type="AC_1_PHASE"), 200),
+    ]
+    for (
+        location_id,
+        evse_id,
+        changed_connector_data,
+        expected_response_code,
+    ) in testcases:
+        response = create_and_send_location_and_evse_data(
+            super_user_client,
+            location_id,
+            [evse_id],
+            tariff1,
+            changed_connector_data={evse_id: changed_connector_data},
         )
         assert response.status_code == expected_response_code
         if changed_connector_data:
