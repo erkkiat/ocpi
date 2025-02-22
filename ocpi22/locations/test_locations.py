@@ -255,3 +255,56 @@ def test_updating_a_connector_while_moving_it_to_a_new_location(
             saved_connector = Connector.objects.get(uid="1")
             for key, value in changed_connector_data.items():
                 assert getattr(saved_connector, key) == value
+
+
+@pytest.mark.django_db
+def test_updating_an_evse_while_moving_it_to_an_existing_location(
+    super_user_client, tariff1
+):
+    testcases = [
+        ("1", "1", None, 201),
+        ("2", "1", None, 201),
+        ("1", "1", dict(status="INOPERATIVE"), 200),
+    ]
+    for location_id, evse_id, changed_evse_data, expected_status_code in testcases:
+        response = create_and_send_location_and_evse_data(
+            super_user_client,
+            location_id,
+            evse_id,
+            tariff1,
+            changed_evse_data=changed_evse_data,
+        )
+        assert response.status_code == expected_status_code
+        if changed_evse_data:
+            saved_evse = Evse.objects.get(uid=evse_id)
+            for key, value in changed_evse_data.items():
+                assert getattr(saved_evse, key) == value
+
+
+@pytest.mark.django_db
+def test_updating_a_connector_while_moving_it_to_an_existing_location(
+    super_user_client, tariff1
+):
+    testcases = [
+        ("1", "1", None, 201),
+        ("2", "1", None, 201),
+        ("1", "1", dict(power_type="AC_1_PHASE"), 200),
+    ]
+    for (
+        location_id,
+        evse_id,
+        changed_connector_data,
+        expected_response_code,
+    ) in testcases:
+        response = create_and_send_location_and_evse_data(
+            super_user_client,
+            location_id,
+            evse_id,
+            tariff1,
+            changed_connector_data=changed_connector_data,
+        )
+        assert response.status_code == expected_response_code
+        if changed_connector_data:
+            saved_connector = Connector.objects.get(uid="1")
+            for key, value in changed_connector_data.items():
+                assert getattr(saved_connector, key) == value
