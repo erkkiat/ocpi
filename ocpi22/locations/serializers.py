@@ -348,6 +348,22 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             validated_data = self.process_coordinates(validated_data)
         return super().to_representation(validated_data)
 
+    @staticmethod
+    def update_evse(evse, data, location):
+        for key, value in data.items():
+            if key not in {"uid", "evse_id"}:
+                setattr(evse, key, value)
+        if evse.location != location:
+            evse.location = location
+        evse.save()
+
+    @staticmethod
+    def update_connector(connector, data):
+        for key, value in data.items():
+            if key != "uid":
+                setattr(connector, key, value)
+        connector.save()
+
     @atomic
     def create(self, validated_data: dict):
         with transaction.atomic():
@@ -374,29 +390,22 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             )
             created_location.publish_allowed_to.set(publish_allowed_to)
 
-            for e in evses:
-                connectors = e.pop("connectors", [])
+            for data in evses:
+                connectors = data.pop("connectors", [])
                 evse = Evse.get_if_exists(
-                    uid=e.get("uid"), location__ocpi_master=created_location.ocpi_master
+                    uid=data.get("uid"),
+                    location__ocpi_master=created_location.ocpi_master,
                 )
                 if evse:
-                    for key, value in e.items():
-                        if key not in {"uid", "evse_id"}:
-                            setattr(evse, key, value)
-                    if evse.location != created_location:
-                        evse.location = created_location
-                    evse.save()
+                    self.update_evse(evse, data, created_location)
                 else:
-                    evse = Evse.objects.create(**e, location=created_location)
+                    evse = Evse.objects.create(**data, location=created_location)
 
                 for c in connectors:
                     tariff_ids = c.pop("tariff_ids", [])
                     connector = Connector.get_if_exists(uid=c.get("uid"), evse=evse)
                     if connector:
-                        for key, value in c.items():
-                            if key != "uid":
-                                setattr(connector, key, value)
-                        connector.save()
+                        self.update_connector(connector, c)
                     else:
                         connector = Connector.objects.create(**c, evse=evse)
 
@@ -460,33 +469,26 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
         location.save()
 
-        for e in evses:
-            connectors = e.pop("connectors", [])
-            capabilities = e.pop("capabilities", None)
-            try:
-                evse = Evse.objects.get(
-                    uid=e.get("uid"), location__ocpi_master=location.ocpi_master
-                )
-                if evse.location != location:
-                    evse.location = location
-                if capabilities is not None:
-                    evse.capabilities = capabilities
-                for key, value in e.items():
-                    if key not in {"uid", "evse_id"}:
-                        setattr(evse, key, value)
-                evse.save()
-            except Evse.DoesNotExist:
-                evse = Evse.objects.create(**e, location=location)
+        for data in evses:
+            connectors = data.pop("connectors", [])
+            capabilities = data.pop("capabilities", None)
+            evse = Evse.get_if_exists(
+                uid=data.get("uid"), location__ocpi_master=location.ocpi_master
+            )
+            if evse:
+                self.update_evse(evse, data, location)
+            else:
+                evse = Evse.objects.create(**data, location=location)
+
+            if capabilities is not None:
+                evse.capabilities = capabilities
 
             for c in connectors:
                 tariff_ids = c.pop("tariff_ids", [])
-                try:
-                    connector = Connector.objects.get(uid=c.get("uid"), evse=evse)
-                    for key, value in c.items():
-                        if key != "uid":
-                            setattr(connector, key, value)
-                    connector.save()
-                except Connector.DoesNotExist:
+                connector = Connector.get_if_exists(uid=c.get("uid"), evse=evse)
+                if connector:
+                    self.update_connector(connector, c)
+                else:
                     connector = Connector.objects.create(**c, evse=evse)
                 connector.tariff_ids.set(tariff_ids)
 
