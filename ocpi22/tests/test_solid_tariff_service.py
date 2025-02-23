@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.core.exceptions import ValidationError
 
@@ -88,7 +90,20 @@ def test_convert_to_hourly(
 
 
 @pytest.mark.django_db
-def test_create_raises_exception_on_invalid_data():
-    service = SolidTariffService()
+def test_create_raises_exception_on_invalid_data(solid_tariff_service_instance):
     with pytest.raises(ValidationError):
-        service.create({})
+        solid_tariff_service_instance.create({})
+
+
+@pytest.mark.django_db
+def test_create_returns_same_object_if_exists(
+    smp1_msp1_solid_tariff_with_all_records,
+    solid_tariff_service_instance,
+    smp1_solid_tariff_validated_json,
+):
+    with patch.object(
+        solid_tariff_service_instance, "_create_new_tariff"
+    ) as mock_create_new_tariff:
+        solid_tariff_service_instance.create(smp1_solid_tariff_validated_json)
+
+        mock_create_new_tariff.assert_not_called()
