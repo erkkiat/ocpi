@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from ocpi22.cpo.repositories import SolidTariffRepository
@@ -15,10 +16,14 @@ class SolidTariffService:
     def get_all_latest_solid_tariffs(self):
         return self.solid_tariff_repository.get_latest_with_unique_external_id_and_msp()
 
-    def create(self, validated_data: dict) -> SolidTariff:
+    def create(self, validated_data: dict) -> SolidTariff | None:
+        if validated_data.get("currency") is None:
+            raise ValidationError("Currency is required")
+        if validated_data.get("ocpi_master") is None:
+            raise ValidationError("OCPI Master is required")
+
         operator = validated_data.pop("ocpi_master")
         validated_data["operator"] = operator
-
         per_kwh, per_min, flat, parking_price, vat, currency, grace_period = (
             self._extract_pricing_data(validated_data)
         )

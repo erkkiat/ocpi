@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ValidationError
 
 from ocpi22.cpo.services import SolidTariffService
 
@@ -55,9 +56,7 @@ def solid_tariff_service_instance():
 def test_set_missing_fields(
     solid_tariff_service_instance, validated_data, expected_missing
 ):
-    print(validated_data)
     solid_tariff_service_instance._set_missing_fields(validated_data)
-    print(validated_data)
 
     for key in expected_missing:
         assert f"{key}__isnull" in validated_data
@@ -86,3 +85,10 @@ def test_convert_to_hourly(
 ):
     result = solid_tariff_service_instance._convert_to_hourly(per_minute_value)
     assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
+
+@pytest.mark.django_db
+def test_create_raises_exception_on_invalid_data():
+    service = SolidTariffService()
+    with pytest.raises(ValidationError):
+        service.create({})
