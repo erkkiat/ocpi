@@ -2,8 +2,10 @@ from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.forms import model_to_dict
 
 from ocpi22.cpo.services import SolidTariffService
+from ocpi22.models.credentials import CredentialsRole
 
 
 @pytest.fixture
@@ -87,6 +89,26 @@ def test_convert_to_hourly(
 ):
     result = solid_tariff_service_instance._convert_to_hourly(per_minute_value)
     assert result == expected_result, f"Expected {expected_result}, but got {result}"
+
+
+@pytest.mark.django_db
+def test_create_returns_solid_tariff_with_vali_data(
+    solid_tariff_service_instance, smp1_solid_tariff_validated_json
+):
+    solid_tariff = solid_tariff_service_instance.create(
+        smp1_solid_tariff_validated_json
+    )
+
+    st_dict = model_to_dict(solid_tariff)
+    st_dict.pop("id")
+    st_dict.pop("last_updated")
+    msp_id = st_dict.pop("msp")
+    st_dict.pop("ocpi_tariff")
+    operator_id = st_dict.pop("operator")
+    st_dict["operator"] = CredentialsRole.objects.get(pk=operator_id)
+    st_dict["msp"] = CredentialsRole.objects.get(pk=msp_id)
+
+    assert st_dict == smp1_solid_tariff_validated_json
 
 
 @pytest.mark.django_db
