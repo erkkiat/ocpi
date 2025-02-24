@@ -68,8 +68,8 @@ class OCPIImageFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = OCPIImage
 
-    url = "https://example.com/image.jpg"
-    thumbnail = "https://example.com/thumbnail.jpg"
+    url = "https://localhost/image.jpg"
+    thumbnail = "https://localhost/thumbnail.jpg"
     category = OCPIImageCategory.OPERATOR
     image_type = "jpeg"
     width = 800
