@@ -214,7 +214,7 @@ class ConnectorFactory(factory.django.DjangoModelFactory):
     evse = factory.SubFactory(EvseFactory)
     standard = "IEC_62196_T2"
     format = "CABLE"
-    power_type = ["AC_3_PHASE"]
+    power_type = "AC_3_PHASE"
     max_voltage = 400
     max_amperage = 32
     max_electric_power = 22

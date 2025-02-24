@@ -66,7 +66,7 @@ class HubjectService:
 
             for evse in location.evses_with_connectors:
                 for connector in evse.connectors_with_tariffs:
-                    if not connector.get_tariffs():
+                    if len(connector.get_tariffs()) == 0:
                         raise ConnectorTariffNotFoundError(
                             evse.evse_id,
                             connector.standard,
@@ -162,7 +162,7 @@ class HubjectService:
         )
 
         if len(solid_tariffs) == 0:
-            raise ValueError(f"No SolidTariffs found for {str(party)}")
+            raise SolidTariff.DoesNotExist(f"No SolidTariffs found for {str(party)}")
 
         solid_default_tariff = self.get_default_tariffs()
 
