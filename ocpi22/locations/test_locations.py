@@ -129,24 +129,6 @@ def test_location_put_when_uid_does_not_match_between_url_parameters_and_body_da
     )
 
 
-@pytest.fixture
-def cpo_credentialsrole():
-    return CredentialsRoleFactory(country_code="FI", party_id="CPO")
-
-
-@pytest.fixture
-def tariff1(cpo_credentialsrole):
-    return TariffFactory(uid="TARIFF1", ocpi_master=cpo_credentialsrole)
-
-
-def change_data(instance, changes):
-    if not changes:
-        return
-    for key, value in changes.items():
-        setattr(instance, key, value)
-    instance.save()
-
-
 @pytest.mark.django_db
 class TestEvseMove:
     credentialsrole = None
