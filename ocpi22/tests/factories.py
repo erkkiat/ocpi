@@ -33,6 +33,7 @@ from integrations.hubject.schemas import (
     PricingProductData,
     PricingProductDataRecord,
 )
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -108,6 +109,27 @@ class CredentialsRoleFactory(factory.django.DjangoModelFactory):
     country_code = "FI"
     party_id = "CPO"
     credentials = factory.SubFactory(CredentialsFactory)
+
+    @factory.post_generation
+    def add_endpoints(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for endpoint in extracted:
+                EndpointFactory(credentials_role=self, **endpoint)
+        else:
+            for endpoint in OcpiModuleEnum:
+                EndpointFactory(
+                    credentials=self.credentials,
+                    identifier=endpoint.value,
+                    role=EndpointRoleEnum.SENDER.value,
+                )
+                EndpointFactory(
+                    credentials=self.credentials,
+                    identifier=endpoint.value,
+                    role=EndpointRoleEnum.RECEIVER.value,
+                )
 
 
 class EndpointFactory(factory.django.DjangoModelFactory):
