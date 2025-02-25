@@ -393,9 +393,9 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             for e in evses:
                 connectors = e.pop("connectors", [])
                 evse = Evse.get_if_exists(
-                    uid=e.get("uid"),
+                    uid__iexact=e.get("uid"),
                     location__ocpi_master=location.ocpi_master,
-                )
+                ) or Evse.get_if_exists(uid__iexact=e.get("uid"), location=location)
                 if evse:
                     self.update_evse(evse, e, location)
                 else:
@@ -403,7 +403,9 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
                 for c in connectors:
                     tariff_ids = c.pop("tariff_ids", [])
-                    connector = Connector.get_if_exists(uid=c.get("uid"), evse=evse)
+                    connector = Connector.get_if_exists(
+                        uid__iexact=c.get("uid"), evse=evse
+                    )
                     if connector:
                         self.update_connector(connector, c)
                     else:
@@ -472,8 +474,8 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             connectors = e.pop("connectors", [])
             capabilities = e.pop("capabilities", None)
             evse = Evse.get_if_exists(
-                uid=e.get("uid"), location__ocpi_master=location.ocpi_master
-            )
+                uid__iexact=e.get("uid"), location__ocpi_master=location.ocpi_master
+            ) or Evse.get_if_exists(uid__iexact=e.get("uid"), location=location)
             if evse:
                 self.update_evse(evse, e, location)
             else:
@@ -484,7 +486,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
             for c in connectors:
                 tariff_ids = c.pop("tariff_ids", [])
-                connector = Connector.get_if_exists(uid=c.get("uid"), evse=evse)
+                connector = Connector.get_if_exists(uid__iexact=c.get("uid"), evse=evse)
                 if connector:
                     self.update_connector(connector, c)
                 else:

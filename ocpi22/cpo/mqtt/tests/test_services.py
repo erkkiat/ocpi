@@ -19,7 +19,7 @@ from ocpi22.cpo.mqtt.tasks import (
 class TestMqttServices:
     def test_decode_message_success(self, smappee_status_update_message):
         assert _decode_message(smappee_status_update_message) == (
-            '{"evse_uid":"d80b60c1-751e-43b5-868b-9a60a41c5456", "status":"AVAILABLE"}'
+            '{"evse_uid":"D80B60C1-751E-43B5-868B-9A60A41C5456", "status":"AVAILABLE"}'
         )
 
     def test_decode_message_returns_none_on_unicode_error(

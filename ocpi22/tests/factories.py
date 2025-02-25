@@ -124,11 +124,13 @@ class CredentialsRoleFactory(factory.django.DjangoModelFactory):
                     credentials=self.credentials,
                     identifier=endpoint.value,
                     role=EndpointRoleEnum.SENDER.value,
+                    url=f"https://localhost/ocpi/{endpoint.value.lower()}",
                 )
                 EndpointFactory(
                     credentials=self.credentials,
                     identifier=endpoint.value,
                     role=EndpointRoleEnum.RECEIVER.value,
+                    url=f"https://localhost/ocpi/{endpoint.value.lower()}",
                 )
 
 
