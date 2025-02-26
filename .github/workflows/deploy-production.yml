@@ -159,10 +159,3 @@ jobs:
         run: gh release edit "$RELEASE_TAG" --draft=false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push Git Tag
-        run: |
-          git tag "$RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
