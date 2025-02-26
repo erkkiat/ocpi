@@ -36,8 +36,8 @@ def get_our_roles(source: dict = None) -> list:
 
     >>> from util import reverse, HashableDict
     >>> get_our_roles(source=HashableDict(CPO='FI*EON', HUB='FI*HUB', \
-    BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://example.com'))
-    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'HUB'}]
+    BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://localhost'))
+    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://localhost'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://localhost'}, 'party_id': 'HUB'}]
 
     @param source: For testing purposes, you can set the source for role settings
     @return: a list of roles formatted for Credentials registration

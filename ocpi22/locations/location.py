@@ -113,6 +113,9 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         if request and not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse("location")
 
+        if uid and uid != data.get("id"):
+            raise ValueError("Location ID in URL does not match Location ID in payload")
+
         uid = uid or data.get("id")
 
         if not credentials and request and hasattr(request, "credentials"):
@@ -132,9 +135,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         version="2.2.1",
         credentials=None,
     ):
-        if not uid:
-            raise ValueError("Location ID is a required parameter for LocationViewSet.save_or_update()")
-
         existing_location: Location = Location.get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )

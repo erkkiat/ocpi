@@ -75,12 +75,31 @@ jobs:
     env:
       ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
 
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Fetch Latest Release Tag
+        id: fetch_release
+        run: |
+          RELEASE_TAG=$(gh release view --json tagName -q ".tagName" || echo "")
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "Error: No release tag found"
+            exit 1
+          fi
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Enable BuildKit
+        run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -94,98 +113,56 @@ jobs:
 
       - name: Build and Push Docker Images
         run: |
-          IMAGE_TAG=$(date +%Y-%m-%d)-${{ github.sha }}
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
               repo_url="$ECR_REPO_URL/solidroam-$service-f1"
-              full_image_url_with_tag="$repo_url:$IMAGE_TAG"
-              echo "Building multi-architecture image for $service with tag: $IMAGE_TAG"
-              docker buildx build --platform linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
-              echo "Pushed $service:$IMAGE_TAG to ECR farm $FARM."
-          done
+              full_image_url_with_tag="$repo_url:$RELEASE_TAG"
 
-      - name: Set Release Tag
-        run: echo "RELEASE_VERSION=$(date +%Y-%m-%d)-$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+              echo "Building multi-architecture image for $service with tag: $RELEASE_TAG"
+
+              docker buildx build --platform linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
+
+              echo "Pushed $full_image_url_with_tag to ECR."
+          done
 
   tag-and-release:
     name: Tag and Create Release
     runs-on: ubuntu-latest
     needs: build-and-deploy
+    permissions:
+      contents: write
+      pull-requests: read
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Set up Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Determine Release Version
-        id: determine_version
-        run: |
-          DATE=$(date -u +"%Y-%m-%d")
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          RELEASE_VERSION="${DATE}-${COMMIT_SHA}"
-          echo "RELEASE_VERSION=$RELEASE_VERSION" >> $GITHUB_ENV
-
-      - name: Generate Enhanced Release Notes
-        id: release_notes
-        run: |
-          if git describe --tags --abbrev=0 HEAD^ > /dev/null 2>&1; then
-            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
-          else
-            PREVIOUS_TAG="none"
-          fi
-
-          echo "## Changes in This Release" > release_notes.txt
-
-          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-
-          if [ "$PREVIOUS_TAG" != "none" ]; then
-            CHANGES_FOUND=false
-            for commit in $(git log --pretty=format:"%h" ${PREVIOUS_TAG}..HEAD); do
-              COMMIT_MESSAGE=$(git log -1 --pretty=%s $commit)
-
-              # Exclude branch merges (e.g., "Merge branch 'develop'")
-              if [[ "$COMMIT_MESSAGE" == Merge\ branch* ]]; then
-                continue
-              fi
-
-              # Process pull request merges
-              if git log -1 --pretty=%B $commit | grep -q "Merge pull request"; then
-                PR_NUMBER=$(git log -1 --pretty=%B $commit | grep -oE "#[0-9]+" | tr -d "#")
-                PR_TITLE=$(git log -1 --pretty=%B $commit | sed -E 's/^Merge pull request #[0-9]+ //')
-                PR_URL="${REPO_URL}/pull/$PR_NUMBER"
-                echo "- [PR #$PR_NUMBER]($PR_URL): $PR_TITLE" >> release_notes.txt
-                CHANGES_FOUND=true
-              else
-                # Include meaningful regular commits not part of a PR
-                COMMIT_URL="${REPO_URL}/commit/$commit"
-                echo "- [$commit]($COMMIT_URL): $COMMIT_MESSAGE" >> release_notes.txt
-                CHANGES_FOUND=true
-              fi
-            done
-
-            if [ "$CHANGES_FOUND" = false ]; then
-              echo "- No changes since the last release" >> release_notes.txt
-            fi
-          else
-            echo "- Initial release" >> release_notes.txt
-          fi
-
-          # Export release notes to $GITHUB_ENV preserving newlines
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-          cat release_notes.txt >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
+      - name: Update Release Drafter Draft
+        uses: release-drafter/release-drafter@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.RELEASE_VERSION }}
-          release_name: "Release ${{ env.RELEASE_VERSION }}"
-          body: ${{ env.RELEASE_NOTES }}
-          draft: false
-          prerelease: false
+
+      - name: Fetch Latest Draft Release Tag
+        id: fetch_release
+        run: |
+          RELEASE_TAG=$(gh release view --json tagName -q ".tagName" || echo "")
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "Error: No draft release found"
+            exit 1
+          fi
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish GitHub Release
+        run: gh release edit "$RELEASE_TAG" --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Git Tag
+        run: |
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

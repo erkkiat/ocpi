@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 import factory
 import pytz
+from django.contrib.auth.models import User
 from faker import Faker
 
 from integrations.hubject.schemas import (
@@ -45,12 +46,30 @@ from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceCompon
 fake = Faker()
 
 
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    username = "SolidRoamUser"
+    email = "user@solidroam.com"
+    password = factory.PostGenerationMethodCall("set_password", "test.user")
+
+
+class StaffUserFactory(UserFactory):
+    is_staff = True
+
+
+class SuperUserFactory(UserFactory):
+    is_superuser = True
+    is_staff = True
+
+
 class OCPIImageFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = OCPIImage
 
-    url = "https://example.com/image.jpg"
-    thumbnail = "https://example.com/thumbnail.jpg"
+    url = "https://localhost/image.jpg"
+    thumbnail = "https://localhost/thumbnail.jpg"
     category = OCPIImageCategory.OPERATOR
     image_type = "jpeg"
     width = 800
@@ -160,7 +179,9 @@ class TariffFactory(factory.django.DjangoModelFactory):
 
         def add_price_components(tariff_element):
             PriceComponentFactory(tariff_element=tariff_element)
-            PriceComponentFactory(tariff_element=tariff_element, type="TIME", price=0.3, step_size=1)
+            PriceComponentFactory(
+                tariff_element=tariff_element, type="TIME", price=0.3, step_size=1
+            )
 
         if extracted:
             for tariffelement in extracted:
@@ -193,7 +214,7 @@ class ConnectorFactory(factory.django.DjangoModelFactory):
     evse = factory.SubFactory(EvseFactory)
     standard = "IEC_62196_T2"
     format = "CABLE"
-    power_type = ["AC_3_PHASE"]
+    power_type = "AC_3_PHASE"
     max_voltage = 400
     max_amperage = 32
     max_electric_power = 22
@@ -388,7 +409,7 @@ class ERoamingPushPricingProductDataFactory(factory.Factory):
     )
 
 
-class SolidTariffFactory(factory.Factory):
+class SolidTariffFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SolidTariff
 
@@ -399,8 +420,12 @@ class SolidTariffFactory(factory.Factory):
     price_flat = 0.3
     vat_percentage = 0.2
     archived = False
-    msp = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
-    operator = factory.SubFactory("ocpi22.tests.factories.CredentialsRoleFactory")
+    msp = factory.SubFactory(
+        CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"
+    )
+    operator = factory.SubFactory(
+        CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
+    )
 
     last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))

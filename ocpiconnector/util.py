@@ -211,12 +211,12 @@ def validate_iso2_country(c: str):
 def build_item_url(base_url, country_code, party_id, uid):
     """
     Build the URL for a single item
-    >>> build_item_url('http://example.com/tariffs', 'NL', '123', '456')
-    'http://example.com/tariffs/NL/123/456'
-    >>> build_item_url('http://example.com/tariffs/', 'NL', '123', '456')
-    'http://example.com/tariffs/NL/123/456'
-    >>> build_item_url('http://example.com/tariffs//', 'NL', '123', '456')
-    'http://example.com/tariffs/NL/123/456'
+    >>> build_item_url('http://localhost/tariffs', 'NL', '123', '456')
+    'http://localhost/tariffs/NL/123/456'
+    >>> build_item_url('http://localhost/tariffs/', 'NL', '123', '456')
+    'http://localhost/tariffs/NL/123/456'
+    >>> build_item_url('http://localhost/tariffs//', 'NL', '123', '456')
+    'http://localhost/tariffs/NL/123/456'
     """
     return urljoin(
         f"{base_url}/", f"{country_code}/{party_id}/{uid}", allow_fragments=True

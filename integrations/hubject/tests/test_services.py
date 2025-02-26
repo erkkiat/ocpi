@@ -48,6 +48,7 @@ from integrations.hubject.schemas import (
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Location
+from ocpi22.models.tariff import SolidTariff
 from ocpi22.tests.factories import (
     EvseFactory,
     LocationFactory,
@@ -392,18 +393,16 @@ class TestHubjectService:
         assert default_tariff.currency == "USD"
 
     def test_hubject_default_raises_validation_error_given_invalid_currency(self):
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="Invalid currency: INV"):
             HubjectDefaultTariff(
                 currency="INV", price=0.34, price_component=HubjectPriceComponent.KWH
             )
-            assert str(excinfo.value) == "Invalid currency: INV."
 
     def test_hubject_default_raises_validation_error_given_blank_currency(self):
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="Invalid currency: "):
             HubjectDefaultTariff(
                 currency="", price=0.34, price_component=HubjectPriceComponent.KWH
             )
-            assert str(excinfo.value) == "Invalid currency: ."
 
     @pytest.mark.parametrize(
         "price_component, expected",
@@ -696,7 +695,7 @@ class TestOICPDynamicPricingService:
 
     @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
     @pytest.mark.django_db
-    def test_get_all_pricing_products_with_no_solid_tariffs_raises_value_error(
+    def test_get_all_pricing_products_with_no_solid_tariffs_raises_does_not_exists_error(
         self, mock_solid_tariffs, monkeypatch, msp_de_ice
     ):
         mock_solid_tariffs.return_value = []
@@ -704,7 +703,7 @@ class TestOICPDynamicPricingService:
             f"No SolidTariffs found for {str(get_our_party(OcpiRolesEnum.CPO))}"
         )
 
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
+        with pytest.raises(SolidTariff.DoesNotExist, match=re.escape(expected_message)):
             self.hubject_service.get_all_pricing_products(
                 get_our_party(OcpiRolesEnum.CPO)
             )
