@@ -1,3 +1,5 @@
+from logging import getLogger
+
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -19,6 +21,8 @@ from ocpi22.serializers.util import (
     UTCDateTimeField,
 )
 from ocpiconnector.party import Party
+
+logger = getLogger(__name__)
 
 
 class OCPIImageSerializer(serializers.ModelSerializer):
@@ -72,7 +76,12 @@ class TariffField(serializers.StringRelatedField):
                 uid__iexact=data, archived=False, ocpi_master=credentialsrole
             )
             return tariff
-        except (Tariff.DoesNotExist, Tariff.MultipleObjectsReturned):
+        except Tariff.DoesNotExist:
+            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched.")
+        except Tariff.MultipleObjectsReturned:
+            logger.error(
+                f"Multiple tariffs found with UID `{data}` and ocpi_master `{credentialsrole}`."
+            )
             raise ValidationError(f"Tariff with UID `{data}` cannot be fetched.")
 
     def to_representation(self, value: Tariff):
