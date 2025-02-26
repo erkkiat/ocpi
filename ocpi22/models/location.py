@@ -258,9 +258,6 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
             util.reverse("admin:ocpi22_location_change", args=(self.pk,))
         )
 
-    def get_quick_url(self):
-        return util.reverse("quick-location-by-id", args=[self.uid])
-
     def street_address(self):
         return f"{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}"
 
