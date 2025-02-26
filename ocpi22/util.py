@@ -22,7 +22,6 @@ import pycountry
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.utils.module_loading import import_string
-from geopy import Nominatim
 from pytz import timezone
 from requests import Response
 from rest_framework import serializers, versioning
@@ -674,32 +673,6 @@ def get_time_zone(country_code_2_chars: str) -> str:
 def country_code_from_2_to_3_chars(country_code: str) -> str:
     country = pycountry.countries.get(alpha_2=country_code)
     return country.alpha_3
-
-
-def fill_out_location_address(
-    data: dict, lat: Union[float, str], lng: Union[float, str]
-) -> dict:
-    language = data.pop("language", False)
-    if "address" in data and "city" in data and "country" in data:
-        return data
-    if not lat or not lng:
-        return data
-    locator = Nominatim(user_agent="solidroam.com")
-    coordinates = f"{lat},{lng}"
-    location = locator.reverse(coordinates, language=language)
-    address = location.raw.get("address")
-    data["address"] = (
-        f"{address.get('road') or '-'} {address.get('house_number') or ''}".strip()
-    )
-    data["city"] = address.get("city") or "-"
-    data["postal_code"] = address.get("postcode") or "-"
-    country_code_2_chars = address.get("country_code", "")
-    data["country"] = country_code_from_2_to_3_chars(country_code_2_chars).upper()
-
-    # Todo: Fill out the time zone based on country code
-    data["time_zone"] = get_time_zone(country_code_2_chars)
-
-    return data
 
 
 class OCPIVersioning(versioning.BaseVersioning):
