@@ -793,22 +793,6 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                     reverse("msp-token-list"),
                 ),
             ),
-            user=dict(
-                register=request.build_absolute_uri(reverse("user-register")),
-                account=request.build_absolute_uri(reverse("user-account")),
-                password=request.build_absolute_uri(reverse("user-password")),
-                transactions_brief=request.build_absolute_uri(
-                    reverse("user-transaction-list-brief")
-                ),
-                transactions_full=request.build_absolute_uri(
-                    reverse("user-transaction-list-full")
-                ),
-                gdpr_export=dict(
-                    json=request.build_absolute_uri(reverse("user-gdpr-export")),
-                    csv=request.build_absolute_uri(reverse("user-gdpr-export-csv")),
-                ),
-                gdpr_delete=request.build_absolute_uri(reverse("user-gdpr-delete")),
-            ),
             webhooks=dict(
                 authorize_webhook=request.build_absolute_uri(
                     reverse("msp-authorize-webhook"),
