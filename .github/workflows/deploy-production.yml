@@ -88,12 +88,13 @@ jobs:
 
       - name: Fetch and Save Release Tag
         run: |
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
           RELEASE_TAG=$(gh release view --json tagName -q ".tagName")
           echo "Using draft release tag: $RELEASE_TAG"
           echo "$RELEASE_TAG" > release_tag.txt
 
       - name: Upload Release Tag
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: release-tag
           path: release_tag.txt
@@ -116,7 +117,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download Release Tag
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: release-tag
 
@@ -190,6 +191,6 @@ jobs:
         run: echo "RELEASE_TAG=$(cat release_tag.txt)" >> $GITHUB_ENV
 
       - name: Publish GitHub Release
-        run: gh release edit "$RELEASE_TAG" --draft=false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          gh release edit "$RELEASE_TAG" --draft=false
