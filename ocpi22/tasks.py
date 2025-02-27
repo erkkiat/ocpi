@@ -15,7 +15,7 @@ from celery.schedules import crontab
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
-from requests import Response
+from requests import Response, RequestException
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
 
@@ -197,13 +197,13 @@ def pull_objects(
             if "limit=" not in url:
                 url = f"{url}?limit={limit}"
             response = send_ocpi_request(data=dict(), url=url, **kwargs)
-            if response and response.get("status_code") < status.HTTP_400_BAD_REQUEST:
+            if response and response.status_code < 300:
                 next_url, _rel = (
-                    response.get("headers").get("Link", ";").strip("<>").split(";")
+                    response.headers.get("Link", ";").strip("<>").split(";")
                 )
                 model = obj.get("model")
                 viewset = import_string(obj.get("viewset"))
-                items = response.get("json", {}).get("data", [])
+                items = response.json().get("data", [])
                 total_objects += len(items)
                 for i in items:
                     try:
@@ -285,7 +285,7 @@ def pull_objects(
             pull_objects(
                 object_list, limit, delay, total_objects, credentials_id, **kwargs
             )
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+    except RequestException:
         logger.exception("Unable to pull objects")
 
 
