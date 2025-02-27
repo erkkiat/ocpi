@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 
 import generic.countries
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from typing import Optional, List
 
 from django import forms

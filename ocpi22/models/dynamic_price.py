@@ -1,4 +1,4 @@
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 import os
 from datetime import datetime, timedelta
 from json import JSONDecodeError

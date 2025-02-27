@@ -5,7 +5,7 @@ import redis
 from django.conf import settings
 from django.shortcuts import render
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from json import JSONDecodeError
 from pprint import pprint
 

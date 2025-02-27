@@ -1,7 +1,7 @@
 import pytz
 from django.utils.datetime_safe import datetime
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 
 from django.conf import settings
 from django.db import models
