@@ -1,12 +1,33 @@
-name-template: 'Release $NEXT_PATCH_VERSION'
-tag-template: 'v$NEXT_PATCH_VERSION'
+name-template: 'v$RESOLVED_VERSION 😎'
+tag-template: 'v$RESOLVED_VERSION'
 categories:
-  - title: '🚀 Features'
-    labels: [ 'feature', 'enhancement' ]
-  - title: '🐛 Bug Fixes'
-    labels: [ 'bug', 'fix' ]
-  - title: '🛠 Maintenance'
-    labels: [ 'chore', 'refactor', 'tech' ]
+  - title: 💥 Breaking changes
+    labels:
+      - breaking-change
+  - title: 🚀 New features and improvements
+    labels:
+      - enhancement
+      - feature
+  - title: 🐛 Bug fixes
+    labels:
+      - bug
+      - fix
+  - title: 📦 Dependency updates
+    labels:
+      - dependencies
+    collapse-after: 15
+  - title: 📝 Documentation updates
+    labels:
+      - documentation
+  - title: 👻 Maintenance
+    labels:
+      - chore
+      - maintenance
+      - tech
+      - refactor
+  - title: 🚦 Tests
+    labels:
+      - test
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 exclude-labels:
   - 'skip-changelog'

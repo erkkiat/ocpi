@@ -33,7 +33,6 @@ jobs:
         image: redis:latest
         ports:
           - 6379:6379
-        options: --health-cmd "redis-cli ping || exit 1" --health-interval 10s --health-timeout 5s --health-retries 3
       postgres:
         image: postgres:13
         ports:
@@ -42,11 +41,6 @@ jobs:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: test_db
-        options: >-
-          --health-cmd "pg_isready -U test_user"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 3
     env:
       DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
 
@@ -70,7 +64,7 @@ jobs:
   tag-and-release-draft:
     name: Create Draft Release
     runs-on: ubuntu-latest-m
-    needs: test  # Ensure tests pass before creating the draft release
+    needs: test
     permissions:
       contents: write
       pull-requests: read
@@ -81,19 +75,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create/Update Draft Release
+      - name: Create Draft Release
+        id: draft_release
         uses: release-drafter/release-drafter@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fetch and Save Release Tag
+      - name: Save Release Tag
         run: |
-          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          RELEASE_TAG=$(gh release view --json tagName -q ".tagName")
-          echo "Using draft release tag: $RELEASE_TAG"
+          RELEASE_TAG="${{ steps.draft_release.outputs.tag_name }}"
+
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "Error: Release tag missing!"
+            exit 1
+          fi
+
           echo "$RELEASE_TAG" > release_tag.txt
 
-      - name: Upload Release Tag
+      - name: Upload Release Data
         uses: actions/upload-artifact@v4
         with:
           name: release-tag
@@ -102,11 +101,11 @@ jobs:
   build-and-deploy:
     name: Build and Deploy to Production
     runs-on: ubuntu-latest-m
-    needs: tag-and-release-draft  # Ensure we have a draft release first
+    needs: tag-and-release-draft
 
     env:
       ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
-      FARMS: "f1"  # Production farm
+      FARMS: "f1"
 
     permissions:
       contents: read
@@ -122,7 +121,13 @@ jobs:
           name: release-tag
 
       - name: Read Release Tag
-        run: echo "IMAGE_TAG=$(cat release_tag.txt)" >> $GITHUB_ENV
+        run: |
+          IMAGE_TAG=$(cat release_tag.txt)
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "Error: No release tag found!"
+            exit 1
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -147,8 +152,6 @@ jobs:
 
       - name: Tag and Push Multi-Architecture Images for Each Service
         run: |
-          echo "Deploying to farms: $FARMS"
-
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
               echo "Tagging image for $service from the base image"
               docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG"
@@ -168,10 +171,9 @@ jobs:
           done
 
   publish-release:
-    name: Publish GitHub Release
+    name: Tag and Publish GitHub Release
     runs-on: ubuntu-latest-m
-    needs: build-and-deploy  # Ensure deployment succeeds before publishing the release
-
+    needs: build-and-deploy
     permissions:
       contents: write
       pull-requests: read
@@ -190,7 +192,14 @@ jobs:
       - name: Read Release Tag
         run: echo "RELEASE_TAG=$(cat release_tag.txt)" >> $GITHUB_ENV
 
-      - name: Publish GitHub Release
+      - name: Push Git Tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+      - name: Publish Draft Release
         run: |
           export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
           gh release edit "$RELEASE_TAG" --draft=false
