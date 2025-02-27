@@ -164,7 +164,6 @@ def send_ocpi_request(
         raise self.retry(
             exc=Exception(f"Server Error for {response.url}: {response.status_code}")
         )
-    logger.info(f"Got {response.status_code} for {response.url} in {response.elapsed}")
 
 
 @shared_task(max_retries=2, retry_backoff=2)
