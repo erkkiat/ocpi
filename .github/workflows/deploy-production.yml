@@ -8,7 +8,7 @@ on:
 jobs:
   lint:
     name: Lint Code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -26,7 +26,7 @@ jobs:
 
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: lint
     services:
       redis:
@@ -69,7 +69,7 @@ jobs:
 
   tag-and-release-draft:
     name: Create Draft Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: test  # Ensure tests pass before creating the draft release
     permissions:
       contents: write
@@ -101,7 +101,7 @@ jobs:
 
   build-and-deploy:
     name: Build and Deploy to Production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: tag-and-release-draft  # Ensure we have a draft release first
 
     env:
@@ -169,7 +169,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: build-and-deploy  # Ensure deployment succeeds before publishing the release
 
     permissions:

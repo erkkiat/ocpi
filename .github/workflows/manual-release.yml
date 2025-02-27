@@ -8,7 +8,7 @@ on:
 jobs:
   lint:
     name: Lint Code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -26,7 +26,7 @@ jobs:
 
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: lint
     services:
       redis:
@@ -69,7 +69,7 @@ jobs:
 
   build-and-deploy:
     name: Build and Deploy to Production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: test
 
     env:
@@ -126,7 +126,7 @@ jobs:
 
   tag-and-release:
     name: Finalize GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: build-and-deploy
     permissions:
       contents: write
