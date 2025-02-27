@@ -94,7 +94,7 @@ jobs:
           echo "$RELEASE_TAG" > release_tag.txt
 
       - name: Upload Release Tag
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release-tag
           path: release_tag.txt
@@ -117,7 +117,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download Release Tag
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: release-tag
 
