@@ -4,7 +4,6 @@ from rest_framework.exceptions import ValidationError
 
 from ocpi22.choices import AuthorizationEnum
 from util import default_error_messages
-from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.serializers import (
@@ -14,6 +13,7 @@ from ocpi22.ocpi.serializers import (
     LocationIdSerializer,
 )
 from ocpi22.serializers.util import CallbacksSerializer
+from ocpi22.choices import EVSE_STATUS_CHOICES
 
 
 class TokenIdSerializer(fields.CharField):
@@ -216,7 +216,7 @@ class MSPChargePointStatusCallbackSerializer(CallbacksSerializer):
             help_text="The UID of the EVSE with the changed status"
         )
         status = serializers.ChoiceField(
-            choices=Evse.STATUS_CHOICES, help_text="The new status of the EVSE"
+            choices=EVSE_STATUS_CHOICES, help_text="The new status of the EVSE"
         )
 
 

@@ -477,3 +477,38 @@ DYNAMIC_PRICE_SOURCE_CHOICES = (
     ("NPFR", "Nordpool France"),
     ("NPNL", "Nordpool Netherlands"),
 )
+
+PARKING_CHOICES = (
+    ("ALONG_MOTORWAY", "Along a motorway"),
+    ("PARKING_GARAGE", "Parking garage"),
+    ("PARKING_LOT", "Parking lot"),
+    ("ON_DRIVEWAY", "Driveway"),
+    ("ON_STREET", "Street"),
+    ("UNDERGROUND_GARAGE", "Underground garage"),
+)
+
+PARKING_CHOICES_LIST = [x[0] for x in PARKING_CHOICES]
+
+AVAILABLE = "AVAILABLE"
+BLOCKED = "BLOCKED"
+CHARGING = "CHARGING"
+INOPERATIVE = "INOPERATIVE"
+OUTOFORDER = "OUTOFORDER"
+PLANNED = "PLANNED"
+REMOVED = "REMOVED"
+RESERVED = "RESERVED"
+UNKNOWN = "UNKNOWN"
+
+EVSE_STATUS_CHOICES = (
+    (AVAILABLE, _("Available")),
+    (BLOCKED, _("Physically blocked")),
+    (CHARGING, _("Charging")),
+    (INOPERATIVE, _("Inoperative")),
+    (OUTOFORDER, _("Out of order")),
+    (PLANNED, _("Planned, will be operating soon")),
+    (REMOVED, _("Discontinued/removed")),
+    (RESERVED, _("Reserved for a particular EV driver")),
+    (UNKNOWN, _("No status information available (also used when offline)")),
+)
+
+EVSE_STATUS_CHOICES_LIST = [x[0] for x in EVSE_STATUS_CHOICES]
