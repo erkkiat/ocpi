@@ -387,14 +387,10 @@ class Ocpi:
         ("TESLA_S", 'Tesla "Model-S"-type'),
     )
 
-    STANDARD_CHOICES_LIST = [i[0] for i in STANDARD_CHOICES]
-
     FORMAT_CHOICES = (
         ("SOCKET", "Socket"),
         ("CABLE", "Cable"),
     )
-
-    FORMAT_CHOICES_LIST = [i[0] for i in FORMAT_CHOICES]
 
     POWERTYPES = dict(CHADEMO="DC", IEC_62196_T2_COMBO="DC", IEC_62196_T2="AC_3_PHASE")
 
@@ -413,8 +409,6 @@ class Ocpi:
     POWERTYPE_PHASES = dict(
         (x[0], x[2]) for x in _POWERTYPE_DATA
     )  # For power calculation: (('AC_1_PHASE', 1), ... )
-
-    POWERTYPE_LIST = [i[0] for i in POWERTYPE_CHOICES_221]
 
 
 class OCPIResponse(Response):

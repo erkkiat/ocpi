@@ -31,19 +31,19 @@ class Connector(Schema):
 
     @field_validator("standard")
     def validate_standard(cls, value):
-        if value not in Ocpi.STANDARD_CHOICES_LIST:
+        if not any(code == value for code, desc in Ocpi.STANDARD_CHOICES):
             raise ValueError(f"{value} is not a valid standard")
         return value
 
     @field_validator("format")
     def validate_format(cls, value):
-        if value not in Ocpi.FORMAT_CHOICES_LIST:
+        if not any(code == value for code, desc in Ocpi.FORMAT_CHOICES):
             raise ValueError(f"{value} is not a valid format")
         return value
 
     @field_validator("power_type")
     def validate_power_type(cls, value):
-        if value not in Ocpi.POWERTYPE_LIST:
+        if not any(code == value for code, desc in Ocpi.POWERTYPE_CHOICES_221):
             raise ValueError(f"{value} is not a valid power_type")
         return value
 
@@ -60,7 +60,7 @@ class EVSE(Schema):
 
     @field_validator("status")
     def validate_status(cls, value):
-        if value not in choices.EVSE_STATUS_CHOICES_LIST:
+        if not any(code == value for code, desc in choices.EVSE_STATUS_CHOICES):
             raise ValueError(f"{value} is not a valid status")
         return value
 
@@ -95,6 +95,6 @@ class LocationIn(Schema):
 
     @field_validator("parking_type")
     def validate_parking_type(cls, value):
-        if value not in choices.PARKING_CHOICES_LIST:
+        if not any(code == value for code, name in choices.PARKING_CHOICES):
             raise ValueError(f"{value} is not a valid parking type")
         return value
