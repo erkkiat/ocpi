@@ -20,7 +20,6 @@ from ocpi22.ocpi.api import (
 from ocpi22.cpo.api import (
     CPORouter,
     ChargePointViewSet,
-    LocationQuickViewSet,
     CpoStartWebhookViewSet,
     CpoStopWebhookViewSet,
     CpoReserveNowWebhookViewSet,
@@ -49,7 +48,6 @@ ocpi_router.register(r"credentials/", CredentialsViewSet, basename="credentials"
 ocpi_router.register(r"hubclientinfo/", ClientInfoViewSet, basename="clientinfo")
 
 cpo_router = CPORouter()
-cpo_router.register(r"location/quick", LocationQuickViewSet, basename="quick-location")
 cpo_router.register(
     r"tariffs", ocpi22.cpo.tariff.SolidTariffViewSet, basename="solid-tariff"
 )
