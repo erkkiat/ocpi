@@ -13,7 +13,7 @@ from decimal import Decimal
 import requests
 from django.conf import settings
 from django.utils.translation import get_language, gettext as _
-from rest_framework import routers, status, mixins
+from rest_framework import routers, status, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -21,6 +21,8 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAdminUser
 
 from ocpi22.cpo.api import InvoiceWebhookViewSet
+from ocpi22.models.cdr import Cdr
+from ocpi22.util import StandardResultsSetPagination
 from ocpi22.viewsets import FlowchartViewSet
 from util import reverse, ErrorLoggingResponse as Response, get_message_by_language
 from rest_framework.viewsets import GenericViewSet
@@ -33,7 +35,7 @@ from ocpi22.commands.commands import (
 )
 from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.cpo.serializers import SolidTariffSerializer
-from ocpi22.ocpi.serializers import InvoicingCallbackSerializer
+from ocpi22.ocpi.serializers import InvoicingCallbackSerializer, CdrSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse, Connector
@@ -858,3 +860,22 @@ class MspTariffQuickViewSet(
 class MSPRouter(routers.DefaultRouter):
     APIRootView = MobilityServiceProviderAPIView
     root_view_name = "msp-api"
+
+
+class CdrViewSet(
+    viewsets.GenericViewSet,
+    viewsets.mixins.ListModelMixin,
+    viewsets.mixins.RetrieveModelMixin,
+):
+    """
+    This is the list of Charge Detail Records, which is used by the CPO for billing an MSP for charging sessions.
+    You can use it for verifying the bill from the CPO.
+    """
+
+    # Todo: Limit access based on privileges set by admin
+
+    model = Cdr
+    queryset = Cdr.objects.all()
+    lookup_field = "uid"
+    serializer_class = CdrSerializer
+    pagination_class = StandardResultsSetPagination
