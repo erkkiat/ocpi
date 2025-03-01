@@ -62,7 +62,6 @@ from util import reverse
 
 from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.models import Authorization
-from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import (
     TokenSerializer,
@@ -3639,20 +3638,6 @@ def create_token(token_id, party: Party, user=None) -> Token:
         defaults=dict(customer=user),
     )
     return token
-
-
-def send_create_user(data):
-    request = api_factory.post(reverse("user-register"))
-    request.data = data
-    return UserViewSet().register(request)
-
-
-def post_cdr(data):
-    request = api_factory.post(reverse("cdr-list"))
-    request.data = data
-    request.user = get_fake_admin()
-    request.version = "2.2.1"
-    return CdrViewSet().post(request)
 
 
 class TestInvoiceReportView(TestCase):
