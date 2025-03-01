@@ -1,23 +1,30 @@
 import json
 import os
+from dataclasses import dataclass
 
 from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 import pytz
+from django.http import HttpResponse
 
 from django.test import Client
 
 from unittest import TestCase
 
-
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import Credentials
-from ocpi22.models.location import Location
+from ocpi22.models.location import Location, Evse
+from ocpi22.models.tariff import Tariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
-from ocpi22.tests.factories import EvseFactory, LocationFactory
+from ocpi22.tests.factories import (
+    EvseFactory,
+    LocationFactory,
+    TariffFactory,
+    CredentialsRoleFactory,
+)
 from ocpiconnector.party import Party
 from util import reverse
 
@@ -45,27 +52,6 @@ class TestLocations(TestCase):
         )
         if serializer.is_valid():
             serializer.save()
-
-    @pytest.mark.django_db
-    def test_serialization_to_update_existing_location(self):
-        get_credentialsrole.cache_clear()
-        serializer = load_json(
-            "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
-            LocationSerializer221,
-            Location,
-        )
-        assert serializer.is_valid()
-        location1 = serializer.save()
-
-        serializer = load_json(
-            "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
-            LocationSerializer221,
-            Location,
-        )
-        assert serializer.is_valid()
-        location2 = serializer.save()
-
-        assert location1.pk == location2.pk
 
 
 @pytest.mark.django_db
@@ -133,10 +119,154 @@ def test_location_put_when_uid_does_not_match_between_url_parameters_and_body_da
     serializer = LocationSerializer221(instance=LocationFactory())
     response = super_user_client.put(
         reverse("location-by-id", args=["2.2.1", "FI", "CPO", "wrong-uid"]),
-        json=serializer.data,
+        data=serializer.data,
+        format="json",
     )
     assert response.status_code == 400
     assert (
         "Location ID in URL does not match Location ID in payload"
         in response.data.get("status_message")
     )
+
+
+@pytest.mark.django_db
+class TestEvseMove:
+    @dataclass
+    class DataLoadResult:
+        response: HttpResponse
+        location: Location
+        evses: list[Evse]
+
+    def load_and_send_location_and_evse_data(
+        self, _client, credentialsrole, filename: str
+    ) -> DataLoadResult:
+        with open(filename) as fp:
+            data = json.load(fp)
+
+        for evse in data.get("evses", []):
+            for connector in evse.get("connectors"):
+                for tariff_id in connector.get("tariff_ids"):
+                    if not Tariff.objects.filter(uid=tariff_id).exists():
+                        TariffFactory(uid=tariff_id, ocpi_master=credentialsrole)
+
+        response = _client.put(
+            reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
+            data,
+            format="json",
+        )
+        location = Location.objects.get(uid=data.get("id").upper())
+        evses = [
+            Evse.objects.get(uid=evse.get("uid").upper())
+            for evse in data.get("evses", [])
+        ]
+        return self.DataLoadResult(response, location, evses)
+
+    @pytest.mark.django_db
+    def test_moving_an_evse_to_a_new_location_succeeds(self, super_user_client):
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
+        )
+        assert result.response.status_code == 201
+        assert result.evses[0].location.uid == result.location.uid
+
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_moved_evse.json",
+        )
+        assert result.response.status_code == 201
+        assert result.evses[0].location.uid == result.location.uid
+
+    @pytest.mark.django_db
+    def test_adding_an_evse_to_an_existing_location_succeeds(self, super_user_client):
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
+        )
+        assert result.response.status_code == 201
+        assert result.evses[0].location.uid == result.location.uid
+
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_added_evse.json",
+        )
+        assert result.response.status_code == 200
+        assert list(result.location.evses.values_list("uid", flat=True)) == [
+            "3256",
+            "3257",
+            "3299",
+        ]
+
+    @pytest.mark.django_db
+    def test_adding_a_connector_to_an_existing_location_and_evse_succeeds(
+        self, super_user_client
+    ):
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
+        )
+        assert result.response.status_code == 201
+        assert result.evses[0].location.uid == result.location.uid
+
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_added_connector.json",
+        )
+        assert result.response.status_code == 200
+        connectors = result.location.evses.get(uid="3257").connectors.all()
+        assert list(connectors.values_list("uid", flat=True)) == ["1", "2"]
+
+    @pytest.mark.django_db
+    def test_moving_an_evse_to_an_existing_location_succeeds(self, super_user_client):
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
+        )
+        assert result.response.status_code == 201
+        assert result.evses[0].location.uid == result.location.uid
+
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_loc2_empty.json",
+        )
+        assert result.response.status_code == 201
+
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_moved_evse.json",
+        )
+        assert result.response.status_code == 200
+        assert result.evses[0].location.uid == result.location.uid
+
+    @pytest.mark.django_db
+    def test_updating_an_evse_and_connector_while_moving_them_to_a_new_location(
+        self, super_user_client
+    ):
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
+        )
+        assert result.response.status_code == 201
+        assert Evse.objects.get(uid=result.evses[0].uid).location == result.location
+        assert result.evses[0].status == "AVAILABLE"
+        assert result.evses[0].connectors.first().power_type == "AC_3_PHASE"
+
+        result = self.load_and_send_location_and_evse_data(
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_moved_and_changed_evse.json",
+        )
+        assert result.response.status_code == 201
+        assert Evse.objects.get(uid=result.evses[0].uid).location == result.location
+        assert result.evses[0].status == "CHARGING"
+        assert result.evses[0].connectors.first().power_type == "AC_1_PHASE"

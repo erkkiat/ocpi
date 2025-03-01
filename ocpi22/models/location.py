@@ -306,6 +306,8 @@ class Evse(models.Model, ModelUtilMixin):
             models.UniqueConstraint(fields=["uid", "location"], name="evse_party_uid"),
         ]
 
+    upper_case_fields = ["evse_id", "uid"]
+
     objects = PartnerManager()
 
     uid = models.CharField(
@@ -422,6 +424,7 @@ class Evse(models.Model, ModelUtilMixin):
         )
 
     def save(self, *args, **kwargs):
+        self.change_fields_to_upper_case()
         if self.location.is_ours():
             self.last_updated = datetime.now(pytz.utc)
             self.location.last_updated = datetime.now(pytz.utc)
