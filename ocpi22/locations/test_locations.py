@@ -131,11 +131,6 @@ def test_location_put_when_uid_does_not_match_between_url_parameters_and_body_da
 
 @pytest.mark.django_db
 class TestEvseMove:
-    credentialsrole = None
-
-    def setup_method(self):
-        self.credentialsrole = CredentialsRoleFactory(country_code="FI", party_id="CPO")
-
     @dataclass
     class DataLoadResult:
         response: HttpResponse
@@ -143,7 +138,7 @@ class TestEvseMove:
         evses: list[Evse]
 
     def load_and_send_location_and_evse_data(
-        self, client_, filename: str
+        self, _client, credentialsrole, filename: str
     ) -> DataLoadResult:
         with open(filename) as fp:
             data = json.load(fp)
@@ -152,9 +147,9 @@ class TestEvseMove:
             for connector in evse.get("connectors"):
                 for tariff_id in connector.get("tariff_ids"):
                     if not Tariff.objects.filter(uid=tariff_id).exists():
-                        TariffFactory(uid=tariff_id, ocpi_master=self.credentialsrole)
+                        TariffFactory(uid=tariff_id, ocpi_master=credentialsrole)
 
-        response = client_.put(
+        response = _client.put(
             reverse("location-by-id", args=["2.2.1", "FI", "CPO", data.get("id")]),
             data,
             format="json",
@@ -169,13 +164,17 @@ class TestEvseMove:
     @pytest.mark.django_db
     def test_moving_an_evse_to_a_new_location_succeeds(self, super_user_client):
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
         )
         assert result.response.status_code == 201
         assert result.evses[0].location.uid == result.location.uid
 
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example_moved_evse.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_moved_evse.json",
         )
         assert result.response.status_code == 201
         assert result.evses[0].location.uid == result.location.uid
@@ -183,13 +182,17 @@ class TestEvseMove:
     @pytest.mark.django_db
     def test_adding_an_evse_to_an_existing_location_succeeds(self, super_user_client):
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
         )
         assert result.response.status_code == 201
         assert result.evses[0].location.uid == result.location.uid
 
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example_added_evse.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_added_evse.json",
         )
         assert result.response.status_code == 200
         assert list(result.location.evses.values_list("uid", flat=True)) == [
@@ -203,13 +206,16 @@ class TestEvseMove:
         self, super_user_client
     ):
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
         )
         assert result.response.status_code == 201
         assert result.evses[0].location.uid == result.location.uid
 
         result = self.load_and_send_location_and_evse_data(
             super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
             "ocpi22/data/examples/location_example_added_connector.json",
         )
         assert result.response.status_code == 200
@@ -219,18 +225,24 @@ class TestEvseMove:
     @pytest.mark.django_db
     def test_moving_an_evse_to_an_existing_location_succeeds(self, super_user_client):
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
         )
         assert result.response.status_code == 201
         assert result.evses[0].location.uid == result.location.uid
 
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example_loc2_empty.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_loc2_empty.json",
         )
         assert result.response.status_code == 201
 
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example_moved_evse.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example_moved_evse.json",
         )
         assert result.response.status_code == 200
         assert result.evses[0].location.uid == result.location.uid
@@ -240,7 +252,9 @@ class TestEvseMove:
         self, super_user_client
     ):
         result = self.load_and_send_location_and_evse_data(
-            super_user_client, "ocpi22/data/examples/location_example.json"
+            super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            "ocpi22/data/examples/location_example.json",
         )
         assert result.response.status_code == 201
         assert Evse.objects.get(uid=result.evses[0].uid).location == result.location
@@ -249,6 +263,7 @@ class TestEvseMove:
 
         result = self.load_and_send_location_and_evse_data(
             super_user_client,
+            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
             "ocpi22/data/examples/location_example_moved_and_changed_evse.json",
         )
         assert result.response.status_code == 201

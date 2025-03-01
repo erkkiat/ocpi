@@ -364,7 +364,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 setattr(connector, key, value)
         connector.save()
 
-    @atomic
     def create(self, validated_data: dict):
         with transaction.atomic():
             validated_data = self.process_coordinates(validated_data)
@@ -395,7 +394,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 evse = Evse.get_if_exists(
                     uid__iexact=e.get("uid"),
                     location__ocpi_master=location.ocpi_master,
-                ) or Evse.get_if_exists(uid__iexact=e.get("uid"), location=location)
+                )
                 if evse:
                     self.update_evse(evse, e, location)
                 else:
