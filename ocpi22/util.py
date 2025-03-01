@@ -21,7 +21,6 @@ import cachetools
 import pycountry
 from django.conf import settings
 from django.core.validators import RegexValidator
-from django.utils.module_loading import import_string
 from pytz import timezone
 from requests import Response
 from rest_framework import serializers, versioning
@@ -30,21 +29,16 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.renderers import BrowsableAPIRenderer
 from rest_framework.serializers import Serializer
 from urllib3.util import Url
-from urllib.parse import urljoin
 
 import generic.countries
-from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.ocpi.util import OCPIResponse
-from ocpi22.routing import find_route
-from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
-    get_our_party,
     ocpi_platform,
 )
 from ocpiconnector.party import Party
-from util import format_url, RedisStore, redis_store, with_trailing_slash
+from util import format_url, RedisStore, redis_store
 
 
 logger = getLogger(__name__)
@@ -776,61 +770,3 @@ class CountryCodeField(CiStringChoiceField):
 class PartyIdField(CiStringField):
     def __init__(self, *args, **kwargs):
         super().__init__(required=True, max_length=3, **kwargs)
-
-
-def fetch_object(
-    uid: str, party: Party = None, credentials=None, ocpi_module: OcpiModuleEnum = None
-) -> bool:
-    """
-    Find and fetch an object over the OCPI network. Used primarily when somebody PUTs an object which refers to
-    a missing Tariff or Location.
-
-    @param uid: The UID or ID of the wanted object
-    @param party: The party to fetch the object from (optional to credentials)
-    @param credentials: The credentials to use for the fetch (optional to party)
-    @param ocpi_module: The OCPI module, e.g. Location, Tariff, etc.
-    @return: The fetched object
-    """
-
-    route = find_route(party or credentials, ocpi_module, role=EndpointRoleEnum.SENDER)
-    if not route:
-        logger.error(f'No route found to fetch {ocpi_module.value} with id: "{id}"')
-        return False
-    role = ocpi_module.get_owner()
-    party = party or credentials.get_party_for_role(role)
-    url = urljoin(
-        with_trailing_slash(route.url), f"{party.country_code}/{party.party_id}/{uid}"
-    )
-    our_party = get_our_party(
-        OcpiRolesEnum.EMSP
-    )  # eMSP is receiving Locations, which may have broken references
-
-    # print(f'Fetching missing {ocpi_module.value} from {party} at {url}')
-    response = send_ocpi_request(
-        data=dict(),
-        url=url,
-        token_base64=route.token_base64,
-        method="GET",
-        to_country_code=party.country_code,
-        to_party_id=party.party_id,
-        from_country_code=our_party.country_code,
-        from_party_id=our_party.party_id,
-        title="tariff",
-    )
-    data = response.get("json")
-    data = data.get("data", data)  # Do we have the actual data one level deeper?
-    version = route.version
-
-    if data:
-        viewset = import_string(ocpi_module.get_viewset())
-        from ocpi22.ocpi.auth import get_credentialsrole
-
-        credentialsrole = get_credentialsrole(credentials=None, party=party, role=role)
-        response = viewset().put(
-            request=None, data=data, credentialsrole=credentialsrole, version=version
-        )
-        if response.status_code in {200, 201}:
-            logger.info(f'Fetched missing {ocpi_module.value} with id: "{uid}"')
-            return True
-    logger.warning(f'Unable to fetch {ocpi_module.value} with id: "{uid}"')
-    return False

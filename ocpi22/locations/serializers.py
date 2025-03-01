@@ -1,10 +1,12 @@
+from logging import getLogger
+
 from django.db import transaction
 from django.db.transaction import atomic
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OcpiModuleEnum, OCPIFacilityEnum, OCPICapabilityEnum
+from ocpi22.choices import OCPIFacilityEnum, OCPICapabilityEnum
 from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.image import OCPIImage
@@ -14,12 +16,14 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.serializers.hours import HoursSerializer
-from ocpi22.util import uid_validator, fetch_object, CiStringField
+from ocpi22.util import uid_validator, CiStringField
 from ocpi22.serializers.util import (
     HyperlinkedModelSerializerCleanedUp,
     UTCDateTimeField,
 )
 from ocpiconnector.party import Party
+
+logger = getLogger(__name__)
 
 
 class OCPIImageSerializer(serializers.ModelSerializer):
@@ -73,18 +77,13 @@ class TariffField(serializers.StringRelatedField):
                 uid__iexact=data, archived=False, ocpi_master=credentialsrole
             )
             return tariff
-        except Tariff.DoesNotExist as e:
-            credentials = self.context.get("credentials")
-            if credentials:
-                if fetch_object(
-                    uid=data,
-                    ocpi_module=OcpiModuleEnum.TARIFFS,
-                    credentials=credentials,
-                ):
-                    return self.to_internal_value(data)
-            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched: {e}")
-        except Tariff.MultipleObjectsReturned as e:
-            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched: {e}")
+        except Tariff.DoesNotExist:
+            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched.")
+        except Tariff.MultipleObjectsReturned:
+            logger.error(
+                f"Multiple tariffs found with UID `{data}` and ocpi_master `{credentialsrole}`."
+            )
+            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched.")
 
     def to_representation(self, value: Tariff):
         return value.uid
