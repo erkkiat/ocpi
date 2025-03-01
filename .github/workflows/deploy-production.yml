@@ -8,7 +8,7 @@ on:
 jobs:
   lint:
     name: Lint Code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -26,14 +26,13 @@ jobs:
 
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: lint
     services:
       redis:
         image: redis:latest
         ports:
           - 6379:6379
-        options: --health-cmd "redis-cli ping || exit 1" --health-interval 10s --health-timeout 5s --health-retries 3
       postgres:
         image: postgres:13
         ports:
@@ -42,11 +41,6 @@ jobs:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: test_db
-        options: >-
-          --health-cmd "pg_isready -U test_user"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 3
     env:
       DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
 
@@ -67,13 +61,51 @@ jobs:
       - name: Run Pytest
         run: pytest
 
+  tag-and-release-draft:
+    name: Create Draft Release
+    runs-on: ubuntu-latest-m
+    needs: test
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Create Draft Release
+        id: draft_release
+        uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save Release Tag
+        run: |
+          RELEASE_TAG="${{ steps.draft_release.outputs.tag_name }}"
+
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "Error: Release tag missing!"
+            exit 1
+          fi
+
+          echo "$RELEASE_TAG" > release_tag.txt
+
+      - name: Upload Release Data
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-tag
+          path: release_tag.txt
+
   build-and-deploy:
     name: Build and Deploy to Production
-    runs-on: ubuntu-latest
-    needs: test
+    runs-on: ubuntu-latest-m
+    needs: tag-and-release-draft
 
     env:
       ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
+      FARMS: "f1"
 
     permissions:
       contents: read
@@ -83,17 +115,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Fetch Latest Release Tag
-        id: fetch_release
+      - name: Download Release Tag
+        uses: actions/download-artifact@v4
+        with:
+          name: release-tag
+
+      - name: Read Release Tag
         run: |
-          RELEASE_TAG=$(gh release view --json tagName -q ".tagName" || echo "")
-          if [ -z "$RELEASE_TAG" ]; then
-            echo "Error: No release tag found"
+          IMAGE_TAG=$(cat release_tag.txt)
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "Error: No release tag found!"
             exit 1
           fi
-          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -111,22 +145,34 @@ jobs:
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push Docker Images
+      - name: Build Base Image Once
+        run: |
+          echo "Building base image once with tag: $IMAGE_TAG"
+          docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" -f ./Dockerfile --load .
+
+      - name: Tag and Push Multi-Architecture Images for Each Service
         run: |
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-              repo_url="$ECR_REPO_URL/solidroam-$service-f1"
-              full_image_url_with_tag="$repo_url:$RELEASE_TAG"
+              echo "Tagging image for $service from the base image"
+              docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG"
 
-              echo "Building multi-architecture image for $service with tag: $RELEASE_TAG"
+              for farm in $FARMS; do
+                  repo_url="$ECR_REPO_URL/solidroam-$service-$farm"
+                  full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
-              docker buildx build --platform linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
+                  echo "Tagging image for farm $farm"
+                  docker tag "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" "$full_image_url_with_tag"
 
-              echo "Pushed $full_image_url_with_tag to ECR."
+                  echo "Pushing image for $service to $repo_url"
+                  docker push "$full_image_url_with_tag"
+
+                  echo "Pushed image for $service to ECR: $full_image_url_with_tag"
+              done
           done
 
-  tag-and-release:
-    name: Tag and Create Release
-    runs-on: ubuntu-latest
+  publish-release:
+    name: Tag and Publish GitHub Release
+    runs-on: ubuntu-latest-m
     needs: build-and-deploy
     permissions:
       contents: write
@@ -138,24 +184,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Update Release Drafter Draft
-        uses: release-drafter/release-drafter@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download Release Tag
+        uses: actions/download-artifact@v4
+        with:
+          name: release-tag
 
-      - name: Fetch Latest Draft Release Tag
-        id: fetch_release
+      - name: Read Release Tag
+        run: echo "RELEASE_TAG=$(cat release_tag.txt)" >> $GITHUB_ENV
+
+      - name: Push Git Tag
         run: |
-          RELEASE_TAG=$(gh release view --json tagName -q ".tagName" || echo "")
-          if [ -z "$RELEASE_TAG" ]; then
-            echo "Error: No draft release found"
-            exit 1
-          fi
-          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
 
-      - name: Publish GitHub Release
-        run: gh release edit "$RELEASE_TAG" --draft=false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Draft Release
+        run: |
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          gh release edit "$RELEASE_TAG" --draft=false
