@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from django.conf import settings
 from ninja import Schema, Field
 from typing import List, Optional
@@ -9,6 +11,9 @@ from ocpi22 import choices
 from ocpi22.choices import OCPICapabilityEnum
 from ocpi22.ocpi.util import Ocpi
 import generic.countries
+
+
+class OpeningTimes(Schema): ...
 
 
 class GeoLocation(Schema):
@@ -31,19 +36,19 @@ class Connector(Schema):
 
     @field_validator("standard")
     def validate_standard(cls, value):
-        if not any(code == value for code, desc in Ocpi.STANDARD_CHOICES):
+        if not any(Ocpi.STANDARD_CHOICES_LIST):
             raise ValueError(f"{value} is not a valid standard")
         return value
 
     @field_validator("format")
     def validate_format(cls, value):
-        if not any(code == value for code, desc in Ocpi.FORMAT_CHOICES):
+        if not any(Ocpi.FORMAT_CHOICES_LIST):
             raise ValueError(f"{value} is not a valid format")
         return value
 
     @field_validator("power_type")
     def validate_power_type(cls, value):
-        if not any(code == value for code, desc in Ocpi.POWERTYPE_CHOICES_221):
+        if not any(Ocpi.POWERTYPE_CHOICES_221_LIST):
             raise ValueError(f"{value} is not a valid power_type")
         return value
 
@@ -60,7 +65,7 @@ class EVSE(Schema):
 
     @field_validator("status")
     def validate_status(cls, value):
-        if not any(code == value for code, desc in choices.EVSE_STATUS_CHOICES):
+        if not any(choices.EVSE_STATUS_CHOICES_LIST):
             raise ValueError(f"{value} is not a valid status")
         return value
 
@@ -80,7 +85,7 @@ class LocationIn(Schema):
         ..., description="List of EVSEs available at this location"
     )
     time_zone: str
-    opening_times: Optional[str] = None
+    opening_times: Optional[List[OpeningTimes]]
     parking_type: Optional[str] = None
     facilities: Optional[OCPICapabilityEnum] = None
     time_zone: Optional[str] = None
@@ -97,4 +102,12 @@ class LocationIn(Schema):
     def validate_parking_type(cls, value):
         if not any(code == value for code, name in choices.PARKING_CHOICES):
             raise ValueError(f"{value} is not a valid parking type")
+        return value
+
+    @field_validator("time_zone")
+    def validate_time_zone(cls, value):
+        try:
+            ZoneInfo(value)
+        except Exception:
+            raise ValueError(f"{value} is not a valid time zone")
         return value

@@ -508,3 +508,5 @@ EVSE_STATUS_CHOICES = (
     (RESERVED, _("Reserved for a particular EV driver")),
     (UNKNOWN, _("No status information available (also used when offline)")),
 )
+
+EVSE_STATUS_CHOICES_LIST = [code for code, desc in EVSE_STATUS_CHOICES]
