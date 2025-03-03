@@ -2,6 +2,7 @@ import functools
 import json
 import uuid
 from collections import OrderedDict
+from enum import Enum
 from urllib.parse import urljoin
 
 from logging import getLogger
@@ -387,14 +388,43 @@ class Ocpi:
         ("TESLA_S", 'Tesla "Model-S"-type'),
     )
 
-    STANDARD_CHOICES_LIST = [code for code, desc in STANDARD_CHOICES]
+    class StandardChoicesEnum(Enum):
+        IEC_62196_T2 = "IEC_62196_T2"
+        IEC_62196_T2_COMBO = "IEC_62196_T2_COMBO"
+        CHADEMO = "CHADEMO"
+        IEC_62196_T1 = "IEC_62196_T1"
+        IEC_62196_T1_COMBO = "IEC_62196_T1_COMBO"
+        IEC_62196_T3A = "IEC_62196_T3A"
+        IEC_62196_T3C = "IEC_62196_T3C"
+        DOMESTIC_A = "DOMESTIC_A"
+        DOMESTIC_B = "DOMESTIC_B"
+        DOMESTIC_C = "DOMESTIC_C"
+        DOMESTIC_D = "DOMESTIC_D"
+        DOMESTIC_E = "DOMESTIC_E"
+        DOMESTIC_F = "DOMESTIC_F"
+        DOMESTIC_G = "DOMESTIC_G"
+        DOMESTIC_H = "DOMESTIC_H"
+        DOMESTIC_I = "DOMESTIC_I"
+        DOMESTIC_J = "DOMESTIC_J"
+        DOMESTIC_K = "DOMESTIC_K"
+        DOMESTIC_L = "DOMESTIC_L"
+        IEC_60309_2_single_16 = "IEC_60309_2_single_16"
+        IEC_60309_2_three_16 = "IEC_60309_2_three_16"
+        IEC_60309_2_three_32 = "IEC_60309_2_three_32"
+        IEC_60309_2_three_64 = "IEC_60309_2_three_64"
+        PANTOGRAPH_BOTTOM_UP = "PANTOGRAPH_BOTTOM_UP"
+        PANTOGRAPH_TOP_DOWN = "PANTOGRAPH_TOP_DOWN"
+        TESLA_R = "TESLA_R"
+        TESLA_S = "TESLA_S"
 
     FORMAT_CHOICES = (
         ("SOCKET", "Socket"),
         ("CABLE", "Cable"),
     )
 
-    FORMAT_CHOICES_LIST = [code for code, desc in FORMAT_CHOICES]
+    class FormatChoicesEnum(Enum):
+        SOCKET = "SOCKET"
+        CABLE = "CABLE"
 
     POWERTYPES = dict(CHADEMO="DC", IEC_62196_T2_COMBO="DC", IEC_62196_T2="AC_3_PHASE")
 
@@ -414,7 +444,12 @@ class Ocpi:
         (x[0], x[2]) for x in _POWERTYPE_DATA
     )  # For power calculation: (('AC_1_PHASE', 1), ... )
 
-    POWERTYPE_CHOICES_221_LIST = [code for code, desc in POWERTYPE_CHOICES_221]
+    class PowerTypeEnum(Enum):
+        AC_1_PHASE = "AC_1_PHASE"
+        AC_2_PHASE = "AC_2_PHASE"
+        AC_3_PHASE = "AC_3_PHASE"
+        AC_2_PHASE_SPLIT = "AC_2_PHASE_SPLIT"
+        DC = "DC"
 
 
 class OCPIResponse(Response):

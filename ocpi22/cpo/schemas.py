@@ -8,8 +8,12 @@ from datetime import datetime
 from pydantic import constr, field_validator, conint
 
 from generic import countries
-from ocpi22 import choices
-from ocpi22.choices import OCPICapabilityEnum, OCPIFacilityEnum
+from ocpi22.choices import (
+    OCPICapabilityEnum,
+    OCPIFacilityEnum,
+    EVSEStatusEnum,
+    ParkingChoicesEnum,
+)
 from ocpi22.ocpi.util import Ocpi
 
 
@@ -40,49 +44,25 @@ class Connector(Schema):
     uid: constr(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH) = Field(
         ..., alias="id"
     )
-    standard: str
-    format: str
-    power_type: str
+    standard: Ocpi.StandardChoicesEnum
+    format: Ocpi.FormatChoicesEnum
+    power_type: Ocpi.PowerTypeEnum
     max_voltage: conint(gt=0)
     max_amperage: conint(gt=0)
     max_electric_power: Optional[conint(gt=0)] = None
     tariff_ids: Optional[List[str]] = None
     last_updated: datetime
 
-    @field_validator("standard")
-    def validate_standard(cls, value):
-        if value not in Ocpi.STANDARD_CHOICES_LIST:
-            raise ValueError(f"{value} is not a valid standard")
-        return value
-
-    @field_validator("format")
-    def validate_format(cls, value):
-        if value not in Ocpi.FORMAT_CHOICES_LIST:
-            raise ValueError(f"{value} is not a valid format")
-        return value
-
-    @field_validator("power_type")
-    def validate_power_type(cls, value):
-        if value not in Ocpi.POWERTYPE_CHOICES_221_LIST:
-            raise ValueError(f"{value} is not a valid power_type")
-        return value
-
 
 class EVSE(Schema):
     uid: constr(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     evse_id: constr(min_length=7, max_length=48)
-    status: str
+    status: EVSEStatusEnum
     last_updated: datetime
     connectors: List[Connector] = Field(
         ..., description="List of connectors for this EVSE"
     )
     capabilities: Optional[List[OCPICapabilityEnum]] = None
-
-    @field_validator("status")
-    def validate_status(cls, value):
-        if value not in choices.EVSE_STATUS_CHOICES_LIST:
-            raise ValueError(f"{value} is not a valid status")
-        return value
 
 
 class LocationIn(Schema):
@@ -103,7 +83,7 @@ class LocationIn(Schema):
     )
     time_zone: str
     opening_times: Optional[OpeningTimes] = None
-    parking_type: Optional[str] = None
+    parking_type: Optional[ParkingChoicesEnum] = None
     facilities: Optional[List[OCPIFacilityEnum]] = None
     time_zone: Optional[str] = None
     charging_when_closed: Optional[bool] = False
@@ -113,12 +93,6 @@ class LocationIn(Schema):
     def validate_country(cls, value):
         if value not in countries.COUNTRIES_ISO_3_SET:
             raise ValueError(f"{value} is not a valid country")
-        return value
-
-    @field_validator("parking_type")
-    def validate_parking_type(cls, value):
-        if value not in choices.PARKING_CHOICES_LIST:
-            raise ValueError(f"{value} is not a valid parking type")
         return value
 
     @field_validator("time_zone")

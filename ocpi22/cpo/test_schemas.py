@@ -106,7 +106,7 @@ def test_location_in_schema_none_country_raises_validation_error(location_data):
 
 def test_location_in_schema_invalid_parking_type_raises_value_error(location_data):
     location_data["parking_type"] = "INVALID"
-    with pytest.raises(ValueError, match="INVALID is not a valid parking type"):
+    with pytest.raises(ValidationError):
         LocationIn(**location_data)
 
 
@@ -117,7 +117,7 @@ def test_evse_schema_valid_data(evse_data):
 
 def test_evse_schema_invalid_status_raises_value_error(evse_data):
     evse_data["status"] = "INVALID"
-    with pytest.raises(ValueError, match="INVALID is not a valid status"):
+    with pytest.raises(ValidationError):
         EVSE(**evse_data)
 
 
@@ -134,7 +134,7 @@ def test_connector_schema_valid_data(connector_data):
 
 def test_connector_schema_invalid_standard_raises_value_error(connector_data):
     connector_data["standard"] = "INVALID"
-    with pytest.raises(ValueError, match="INVALID is not a valid standard"):
+    with pytest.raises(ValidationError):
         Connector(**connector_data)
 
 
@@ -146,7 +146,7 @@ def test_connector_schema_none_standard_raises_validation_error(connector_data):
 
 def test_connector_schema_invalid_format_raises_value_error(connector_data):
     connector_data["format"] = "INVALID"
-    with pytest.raises(ValueError, match="INVALID is not a valid format"):
+    with pytest.raises(ValidationError):
         Connector(**connector_data)
 
 
@@ -158,7 +158,7 @@ def test_connector_schema_none_format_raises_validation_error(connector_data):
 
 def test_connector_schema_invalid_power_type_raises_value_error(connector_data):
     connector_data["power_type"] = "INVALID"
-    with pytest.raises(ValueError, match="INVALID is not a valid power_type"):
+    with pytest.raises(ValidationError):
         Connector(**connector_data)
 
 
