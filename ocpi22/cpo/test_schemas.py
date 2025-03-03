@@ -67,27 +67,6 @@ def invalid_type(location_data):
     return location_data
 
 
-def test():
-    filename = [
-        "location_example",
-        "location_example_added_connector",
-        "location_example_added_evse",
-        "location_example_parking_garage_opening_hours",
-        "location_example_parking_garage_opening_hours_bad_power_type",
-        "location_example_uc2_destination_charger",
-        "location_example_uc3_destination_charger_not_published",
-        "location_example_uc4_limited_visibility",
-        "location_example_uc5_home_charge_point",
-    ]
-
-    for file in filename:
-        print(type(load_example(f"data/examples/{file}.json")))
-        print(load_example(f"data/examples/{file}.json"))
-
-        data = load_example(f"data/examples/{file}.json")
-        LocationIn(**data)
-
-
 def test_location_in_schema_valid_data_does_not_raise_validation_error():
     data = load_example("data/examples/location_example.json")
     location = LocationIn(**data)
