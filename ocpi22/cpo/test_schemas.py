@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from ocpi22.cpo.schemas import LocationIn, EVSE, Connector
+from ocpi22.test_tariff_location_and_evse import load_example
 
 
 @pytest.fixture
@@ -66,9 +67,51 @@ def invalid_type(location_data):
     return location_data
 
 
-def test_location_in_schema_valid_data(location_data):
-    location = LocationIn(**location_data)
+def test():
+    filename = [
+        "location_example",
+        "location_example_added_connector",
+        "location_example_added_evse",
+        "location_example_parking_garage_opening_hours",
+        "location_example_parking_garage_opening_hours_bad_power_type",
+        "location_example_uc2_destination_charger",
+        "location_example_uc3_destination_charger_not_published",
+        "location_example_uc4_limited_visibility",
+        "location_example_uc5_home_charge_point",
+    ]
+
+    for file in filename:
+        print(type(load_example(f"data/examples/{file}.json")))
+        print(load_example(f"data/examples/{file}.json"))
+
+        data = load_example(f"data/examples/{file}.json")
+        LocationIn(**data)
+
+
+def test_location_in_schema_valid_data_does_not_raise_validation_error():
+    data = load_example("data/examples/location_example.json")
+    location = LocationIn(**data)
     assert location.country == "BEL"
+
+
+def test_location_in_schema_valid_data_with_evse_does_not_raise_validation_error():
+    data = load_example("data/examples/location_example_added_evse.json")
+    location = LocationIn(**data)
+    assert location.country == "BEL"
+
+
+def test_location_in_schema_valid_data_with_connector_does_not_raise_validation_error():
+    data = load_example("data/examples/location_example_added_connector.json")
+    location = LocationIn(**data)
+    assert location.country == "BEL"
+
+
+def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validation_error():
+    data = load_example(
+        "data/examples/location_example_parking_garage_opening_hours.json"
+    )
+    location = LocationIn(**data)
+    assert location.country == "SWE"
 
 
 def test_location_in_schema_invalid_country_raises_value_error(invalid_country):
