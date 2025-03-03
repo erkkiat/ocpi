@@ -5,8 +5,6 @@ import secrets
 import urllib.parse
 from abc import ABC
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from datetime import datetime
 from functools import lru_cache
 from logging import getLogger
 from typing import Optional, Any, Union
@@ -22,11 +20,9 @@ import pycountry
 from django.conf import settings
 from django.core.validators import RegexValidator
 from pytz import timezone
-from requests import Response
 from rest_framework import serializers, versioning
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.renderers import BrowsableAPIRenderer
 from rest_framework.serializers import Serializer
 from urllib3.util import Url
 
@@ -65,12 +61,6 @@ def clear_empty(dict_with_possibly_empty_values: dict) -> Union[OrderedDict, dic
         if value or value == 0.0 or value == 0:
             result[key] = value
     return result
-
-
-def get_total_cost(obj):
-    return clear_empty(
-        dict(excl_vat=obj.total_cost_excl_vat, incl_vat=obj.total_cost_incl_vat)
-    )
 
 
 def hours_minutes(hours_float: float) -> str:
@@ -182,32 +172,7 @@ CURRENCY_CHOICES = (
     ("UAH", "Ukrainian hryvnia"),
 )
 
-VALID_CURRENCY_CODE_SET = {
-    "PHP",
-    "CZK",
-    "RUB",
-    "USD",
-    "TRY",
-    "HUF",
-    "RSD",
-    "UAH",
-    "MDL",
-    "HRK",
-    "BGN",
-    "CHF",
-    "GBP",
-    "RON",
-    "SEK",
-    "EUR",
-    "BYN",
-    "NOK",
-    "PLN",
-    "MKD",
-    "BAM",
-    "DKK",
-    "ALL",
-    "ISK",
-}
+VALID_CURRENCY_CODE_SET = [value[0] for value in CURRENCY_CHOICES]
 
 
 def get_currency_choices() -> dict:
@@ -332,19 +297,6 @@ def calculate_partition(coordinate):
     if not coordinate:
         return 0
     return int(float(coordinate) * 100.0)
-
-
-# def _get_identities_list(source: dict=os.environ) -> [str]:
-#     """
-#     Get the country_codes and party_ids for different roles of this Platform
-#
-#     >>> _get_identities_list(source=dict(CPO='FI*CPO', EMSP='FI*MSP'))
-#     ['FI*CPO', 'FI*MSP']
-#
-#     @param source: For testing purposes
-#     @return: List of identity strings
-#     """
-#     return list(filter(None, [source.get(i) for i in role_options if source.get(i)]))
 
 
 @cachetools.cached(cache=cachetools.Cache(maxsize=len(ocpi_identities)))
@@ -480,78 +432,9 @@ class ParseUrl:
         self.url = urllib.parse.urlunparse(new_url)
 
 
-class TimePeriod:
-    seconds = 0
-    start = None
-    end = None
-
-    def __init__(
-        self,
-        session_start: datetime,
-        session_end: datetime,
-        tariff_start: datetime,
-        tariff_end: datetime,
-    ):
-        """
-        Calculate how many seconds two time periods are overlapping. Used for calculating how much of the
-        charging session is within each type of Tariff time period
-
-        @return: How many Seconds of this session is within this Tariff
-
-        >>> from datetime import datetime, timedelta
-        >>> dt = datetime(2022, 1, 1, 0, 0)
-        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=60), dt + timedelta(seconds=3*60), )
-        2022-01-01 00:01:00 - 2022-01-01 00:02:00, 60
-        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=10*60), dt + timedelta(seconds=1*60), )
-        2022-01-01 00:00:00 - 2022-01-01 00:01:00, 60
-        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=2*60), dt + timedelta(seconds=3*60), )
-        -
-        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=2*60), dt - timedelta(seconds=60), )
-        -
-        """
-
-        self.seconds = int(
-            max(
-                min(
-                    session_end - tariff_start, tariff_end - session_start
-                ).total_seconds(),
-                0,
-            )
-        )
-        if self.seconds:
-            self.start = max(session_start, tariff_start)
-            self.end = min(session_end, tariff_end)
-
-    def __str__(self):
-        if not self.seconds:
-            return "-"
-        return f"{self.start} - {self.end}, {self.seconds}"
-
-    def __int__(self):
-        return self.seconds
-
-    def __bool__(self):
-        return bool(self.seconds)
-
-    def __repr__(self):
-        return self.__str__()
-
-
 uid_validator = RegexValidator(
     r"^[0-9a-zA-Z\*\-]+$", message="Numbers and letters only"
 )
-
-
-class OnlyRawBrowsableAPIRenderer(BrowsableAPIRenderer):
-    def render_form_for_serializer(self, serializer):
-        return ""
-
-
-@dataclass(eq=True, frozen=True)
-class MyCommandResponse:
-    success: bool
-    message: str
-    response: Response = field(default=None)
 
 
 class MyMetadata(SimpleMetadata):

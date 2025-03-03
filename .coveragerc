@@ -13,6 +13,9 @@ omit = */migrations/*
        manage.py
        */admin.py
        */__init__.py
+       */base_task_services.py
+       */testutil.py
+       */terraform/*
 
 [report]
 omit = */migrations/*
@@ -29,6 +32,9 @@ omit = */migrations/*
        manage.py
        */admin.py
        */__init__.py
+       */base_task_services.py
+       */testutil.py
+       */terraform/*
 
 exclude_lines =
     pragma: no cover
