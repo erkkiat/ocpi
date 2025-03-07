@@ -17,4 +17,4 @@ def test_cdr_send_update_url_to_be_without_path_components(
         cdr.send_updates()
 
     assert mock_send.called_once()
-    assert mock_send.call_args.args[1] == "https://example.com/ocpi/cdrs"
+    assert mock_send.call_args.args[1] == "https://localhost/ocpi/cdrs"

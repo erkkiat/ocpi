@@ -62,7 +62,6 @@ from util import reverse
 
 from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.models import Authorization
-from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import (
     TokenSerializer,
@@ -442,7 +441,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("eccb8dd9-4189-433e-b100-cc0945dd17dc", "AVAILABLE")],
+                [("ECCB8DD9-4189-433E-B100-CC0945DD17DC", "AVAILABLE")],
             ),
             (
                 "location_example_parking_garage_opening_hours_bad_power_type",
@@ -464,7 +463,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
+                [("FD855359-BC81-47BB-BB89-849AE3DAC89E", "AVAILABLE")],
             ),
             (
                 "location_example_uc3_destination_charger_not_published",
@@ -475,7 +474,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
+                [("FD855359-BC81-47BB-BB89-849AE3DAC89E", "AVAILABLE")],
             ),
             # Todo: Implement parking_restrictions
             (
@@ -487,7 +486,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("8c1b3487-61ac-40a7-a367-21eee99dbd90", "AVAILABLE")],
+                [("8C1B3487-61AC-40A7-A367-21EEE99DBD90", "AVAILABLE")],
             ),
             # Todo: Check for publish_allowed_to below
             (
@@ -499,7 +498,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("4534ad5f-45be-428b-bfd0-fa489dda932d", "AVAILABLE")],
+                [("4534AD5F-45BE-428B-BFD0-FA489DDA932D", "AVAILABLE")],
             ),
         )
 
@@ -578,7 +577,7 @@ class ApiPutTests(TestCase):
                     (x.get("json").get("evse_id"), x.get("json").get("status"))
                     for x in method_calls
                 ]
-                assert calls == expected_webhook_parameters, filename
+                assert sorted(calls) == expected_webhook_parameters, filename
 
     def test_put_tariff(self):
         url = reverse("tariff-list")
@@ -657,7 +656,7 @@ class ApiPutTests(TestCase):
                     Party(country_code, party_id),
                     role=OcpiRolesEnum.CPO,
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     credentials=self.credentials,
                 )
 
@@ -888,7 +887,7 @@ class ApiPutTests(TestCase):
                 ocpi_master = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     role=OcpiRolesEnum.CPO,
                     credentials=self.credentials,
                 )
@@ -983,7 +982,7 @@ class ApiPutTests(TestCase):
                 credentialsrole = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     role=OcpiRolesEnum.EMSP,
                     credentials=self.credentials,
                 )
@@ -3606,20 +3605,6 @@ def create_token(token_id, party: Party, user=None) -> Token:
         defaults=dict(customer=user),
     )
     return token
-
-
-def send_create_user(data):
-    request = api_factory.post(reverse("user-register"))
-    request.data = data
-    return UserViewSet().register(request)
-
-
-def post_cdr(data):
-    request = api_factory.post(reverse("cdr-list"))
-    request.data = data
-    request.user = get_fake_admin()
-    request.version = "2.2.1"
-    return CdrViewSet().post(request)
 
 
 class TestInvoiceReportView(TestCase):

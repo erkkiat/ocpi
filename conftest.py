@@ -24,24 +24,36 @@ def client():
 
 
 @pytest.fixture
-def normal_user_client(db):
+def super_user():
+    return SuperUserFactory()
+
+
+@pytest.fixture
+def authenticated_user():
+    return UserFactory()
+
+
+@pytest.fixture
+def admin_user():
+    return StaffUserFactory()
+
+
+@pytest.fixture
+def authenticated_user_client(db, authenticated_user):
     client = APIClient()
-    normal_user = UserFactory()
-    client.force_authenticate(user=normal_user)
+    client.force_authenticate(user=authenticated_user)
     return client
 
 
 @pytest.fixture
-def admin_user_client(db):
-    admin_user = StaffUserFactory()
+def admin_user_client(db, admin_user):
     client = APIClient()
     client.force_authenticate(user=admin_user)
     return client
 
 
 @pytest.fixture
-def super_user_client(db):
-    super_user = SuperUserFactory()
+def super_user_client(db, super_user):
     client = APIClient()
     client.force_authenticate(user=super_user)
     return client
@@ -53,8 +65,7 @@ def msp_credentials_with_endpoints():
 
     credentials = CredentialsFactory(theirs="ABC", ours="DEF")
     business_details = BusinessDetailsFactory(name="Test MSP")
-    CredentialsRoleFactory(
-        credentials=credentials,
+    credentialsrole = CredentialsRoleFactory(
         role="EMSP",
         country_code="FI",
         party_id="MSP",
@@ -74,7 +85,7 @@ def msp_credentials_with_endpoints():
         )
     ]
 
-    return credentials
+    return credentialsrole.credentials
 
 
 @pytest.fixture
@@ -86,7 +97,7 @@ def default_credentials():
         credentials=credentials,
         identifier=OcpiModuleEnum.CDRS.value,
         role=EndpointRoleEnum.RECEIVER,
-        url="https://example.com/ocpi/cdrs",
+        url="https://localhost/ocpi/cdrs",
     )
 
     return credentials

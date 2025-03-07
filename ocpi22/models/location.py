@@ -259,9 +259,6 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
             util.reverse("admin:ocpi22_location_change", args=(self.pk,))
         )
 
-    def get_quick_url(self):
-        return util.reverse("quick-location-by-id", args=[self.uid])
-
     def street_address(self):
         return f"{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}"
 
@@ -309,6 +306,8 @@ class Evse(models.Model, ModelUtilMixin):
         constraints = [
             models.UniqueConstraint(fields=["uid", "location"], name="evse_party_uid"),
         ]
+
+    upper_case_fields = ["evse_id", "uid"]
 
     objects = PartnerManager()
 
@@ -429,6 +428,7 @@ class Evse(models.Model, ModelUtilMixin):
         )
 
     def save(self, *args, **kwargs):
+        self.change_fields_to_upper_case()
         if self.location.is_ours():
             self.last_updated = datetime.now(pytz.utc)
             self.location.last_updated = datetime.now(pytz.utc)
