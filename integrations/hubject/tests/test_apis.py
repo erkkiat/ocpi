@@ -1,6 +1,7 @@
 import pytest
 from django.conf import settings
 import responses
+from django.urls import reverse
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Connector, Location
@@ -24,6 +25,64 @@ def connector_without_tariff():
 
 
 class TestHubjectApi:
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "api_client, expected_status_code",
+        [
+            pytest.param("client", 401, id="Unauthenticated user getting unauthorized"),
+            pytest.param(
+                "authenticated_user_client",
+                200,
+                id="Authenticated user can access evse full load api",
+            ),
+            pytest.param(
+                "admin_user_client", 200, id="Admin user can access evse full load api"
+            ),
+            pytest.param(
+                "super_user_client", 200, id="Super user can access evse full load api"
+            ),
+        ],
+    )
+    def test_evse_full_load_api_can_be_accessed_with_proper_credentials(
+        self, api_client, expected_status_code, request
+    ):
+        url = reverse("hubject-api:hubject-evse-full-load")
+        client = request.getfixturevalue(api_client)
+
+        response = client.post(url)
+        assert response.status_code == expected_status_code
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "api_client, expected_status_code",
+        [
+            pytest.param("client", 401, id="Unauthenticated user getting unauthorized"),
+            pytest.param(
+                "authenticated_user_client",
+                200,
+                id="Authenticated user can access pricing products full load api",
+            ),
+            pytest.param(
+                "admin_user_client",
+                200,
+                id="Admin user can access pricing products full load api",
+            ),
+            pytest.param(
+                "super_user_client",
+                200,
+                id="Super user can access pricing products full load api",
+            ),
+        ],
+    )
+    def test_pricing_products_full_load_api_can_be_accessed_with_proper_credentials(
+        self, api_client, expected_status_code, request
+    ):
+        url = reverse("hubject-api:hubject-pricing-full-load")
+        client = request.getfixturevalue(api_client)
+
+        response = client.post(url)
+        assert response.status_code == expected_status_code
+
     @pytest.mark.django_db
     @responses.activate
     def test_evse_full_load_api_returns_200_OK(

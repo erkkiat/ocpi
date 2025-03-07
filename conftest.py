@@ -1,3 +1,5 @@
+from base64 import b64encode
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -39,21 +41,33 @@ def admin_user():
 @pytest.fixture
 def authenticated_user_client(db, authenticated_user):
     client = APIClient()
-    client.force_authenticate(user=authenticated_user)
+    credentials = b64encode(
+        f"{authenticated_user.username}:j0s9J117uS126dNr915zIj7d1J10UJ2f".encode()
+    ).decode("utf-8")
+    auth_headers = {"HTTP_AUTHORIZATION": f"Basic {credentials}"}
+    client.defaults.update(auth_headers)
     return client
 
 
 @pytest.fixture
 def admin_user_client(db, admin_user):
     client = APIClient()
-    client.force_authenticate(user=admin_user)
+    credentials = b64encode(
+        f"{admin_user.username}:j0s9J117uS126dNr915zIj7d1J10UJ2f".encode()
+    ).decode("utf-8")
+    auth_headers = {"HTTP_AUTHORIZATION": f"Basic {credentials}"}
+    client.defaults.update(auth_headers)
     return client
 
 
 @pytest.fixture
 def super_user_client(db, super_user):
     client = APIClient()
-    client.force_authenticate(user=super_user)
+    credentials = b64encode(
+        f"{super_user.username}:j0s9J117uS126dNr915zIj7d1J10UJ2f".encode()
+    ).decode("utf-8")
+    auth_headers = {"HTTP_AUTHORIZATION": f"Basic {credentials}"}
+    client.defaults.update(auth_headers)
     return client
 
 
