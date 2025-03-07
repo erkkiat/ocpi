@@ -14,7 +14,7 @@ from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, JSONField
 from django.db.models.signals import pre_save, pre_delete, post_save
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
@@ -44,6 +44,11 @@ from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 
 is_hub_cache = TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24 * 60 * 60)
+
+
+def validate_allowed_locations(value: None | list[str]) -> None:
+    if value is not None and not isinstance(value, list):
+        raise ValidationError("This field must be None or a list of values.")
 
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
@@ -121,6 +126,18 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     # Connections are only accepted for valid Credentials
     valid = models.BooleanField(default=True, verbose_name=_("Activated"))
 
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(
+        null=True, blank=True, verbose_name=_("Last updated")
+    )
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    allowed_locations = JSONField(
+        default=list, null=True, blank=True, validators=[validate_allowed_locations]
+    )
+
     def soft_delete(self):
         self.valid = False
         self.save(update_fields=["valid"])
@@ -133,15 +150,6 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.ours = ""
         self.url = ""
         self.save(update_fields=["ours", "theirs", "url"])
-
-    # The OCPI field writable and maintained by object owner
-    last_updated = models.DateTimeField(
-        null=True, blank=True, verbose_name=_("Last updated")
-    )
-
-    # Django automatic dates
-    updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
-    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
     def __str__(self):
         return self.name
@@ -337,6 +345,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
         related_name="agreed_parties_backwards",
         verbose_name=_("Parties with agreements"),
     )
+
     # Todo: Agreed parties should show on both sides, if CPO has an agreement with MSP, then MSP should also see it (in admin)
 
     class ocpi_master:
