@@ -86,7 +86,7 @@ class TestHubjectApi:
     @pytest.mark.django_db
     @responses.activate
     def test_evse_full_load_api_returns_200_OK(
-        self, client, hubject_successful_response, helsinki_location
+        self, authenticated_user_client, hubject_successful_response, helsinki_location
     ):
         responses.add(
             responses.POST,
@@ -96,14 +96,16 @@ class TestHubjectApi:
         )
 
         url = "/api/hubject/2.3/evses/full-load/"
-        response = client.post(url)
+        response = authenticated_user_client.post(url)
         assert response.status_code == 200
         assert response.json() == hubject_successful_response
 
     @pytest.mark.django_db
-    def test_evse_full_load_api_returns_no_evse_records_found(self, client):
+    def test_evse_full_load_api_returns_no_evse_records_found(
+        self, authenticated_user_client
+    ):
         url = "/api/hubject/2.3/evses/full-load/"
-        response = client.post(url)
+        response = authenticated_user_client.post(url)
         assert response.status_code == 200
         assert response.json() == {
             "success": False,
@@ -112,10 +114,10 @@ class TestHubjectApi:
 
     @pytest.mark.django_db
     def test_evse_full_load_api_returns_no_tariffs_found_for_evses(
-        self, client, connector_without_tariff
+        self, authenticated_user_client, connector_without_tariff
     ):
         url = "/api/hubject/2.3/evses/full-load/"
-        response = client.post(url)
+        response = authenticated_user_client.post(url)
         assert response.status_code == 200
         assert response.json() == {
             "success": False,
@@ -125,7 +127,7 @@ class TestHubjectApi:
     @responses.activate
     @pytest.mark.django_db
     def test_start_pricing_products_full_load_returns_200_OK(
-        self, client, hubject_successful_response, smp1_solid_tariff
+        self, authenticated_user_client, hubject_successful_response, smp1_solid_tariff
     ):
         responses.add(
             responses.POST,
@@ -135,18 +137,18 @@ class TestHubjectApi:
         )
 
         url = "/api/hubject/2.3/pricing-products/full-load/"
-        response = client.post(url)
+        response = authenticated_user_client.post(url)
         assert response.status_code == 200
         assert response.json() == hubject_successful_response
 
     @pytest.mark.django_db
     def test_start_pricing_products_full_load_returns_no_solid_tariffs_found(
-        self, client, hubject_successful_response
+        self, authenticated_user_client, hubject_successful_response
     ):
         party = get_our_party(OcpiRolesEnum.CPO)
 
         url = "/api/hubject/2.3/pricing-products/full-load/"
-        response = client.post(url)
+        response = authenticated_user_client.post(url)
         assert response.status_code == 200
         assert response.json() == {
             "success": False,
