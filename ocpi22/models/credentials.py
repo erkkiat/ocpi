@@ -156,6 +156,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
 
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
+        self.full_clean()
         return super(self.__class__, self).save(*args, **kwargs)
 
     def post_process_after_update_or_create(self, *_args, **_kwargs) -> None:
