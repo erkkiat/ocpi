@@ -176,7 +176,7 @@ class TestMqttServices:
                         "status": "ACTIVE",
                         "last_updated": "2025-02-11T09:00:00Z",
                     },
-                    "https://example.com/ocpi/sessions/FI/CPO/94f5993d-232a-4916-a801-4e408c24c9cc",
+                    "https://localhost/ocpi/sessions/FI/CPO/94f5993d-232a-4916-a801-4e408c24c9cc",
                     "QUJD",
                     to=Party(country_code="FI", party_id="MSP"),
                     sender=Party(country_code="FI", party_id="CPO"),

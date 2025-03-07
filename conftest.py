@@ -70,6 +70,7 @@ def msp_credentials_with_endpoints():
         country_code="FI",
         party_id="MSP",
         business_details=business_details,
+        credentials=credentials,
     )
 
     [
