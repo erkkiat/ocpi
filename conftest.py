@@ -59,24 +59,15 @@ def super_user_client(db, super_user):
 
 @pytest.fixture
 def cdr_receiver_credentials():
-    credentials = CredentialsFactory()
     business_details = BusinessDetailsFactory(name="Test MSP")
-    CredentialsRoleFactory(
-        credentials=credentials,
+    credentialsrole = CredentialsRoleFactory(
         role="EMSP",
         country_code="FI",
         party_id="MSP",
         business_details=business_details,
     )
 
-    EndpointFactory(
-        credentials=credentials,
-        identifier=OcpiModuleEnum.CDRS.value,
-        role=EndpointRoleEnum.RECEIVER,
-        url="https://localhost/ocpi/cdrs",
-    )
-
-    return credentials
+    return credentialsrole.credentials
 
 
 @pytest.fixture

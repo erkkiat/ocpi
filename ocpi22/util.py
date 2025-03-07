@@ -5,8 +5,6 @@ import secrets
 import urllib.parse
 from abc import ABC
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from datetime import datetime
 from functools import lru_cache
 from logging import getLogger
 from typing import Optional, Any, Union
@@ -21,30 +19,22 @@ import cachetools
 import pycountry
 from django.conf import settings
 from django.core.validators import RegexValidator
-from django.utils.module_loading import import_string
 from pytz import timezone
-from requests import Response
 from rest_framework import serializers, versioning
 from rest_framework.metadata import SimpleMetadata
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.renderers import BrowsableAPIRenderer
 from rest_framework.serializers import Serializer
 from urllib3.util import Url
-from urllib.parse import urljoin
 
 import generic.countries
-from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
 from ocpi22.ocpi.partners import get_partners
 from ocpi22.ocpi.util import OCPIResponse
-from ocpi22.routing import find_route
-from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
-    get_our_party,
     ocpi_platform,
 )
 from ocpiconnector.party import Party
-from util import format_url, RedisStore, redis_store, with_trailing_slash
+from util import format_url, RedisStore, redis_store
 
 
 logger = getLogger(__name__)
@@ -71,12 +61,6 @@ def clear_empty(dict_with_possibly_empty_values: dict) -> Union[OrderedDict, dic
         if value or value == 0.0 or value == 0:
             result[key] = value
     return result
-
-
-def get_total_cost(obj):
-    return clear_empty(
-        dict(excl_vat=obj.total_cost_excl_vat, incl_vat=obj.total_cost_incl_vat)
-    )
 
 
 def hours_minutes(hours_float: float) -> str:
@@ -188,32 +172,7 @@ CURRENCY_CHOICES = (
     ("UAH", "Ukrainian hryvnia"),
 )
 
-VALID_CURRENCY_CODE_SET = {
-    "PHP",
-    "CZK",
-    "RUB",
-    "USD",
-    "TRY",
-    "HUF",
-    "RSD",
-    "UAH",
-    "MDL",
-    "HRK",
-    "BGN",
-    "CHF",
-    "GBP",
-    "RON",
-    "SEK",
-    "EUR",
-    "BYN",
-    "NOK",
-    "PLN",
-    "MKD",
-    "BAM",
-    "DKK",
-    "ALL",
-    "ISK",
-}
+VALID_CURRENCY_CODE_SET = [value[0] for value in CURRENCY_CHOICES]
 
 
 def get_currency_choices() -> dict:
@@ -338,19 +297,6 @@ def calculate_partition(coordinate):
     if not coordinate:
         return 0
     return int(float(coordinate) * 100.0)
-
-
-# def _get_identities_list(source: dict=os.environ) -> [str]:
-#     """
-#     Get the country_codes and party_ids for different roles of this Platform
-#
-#     >>> _get_identities_list(source=dict(CPO='FI*CPO', EMSP='FI*MSP'))
-#     ['FI*CPO', 'FI*MSP']
-#
-#     @param source: For testing purposes
-#     @return: List of identity strings
-#     """
-#     return list(filter(None, [source.get(i) for i in role_options if source.get(i)]))
 
 
 @cachetools.cached(cache=cachetools.Cache(maxsize=len(ocpi_identities)))
@@ -486,78 +432,9 @@ class ParseUrl:
         self.url = urllib.parse.urlunparse(new_url)
 
 
-class TimePeriod:
-    seconds = 0
-    start = None
-    end = None
-
-    def __init__(
-        self,
-        session_start: datetime,
-        session_end: datetime,
-        tariff_start: datetime,
-        tariff_end: datetime,
-    ):
-        """
-        Calculate how many seconds two time periods are overlapping. Used for calculating how much of the
-        charging session is within each type of Tariff time period
-
-        @return: How many Seconds of this session is within this Tariff
-
-        >>> from datetime import datetime, timedelta
-        >>> dt = datetime(2022, 1, 1, 0, 0)
-        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=60), dt + timedelta(seconds=3*60), )
-        2022-01-01 00:01:00 - 2022-01-01 00:02:00, 60
-        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=10*60), dt + timedelta(seconds=1*60), )
-        2022-01-01 00:00:00 - 2022-01-01 00:01:00, 60
-        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt + timedelta(seconds=2*60), dt + timedelta(seconds=3*60), )
-        -
-        >>> TimePeriod(dt, dt + timedelta(seconds=2*60), dt - timedelta(seconds=2*60), dt - timedelta(seconds=60), )
-        -
-        """
-
-        self.seconds = int(
-            max(
-                min(
-                    session_end - tariff_start, tariff_end - session_start
-                ).total_seconds(),
-                0,
-            )
-        )
-        if self.seconds:
-            self.start = max(session_start, tariff_start)
-            self.end = min(session_end, tariff_end)
-
-    def __str__(self):
-        if not self.seconds:
-            return "-"
-        return f"{self.start} - {self.end}, {self.seconds}"
-
-    def __int__(self):
-        return self.seconds
-
-    def __bool__(self):
-        return bool(self.seconds)
-
-    def __repr__(self):
-        return self.__str__()
-
-
 uid_validator = RegexValidator(
     r"^[0-9a-zA-Z\*\-]+$", message="Numbers and letters only"
 )
-
-
-class OnlyRawBrowsableAPIRenderer(BrowsableAPIRenderer):
-    def render_form_for_serializer(self, serializer):
-        return ""
-
-
-@dataclass(eq=True, frozen=True)
-class MyCommandResponse:
-    success: bool
-    message: str
-    response: Response = field(default=None)
 
 
 class MyMetadata(SimpleMetadata):
@@ -776,61 +653,3 @@ class CountryCodeField(CiStringChoiceField):
 class PartyIdField(CiStringField):
     def __init__(self, *args, **kwargs):
         super().__init__(required=True, max_length=3, **kwargs)
-
-
-def fetch_object(
-    uid: str, party: Party = None, credentials=None, ocpi_module: OcpiModuleEnum = None
-) -> bool:
-    """
-    Find and fetch an object over the OCPI network. Used primarily when somebody PUTs an object which refers to
-    a missing Tariff or Location.
-
-    @param uid: The UID or ID of the wanted object
-    @param party: The party to fetch the object from (optional to credentials)
-    @param credentials: The credentials to use for the fetch (optional to party)
-    @param ocpi_module: The OCPI module, e.g. Location, Tariff, etc.
-    @return: The fetched object
-    """
-
-    route = find_route(party or credentials, ocpi_module, role=EndpointRoleEnum.SENDER)
-    if not route:
-        logger.error(f'No route found to fetch {ocpi_module.value} with id: "{id}"')
-        return False
-    role = ocpi_module.get_owner()
-    party = party or credentials.get_party_for_role(role)
-    url = urljoin(
-        with_trailing_slash(route.url), f"{party.country_code}/{party.party_id}/{uid}"
-    )
-    our_party = get_our_party(
-        OcpiRolesEnum.EMSP
-    )  # eMSP is receiving Locations, which may have broken references
-
-    # print(f'Fetching missing {ocpi_module.value} from {party} at {url}')
-    response = send_ocpi_request(
-        data=dict(),
-        url=url,
-        token_base64=route.token_base64,
-        method="GET",
-        to_country_code=party.country_code,
-        to_party_id=party.party_id,
-        from_country_code=our_party.country_code,
-        from_party_id=our_party.party_id,
-        title="tariff",
-    )
-    data = response.get("json")
-    data = data.get("data", data)  # Do we have the actual data one level deeper?
-    version = route.version
-
-    if data:
-        viewset = import_string(ocpi_module.get_viewset())
-        from ocpi22.ocpi.auth import get_credentialsrole
-
-        credentialsrole = get_credentialsrole(credentials=None, party=party, role=role)
-        response = viewset().put(
-            request=None, data=data, credentialsrole=credentialsrole, version=version
-        )
-        if response.status_code in {200, 201}:
-            logger.info(f'Fetched missing {ocpi_module.value} with id: "{uid}"')
-            return True
-    logger.warning(f'Unable to fetch {ocpi_module.value} with id: "{uid}"')
-    return False

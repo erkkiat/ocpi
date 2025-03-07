@@ -9,10 +9,9 @@ from rest_framework import permissions
 
 from health_check import health_check_api
 
-from ocpi22 import msp
 import ocpi22.cpo.tariff
+from ocpi22 import msp
 from ocpi22.msp.map import MapViewSet
-from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import (
     OCPIRouter,
     CredentialsViewSet,
@@ -71,8 +70,7 @@ msp_router.register(
 msp_router.register(r"webhook", MspSessionWebhookViewSet, basename="msp-session")
 msp_router.register(r"webhook", MspInvoiceWebhookViewSet, basename="msp-invoicing")
 msp_router.register(r"map", MapViewSet, basename="map")
-msp_router.register(r"user", UserViewSet, basename="user")
-msp_router.register(r"cdr", msp.user.CdrViewSet, basename="msp-cdr")
+msp_router.register(r"cdr", msp.api.CdrViewSet, basename="msp-cdr")
 msp_router.register(r"payment", PaymentViewSet, basename="msp-payment")
 
 root_router = RootRouter()
