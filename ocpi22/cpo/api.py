@@ -252,18 +252,20 @@ def create_charging_periods(session: Session):
 
 def process_meter_values(
     request,
-    serializer,
     kwh,
     power=None,
     soc=None,
     session=None,
+    session_id=None,
     timestamp=None,
 ):
     next_url = reverse("chargepoint-stop-transaction")
     timestamp = timestamp or datetime.now(pytz.utc)
 
-    # We found a valid Session
-    if session and session.status == Session.ACTIVE:
+    if session_id and not session:
+        session = Session.get_if_exists(uid=session_id, raise_exception=True)
+
+    if session.status == Session.ACTIVE:
         try:
             Session.objects.prefetch_related("chargingperiods").get(pk=session.pk)
         except Session.DoesNotExist:
@@ -276,8 +278,6 @@ def process_meter_values(
         session.stop_kwh = kwh
         session.update_last_updated()
 
-        # with Timer() as t:
-        # store_meter_values(request, session, serializer.validated_data)
         session.update_charging_periods(
             Decimal(kwh) - session.start_kwh, soc, power, timestamp
         )
@@ -292,10 +292,9 @@ def process_meter_values(
             ]
         )
 
-        session_charging_periods = [
-            cp for cp in session.chargingperiods.order_by("start_date_time")
-        ]
-        session.send_updates(session_charging_periods, method="patch")
+        session.send_updates(
+            method="put"
+        )  # Until Gireve implements OCPI 2.2.1 Session PATCH
 
         messages.success(
             request,
@@ -806,9 +805,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     context={"version": request.version, "request": request},
                 )
                 if serializer.is_valid():
-                    return process_meter_values(
-                        request, serializer, **serializer.validated_data
-                    )
+                    return process_meter_values(request, **serializer.validated_data)
                 else:
                     return Response(
                         data=serializer.errors, status=status.HTTP_400_BAD_REQUEST
