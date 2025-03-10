@@ -14,12 +14,59 @@ from ocpi22.choices import (
     OCPIFacility,
     EVSEStatus,
     ParkingChoices,
+    ParkingRestriction,
+    EnvironmentalImpactCategory,
+    EnergySourceCategory,
+    TokenType,
 )
 from ocpi22.ocpi.util import Ocpi
 
 
 class BaseConfig(Schema):
     model_config = ConfigDict(extra="forbid")
+
+
+class StatusSchedule(BaseConfig):
+    period_begin: datetime
+    period_end: datetime
+    status: EVSEStatus
+
+
+class DisplayText(BaseConfig):
+    language: Annotated[str, StringConstraints(min_length=2, max_length=2)]
+    text: Annotated[str, StringConstraints(min_length=1, max_length=512)]
+
+
+class PublishTokenType(BaseConfig):
+    uid: Optional[Annotated[str, StringConstraints(max_length=36)]] = None
+    type: Optional[TokenType] = None
+    visual_number: Optional[Annotated[str, StringConstraints(max_length=64)]] = None
+    issuer: Optional[Annotated[str, StringConstraints(max_length=64)]] = None
+    group_id: Optional[Annotated[str, StringConstraints(max_length=36)]] = None
+
+
+class AdditionalGeoLocation(BaseConfig):
+    latitude: Annotated[str, StringConstraints(pattern=r"^-?\d{1,2}\.\d{5,7}$")]
+    longitude: Annotated[str, StringConstraints(pattern=r"^-?\d{1,3}\.\d{5,7}$")]
+    name: Optional[DisplayText] = None
+
+
+class EnvironmentalImpact(BaseConfig):
+    category: EnvironmentalImpactCategory
+    amount: Annotated[float, Field(...)]
+
+
+class EnergySource(BaseConfig):
+    source: EnergySourceCategory
+    percentage: Annotated[float, Field(..., ge=0, le=100)]
+
+
+class EnergyMix(BaseConfig):
+    is_green_energy: Annotated[bool, Field(...)]
+    energy_sources: Annotated[List[EnergySource], Field(...)]
+    environ_impact: Annotated[List[EnvironmentalImpact], Field(...)]
+    supplier_name: Annotated[Optional[str], Field(None, max_length=64)]
+    energy_product_name: Annotated[Optional[str], Field(None, max_length=64)]
 
 
 class OCPIImage(BaseConfig):
@@ -87,11 +134,20 @@ class EVSE(BaseConfig):
     ]
     evse_id: Annotated[str, StringConstraints(min_length=7, max_length=48)]
     status: EVSEStatus
-    last_updated: datetime
+    status_schedule: Optional[List[StatusSchedule]] = None
+    capabilities: Optional[List[OCPICapability]] = None
     connectors: List[Connector] = Field(
         ..., description="List of connectors for this EVSE"
     )
-    capabilities: Optional[List[OCPICapability]] = None
+    floor_level: Optional[Annotated[str, StringConstraints(max_length=4)]] = None
+    coordinates: Optional[GeoLocation] = None
+    physical_reference: Optional[Annotated[str, StringConstraints(max_length=16)]] = (
+        None
+    )
+    directions: Optional[List[DisplayText]] = None
+    parking_restrictions: Optional[List[ParkingRestriction]] = None
+    images: Optional[List[OCPIImage]] = None
+    last_updated: datetime
 
 
 def validate_country(value):
@@ -117,7 +173,10 @@ class Location(BaseConfig):
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ] = Field(..., alias="id")
     publish: bool
-    name: Optional[Annotated[str, StringConstraints(min_length=1)]] = None
+    publish_allowed_to: Optional[List[PublishTokenType]] = None
+    name: Optional[Annotated[str, StringConstraints(min_length=1, max_length=255)]] = (
+        None
+    )
     address: Annotated[
         str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
     ] = Field(...)
@@ -130,15 +189,19 @@ class Location(BaseConfig):
     state: Optional[Annotated[str, StringConstraints(max_length=20)]] = None
     country: Annotated[str, AfterValidator(validate_country)]
     coordinates: GeoLocation = Field(..., description="Geographical coordinates")
+    related_locations: Optional[List[AdditionalGeoLocation]] = None
+    parking_type: Optional[ParkingChoices] = None
     evses: List[EVSE] = Field(
         ..., description="List of EVSEs available at this location"
     )
-    opening_times: Optional[OpeningTimes] = None
-    parking_type: Optional[ParkingChoices] = None
-    facilities: Optional[List[OCPIFacility]] = None
-    time_zone: Optional[Annotated[str, AfterValidator(validate_time_zone)]] = None
-    charging_when_closed: Optional[bool] = False
-    last_updated: datetime
+    directions: Optional[List[DisplayText]] = None
     operator: Optional[BusinessDetails] = None
     suboperator: Optional[BusinessDetails] = None
     owner: Optional[BusinessDetails] = None
+    facilities: Optional[List[OCPIFacility]] = None
+    time_zone: Optional[Annotated[str, AfterValidator(validate_time_zone)]] = None
+    opening_times: Optional[OpeningTimes] = None
+    charging_when_closed: Optional[bool] = False
+    images: Optional[List[OCPIImage]] = None
+    energy_mix: Optional[List[EnergyMix]] = None
+    last_updated: datetime

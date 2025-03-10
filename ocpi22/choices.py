@@ -117,6 +117,13 @@ TOKEN_TYPE_CHOICES = [
 ]
 
 
+class TokenType(Enum):
+    AD_HOC_USER = "AD_HOC_USER"
+    RFID = "RFID"
+    APP_USER = "APP_USER"
+    OTHER = "OTHER"
+
+
 class OcpiModuleEnum(Enum):
     CREDENTIALS = "credentials"
     LOCATIONS = "locations"
@@ -530,3 +537,27 @@ class EVSEStatus(Enum):
     REMOVED = "REMOVED"
     RESERVED = "RESERVED"
     UNKNOWN = "UNKNOWN"
+
+
+class ParkingRestriction(Enum):
+    EV_ONLY = "EV_ONLY"
+    PLUGGED = "PLUGGED"
+    DISABLED = "DISABLED"
+    CUSTOMERS = "CUSTOMERS"
+    MOTORCYCLES = "MOTORCYCLES"
+
+
+class EnvironmentalImpactCategory(Enum):
+    NUCLEAR_WASTE = "NUCLEAR_WASTE"
+    CARBON_DIOXIDE = "CARBON_DIOXIDE"
+
+
+class EnergySourceCategory(Enum):
+    NUCLEAR = "NUCLEAR"
+    GENERAL_FOSSIL = "GENERAL_FOSSIL"
+    COAL = "COAL"
+    GAS = "GAS"
+    GENERAL_GREEN = "GENERAL_GREEN"
+    SOLAR = "SOLAR"
+    WIND = "WIND"
+    WATER = "WATER"
