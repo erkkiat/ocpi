@@ -108,7 +108,7 @@ def validate_time_zone(value):
     return value
 
 
-class LocationIn(BaseConfig):
+class Location(BaseConfig):
     country_code: Annotated[str, StringConstraints(min_length=2, max_length=2)] = Field(
         ...
     )

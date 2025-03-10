@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from ocpi22.cpo.schemas import LocationIn, EVSE, Connector
+from ocpi22.cpo.schemas import Location, EVSE, Connector
 from ocpi22.test_tariff_location_and_evse import load_example
 
 
@@ -70,21 +70,21 @@ def invalid_type(location_data):
 def test_location_in_schema_valid_data_does_not_raise_validation_error():
     data = load_example("data/examples/location_example.json")
     data = clear_additional_fields(data)
-    location = LocationIn(**data)
+    location = Location(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_evse_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_evse.json")
     data = clear_additional_fields(data)
-    location = LocationIn(**data)
+    location = Location(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_connector_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_connector.json")
     data = clear_additional_fields(data)
-    location = LocationIn(**data)
+    location = Location(**data)
     assert location.country == "BEL"
 
 
@@ -93,25 +93,25 @@ def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validat
         "data/examples/location_example_parking_garage_opening_hours.json"
     )
     data = clear_additional_fields(data)
-    location = LocationIn(**data)
+    location = Location(**data)
     assert location.country == "SWE"
 
 
 def test_location_in_schema_invalid_country_raises_value_error(invalid_country):
     with pytest.raises(ValueError, match="INVALID is not a valid country"):
-        LocationIn(**invalid_country)
+        Location(**invalid_country)
 
 
 def test_location_in_schema_none_country_raises_validation_error(location_data):
     location_data.pop("country")
     with pytest.raises(ValidationError):
-        LocationIn(**location_data)
+        Location(**location_data)
 
 
 def test_location_in_schema_invalid_parking_type_raises_value_error(location_data):
     location_data["parking_type"] = "INVALID"
     with pytest.raises(ValidationError):
-        LocationIn(**location_data)
+        Location(**location_data)
 
 
 def test_evse_schema_valid_data(evse_data):
