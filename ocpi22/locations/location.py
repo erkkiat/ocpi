@@ -55,10 +55,20 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return "Locations"
 
     def get_queryset(self):
-        return (
-            Location.objects.prefetch_related(
-                "evses", " evses__connectors", "evses__connectors__tariff_ids"
+        prefetch_fields = (
+            "evses",
+            "evses__connectors",
+            "evses__connectors__tariff_ids",
+        )
+        if ocpi_platform.is_hub and hasattr(self, "request"):
+            return (
+                Location.objects.prefetch_related(*prefetch_fields)
+                .partner_filter(self.request)
+                .exclude(publish=False)
+                .order_by("created")
             )
+        return (
+            Location.objects.prefetch_related(*prefetch_fields)
             .exclude(publish=False)
             .order_by("created")
         )
