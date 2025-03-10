@@ -1,25 +1,11 @@
-import gdpr_assist
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
-from django.db.models import Q
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
-from gdpr_assist.signals import pre_anonymise
 
 from ocpi22.models.session import Session
 
 PHONE_FIELD_LENGTH = 20
-
-
-class UserPrivacyMeta:
-    fields = ["first_name", "last_name", "email", "username"]
-
-
-gdpr_assist.register(
-    User, UserPrivacyMeta, gdpr_default_manager_name="objects_anonymised"
-)
 
 
 class Profile(models.Model):
@@ -27,40 +13,6 @@ class Profile(models.Model):
         User, related_name="profile", on_delete=models.CASCADE, primary_key=True
     )
     phone = models.CharField(max_length=PHONE_FIELD_LENGTH, blank=True)
-
-    class PrivacyMeta:
-        fields = ["phone"]
-
-        def search(self, value):
-            return self.model.objects.filter(
-                Q(user__email__icontains=value)
-                | Q(user__first_name__icontains=value)
-                | Q(user__last_name__icontains=value)
-            )
-
-        def export(self, instance):
-            return {
-                "email": instance.user.email,
-                "first_name": instance.user.first_name,
-                "last_name": instance.user.last_name,
-                "phone": instance.phone,
-                "password": "********",
-            }
-
-    def __str__(self):
-        return f"{self.user} {self.phone}"
-
-
-@receiver(post_save, sender=User)
-def create_profile(sender, instance, created, **_kwargs):
-    if created:
-        Profile.objects.create(user=instance)
-
-
-@receiver(pre_anonymise, sender=Profile)
-def anonymise_related(sender, instance, **kwargs):
-    # When user Profile is anonymised, propagate it to the Django User object
-    instance.user.anonymise()
 
 
 class OCPITokenField(models.CharField):

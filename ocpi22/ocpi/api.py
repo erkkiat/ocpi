@@ -38,7 +38,6 @@ from ocpi22.choices import (
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
 from ocpi22.webhooks import send_to_webhook
-from ocpi22.msp.account import update_balance
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
     MSPSessionCallbackSerializer,
@@ -401,9 +400,6 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
             cdr = serializer.save(ocpi_master=request.credentialsrole)
             # cdr.tariffs.set(tariff_list)
             cdr.send_hub_updates()
-            if ocpi_platform.is_emsp:
-                update_balance(cdr)
-                # capture_reservation(cdr)
             url = build_absolute_uri(cdr.get_absolute_url())
             return OCPIResponse(
                 serializer.data,

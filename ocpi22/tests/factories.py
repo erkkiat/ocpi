@@ -33,6 +33,7 @@ from integrations.hubject.schemas import (
     PricingProductData,
     PricingProductDataRecord,
 )
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -108,6 +109,29 @@ class CredentialsRoleFactory(factory.django.DjangoModelFactory):
     country_code = "FI"
     party_id = "CPO"
     credentials = factory.SubFactory(CredentialsFactory)
+
+    @factory.post_generation
+    def add_endpoints(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for endpoint in extracted:
+                EndpointFactory(credentials_role=self, **endpoint)
+        else:
+            for endpoint in OcpiModuleEnum:
+                EndpointFactory(
+                    credentials=self.credentials,
+                    identifier=endpoint.value,
+                    role=EndpointRoleEnum.SENDER.value,
+                    url=f"https://localhost/ocpi/{endpoint.value.lower()}",
+                )
+                EndpointFactory(
+                    credentials=self.credentials,
+                    identifier=endpoint.value,
+                    role=EndpointRoleEnum.RECEIVER.value,
+                    url=f"https://localhost/ocpi/{endpoint.value.lower()}",
+                )
 
 
 class EndpointFactory(factory.django.DjangoModelFactory):
@@ -218,7 +242,7 @@ class ConnectorFactory(factory.django.DjangoModelFactory):
     max_voltage = 400
     max_amperage = 32
     max_electric_power = 22
-    terms_and_conditions = "https://smappee.com/terms-and-conditions/"
+    terms_and_conditions = "https://localhost/terms-and-conditions/"
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     created = factory.Faker("date_time", tzinfo=pytz.UTC)

@@ -483,7 +483,7 @@ class TestHubjectService:
                     lastUpdate=datetime(
                         2024, 9, 22, 12, 30, 30, 0, tzinfo=timezone.utc
                     ),
-                    EvseID=EvseID(root="FI*CPO*Eberlinevseuid"),
+                    EvseID=EvseID(root="FI*CPO*EBERLINEVSEUID"),
                     ChargingPoolID=None,
                     ChargingStationId=None,
                     ChargingStationNames=[
@@ -562,7 +562,7 @@ class TestHubjectService:
                     lastUpdate=datetime(
                         2024, 9, 22, 12, 30, 30, 0, tzinfo=timezone.utc
                     ),
-                    EvseID=EvseID(root="FI*CPO*EEemsdettenevseuid"),
+                    EvseID=EvseID(root="FI*CPO*EEEMSDETTENEVSEUID"),
                     ChargingPoolID=None,
                     ChargingStationId=None,
                     ChargingStationNames=[

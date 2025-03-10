@@ -22,7 +22,6 @@ from typing import Union, Optional
 
 import redis
 from django.conf import settings
-from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import routers, status, mixins
 from rest_framework.decorators import action
@@ -59,7 +58,6 @@ from ocpi22.cpo.serializers import (
     StartTransactionSerializer,
     StopTransactionSerializer,
     EvseSerializer,
-    LocationQuickSerializer,
     CPOStartWebhookSerializer,
     CPOStopWebhookSerializer,
     CPOReserveNowWebhookSerializer,
@@ -89,7 +87,7 @@ from ocpi22.util import MyMetadata
 from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
-from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
+from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import party_from_str
 
 pp = PrettyPrinter(indent=4).pprint
@@ -173,89 +171,6 @@ class CpoEvseViewSet(
     lookup_field = "evse_id"
 
 
-class LocationQuickViewSet(
-    mixins.ListModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.RetrieveModelMixin,
-    GenericViewSet,
-):
-    """
-    This is the endpoint for updating locations.
-    **NOTE**: All IDs should remain constant, since they are referred to by many systems in the roaming network.
-
-    """
-
-    queryset = Location.objects.all().order_by("created")
-    serializer_class = LocationQuickSerializer
-    pagination_class = LimitOffsetPagination
-    lookup_field = "uid"
-
-    @staticmethod
-    def _put(request, uid=None, partial=False):
-        try:
-            uid = (uid or request.data.get("id", "")).upper()
-            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            existing_location = Location.objects.prefetch_related(
-                "evses__connectors__tariff_ids"
-            ).get_if_exists(uid__iexact=str(uid), ocpi_master=our_role)
-            serializer = LocationQuickSerializer(
-                data=request.data, instance=existing_location, partial=partial
-            )
-
-            if serializer.is_valid():
-                saved_location = serializer.save(ocpi_master=our_role)
-                saved_location.send_updates()
-                http_status = (
-                    status.HTTP_200_OK if existing_location else status.HTTP_201_CREATED
-                )
-                return Response(serializer.data, status=http_status)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except IntegrityError as e:
-            return Response(
-                {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-    def put(self, request, *args, **kwargs):
-        return self._put(request, *args, **kwargs)
-
-    def patch(self, request, *args, **kwargs):
-        return self.put(request, *args, partial=True, **kwargs)
-
-    @action(methods=["GET", "PATCH", "PUT"], detail=False, url_path="(?P<uid>[^/.]+)")
-    def by_id(self, request, uid) -> Response:
-        try:
-            our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-
-            location = get_object_or_404(Location, uid=uid, ocpi_master=our_role)
-            assert request.data.get("uid") in (
-                uid,
-                None,
-            ), "UID differs in request and in URL"
-
-            if request.method == "GET":
-                serializer = LocationQuickSerializer(
-                    location, context={"request": request}
-                )
-                return Response(serializer.data)
-
-            return self._put(request, uid, partial=bool(request.method == "PATCH"))
-
-        except IntegrityError as e:
-            return Response(
-                {"status_message": str(e)}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-    @staticmethod
-    def get_object(uid=None) -> Location:
-        # Needed for OPTIONS to work in list view, could just return None
-        if uid:
-            return get_object_or_404(Location, uid=uid)
-
-
-# Todo: limit access to certain privilege holders
-
-
 def close_active_sessions_for_evse(evse_uid: str):
     # evse = get_evse_object(evse)
     active_sessions = Session.objects.filter(
@@ -337,18 +252,20 @@ def create_charging_periods(session: Session):
 
 def process_meter_values(
     request,
-    serializer,
     kwh,
     power=None,
     soc=None,
     session=None,
+    session_id=None,
     timestamp=None,
 ):
     next_url = reverse("chargepoint-stop-transaction")
     timestamp = timestamp or datetime.now(pytz.utc)
 
-    # We found a valid Session
-    if session and session.status == Session.ACTIVE:
+    if session_id and not session:
+        session = Session.get_if_exists(uid=session_id, raise_exception=True)
+
+    if session.status == Session.ACTIVE:
         try:
             Session.objects.prefetch_related("chargingperiods").get(pk=session.pk)
         except Session.DoesNotExist:
@@ -361,8 +278,6 @@ def process_meter_values(
         session.stop_kwh = kwh
         session.update_last_updated()
 
-        # with Timer() as t:
-        # store_meter_values(request, session, serializer.validated_data)
         session.update_charging_periods(
             Decimal(kwh) - session.start_kwh, soc, power, timestamp
         )
@@ -377,10 +292,9 @@ def process_meter_values(
             ]
         )
 
-        session_charging_periods = [
-            cp for cp in session.chargingperiods.order_by("start_date_time")
-        ]
-        session.send_updates(session_charging_periods, method="patch")
+        session.send_updates(
+            method="put"
+        )  # Until Gireve implements OCPI 2.2.1 Session PATCH
 
         messages.success(
             request,
@@ -891,9 +805,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     context={"version": request.version, "request": request},
                 )
                 if serializer.is_valid():
-                    return process_meter_values(
-                        request, serializer, **serializer.validated_data
-                    )
+                    return process_meter_values(request, **serializer.validated_data)
                 else:
                     return Response(
                         data=serializer.errors, status=status.HTTP_400_BAD_REQUEST
@@ -1371,7 +1283,6 @@ class ChargePointOperatorAPIView(routers.APIRootView):
                 )
             ),
             location_management=dict(
-                locations=request.build_absolute_uri(reverse("quick-location-list")),
                 tariffs=request.build_absolute_uri(reverse("solid-tariff-list")),
             ),
             charging_session=dict(
