@@ -256,14 +256,13 @@ def process_meter_values(
     power=None,
     soc=None,
     session=None,
-    session_id=None,
     timestamp=None,
 ):
     next_url = reverse("chargepoint-stop-transaction")
     timestamp = timestamp or datetime.now(pytz.utc)
 
-    if session_id and not session:
-        session = Session.get_if_exists(uid=session_id, raise_exception=True)
+    if not session:
+        raise ValidationError("Session needs to be provided for process_meter_values()")
 
     if session.status == Session.ACTIVE:
         try:
