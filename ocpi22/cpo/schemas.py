@@ -17,8 +17,11 @@ from ocpi22.choices import (
 from ocpi22.ocpi.util import Ocpi
 
 
-class OCPIImage(Schema):
+class BaseConfig(Schema):
     model_config = ConfigDict(extra="forbid")
+
+
+class OCPIImage(BaseConfig):
     url: constr(min_length=1, max_length=255)
     thumbnail: Optional[constr(min_length=1, max_length=255)] = None
     category: constr(min_length=1, max_length=20)
@@ -27,42 +30,36 @@ class OCPIImage(Schema):
     height: conint(gt=0)
 
 
-class BusinessDetails(Schema):
-    model_config = ConfigDict(extra="forbid")
+class BusinessDetails(BaseConfig):
     name: constr(min_length=1, max_length=100)
     website: Optional[constr(min_length=1, max_length=255)] = None
     logo: Optional[constr(min_length=1, max_length=20)] = None
 
 
-class RegularHours(Schema):
-    model_config = ConfigDict(extra="forbid")
+class RegularHours(BaseConfig):
     weekday: int
     period_begin: constr(min_length=5, max_length=5)
     period_end: constr(min_length=5, max_length=5)
 
 
-class ExceptionalPeriod(Schema):
-    model_config = ConfigDict(extra="forbid")
+class ExceptionalPeriod(BaseConfig):
     period_begin: datetime
     period_end: datetime
 
 
-class OpeningTimes(Schema):
-    model_config = ConfigDict(extra="forbid")
+class OpeningTimes(BaseConfig):
     regular_hours: Optional[List[RegularHours]]
     twentyfourseven: bool
     exceptional_openings: Optional[List[ExceptionalPeriod]] = None
     exceptional_closings: Optional[List[ExceptionalPeriod]] = None
 
 
-class GeoLocation(Schema):
-    model_config = ConfigDict(extra="forbid")
+class GeoLocation(BaseConfig):
     latitude: constr(pattern=r"^-?\d{1,2}\.\d+$")
     longitude: constr(pattern=r"^-?\d{1,2}\.\d+$")
 
 
-class Connector(Schema):
-    model_config = ConfigDict(extra="forbid")
+class Connector(BaseConfig):
     uid: constr(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH) = Field(
         ..., alias="id"
     )
@@ -77,8 +74,7 @@ class Connector(Schema):
     terms_and_conditions: Optional[str] = None
 
 
-class EVSE(Schema):
-    model_config = ConfigDict(extra="forbid")
+class EVSE(BaseConfig):
     uid: constr(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     evse_id: constr(min_length=7, max_length=48)
     status: EVSEStatusEnum
@@ -89,8 +85,7 @@ class EVSE(Schema):
     capabilities: Optional[List[OCPICapabilityEnum]] = None
 
 
-class LocationIn(Schema):
-    model_config = ConfigDict(extra="forbid")
+class LocationIn(BaseConfig):
     country_code: constr(min_length=2, max_length=2) = Field(...)
     party_id: constr(min_length=3, max_length=3) = Field(...)
     uid: constr(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH) = Field(
