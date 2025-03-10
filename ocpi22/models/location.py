@@ -17,7 +17,7 @@ import generic.countries
 from ocpi22 import choices
 import util
 
-from ocpi22.choices import OcpiModuleEnum, OCPIFacilityEnum, OCPICapabilityEnum
+from ocpi22.choices import OcpiModuleEnum, OCPIFacility, OCPICapability
 from ocpi22.models.models import MultipleChoiceCharField
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import (
@@ -195,8 +195,8 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         max_length=284,
         null=True,
         blank=True,
-        choices=OCPIFacilityEnum.choices,
-        choices_enum=OCPIFacilityEnum,
+        choices=OCPIFacility.choices,
+        choices_enum=OCPIFacility,
         verbose_name=_("Facilities"),
     )
 
@@ -331,8 +331,8 @@ class Evse(models.Model, ModelUtilMixin):
         max_length=265,
         null=True,
         blank=True,
-        choices=OCPICapabilityEnum.choices,
-        choices_enum=OCPICapabilityEnum,
+        choices=OCPICapability.choices,
+        choices_enum=OCPICapability,
         verbose_name=_("Capabilities"),
     )
 

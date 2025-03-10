@@ -388,7 +388,7 @@ class Ocpi:
         ("TESLA_S", 'Tesla "Model-S"-type'),
     )
 
-    class StandardChoicesEnum(Enum):
+    class Standard(Enum):
         IEC_62196_T2 = "IEC_62196_T2"
         IEC_62196_T2_COMBO = "IEC_62196_T2_COMBO"
         CHADEMO = "CHADEMO"
@@ -422,7 +422,7 @@ class Ocpi:
         ("CABLE", "Cable"),
     )
 
-    class FormatChoicesEnum(Enum):
+    class Format(Enum):
         SOCKET = "SOCKET"
         CABLE = "CABLE"
 
@@ -444,7 +444,7 @@ class Ocpi:
         (x[0], x[2]) for x in _POWERTYPE_DATA
     )  # For power calculation: (('AC_1_PHASE', 1), ... )
 
-    class PowerTypeEnum(Enum):
+    class PowerType(Enum):
         AC_1_PHASE = "AC_1_PHASE"
         AC_2_PHASE = "AC_2_PHASE"
         AC_3_PHASE = "AC_3_PHASE"

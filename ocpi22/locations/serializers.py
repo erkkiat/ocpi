@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OcpiModuleEnum, OCPIFacilityEnum, OCPICapabilityEnum
+from ocpi22.choices import OcpiModuleEnum, OCPIFacility, OCPICapability
 from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.image import OCPIImage
@@ -114,12 +114,12 @@ class CommaSeparatedChoiceField(serializers.ChoiceField):
 
 class FacilityField(CommaSeparatedChoiceField):
     def __init__(self, **kwargs):
-        super().__init__(choices=OCPIFacilityEnum.choices, **kwargs)
+        super().__init__(choices=OCPIFacility.choices, **kwargs)
 
 
 class CapabilityField(CommaSeparatedChoiceField):
     def __init__(self, **kwargs):
-        super().__init__(choices=OCPICapabilityEnum.choices, **kwargs)
+        super().__init__(choices=OCPICapability.choices, **kwargs)
 
 
 class MaxElectricPowerSerializer(serializers.IntegerField):

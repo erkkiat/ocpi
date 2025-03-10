@@ -10,10 +10,10 @@ from typing_extensions import Annotated
 
 from generic import countries
 from ocpi22.choices import (
-    OCPICapabilityEnum,
-    OCPIFacilityEnum,
-    EVSEStatusEnum,
-    ParkingChoicesEnum,
+    OCPICapability,
+    OCPIFacility,
+    EVSEStatus,
+    ParkingChoices,
 )
 from ocpi22.ocpi.util import Ocpi
 
@@ -70,9 +70,9 @@ class Connector(BaseConfig):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ] = Field(..., alias="id")
-    standard: Ocpi.StandardChoicesEnum
-    format: Ocpi.FormatChoicesEnum
-    power_type: Ocpi.PowerTypeEnum
+    standard: Ocpi.Standard
+    format: Ocpi.Format
+    power_type: Ocpi.PowerType
     max_voltage: NonNegativeInt
     max_amperage: NonNegativeInt
     max_electric_power: Optional[NonNegativeInt] = None
@@ -86,12 +86,12 @@ class EVSE(BaseConfig):
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ]
     evse_id: Annotated[str, StringConstraints(min_length=7, max_length=48)]
-    status: EVSEStatusEnum
+    status: EVSEStatus
     last_updated: datetime
     connectors: List[Connector] = Field(
         ..., description="List of connectors for this EVSE"
     )
-    capabilities: Optional[List[OCPICapabilityEnum]] = None
+    capabilities: Optional[List[OCPICapability]] = None
 
 
 class LocationIn(BaseConfig):
@@ -120,8 +120,8 @@ class LocationIn(BaseConfig):
         ..., description="List of EVSEs available at this location"
     )
     opening_times: Optional[OpeningTimes] = None
-    parking_type: Optional[ParkingChoicesEnum] = None
-    facilities: Optional[List[OCPIFacilityEnum]] = None
+    parking_type: Optional[ParkingChoices] = None
+    facilities: Optional[List[OCPIFacility]] = None
     time_zone: Optional[str] = None
     charging_when_closed: Optional[bool] = False
     last_updated: datetime

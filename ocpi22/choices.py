@@ -392,7 +392,7 @@ RESERVATION_CHOICES = (
 )
 
 
-class OCPIFacilityEnum(models.TextChoices):
+class OCPIFacility(models.TextChoices):
     HOTEL = "HOTEL", _lazy("Hotel")
     RESTAURANT = "RESTAURANT", _lazy("Restaurant")
     CAFE = "CAFE", _lazy("Cafe")
@@ -421,7 +421,7 @@ class OCPIFacilityEnum(models.TextChoices):
     OTHER = "OTHER", _lazy("Other")
 
 
-class OCPICapabilityEnum(models.TextChoices):
+class OCPICapability(models.TextChoices):
     CHARGING_PROFILE_CAPABLE = "CHARGING_PROFILE_CAPABLE", _lazy("Charging profiles")
     CHARGING_PREFERENCES_CAPABLE = (
         "CHARGING_PREFERENCES_CAPABLE",
@@ -488,7 +488,7 @@ PARKING_CHOICES = (
 )
 
 
-class ParkingChoicesEnum(Enum):
+class ParkingChoices(Enum):
     ALONG_MOTORWAY = "ALONG_MOTORWAY"
     PARKING_GARAGE = "PARKING_GARAGE"
     PARKING_LOT = "PARKING_LOT"
@@ -520,7 +520,7 @@ EVSE_STATUS_CHOICES = (
 )
 
 
-class EVSEStatusEnum(Enum):
+class EVSEStatus(Enum):
     AVAILABLE = "AVAILABLE"
     BLOCKED = "BLOCKED"
     CHARGING = "CHARGING"
