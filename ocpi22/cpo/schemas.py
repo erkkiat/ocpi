@@ -5,7 +5,8 @@ from ninja import Schema, Field
 from typing import List, Optional
 from datetime import datetime
 
-from pydantic import constr, field_validator, conint, ConfigDict
+from pydantic import field_validator, ConfigDict, NonNegativeInt, StringConstraints
+from typing_extensions import Annotated
 
 from generic import countries
 from ocpi22.choices import (
@@ -22,24 +23,30 @@ class BaseConfig(Schema):
 
 
 class OCPIImage(BaseConfig):
-    url: constr(min_length=1, max_length=255)
-    thumbnail: Optional[constr(min_length=1, max_length=255)] = None
-    category: constr(min_length=1, max_length=20)
-    type: constr(min_length=1, max_length=20)
-    width: conint(gt=0)
-    height: conint(gt=0)
+    url: Annotated[str, StringConstraints(min_length=1, max_length=255)]
+    thumbnail: Optional[
+        Annotated[str, StringConstraints(min_length=1, max_length=255)]
+    ] = None
+    category: Annotated[str, StringConstraints(min_length=1, max_length=20)]
+    type: Annotated[str, StringConstraints(min_length=1, max_length=20)]
+    width: NonNegativeInt
+    height: NonNegativeInt
 
 
 class BusinessDetails(BaseConfig):
-    name: constr(min_length=1, max_length=100)
-    website: Optional[constr(min_length=1, max_length=255)] = None
-    logo: Optional[constr(min_length=1, max_length=20)] = None
+    name: Annotated[str, StringConstraints(min_length=1, max_length=100)]
+    website: Optional[
+        Annotated[str, StringConstraints(min_length=1, max_length=255)]
+    ] = None
+    logo: Optional[Annotated[str, StringConstraints(min_length=1, max_length=20)]] = (
+        None
+    )
 
 
 class RegularHours(BaseConfig):
-    weekday: int
-    period_begin: constr(min_length=5, max_length=5)
-    period_end: constr(min_length=5, max_length=5)
+    weekday: Annotated[int, Field(ge=1, le=7)]
+    period_begin: Annotated[str, StringConstraints(min_length=5, max_length=5)]
+    period_end: Annotated[str, StringConstraints(min_length=5, max_length=5)]
 
 
 class ExceptionalPeriod(BaseConfig):
@@ -55,28 +62,30 @@ class OpeningTimes(BaseConfig):
 
 
 class GeoLocation(BaseConfig):
-    latitude: constr(pattern=r"^-?\d{1,2}\.\d+$")
-    longitude: constr(pattern=r"^-?\d{1,2}\.\d+$")
+    latitude: Annotated[str, StringConstraints(pattern=r"^-?\d{1,2}\.\d+$")]
+    longitude: Annotated[str, StringConstraints(pattern=r"^-?\d{1,2}\.\d+$")]
 
 
 class Connector(BaseConfig):
-    uid: constr(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH) = Field(
-        ..., alias="id"
-    )
+    uid: Annotated[
+        str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    ] = Field(..., alias="id")
     standard: Ocpi.StandardChoicesEnum
     format: Ocpi.FormatChoicesEnum
     power_type: Ocpi.PowerTypeEnum
-    max_voltage: conint(gt=0)
-    max_amperage: conint(gt=0)
-    max_electric_power: Optional[conint(gt=0)] = None
+    max_voltage: NonNegativeInt
+    max_amperage: NonNegativeInt
+    max_electric_power: Optional[NonNegativeInt] = None
     tariff_ids: Optional[List[str]] = None
     last_updated: datetime
     terms_and_conditions: Optional[str] = None
 
 
 class EVSE(BaseConfig):
-    uid: constr(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
-    evse_id: constr(min_length=7, max_length=48)
+    uid: Annotated[
+        str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    ]
+    evse_id: Annotated[str, StringConstraints(min_length=7, max_length=48)]
     status: EVSEStatusEnum
     last_updated: datetime
     connectors: List[Connector] = Field(
@@ -86,17 +95,25 @@ class EVSE(BaseConfig):
 
 
 class LocationIn(BaseConfig):
-    country_code: constr(min_length=2, max_length=2) = Field(...)
-    party_id: constr(min_length=3, max_length=3) = Field(...)
-    uid: constr(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH) = Field(
-        ..., alias="id"
+    country_code: Annotated[str, StringConstraints(min_length=2, max_length=2)] = Field(
+        ...
     )
+    party_id: Annotated[str, StringConstraints(min_length=3, max_length=3)] = Field(...)
+    uid: Annotated[
+        str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
+    ] = Field(..., alias="id")
     publish: bool
-    name: Optional[constr(min_length=1)] = None
-    address: constr(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH) = Field(...)
-    city: constr(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
-    postal_code: constr(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
-    state: Optional[constr(max_length=20)] = None
+    name: Optional[Annotated[str, StringConstraints(min_length=1)]] = None
+    address: Annotated[
+        str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
+    ] = Field(...)
+    city: Annotated[
+        str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
+    ]
+    postal_code: Annotated[
+        str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
+    ]
+    state: Optional[Annotated[str, StringConstraints(max_length=20)]] = None
     country: str
     coordinates: GeoLocation = Field(..., description="Geographical coordinates")
     evses: List[EVSE] = Field(
