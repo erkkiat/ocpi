@@ -5,7 +5,7 @@ from ninja import Schema, Field
 from typing import List, Optional
 from datetime import datetime
 
-from pydantic import field_validator, ConfigDict, NonNegativeInt, StringConstraints
+from pydantic import ConfigDict, NonNegativeInt, StringConstraints, AfterValidator
 from typing_extensions import Annotated
 
 from generic import countries
@@ -94,6 +94,20 @@ class EVSE(BaseConfig):
     capabilities: Optional[List[OCPICapability]] = None
 
 
+def validate_country(value):
+    if value not in countries.COUNTRIES_ISO_3_SET:
+        raise ValueError(f"{value} is not a valid country")
+    return value
+
+
+def validate_time_zone(value):
+    try:
+        ZoneInfo(value)
+    except Exception:
+        raise ValueError(f"{value} is not a valid time zone")
+    return value
+
+
 class LocationIn(BaseConfig):
     country_code: Annotated[str, StringConstraints(min_length=2, max_length=2)] = Field(
         ...
@@ -114,7 +128,7 @@ class LocationIn(BaseConfig):
         str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
     ]
     state: Optional[Annotated[str, StringConstraints(max_length=20)]] = None
-    country: str
+    country: Annotated[str, AfterValidator(validate_country)]
     coordinates: GeoLocation = Field(..., description="Geographical coordinates")
     evses: List[EVSE] = Field(
         ..., description="List of EVSEs available at this location"
@@ -122,23 +136,9 @@ class LocationIn(BaseConfig):
     opening_times: Optional[OpeningTimes] = None
     parking_type: Optional[ParkingChoices] = None
     facilities: Optional[List[OCPIFacility]] = None
-    time_zone: Optional[str] = None
+    time_zone: Optional[Annotated[str, AfterValidator(validate_time_zone)]] = None
     charging_when_closed: Optional[bool] = False
     last_updated: datetime
     operator: Optional[BusinessDetails] = None
     suboperator: Optional[BusinessDetails] = None
     owner: Optional[BusinessDetails] = None
-
-    @field_validator("country")
-    def validate_country(cls, value):
-        if value not in countries.COUNTRIES_ISO_3_SET:
-            raise ValueError(f"{value} is not a valid country")
-        return value
-
-    @field_validator("time_zone")
-    def validate_time_zone(cls, value):
-        try:
-            ZoneInfo(value)
-        except Exception:
-            raise ValueError(f"{value} is not a valid time zone")
-        return value
