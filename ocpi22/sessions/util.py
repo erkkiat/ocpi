@@ -3,7 +3,7 @@ from cachetools import cached, TTLCache
 from django.utils.datetime_safe import datetime
 
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 import os
 from typing import Union
 

@@ -3,7 +3,7 @@ from django.utils.datetime_safe import datetime
 from rest_framework import status
 from rest_framework.utils.serializer_helpers import ReturnDict
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Optional, Union, OrderedDict

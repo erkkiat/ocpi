@@ -21,7 +21,6 @@ from nested_admin.nested import (
 )
 
 from ocpi22.models.cdr import Cdr
-from ocpi22.models.dynamic_price import DynamicPrice
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
@@ -856,15 +855,6 @@ class DefaultTariffsAdmin(SolidModelAdmin):
     autocomplete_fields = ["tariffs"]
 
     formfield_overrides = widgets.formfield_overrides
-
-
-@admin.register(DynamicPrice)
-class DynamicPriceAdmin(SolidModelAdmin):
-    model = DynamicPrice
-    ordering = ["-start_datetime"]
-    list_display = ["dynamic_price_source", "price", "start_datetime", "end_datetime"]
-    list_filter = ["dynamic_price_source"]
-    search_fields = ["dynamic_price_source"]
 
 
 # admin.site.unregister(User)

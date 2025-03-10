@@ -1,11 +1,8 @@
 import json
-from datetime import datetime
 
 import redis
-from django.conf import settings
-from django.shortcuts import render
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from json import JSONDecodeError
 from pprint import pprint
 
@@ -95,24 +92,6 @@ class DebugMiddleware:
         return response
 
 
-class UserActivityMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        if request.user.is_authenticated:
-            logging.log_user_activity(request.user.username)
-        else:
-            try:
-                party = get_sender_party(request.META)
-                logging.log_ocpi_activity(str(party))
-            except ValueError:
-                pass
-
-        response = self.get_response(request)
-        return response
-
-
 class ErrorLoggingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -144,22 +123,6 @@ class ErrorLoggingMiddleware:
         except Exception as e:
             logging.error(f"An exception occured: {e}", request)
             raise
-
-
-class EnabledUntilMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        now = datetime.now()
-        if now > settings.EXPIRES_ON:
-            logging.error(
-                f"Someone is trying to access an expired instance, expired since {settings.EXPIRES_ON}",
-                request,
-            )
-            return render(request, "expired.html", {"expires_on": settings.EXPIRES_ON})
-        response = self.get_response(request)
-        return response
 
 
 class OCPI221HeadersMiddleware:

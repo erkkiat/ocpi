@@ -1,4 +1,5 @@
 import uuid
+import zoneinfo
 from collections import Counter
 from django.utils.datetime_safe import datetime
 
@@ -250,9 +251,6 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
             util.reverse("admin:ocpi22_location_change", args=(self.pk,))
         )
 
-    def get_quick_url(self):
-        return util.reverse("quick-location-by-id", args=[self.uid])
-
     def street_address(self):
         return f"{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}"
 
@@ -300,6 +298,8 @@ class Evse(models.Model, ModelUtilMixin):
         constraints = [
             models.UniqueConstraint(fields=["uid", "location"], name="evse_party_uid"),
         ]
+
+    upper_case_fields = ["evse_id", "uid"]
 
     objects = PartnerManager()
 
@@ -392,7 +392,10 @@ class Evse(models.Model, ModelUtilMixin):
             return ""
 
     def send_status_updates(self) -> None:
-        data = dict(status=self.status, last_updated=self.last_updated)
+        last_updated_serialized = self.last_updated.replace(
+            tzinfo=zoneinfo.ZoneInfo("UTC")
+        ).isoformat()
+        data = dict(status=self.status, last_updated=last_updated_serialized)
         location = self.location
         location.send_all_updates(
             data=data,
@@ -406,6 +409,7 @@ class Evse(models.Model, ModelUtilMixin):
         )
 
     def save(self, *args, **kwargs):
+        self.change_fields_to_upper_case()
         if self.location.is_ours():
             self.last_updated = datetime.now(pytz.utc)
             self.location.last_updated = datetime.now(pytz.utc)
