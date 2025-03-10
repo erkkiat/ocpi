@@ -69,18 +69,21 @@ def invalid_type(location_data):
 
 def test_location_in_schema_valid_data_does_not_raise_validation_error():
     data = load_example("data/examples/location_example.json")
+    data = clear_additional_fields(data)
     location = LocationIn(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_evse_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_evse.json")
+    data = clear_additional_fields(data)
     location = LocationIn(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_connector_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_connector.json")
+    data = clear_additional_fields(data)
     location = LocationIn(**data)
     assert location.country == "BEL"
 
@@ -89,6 +92,7 @@ def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validat
     data = load_example(
         "data/examples/location_example_parking_garage_opening_hours.json"
     )
+    data = clear_additional_fields(data)
     location = LocationIn(**data)
     assert location.country == "SWE"
 
@@ -166,3 +170,11 @@ def test_connector_schema_none_power_type_raises_validation_error(connector_data
     connector_data.pop("power_type")
     with pytest.raises(ValidationError):
         Connector(**connector_data)
+
+
+def clear_additional_fields(location_data):
+    for e in location_data.get("evses"):
+        e.pop("physical_reference", None)
+        e.pop("floor_level", None)
+
+    return location_data
