@@ -53,7 +53,9 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     username = "SolidRoamUser"
     email = "user@solidroam.com"
-    password = factory.PostGenerationMethodCall("set_password", "test.user")
+    password = factory.PostGenerationMethodCall(
+        "set_password", "j0s9J117uS126dNr915zIj7d1J10UJ2f"
+    )
 
 
 class StaffUserFactory(UserFactory):
