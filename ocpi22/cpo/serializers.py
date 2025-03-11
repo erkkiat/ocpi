@@ -208,8 +208,7 @@ class MeterValuesSerializer(serializers.Serializer):
     The session start and end time are recorded by the system
     """
 
-    session_id = SessionIdSerializer(
-        source="session",
+    session = SessionIdSerializer(
         help_text="The OCPI session ID (from the response of the start_transaction endpoint)",
     )
     kwh = serializers.FloatField(

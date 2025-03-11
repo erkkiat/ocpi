@@ -1,7 +1,10 @@
+from base64 import b64encode
+
 import pytest
 from rest_framework.test import APIClient
 
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
+from test_util import cleanup_credentialsrole
 
 from ocpi22.tests.factories import (
     CredentialsFactory,
@@ -12,6 +15,7 @@ from ocpi22.tests.factories import (
     SuperUserFactory,
     StaffUserFactory,
 )
+from ocpiconnector.party import Party
 
 
 @pytest.fixture
@@ -39,33 +43,62 @@ def admin_user():
 @pytest.fixture
 def authenticated_user_client(db, authenticated_user):
     client = APIClient()
-    client.force_authenticate(user=authenticated_user)
+    credentials = b64encode(
+        f"{authenticated_user.username}:j0s9J117uS126dNr915zIj7d1J10UJ2f".encode()
+    ).decode("utf-8")
+    auth_headers = {"HTTP_AUTHORIZATION": f"Basic {credentials}"}
+    client.defaults.update(auth_headers)
     return client
 
 
 @pytest.fixture
 def admin_user_client(db, admin_user):
     client = APIClient()
-    client.force_authenticate(user=admin_user)
+    credentials = b64encode(
+        f"{admin_user.username}:j0s9J117uS126dNr915zIj7d1J10UJ2f".encode()
+    ).decode("utf-8")
+    auth_headers = {"HTTP_AUTHORIZATION": f"Basic {credentials}"}
+    client.defaults.update(auth_headers)
     return client
 
 
 @pytest.fixture
 def super_user_client(db, super_user):
     client = APIClient()
-    client.force_authenticate(user=super_user)
+    credentials = b64encode(
+        f"{super_user.username}:j0s9J117uS126dNr915zIj7d1J10UJ2f".encode()
+    ).decode("utf-8")
+    auth_headers = {"HTTP_AUTHORIZATION": f"Basic {credentials}"}
+    client.defaults.update(auth_headers)
     return client
 
 
 @pytest.fixture
-def cdr_receiver_credentials():
+def msp_credentials_with_endpoints():
+    cleanup_credentialsrole(Party("FI", "MSP"))
+
+    credentials = CredentialsFactory(theirs="ABC", ours="DEF")
     business_details = BusinessDetailsFactory(name="Test MSP")
     credentialsrole = CredentialsRoleFactory(
         role="EMSP",
         country_code="FI",
         party_id="MSP",
         business_details=business_details,
+        credentials=credentials,
     )
+
+    [
+        EndpointFactory(
+            credentials=credentials,
+            identifier=identifier.value,
+            role=role,
+            url=f"https://example.com/ocpi/{identifier.value.lower()}",
+        )
+        for identifier, role in (
+            (OcpiModuleEnum.CDRS, EndpointRoleEnum.RECEIVER),
+            (OcpiModuleEnum.SESSIONS, EndpointRoleEnum.RECEIVER),
+        )
+    ]
 
     return credentialsrole.credentials
 
