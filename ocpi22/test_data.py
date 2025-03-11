@@ -43,6 +43,7 @@ class CredentialsData:
         "url": "https://localhost/versions/",
         "valid": True,
         "version": "221",
+        "allowed_locations": [],
     }
 
     expected_versions_response = {
