@@ -47,8 +47,10 @@ is_hub_cache = TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24 * 60 * 6
 
 
 def validate_allowed_locations(value: None | list[str]) -> None:
-    if value is not None and not isinstance(value, list):
-        raise ValidationError("This field must be None or a list of values.")
+    if value is None:
+        raise ValidationError("This field cannot be None")
+    if not isinstance(value, list):
+        raise ValidationError("This field must be a list")
 
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
@@ -135,7 +137,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
     allowed_locations = JSONField(
-        default=list, null=True, blank=True, validators=[validate_allowed_locations]
+        default=list, blank=True, null=False, validators=[validate_allowed_locations]
     )
 
     def soft_delete(self):
