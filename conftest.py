@@ -4,6 +4,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
+from test_util import cleanup_credentialsrole
 
 from ocpi22.tests.factories import (
     CredentialsFactory,
@@ -14,6 +15,7 @@ from ocpi22.tests.factories import (
     SuperUserFactory,
     StaffUserFactory,
 )
+from ocpiconnector.party import Party
 
 
 @pytest.fixture
@@ -72,14 +74,31 @@ def super_user_client(db, super_user):
 
 
 @pytest.fixture
-def cdr_receiver_credentials():
+def msp_credentials_with_endpoints():
+    cleanup_credentialsrole(Party("FI", "MSP"))
+
+    credentials = CredentialsFactory(theirs="ABC", ours="DEF")
     business_details = BusinessDetailsFactory(name="Test MSP")
     credentialsrole = CredentialsRoleFactory(
         role="EMSP",
         country_code="FI",
         party_id="MSP",
         business_details=business_details,
+        credentials=credentials,
     )
+
+    [
+        EndpointFactory(
+            credentials=credentials,
+            identifier=identifier.value,
+            role=role,
+            url=f"https://example.com/ocpi/{identifier.value.lower()}",
+        )
+        for identifier, role in (
+            (OcpiModuleEnum.CDRS, EndpointRoleEnum.RECEIVER),
+            (OcpiModuleEnum.SESSIONS, EndpointRoleEnum.RECEIVER),
+        )
+    ]
 
     return credentialsrole.credentials
 

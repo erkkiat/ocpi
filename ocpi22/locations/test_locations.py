@@ -94,18 +94,18 @@ class TestPublicAndNonPublicLocations:
         )
 
     def test_that_exclusive_location_is_not_listed_in_locations_list(
-        self, exclusive_location, cdr_receiver_credentials
+        self, exclusive_location, msp_credentials_with_endpoints
     ):
-        response = self.get_location_list(cdr_receiver_credentials)
+        response = self.get_location_list(msp_credentials_with_endpoints)
         assert not any(
             location.get("id") == exclusive_location.uid
             for location in response.data.get("data")
         ), "A private location should not be listed when GETting the OCPI Locations list"
 
     def test_that_public_location_is_listed_in_locations_list(
-        self, public_location, exclusive_location, cdr_receiver_credentials
+        self, public_location, exclusive_location, msp_credentials_with_endpoints
     ):
-        response = self.get_location_list(cdr_receiver_credentials)
+        response = self.get_location_list(msp_credentials_with_endpoints)
         assert any(
             location.get("id") == public_location.uid
             for location in response.data.get("data")

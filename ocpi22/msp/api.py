@@ -7,7 +7,7 @@ from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from decimal import Decimal
 
 import requests

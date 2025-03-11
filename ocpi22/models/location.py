@@ -1,4 +1,5 @@
 import uuid
+import zoneinfo
 from collections import Counter
 from django.utils.datetime_safe import datetime
 
@@ -410,7 +411,10 @@ class Evse(models.Model, ModelUtilMixin):
             return ""
 
     def send_status_updates(self) -> None:
-        data = dict(status=self.status, last_updated=self.last_updated)
+        last_updated_serialized = self.last_updated.replace(
+            tzinfo=zoneinfo.ZoneInfo("UTC")
+        ).isoformat()
+        data = dict(status=self.status, last_updated=last_updated_serialized)
         location = self.location
         location.send_all_updates(
             data=data,

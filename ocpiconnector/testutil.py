@@ -358,9 +358,9 @@ def simulate_surrounding_world(func):
             patch("ocpi22.webhooks.requests") as webhook_requests,
             patch("ocpi22.ocpi.util.uuid.uuid4", return_value=MockUuid4()) as uuid4,
             patch("ocpi22.ocpi.util.requests") as ocpi_requests,
-            patch("ocpi22.logging.error") as logging_error,
-            patch("ocpi22.logging.info") as logging_info,
-            patch("ocpi22.logging.warning") as logging_warning,
+            patch("ocpi22.ocpi_logging.error") as logging_error,
+            patch("ocpi22.ocpi_logging.info") as logging_info,
+            patch("ocpi22.ocpi_logging.warning") as logging_warning,
             patch("ocpi22.ocpi.api.get_our_credentialsrole") as get_our_credentialsrole,
         ):
             simulation = Simulation(

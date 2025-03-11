@@ -2,7 +2,7 @@ import json
 
 import redis
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from json import JSONDecodeError
 from pprint import pprint
 
