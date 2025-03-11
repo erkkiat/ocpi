@@ -157,6 +157,7 @@ class OcppStatusSerializer(fields.ChoiceField):
         super().__init__(choices=OcppStatusChoices.choices, **kwargs)
 
     def to_internal_value(self, data):
+        This is not the same mapping as in Evse Services.
         result = {
             OcppStatusChoices.AVAILABLE: "AVAILABLE",
             OcppStatusChoices.PREPARING: "CHARGING",
