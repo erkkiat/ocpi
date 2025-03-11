@@ -6,6 +6,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from pydantic import ConfigDict, NonNegativeInt, StringConstraints, AfterValidator
+from pydantic_extra_types.coordinate import Latitude, Longitude
 from typing_extensions import Annotated
 
 from generic import countries
@@ -46,8 +47,8 @@ class PublishTokenType(BaseConfig):
 
 
 class AdditionalGeoLocation(BaseConfig):
-    latitude: Annotated[str, StringConstraints(pattern=r"^-?\d{1,2}\.\d{5,7}$")]
-    longitude: Annotated[str, StringConstraints(pattern=r"^-?\d{1,3}\.\d{5,7}$")]
+    latitude: Latitude
+    longitude: Longitude
     name: Optional[DisplayText] = None
 
 
@@ -109,8 +110,8 @@ class OpeningTimes(BaseConfig):
 
 
 class GeoLocation(BaseConfig):
-    latitude: Annotated[str, StringConstraints(pattern=r"^-?\d{1,2}\.\d+$")]
-    longitude: Annotated[str, StringConstraints(pattern=r"^-?\d{1,2}\.\d+$")]
+    latitude: Latitude
+    longitude: Longitude
 
 
 class Connector(BaseConfig):
