@@ -10,16 +10,20 @@ class TestLocationServices:
     def test_get_allowed_locations_queryset_returns_everything_when_no_credentials_provided(
         self,
     ):
+        tampere = LocationFactory(uid="TAMPERE")
+        joensu = LocationFactory(uid="JOENSU")
         queryset = Location.objects.all()
         filtered_queryset = LocationService.get_allowed_locations_queryset(
             None, queryset
         )
-        assert list(filtered_queryset) == list(queryset)
+        assert list(filtered_queryset) == [tampere, joensu]
 
     @pytest.mark.django_db
     def test_get_allowed_locations_queryset_returns_empty_list_if_allowed_locations_is_none(
         self,
     ):
+        LocationFactory(uid="SELLO")
+        LocationFactory(uid="JUMBO")
         all_locations = Location.objects.all()
         credentials = CredentialsFactory(allowed_locations=None)
         filtered_queryset = LocationService.get_allowed_locations_queryset(

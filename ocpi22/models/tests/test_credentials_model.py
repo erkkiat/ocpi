@@ -6,7 +6,7 @@ from ocpi22.models.credentials import validate_allowed_locations, Credentials
 from ocpi22.tests.factories import CredentialsFactory
 
 
-class TestCredentialsModle:
+class TestCredentialsModel:
     @pytest.mark.parametrize("allowed_locations", [None, [], ["SOME-ID"]])
     def test_allowed_locations_validator_does_not_throw_on_valid_data(
         self, allowed_locations
