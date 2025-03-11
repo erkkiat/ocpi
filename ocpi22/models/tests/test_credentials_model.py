@@ -7,7 +7,7 @@ from ocpi22.tests.factories import CredentialsFactory
 
 
 class TestCredentialsModel:
-    @pytest.mark.parametrize("allowed_locations", [None, [], ["SOME-ID"]])
+    @pytest.mark.parametrize("allowed_locations", [[], ["SOME-ID"]])
     def test_allowed_locations_validator_does_not_throw_on_valid_data(
         self, allowed_locations
     ):
@@ -19,12 +19,10 @@ class TestCredentialsModel:
     def test_allowed_location_validator_raises_when_incorrect_type_data_is_provided(
         self, allowed_locations
     ):
-        with pytest.raises(
-            ValidationError, match="This field must be None or a list of values."
-        ):
+        with pytest.raises(ValidationError, match="This field must be a list"):
             validate_allowed_locations(allowed_locations)
 
-    @pytest.mark.parametrize("allowed_locations", [None, [], ["valid-uid"]])
+    @pytest.mark.parametrize("allowed_locations", [[], ["valid-uid"]])
     def test_credentials_model_saves_allowed_locations(self, db, allowed_locations):
         credential = CredentialsFactory(allowed_locations=allowed_locations)
         assert credential.allowed_locations == allowed_locations
@@ -35,9 +33,7 @@ class TestCredentialsModel:
     def test_credentials_model_throws_when_incorrect_data_types_provided(
         self, db, allowed_locations
     ):
-        with pytest.raises(
-            ValidationError, match="This field must be None or a list of values."
-        ):
+        with pytest.raises(ValidationError, match="This field must be a list"):
             credential_data = CredentialsFactory.build(
                 allowed_locations=allowed_locations
             )
