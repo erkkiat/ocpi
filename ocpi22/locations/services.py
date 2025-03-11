@@ -36,11 +36,6 @@ class LocationService:
     def get_allowed_locations_queryset(
         credentials: Credentials | None, queryset: QuerySet
     ) -> QuerySet:
-        if not credentials:
-            return queryset
-        allowed_locations = credentials.allowed_locations
-        if allowed_locations is None:
-            return queryset.none()
-        elif allowed_locations is not None and len(allowed_locations) > 0:
-            return queryset.filter(uid__in=allowed_locations)
+        if credentials and credentials.allowed_locations:
+            return queryset.filter(uid__in=credentials.allowed_locations)
         return queryset
