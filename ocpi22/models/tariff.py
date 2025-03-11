@@ -15,7 +15,7 @@ from django.utils.html import format_html
 from multiselectfield import MultiSelectField
 import util
 
-from ocpi22 import choices, logging
+from ocpi22 import choices, ocpi_logging as logging
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, DYNAMIC_PRICE_SOURCE_CHOICES
 from ocpi22.credentials.util import find_endpoints_by_roles
 import ocpi22.tasks as tasks

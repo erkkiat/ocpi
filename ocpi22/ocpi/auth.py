@@ -11,7 +11,8 @@ from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from django.conf import settings
-from django.utils.functional import cached_property
+from django.contrib.auth import authenticate
+from ninja.security import HttpBasicAuth
 from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
@@ -211,10 +212,6 @@ class OCPIPermission(DjangoModelPermissions):
             return authorization[6:]
         return ""
 
-    @cached_property
-    def public_views(self):
-        return {reverse(i) for i in settings.PUBLIC_VIEWS}
-
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
         # Remove the "Token" keyword if present to get just the token value
@@ -233,9 +230,18 @@ class OCPIPermission(DjangoModelPermissions):
         ):
             return True
 
-        # Allow access to public views
-        if request.path in self.public_views:
-            return True
-
         logger.warning(f"No valid authentication for {request.path} (token: {token})")
         raise exceptions.NotAuthenticated
+
+
+class NinjaBasicAuth(HttpBasicAuth):
+    def authenticate(self, request, username, password):
+        try:
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                if user.is_authenticated:
+                    request.user = user
+                    return user
+            return None
+        except exceptions.AuthenticationFailed:
+            return None

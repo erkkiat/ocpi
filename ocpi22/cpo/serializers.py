@@ -15,7 +15,7 @@ from ocpi22.cpo.services import SolidTariffService
 from ocpi22.cpo.util import _find_our_evse
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
-from ocpi22.models.location import Evse, Connector, Location
+from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, SolidTariff
 from ocpi22.models.token import Token
@@ -30,7 +30,6 @@ from ocpi22.util import (
     clear_empty,
     uid_validator,
     CURRENCY_CHOICES,
-    fill_out_location_address,
     get_currency_choices,
 )
 
@@ -132,144 +131,6 @@ class ConnectorTariffIdSerializer(serializers.Serializer):
         return tariff
 
 
-class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Connector
-        fields = [
-            "uid",
-            "standard",
-            "format",
-            "max_voltage",
-            "max_amperage",
-            "max_electric_power",
-            "tariff_ids",
-            "last_updated",
-        ]
-
-    uid = serializers.CharField(
-        validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH
-    )
-    tariff_ids = ConnectorTariffIdSerializer(required=False, many=True)
-    last_updated = UTCDateTimeField(required=False)
-
-
-class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Evse
-        fields = ["status_url", "uid", "connectors", "last_updated"]
-
-    uid = serializers.CharField(
-        validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH
-    )
-    connectors = ConnectorQuickSerializer(many=True)
-    last_updated = UTCDateTimeField(required=False)
-
-
-class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Location
-        fields = [
-            "quick_url",
-            "id",
-            "name",
-            "language",
-            "address",
-            "city",
-            "postal_code",
-            "state",
-            "country",
-            "time_zone",
-            "latitude",
-            "longitude",
-            "evses",
-            "last_updated",
-        ]
-
-    id = serializers.CharField(
-        source="uid",
-        validators=[uid_validator],
-        max_length=settings.OCPI_22_MAX_UID_LENGTH,
-    )
-    evses = EvseQuickSerializer(many=True, required=False)
-    language = serializers.CharField(
-        required=False,
-        max_length=6,
-        help_text="Optional language of the location address, if address is determined based on coordinates",
-    )
-    address = serializers.CharField(
-        required=False,
-        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
-        help_text="If omitted, street address will be determined automatically based on coordinates",
-    )
-    city = serializers.CharField(
-        required=False,
-        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
-        help_text="If omitted, city will be determined automatically based on coordinates",
-    )
-    country = serializers.CharField(
-        required=False,
-        max_length=3,
-        help_text="If omitted, country will be determined automatically based on coordinates",
-    )
-    latitude = serializers.FloatField(required=False)
-    longitude = serializers.FloatField(required=False)
-    time_zone = serializers.CharField(
-        required=False,
-        max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
-        help_text="If omitted, time zone will be determined automatically based on coordinates",
-    )
-    lookup_field = "uid"
-    last_updated = UTCDateTimeField(required=False)
-
-    def create(self, validated_data, *args, **kwargs):
-        evses = validated_data.pop("evses", [])
-        validated_data = fill_out_location_address(
-            validated_data,
-            validated_data.get("latitude"),
-            validated_data.get("longitude"),
-        )
-        location = Location.objects.create(**validated_data)
-        for evse_dict in evses:
-            connectors = evse_dict.pop("connectors", [])
-            evse = Evse.objects.create(location=location, **evse_dict)
-            for connector_dict in connectors:
-                tariff_ids = connector_dict.pop("tariff_ids", None)
-                connector = Connector.objects.create(evse=evse, **connector_dict)
-                if tariff_ids:
-                    connector.tariff_ids.set(tariff_ids)
-                else:
-                    connector.tariff_ids.clear()
-        return location
-
-    def update(self, location, validated_data, *args, **kwargs):
-        evses = validated_data.pop("evses", [])
-        validated_data = fill_out_location_address(
-            validated_data,
-            validated_data.get("latitude"),
-            validated_data.get("longitude"),
-        )
-        Location.objects.filter(uid__iexact=location.uid).update(**validated_data)
-        for evse_dict in evses:
-            connectors = evse_dict.pop("connectors", [])
-            evse, created = Evse.objects.get_or_create(
-                location=location, uid__iexact=evse_dict.get("uid"), defaults=evse_dict
-            )
-            if not created:
-                Evse.objects.filter(uid__iexact=evse.uid).update(**evse_dict)
-            for connector_dict in connectors:
-                tariff_ids = connector_dict.pop("tariff_ids", None)
-                connector, created = Connector.objects.get_or_create(
-                    evse=evse, uid=connector_dict.pop("uid"), defaults=connector_dict
-                )
-                if not created:
-                    Connector.objects.filter(
-                        uid__iexact=connector.uid, evse=evse
-                    ).update(**connector_dict)
-                if tariff_ids:
-                    connector.tariff_ids.set(tariff_ids)
-        return location
-
-
 class EvseSerialnumberSerializer(fields.CharField):
     def to_internal_value(self, evse_uid):
         return _find_our_evse(evse_uid)
@@ -347,8 +208,7 @@ class MeterValuesSerializer(serializers.Serializer):
     The session start and end time are recorded by the system
     """
 
-    session_id = SessionIdSerializer(
-        source="session",
+    session = SessionIdSerializer(
         help_text="The OCPI session ID (from the response of the start_transaction endpoint)",
     )
     kwh = serializers.FloatField(

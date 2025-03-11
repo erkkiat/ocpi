@@ -1,6 +1,6 @@
 from django.utils.translation import gettext_lazy as _
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 
 from django.conf import settings
 

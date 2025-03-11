@@ -1,9 +1,12 @@
 import logging
 import os
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 import pytest
 import paho.mqtt.client as mqtt
+import pytz
+from orjson import orjson
 from paho.mqtt.enums import CallbackAPIVersion
 
 from ocpi22.cpo.mqtt import mqtt_subscriber
@@ -19,6 +22,7 @@ from ocpi22.cpo.mqtt.mqtt_subscriber import (
     _subscribe,
     get_topic,
 )
+from ocpi22.tests.factories import OCPISessionFactory
 
 
 class TestMqttSubscriber:
@@ -45,14 +49,23 @@ class TestMqttSubscriber:
                 smappee_status_update_message
             )
 
-    def test_on_message_calls_process_meter_values(
-        self, celery_app, celery_worker, smappee_meter_message
-    ):
+    @pytest.mark.django_db
+    def test_on_message_calls_process_meter_values(self, smappee_meter_message):
+        session = OCPISessionFactory(
+            uid=orjson.loads(smappee_meter_message.payload)["session_id"]
+        )
         with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.process_meter_values_data"
+            "ocpi22.cpo.mqtt.services.process_meter_values"
         ) as mock_process_meter_values:
             on_message(None, None, smappee_meter_message)
-            mock_process_meter_values.assert_called_once_with(smappee_meter_message)
+            mock_process_meter_values.assert_called_once_with(
+                request=None,
+                kwh=1.1,
+                soc=1.1,
+                power=2.2,
+                timestamp=datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC),
+                session=session,
+            )
 
     def test_get_topic_from_env_var_success(self, monkeypatch):
         topic = "test_topic"
