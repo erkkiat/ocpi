@@ -23,22 +23,22 @@ from ocpi22.choices import (
 from ocpi22.ocpi.util import Ocpi
 
 
-class BaseConfig(Schema):
+class BaseSchema(Schema):
     model_config = ConfigDict(extra="forbid")
 
 
-class StatusSchedule(BaseConfig):
+class StatusSchedule(BaseSchema):
     period_begin: datetime
     period_end: datetime
     status: EVSEStatus
 
 
-class DisplayText(BaseConfig):
+class DisplayText(BaseSchema):
     language: Annotated[str, StringConstraints(min_length=2, max_length=2)]
     text: Annotated[str, StringConstraints(min_length=1, max_length=512)]
 
 
-class PublishTokenType(BaseConfig):
+class PublishTokenType(BaseSchema):
     uid: Optional[Annotated[str, StringConstraints(max_length=36)]] = None
     type: Optional[TokenType] = None
     visual_number: Optional[Annotated[str, StringConstraints(max_length=64)]] = None
@@ -46,23 +46,23 @@ class PublishTokenType(BaseConfig):
     group_id: Optional[Annotated[str, StringConstraints(max_length=36)]] = None
 
 
-class AdditionalGeoLocation(BaseConfig):
+class AdditionalGeoLocation(BaseSchema):
     latitude: Latitude
     longitude: Longitude
     name: Optional[DisplayText] = None
 
 
-class EnvironmentalImpact(BaseConfig):
+class EnvironmentalImpact(BaseSchema):
     category: EnvironmentalImpactCategory
     amount: Annotated[float, Field(...)]
 
 
-class EnergySource(BaseConfig):
+class EnergySource(BaseSchema):
     source: EnergySourceCategory
     percentage: Annotated[float, Field(..., ge=0, le=100)]
 
 
-class EnergyMix(BaseConfig):
+class EnergyMix(BaseSchema):
     is_green_energy: Annotated[bool, Field(...)]
     energy_sources: Annotated[List[EnergySource], Field(...)]
     environ_impact: Annotated[List[EnvironmentalImpact], Field(...)]
@@ -70,7 +70,7 @@ class EnergyMix(BaseConfig):
     energy_product_name: Annotated[Optional[str], Field(None, max_length=64)]
 
 
-class OCPIImage(BaseConfig):
+class OCPIImage(BaseSchema):
     url: Annotated[str, StringConstraints(min_length=1, max_length=255)]
     thumbnail: Optional[
         Annotated[str, StringConstraints(min_length=1, max_length=255)]
@@ -81,7 +81,7 @@ class OCPIImage(BaseConfig):
     height: NonNegativeInt
 
 
-class BusinessDetails(BaseConfig):
+class BusinessDetails(BaseSchema):
     name: Annotated[str, StringConstraints(min_length=1, max_length=100)]
     website: Optional[
         Annotated[str, StringConstraints(min_length=1, max_length=255)]
@@ -91,30 +91,30 @@ class BusinessDetails(BaseConfig):
     )
 
 
-class RegularHours(BaseConfig):
+class RegularHours(BaseSchema):
     weekday: Annotated[int, Field(ge=1, le=7)]
     period_begin: Annotated[str, StringConstraints(min_length=5, max_length=5)]
     period_end: Annotated[str, StringConstraints(min_length=5, max_length=5)]
 
 
-class ExceptionalPeriod(BaseConfig):
+class ExceptionalPeriod(BaseSchema):
     period_begin: datetime
     period_end: datetime
 
 
-class OpeningTimes(BaseConfig):
+class OpeningTimes(BaseSchema):
     regular_hours: Optional[List[RegularHours]]
     twentyfourseven: bool
     exceptional_openings: Optional[List[ExceptionalPeriod]] = None
     exceptional_closings: Optional[List[ExceptionalPeriod]] = None
 
 
-class GeoLocation(BaseConfig):
+class GeoLocation(BaseSchema):
     latitude: Latitude
     longitude: Longitude
 
 
-class Connector(BaseConfig):
+class Connector(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ] = Field(..., alias="id")
@@ -129,7 +129,7 @@ class Connector(BaseConfig):
     terms_and_conditions: Optional[str] = None
 
 
-class EVSE(BaseConfig):
+class EVSE(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ]
@@ -165,7 +165,7 @@ def validate_time_zone(value):
     return value
 
 
-class Location(BaseConfig):
+class LocationIn(BaseSchema):
     country_code: Annotated[str, StringConstraints(min_length=2, max_length=2)] = Field(
         ...
     )
