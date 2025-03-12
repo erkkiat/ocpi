@@ -61,6 +61,10 @@ class LocationService:
                     )
                     if solid_tariff:
                         tariffs.append(solid_tariff.ocpi_tariff.uid)
+                    else:
+                        raise ValidationError(
+                            f"SolidTariff with external_id {t} not found"
+                        )
                 c.tariff_ids = tariffs
         return location
 

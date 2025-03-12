@@ -30,7 +30,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.status import HTTP_400_BAD_REQUEST
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_503_SERVICE_UNAVAILABLE
 
 from ocpi22.cpo.schemas import LocationIn
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
@@ -1388,9 +1388,13 @@ def update_location(request, location: LocationIn):
         )
     except ValidationError as e:
         return JsonResponse(
-            e.detail, content_type="application/json", status=HTTP_400_BAD_REQUEST
+            {"status_message": e.detail},
+            content_type="application/json",
+            status=HTTP_400_BAD_REQUEST,
         )
-    # except RuntimeError as e:
-    #     return JsonResponse(
-    #        "Unknown error has occurred", content_type="application/json", status=HTTP_503_SERVICE_UNAVAILABLE
-    #     )
+    except RuntimeError:
+        return JsonResponse(
+            "Unknown error has occurred",
+            content_type="application/json",
+            status=HTTP_503_SERVICE_UNAVAILABLE,
+        )
