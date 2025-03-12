@@ -43,7 +43,7 @@ from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
-from ocpi22.tests.factories import TariffFactory
+from ocpi22.tests.factories import TariffFactory, CredentialsRoleFactory
 from ocpiconnector.testutil import (
     compare_dicts_recursively,
     OCPIAPIRequestFactory,
@@ -3951,3 +3951,82 @@ class TokenAuthorizationTests(BetterTestCase):
 
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)
+
+
+@pytest.fixture
+def ocpi_master():
+    return CredentialsRoleFactory(country_code="BE", party_id="BEC")
+
+
+class TestSolidLocation:
+    @pytest.mark.parametrize(
+        "api_client, expected_status_code",
+        [
+            pytest.param("client", 401, id="Unauthenticated user getting unauthorized"),
+            pytest.param(
+                "authenticated_user_client",
+                201,
+                id="Authenticated user can access locations api",
+            ),
+            pytest.param(
+                "admin_user_client", 201, id="Admin user can access locations api"
+            ),
+            pytest.param(
+                "super_user_client", 201, id="Super user can access locations api"
+            ),
+        ],
+    )
+    @pytest.mark.django_db
+    def test_put_location_proper_credentials(
+        self, api_client, expected_status_code, request, ocpi_master
+    ):
+        get_credentialsrole.cache_clear()
+        url = reverse("cpo:update_location")
+        client = request.getfixturevalue(api_client)
+        data = load_example("data/examples/location_example.json")
+
+        response = client.put(url, data, format="json")
+
+        assert response.status_code == expected_status_code
+
+    @patch("ocpi22.models.location.Location.post_process_after_update_or_create")
+    def test_put_location_create_a_new_location_returns_201(
+        self, mock_post_process, authenticated_user_client, ocpi_master
+    ):
+        get_credentialsrole.cache_clear()
+        url = reverse("cpo:update_location")
+        data = load_example("data/examples/location_example.json")
+
+        response = authenticated_user_client.put(url, data, format="json")
+
+        assert response.status_code == 201
+        mock_post_process.assert_called_once()
+
+    @patch("ocpi22.models.location.Location.post_process_after_update_or_create")
+    def test_put_location_update_a_new_location_returns_200(
+        self, mock_post_process, authenticated_user_client, ocpi_master
+    ):
+        get_credentialsrole.cache_clear()
+        url = reverse("cpo:update_location")
+        data = load_example("data/examples/location_example.json")
+
+        response = authenticated_user_client.put(url, data, format="json")
+
+        assert response.status_code == 201
+
+        response = authenticated_user_client.put(url, data, format="json")
+
+        assert response.status_code == 200
+        assert mock_post_process.call_count == 2
+
+    def test_put_location_with_invalid_data_returns_422(
+        self, authenticated_user_client, ocpi_master
+    ):
+        get_credentialsrole.cache_clear()
+        url = reverse("cpo:update_location")
+        data = load_example("data/examples/location_example.json")
+        data.pop("country_code")
+
+        response = authenticated_user_client.put(url, data, format="json")
+
+        assert response.status_code == 422
