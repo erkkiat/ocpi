@@ -7,6 +7,7 @@ from ocpi22.cpo.schemas import LocationIn
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Evse, Location
+from ocpi22.models.tariff import Tariff
 from ocpi22.ocpi.util import remove_none_values_recursively_from_dict
 from ocpiconnector.party import Party
 
@@ -49,9 +50,9 @@ class LocationService:
         return queryset
 
     def update_tariff_in_request_payload(self, location: LocationIn):
-        tariffs = []
         for e in location.evses:
             for c in e.connectors:
+                tariffs = []
                 tariff_ids = c.tariff_ids
                 for t in tariff_ids:
                     solid_tariff = (
@@ -60,7 +61,9 @@ class LocationService:
                         )
                     )
                     if solid_tariff:
-                        tariffs.append(solid_tariff.ocpi_tariff.uid)
+                        # TODO: This will be replaced when the SolidTariff and OCPI Tariff is linked.
+                        tariff = Tariff.objects.get(uid=t)
+                        tariffs.append(tariff.uid)
                     else:
                         raise ValidationError(
                             f"SolidTariff with external_id {t} not found"
