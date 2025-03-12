@@ -47,6 +47,7 @@ from ocpi22.tests.factories import (
     TariffFactory,
     CredentialsRoleFactory,
     SolidTariffFactory,
+    LocationFactory,
 )
 from ocpiconnector.testutil import (
     compare_dicts_recursively,
@@ -3969,6 +3970,9 @@ class TokenAuthorizationTests(BetterTestCase):
 
 @pytest.fixture
 def ocpi_master():
+    get_our_credentialsrole.cache_clear()
+    get_credentialsrole.cache_clear()
+
     return CredentialsRoleFactory(country_code="FI", party_id="CPO")
 
 
@@ -4020,7 +4024,6 @@ class TestSolidLocation:
         tariffs,
         location_data,
     ):
-        get_credentialsrole.cache_clear()
         url = reverse("cpo:update_location")
         client = request.getfixturevalue(api_client)
 
@@ -4037,16 +4040,15 @@ class TestSolidLocation:
         tariffs,
         location_data,
     ):
-        get_credentialsrole.cache_clear()
         url = reverse("cpo:update_location")
 
         response = authenticated_user_client.put(url, location_data, format="json")
-        print(response.json())
 
         assert response.status_code == 201
         mock_post_process.assert_called_once()
 
     @patch("ocpi22.models.location.Location.post_process_after_update_or_create")
+    @pytest.mark.django_db
     def test_put_location_update_a_new_location_returns_200(
         self,
         mock_post_process,
@@ -4055,22 +4057,18 @@ class TestSolidLocation:
         tariffs,
         location_data,
     ):
-        get_credentialsrole.cache_clear()
         url = reverse("cpo:update_location")
 
-        response = authenticated_user_client.put(url, location_data, format="json")
-
-        assert response.status_code == 201
+        LocationFactory(uid=location_data["id"], ocpi_master=ocpi_master)
 
         response = authenticated_user_client.put(url, location_data, format="json")
 
         assert response.status_code == 200
-        assert mock_post_process.call_count == 2
+        assert mock_post_process.call_count == 1
 
     def test_put_location_with_invalid_data_returns_422(
         self, authenticated_user_client, ocpi_master, location_data
     ):
-        get_credentialsrole.cache_clear()
         url = reverse("cpo:update_location")
         location_data.pop("country_code")
 
