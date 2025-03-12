@@ -36,7 +36,7 @@ from ocpi22.cpo.schemas import LocationIn
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
-from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
+from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -93,8 +93,8 @@ from ocpi22.util import MyMetadata
 from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
-from ocpiconnector.ocpi_identities import get_our_party
-from ocpiconnector.party import party_from_str, Party
+from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
+from ocpiconnector.party import party_from_str
 
 pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
@@ -1356,19 +1356,29 @@ location_service = LocationService()
 
 @api.put("/")
 def update_location(request, location: LocationIn):
-    credentials_role = get_credentialsrole(
-        party=Party(location.country_code, location.party_id), role=OcpiRolesEnum.CPO
-    )
+    our_credentials_role = get_our_credentialsrole(role=OcpiRolesEnum.CPO)
+    if (
+        not our_credentials_role.party_str()
+        == f"{location.country_code}*{location.party_id}"
+    ):
+        return JsonResponse(
+            {
+                "status_message": f"{location.country_code}*{location.party_id} party is not allowed. Please use /ocpi/2.2.1/locations/ instead."
+            },
+            status=HTTP_400_BAD_REQUEST,
+        )
     existing_location: Location = Location.get_if_exists(
-        uid__iexact=location.uid, ocpi_master=credentials_role
+        uid__iexact=location.uid, ocpi_master=our_credentials_role
     )
     created = bool(not existing_location)
     try:
         if created:
-            response_data = location_service.create_location(location, credentials_role)
+            response_data = location_service.create_location(
+                location, our_credentials_role
+            )
         else:
             response_data = location_service.update_location(
-                location, credentials_role, existing_location
+                location, our_credentials_role, existing_location
             )
 
         status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
@@ -1380,3 +1390,7 @@ def update_location(request, location: LocationIn):
         return JsonResponse(
             e.detail, content_type="application/json", status=HTTP_400_BAD_REQUEST
         )
+    # except RuntimeError as e:
+    #     return JsonResponse(
+    #        "Unknown error has occurred", content_type="application/json", status=HTTP_503_SERVICE_UNAVAILABLE
+    #     )
