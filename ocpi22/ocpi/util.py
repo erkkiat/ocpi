@@ -702,3 +702,20 @@ class HasSolidTariffDeletePermission(BasePermission):
             ):
                 return True
         return False
+
+
+def remove_none_values_recursively_from_dict(data):
+    if isinstance(data, dict):
+        return {
+            k: remove_none_values_recursively_from_dict(v)
+            for k, v in data.items()
+            if v is not None
+        }
+    elif isinstance(data, list):
+        return [
+            remove_none_values_recursively_from_dict(item)
+            for item in data
+            if item is not None
+        ]
+    else:
+        return data
