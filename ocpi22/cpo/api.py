@@ -5,6 +5,7 @@ from functools import reduce
 from logging import getLogger
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.utils.datetime_safe import datetime
 
@@ -15,6 +16,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
+from ninja import Swagger, NinjaAPI
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import IsAdminUser
 
@@ -28,9 +30,13 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
+from ocpi22.cpo.schemas import LocationIn
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
+from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
+from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -88,7 +94,7 @@ from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.ocpi_identities import get_our_party
-from ocpiconnector.party import party_from_str
+from ocpiconnector.party import party_from_str, Party
 
 pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
@@ -1342,3 +1348,35 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
             )
     except Exception as e:
         logger.error(f"Unable to send the new CDR to CpoInvoiceWebhook: {e}")
+
+
+api = NinjaAPI(auth=NinjaBasicAuth(), docs=Swagger(), urls_namespace="cpo")
+location_service = LocationService()
+
+
+@api.put("/")
+def update_location(request, location: LocationIn):
+    credentials_role = get_credentialsrole(
+        party=Party(location.country_code, location.party_id), role=OcpiRolesEnum.CPO
+    )
+    existing_location: Location = Location.get_if_exists(
+        uid__iexact=location.uid, ocpi_master=credentials_role
+    )
+    created = bool(not existing_location)
+    try:
+        if created:
+            response_data = location_service.create_location(location, credentials_role)
+        else:
+            response_data = location_service.update_location(
+                location, credentials_role, existing_location
+            )
+
+        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+
+        return JsonResponse(
+            response_data, content_type="application/json", status=status_code
+        )
+    except ValidationError as e:
+        return JsonResponse(
+            e.detail, content_type="application/json", status=HTTP_400_BAD_REQUEST
+        )
