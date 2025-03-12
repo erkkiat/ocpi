@@ -35,7 +35,7 @@ TEST_LOGGING = {
         },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "handlers": ["console"],
-            "level": "INFO",
+            "level": "DEBUG",
             "propagate": False,
         },
     },

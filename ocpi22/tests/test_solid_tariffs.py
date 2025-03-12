@@ -198,11 +198,7 @@ class TestSolidTariffs:
         self, client, method, payload, expected_status
     ):
         url = reverse("solid-tariff-list")
-        response = (
-            getattr(client, method)(url, payload)
-            if payload
-            else getattr(client, method)(url)
-        )
+        response = getattr(client, method)(url, payload)
         assert response.status_code == expected_status
 
     def test_unauthenticated_user_cannot_delete_solid_tariff_by_external_id_returns_401_unauthorized(
