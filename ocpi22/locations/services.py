@@ -1,4 +1,7 @@
 # TODO refactor this to have ddomain speicific services
+from django.db.models import QuerySet
+
+from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 
 
@@ -26,3 +29,13 @@ class EvseServices:
                 return Evse.CHARGING
             case _:
                 raise ValueError(f"Invalid OCPP status [{status}] found")
+
+
+class LocationService:
+    @staticmethod
+    def get_allowed_locations_queryset(
+        credentials: Credentials | None, queryset: QuerySet
+    ) -> QuerySet:
+        if credentials and credentials.allowed_locations:
+            return queryset.filter(uid__in=credentials.allowed_locations)
+        return queryset

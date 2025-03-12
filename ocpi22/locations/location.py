@@ -12,6 +12,7 @@ from ocpi22.decorators import (
     requires_last_updated,
 )
 from ocpi22.locations.serializers import EvseSerializer, ConnectorSerializer
+from ocpi22.locations.services import LocationService
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
@@ -54,27 +55,32 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return "Locations"
 
     def get_queryset(self):
-        related = (
+        prefetch_fields = (
             "evses",
             "evses__connectors",
             "evses__connectors__tariff_ids",
         )
         if ocpi_platform.is_hub and hasattr(self, "request"):
             return (
-                Location.objects.prefetch_related(*related)
+                Location.objects.prefetch_related(*prefetch_fields)
                 .partner_filter(self.request)
                 .exclude(publish=False)
                 .order_by("created")
             )
         return (
-            Location.objects.prefetch_related(*related)
+            Location.objects.prefetch_related(*prefetch_fields)
             .exclude(publish=False)
             .order_by("created")
         )
 
     @ocpi_exception_handler
-    def list(self, *args, **kwargs):
-        return super().list(*args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        credentials = getattr(request, "credentialsrole", None)
+        queryset = LocationService.get_allowed_locations_queryset(
+            credentials, self.get_queryset()
+        )
+        self.queryset = queryset
+        return super().list(request, *args, **kwargs)
 
     @staticmethod
     def get_object(uid=None) -> None:
