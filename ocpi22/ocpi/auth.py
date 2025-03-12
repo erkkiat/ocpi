@@ -11,6 +11,8 @@ from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from django.conf import settings
+from django.contrib.auth import authenticate
+from ninja.security import HttpBasicAuth
 from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
@@ -230,3 +232,16 @@ class OCPIPermission(DjangoModelPermissions):
 
         logger.warning(f"No valid authentication for {request.path} (token: {token})")
         raise exceptions.NotAuthenticated
+
+
+class NinjaBasicAuth(HttpBasicAuth):
+    def authenticate(self, request, username, password):
+        try:
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                if user.is_authenticated:
+                    request.user = user
+                    return user
+            return None
+        except exceptions.AuthenticationFailed:
+            return None

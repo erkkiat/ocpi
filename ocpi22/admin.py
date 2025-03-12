@@ -774,7 +774,14 @@ class CredentialsAdmin(SolidModelAdmin):
         model = Endpoint
 
     model = Credentials
-    list_display = ["name", "party_str", "valid", "responding", "last_update"]
+    list_display = [
+        "name",
+        "party_str",
+        "valid",
+        "responding",
+        "last_update",
+        "allowed_locations",
+    ]
     readonly_fields = [
         "theirs_base64",
         "ours_base64",
