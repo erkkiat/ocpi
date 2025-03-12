@@ -1,6 +1,7 @@
 import logging
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timedelta
+from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import orjson
@@ -16,6 +17,7 @@ from ocpi22.cpo.mqtt.services import (
     process_status_update_data,
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
+from ocpi22.models.session import Session
 from ocpi22.tests.factories import (
     OCPISessionFactory,
     ConnectorFactory,
@@ -203,23 +205,28 @@ class TestMqttServices:
             mock_send_background_update.assert_called_once()
             assert mock_send_background_update.call_args.kwargs["method"] == "put"
 
+    @pytest.mark.django_db
     def test_meter_values_from_wouter_successfully(
         self, smappee_meter_message_from_wouter
     ):
-        meter_values = MagicMock(spec=MeterValues)
         decoded_message = _decode_message(smappee_meter_message_from_wouter)
         message_dict = orjson.loads(decoded_message)
-        meter_values.model_dump.return_value = message_dict
-        with patch.object(
-            MeterValues, "model_validate_json", return_value=meter_values
-        ):
-            with patch.object(
-                process_meter_values, "apply_async"
-            ) as mock_process_meter_values_task:
-                process_meter_values_data(smappee_meter_message_from_wouter)
-                mock_process_meter_values_task.assert_called_once_with(
-                    kwargs=message_dict, expires=35
-                )
+        session_id = message_dict.get("session_id")
+        OCPISessionFactory(
+            uid=session_id,
+            start_date_time=datetime.fromisoformat(message_dict.get("timestamp"))
+            - timedelta(hours=0.76),
+        )
+        process_meter_values_data(smappee_meter_message_from_wouter)
+        session = Session.objects.get(uid=session_id)
+        assert session.kwh == 125
+        assert list(
+            session.chargingperiods.all()[0].dimensions.values_list("type", "volume")
+        ) == [
+            ("ENERGY", Decimal("125.0000")),
+            ("POWER", Decimal("22.0000")),
+            ("TIME", Decimal("0.7600")),
+        ]
 
     @patch("ocpi22.cpo.mqtt.services._decode_message", return_value=None)
     @patch.object(EvseStatusUpdate, attribute="model_validate_json")
