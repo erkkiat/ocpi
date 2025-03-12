@@ -43,7 +43,11 @@ from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
-from ocpi22.tests.factories import TariffFactory, CredentialsRoleFactory
+from ocpi22.tests.factories import (
+    TariffFactory,
+    CredentialsRoleFactory,
+    SolidTariffFactory,
+)
 from ocpiconnector.testutil import (
     compare_dicts_recursively,
     OCPIAPIRequestFactory,
@@ -304,10 +308,10 @@ class ApiPutTests(TestCase):
             party_id=loc.ocpi_master.party_id,
             uid=loc.uid,
         )
-        data = response.data.get("data")
+        data = response.location_data.get("data")
         assert isinstance(
             data, dict
-        ), f'There should be a dict element "data" in the Location: {response.data}'
+        ), f'There should be a dict element "data" in the Location: {response.location_data}'
 
         coordinates = data.get("coordinates")
         assert isinstance(coordinates, dict)
@@ -1061,10 +1065,10 @@ class ApiPutTests(TestCase):
         )
 
         assert (
-            response.data.get("status_code") == 1000
+            response.location_data.get("status_code") == 1000
         ), "OCPI status code should be 1000 for success"
 
-        data = response.data.get("data")
+        data = response.location_data.get("data")
         detail_url = data.get("detail_url")
         assert (
             detail_url == "http://testserver.test/ocpi/2.2.1/locations/FI/F1/1"
@@ -1356,7 +1360,7 @@ class CommandTests(TestCase):
         self.assertFalse(args, "Not expecting positional arguments to requests.put()")
         self.assertTrue(
             compare_dicts_recursively(
-                response.data, SessionCommandsData.evse_inoperative_response
+                response.location_data, SessionCommandsData.evse_inoperative_response
             ),
             "Expecting different response for start_session",
         )
@@ -1381,7 +1385,7 @@ class CommandTests(TestCase):
         check_ok_result(self, response)
 
         self.assertEqual(
-            response.data.get("data").get("result"),
+            response.location_data.get("data").get("result"),
             "ACCEPTED",
             msg='Expecting the result "ACCEPTED"',
         )
@@ -1429,7 +1433,9 @@ class CommandTests(TestCase):
             "Stop session was expected to succeed: response.data",
         )
         self.assertTrue(
-            compare_dicts_recursively(response.data, SessionCommandsData.stop_success)
+            compare_dicts_recursively(
+                response.location_data, SessionCommandsData.stop_success
+            )
         )
 
     @time_machine.travel(faketime, tick=False)
@@ -1484,7 +1490,7 @@ class CommandTests(TestCase):
         self.assertFalse(args, "Not expecting positional arguments to requests.put()")
         self.assertTrue(
             compare_dicts_recursively(
-                response.data, SessionCommandsData.evse_inoperative_response
+                response.location_data, SessionCommandsData.evse_inoperative_response
             ),
             "Expecting a different response for a reservation",
         )
@@ -1535,7 +1541,7 @@ class CommandTests(TestCase):
         check_ok_result(self, response)
 
         self.assertEqual(
-            response.data.get("data").get("result"),
+            response.location_data.get("data").get("result"),
             "ACCEPTED",
             msg='Expecting the result "ACCEPTED"',
         )
@@ -1733,20 +1739,20 @@ def check_ok_result(
     command_result: str = None,
 ) -> None:
     testcase.assertEqual(
-        response.data.get("status_code"),
+        response.location_data.get("status_code"),
         status_code,
-        msg=f"Expecting OCPI status code {status_code}: {response}, {response.data}",
+        msg=f"Expecting OCPI status code {status_code}: {response}, {response.location_data}",
     )
     testcase.assertEqual(
         response.status_code,
         http_status,
-        msg=f"Expecting HTTP status code {http_status}: {response}, {response.data}",
+        msg=f"Expecting HTTP status code {http_status}: {response}, {response.location_data}",
     )
     if command_result:
         testcase.assertEqual(
-            response.data.get("data").get("result"),
+            response.location_data.get("data").get("result"),
             command_result,
-            msg=f'Expecting the result "{command_result}": {response}, {response.data}',
+            msg=f'Expecting the result "{command_result}": {response}, {response.location_data}',
         )
 
 
@@ -2479,10 +2485,10 @@ class TestCpoApi(TestCase):
                 self.assertEqual(
                     cpo_response.status_code,
                     case.get("status_code"),
-                    f"Status change should succeed: {cpo_response.data}",
+                    f"Status change should succeed: {cpo_response.location_data}",
                 )
                 self.assertDictEqual(
-                    cpo_response.data,
+                    cpo_response.location_data,
                     case.get("response"),
                     f'Case request {case.get("request")}, response {case.get("response")}',
                 )
@@ -2570,7 +2576,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(cpo_response.status_code, 200, "Start session should succeed")
         self.assertTrue(
             compare_dicts_recursively(
-                cpo_response.data, RfidTestData.expected_response_1
+                cpo_response.location_data, RfidTestData.expected_response_1
             )
         )
 
@@ -2774,11 +2780,11 @@ class TestCpoApi(TestCase):
                 )
                 self.assertTrue(
                     compare_dicts_recursively(
-                        cpo_response.data,
+                        cpo_response.location_data,
                         case.get("expected_response"),
                         label=data.get("kwh"),
                     ),
-                    f'Case request {case.get("request")}, response {cpo_response.data}',
+                    f'Case request {case.get("request")}, response {cpo_response.location_data}',
                 )
 
                 # Make sure the updated session was sent after meter_values was called
@@ -2841,7 +2847,9 @@ class TestCpoApi(TestCase):
             response = stop_transaction(data)
 
         self.assertTrue(
-            compare_dicts_recursively(response.data, StopTransactionResponses.stop1),
+            compare_dicts_recursively(
+                response.location_data, StopTransactionResponses.stop1
+            ),
             "stop_transaction response differs from expected",
         )
         send_updates_mock.assert_called()
@@ -2914,7 +2922,7 @@ class TestCpoApi(TestCase):
         response = send_command_result(data, url, "start", authorization_reference)
 
         self.assertDictEqual(
-            response.data,
+            response.location_data,
             {
                 "data": {"command_id": authorization_reference},
                 "status_code": 1000,
@@ -2938,7 +2946,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(cpo_response.status_code, 200, "Token should be authorized")
         self.assertTrue(
             compare_dicts_recursively(
-                cpo_response.data, SessionCommandsData.authorization_success
+                cpo_response.location_data, SessionCommandsData.authorization_success
             ),
             "Expecting authorization to succeed",
         )
@@ -2956,7 +2964,7 @@ class TestCpoApi(TestCase):
 
         self.assertTrue(
             compare_dicts_recursively(
-                cpo_response.data, AdhocTokenData.start_transaction_response
+                cpo_response.location_data, AdhocTokenData.start_transaction_response
             )
         )
 
@@ -2983,7 +2991,7 @@ class TestCpoApi(TestCase):
                 cpo_response.status_code, 401, "Token should NOT be authorized"
             )
             self.assertDictEqual(
-                cpo_response.data,
+                cpo_response.location_data,
                 {
                     "status_text": "Token is (temporarily) not valid",
                     "token_id": "SOME-ADHOC-TOKEN",
@@ -3070,7 +3078,7 @@ class TestCpoApi(TestCase):
         response = meter_values(data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertDictEqual(
-            response.data,
+            response.location_data,
             {
                 "now_kwh": 123.45,
                 "power": 150.0,
@@ -3109,7 +3117,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(
             response.status_code,
             200,
-            f"CPO stop_transaction is expected to succeed: {response.data}",
+            f"CPO stop_transaction is expected to succeed: {response.location_data}",
         )
         cdr_count_after = Cdr.objects.all().count()
 
@@ -3120,7 +3128,9 @@ class TestCpoApi(TestCase):
         )
 
         self.assertTrue(
-            compare_dicts_recursively(response.data, StopTransactionResponses.stop3),
+            compare_dicts_recursively(
+                response.location_data, StopTransactionResponses.stop3
+            ),
             "stop_transaction response differs from expected",
         )
 
@@ -3155,7 +3165,7 @@ class TestCpoApi(TestCase):
         self.assertEqual(
             response.status_code,
             status.HTTP_409_CONFLICT,
-            f"A duplicate CPO stop_transaction is expected to fail: {response.data}",
+            f"A duplicate CPO stop_transaction is expected to fail: {response.location_data}",
         )
 
         # # Check the invoice creation
@@ -3326,7 +3336,7 @@ class TestMspApi(TestCase):
         self.assertEqual(
             response.status_code,
             status.HTTP_200_OK,
-            f"Expecting charging to start without specifically creating an account {response.data}",
+            f"Expecting charging to start without specifically creating an account {response.location_data}",
         )
 
         # Create an account with insufficient balance
@@ -3375,7 +3385,9 @@ class TestMspApi(TestCase):
         response = start_charging(data, self.user)
 
         self.assertTrue(
-            compare_dicts_recursively(response.data, self.accepted_result.get("data")),
+            compare_dicts_recursively(
+                response.location_data, self.accepted_result.get("data")
+            ),
             "Response from CPO for START_SESSION differs from expected",
         )
         args, kwargs = simulation.ocpi_requests.post.call_args
@@ -3434,7 +3446,9 @@ class TestMspApi(TestCase):
             response.status_code, status.HTTP_200_OK, "Call is expected to succeed"
         )
         self.assertTrue(
-            compare_dicts_recursively(response.data, self.accepted_result.get("data")),
+            compare_dicts_recursively(
+                response.location_data, self.accepted_result.get("data")
+            ),
             "Response from CPO for STOP_SESSION differs from expected",
         )
 
@@ -3955,7 +3969,27 @@ class TokenAuthorizationTests(BetterTestCase):
 
 @pytest.fixture
 def ocpi_master():
-    return CredentialsRoleFactory(country_code="BE", party_id="BEC")
+    return CredentialsRoleFactory(country_code="FI", party_id="CPO")
+
+
+@pytest.fixture
+def tariffs(ocpi_master):
+    SolidTariffFactory(external_id="11", operator=ocpi_master, msp=None)
+    SolidTariffFactory(external_id="12", operator=ocpi_master, msp=None)
+    SolidTariffFactory(external_id="13", operator=ocpi_master, msp=None)
+
+    TariffFactory(uid="11", ocpi_master=ocpi_master)
+    TariffFactory(uid="12", ocpi_master=ocpi_master)
+    TariffFactory(uid="13", ocpi_master=ocpi_master)
+
+
+@pytest.fixture
+def location_data(ocpi_master):
+    data = load_example("data/examples/location_example.json")
+    data["country_code"] = ocpi_master.country_code
+    data["party_id"] = ocpi_master.party_id
+
+    return data
 
 
 class TestSolidLocation:
@@ -3978,55 +4012,68 @@ class TestSolidLocation:
     )
     @pytest.mark.django_db
     def test_put_location_proper_credentials(
-        self, api_client, expected_status_code, request, ocpi_master
+        self,
+        api_client,
+        expected_status_code,
+        request,
+        ocpi_master,
+        tariffs,
+        location_data,
     ):
         get_credentialsrole.cache_clear()
         url = reverse("cpo:update_location")
         client = request.getfixturevalue(api_client)
-        data = load_example("data/examples/location_example.json")
 
-        response = client.put(url, data, format="json")
+        response = client.put(url, location_data, format="json")
 
         assert response.status_code == expected_status_code
 
     @patch("ocpi22.models.location.Location.post_process_after_update_or_create")
     def test_put_location_create_a_new_location_returns_201(
-        self, mock_post_process, authenticated_user_client, ocpi_master
+        self,
+        mock_post_process,
+        authenticated_user_client,
+        ocpi_master,
+        tariffs,
+        location_data,
     ):
         get_credentialsrole.cache_clear()
         url = reverse("cpo:update_location")
-        data = load_example("data/examples/location_example.json")
 
-        response = authenticated_user_client.put(url, data, format="json")
+        response = authenticated_user_client.put(url, location_data, format="json")
+        print(response.json())
 
         assert response.status_code == 201
         mock_post_process.assert_called_once()
 
     @patch("ocpi22.models.location.Location.post_process_after_update_or_create")
     def test_put_location_update_a_new_location_returns_200(
-        self, mock_post_process, authenticated_user_client, ocpi_master
+        self,
+        mock_post_process,
+        authenticated_user_client,
+        ocpi_master,
+        tariffs,
+        location_data,
     ):
         get_credentialsrole.cache_clear()
         url = reverse("cpo:update_location")
-        data = load_example("data/examples/location_example.json")
 
-        response = authenticated_user_client.put(url, data, format="json")
+        response = authenticated_user_client.put(url, location_data, format="json")
 
         assert response.status_code == 201
 
-        response = authenticated_user_client.put(url, data, format="json")
+        response = authenticated_user_client.put(url, location_data, format="json")
 
         assert response.status_code == 200
         assert mock_post_process.call_count == 2
 
     def test_put_location_with_invalid_data_returns_422(
-        self, authenticated_user_client, ocpi_master
+        self, authenticated_user_client, ocpi_master, location_data
     ):
         get_credentialsrole.cache_clear()
         url = reverse("cpo:update_location")
-        data = load_example("data/examples/location_example.json")
-        data.pop("country_code")
+        location_data.pop("country_code")
 
-        response = authenticated_user_client.put(url, data, format="json")
+        response = authenticated_user_client.put(url, location_data, format="json")
 
         assert response.status_code == 422
