@@ -8,7 +8,7 @@ from django.utils import timezone
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ocpi22', '0019_delete_dynamicprice'),
+        ('ocpi22', '0020_credentials_allowed_locations'),
     ]
 
     operations = [
