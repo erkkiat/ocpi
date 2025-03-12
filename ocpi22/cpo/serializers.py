@@ -2,7 +2,6 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
-from django.db import transaction
 from rest_framework import serializers, fields
 from rest_framework.exceptions import ValidationError
 
@@ -12,12 +11,13 @@ from ocpi22.choices import (
     AuthorizationEnum,
 )
 from ocpi22.commands.serializers import CommandResultBaseSerializer
+from ocpi22.cpo.services import SolidTariffService
 from ocpi22.cpo.util import _find_our_evse
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
-from ocpi22.models.location import Evse, Connector, Location
+from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
-from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent, SolidTariff
+from ocpi22.models.tariff import Tariff, SolidTariff
 from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.serializers.util import (
@@ -30,7 +30,6 @@ from ocpi22.util import (
     clear_empty,
     uid_validator,
     CURRENCY_CHOICES,
-    fill_out_location_address,
     get_currency_choices,
 )
 
@@ -90,9 +89,11 @@ class CpoSessionSerializer(HyperlinkedModelSerializerCleanedUp):
     def get_token(session):
         return clear_empty(
             dict(
-                token_id=session.cdr_token_uid,
-                type=session.cdr_token_type,
-                contract_id=session.cdr_token_contract_id,
+                country_code=session.cdr_token.ocpi_master.country_code,
+                party_id=session.cdr_token.ocpi_master.party_id,
+                token_id=session.cdr_token.uid,
+                type=session.cdr_token.token_type,
+                contract_id=session.cdr_token.contract_id,
             )
         )
 
@@ -128,144 +129,6 @@ class ConnectorTariffIdSerializer(serializers.Serializer):
                 f"Tariff {data} is not in the database, please create it before adding Locations"
             )
         return tariff
-
-
-class ConnectorQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Connector
-        fields = [
-            "uid",
-            "standard",
-            "format",
-            "max_voltage",
-            "max_amperage",
-            "max_electric_power",
-            "tariff_ids",
-            "last_updated",
-        ]
-
-    uid = serializers.CharField(
-        validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH
-    )
-    tariff_ids = ConnectorTariffIdSerializer(required=False, many=True)
-    last_updated = UTCDateTimeField(required=False)
-
-
-class EvseQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Evse
-        fields = ["status_url", "uid", "connectors", "last_updated"]
-
-    uid = serializers.CharField(
-        validators=[uid_validator], max_length=settings.OCPI_22_MAX_UID_LENGTH
-    )
-    connectors = ConnectorQuickSerializer(many=True)
-    last_updated = UTCDateTimeField(required=False)
-
-
-class LocationQuickSerializer(HyperlinkedModelSerializerCleanedUp):
-    class Meta:
-        model = Location
-        fields = [
-            "quick_url",
-            "id",
-            "name",
-            "language",
-            "address",
-            "city",
-            "postal_code",
-            "state",
-            "country",
-            "time_zone",
-            "latitude",
-            "longitude",
-            "evses",
-            "last_updated",
-        ]
-
-    id = serializers.CharField(
-        source="uid",
-        validators=[uid_validator],
-        max_length=settings.OCPI_22_MAX_UID_LENGTH,
-    )
-    evses = EvseQuickSerializer(many=True, required=False)
-    language = serializers.CharField(
-        required=False,
-        max_length=6,
-        help_text="Optional language of the location address, if address is determined based on coordinates",
-    )
-    address = serializers.CharField(
-        required=False,
-        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
-        help_text="If omitted, street address will be determined automatically based on coordinates",
-    )
-    city = serializers.CharField(
-        required=False,
-        max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH,
-        help_text="If omitted, city will be determined automatically based on coordinates",
-    )
-    country = serializers.CharField(
-        required=False,
-        max_length=3,
-        help_text="If omitted, country will be determined automatically based on coordinates",
-    )
-    latitude = serializers.FloatField(required=False)
-    longitude = serializers.FloatField(required=False)
-    time_zone = serializers.CharField(
-        required=False,
-        max_length=settings.OCPI_22_MAX_TIME_ZONE_LENGTH,
-        help_text="If omitted, time zone will be determined automatically based on coordinates",
-    )
-    lookup_field = "uid"
-    last_updated = UTCDateTimeField(required=False)
-
-    def create(self, validated_data, *args, **kwargs):
-        evses = validated_data.pop("evses", [])
-        validated_data = fill_out_location_address(
-            validated_data,
-            validated_data.get("latitude"),
-            validated_data.get("longitude"),
-        )
-        location = Location.objects.create(**validated_data)
-        for evse_dict in evses:
-            connectors = evse_dict.pop("connectors", [])
-            evse = Evse.objects.create(location=location, **evse_dict)
-            for connector_dict in connectors:
-                tariff_ids = connector_dict.pop("tariff_ids", None)
-                connector = Connector.objects.create(evse=evse, **connector_dict)
-                if tariff_ids:
-                    connector.tariff_ids.set(tariff_ids)
-                else:
-                    connector.tariff_ids.clear()
-        return location
-
-    def update(self, location, validated_data, *args, **kwargs):
-        evses = validated_data.pop("evses", [])
-        validated_data = fill_out_location_address(
-            validated_data,
-            validated_data.get("latitude"),
-            validated_data.get("longitude"),
-        )
-        Location.objects.filter(uid__iexact=location.uid).update(**validated_data)
-        for evse_dict in evses:
-            connectors = evse_dict.pop("connectors", [])
-            evse, created = Evse.objects.get_or_create(
-                location=location, uid__iexact=evse_dict.get("uid"), defaults=evse_dict
-            )
-            if not created:
-                Evse.objects.filter(uid__iexact=evse.uid).update(**evse_dict)
-            for connector_dict in connectors:
-                tariff_ids = connector_dict.pop("tariff_ids", None)
-                connector, created = Connector.objects.get_or_create(
-                    evse=evse, uid=connector_dict.pop("uid"), defaults=connector_dict
-                )
-                if not created:
-                    Connector.objects.filter(
-                        uid__iexact=connector.uid, evse=evse
-                    ).update(**connector_dict)
-                if tariff_ids:
-                    connector.tariff_ids.set(tariff_ids)
-        return location
 
 
 class EvseSerialnumberSerializer(fields.CharField):
@@ -345,8 +208,7 @@ class MeterValuesSerializer(serializers.Serializer):
     The session start and end time are recorded by the system
     """
 
-    session_id = SessionIdSerializer(
-        source="session",
+    session = SessionIdSerializer(
         help_text="The OCPI session ID (from the response of the start_transaction endpoint)",
     )
     kwh = serializers.FloatField(
@@ -375,7 +237,6 @@ class MeterValuesSerializer(serializers.Serializer):
 class StartTransactionSerializer(serializers.Serializer):
     session_id = SessionIdSerializer(
         source="session",
-        required=False,
         help_text="The ID of the charging session on the CPO platform, "
         "you get this from the response of a successful authorize request",
     )
@@ -591,6 +452,7 @@ class ParkingPricePerMinSerializer(PriceSerializer):
 
 
 class SolidTariffSerializer(SerializerCleanedUp):
+    service = SolidTariffService()
     external_id = serializers.CharField(
         validators=[uid_validator],
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
@@ -647,149 +509,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
 
     def create(self, validated_data):
-        currency = validated_data.get(CurrencySerializer.key)
-
-        operator = validated_data.get("ocpi_master")
-        msp = validated_data.get("msp")
-
-        per_kwh = validated_data.get(PriceKwhSerializer.key)
-        per_min = validated_data.get(PriceMinSerializer.key)
-        flat = validated_data.get(PriceFlatSerializer.key)
-        vat = validated_data.get(VatSerializer.key)
-        parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
-        grace_period = validated_data.get("parking_grace_period")
-
-        with transaction.atomic():
-            external_id = self.get_uid(validated_data.get("external_id"), msp)
-
-            tariff = Tariff.objects.create(
-                uid=external_id,
-                ocpi_master=validated_data.get("ocpi_master"),
-                currency=currency,
-            )
-            te = TariffElement.objects.create(tariff=tariff)
-            if per_kwh:
-                PriceComponent.objects.create(
-                    tariff_element=te,
-                    type="ENERGY",
-                    price=per_kwh,
-                    vat=vat,
-                    step_size=1,
-                )
-            if per_min:
-                PriceComponent.objects.create(
-                    tariff_element=te,
-                    type="TIME",
-                    price=per_min,
-                    vat=vat,
-                    step_size=1,
-                )
-            if flat:
-                PriceComponent.objects.create(
-                    tariff_element=te, type="FLAT", price=flat, vat=vat, step_size=1
-                )
-            if parking_price:
-                PriceComponent.objects.create(
-                    tariff_element=te,
-                    type="PARKING_TIME",
-                    price=parking_price,
-                    vat=vat,
-                    step_size=1,
-                )
-
-            solid_tariff = SolidTariff(
-                external_id=validated_data.get("external_id"),
-                currency=currency,
-                price_per_kwh=per_kwh,
-                price_per_min=per_min,
-                price_flat=flat,
-                parking_price_per_min=parking_price,
-                parking_grace_period=grace_period,
-                vat_percentage=vat,
-                msp=msp,
-                operator=operator,
-            )
-            solid_tariff.save()
-
-        return tariff, solid_tariff
-
-    def update(self, solid_tariff: SolidTariff, validated_data: dict):
-        def update_price_components(price, tariff_type) -> None:
-            data = dict(price=price, vat=vat, step_size=1)
-            pc, created = PriceComponent.objects.get_or_create(
-                tariff_element=te, type=tariff_type, defaults=data
-            )
-            if not created:
-                self.update_fields(pc, data, self.partial)
-                pc.save()
-
-        def update_solid_tariff():
-            self.update_fields(solid_tariff, fields_to_update, self.partial)
-            solid_tariff.save()
-
-        external_id = solid_tariff.external_id
-        msp = solid_tariff.msp
-        tariff = Tariff.objects.get_if_exists(uid=self.get_uid(external_id, msp))
-
-        fields_to_update = self.get_fields_to_update(validated_data)
-
-        with transaction.atomic():
-            te, _created = TariffElement.objects.get_or_create(tariff=tariff)
-            vat = validated_data.get(VatSerializer.key)
-
-            price_components = (
-                (fields_to_update["price_per_kwh"], "ENERGY"),
-                (fields_to_update["price_per_min"], "TIME"),
-                (fields_to_update["price_flat"], "FLAT"),
-                (fields_to_update["parking_price_per_min"], "PARKING_TIME"),
-            )
-            for price, tariff_type in price_components:
-                if price is not None:
-                    update_price_components(price, tariff_type)
-                elif self.partial:
-                    continue
-
-            if not self.partial:
-                te.price_components.update(vat=vat)
-            if vat is not None:
-                te.price_components.update(vat=vat)
-
-            update_solid_tariff()
-
-        return tariff, solid_tariff
-
-    def get_fields_to_update(self, validated_data: dict):
-        per_kwh = validated_data.get(PriceKwhSerializer.key)
-        per_min = validated_data.get(PriceMinSerializer.key)
-        flat = validated_data.get(PriceFlatSerializer.key)
-        parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
-        grace_period = validated_data.get("parking_grace_period")
-        vat = validated_data.get(VatSerializer.key)
-        currency = validated_data.get(CurrencySerializer.key)
-
-        return {
-            "price_per_kwh": per_kwh,
-            "price_per_min": per_min,
-            "price_flat": flat,
-            "parking_price_per_min": parking_price,
-            "parking_grace_period": grace_period,
-            "currency": currency,
-            "vat_percentage": vat,
-        }
-
-    def get_uid(self, uid, msp):
-        if not msp:
-            return uid
-        return f"{msp.party_str()}*{uid or 'all'}"
-
-    def update_fields(self, obj, data: dict, partial: bool):
-        for key, value in data.items():
-            if not partial:  # PUT
-                setattr(obj, key, value)
-            if value is not None:  # PATCH
-                setattr(obj, key, value)
-
-        return obj
+        return self.service.create(validated_data)
 
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):

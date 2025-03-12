@@ -11,7 +11,6 @@ from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import routers, status, mixins
 from rest_framework.generics import get_object_or_404
-from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -39,7 +38,6 @@ from ocpi22.choices import (
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
 from ocpi22.webhooks import send_to_webhook
-from ocpi22.msp.account import update_balance
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
     MSPSessionCallbackSerializer,
@@ -62,9 +60,7 @@ from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
-from ocpi22.rendering import RENDERERS
 from ocpi22.util import (
-    OnlyRawBrowsableAPIRenderer,
     OCPIVersioning,
     OCPIListModelMixin,
     generate_random_token,
@@ -91,7 +87,6 @@ from ocpiconnector.ocpi_identities import (
     get_our_credentialsrole,
 )
 from ocpiconnector.party import Party
-from premium import requires_premium
 
 logger = getLogger(__name__)
 
@@ -128,7 +123,6 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     versioning_class = OCPIVersioning
     lookup_field = "uid"
-    renderer_classes = RENDERERS
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
@@ -183,6 +177,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         if serializer.is_valid():
             created_token = serializer.save(ocpi_master=credentialsrole)
             logger.info(f'{"Creating" if created else "Updating"} {created_token}')
+            created_token.post_process_after_update_or_create()
             created_token.send_hub_updates()
             return OCPIResponse(
                 serializer.data,
@@ -360,7 +355,6 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
     serializer_class = CdrSerializer
     versioning_class = OCPIVersioning
     pagination_class = OCPIPaginationAndHeaders
-    renderer_classes = RENDERERS
 
     def get_queryset(self):
         if self.request.user.is_superuser:
@@ -384,12 +378,10 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
         return None
 
     @ocpi_exception_handler
-    @requires_premium
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_sender_role(
         OcpiRolesEnum.EMSP
     )  # CPO should have the specific URL, no need to fetch using this endpoint
@@ -402,16 +394,12 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
-    @requires_premium
     def post(self, request, data, **_kwargs) -> OCPIResponse:
         serializer = CdrSerializer(data=data, context={"version": request.version})
         if serializer.is_valid():
             cdr = serializer.save(ocpi_master=request.credentialsrole)
             # cdr.tariffs.set(tariff_list)
             cdr.send_hub_updates()
-            if ocpi_platform.is_emsp:
-                update_balance(cdr)
-                # capture_reservation(cdr)
             url = build_absolute_uri(cdr.get_absolute_url())
             return OCPIResponse(
                 serializer.data,
@@ -440,13 +428,11 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
     # The queryset tells Django REST how to determine access to these endpoints
     queryset = Credentials.objects.none()
     serializer_class = CredentialsSerializer
-    renderer_classes = [OnlyRawBrowsableAPIRenderer, JSONRenderer]
 
     def get_view_name(self):
         return "Credentials"
 
     @ocpi_exception_handler
-    @requires_premium
     def list(self, request, *_args, **_kwargs):
         if not hasattr(request, "credentials"):
             return OCPIResponse(
@@ -457,7 +443,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         return OCPIResponse(make_my_credentials_dict(request, request.credentials.ours))
 
     @ocpi_exception_handler
-    @requires_premium
     def delete(self, request: Request, *_args, **_kwargs):
         # Todo: Make sure deletition is not possible for others than owner
         if not hasattr(request, "credentials"):
@@ -475,9 +460,8 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         )
 
     @ocpi_exception_handler
-    @requires_premium
     @csrf_exempt
-    def post(self, request: Request, *_args, **_kwargs):
+    def post(self, request: WSGIRequest, *_args, **_kwargs):
         credentials: Credentials = getattr(request, "credentials", None)
         assert credentials, "Posting to this endpoint requires OCPI Credentials"
         assert not credentials.theirs, "Credentials exist already, use PUT to update"
@@ -519,7 +503,6 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         return OCPIResponse(data, http_status=status.HTTP_201_CREATED)
 
     @ocpi_exception_handler
-    @requires_premium
     @csrf_exempt
     def put(self, request: Request, *_args, **_kwargs):
         credentials: Credentials = getattr(request, "credentials", None)
@@ -562,7 +545,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
     versioning_class = OCPIVersioning
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = "uid"
-    renderer_classes = RENDERERS
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
@@ -581,12 +563,10 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
         return Tariff.objects.exclude(archived=True).order_by("created")
 
     @ocpi_exception_handler
-    @requires_premium
     def list(self, *args, **kwargs):
         return super().list(*args, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_credentialsrole
     def get(self, request: Request, credentialsrole, uid, *_args, **_kwargs):
         """Handle a GET request for a specific Tariff"""
@@ -603,7 +583,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
             return get_object_or_404(Tariff, uid=uid)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_credentialsrole
     def put(
@@ -659,7 +638,6 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
 
     @ocpi_exception_handler
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
-    @requires_premium
     @requires_credentialsrole
     def delete(self, request, credentialsrole, uid, *_args, **_kwargs) -> OCPIResponse:
         """Process a DELETE rest call for a Tariff"""
@@ -763,7 +741,6 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     lookup_field = "uid"
     queryset = Session.objects.all().order_by("created")
     serializer_class = SessionSerializer
-    renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
 
     def get_view_name(self):
@@ -795,22 +772,22 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
 
     @classmethod
     @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.CPO)
+    @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     def put(
         cls,
         request,
-        country_code=None,
-        party_id=None,
-        uid=None,
-        partial=False,
-        data=None,
-        tryagain=False,
+        uid,
+        *args,
         **kwargs,
     ) -> OCPIResponse:
+        country_code = kwargs.get("country_code", "")
+        party_id = kwargs.get("party_id", "")
+        data = kwargs.get("data", {})
+        partial = kwargs.get("partial", False)
+
         if not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse("session")
 
-        uid = uid or data.get("id")
         session: Session = Session.get_if_exists(
             uid__iexact=uid, ocpi_master=request.credentialsrole
         )
@@ -859,30 +836,6 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
                 http_status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
             )
 
-        # Input data doesn't validate
-        # Is the Location or EVSE missing?
-        if (
-            not tryagain
-            and "evse_uid" in data
-            and "location_id" in data
-            and ("evse_uid" in serializer.errors or "location_id" in serializer.errors)
-        ):
-            fetch_location(
-                country_code,
-                party_id,
-                serializer.initial_data.get("location_id"),
-                serializer.initial_data.get("evse_uid"),
-            )
-            # Try again, but avoid a loop
-            return cls.put(
-                request,
-                country_code=kwargs.pop("country_code", country_code),
-                party_id=kwargs.pop("party_id", party_id),
-                uid=kwargs.pop("uid", uid),
-                partial=partial,
-                tryagain=True,
-                **kwargs,
-            )
         logger.error(
             'Problem with PUT Session from '
             f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}'
@@ -894,8 +847,8 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
     @requires_last_updated
-    def patch(self, request, data, *args, **kwargs):
-        return self.put(request, data, *args, partial=True, **kwargs)
+    def patch(self, request, *args, **kwargs):
+        return self.put(request, *args, partial=True, **kwargs)
 
 
 class ClientInfoViewSet(mixins.ListModelMixin, GenericViewSet):

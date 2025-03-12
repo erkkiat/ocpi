@@ -1,8 +1,6 @@
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
-from django.db import models, transaction
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+from django.db import models
 from rest_framework.exceptions import ValidationError
 
 
@@ -72,21 +70,4 @@ class MultipleChoiceCharField(models.CharField):
 
 # Todo: CDR.id must contain the CPO-ID (NLEVN12345ABCDEFG...) [up to 36 characters total]
 # Todo: CDR.id must follow the pattern: Regular Expression: [0-9A-Z]{1,36}
-
-
-@receiver(post_save)
-def atomic_post_save(sender, instance, raw, **kwargs):
-    """
-    This makes sure that updates are sent only once per atomic operation. There was a problem
-    with post_save being triggered first when a new Location is saved, then again with Evses and Connectors.
-    """
-    if raw:
-        return
-    if (
-        hasattr(instance, "atomic_post_save")
-        and transaction.get_connection().in_atomic_block
-    ):
-        transaction.on_commit(lambda: instance.atomic_post_save(**kwargs))
-
-
 # Todo: Prevent creating EVSE linked to a Location owned by another party

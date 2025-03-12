@@ -3,18 +3,18 @@ from datetime import datetime
 
 import pytz
 from cachetools import cached, TTLCache
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 
 import generic.countries
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from typing import Optional, List
 
 from django import forms
 from django.conf import settings
 from django.contrib import messages
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, JSONField
 from django.db.models.signals import pre_save, pre_delete, post_save
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
@@ -44,6 +44,13 @@ from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 
 is_hub_cache = TTLCache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=24 * 60 * 60)
+
+
+def validate_allowed_locations(value: None | list[str]) -> None:
+    if value is None:
+        raise ValidationError("This field cannot be None")
+    if not isinstance(value, list):
+        raise ValidationError("This field must be a list")
 
 
 class Credentials(models.Model, ModelUtilMixin, OcpiModule):
@@ -121,6 +128,18 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     # Connections are only accepted for valid Credentials
     valid = models.BooleanField(default=True, verbose_name=_("Activated"))
 
+    # The OCPI field writable and maintained by object owner
+    last_updated = models.DateTimeField(
+        null=True, blank=True, verbose_name=_("Last updated")
+    )
+
+    # Django automatic dates
+    updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
+    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    allowed_locations = JSONField(
+        default=list, blank=True, null=False, validators=[validate_allowed_locations]
+    )
+
     def soft_delete(self):
         self.valid = False
         self.save(update_fields=["valid"])
@@ -134,23 +153,15 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
         self.url = ""
         self.save(update_fields=["ours", "theirs", "url"])
 
-    # The OCPI field writable and maintained by object owner
-    last_updated = models.DateTimeField(
-        null=True, blank=True, verbose_name=_("Last updated")
-    )
-
-    # Django automatic dates
-    updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
-    created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
-
     def __str__(self):
         return self.name
 
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
+        self.full_clean()
         return super(self.__class__, self).save(*args, **kwargs)
 
-    def atomic_post_save(self, *_args, **_kwargs) -> None:
+    def post_process_after_update_or_create(self, *_args, **_kwargs) -> None:
         """This should trigger when Credentials is modified in Admin UI or pushed over HubClientInfo"""
         find_endpoints_by_roles.cache_clear()
         # from ocpi22.pull import schedule_full_update
@@ -337,6 +348,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
         related_name="agreed_parties_backwards",
         verbose_name=_("Parties with agreements"),
     )
+
     # Todo: Agreed parties should show on both sides, if CPO has an agreement with MSP, then MSP should also see it (in admin)
 
     class ocpi_master:
@@ -412,31 +424,26 @@ class NewConnection(forms.Form):
     view_name="the Credentials registration",
 )
 def new_connection(request):
-    if not settings.PREMIUM:
-        import premium
+    if request.method == "POST":
+        form = NewConnection(request.POST)
+        if form.is_valid():
+            from ocpiconnector.management.commands import exchange_credentials
 
-        premium.premium_message(request)
-    else:
-        if request.method == "POST":
-            form = NewConnection(request.POST)
-            if form.is_valid():
-                from ocpiconnector.management.commands import exchange_credentials
-
-                command = exchange_credentials.Command()
-                result = command.handle(
-                    token_a=form.cleaned_data.get("token_a"),
-                    versions_endpoint_url=form.cleaned_data.get("versions_url"),
-                )
-                if isinstance(result, OCPIResponse):
-                    result = result.data.get("status_message")
-                messages.success(
-                    request,
-                    result
-                    if isinstance(result, str)
-                    else _("A new connection has been established"),
-                )
-            else:
-                messages.error(request, form.errors)
+            command = exchange_credentials.Command()
+            result = command.handle(
+                token_a=form.cleaned_data.get("token_a"),
+                versions_endpoint_url=form.cleaned_data.get("versions_url"),
+            )
+            if isinstance(result, OCPIResponse):
+                result = result.data.get("status_message")
+            messages.success(
+                request,
+                result
+                if isinstance(result, str)
+                else _("A new connection has been established"),
+            )
+        else:
+            messages.error(request, form.errors)
 
     from util import reverse
 
@@ -461,7 +468,7 @@ def credentials_post_save(sender, instance, *_args, raw, **_kwargs):
         return
     credentials: Credentials = instance
     if credentials.is_complete():
-        credentials.atomic_post_save()
+        credentials.post_process_after_update_or_create()
 
 
 @receiver(pre_delete, sender=Credentials)

@@ -10,13 +10,13 @@ class CredentialsData:
         "data": {
             "roles": [
                 {
-                    "business_details": {"name": "SolidRoam CPO", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": ""},
                     "country_code": "FI",
                     "party_id": "CPO",
                     "role": "CPO",
                 },
                 {
-                    "business_details": {"name": "SolidRoam CPO", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": ""},
                     "country_code": "FI",
                     "party_id": "MSP",
                     "role": "EMSP",
@@ -40,9 +40,10 @@ class CredentialsData:
         "theirs": "9e80a9c4-28be-11e9-b210-d663bd873d93",
         "token_a": "",
         "updated": datetime(2022, 1, 1, 12, 0, tzinfo=timezone.utc),
-        "url": "https://ocpi.example.com/versions/",
+        "url": "https://localhost/versions/",
         "valid": True,
         "version": "221",
+        "allowed_locations": [],
     }
 
     expected_versions_response = {
@@ -81,13 +82,21 @@ class CredentialsData:
 
     example = {
         "token": "9e80a9c4-28be-11e9-b210-d663bd873d93",
-        "url": "https://ocpi.example.com/versions/",
+        "url": "https://localhost/versions/",
         "roles": [
             {
                 "role": "CPO",
                 "party_id": "EXA",
                 "country_code": "NL",
                 "business_details": {"name": "Example Operator"},
+                "logo": {
+                    "url": "https://localhost/img/logo.jpg",
+                    "thumbnail": "https://localhost/img/logo_thumb.jpg",
+                    "category": "OPERATOR",
+                    "type": "jpeg",
+                    "width": 512,
+                    "height": 512,
+                },
             },
             {
                 "role": "EMSP",
@@ -187,7 +196,7 @@ expected_get_responses = {
                 "id": "T2",
                 "last_updated": "2022-01-08T07:52:37Z",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "0,26€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "0,26€/kWh"}],
                 "type": "REGULAR",
             },
             {
@@ -204,7 +213,7 @@ expected_get_responses = {
                 "id": "T3",
                 "last_updated": "2022-01-08T07:52:37Z",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "2€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "2€/kWh"}],
                 "type": "REGULAR",
             },
             {
@@ -221,7 +230,7 @@ expected_get_responses = {
                 "id": "T4",
                 "last_updated": "2022-01-08T07:52:37Z",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "2€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "2€/kWh"}],
                 "type": "REGULAR",
             },
         ],
@@ -248,7 +257,7 @@ expected_get_responses = {
                 ],
                 "id": "TTYPE2",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "0,22€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "0,22€/kWh"}],
                 "type": "REGULAR",
             },
             {
@@ -264,7 +273,7 @@ expected_get_responses = {
                 ],
                 "id": "TCCS",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "0,30€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "0,30€/kWh"}],
                 "type": "REGULAR",
             },
             {
@@ -280,7 +289,7 @@ expected_get_responses = {
                 ],
                 "id": "TCHADEMO",
                 "party_id": "000",
-                "tariff_alt_text": {"language": "EN", "text": "0,30€/kWh"},
+                "tariff_alt_text": [{"language": "EN", "text": "0,30€/kWh"}],
                 "type": "REGULAR",
             },
         ],
@@ -1094,7 +1103,7 @@ class CdrMessages:
                     ),
                     (
                         "tariff_alt_text",
-                        OrderedDict([("language", "EN"), ("text", "0,50€/kWh")]),
+                        [OrderedDict([("language", "EN"), ("text", "0,50€/kWh")])],
                     ),
                     ("country_code", "FI"),
                     ("party_id", "000"),
@@ -1175,7 +1184,7 @@ class CdrMessages:
                     ),
                     (
                         "tariff_alt_text",
-                        OrderedDict([("language", "EN"), ("text", "0,50€/kWh")]),
+                        [OrderedDict([("language", "EN"), ("text", "0,50€/kWh")])],
                     ),
                     ("country_code", "FI"),
                     ("party_id", "000"),
@@ -1441,7 +1450,7 @@ class StopTransactionResponses:
                         ),
                         (
                             "tariff_alt_text",
-                            dict([("language", "EN"), ("text", "0,50€/kWh")]),
+                            [dict([("language", "EN"), ("text", "0,50€/kWh")])],
                         ),
                         ("country_code", "FI"),
                         ("party_id", "CPO"),
@@ -1555,7 +1564,7 @@ class StopTransactionResponses:
                         ),
                         (
                             "tariff_alt_text",
-                            OrderedDict([("language", "EN"), ("text", "0,50€/kWh")]),
+                            [OrderedDict([("language", "EN"), ("text", "0,50€/kWh")])],
                         ),
                         ("country_code", "FI"),
                         ("party_id", "000"),
@@ -1694,12 +1703,14 @@ class StopTransactionResponses:
                                         ),
                                         (
                                             "tariff_alt_text",
-                                            OrderedDict(
-                                                [
-                                                    ("language", "EN"),
-                                                    ("text", "0,50€/kWh"),
-                                                ]
-                                            ),
+                                            [
+                                                OrderedDict(
+                                                    [
+                                                        ("language", "EN"),
+                                                        ("text", "0,50€/kWh"),
+                                                    ]
+                                                )
+                                            ],
                                         ),
                                         ("country_code", "FI"),
                                         ("party_id", "CPO"),
@@ -1770,7 +1781,13 @@ class SessionData:
         "party_id": "CPO",
         "currency": "PHP",
         "id": "123",
-        "cdr_token": {"contract_id": "789", "type": "APP_USER", "uid": "456"},
+        "cdr_token": {
+            "country_code": "FI",
+            "party_id": "MSP",
+            "contract_id": "789",
+            "type": "APP_USER",
+            "uid": "456",
+        },
         "location_id": "12",
         "evse_uid": {"evse_uid": "87da"},
         "start_date_time": "2022-01-01T12:00:00Z",
@@ -1781,6 +1798,8 @@ class SessionData:
         "authorization_reference": "FI*MSP-AUTH-REFERENCE",
         "cdr_token": OrderedDict(
             [
+                ("country_code", "FI"),
+                ("party_id", "MSP"),
                 ("uid", "SOME-ADHOC-TOKEN"),
                 ("type", "AD_HOC_USER"),
                 ("contract_id", "INTERNAL"),
@@ -1819,39 +1838,34 @@ class SessionData:
     }
 
     meter_values_1_webhook = {
+        "auth_method": "COMMAND",
         "country_code": "FI",
         "party_id": "CPO",
         "uid": "FI*CPO*S*MOCK-1",
         "start_date_time": "2022-01-01T12:00:00Z",
         "kwh": 123.45,
         "charging_periods": [
-            OrderedDict(
-                [
-                    ("start_date_time", "2022-01-01T12:00:00Z"),
-                    ("tariff", "EKI1"),
-                    (
-                        "dimensions",
-                        [
-                            OrderedDict([("type", "ENERGY"), ("volume", "123.4500")]),
-                            OrderedDict(
-                                [("type", "STATE_OF_CHARGE"), ("volume", "42.0000")]
-                            ),
-                            OrderedDict([("type", "POWER"), ("volume", "150.0000")]),
-                        ],
-                    ),
-                ]
-            )
+            {
+                "start_date_time": "2022-01-01T12:00:00Z",
+                "tariff": "EKI1",
+                "dimensions": [
+                    {"type": "ENERGY", "volume": "123.4500"},
+                    {"type": "STATE_OF_CHARGE", "volume": "42.0000"},
+                    {"type": "POWER", "volume": "150.0000"},
+                ],
+            }
         ],
         "total_time": "0.00",
         "display_total_time": "0 s",
         "cdr_token": OrderedDict(
             [
+                ("country_code", "FI"),
+                ("party_id", "MSP"),
                 ("uid", "SOME-ADHOC-TOKEN"),
                 ("type", "AD_HOC_USER"),
                 ("contract_id", "INTERNAL"),
             ]
         ),
-        "auth_method": "COMMAND",
         "authorization_reference": "FI*MSP-AUTH-REFERENCE",
         "location_id": "HELSINKI-1",
         "evse_uid": "HELSINKI-3",
@@ -2239,23 +2253,6 @@ class CpoApiData:
                 "OCPI-from-party-id": "CPO",
             },
         },
-    ]
-
-
-class LocationData:
-    webhook_calls = [
-        ("3256", "AVAILABLE"),
-        ("3257", "RESERVED"),
-        ("3256", "AVAILABLE"),
-        ("3257", "RESERVED"),
-        ("3256", "AVAILABLE"),
-        ("3257", "RESERVED"),
-        ("eccb8dd9-4189-433e-b100-cc0945dd17dc", "AVAILABLE"),
-        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
-        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
-        ("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE"),
-        ("8c1b3487-61ac-40a7-a367-21eee99dbd90", "AVAILABLE"),
-        ("4534ad5f-45be-428b-bfd0-fa489dda932d", "AVAILABLE"),
     ]
 
 

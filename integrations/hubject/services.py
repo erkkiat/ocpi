@@ -11,10 +11,16 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
+    PricingProductData,
+    ERoamingPushPricingProductData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
+from integrations.hubject.schemas import HubjectDefaultTariff
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Location, Connector, Evse
+from ocpi22.models.tariff import SolidTariff
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
+from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 
@@ -60,7 +66,7 @@ class HubjectService:
 
             for evse in location.evses_with_connectors:
                 for connector in evse.connectors_with_tariffs:
-                    if not connector.get_tariffs():
+                    if len(connector.get_tariffs()) == 0:
                         raise ConnectorTariffNotFoundError(
                             evse.evse_id,
                             connector.standard,
@@ -95,24 +101,110 @@ class HubjectService:
             with_trailing_slash(settings.HUBJECT_URL),
             f"evsepush/v23/operators/{operator_id}/data-records",
         )
-        response = {}
-
         try:
-            payload_json = payload.model_dump_json()
+            payload_json = payload.model_dump(mode="json")
 
-            response = HubjectService.client.post(full_load_url, data=payload_json)
-            return response.json()
+            response = HubjectService.client.post(full_load_url, json=payload_json)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {
+                    "success": False,
+                    "errorType": "HTTP Error",
+                    "error": f"{response.status_code} : {response.text}",
+                }
         except PydanticSerializationError as e:
-            logging.error(e)
+            logger.exception("Pydantic validation failed")
             return {
                 "success": False,
                 "errorType": "Pydantic validation failed",
                 "error": e.args[0],
             }
         except HTTPError as exc:
-            logging.error(exc)
+            logger.exception("HTTP error occurred")
             return {
                 "success": False,
                 "errorType": "HTTP request failed",
                 "error": exc.args[0],
+            }
+
+    def get_default_tariffs(self):
+        if not (
+            settings.DEFAULT_OICP_PRICE
+            and settings.DEFAULT_OICP_CURRENCY
+            and settings.DEFAULT_OICP_PRICE_REFERENCE
+        ):
+            raise ValueError(
+                "Please set DEFAULT_OICP_PRICE, DEFAULT_OICP_CURRENCY, and DEFAULT_OICP_REFERENCE in environment variables"
+            )
+
+        default_price = float(settings.DEFAULT_OICP_PRICE)
+        default_currency = settings.DEFAULT_OICP_CURRENCY
+        default_reference = settings.DEFAULT_OICP_PRICE_REFERENCE
+
+        if default_price < 0:
+            raise ValueError("DEFAULT_OICP_PRICE must be positive")
+
+        solid_price_component = HubjectDefaultTariff.get_price_component(
+            default_reference
+        )
+        return HubjectDefaultTariff(
+            currency=default_currency,
+            price_component=solid_price_component,
+            price=default_price,
+        )
+
+    def get_all_pricing_products(self, party: Party) -> PricingProductData:
+        solid_tariffs = SolidTariff.objects.filter(
+            operator__country_code=party.country_code,
+            operator__party_id=party.party_id,
+        )
+
+        if len(solid_tariffs) == 0:
+            raise SolidTariff.DoesNotExist(f"No SolidTariffs found for {str(party)}")
+
+        solid_default_tariff = self.get_default_tariffs()
+
+        operator_name = solid_tariffs[0].operator.business_details.name
+        return HubjectService.converter.convert_to_pricing_product_data(
+            solid_tariffs,
+            solid_default_tariff,
+            get_our_identity(OcpiRolesEnum.CPO.value),
+            operator_name,
+        )
+
+    def get_push_pricing_product_data_payload(
+        self, pricing_product_data: PricingProductData, action_type: ActionType
+    ) -> ERoamingPushPricingProductData:
+        return ERoamingPushPricingProductData(
+            ActionType=action_type,
+            PricingProductData=pricing_product_data,
+        )
+
+    def post_pricing_products_full_load(
+        self, operator_id: str, payload: ERoamingPushPricingProductData
+    ) -> dict:
+        full_load_url = urljoin(
+            with_trailing_slash(settings.HUBJECT_URL),
+            f"dynamicpricing/v10/operators/{operator_id}/pricing-products",
+        )
+
+        try:
+            payload_json = payload.model_dump(mode="json")
+
+            response = HubjectService.client.post(full_load_url, json=payload_json)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {
+                    "success": False,
+                    "errorType": "HTTP Error",
+                    "error": f"{response.status_code} : {response.text}",
+                }
+        except PydanticSerializationError as e:
+            logger.exception("Pydantic validation failed")
+            return {
+                "success": False,
+                "errorType": "Pydantic validation failed",
+                "error": str(e),
             }

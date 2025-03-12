@@ -1,6 +1,6 @@
 import uuid
 from copy import deepcopy
-from gettext import gettext as _
+from django.utils.translation import gettext_lazy as _, gettext
 from typing import Optional
 
 import pytz
@@ -15,11 +15,12 @@ from django.utils.html import format_html
 from multiselectfield import MultiSelectField
 import util
 
-from ocpi22 import choices, logging
+from ocpi22 import choices, ocpi_logging as logging
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, DYNAMIC_PRICE_SOURCE_CHOICES
 from ocpi22.credentials.util import find_endpoints_by_roles
 import ocpi22.tasks as tasks
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.models.displaytext import DisplayText
 from ocpi22.util import (
     ModelUtilMixin,
     format_currency,
@@ -123,6 +124,10 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     # URL to a web page that contains an explanation of the tariff information in human readable form.
     tariff_alt_url = models.URLField(
         blank=True, default="", verbose_name=_("Tariff alternative URL")
+    )
+
+    tariff_alt_text = models.ManyToManyField(
+        DisplayText, blank=True, related_name="tariffs"
     )
 
     # When this field is set, a Charging Session with this tariff will at least cost this amount.
@@ -328,13 +333,13 @@ class TariffElement(models.Model, ModelUtilMixin):
         )
         validity = ""
         if self.start_date or self.end_date:
-            validity = _(" (valid {date_range}").format(
+            validity = gettext(" (valid {date_range}").format(
                 date_range=humanize_date_range(self.start_date, self.end_date)
             )
         return (
             f" ({days_of_week_str}{times}){validity}"
             if days_of_week_str
-            else _(" (during {times})".format(times=times))
+            else gettext(" (during {times})".format(times=times))
             if times
             else ""
         )

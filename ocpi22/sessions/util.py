@@ -3,7 +3,7 @@ from cachetools import cached, TTLCache
 from django.utils.datetime_safe import datetime
 
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 import os
 from typing import Union
 
@@ -13,6 +13,7 @@ from rest_framework.generics import get_object_or_404
 from typing import TYPE_CHECKING
 
 from ocpi22.models import enum
+from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.dataclasses import AdhocToken
 
 if TYPE_CHECKING:
@@ -21,12 +22,11 @@ if TYPE_CHECKING:
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.choices import AuthorizationEnum, OcpiRolesEnum
+from ocpi22.choices import AuthorizationEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.tokens.auth import TokenAuthorization, get_session_by_token_uid
 from ocpi22.tokens.util import get_token_id
-from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
 
 
@@ -126,7 +126,10 @@ def create_session(
     #     raise EvseOccupied('Cannot start a new session because there is an active charging session '
     #                        f'{active_sessions.first().uid} in progress.')
 
-    assert billed_to and billed_to != "*", "Unable to bill session without billed_to"
+    from ocpi22.models.credentials import CredentialsRole
+
+    if not (billed_to and billed_to != "*" and isinstance(billed_to, CredentialsRole)):
+        raise ValueError("Unable to bill session without billed_to partner")
 
     currency = currency or os.environ.get("CPO_CURRENCY", "EUR")
     if connector and connector.tariff_ids:
@@ -135,6 +138,12 @@ def create_session(
         if first_tariff:
             currency = first_tariff.currency
 
+    cdr_token, _created = CdrToken.objects.get_or_create(
+        ocpi_master=billed_to,
+        uid=token.uid,
+        token_type=token.type,
+        contract_id=token.contract_id,
+    )
     params = dict(
         uid=uid,
         reservation_id=reservation_id,
@@ -143,9 +152,7 @@ def create_session(
         status=session_status,
         start_date_time=datetime.now(pytz.utc),
         last_updated=datetime.now(pytz.utc),
-        cdr_token_uid=token.uid,
-        cdr_token_type=token.type,
-        cdr_token_contract_id=token.contract_id,
+        cdr_token=cdr_token,
         auth_method=authorization_method,
         authorization_reference=authorization_reference or "",
         location=location,
@@ -154,7 +161,7 @@ def create_session(
         currency=currency,
         billed_to=billed_to,
         credentials=credentials,
-        ocpi_master=get_our_credentialsrole(OcpiRolesEnum.CPO),
+        ocpi_master=location.ocpi_master,
     )
     params.update(kwargs)
     params.pop("expiry_date", None)  # Todo: Finish implementing reservations

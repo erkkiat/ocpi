@@ -47,7 +47,6 @@ from ocpi22.cpo.serializers import (
 from ocpi22.models.location import Evse, Location
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.rendering import RENDERERS
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.ocpi.util import (
@@ -83,7 +82,6 @@ class CommandsViewSet(GenericViewSet):
     )  # Users who can access Sessions can issue Commands also
     versioning_class = OCPIVersioning
     permission_classes = [OCPIPermission]
-    renderer_classes = RENDERERS
 
     def get_serializer_class(self):
         if not hasattr(self, "action_map"):
@@ -264,7 +262,7 @@ class CommandsViewSet(GenericViewSet):
 
             session: Session = Session.get_if_exists(
                 Q(authorization_reference=authorization_reference)
-                | Q(cdr_token_uid=token)
+                | Q(cdr_token__uid=token)
                 | Q(uid=session_id)
             )
 
@@ -275,7 +273,7 @@ class CommandsViewSet(GenericViewSet):
                 )
 
             ocpi_response_url = serializer.validated_data.pop("response_url")
-            token_id = session.cdr_token_uid if session else get_token_id(token)
+            token_uid = session.cdr_token.uid if session else get_token_id(token)
             evse_uid = (
                 session.evse.uid
                 if session
@@ -303,8 +301,8 @@ class CommandsViewSet(GenericViewSet):
                 response_url=build_absolute_uri(
                     reverse("chargepoint-remote-command-result", args=(command_id,))
                 ),
-                token_id=token_id,
-                token_type=session.cdr_token_type
+                token_id=token_uid,
+                token_type=session.cdr_token.token_type
                 if session
                 else get_token_type(token, TokenType.APP_USER),
                 authorization_reference=session.authorization_reference

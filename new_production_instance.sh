@@ -39,7 +39,7 @@ echo "Creating app $HEROKU_APP..."
  && sleep 60 \
  && heroku config:set HOSTNAME="$HOST".ocpiconnector.com \
  SECRET_KEY=`python -c 'import uuid; print(uuid.uuid4())'` "$4" "$5" "$6" "$ROLE1" "$ROLE2" \
- SLACK_WEBHOOK="$SLACK_WEBHOOK" DJANGO_SETTINGS_MODULE="$DJANGO_SETTINGS_MODULE" SCHEME=http PREMIUM=1 \
+ SLACK_WEBHOOK="$SLACK_WEBHOOK" DJANGO_SETTINGS_MODULE="$DJANGO_SETTINGS_MODULE" SCHEME=http \
  && echo "Let's give the Redis installer a moment to settle down..." \
  && sleep 15 \
  && heroku pipelines:add ocpi-connector --stage=production \

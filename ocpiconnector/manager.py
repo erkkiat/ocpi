@@ -69,7 +69,7 @@ class PartnerQuerySet(models.QuerySet):
         return None
 
 
-parther_manager_cache = TTLCache(maxsize=100, ttl=300)
+partner_manager_cache = TTLCache(maxsize=100, ttl=300)
 
 
 class PartnerManager(models.Manager):
@@ -86,6 +86,6 @@ class PartnerManager(models.Manager):
     def get_if_exists(self, *args, **kwargs):
         return self.get_queryset().get_if_exists(*args, **kwargs)
 
-    @cached(cache=parther_manager_cache)
+    @cached(cache=partner_manager_cache)
     def get_cached(self, *args, **kwargs):
         return self.get(*args, **kwargs)

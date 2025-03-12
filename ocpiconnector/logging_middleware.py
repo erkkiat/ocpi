@@ -49,7 +49,9 @@ class LoggingMiddleware(MiddlewareMixin):
         if 200 <= response.status_code < 300:
             response_data = "Ommited"
         elif 300 <= response.status_code < 500:
-            response_data = getattr(response, "data", None)
+            response_data = getattr(response, "data", None) or getattr(
+                response, "text", None
+            )
         else:
             response_data = HTTPStatus(response.status_code).phrase
         return {
@@ -57,6 +59,7 @@ class LoggingMiddleware(MiddlewareMixin):
             "response_message": HTTPStatus(response.status_code).phrase,
             "response_duration": processing_time,
             "response_data": response_data,
+            "response_headers": response.headers,
         }
 
     def clean_auth_headers(self, request):

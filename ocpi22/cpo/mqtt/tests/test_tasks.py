@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-from django.http import Http404
 
 from ocpi22.cpo.mqtt.tasks import (
     _get_country_and_party_id,
@@ -16,10 +15,10 @@ class TestMqttTasks:
     @pytest.fixture
     def create_evse(self):
         def _create_evse(uid, status):
-            creedential_role = CredentialsRoleFactory(
+            credentialsrole = CredentialsRoleFactory(
                 country_code="FI", role="CPO", party_id="CPO"
             )
-            location = LocationFactory(ocpi_master=creedential_role)
+            location = LocationFactory(ocpi_master=credentialsrole)
             evse = EvseFactory(uid=uid, location=location, status=status)
             return evse
 
@@ -42,12 +41,13 @@ class TestMqttTasks:
         evse_id = _format_evse_id(country_code, party_id, "100000001")
         assert evse_id == "FI*CPO*E100000001"
 
-    def test_save_and_send_evse_status_updates_raises_404_when_evse_not_found(
+    def test_save_and_send_evse_status_exits_gracefully_when_evse_not_found(
         self, monkeypatch, db
     ):
         monkeypatch.setenv("CPO", "FI*CPO")
-        with pytest.raises(Http404):
+        with patch.object(Evse, "send_status_updates") as mock_send_status_updates:
             save_and_send_evse_status_updates("100000002", "Available")
+            mock_send_status_updates.assert_not_called()
 
     def test_save_and_send_evse_status_updates_saves_status(
         self, monkeypatch, db, create_evse

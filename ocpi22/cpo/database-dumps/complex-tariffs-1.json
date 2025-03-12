@@ -188,8 +188,7 @@
     "pk": 1,
     "fields": {
       "name": "ChargerHub.EU",
-      "website": "",
-      "logo": ""
+      "website": ""
     }
   },
   {
@@ -197,8 +196,7 @@
     "pk": 2,
     "fields": {
       "name": "Lidl",
-      "website": "http://www.lidl.fi/",
-      "logo": ""
+      "website": "http://www.lidl.fi/"
     }
   },
   {
@@ -206,8 +204,7 @@
     "pk": 3,
     "fields": {
       "name": "GP Operator",
-      "website": "",
-      "logo": ""
+      "website": ""
     }
   },
   {
@@ -12000,6 +11997,16 @@
     }
   },
   {
+    "model": "ocpi22.cdrtoken",
+    "pk": 2,
+    "fields": {
+      "ocpi_master": 61,
+      "uid": "EKI1",
+      "token_type": "APP_USER",
+      "contract_id": "DE8ACC12E46L89"
+    }
+  },
+  {
     "model": "ocpi22.session",
     "pk": 435,
     "fields": {
@@ -12011,9 +12018,7 @@
       "end_date_time": null,
       "start_kwh": 0.0,
       "stop_kwh": 0.0,
-      "cdr_token_uid": "EKI1",
-      "cdr_token_type": "RFID",
-      "cdr_token_contract_id": "CONTRACT2",
+      "cdr_token": 2,
       "auth_method": "AUTH_REQUEST",
       "authorization_reference": "FI*001*A*E2FA443602BD4E499C878B8BD6C",
       "location": 41,
@@ -12045,9 +12050,7 @@
       "end_date_time": null,
       "start_kwh": 0.0,
       "stop_kwh": 0.0,
-      "cdr_token_uid": "EKI1",
-      "cdr_token_type": "RFID",
-      "cdr_token_contract_id": "CONTRACT2",
+      "cdr_token": 2,
       "auth_method": "AUTH_REQUEST",
       "authorization_reference": "FI*001*A*E2FA443602BD4E499C878B8BD6C",
       "location": 41,

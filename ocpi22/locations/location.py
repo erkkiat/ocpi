@@ -1,4 +1,4 @@
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 
 from django.core.validators import RegexValidator
 from rest_framework import status
@@ -12,11 +12,11 @@ from ocpi22.decorators import (
     requires_last_updated,
 )
 from ocpi22.locations.serializers import EvseSerializer, ConnectorSerializer
+from ocpi22.locations.services import LocationService
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.msp.serializers import MSPChargePointStatusCallbackSerializer
 from ocpi22.ocpi.auth import OcpiAuthTypes
-from ocpi22.rendering import RENDERERS
 from ocpi22.util import OCPIVersioning, OCPIListModelMixin
 from ocpi22.ocpi.util import (
     OCPIResponse,
@@ -32,7 +32,6 @@ from ocpi22.ocpi.util import (
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from ocpiconnector.ocpi_identities import ocpi_platform
-from premium import requires_premium
 from util import OCPIVersion
 
 evse_validator = RegexValidator(
@@ -44,7 +43,6 @@ evse_validator = RegexValidator(
 class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = "locations"
-    renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
     lookup_field = "uid"
     queryset = Location.objects.none()
@@ -57,31 +55,37 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return "Locations"
 
     def get_queryset(self):
-        related = (
+        prefetch_fields = (
             "evses",
             "evses__connectors",
             "evses__connectors__tariff_ids",
         )
         if ocpi_platform.is_hub and hasattr(self, "request"):
             return (
-                Location.objects.prefetch_related(*related)
+                Location.objects.prefetch_related(*prefetch_fields)
                 .partner_filter(self.request)
+                .exclude(publish=False)
                 .order_by("created")
             )
-        return Location.objects.prefetch_related(*related).order_by("created")
+        return (
+            Location.objects.prefetch_related(*prefetch_fields)
+            .exclude(publish=False)
+            .order_by("created")
+        )
 
     @ocpi_exception_handler
-    @requires_premium
-    def list(self, *args, **kwargs):
-        return super().list(*args, **kwargs)
+    def list(self, request, *args, **kwargs):
+        credentials = getattr(request, "credentialsrole", None)
+        queryset = LocationService.get_allowed_locations_queryset(
+            credentials, self.get_queryset()
+        )
+        self.queryset = queryset
+        return super().list(request, *args, **kwargs)
 
     @staticmethod
-    def get_object(uid=None) -> Location:
-        # Needed for OPTIONS to work in list view, could just return None
-        if uid:
-            return get_object_or_404(Location, uid=uid)  # Todo: Data security risk?
+    def get_object(uid=None) -> None:
+        pass
 
-    @requires_premium
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.CPO)
     @requires_last_updated
@@ -89,7 +93,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return self.put(*args, patch=True, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_credentialsrole
     def get(self, request, credentialsrole, uid, *_args, **_kwargs):
         """Respond to GET for a specified location"""
@@ -99,7 +102,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         )
         return OCPIResponse(serializer.data)
 
-    @requires_premium
     @ocpi_exception_handler
     @requires_sender_role([OcpiRolesEnum.CPO, OcpiRolesEnum.HUB])
     @requires_credentialsrole
@@ -116,6 +118,9 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     ):
         if request and not request.party_specified_in_url:
             return OCPIUrlParametersRequiredResponse("location")
+
+        if uid and uid != data.get("id"):
+            raise ValueError("Location ID in URL does not match Location ID in payload")
 
         uid = uid or data.get("id")
 
@@ -136,10 +141,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         version="2.2.1",
         credentials=None,
     ):
-        assert (
-            uid
-        ), "Location ID is a required parameter for LocationViewSet.save_or_update()"
-        existing_location: Location = self.get_queryset().get_if_exists(
+        existing_location: Location = Location.get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )
 
@@ -200,7 +202,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 class ConnectorViewSet(GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = "connectors"
-    renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
     lookup_field = "uid"
     queryset = Connector.objects.none()
@@ -214,13 +215,11 @@ class ConnectorViewSet(GenericViewSet):
         return "Connectors"
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_last_updated
     def patch(self, *args, **kwargs) -> OCPIResponse:
         return self.put(*args, patch=True, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_credentialsrole
     def get(
         self, request, credentialsrole, uid, evse_uid, connector_uid, *_args, **_kwargs
@@ -239,7 +238,6 @@ class ConnectorViewSet(GenericViewSet):
         return OCPIResponse(serializer.data)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_sender_role(OcpiRolesEnum.CPO)
     def put(
         self,
@@ -300,7 +298,6 @@ class ConnectorViewSet(GenericViewSet):
 class EvseViewSet(GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     root_view_name = "evses"
-    renderer_classes = RENDERERS
     versioning_class = OCPIVersioning
     lookup_field = "uid"
     queryset = Evse.objects.none()
@@ -313,13 +310,11 @@ class EvseViewSet(GenericViewSet):
         return "Evse"
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_last_updated
     def patch(self, *args, **kwargs) -> OCPIResponse:
         return self.put(*args, patch=True, **kwargs)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_credentialsrole
     def get(
         self, request, credentialsrole, uid, evse_uid, *_args, **_kwargs
@@ -334,7 +329,6 @@ class EvseViewSet(GenericViewSet):
         return OCPIResponse(serializer.data)
 
     @ocpi_exception_handler
-    @requires_premium
     @requires_sender_role(OcpiRolesEnum.CPO)
     def put(
         self,

@@ -1,6 +1,7 @@
 # Django settings for ocpiconnector project.
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
+from distutils.util import strtobool
 
 from corsheaders.defaults import default_headers
 from django.conf.locale.en import formats as locale_formats
@@ -21,13 +22,17 @@ DEBUG = env_bool("DEBUG", False)
 
 RENDER_ONLY_JSON = env_bool("RENDER_ONLY_JSON", False)
 
+FIXIE_URL = os.getenv("FIXIE_URL", "")
+os.environ["https_proxy"] = FIXIE_URL
+os.environ["http_proxy"] = FIXIE_URL
+os.environ["no_proxy"] = "localhost,127.0.0.1"
+
 DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT", "%d.%m.%Y %H:%M")
 DATE_FORMAT = os.environ.get("DATE_FORMAT", "%d.%m.%Y")
 locale_formats.DATETIME_FORMAT = os.environ.get("DATETIME_FORMAT_LOCALE", "D j.n.Y H:i")
 DECIMAL_SEPARATOR = os.environ.get("DECIMAL_SEPARATOR", ",")
 DEFAULT_CURRENCY = os.environ.get("DEFAULT_CURRENCY", "EUR")
 
-PREMIUM = env_bool("PREMIUM", False)
 CPO_API = env_bool("CPO_API", False)
 MSP_API = env_bool("MSP_API", False)
 
@@ -35,11 +40,6 @@ PERFORMANCE_TEST = env_bool("PERFORMANCE_TEST", False)
 CPO_SIMULATOR = env_bool("CPO_SIMULATOR", False)
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = env_bool("ALLOW_ADMIN_DELETE_AND_CHANGE", False)
-
-# Complete expiration of access at 00:00 on the specified date
-expires_on_str = os.environ.get("EXPIRES_ON")
-EXPIRES_ON = datetime.strptime(expires_on_str, "%Y-%m-%d") if expires_on_str else None
-WARN_BEFORE_DAYS = 3
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Allow more than 1000 fields in POST requests
@@ -98,8 +98,6 @@ OCPI_SPECIFICATION_URL = "https://github.com/ocpi/ocpi/blob/release-2.2-bugfixes
 OCPI_22_MAX_ADDRESS_LENGTH = 45
 OCPI_22_MAX_TIME_ZONE_LENGTH = 64
 OCPI_22_MAX_UID_LENGTH = 36
-
-PUBLIC_VIEWS = ["user-register"]
 
 HOTLINE = os.environ.get("HOTLINE", "+3256380211")
 
@@ -280,26 +278,24 @@ TEMPLATE_LOADERS = (
 )
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     "middlewares.AllowHealthCheckMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "ocpi22.middleware.ErrorLoggingMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",  # Make sure this stays above OCPIHubMiddleware
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
     "ocpiconnector.logging_middleware.LoggingMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
     MIDDLEWARE.append("moesifdjango.middleware.moesif_middleware")
-
-if EXPIRES_ON:
-    MIDDLEWARE.append("ocpi22.middleware.EnabledUntilMiddleware")
 
 if os.environ.get("DEBUG_MIDDLEWARE") in TRUE_OPTIONS:
     MIDDLEWARE.append("ocpi22.middleware.DebugMiddleware")
@@ -321,7 +317,6 @@ INSTALLED_APPS = [
     "ocpi22",
     "ocpiconnector",
     "webhooks",
-    "hub",
     "settlement",
     "django.contrib.admin",
     "whitenoise",
@@ -449,7 +444,8 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = TIMEOUT_FOR_COMMANDS - 1
 CELERY_WORKER_CANCEL_LONG_RUNNING_TASKS_ON_CONNECTION_LOSS = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
-CELERY_TASK_DEFAULT_QUEUE = os.environ.get("CELERY_QUEUE", "default")
+CELERY_TASK_DEFAULT_QUEUE = os.environ.get("CELERY_QUEUE_NAME", "celery-django-mid")
+CELERY_TASK_ALWAYS_EAGER = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "False"))
 CELERY_TASK_IGNORE_RESULTS = True
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
@@ -502,3 +498,7 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
+
+DEFAULT_OICP_PRICE = os.environ.get("DEFAULT_OICP_PRICE")
+DEFAULT_OICP_CURRENCY = os.environ.get("DEFAULT_OICP_CURRENCY")
+DEFAULT_OICP_PRICE_REFERENCE = os.environ.get("DEFAULT_OICP_PRICE_REFERENCE")

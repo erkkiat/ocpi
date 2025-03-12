@@ -1,27 +1,45 @@
+from logging import getLogger
+
 from django.db import transaction
+from django.db.transaction import atomic
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.choices import OcpiModuleEnum, OCPIFacilityEnum, OCPICapabilityEnum
+from ocpi22.choices import OCPIFacility, OCPICapability
 from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
+from ocpi22.models.image import OCPIImage
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.token import Token
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.serializers.hours import HoursSerializer
-from ocpi22.util import uid_validator, fetch_object
+from ocpi22.util import uid_validator, CiStringField
 from ocpi22.serializers.util import (
     HyperlinkedModelSerializerCleanedUp,
     UTCDateTimeField,
 )
+from ocpiconnector.party import Party
+
+logger = getLogger(__name__)
+
+
+class OCPIImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OCPIImage
+        fields = ["url", "thumbnail", "category", "type", "width", "height"]
+
+    type = CiStringField(max_length=4, source="image_type")
 
 
 class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = BusinessDetails
         fields = ["name", "website", "logo"]
+
+    logo = OCPIImageSerializer(required=False)
 
     def create(self, data):
         if isinstance(data, BusinessDetails) or not data:
@@ -30,7 +48,11 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         return get_or_create_business_details(**data)
 
 
-class PowerTypeSerializer(serializers.CharField):
+class PowerTypeSerializer(serializers.ChoiceField):
+    def __init__(self, **kwargs):
+        kwargs["choices"] = Ocpi.POWERTYPE_CHOICES_221
+        super().__init__(**kwargs)
+
     def to_representation(self, power_type):
         version = self.context.get("version", None)  # Action required only for OCPI 2.2
         if version == "2.2":
@@ -38,7 +60,7 @@ class PowerTypeSerializer(serializers.CharField):
                 AC_2_PHASE="AC_1_PHASE",
                 AC_2_PHASE_SPLIT="AC_1_PHASE",
             ).get(power_type, power_type)
-        return power_type
+        return super().to_representation(power_type)
 
 
 class TariffField(serializers.StringRelatedField):
@@ -55,18 +77,13 @@ class TariffField(serializers.StringRelatedField):
                 uid__iexact=data, archived=False, ocpi_master=credentialsrole
             )
             return tariff
-        except Tariff.DoesNotExist as e:
-            credentials = self.context.get("credentials")
-            if credentials:
-                if fetch_object(
-                    uid=data,
-                    ocpi_module=OcpiModuleEnum.TARIFFS,
-                    credentials=credentials,
-                ):
-                    return self.to_internal_value(data)
-            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched: {e}")
-        except Tariff.MultipleObjectsReturned as e:
-            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched: {e}")
+        except Tariff.DoesNotExist:
+            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched.")
+        except Tariff.MultipleObjectsReturned:
+            logger.error(
+                f"Multiple tariffs found with UID `{data}` and ocpi_master `{credentialsrole}`."
+            )
+            raise ValidationError(f"Tariff with UID `{data}` cannot be fetched.")
 
     def to_representation(self, value: Tariff):
         return value.uid
@@ -97,12 +114,12 @@ class CommaSeparatedChoiceField(serializers.ChoiceField):
 
 class FacilityField(CommaSeparatedChoiceField):
     def __init__(self, **kwargs):
-        super().__init__(choices=OCPIFacilityEnum.choices, **kwargs)
+        super().__init__(choices=OCPIFacility.choices, **kwargs)
 
 
 class CapabilityField(CommaSeparatedChoiceField):
     def __init__(self, **kwargs):
-        super().__init__(choices=OCPICapabilityEnum.choices, **kwargs)
+        super().__init__(choices=OCPICapability.choices, **kwargs)
 
 
 class MaxElectricPowerSerializer(serializers.IntegerField):
@@ -312,10 +329,44 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             validated_data["longitude"] = coordinates.get("longitude")
         return validated_data
 
+    @staticmethod
+    def process_ocpi_master(validated_data: dict):
+        if isinstance(validated_data, dict):
+            ocpi_master_data = validated_data.get("ocpi_master", validated_data)
+            if isinstance(ocpi_master_data, dict):
+                country_code = ocpi_master_data.get("country_code")
+                party_id = ocpi_master_data.get("party_id")
+                ocpi_master = get_credentialsrole(
+                    None, party=Party(country_code, party_id), create=True
+                )
+                validated_data["ocpi_master"] = ocpi_master
+        return validated_data
+
+    def to_representation(self, validated_data: dict):
+        if isinstance(validated_data, dict):
+            validated_data = self.process_coordinates(validated_data)
+        return super().to_representation(validated_data)
+
+    @staticmethod
+    def update_evse(evse, data, location):
+        for key, value in data.items():
+            if key not in {"uid", "evse_id"}:
+                setattr(evse, key, value)
+        if evse.location != location:
+            evse.location = location
+        evse.save()
+
+    @staticmethod
+    def update_connector(connector, data):
+        for key, value in data.items():
+            if key != "uid":
+                setattr(connector, key, value)
+        connector.save()
+
     def create(self, validated_data: dict):
         with transaction.atomic():
-            # Pop out all elements which are not directly understood by Location, and process them separately
             validated_data = self.process_coordinates(validated_data)
+            validated_data = self.process_ocpi_master(validated_data)
             evses = validated_data.pop("evses", [])
             opening_times = validated_data.pop("opening_times", None)
             publish_allowed_to = validated_data.pop("publish_allowed_to", [])
@@ -339,17 +390,25 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
             for e in evses:
                 connectors = e.pop("connectors", [])
-                evse = Evse.objects.create(**e, location=location)
+                evse = Evse.get_if_exists(
+                    uid__iexact=e.get("uid"),
+                    location__ocpi_master=location.ocpi_master,
+                )
+                if evse:
+                    self.update_evse(evse, e, location)
+                else:
+                    evse = Evse.objects.create(**e, location=location)
 
-                # Capabilities
-                # evse.capabilities.set(capabilities)
-
-                # Connectors
                 for c in connectors:
                     tariff_ids = c.pop("tariff_ids", [])
-                    connector = Connector.objects.create(**c, evse=evse)
+                    connector = Connector.get_if_exists(
+                        uid__iexact=c.get("uid"), evse=evse
+                    )
+                    if connector:
+                        self.update_connector(connector, c)
+                    else:
+                        connector = Connector.objects.create(**c, evse=evse)
 
-                    # Tariffs
                     tariffs = []
                     for t in tariff_ids:
                         try:
@@ -368,7 +427,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                             )
                     connector.tariff_ids.set(tariffs)
 
-            # Opening times
             if opening_times:
                 serializer = HoursSerializer(data=opening_times)
                 if serializer.is_valid():
@@ -379,6 +437,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
             return location
 
+    @atomic
     def update(self, location: Location, validated_data: dict) -> Location:
         readonly_fields = {
             "country_code",
@@ -388,6 +447,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
         # Pop out all elements which are not directly understood by Location, and process them separately
         validated_data = self.process_coordinates(validated_data)
+        validated_data = self.process_ocpi_master(validated_data)
         evses = validated_data.pop("evses", [])
         opening_times = validated_data.pop("opening_times", None)
         publish_allowed_to = validated_data.pop("publish_allowed_to", [])
@@ -411,26 +471,23 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         for e in evses:
             connectors = e.pop("connectors", [])
             capabilities = e.pop("capabilities", None)
-            try:
-                evse = Evse.objects.get(uid=e.get("uid"), location=location)
-                if capabilities is not None:
-                    evse.capabilities = capabilities
-                for key, value in e.items():
-                    if key not in {"uid", "evse_id"}:
-                        setattr(evse, key, value)
-                evse.save()
-            except Evse.DoesNotExist:
+            evse = Evse.get_if_exists(
+                uid__iexact=e.get("uid"), location__ocpi_master=location.ocpi_master
+            ) or Evse.get_if_exists(uid__iexact=e.get("uid"), location=location)
+            if evse:
+                self.update_evse(evse, e, location)
+            else:
                 evse = Evse.objects.create(**e, location=location)
+
+            if capabilities is not None:
+                evse.capabilities = capabilities
 
             for c in connectors:
                 tariff_ids = c.pop("tariff_ids", [])
-                try:
-                    connector = Connector.objects.get(uid=c.get("uid"), evse=evse)
-                    for key, value in c.items():
-                        if key != "uid":
-                            setattr(connector, key, value)
-                    connector.save()
-                except Connector.DoesNotExist:
+                connector = Connector.get_if_exists(uid__iexact=c.get("uid"), evse=evse)
+                if connector:
+                    self.update_connector(connector, c)
+                else:
                     connector = Connector.objects.create(**c, evse=evse)
                 connector.tariff_ids.set(tariff_ids)
 

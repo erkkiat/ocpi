@@ -7,13 +7,13 @@ from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from decimal import Decimal
 
 import requests
 from django.conf import settings
 from django.utils.translation import get_language, gettext as _
-from rest_framework import routers, status, mixins
+from rest_framework import routers, status, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -21,6 +21,8 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAdminUser
 
 from ocpi22.cpo.api import InvoiceWebhookViewSet
+from ocpi22.models.cdr import Cdr
+from ocpi22.util import StandardResultsSetPagination
 from ocpi22.viewsets import FlowchartViewSet
 from util import reverse, ErrorLoggingResponse as Response, get_message_by_language
 from rest_framework.viewsets import GenericViewSet
@@ -33,7 +35,7 @@ from ocpi22.commands.commands import (
 )
 from ocpi22.commands.serializers import CommandResultSerializer
 from ocpi22.cpo.serializers import SolidTariffSerializer
-from ocpi22.ocpi.serializers import InvoicingCallbackSerializer
+from ocpi22.ocpi.serializers import InvoicingCallbackSerializer, CdrSerializer
 from ocpi22.generic_views import WebhookViewSet
 from ocpi22.messages import messages
 from ocpi22.models.location import Location, Evse, Connector
@@ -58,7 +60,6 @@ from ocpi22.sessions.util import get_session
 from ocpi22.tokens.util import construct_adhoc_token
 
 from ocpiconnector.ocpi_identities import get_our_party
-from premium import requires_premium
 
 # Todo: Handle gracefully situation where CPO backend is offline (now 503)
 
@@ -226,7 +227,6 @@ class MspRoamingViewSet(FlowchartViewSet):
         ).get(self.action_map.get("post"), None)
 
     @action(methods=("GET", "POST"), detail=False)
-    @requires_premium
     def reserve(self, request):
         """
         This call sends an OCPI ReserveNow command to the CPO. Reserving a charge point is optional.
@@ -306,7 +306,6 @@ class MspRoamingViewSet(FlowchartViewSet):
             )
 
     @action(methods=("GET", "POST"), detail=False)
-    @requires_premium
     def start_charging(self, request):
         """
         This call starts the charging transaction (which equals the OCPI session in the roaming network).
@@ -366,7 +365,6 @@ class MspRoamingViewSet(FlowchartViewSet):
             )
 
     @action(methods=("GET", "POST"), detail=False)
-    @requires_premium
     def session_status(self, request):
         """
         Poll the status of the ongoing session for this user.
@@ -450,7 +448,6 @@ class MspRoamingViewSet(FlowchartViewSet):
             return Response(dict(status=str(e)), status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=("GET", "POST"), detail=False)
-    @requires_premium
     def stop_charging(self, request):
         """
         This call stops the charging transaction.
@@ -798,22 +795,6 @@ class MobilityServiceProviderAPIView(routers.APIRootView):
                     reverse("msp-token-list"),
                 ),
             ),
-            user=dict(
-                register=request.build_absolute_uri(reverse("user-register")),
-                account=request.build_absolute_uri(reverse("user-account")),
-                password=request.build_absolute_uri(reverse("user-password")),
-                transactions_brief=request.build_absolute_uri(
-                    reverse("user-transaction-list-brief")
-                ),
-                transactions_full=request.build_absolute_uri(
-                    reverse("user-transaction-list-full")
-                ),
-                gdpr_export=dict(
-                    json=request.build_absolute_uri(reverse("user-gdpr-export")),
-                    csv=request.build_absolute_uri(reverse("user-gdpr-export-csv")),
-                ),
-                gdpr_delete=request.build_absolute_uri(reverse("user-gdpr-delete")),
-            ),
             webhooks=dict(
                 authorize_webhook=request.build_absolute_uri(
                     reverse("msp-authorize-webhook"),
@@ -879,3 +860,22 @@ class MspTariffQuickViewSet(
 class MSPRouter(routers.DefaultRouter):
     APIRootView = MobilityServiceProviderAPIView
     root_view_name = "msp-api"
+
+
+class CdrViewSet(
+    viewsets.GenericViewSet,
+    viewsets.mixins.ListModelMixin,
+    viewsets.mixins.RetrieveModelMixin,
+):
+    """
+    This is the list of Charge Detail Records, which is used by the CPO for billing an MSP for charging sessions.
+    You can use it for verifying the bill from the CPO.
+    """
+
+    # Todo: Limit access based on privileges set by admin
+
+    model = Cdr
+    queryset = Cdr.objects.all()
+    lookup_field = "uid"
+    serializer_class = CdrSerializer
+    pagination_class = StandardResultsSetPagination

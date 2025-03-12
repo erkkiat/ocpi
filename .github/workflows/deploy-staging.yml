@@ -12,7 +12,7 @@ jobs:
   lint:
     name: Lint Code
     environment: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -31,7 +31,7 @@ jobs:
   test:
     name: Run Tests
     environment: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: lint
     services:
       redis:
@@ -80,7 +80,7 @@ jobs:
         run: pytest
 
       - name: Upload HTML Coverage Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: HTML Coverage Report
           path: htmlcov/
@@ -88,7 +88,7 @@ jobs:
   build-and-push-staging:
     name: Build and Push Multi-Architecture Docker Images to Staging
     environment: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: test
     if: github.event_name == 'push'
 
@@ -102,8 +102,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Check Docker Version
-        run: docker --version
+      - name: Enable BuildKit
+        run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -125,14 +125,31 @@ jobs:
           IMAGE_TAG="${BRANCH_NAME}-${PR_NUMBER}-${COMMIT_HASH}"
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
 
-      - name: Build and Push Multi-Architecture Images
+      - name: Build Base Image Once
         run: |
+          echo "Building base image once with tag: $IMAGE_TAG"
+          docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" -f ./Dockerfile --load .
+
+      - name: Tag and Push Multi-Architecture Images for Each Service
+        run: |
+          FARMS="f2 f3"
+
+          echo "Deploying to farms: $FARMS"
+
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-              repo_url="$ECR_REPO_URL/solidroam-$service-f3"
-              full_image_url_with_tag="$repo_url:$IMAGE_TAG"
+              echo "Tagging image for $service from the base image"
+              docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG"
 
-              echo "Building multi-architecture image for $service with tag: $IMAGE_TAG"
-              docker buildx build --platform linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
+              for farm in $FARMS; do
+                  repo_url="$ECR_REPO_URL/solidroam-$service-$farm"
+                  full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
-              echo "Pushed multi-architecture image for $service to ECR: $full_image_url_with_tag"
+                  echo "Tagging image for farm $farm"
+                  docker tag "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" "$full_image_url_with_tag"
+
+                  echo "Pushing image for $service to $repo_url"
+                  docker push "$full_image_url_with_tag"
+
+                  echo "Pushed image for $service to ECR: $full_image_url_with_tag"
+              done
           done

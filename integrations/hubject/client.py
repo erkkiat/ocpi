@@ -9,9 +9,7 @@ class HubjectClient:
     PRIVATE_KEY = settings.HUBJECT_PRIVATE_KEY
     CA_CERTIFICATE = settings.HUBJECT_CA_CERTIFICATE
 
-    def __init__(
-        self,
-    ):
+    def __init__(self, rewrite_cert_files=False):
         self.client_cert_path = os.path.join(
             os.getcwd(),
             "integrations",
@@ -36,7 +34,8 @@ class HubjectClient:
         )
 
         if (
-            not os.path.isfile(self.client_cert_path)
+            rewrite_cert_files
+            or not os.path.isfile(self.client_cert_path)
             or not os.path.isfile(self.key_path)
             or not os.path.isfile(self.ca_cert_path)
         ):
@@ -45,7 +44,8 @@ class HubjectClient:
         self.session = requests.Session()
         self.session.cert = (self.client_cert_path, self.key_path)
         self.session.verify = self.ca_cert_path
-        self.headers = {"Content-type": "application/json"}
+        # The Proxy URL is required for hubject. The IP address in Proxy URL is whitelisted in Hubject QA Env.
+        self.session.proxies = {"http": settings.FIXIE_URL, "https": settings.FIXIE_URL}
 
     def _save_cert_and_key(self):
         if not self.CLIENT_CERTIFICATE or not self.PRIVATE_KEY:
@@ -62,29 +62,23 @@ class HubjectClient:
             exist_ok=True,
         )
 
-        with open(self.client_cert_path, "w") as cert_file:
-            cert_file.write(self.CLIENT_CERTIFICATE)
-
-        with open(self.key_path, "w") as key_file:
-            key_file.write(self.PRIVATE_KEY)
-
-        with open(self.ca_cert_path, "w") as key_file:
-            key_file.write(self.CA_CERTIFICATE)
+        cert_files = (
+            (self.client_cert_path, self.CLIENT_CERTIFICATE),
+            (self.key_path, self.PRIVATE_KEY),
+            (self.ca_cert_path, self.CA_CERTIFICATE),
+        )
+        for path, content in cert_files:
+            with open(path, "w") as cert_file:
+                cert_file.write(content)
 
     def get(self, url, **kwargs):
         return self.session.get(url, **kwargs)
 
     def post(self, url, data=None, json=None, **kwargs):
-        return self.session.post(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        return self.session.post(url, data=data, json=json, **kwargs)
 
     def put(self, url, data=None, json=None, **kwargs):
-        return self.session.put(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        return self.session.put(url, data=data, json=json, **kwargs)
 
     def patch(self, url, data=None, json=None, **kwargs):
-        return self.session.patch(
-            url, data=data, json=json, headers=self.headers, **kwargs
-        )
+        return self.session.patch(url, data=data, json=json, **kwargs)

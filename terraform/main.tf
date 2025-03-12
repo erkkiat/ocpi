@@ -47,7 +47,6 @@ resource "heroku_pipeline" "roamingmodule" {
 #  app_name   = "performance-cpo"
 #
 #  config_vars = {
-#    PREMIUM = 1
 #    HOSTNAME = "${var.app_name}.ocpiconnector.com"
 #    SCHEME = "http"
 #    DJANGO_SETTINGS_MODULE = "ocpiconnector.settings"

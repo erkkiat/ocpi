@@ -1,7 +1,6 @@
 import base64
 from unittest.mock import patch
 
-import pytest
 import time_machine
 from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
@@ -18,12 +17,13 @@ from ocpi22.ocpi.partners import (
 from ocpi22.ocpi.serializers import CredentialsSerializer
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.test_data import CredentialsData
-from ocpi22.test_tariff_location_and_evse import BetterTestCase, faketime
+from ocpi22.test_tariff_location_and_evse import faketime
 from ocpiconnector.party import Party
 from ocpiconnector.testutil import (
     OCPIAPIRequestFactory,
     simulate_surrounding_world,
     FakeResponse,
+    BetterTestCase,
 )
 from util import reverse
 
@@ -61,7 +61,6 @@ class CredentialsTests(BetterTestCase):
         setattr(request, "data", data)
         return request
 
-    @pytest.mark.skip("Fix me before production")
     @simulate_surrounding_world
     def test_credentials_post(self, simulation):
         token_a = "123"

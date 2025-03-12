@@ -4,7 +4,7 @@ from datetime import date
 import time
 from collections import OrderedDict
 from functools import lru_cache
-from gettext import gettext as _
+from django.utils.translation import gettext_lazy as _, gettext
 from itertools import chain
 from typing import Any, Union
 from urllib.parse import urljoin
@@ -123,15 +123,15 @@ def weekday_range_to_str(weekday_list: tuple[int]) -> str:
 
     for start, stop in ranges:
         if start == stop:
-            results.append(_(weekdays[start]))
+            results.append(gettext(weekdays[start]))
         elif start == 5 and stop == 6:
-            results.append(_("weekends"))
+            results.append(gettext("weekends"))
         elif start == 0 and stop == 4:
-            results.append(_("weekdays"))
+            results.append(gettext("weekdays"))
         elif start == 0 and stop == 6:
             pass
         else:
-            results.append(f"{_(weekdays[start])}-{_(weekdays[stop])}")
+            results.append(f"{gettext(weekdays[start])}-{gettext(weekdays[stop])}")
 
     if not results:
         return ""
@@ -211,12 +211,12 @@ def validate_iso2_country(c: str):
 def build_item_url(base_url, country_code, party_id, uid):
     """
     Build the URL for a single item
-    >>> build_item_url('http://example.com/tariffs', 'NL', '123', '456')
-    'http://example.com/tariffs/NL/123/456'
-    >>> build_item_url('http://example.com/tariffs/', 'NL', '123', '456')
-    'http://example.com/tariffs/NL/123/456'
-    >>> build_item_url('http://example.com/tariffs//', 'NL', '123', '456')
-    'http://example.com/tariffs/NL/123/456'
+    >>> build_item_url('http://localhost/tariffs', 'NL', '123', '456')
+    'http://localhost/tariffs/NL/123/456'
+    >>> build_item_url('http://localhost/tariffs/', 'NL', '123', '456')
+    'http://localhost/tariffs/NL/123/456'
+    >>> build_item_url('http://localhost/tariffs//', 'NL', '123', '456')
+    'http://localhost/tariffs/NL/123/456'
     """
     return urljoin(
         f"{base_url}/", f"{country_code}/{party_id}/{uid}", allow_fragments=True

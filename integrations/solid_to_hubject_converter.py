@@ -6,6 +6,7 @@ from typing import Optional
 import pytz
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.db.models import Max
 
 from integrations.hubject.schemas import (
     OperatorEvseData,
@@ -25,9 +26,19 @@ from integrations.hubject.schemas import (
     ValueAddedService,
     AccessibilityLocation,
     PaymentOption,
+    HubjectDefaultTariff,
+    PricingProductData,
+    CurrencyID,
+    ReferenceUnit,
+    ProviderIDAsterisk,
+    PricingProductDataRecord,
+    HubjectPriceComponent,
+    AdditionalReference,
+    AdditionalReferenceChoice,
 )
-from ocpi22.choices import OCPICapabilityEnum
+from ocpi22.choices import OCPICapability
 from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.tariff import SolidTariff
 
 
 class SolidToHubjectConverter:
@@ -135,7 +146,7 @@ class SolidToHubjectConverter:
             ),
             # todo : IsOpen24Hours usage of the charging when closed does not directly map to OCIP,
             IsOpen24Hours=location.charging_when_closed,
-            # todo : OpeningTimes missing in ocpi22,
+            # todo : OpeningTimes will be implemented later,
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
@@ -161,6 +172,107 @@ class SolidToHubjectConverter:
             if location.owner
             else ""
         )
+
+    def convert_to_pricing_product_data(
+        self,
+        solid_tariffs: list[SolidTariff],
+        hubject_default_tariff: HubjectDefaultTariff,
+        operator_id: str,
+        operator_name: str,
+    ) -> PricingProductData:
+        return PricingProductData(
+            OperatorID=operator_id,
+            OperatorName=operator_name,
+            PricingDefaultPrice=hubject_default_tariff.price,
+            PricingDefaultPriceCurrency=CurrencyID(
+                root=hubject_default_tariff.currency
+            ),
+            PricingDefaultReferenceUnit=ReferenceUnit(
+                root=hubject_default_tariff.price_component
+            ),
+            PricingProductDataRecords=[
+                record
+                for solid_tariff in solid_tariffs
+                for record in self.convert_to_pricing_product_data_records(
+                    solid_tariff, operator_id
+                )
+            ],
+            # todo: Offer to all should not be used in production.
+            ProviderID=self.get_provider_ids(solid_tariffs),
+        )
+
+    def get_provider_ids(self, solid_tariffs: list[SolidTariff]) -> ProviderIDAsterisk:
+        # Todo: when we have multiple providers we need to send a list
+        if solid_tariffs[0].msp is None:
+            return ProviderIDAsterisk(root="*")
+        return ProviderIDAsterisk(root=solid_tariffs[0].msp.party_str())
+
+    def convert_to_pricing_product_data_records(
+        self,
+        solid_tariff: SolidTariff,
+        operator_id: str,
+    ) -> list[PricingProductDataRecord]:
+        conditions = [
+            (
+                HubjectPriceComponent.KWH,
+                solid_tariff.price_per_kwh,
+            ),
+            (
+                HubjectPriceComponent.MINUTE,
+                solid_tariff.price_per_min,
+            ),
+        ]
+
+        pricing_product_data_records = []
+        for ref_unit, price in conditions:
+            if price is not None:
+                pricing_product_data_records.append(
+                    PricingProductDataRecord(
+                        AdditionalReferences=[
+                            AdditionalReference(
+                                AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                                AdditionalReferenceUnit=ReferenceUnit(
+                                    root=HubjectPriceComponent.HOUR.value
+                                ),
+                                PricePerAdditionalReferenceUnit=solid_tariff.price_flat,
+                            ),
+                        ],
+                        IsValid24hours=True,
+                        MaximumProductChargingPower=self.get_maximum_product_charging_power(),
+                        PricePerReferenceUnit=price,
+                        ProductAvailabilityTimes=[],
+                        ProductID=self.get_pricing_product_id(
+                            solid_tariff.external_id,
+                            ref_unit,
+                            operator_id,
+                            solid_tariff.msp.party_str() if solid_tariff.msp else "",
+                        ),
+                        ProductPriceCurrency=solid_tariff.currency,
+                        ReferenceUnit=ReferenceUnit(root=ref_unit),
+                    )
+                )
+        return pricing_product_data_records
+
+    def get_maximum_product_charging_power(self):
+        return (
+            Connector.objects.aggregate(Max("max_electric_power"))[
+                "max_electric_power__max"
+            ]
+            or 0
+        ) / 1000
+
+    def get_pricing_product_id(
+        self,
+        solid_tariff_id: str,
+        ref_unit: HubjectPriceComponent,
+        operator_id: str,
+        msp_id: str,
+    ) -> str:
+        if not operator_id or not solid_tariff_id or not ref_unit:
+            raise ValueError(
+                "Missing required fields {operator_id, price_reference, solid_tariff_external_id} for generating pricing product ID."
+            )
+        return f"{operator_id}*{solid_tariff_id}*{ref_unit.value}*{msp_id}"
 
     def get_plug(self, connector_std: str) -> Plug:
         """
@@ -283,30 +395,30 @@ class SolidToHubjectConverter:
 
     def get_authentication_mode(
         self,
-        capability: OCPICapabilityEnum,
+        capability: OCPICapability,
     ) -> Optional[AuthenticationMode]:
         """
         >>> oicp_converter = SolidToHubjectConverter()
-        >>> oicp_converter.get_authentication_mode(OCPICapabilityEnum.RFID_READER)
+        >>> oicp_converter.get_authentication_mode(OCPICapability.RFID_READER)
         <AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>
         """
 
         mapping = {
-            OCPICapabilityEnum.RFID_READER: AuthenticationMode.NFC_RFID_Classic,
+            OCPICapability.RFID_READER: AuthenticationMode.NFC_RFID_Classic,
         }
         return mapping.get(capability)
 
     def get_authentication_modes_list(
         self,
-        capabilities: list[OCPICapabilityEnum],
+        capabilities: list[OCPICapability],
     ) -> list[AuthenticationMode]:
         """
         >>> oicp_converter = SolidToHubjectConverter()
-        >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.RFID_READER])
+        >>> oicp_converter.get_authentication_modes_list([OCPICapability.RFID_READER])
         [<AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>]
-        >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
+        >>> oicp_converter.get_authentication_modes_list([OCPICapability.RFID_READER, OCPICapability.CREDIT_CARD_PAYABLE])
         [<AuthenticationMode.NFC_RFID_Classic: 'NFC RFID Classic'>]
-        >>> oicp_converter.get_authentication_modes_list([OCPICapabilityEnum.UNLOCK_CAPABLE])
+        >>> oicp_converter.get_authentication_modes_list([OCPICapability.UNLOCK_CAPABLE])
         [<AuthenticationMode.No_Authentication_Required: 'No Authentication Required'>]
 
         This function collects all of the matching AuthenticationModes for the given list of OCPI 2.2.1 Capabilities.
@@ -324,28 +436,28 @@ class SolidToHubjectConverter:
 
     def get_value_added_services(
         self,
-        capability: OCPICapabilityEnum,
+        capability: OCPICapability,
     ) -> Optional[ValueAddedService]:
         """
         >>> oicp_converter = SolidToHubjectConverter()
-        >>> oicp_converter.get_value_added_services(OCPICapabilityEnum.RESERVABLE)
+        >>> oicp_converter.get_value_added_services(OCPICapability.RESERVABLE)
         <ValueAddedService.Reservation: 'Reservation'>
         """
 
         mapping = {
-            OCPICapabilityEnum.RESERVABLE: ValueAddedService.Reservation,
+            OCPICapability.RESERVABLE: ValueAddedService.Reservation,
         }
         return mapping.get(capability)
 
     def get_value_added_services_list(
         self,
-        capabilities: list[OCPICapabilityEnum],
+        capabilities: list[OCPICapability],
     ) -> list[ValueAddedService]:
         """
         >>> oicp_converter = SolidToHubjectConverter()
-        >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.CHARGING_PROFILE_CAPABLE])
+        >>> oicp_converter.get_value_added_services_list([OCPICapability.CHARGING_PROFILE_CAPABLE])
         [<ValueAddedService.None_: 'None'>]
-        >>> oicp_converter.get_value_added_services_list([OCPICapabilityEnum.RESERVABLE])
+        >>> oicp_converter.get_value_added_services_list([OCPICapability.RESERVABLE])
         [<ValueAddedService.Reservation: 'Reservation'>]
 
         This function collects all of the matching ValueAddedServices for the given list of OCPI 2.2.1 Capabilities.
@@ -404,27 +516,27 @@ class SolidToHubjectConverter:
 
     def get_payment_options(
         self,
-        capabilities: list[OCPICapabilityEnum],
+        capabilities: list[OCPICapability],
     ) -> list[PaymentOption]:
         """
         >>> oicp_converter = SolidToHubjectConverter()
-        >>> oicp_converter.get_payment_options([OCPICapabilityEnum.CHIP_CARD_SUPPORT, OCPICapabilityEnum.CONTACTLESS_CARD_SUPPORT, OCPICapabilityEnum.CREDIT_CARD_PAYABLE])
+        >>> oicp_converter.get_payment_options([OCPICapability.CHIP_CARD_SUPPORT, OCPICapability.CONTACTLESS_CARD_SUPPORT, OCPICapability.CREDIT_CARD_PAYABLE])
         [<PaymentOption.Direct: 'Direct'>]
-        >>> oicp_converter.get_payment_options([OCPICapabilityEnum.RFID_READER])
+        >>> oicp_converter.get_payment_options([OCPICapability.RFID_READER])
         [<PaymentOption.Contract: 'Contract'>]
-        >>> oicp_converter.get_payment_options([OCPICapabilityEnum.PED_TERMINAL, OCPICapabilityEnum.RESERVABLE])
+        >>> oicp_converter.get_payment_options([OCPICapability.PED_TERMINAL, OCPICapability.RESERVABLE])
         [<PaymentOption.Contract: 'Contract'>]
         """
 
         capability_map = {
             PaymentOption.Direct: [
-                OCPICapabilityEnum.CHIP_CARD_SUPPORT,
-                OCPICapabilityEnum.CONTACTLESS_CARD_SUPPORT,
-                OCPICapabilityEnum.CREDIT_CARD_PAYABLE,
-                OCPICapabilityEnum.DEBIT_CARD_PAYABLE,
+                OCPICapability.CHIP_CARD_SUPPORT,
+                OCPICapability.CONTACTLESS_CARD_SUPPORT,
+                OCPICapability.CREDIT_CARD_PAYABLE,
+                OCPICapability.DEBIT_CARD_PAYABLE,
             ],
             PaymentOption.Contract: [
-                OCPICapabilityEnum.RFID_READER,
+                OCPICapability.RFID_READER,
             ],
         }
 

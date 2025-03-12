@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils.html import format_html
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _
 
 import util
 from ocpi22 import choices
@@ -50,8 +50,6 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
 
     upper_case_fields = ("uid", "contract_id", "language")
 
-    # The party responsible for the master data for this object
-    # The country_code and party_id can be found through the CredentialsRole
     ocpi_master = models.ForeignKey(
         "ocpi22.CredentialsRole",
         related_name="tokens",
@@ -59,11 +57,6 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         on_delete=models.PROTECT,
     )
 
-    # Unique ID by which this Token can be identified.
-    # This is the field used by CPO system (RFID reader on the Charge Point) to identify this token.
-    # Currently, in most cases: type=RFID, this is the RFID hidden ID as read by the RFID reader, but that is not a requirement.
-    # If this is a APP_USER or AD_HOC_USER Token, it will be a uniquely, by the eMSP, generated ID.
-    # This field is named uid instead of id to prevent confusion with: contract_id.
     uid = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("UID")
     )
@@ -75,26 +68,16 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Type"),
     )
 
-    # Uniquely identifies the EV Driver contract token within the eMSP’s platform (and suboperator platforms).
-    # Recommended to follow the specification for eMA ID from
-    # "eMI3 standard version V1.0" (http://emi3group.com/documents-links/) "Part 2: business objects."
     contract_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH, verbose_name=_("Contract ID")
     )
 
-    # Visual readable number/identification as printed on the Token (RFID card), might be equal to the contract_id.
     visual_number = models.CharField(
         max_length=64, null=True, blank=True, verbose_name=_("Visual number")
     )
 
-    # Issuing company, most of the times the name of the company printed on the token (RFID card),
-    # not necessarily the eMSP.
     issuer = models.CharField(max_length=64, verbose_name=_("Issuer"))
 
-    # This ID groups a couple of tokens. This can be used to make two or more tokens work as one,
-    # so that a session can be started with one token and stopped with another, handy when a card and key-fob
-    # are given to the EV-driver. Beware that OCPP 1.5/1.6 only support group_ids
-    # (it is called parentId in OCPP 1.5/1.6) with a maximum length of 20.
     group_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         null=True,
@@ -110,25 +93,15 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
     NEVER = "NEVER"
 
     WHITELIST_CHOICES = (
-        # Token always has to be whitelisted, realtime authorization is not possible/allowed.
-        # CPO shall always allow any use of this Token.
         (ALWAYS, "Always"),
-        # It is allowed to whitelist the token, realtime authorization is also allowed.
-        # The CPO may choose which version of authorization to use.
         (ALLOWED, "Allowed"),
-        # In normal situations realtime authorization shall be used. But when the CPO cannot get a response
-        # from the eMSP (communication between CPO and eMSP is offline), the CPO shall allow this Token to be used.
         (ALLOWED_OFFLINE, "Allowed when offline"),
-        # Whitelisting is forbidden, only realtime authorization is allowed. CPO shall always send
-        # a realtime authorization for any use of this Token to the eMSP.
         (NEVER, "Never, only real time"),
     )
     whitelist = models.CharField(
         max_length=15, choices=WHITELIST_CHOICES, verbose_name=_("Whitelist")
     )
 
-    # Language Code ISO 639-1. This optional field indicates the Token owner’s preferred interface language.
-    # If the language is not provided or not supported then the CPO is free to choose its own language.
     language = models.CharField(
         max_length=2,
         null=True,
@@ -136,9 +109,6 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Language"),
     )
 
-    # The default Charging Preference. When this is provided, and a charging session is started on
-    # an Charge Point that support Preference base Smart Charging and support this ProfileType,
-    # the Charge Point can start using this ProfileType, without this having to be set via: Set Charging Preferences.
     PROFILE_TYPE_CHOICES = (
         (
             "CHEAP",
@@ -165,18 +135,13 @@ class Token(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Default profile type"),
     )
 
-    # energy_contract = models.CharField(max_length=80)  # No type documentation available
-
-    # The OCPI field writable and maintained by object owner
     last_updated = models.DateTimeField(
         null=True, blank=True, verbose_name=_("Last updated")
     )
 
-    # Django automatic dates
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
 
-    # The customer who owns this token and pays for its use
     customer = models.ForeignKey(
         User,
         blank=True,
