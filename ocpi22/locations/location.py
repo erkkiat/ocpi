@@ -1,4 +1,4 @@
-import ocpi22.ocpi_logging as logging
+from logging import getLogger
 
 from django.core.validators import RegexValidator
 from rest_framework import status
@@ -33,6 +33,8 @@ from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from ocpiconnector.ocpi_identities import ocpi_platform
 from util import OCPIVersion
+
+logger = getLogger(__name__)
 
 evse_validator = RegexValidator(
     r"[A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}$",
@@ -76,10 +78,15 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
     @ocpi_exception_handler
     def list(self, request, *args, **kwargs):
         credentials = getattr(request, "credentials", None)
+        logger.info(f"Request for headers: {request.headers}")
+        logger.info(f"Credentials is {credentials}")
         queryset = LocationService.get_allowed_locations_queryset(
             credentials, self.get_queryset()
         )
+        logger.info("fGot queryset: {queryset}")
         self.queryset = queryset
+        logger.info(f"Got self.queryset: {self.queryset}")
+
         return super().list(request, *args, **kwargs)
 
     @staticmethod
@@ -160,7 +167,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             created = bool(not existing_location)
-            logging.info(
+            logger.info(
                 f'{"Creating" if created else "Updating"}'
                 f' Location {credentialsrole} - {uid}.'
             )
