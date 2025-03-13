@@ -111,6 +111,36 @@ class TestPublicAndNonPublicLocations:
             for location in response.data.get("data")
         ), "A public location should be listed when GETting the OCPI Locations list"
 
+    def test_location_list_view_only_returns_allowed_locations(
+        self, msp_credentials_with_endpoints
+    ):
+        helsinki = LocationFactory(publish=True, uid="HELSINKI-ALLOWED")
+        vantaa = LocationFactory(publish=True, uid="VANTAA-ALLOWED")
+        kuopio_not_allowed = LocationFactory(publish=True, uid="KUOPIO-NOT-ALLOWED")
+        msp_credentials_with_endpoints.allowed_locations.extend(
+            [helsinki.uid, vantaa.uid]
+        )
+        msp_credentials_with_endpoints.save()
+        response = self.get_location_list(msp_credentials_with_endpoints)
+        response_data = response.json()["data"]
+        location_ids = {location.get("id") for location in response_data}
+        assert helsinki.uid in location_ids
+        assert vantaa.uid in location_ids
+        assert kuopio_not_allowed.uid not in location_ids
+
+    def test_location_list_view_returns_everything_if_allowed_locations_empty_list(
+        self, msp_credentials_with_endpoints
+    ):
+        iso_omena = LocationFactory(publish=True, uid="ISO-OMENA")
+        itis = LocationFactory(publish=True, uid="ITIS")
+        msp_credentials_with_endpoints.allowed_locations = []
+        msp_credentials_with_endpoints.save()
+        response = self.get_location_list(msp_credentials_with_endpoints)
+        response_data = response.json()["data"]
+        location_ids = {location.get("id") for location in response_data}
+        assert iso_omena.uid in location_ids
+        assert itis.uid in location_ids
+
 
 @pytest.mark.django_db
 def test_location_put_when_uid_does_not_match_between_url_parameters_and_body_data_fails(
