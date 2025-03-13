@@ -75,7 +75,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
     @ocpi_exception_handler
     def list(self, request, *args, **kwargs):
-        credentials = getattr(request, "credentialsrole", None)
+        credentials = getattr(request, "credentials", None)
         queryset = LocationService.get_allowed_locations_queryset(
             credentials, self.get_queryset()
         )
