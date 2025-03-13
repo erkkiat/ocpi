@@ -58,8 +58,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_queryset(self):
         credentials = getattr(self.request, "credentials", None)
-        logger.info(f"Request for headers: {self.request.headers}")
-        logger.info(f"Credentials is {credentials}")
         prefetch_fields = (
             "evses",
             "evses__connectors",
@@ -78,9 +76,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                 .exclude(publish=False)
                 .order_by("created")
             )
-        logger.info(f"Original queryset: {queryset}")
         queryset = LocationService.get_allowed_locations_queryset(credentials, queryset)
-        logger.info(f"Filtered queryset: {queryset}")
         return queryset
 
     @ocpi_exception_handler
