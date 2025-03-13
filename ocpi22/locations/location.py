@@ -57,36 +57,34 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return "Locations"
 
     def get_queryset(self):
+        credentials = getattr(self.request, "credentials", None)
+        logger.info(f"Request for headers: {self.request.headers}")
+        logger.info(f"Credentials is {credentials}")
         prefetch_fields = (
             "evses",
             "evses__connectors",
             "evses__connectors__tariff_ids",
         )
         if ocpi_platform.is_hub and hasattr(self, "request"):
-            return (
+            queryset = (
                 Location.objects.prefetch_related(*prefetch_fields)
                 .partner_filter(self.request)
                 .exclude(publish=False)
                 .order_by("created")
             )
-        return (
-            Location.objects.prefetch_related(*prefetch_fields)
-            .exclude(publish=False)
-            .order_by("created")
-        )
+        else:
+            queryset = (
+                Location.objects.prefetch_related(*prefetch_fields)
+                .exclude(publish=False)
+                .order_by("created")
+            )
+        logger.info(f"Original queryset: {queryset}")
+        queryset = LocationService.get_allowed_locations_queryset(credentials, queryset)
+        logger.info(f"Filtered queryset: {queryset}")
+        return queryset
 
     @ocpi_exception_handler
     def list(self, request, *args, **kwargs):
-        credentials = getattr(request, "credentials", None)
-        logger.info(f"Request for headers: {request.headers}")
-        logger.info(f"Credentials is {credentials}")
-        queryset = LocationService.get_allowed_locations_queryset(
-            credentials, self.get_queryset()
-        )
-        logger.info("fGot queryset: {queryset}")
-        self.queryset = queryset
-        logger.info(f"Got self.queryset: {self.queryset}")
-
         return super().list(request, *args, **kwargs)
 
     @staticmethod
