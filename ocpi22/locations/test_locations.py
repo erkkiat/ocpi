@@ -17,7 +17,7 @@ from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.tariff import Tariff
-from ocpi22.ocpi.auth import get_credentialsrole
+from ocpi22.ocpi.auth import get_credentialsrole, find_credentials
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.tests.factories import (
     EvseFactory,
@@ -114,16 +114,20 @@ class TestPublicAndNonPublicLocations:
     def test_location_list_view_only_returns_allowed_locations(
         self, msp_credentials_with_endpoints
     ):
+        find_credentials.cache_clear()
+
         helsinki = LocationFactory(publish=True, uid="HELSINKI-ALLOWED")
         vantaa = LocationFactory(publish=True, uid="VANTAA-ALLOWED")
         kuopio_not_allowed = LocationFactory(publish=True, uid="KUOPIO-NOT-ALLOWED")
-        msp_credentials_with_endpoints.allowed_locations.extend(
-            [helsinki.uid, vantaa.uid]
-        )
+
+        msp_credentials_with_endpoints.allowed_locations = [helsinki.uid, vantaa.uid]
         msp_credentials_with_endpoints.save()
+        msp_credentials_with_endpoints.refresh_from_db()
+
         response = self.get_location_list(msp_credentials_with_endpoints)
         response_data = response.json()["data"]
         location_ids = {location.get("id") for location in response_data}
+
         assert helsinki.uid in location_ids
         assert vantaa.uid in location_ids
         assert kuopio_not_allowed.uid not in location_ids
@@ -131,13 +135,19 @@ class TestPublicAndNonPublicLocations:
     def test_location_list_view_returns_everything_if_allowed_locations_empty_list(
         self, msp_credentials_with_endpoints
     ):
+        find_credentials.cache_clear()
+
         iso_omena = LocationFactory(publish=True, uid="ISO-OMENA")
         itis = LocationFactory(publish=True, uid="ITIS")
+
         msp_credentials_with_endpoints.allowed_locations = []
         msp_credentials_with_endpoints.save()
+        msp_credentials_with_endpoints.refresh_from_db()
+
         response = self.get_location_list(msp_credentials_with_endpoints)
         response_data = response.json()["data"]
         location_ids = {location.get("id") for location in response_data}
+
         assert iso_omena.uid in location_ids
         assert itis.uid in location_ids
 
