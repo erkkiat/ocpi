@@ -44,6 +44,8 @@ class CredentialsData:
         "valid": True,
         "version": "221",
         "allowed_locations": [],
+        "certificate_name": None,
+        "private_key_name": None,
     }
 
     expected_versions_response = {
