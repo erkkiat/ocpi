@@ -642,13 +642,7 @@ class TariffAdmin(SolidNestedModelAdmin):
             formfield_overrides = widgets.formfield_overrides
 
             def has_change_permission(self, request, obj=None) -> bool:
-                if obj and hasattr(obj, "tariff"):
-                    obj = obj.tariff
-                return (
-                    (not obj or obj.is_ours())
-                    or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
-                    and super().has_change_permission(request, obj)
-                )
+                return False
 
             def has_add_permission(self, request, obj=None) -> bool:
                 return (
@@ -679,9 +673,7 @@ class TariffAdmin(SolidNestedModelAdmin):
         ]
 
         def has_change_permission(self, request, obj=None) -> bool:
-            return (
-                (not obj or obj.is_ours()) or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
-            ) and super().has_change_permission(request, obj)
+            return False
 
         def has_add_permission(self, request, obj=None) -> bool:
             return (
@@ -736,17 +728,16 @@ class TariffAdmin(SolidNestedModelAdmin):
         return readonly_fields
 
     def has_change_permission(self, request, obj=None) -> bool:
-        return (
-            (obj and obj.is_ours())
-            or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
-            and super().has_change_permission(request, obj)
-        )
+        return False
 
     def has_add_permission(self, request) -> bool:
         return (
             Tariff.ocpi_object_owner in ocpi_identities
             and super().has_add_permission(request)
         )
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
 
     def save_model(self, request, obj, form, change):
         """Since the admin is saving the object, it's ours, so let's fill out the needed fields"""
