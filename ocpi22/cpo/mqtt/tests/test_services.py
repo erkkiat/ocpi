@@ -127,7 +127,7 @@ class TestMqttServices:
         evse = EvseFactory(location=location, uid="EVSE1")
         tariff = TariffFactory(uid="TARIFF1")
         connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff])
-        OCPISessionFactory(
+        session = OCPISessionFactory(
             uid="94f5993d-232a-4916-a801-4e408c24c9cc", start_kwh=0, connector=connector
         )
         with patch.object(
@@ -183,6 +183,7 @@ class TestMqttServices:
                     to=Party(country_code="FI", party_id="MSP"),
                     sender=Party(country_code="FI", party_id="CPO"),
                     method="put",
+                    credentials=session.credentials,
                 )
 
     @pytest.mark.django_db
