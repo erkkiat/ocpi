@@ -143,9 +143,10 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    ca_cert = os.getenv(credentials.certificate_name, None)
-    private_key = os.getenv(credentials.key, None)
-    client_cert = os.getenv(credentials.client_certificate, None)
+    ca_cert = os.getenv(credentials.ca_certificate_name, None)
+    private_key = os.getenv(credentials.private_key_name, None)
+    client_cert = os.getenv(credentials.client_certificate_name, None)
+
     ssl_context = load_ssl_context(
         client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
     )
