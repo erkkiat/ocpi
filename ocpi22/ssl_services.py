@@ -5,15 +5,13 @@ from requests.adapters import HTTPAdapter
 
 
 class SSLAdapter(HTTPAdapter):
-    """Adapter to use a custom SSLContext if provided."""
-
     def __init__(self, ssl_context=None):
         self.ssl_context = ssl_context
         super().__init__()
 
     def init_poolmanager(self, *args, **kwargs):
         if self.ssl_context:
-            kwargs["ssl_context"] = self.ssl_context  # Inject SSLContext
+            kwargs["ssl_context"] = self.ssl_context
         super().init_poolmanager(*args, **kwargs)
 
 
