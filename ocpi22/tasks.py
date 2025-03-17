@@ -128,7 +128,7 @@ def send_ocpi_request(
     from_country_code: str,
     from_party_id: str,
     method: str = "put",
-    credentials_id=None,
+    credentials=None,
     title=None,
     **kwargs,
 ) -> Response:
@@ -143,6 +143,8 @@ def send_ocpi_request(
         kwargs.update(dict(url=url, data=data, headers=headers))
 
     # Call the specified method in requests, for example, if method == 'put', call requests.put
+
+    # Load certificate here
     function = getattr(requests, method.lower())
     if not function:
         raise NotImplementedError(
