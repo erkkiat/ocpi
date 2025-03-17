@@ -1,9 +1,6 @@
 import ssl
 import tempfile
 import os
-from cryptography import x509
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
 from requests.adapters import HTTPAdapter
 
 
@@ -20,40 +17,32 @@ class SSLAdapter(HTTPAdapter):
         super().init_poolmanager(*args, **kwargs)
 
 
-def load_ssl_context(cert_str=None, key_str=None):
-    """
-    Load an SSL context from in-memory certificate and key strings.
-    If no cert/key is provided, returns None (default SSL behavior).
-    """
-    if not cert_str or not key_str:
-        return None  # Use system defaults (no custom certs)
+def load_ssl_context(client_cert: str, private_key: str, ca_cert: str, verify_ssl=True):
+    if not all([client_cert, private_key, ca_cert]):
+        raise ValueError("cert_str, key_str, and ca_cert_str are required.")
 
-    cert = x509.load_pem_x509_certificate(cert_str.encode(), default_backend())
-    key = serialization.load_pem_private_key(
-        key_str.encode(), password=None, backend=default_backend()
-    )
+    ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
 
-    cert_bytes = cert.public_bytes(serialization.Encoding.PEM)
-    key_bytes = key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
+    ssl_context.verify_mode = ssl.CERT_REQUIRED if verify_ssl else ssl.CERT_NONE
 
     with (
         tempfile.NamedTemporaryFile(delete=False) as cert_file,
         tempfile.NamedTemporaryFile(delete=False) as key_file,
+        tempfile.NamedTemporaryFile(delete=False) as ca_cert_file,
     ):
-        cert_file.write(cert_bytes)
-        key_file.write(key_bytes)
+        cert_file.write(client_cert.encode())
+        key_file.write(private_key.encode())
+        ca_cert_file.write(ca_cert.encode())
+
         cert_file_path = cert_file.name
         key_file_path = key_file.name
+        ca_cert_file_path = ca_cert_file.name
 
-    ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
     ssl_context.load_cert_chain(certfile=cert_file_path, keyfile=key_file_path)
+    ssl_context.load_verify_locations(cafile=ca_cert_file_path)
 
-    # ✅ Delete the temporary files immediately
     os.unlink(cert_file_path)
     os.unlink(key_file_path)
+    os.unlink(ca_cert_file_path)
 
     return ssl_context
