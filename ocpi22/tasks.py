@@ -22,6 +22,7 @@ from rest_framework import status
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
+from ocpi22.ssl_services import load_ssl_context, SSLAdapter
 from ocpiconnector.party import Party
 from util import unwrap
 
@@ -142,10 +143,16 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    # Call the specified method in requests, for example, if method == 'put', call requests.put
-
-    # Load certificate here
-    function = getattr(requests, method.lower())
+    ca_cert = os.getenv(credentials.certificate_name, None)
+    private_key = os.getenv(credentials.key, None)
+    client_cert = os.getenv(credentials.client_certificate, None)
+    ssl_context = load_ssl_context(
+        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
+    )
+    session = requests.Session()
+    if ssl_context:
+        session.mount("https://", SSLAdapter(ssl_context=ssl_context))
+    function = getattr(session, method.lower())
     if not function:
         raise NotImplementedError(
             f"Method {method} is not supported for send_ocpi_request"
