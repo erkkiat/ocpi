@@ -21,6 +21,7 @@ from rest_framework import status
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
+from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context, SSLAdapter
 from ocpiconnector.party import Party
@@ -114,6 +115,22 @@ else:
     logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
 
 
+def _get_request_session(credential_id):
+    credentials = Credentials.objects.filter(id=credential_id).first()
+    request_session = requests.Session()
+    if not credentials:
+        return request_session
+    ca_cert = os.getenv(credentials.ca_certificate_name, None)
+    private_key = os.getenv(credentials.private_key_name, None)
+    client_cert = os.getenv(credentials.client_certificate_name, None)
+    ssl_context = load_ssl_context(
+        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
+    )
+    if ssl_context:
+        request_session.mount("https://", SSLAdapter(ssl_context=ssl_context))
+    return request_session
+
+
 @shared_task(
     bind=True,
     retry_backoff=1,
@@ -129,7 +146,7 @@ def send_ocpi_request(
     from_country_code: str,
     from_party_id: str,
     method: str = "put",
-    credentials=None,
+    credentials_id=None,
     title=None,
     **kwargs,
 ) -> Response:
@@ -143,23 +160,17 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    ca_cert = os.getenv(credentials.ca_certificate_name, None)
-    private_key = os.getenv(credentials.private_key_name, None)
-    client_cert = os.getenv(credentials.client_certificate_name, None)
-
-    ssl_context = load_ssl_context(
-        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
-    )
-    session = requests.Session()
-    if ssl_context:
-        session.mount("https://", SSLAdapter(ssl_context=ssl_context))
-    function = getattr(session, method.lower())
+    request_session = _get_request_session(credentials_id)
+    function = getattr(request_session, method.lower())
     if not function:
         raise NotImplementedError(
             f"Method {method} is not supported for send_ocpi_request"
         )
 
     logger.info(f"Sending ocpi {method} request to {url} ")
+    import ipdb
+
+    ipdb.set_trace()
     response: requests.Response = function(**kwargs)
     if self.request.is_eager:
         return response
