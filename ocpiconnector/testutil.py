@@ -329,9 +329,6 @@ class Simulation:
 
     @staticmethod
     def _request(method, url, json=None, response=None, **kwargs):
-        import ipdb
-
-        ipdb.set_trace()
         return FakeResponse(200, response or {})
 
 
