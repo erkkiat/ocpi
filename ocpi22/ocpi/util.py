@@ -211,7 +211,7 @@ class OcpiModule:
                 sender.country_code,
                 sender.party_id,
                 method,
-                credentials,
+                credentials.id,
             )
             send_ocpi_request.apply_async(
                 args, retry=False, title=f"{cls.ocpi_module_name.value} update"
