@@ -168,9 +168,6 @@ def send_ocpi_request(
         )
 
     logger.info(f"Sending ocpi {method} request to {url} ")
-    import ipdb
-
-    ipdb.set_trace()
     response: requests.Response = function(**kwargs)
     if self.request.is_eager:
         return response
