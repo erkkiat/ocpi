@@ -5,12 +5,12 @@ from ocpi22.tests.factories import CredentialsRoleFactory, SolidTariffFactory
 
 @pytest.fixture
 def msp_de_ice():
-    return CredentialsRoleFactory(country_code="DE", party_id="ICE")
+    return CredentialsRoleFactory(country_code="DE", party_id="ICE", role="EMSP")
 
 
 @pytest.fixture
 def msp_de_icd():
-    return CredentialsRoleFactory(country_code="DE", party_id="ICD")
+    return CredentialsRoleFactory(country_code="DE", party_id="ICD", role="EMSP")
 
 
 @pytest.fixture
