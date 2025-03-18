@@ -329,6 +329,9 @@ class Simulation:
 
     @staticmethod
     def _request(method, url, json=None, response=None, **kwargs):
+        import ipdb
+
+        ipdb.set_trace()
         return FakeResponse(200, response or {})
 
 
@@ -350,7 +353,7 @@ def simulate_surrounding_world(func):
         original_get_our_credentialsrole = unwrap(get_our_credentialsrole)
 
         with (
-            patch("ocpi22.tasks.requests") as tasks_requests,
+            patch("ocpi22.tasks.requests.session") as tasks_requests,
             patch("ocpi22.ocpi.headers.get_platform_revision") as get_platform_revision,
             patch(
                 "ocpi22.util.redis_store",
