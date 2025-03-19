@@ -17,30 +17,37 @@ class SSLAdapter(HTTPAdapter):
 
 def load_ssl_context(client_cert: str, private_key: str, ca_cert: str, verify_ssl=True):
     if not all([client_cert, private_key, ca_cert]):
-        raise ValueError("cert_str, key_str, and ca_cert_str are required.")
+        raise ValueError("client_cert, private_key, and ca_cert are required.")
 
     ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-
     ssl_context.verify_mode = ssl.CERT_REQUIRED if verify_ssl else ssl.CERT_NONE
 
-    with (
-        tempfile.NamedTemporaryFile(delete=False) as cert_file,
-        tempfile.NamedTemporaryFile(delete=False) as key_file,
-        tempfile.NamedTemporaryFile(delete=False) as ca_cert_file,
-    ):
+    # Create temp files without auto-delete
+    cert_file = tempfile.NamedTemporaryFile(delete=False)
+    key_file = tempfile.NamedTemporaryFile(delete=False)
+    ca_cert_file = tempfile.NamedTemporaryFile(delete=False)
+
+    try:
         cert_file.write(client_cert.encode())
         key_file.write(private_key.encode())
         ca_cert_file.write(ca_cert.encode())
 
-        cert_file_path = cert_file.name
-        key_file_path = key_file.name
-        ca_cert_file_path = ca_cert_file.name
+        cert_file.flush()
+        key_file.flush()
+        ca_cert_file.flush()
 
-    ssl_context.load_cert_chain(certfile=cert_file_path, keyfile=key_file_path)
-    ssl_context.load_verify_locations(cafile=ca_cert_file_path)
+        # Load into SSL context
+        ssl_context.load_cert_chain(certfile=cert_file.name, keyfile=key_file.name)
+        ssl_context.load_verify_locations(cafile=ca_cert_file.name)
 
-    os.unlink(cert_file_path)
-    os.unlink(key_file_path)
-    os.unlink(ca_cert_file_path)
+    finally:
+        # Always clean up files after SSL context is configured
+        cert_file.close()
+        key_file.close()
+        ca_cert_file.close()
+
+        os.unlink(cert_file.name)
+        os.unlink(key_file.name)
+        os.unlink(ca_cert_file.name)
 
     return ssl_context
