@@ -22,7 +22,6 @@ def load_ssl_context(client_cert: str, private_key: str, ca_cert: str, verify_ss
     ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
     ssl_context.verify_mode = ssl.CERT_REQUIRED if verify_ssl else ssl.CERT_NONE
 
-    # Create temp files without auto-delete
     cert_file = tempfile.NamedTemporaryFile(delete=False)
     key_file = tempfile.NamedTemporaryFile(delete=False)
     ca_cert_file = tempfile.NamedTemporaryFile(delete=False)
@@ -36,12 +35,10 @@ def load_ssl_context(client_cert: str, private_key: str, ca_cert: str, verify_ss
         key_file.flush()
         ca_cert_file.flush()
 
-        # Load into SSL context
         ssl_context.load_cert_chain(certfile=cert_file.name, keyfile=key_file.name)
         ssl_context.load_verify_locations(cafile=ca_cert_file.name)
 
     finally:
-        # Always clean up files after SSL context is configured
         cert_file.close()
         key_file.close()
         ca_cert_file.close()
