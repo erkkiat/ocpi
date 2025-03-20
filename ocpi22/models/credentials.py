@@ -139,9 +139,15 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     allowed_locations = JSONField(
         default=list, blank=True, null=False, validators=[validate_allowed_locations]
     )
-    client_certificate_name = models.CharField(max_length=255, blank=True, null=True)
-    private_key_name = models.CharField(max_length=255, blank=True, null=True)
-    ca_certificate_name = models.CharField(max_length=255, blank=True, null=True)
+    client_certificate_name = models.CharField(
+        max_length=255, blank=True, null=False, default=""
+    )
+    private_key_name = models.CharField(
+        max_length=255, blank=True, null=False, default=""
+    )
+    ca_certificate_name = models.CharField(
+        max_length=255, blank=True, null=False, default=""
+    )
 
     def soft_delete(self):
         self.valid = False
