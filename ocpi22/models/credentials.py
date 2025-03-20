@@ -504,6 +504,7 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
                 our_party.country_code,
                 our_party.party_id,
                 "delete",
+                credentials.id,
             )
             retry_policy = dict(max_retries=5, interval_start=5)
             if settings.BACKGROUND_SEND:
