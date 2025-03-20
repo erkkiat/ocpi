@@ -54,16 +54,6 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
             return ""
         return f"{build_absolute_uri(obj.get_cpo_url())}"
 
-    def get_quick_url(self, obj) -> str:
-        """
-        Construct a URL which points to the object instance view
-        :param obj: The object we need the instance view for
-        :return: The URL string to the instance view
-        """
-        if not hasattr(obj, "get_quick_url") or not self.is_browser():
-            return ""
-        return f"{build_absolute_uri(obj.get_quick_url())}"
-
     def get_status_url(self, obj) -> str:
         """
         Construct a URL which points to the object instance view
@@ -80,9 +70,6 @@ class HyperlinkedModelSerializerCleanedUp(serializers.HyperlinkedModelSerializer
         read_only=True, help_text="This non-OCPI field exists for educational purposes"
     )
     url = serializers.SerializerMethodField(read_only=True)
-    quick_url = serializers.SerializerMethodField(
-        read_only=True, help_text="This non-OCPI field exists for educational purposes"
-    )
     status_url = serializers.SerializerMethodField(
         read_only=True, help_text="This non-OCPI field exists for educational purposes"
     )
@@ -101,7 +88,9 @@ class CallbacksSerializer(serializers.Serializer):
 class UTCDateTimeField(serializers.DateTimeField):
     def to_representation(self, value) -> str:
         if not isinstance(value, datetime):
-            raise ValueError(f"Expected a datetime, got type {type(value)} with value {value}")
+            raise ValueError(
+                f"Expected a datetime, got type {type(value)} with value {value}"
+            )
         value = value.astimezone(tzoffset(None, 0))
         result = value.strftime(settings.OCPI_DATE_FORMAT)
         return super().to_representation(result)
@@ -110,7 +99,9 @@ class UTCDateTimeField(serializers.DateTimeField):
         if isinstance(value, datetime):
             return value
         if not isinstance(value, str):
-            raise ValueError(f"Expected a string, got type {type(value)} with value {value}")
+            raise ValueError(
+                f"Expected a string, got type {type(value)} with value {value}"
+            )
         value: datetime = parser.parse(value)
         if value and isinstance(value.tzinfo, tzoffset):
             raise serializers.ValidationError(

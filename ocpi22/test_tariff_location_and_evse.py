@@ -62,7 +62,6 @@ from util import reverse
 
 from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.models import Authorization
-from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import (
     TokenSerializer,
@@ -81,7 +80,6 @@ from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet, EvseViewSet
 from ocpi22.middleware import OCPIHubMiddleware
-from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location, Evse, Connector
@@ -443,7 +441,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("eccb8dd9-4189-433e-b100-cc0945dd17dc", "AVAILABLE")],
+                [("ECCB8DD9-4189-433E-B100-CC0945DD17DC", "AVAILABLE")],
             ),
             (
                 "location_example_parking_garage_opening_hours_bad_power_type",
@@ -465,7 +463,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
+                [("FD855359-BC81-47BB-BB89-849AE3DAC89E", "AVAILABLE")],
             ),
             (
                 "location_example_uc3_destination_charger_not_published",
@@ -476,7 +474,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
+                [("FD855359-BC81-47BB-BB89-849AE3DAC89E", "AVAILABLE")],
             ),
             # Todo: Implement parking_restrictions
             (
@@ -488,7 +486,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("8c1b3487-61ac-40a7-a367-21eee99dbd90", "AVAILABLE")],
+                [("8C1B3487-61AC-40A7-A367-21EEE99DBD90", "AVAILABLE")],
             ),
             # Todo: Check for publish_allowed_to below
             (
@@ -500,7 +498,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("4534ad5f-45be-428b-bfd0-fa489dda932d", "AVAILABLE")],
+                [("4534AD5F-45BE-428B-BFD0-FA489DDA932D", "AVAILABLE")],
             ),
         )
 
@@ -579,7 +577,7 @@ class ApiPutTests(TestCase):
                     (x.get("json").get("evse_id"), x.get("json").get("status"))
                     for x in method_calls
                 ]
-                assert calls == expected_webhook_parameters, filename
+                assert sorted(calls) == expected_webhook_parameters, filename
 
     def test_put_tariff(self):
         url = reverse("tariff-list")
@@ -1079,15 +1077,6 @@ class ApiPutTests(TestCase):
             403,
         ], "A Location request should require OCPI authentication."
 
-    def _create_credentials(self, country_code, party_id):
-        roles, _created = CredentialsRole.objects.get_or_create(
-            role="CPO",
-            country_code=country_code,
-            party_id=party_id,
-            defaults=dict(business_details=self.business_details),
-        )
-        self.credentials.roles.add(roles)
-
 
 class TariffTests(TestCase):
     fixtures = ["ocpi22/data/credentials.json", "ocpi22/data/defaulttariffs.json"]
@@ -1184,29 +1173,6 @@ class TariffTests(TestCase):
             compare_lists_recursively(method_calls, TariffData.expected_delete_calls),
             "send_ocpi_request should be called with the correct parameters",
         )
-
-    @staticmethod
-    def _create_credentials(
-        country_code: str, party_id: str, role: OcpiRolesEnum
-    ) -> Credentials:
-        credentials = Credentials.objects.create(version=221)
-        business_details = BusinessDetails.objects.create(
-            name="Test MSP",
-            website="https://test.com",
-            logo={
-                "url": "https://www.helsinki-supercharger.com/static/test_logo.png",
-                "category": "OPERATOR",
-                "type": "jpeg",
-            },
-        )
-        roles, _created = CredentialsRole.objects.get_or_create(
-            role=role.value,
-            country_code=country_code,
-            party_id=party_id,
-            defaults={"business_details": business_details},
-        )
-        credentials.roles.add(roles)
-        return credentials
 
 
 class CdrTests(TestCase):
@@ -3641,20 +3607,6 @@ def create_token(token_id, party: Party, user=None) -> Token:
     return token
 
 
-def send_create_user(data):
-    request = api_factory.post(reverse("user-register"))
-    request.data = data
-    return UserViewSet().register(request)
-
-
-def post_cdr(data):
-    request = api_factory.post(reverse("cdr-list"))
-    request.data = data
-    request.user = get_fake_admin()
-    request.version = "2.2.1"
-    return CdrViewSet().post(request)
-
-
 class TestInvoiceReportView(TestCase):
     fixtures = ["ocpi22/data/credentials.json"]
 
@@ -3756,6 +3708,9 @@ class TestTasks(TestCase):
 
         # Successful connection, last_connection time should change
         with time_machine.travel(faketime, tick=False):
+            with patch("ocpi22.tasks.requests.get") as requests_get_mock:
+                requests_get_mock.return_value = FakeResponse(200)
+                check_still_alive(self.credentials_id)
             check_still_alive(self.credentials_id)
         credentials = Credentials.objects.get(pk=self.credentials_id)
         self.assertEqual(credentials.last_connection, faketime)

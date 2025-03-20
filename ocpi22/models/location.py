@@ -1,4 +1,5 @@
 import uuid
+import zoneinfo
 from collections import Counter
 from django.utils.datetime_safe import datetime
 
@@ -17,7 +18,7 @@ import generic.countries
 from ocpi22 import choices
 import util
 
-from ocpi22.choices import OcpiModuleEnum, OCPIFacilityEnum, OCPICapabilityEnum
+from ocpi22.choices import OcpiModuleEnum, OCPIFacility, OCPICapability
 from ocpi22.models.models import MultipleChoiceCharField
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import (
@@ -158,19 +159,11 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
     # An index for fast lookup, first 4 digits from long
     long_partition = models.SmallIntegerField(db_index=True, null=True, blank=True)
 
-    PARKING_CHOICES = (
-        ("ALONG_MOTORWAY", "Along a motorway"),
-        ("PARKING_GARAGE", "Parking garage"),
-        ("PARKING_LOT", "Parking lot"),
-        ("ON_DRIVEWAY", "Driveway"),
-        ("ON_STREET", "Street"),
-        ("UNDERGROUND_GARAGE", "Underground garage"),
-    )
     parking_type = models.CharField(
         max_length=18,
         null=True,
         blank=True,
-        choices=PARKING_CHOICES,
+        choices=choices.PARKING_CHOICES,
         verbose_name=_("Parking type"),
     )
 
@@ -203,8 +196,8 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         max_length=284,
         null=True,
         blank=True,
-        choices=OCPIFacilityEnum.choices,
-        choices_enum=OCPIFacilityEnum,
+        choices=OCPIFacility.choices,
+        choices_enum=OCPIFacility,
         verbose_name=_("Facilities"),
     )
 
@@ -258,9 +251,6 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
             util.reverse("admin:ocpi22_location_change", args=(self.pk,))
         )
 
-    def get_quick_url(self):
-        return util.reverse("quick-location-by-id", args=[self.uid])
-
     def street_address(self):
         return f"{self.address}, {self.postal_code} {self.city}, {self.state} {self.country}"
 
@@ -309,6 +299,8 @@ class Evse(models.Model, ModelUtilMixin):
             models.UniqueConstraint(fields=["uid", "location"], name="evse_party_uid"),
         ]
 
+    upper_case_fields = ["evse_id", "uid"]
+
     objects = PartnerManager()
 
     uid = models.CharField(
@@ -331,27 +323,16 @@ class Evse(models.Model, ModelUtilMixin):
     RESERVED = "RESERVED"
     UNKNOWN = "UNKNOWN"
 
-    STATUS_CHOICES = (
-        (AVAILABLE, _("Available")),
-        (BLOCKED, _("Physically blocked")),
-        (CHARGING, _("Charging")),
-        (INOPERATIVE, _("Inoperative")),
-        (OUTOFORDER, _("Out of order")),
-        (PLANNED, _("Planned, will be operating soon")),
-        (REMOVED, _("Discontinued/removed")),
-        (RESERVED, _("Reserved for a particular EV driver")),
-        (UNKNOWN, _("No status information available (also used when offline)")),
-    )
     status = models.CharField(
-        max_length=11, choices=STATUS_CHOICES, verbose_name=_("Status")
+        max_length=11, choices=choices.EVSE_STATUS_CHOICES, verbose_name=_("Status")
     )
 
     capabilities = MultipleChoiceCharField(
         max_length=265,
         null=True,
         blank=True,
-        choices=OCPICapabilityEnum.choices,
-        choices_enum=OCPICapabilityEnum,
+        choices=OCPICapability.choices,
+        choices_enum=OCPICapability,
         verbose_name=_("Capabilities"),
     )
 
@@ -411,7 +392,10 @@ class Evse(models.Model, ModelUtilMixin):
             return ""
 
     def send_status_updates(self) -> None:
-        data = dict(status=self.status, last_updated=self.last_updated)
+        last_updated_serialized = self.last_updated.replace(
+            tzinfo=zoneinfo.ZoneInfo("UTC")
+        ).isoformat()
+        data = dict(status=self.status, last_updated=last_updated_serialized)
         location = self.location
         location.send_all_updates(
             data=data,
@@ -425,6 +409,7 @@ class Evse(models.Model, ModelUtilMixin):
         )
 
     def save(self, *args, **kwargs):
+        self.change_fields_to_upper_case()
         if self.location.is_ours():
             self.last_updated = datetime.now(pytz.utc)
             self.location.last_updated = datetime.now(pytz.utc)

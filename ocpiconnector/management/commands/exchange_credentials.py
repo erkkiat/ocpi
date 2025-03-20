@@ -6,7 +6,7 @@ import cachetools
 from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 import os
 
 from django.conf import settings

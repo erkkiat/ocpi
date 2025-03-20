@@ -1,6 +1,6 @@
 # Django settings for ocpiconnector project.
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from distutils.util import strtobool
 
 from corsheaders.defaults import default_headers
@@ -40,11 +40,6 @@ PERFORMANCE_TEST = env_bool("PERFORMANCE_TEST", False)
 CPO_SIMULATOR = env_bool("CPO_SIMULATOR", False)
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = env_bool("ALLOW_ADMIN_DELETE_AND_CHANGE", False)
-
-# Complete expiration of access at 00:00 on the specified date
-expires_on_str = os.environ.get("EXPIRES_ON")
-EXPIRES_ON = datetime.strptime(expires_on_str, "%Y-%m-%d") if expires_on_str else None
-WARN_BEFORE_DAYS = 3
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Allow more than 1000 fields in POST requests
@@ -103,8 +98,6 @@ OCPI_SPECIFICATION_URL = "https://github.com/ocpi/ocpi/blob/release-2.2-bugfixes
 OCPI_22_MAX_ADDRESS_LENGTH = 45
 OCPI_22_MAX_TIME_ZONE_LENGTH = 64
 OCPI_22_MAX_UID_LENGTH = 36
-
-PUBLIC_VIEWS = ["user-register"]
 
 HOTLINE = os.environ.get("HOTLINE", "+3256380211")
 
@@ -297,16 +290,12 @@ MIDDLEWARE = [
     "django.middleware.locale.LocaleMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
     "ocpiconnector.logging_middleware.LoggingMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
     MIDDLEWARE.append("moesifdjango.middleware.moesif_middleware")
-
-if EXPIRES_ON:
-    MIDDLEWARE.append("ocpi22.middleware.EnabledUntilMiddleware")
 
 if os.environ.get("DEBUG_MIDDLEWARE") in TRUE_OPTIONS:
     MIDDLEWARE.append("ocpi22.middleware.DebugMiddleware")

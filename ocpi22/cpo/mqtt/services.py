@@ -2,11 +2,11 @@ from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
 import logging
+
+from ocpi22.cpo.api import process_meter_values
 from ocpi22.cpo.mqtt.schemas import MeterValues, EvseStatusUpdate
-from ocpi22.cpo.mqtt.tasks import (
-    process_meter_values,
-    save_and_send_evse_status_updates,
-)
+from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
+from ocpi22.models.session import Session
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -26,13 +26,13 @@ def process_meter_values_data(message) -> None:
         return
     try:
         meter_values = MeterValues.model_validate_json(decoded_meter_message)
-    except ValidationError:
-        logger.exception(f"Failed to validate {message.topic} message")
+    except ValidationError as e:
+        logger.exception(f"Failed to validate {message.topic} message: {e}")
         return
     try:
-        process_meter_values.apply_async(
-            kwargs=meter_values.model_dump(mode="json"), expires=35
-        )
+        kwargs = meter_values.model_dump()
+        session = Session.objects.get(uid=kwargs.pop("session_id"))
+        process_meter_values(request=None, session=session, **kwargs)
     except OperationalError:
         logger.exception("Celery operational error")
     except Exception:

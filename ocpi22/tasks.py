@@ -1,9 +1,7 @@
 import os
 import random
 from datetime import timedelta, datetime
-from json import JSONDecodeError
 from logging import getLogger
-from typing import Optional
 from urllib.parse import urlparse
 
 import celery
@@ -17,13 +15,15 @@ from celery.schedules import crontab
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
+from requests import Response, RequestException
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
-from sentry_sdk import capture_exception
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
+from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.headers import make_headers
+from ocpi22.ssl_services import load_ssl_context, SSLAdapter
 from ocpiconnector.party import Party
 from util import unwrap
 
@@ -115,8 +115,29 @@ else:
     logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
 
 
-@shared_task
+def _get_request_session(credential_id):
+    credentials = Credentials.objects.filter(id=credential_id).first()
+    request_session = requests.Session()
+    if not credentials:
+        return request_session
+    ca_cert = os.getenv(credentials.ca_certificate_name, None)
+    private_key = os.getenv(credentials.private_key_name, None)
+    client_cert = os.getenv(credentials.client_certificate_name, None)
+    ssl_context = load_ssl_context(
+        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
+    )
+    if ssl_context:
+        request_session.mount("https://", SSLAdapter(ssl_context=ssl_context))
+    return request_session
+
+
+@shared_task(
+    bind=True,
+    retry_backoff=1,
+    max_retries=10,
+)
 def send_ocpi_request(
+    self,
     data,
     url: str,
     token_base64: str,
@@ -128,82 +149,39 @@ def send_ocpi_request(
     credentials_id=None,
     title=None,
     **kwargs,
-) -> Optional[dict]:
-    def write_to_file(text):
-        with open("error-response.html", "w") as f:
-            f.write(text)
-
+) -> Response:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
-    try:
-        headers = make_headers(token_base64, to=to, sender=sender)
+    headers = make_headers(token_base64, to=to, sender=sender)
 
-        # Log the message to Sentry
-        # sentry_sdk.set_context('data', data)
+    if isinstance(data, dict):
+        kwargs.update(dict(url=url, json=data, headers=headers))
+    else:
+        kwargs.update(dict(url=url, data=data, headers=headers))
 
-        if isinstance(data, dict):
-            kwargs.update(dict(url=url, json=data, headers=headers))
-        else:
-            kwargs.update(dict(url=url, data=data, headers=headers))
-
-        # Call the specified method in requests, for example, if method == 'put', call requests.put
-        function = getattr(requests, method.lower())
-        if not function:
-            raise NotImplementedError(
-                f"Method {method} is not supported for send_ocpi_request"
-            )
-
-        result: requests.Response = function(**kwargs)
-
-        if result.status_code >= status.HTTP_400_BAD_REQUEST:
-            logger.error(
-                f"{settings.HOSTNAME}: Request failed, {url}: {result.status_code} - {result.reason}"
-            )
-            write_to_file(result.text)
-        else:
-            logger.info(
-                f"Sending {method.upper()} {title} request to {url}, "
-                f"response {result.status_code} (time {result.elapsed})"
-            )
-
-        # Todo: This needs to be done some other way than starting the Django logic
-        #       We want to refresh the last connection time, but only if the request was successful
-        # if credentials_id:
-        #     from ocpi22.models.credentials import Credentials
-        #
-        #     credentials = Credentials.get_if_exists(pk=credentials_id)
-        #     if credentials:
-        #         credentials.update_last_connection()
-
-        # # Log the response to Sentry
-        # if hasattr(result, 'data') and result.data:
-        #     sentry_sdk.set_context('result', result.json())
-
-        try:
-            result_json = result.json()
-        except requests.exceptions.JSONDecodeError:
-            write_to_file(result.text)
-            logger.exception(f"Unable to decode JSON response from {url}")
-            result_json = dict()
-        return dict(
-            status_code=result.status_code,
-            json=result_json,
-            headers=dict(result.headers) if result.headers else {},
-            sender=dict(country_code=to_country_code, party_id=to_party_id),
+    request_session = _get_request_session(credentials_id)
+    function = getattr(request_session, method.lower())
+    if not function:
+        raise NotImplementedError(
+            f"Method {method} is not supported for send_ocpi_request"
         )
-    except (IOError, JSONDecodeError) as e:
-        logger.exception(f"Unable to send an OCPI request to {str(to)} at {url}")
 
-        # Todo: This also needs to be done some other way than starting the Django logic
-        # from ocpi22.models.credentials import Credentials
-        #
-        # if credentials_id:
-        #     Credentials.objects.filter(
-        #         pk=credentials_id, connection_status=choices.CONNECTED
-        #     ).update(connection_status=choices.OFFLINE)
-        capture_exception(e)
-        return None
+    logger.info(f"Sending ocpi {method} request to {url} ")
+    response: requests.Response = function(**kwargs)
+    if self.request.is_eager:
+        return response
+    env = os.environ["ENV"]
+    if response.status_code >= 300 and env in ["staging", "development"]:
+        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        raise self.retry(
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+        )
+    if response.status_code >= 500 and env == "production":
+        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        raise self.retry(
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+        )
 
 
 @shared_task(max_retries=2, retry_backoff=2)
@@ -236,13 +214,13 @@ def pull_objects(
             if "limit=" not in url:
                 url = f"{url}?limit={limit}"
             response = send_ocpi_request(data=dict(), url=url, **kwargs)
-            if response and response.get("status_code") < status.HTTP_400_BAD_REQUEST:
+            if response and response.status_code < 300:
                 next_url, _rel = (
-                    response.get("headers").get("Link", ";").strip("<>").split(";")
+                    response.headers.get("Link", ";").strip("<>").split(";")
                 )
                 model = obj.get("model")
                 viewset = import_string(obj.get("viewset"))
-                items = response.get("json", {}).get("data", [])
+                items = response.json().get("data", [])
                 total_objects += len(items)
                 for i in items:
                     try:
@@ -324,7 +302,7 @@ def pull_objects(
             pull_objects(
                 object_list, limit, delay, total_objects, credentials_id, **kwargs
             )
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+    except RequestException:
         logger.exception("Unable to pull objects")
 
 

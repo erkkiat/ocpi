@@ -24,7 +24,7 @@ from integrations.hubject.schemas import (
     HubjectDefaultTariff,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
-from ocpi22.choices import OCPICapabilityEnum
+from ocpi22.choices import OCPICapability
 from ocpi22.models.location import Connector
 from ocpi22.tests.factories import LocationFactory, EvseFactory
 
@@ -208,7 +208,7 @@ class TestMappings:
         )
 
     def test_get_all_authentication_modes_from_capabilities(self):
-        capabilities = [OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.RESERVABLE]
+        capabilities = [OCPICapability.RFID_READER, OCPICapability.RESERVABLE]
 
         authentication_modes = [AuthenticationMode.NFC_RFID_Classic]
         assert (

@@ -33,6 +33,7 @@ from integrations.hubject.schemas import (
     PricingProductData,
     PricingProductDataRecord,
 )
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -52,7 +53,9 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     username = "SolidRoamUser"
     email = "user@solidroam.com"
-    password = factory.PostGenerationMethodCall("set_password", "test.user")
+    password = factory.PostGenerationMethodCall(
+        "set_password", "j0s9J117uS126dNr915zIj7d1J10UJ2f"
+    )
 
 
 class StaffUserFactory(UserFactory):
@@ -108,6 +111,29 @@ class CredentialsRoleFactory(factory.django.DjangoModelFactory):
     country_code = "FI"
     party_id = "CPO"
     credentials = factory.SubFactory(CredentialsFactory)
+
+    @factory.post_generation
+    def add_endpoints(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for endpoint in extracted:
+                EndpointFactory(credentials_role=self, **endpoint)
+        else:
+            for endpoint in OcpiModuleEnum:
+                EndpointFactory(
+                    credentials=self.credentials,
+                    identifier=endpoint.value,
+                    role=EndpointRoleEnum.SENDER.value,
+                    url=f"https://localhost/ocpi/{endpoint.value.lower()}",
+                )
+                EndpointFactory(
+                    credentials=self.credentials,
+                    identifier=endpoint.value,
+                    role=EndpointRoleEnum.RECEIVER.value,
+                    url=f"https://localhost/ocpi/{endpoint.value.lower()}",
+                )
 
 
 class EndpointFactory(factory.django.DjangoModelFactory):
@@ -218,7 +244,7 @@ class ConnectorFactory(factory.django.DjangoModelFactory):
     max_voltage = 400
     max_amperage = 32
     max_electric_power = 22
-    terms_and_conditions = "https://smappee.com/terms-and-conditions/"
+    terms_and_conditions = "https://localhost/terms-and-conditions/"
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     created = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -536,7 +562,7 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     uid = "SESSION-12345"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
     end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
-    start_kwh = 100.0
+    start_kwh = 0.0
     stop_kwh = 120.0
     cdr_token = factory.SubFactory(CdrTokenFactory)
     billed_to = factory.LazyAttribute(lambda obj: obj.cdr_token.ocpi_master)
@@ -550,3 +576,4 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     total_cost_incl_vat = 12.0
     status = Session.ACTIVE
     last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+    credentials = factory.LazyAttribute(lambda obj: obj.ocpi_master.credentials)
