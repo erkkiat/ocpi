@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 from django.urls import reverse
 
-from ocpi22.choices import MessageTexts
+from ocpi22.choices import MessageTexts, AuthorizationEnum
 from ocpi22.tests.factories import EvseFactory, TokenFactory, OCPISessionFactory
 from ocpi22.tokens.auth import TokenAuthorization
 
@@ -118,14 +118,28 @@ class TestChargePointAPI:
         }
         assert response.status_code == 403
 
-    @pytest.mark.skip("This test is failing because of the patching")
     def test_authorize_post_successful_return_200(
         self, admin_user_client, available_evse, allowed_token, authorize_token_response
     ):
         request_body = {"evse_id": available_evse.uid, "token_id": allowed_token.uid}
         with patch(
-            "ocpi22.tokens.token_async.authorize_with_msps_sync"
+            "ocpi22.tokens.auth.authorize_with_msps_sync"
         ) as mock_authorize_token:
             mock_authorize_token.return_value = authorize_token_response
             response = admin_user_client.post(self.authorize_url, data=request_body)
             assert response.status_code == 200
+            mock_authorize_token.assert_called_once_with(
+                allowed_token.uid,
+                available_evse.location,
+                [
+                    (
+                        "https://localhost/ocpi/tokens",
+                        allowed_token.ocpi_master.credentials.theirs_base64(),
+                        allowed_token.ocpi_master.country_code,
+                        allowed_token.ocpi_master.party_id,
+                        allowed_token.ocpi_master.credentials,
+                    )
+                ],
+            )
+            assert response.data["allowed"] == AuthorizationEnum.ALLOWED
+            assert response.data["token"] == authorize_token_response.token.uid
