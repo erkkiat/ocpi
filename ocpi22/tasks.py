@@ -21,7 +21,6 @@ from rest_framework import status
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
-from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context, SSLAdapter
 from ocpiconnector.party import Party
@@ -57,7 +56,6 @@ pull_minute = random.randint(0, 59)
 # DO NOT REMOVE IT!!
 from base_task_services import setup_worker_connection  # noqa
 
-# print(f'Pulling all objects daily at {pull_hour:02d}:{pull_minute:02d}')
 
 app.conf.beat_schedule = {
     "run-me-every-minute": {
@@ -83,10 +81,9 @@ def celery_heartbeat() -> bool:
 
 @shared_task(max_retries=3, retry_backoff=3600)
 def pull_all_objects() -> bool:
-    from ocpi22.models.credentials import Credentials
+    from ocpi22.models.credentials import Credentials  # noqa
     from ocpi22.pull import schedule_full_update
 
-    print("Starting a scheduled full OCPI object pull.")
     credentials = Credentials.objects.filter(valid=True)
     for c in credentials:
         schedule_full_update(c)
@@ -116,6 +113,8 @@ else:
 
 
 def _get_request_session(credential_id):
+    from ocpi22.models.credentials import Credentials  # noqa
+
     credentials = Credentials.objects.filter(id=credential_id).first()
     request_session = requests.Session()
     if not credentials:
@@ -196,11 +195,11 @@ def exchange_credentials(token, url):
 def pull_objects(
     object_list, limit=10, delay=2, total_objects=0, credentials_id=None, **kwargs
 ) -> None:
-    from ocpi22.models.credentials import Credentials
-
     assert isinstance(
         credentials_id, int
     ), f"credentials_id is missing: {credentials_id}"
+    from ocpi22.models.credentials import Credentials  # noqa
+
     credentials = Credentials.objects.get(pk=credentials_id)
 
     try:
@@ -308,7 +307,7 @@ def pull_objects(
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways
 def check_still_alive(credentials_id: int = None) -> None:
-    from ocpi22.models.credentials import Credentials
+    from ocpi22.models.credentials import Credentials  # noqa
 
     if credentials_id:
         credentials = Credentials.objects.none()
