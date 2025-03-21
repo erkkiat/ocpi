@@ -55,7 +55,6 @@ pull_minute = random.randint(0, 59)
 # Register celery signals
 # DO NOT REMOVE IT!!
 from base_task_services import setup_worker_connection  # noqa
-from ocpi22.models.credentials import Credentials  # noqa
 
 
 app.conf.beat_schedule = {
@@ -82,7 +81,7 @@ def celery_heartbeat() -> bool:
 
 @shared_task(max_retries=3, retry_backoff=3600)
 def pull_all_objects() -> bool:
-    from ocpi22.models.credentials import Credentials
+    from ocpi22.models.credentials import Credentials  # noqa
     from ocpi22.pull import schedule_full_update
 
     credentials = Credentials.objects.filter(valid=True)
@@ -199,6 +198,8 @@ def pull_objects(
     assert isinstance(
         credentials_id, int
     ), f"credentials_id is missing: {credentials_id}"
+    from ocpi22.models.credentials import Credentials  # noqa
+
     credentials = Credentials.objects.get(pk=credentials_id)
 
     try:
@@ -306,6 +307,8 @@ def pull_objects(
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways
 def check_still_alive(credentials_id: int = None) -> None:
+    from ocpi22.models.credentials import Credentials  # noqa
+
     if credentials_id:
         credentials = Credentials.objects.none()
         time_since_last_connection = 0
