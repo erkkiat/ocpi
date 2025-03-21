@@ -114,6 +114,8 @@ else:
 
 
 def _get_request_session(credential_id):
+    from ocpi22.models.credentials import Credentials  # noqa
+
     credentials = Credentials.objects.filter(id=credential_id).first()
     request_session = requests.Session()
     if not credentials:
@@ -194,8 +196,6 @@ def exchange_credentials(token, url):
 def pull_objects(
     object_list, limit=10, delay=2, total_objects=0, credentials_id=None, **kwargs
 ) -> None:
-    from ocpi22.models.credentials import Credentials
-
     assert isinstance(
         credentials_id, int
     ), f"credentials_id is missing: {credentials_id}"
@@ -306,8 +306,6 @@ def pull_objects(
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways
 def check_still_alive(credentials_id: int = None) -> None:
-    from ocpi22.models.credentials import Credentials
-
     if credentials_id:
         credentials = Credentials.objects.none()
         time_since_last_connection = 0
