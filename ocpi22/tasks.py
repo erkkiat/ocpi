@@ -21,7 +21,6 @@ from rest_framework import status
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
-from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context, SSLAdapter
 from ocpiconnector.party import Party
@@ -56,8 +55,8 @@ pull_minute = random.randint(0, 59)
 # Register celery signals
 # DO NOT REMOVE IT!!
 from base_task_services import setup_worker_connection  # noqa
+from ocpi22.models.credentials import Credentials  # noqa
 
-# print(f'Pulling all objects daily at {pull_hour:02d}:{pull_minute:02d}')
 
 app.conf.beat_schedule = {
     "run-me-every-minute": {
@@ -86,7 +85,6 @@ def pull_all_objects() -> bool:
     from ocpi22.models.credentials import Credentials
     from ocpi22.pull import schedule_full_update
 
-    print("Starting a scheduled full OCPI object pull.")
     credentials = Credentials.objects.filter(valid=True)
     for c in credentials:
         schedule_full_update(c)
