@@ -1,7 +1,11 @@
 import ssl
 import tempfile
 import os
+
+from logging import getLogger
 from requests.adapters import HTTPAdapter
+
+logger = getLogger(__name__)
 
 
 class SSLAdapter(HTTPAdapter):
@@ -16,8 +20,15 @@ class SSLAdapter(HTTPAdapter):
 
 
 def load_ssl_context(client_cert: str, private_key: str, ca_cert: str, verify_ssl=True):
-    if not all([client_cert, private_key, ca_cert]):
-        raise ValueError("client_cert, private_key, and ca_cert are required.")
+    if not any([ca_cert, private_key, client_cert]):
+        logger.warning("No SSL config provided. Proceeding without SSL context.")
+        return None
+
+    if not all([ca_cert, private_key, client_cert]):
+        logger.error(
+            "Incomplete SSL config. All or none of ca_cert, private_key, and client_cert must be provided."
+        )
+        return None
 
     ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
     ssl_context.verify_mode = ssl.CERT_REQUIRED if verify_ssl else ssl.CERT_NONE
