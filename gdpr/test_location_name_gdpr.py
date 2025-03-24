@@ -20,14 +20,14 @@ def test_assert_that_pytorch_env_vars_set_correctly():
 
 
 def test_location_name_updates_to_street_address_when_using_a_person_name(
-    admin_user_client, data
+    admin_user_client, location_example
 ):
-    data["id"] = "ALBERT_EINSTEIN"
-    data["name"] = "Albert Einstein"
-    data["address"] = "Albert Einstein Street"
+    location_example["id"] = "ALBERT_EINSTEIN"
+    location_example["name"] = "Albert Einstein"
+    location_example["address"] = "Albert Einstein Street"
 
     get_credentialsrole.cache_clear()
-    serializer = LocationSerializer221(data=data)
+    serializer = LocationSerializer221(data=location_example)
     if serializer.is_valid():
         serializer.save()
 
@@ -37,14 +37,14 @@ def test_location_name_updates_to_street_address_when_using_a_person_name(
 
 
 def test_location_name_does_not_update_to_street_address_when_using_a_location_name(
-    admin_user_client, data
+    admin_user_client, location_example
 ):
-    data["id"] = "HELSINKI_SUPERCHARGER"
-    data["name"] = "Helsinki Supercharger"
-    data["address"] = "Pohjoisesplanadi 11"
+    location_example["id"] = "HELSINKI_SUPERCHARGER"
+    location_example["name"] = "Helsinki Supercharger"
+    location_example["address"] = "Pohjoisesplanadi 11"
 
     get_credentialsrole.cache_clear()
-    serializer = LocationSerializer221(data=data)
+    serializer = LocationSerializer221(data=location_example)
     if serializer.is_valid():
         serializer.save()
 

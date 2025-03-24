@@ -330,10 +330,10 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     publish_allowed_to = PublishAllowedToSerializer(many=True, required=False)
     opening_times = HoursSerializer(required=False)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        address = self.initial_data.get("address", "")
+    def to_internal_value(self, data):
+        address = data.get("address", "")
         self.fields["name"].context.update({"address": address})
+        return super().to_internal_value(data)
 
     @staticmethod
     def process_coordinates(validated_data: dict):
