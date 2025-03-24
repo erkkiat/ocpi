@@ -330,6 +330,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "ninja_jwt",
     "ninja_extra",
+    "gdpr.apps.GdprConfig",
 ]
 
 CORS_ORIGIN_ALLOW_ALL = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
