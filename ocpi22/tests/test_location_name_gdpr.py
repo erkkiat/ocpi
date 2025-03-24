@@ -1,6 +1,8 @@
+import csv
 import os
 
 import pytest
+from django.apps import apps
 
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.location import Location
@@ -22,18 +24,28 @@ def test_assert_that_pytorch_env_vars_set_correctly():
 def test_location_name_updates_to_street_address_when_using_a_person_name(
     admin_user_client, location_example
 ):
-    location_example["id"] = "ALBERT_EINSTEIN"
-    location_example["name"] = "Albert Einstein"
-    location_example["address"] = "Albert Einstein Street"
+    app_path = apps.get_app_config("ocpi22").path
+    csv_path = os.path.join(app_path, "data", "fictional_names.csv")
+    with open(csv_path) as file:
+        data = csv.reader(file)
+        next(data)  # Skip the header row
+        for uid, name, street in data:
+            uid = uid.strip()
+            name = name.strip()
+            street = street.strip()
 
-    get_credentialsrole.cache_clear()
-    serializer = LocationSerializer221(data=location_example)
-    if serializer.is_valid():
-        serializer.save()
+            location_example["id"] = uid
+            location_example["name"] = name
+            location_example["address"] = street
 
-    saved_location = Location.objects.get(uid="ALBERT_EINSTEIN")
-    assert saved_location.name == "Albert Einstein Street"
-    assert saved_location.address == "Albert Einstein Street"
+            get_credentialsrole.cache_clear()
+            serializer = LocationSerializer221(data=location_example)
+            if serializer.is_valid():
+                serializer.save()
+
+            saved_location = Location.objects.get(uid=uid)
+            assert saved_location.name == street
+            assert saved_location.address == street
 
 
 def test_location_name_does_not_update_to_street_address_when_using_a_location_name(
