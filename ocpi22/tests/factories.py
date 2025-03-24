@@ -576,3 +576,4 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     total_cost_incl_vat = 12.0
     status = Session.ACTIVE
     last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+    credentials = factory.LazyAttribute(lambda obj: obj.ocpi_master.credentials)
