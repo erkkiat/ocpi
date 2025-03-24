@@ -63,3 +63,4 @@ python-json-logger==3.2.1
 newrelic==10.4.0
 transformers==4.49.0
 torch==2.6.0
+sentencepiece==0.2.0
