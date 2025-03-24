@@ -5,17 +5,16 @@ class LocationNERModel:
     model_name = "xlm-roberta-large-finetuned-conll03-english"
     _instance = None
 
-    @classmethod
-    def get_instance(cls):
+    def __new__(cls):
         if cls._instance is None:
-            cls._instance = LocationNERModel()
+            cls._instance = super(LocationNERModel, cls).__new__(cls)
+            cls._instance.pipeline = pipeline(
+                "ner", model=cls.model_name, aggregation_strategy="simple"
+            )
+            cls._instance.tokenizer = XLMRobertaTokenizer.from_pretrained(
+                cls.model_name
+            )
         return cls._instance
-
-    def __init__(self):
-        self.pipeline = pipeline(
-            "ner", model=self.model_name, aggregation_strategy="simple"
-        )
-        self.tokenizer = XLMRobertaTokenizer.from_pretrained(self.model_name)
 
     def get_entity(self, name: str):
         # This step directs the model not to divide the location name into subtokens

@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from gdpr.model import LocationNERModel
+from ocpi22.locations.gdpr.model import LocationNERModel
 from ocpi22.choices import OCPIFacility, OCPICapability
 from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
@@ -277,7 +277,7 @@ class PublishAllowedToSerializer(serializers.Serializer):
 
 class LocationNameSerializer(serializers.Serializer):
     def to_internal_value(self, data):
-        entity = LocationNERModel.get_instance().get_entity(data)
+        entity = LocationNERModel().get_entity(data)
         street_address = self.context.get("address", {})
         if entity == "PER":
             return street_address
