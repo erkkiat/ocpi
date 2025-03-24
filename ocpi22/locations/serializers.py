@@ -278,7 +278,7 @@ class PublishAllowedToSerializer(serializers.Serializer):
 class LocationNameSerializer(serializers.Serializer):
     def to_internal_value(self, data):
         entity = LocationNERModel.get_instance().get_entity(data)
-        street_address = self.context.get("street_address", {})
+        street_address = self.context.get("address", {})
         if entity == "PER":
             return street_address
         return data
@@ -329,6 +329,11 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     last_updated = UTCDateTimeField(required=False)
     publish_allowed_to = PublishAllowedToSerializer(many=True, required=False)
     opening_times = HoursSerializer(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        address = self.initial_data.get("address", "")
+        self.fields["name"].context.update({"address": address})
 
     @staticmethod
     def process_coordinates(validated_data: dict):
