@@ -1,6 +1,7 @@
 # TODO refactor this to have ddomain speicific services
 from django.db.models import QuerySet
 
+from ocpi22.locations.gdpr.model import LocationNERModel
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 
@@ -39,3 +40,10 @@ class LocationService:
         if credentials and credentials.allowed_locations:
             return queryset.filter(uid__in=credentials.allowed_locations)
         return queryset
+
+    @staticmethod
+    def get_gdpr_validated_name(name, address):
+        entity = LocationNERModel().get_entity(name)
+        if entity == "PER":
+            return address
+        return name

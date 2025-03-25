@@ -6,7 +6,6 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.locations.gdpr.model import LocationNERModel
 from ocpi22.choices import OCPIFacility, OCPICapability
 from ocpi22.locations.util import get_or_create_business_details
 from ocpi22.models.business_details import BusinessDetails
@@ -275,15 +274,6 @@ class PublishAllowedToSerializer(serializers.Serializer):
         return dict(uid=token.uid, issuer=token.issuer)
 
 
-class LocationNameSerializer(serializers.Serializer):
-    def to_internal_value(self, data):
-        entity = LocationNERModel().get_entity(data)
-        street_address = self.context.get("address", {})
-        if entity == "PER":
-            return street_address
-        return data
-
-
 class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     class Meta:
         model = Location
@@ -321,7 +311,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
     evses = EvseSerializer(many=True, required=False)
     coordinates = CoordinatesSerializer()
-    name = LocationNameSerializer(required=False)
     facilities = FacilityField(required=False)
     owner = BusinessDetailsSerializer(required=False)
     operator = BusinessDetailsSerializer(required=False)
