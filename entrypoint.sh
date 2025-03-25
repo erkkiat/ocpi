@@ -14,6 +14,7 @@ case "$1" in
         python manage.py collectstatic --noinput
         echo "Applying migrations"
         python manage.py migrate --noinput
+        preload_xlm_model
         echo "Starting Django server with New Relic monitoring..."
         exec newrelic-admin run-program gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
         ;;
