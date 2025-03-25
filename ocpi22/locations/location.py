@@ -146,7 +146,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             uid__iexact=uid, ocpi_master=credentialsrole
         )
         name = LocationService.get_gdpr_validated_name(
-            data.get("name"), data["address"]
+            data.get("name"), data.get("address")
         )
         data.update({"name": name})
 
