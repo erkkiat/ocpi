@@ -4,8 +4,8 @@ set -e  # Exit immediately if a command exits with a non-zero status
 WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
 preload_xlm_model() {
-    echo "Preloadinge xlm-roberta-large english model..."
-    python /app/preload-xlm-roberta-model.py
+    echo "Preloading xlm-roberta-large english model..."
+    python /app/preload_xlm_roberta_model.py
 }
 
 case "$1" in
