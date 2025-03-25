@@ -3,12 +3,18 @@ set -e  # Exit immediately if a command exits with a non-zero status
 
 WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
+preload_xlm_model() {
+    echo "Preloadinge xlm-roberta-large english model..."
+    python /app/preload-xlm-roberta-model.py
+}
+
 case "$1" in
     django-app)
         echo "Running collectstatic..."
         python manage.py collectstatic --noinput
         echo "Applying migrations"
         python manage.py migrate --noinput
+        preload_xlm_model
         echo "Starting Django server with New Relic monitoring..."
         exec newrelic-admin run-program gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
         ;;

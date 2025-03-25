@@ -15,6 +15,7 @@ services:
       - ../:/app
       - static_volume:/app/staticfiles
       - media_volume:/app/mediafiles
+      - xlm_models:/root/.cache/huggingface
     ports:
       - "8000:8000"
     command: django-app
@@ -142,6 +143,7 @@ volumes:
   celery_logs:
   emqx_data:
   emqx_log:
+  xlm_models:
 
 networks:
   backend-network:
