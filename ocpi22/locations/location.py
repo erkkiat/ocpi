@@ -145,10 +145,11 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         existing_location: Location = Location.get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )
-        name = LocationService.get_gdpr_validated_name(
-            data.get("name"), data.get("address")
-        )
-        data.update({"name": name})
+        if data.get("name") is not None:
+            name = LocationService.get_gdpr_validated_name(
+                data.get("name"), data.get("address")
+            )
+            data.update({"name": name})
 
         serializer_class = Location.get_serializer_class(version)
         serializer = serializer_class(

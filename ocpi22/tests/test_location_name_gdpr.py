@@ -57,7 +57,7 @@ def test_location_name_updates_to_street_address_when_using_a_person_name(
 
 
 def test_location_name_does_not_update_to_street_address_when_using_a_location_name(
-    super_user_client, location_example
+    super_user_client, location_example, operator_fi_cpo
 ):
     location_example["id"] = "HELSINKI_SUPERCHARGER"
     location_example["name"] = "Helsinki Supercharger"

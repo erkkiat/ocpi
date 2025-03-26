@@ -43,8 +43,7 @@ class LocationService:
 
     @staticmethod
     def get_gdpr_validated_name(name, address):
-        if name is not None:
-            entity = LocationNERModel().get_entity(name)
-            if entity == "PER":
-                return address
-            return name
+        entity = LocationNERModel().get_entity(name)
+        if entity == "PER":
+            return address
+        return name
