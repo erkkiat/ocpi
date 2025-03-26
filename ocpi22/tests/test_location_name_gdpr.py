@@ -37,6 +37,7 @@ def test_assert_that_pytorch_env_vars_set_correctly():
     assert os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK") == "1"
 
 
+@pytest.mark.skip(reason="The GDPR compliance is OFF on the test environment")
 def test_location_name_updates_to_street_address_when_using_a_person_name(
     super_user_client, location_example, person_names
 ):
@@ -56,6 +57,7 @@ def test_location_name_updates_to_street_address_when_using_a_person_name(
         assert saved_location.address == street
 
 
+@pytest.mark.skip(reason="The GDPR compliance is OFF on the test environment")
 def test_location_name_does_not_update_to_street_address_when_using_a_location_name(
     super_user_client, location_example, operator_fi_cpo
 ):
