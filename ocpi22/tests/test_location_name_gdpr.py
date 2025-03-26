@@ -34,7 +34,7 @@ def person_names():
 
 
 def test_assert_that_pytorch_env_vars_set_correctly():
-    assert os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK") == "1"
+    assert os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK") == "True"
 
 
 @pytest.mark.skip(reason="The GDPR compliance is OFF on the test environment")
