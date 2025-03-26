@@ -146,6 +146,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             uid__iexact=uid, ocpi_master=credentialsrole
         )
         if data.get("name") is not None:
+            logger.info(f"Checking GDPR compliance for Location {uid}.")
             name = LocationService.get_gdpr_validated_name(
                 data.get("name"), data.get("address")
             )

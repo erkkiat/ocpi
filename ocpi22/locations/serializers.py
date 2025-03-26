@@ -319,11 +319,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
     publish_allowed_to = PublishAllowedToSerializer(many=True, required=False)
     opening_times = HoursSerializer(required=False)
 
-    def to_internal_value(self, data):
-        address = data.get("address", "")
-        self.fields["name"].context.update({"address": address})
-        return super().to_internal_value(data)
-
     @staticmethod
     def process_coordinates(validated_data: dict):
         """Handle manually all subobjects the Location cannot handle"""
