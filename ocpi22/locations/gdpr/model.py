@@ -1,4 +1,8 @@
-from transformers import pipeline, XLMRobertaTokenizer
+import logging
+from transformers import pipeline
+from transformers.utils.hub import TRANSFORMERS_CACHE
+
+logger = logging.getLogger(__name__)
 
 
 class LocationNERModel:
@@ -6,23 +10,24 @@ class LocationNERModel:
     _instance = None
 
     def __new__(cls):
+        logger.info(f"Using HF cache dir: {TRANSFORMERS_CACHE}")
+
         if cls._instance is None:
             cls._instance = super(LocationNERModel, cls).__new__(cls)
-            cls._instance.pipeline = pipeline(
-                "ner", model=cls.model_name, aggregation_strategy="simple"
-            )
-            cls._instance.tokenizer = XLMRobertaTokenizer.from_pretrained(
-                cls.model_name
-            )
+            cls._instance.pipeline = None
         return cls._instance
 
+    def load_pipeline(self):
+        if self.pipeline is None:
+            logger.info("Creating a new pipeline..")
+            self.pipeline = pipeline(
+                "ner", model=self.model_name, aggregation_strategy="simple"
+            )
+        else:
+            logger.info(f"Using existing pipeline {self.pipeline}")
+
     def get_entity(self, name: str):
-        # This step directs the model not to divide the location name into subtokens
-        self.tokenizer.add_tokens(name)
-
-        # After adding new tokens and increasing the vocabulary this step updates the model.
-        self.pipeline.model.resize_token_embeddings(len(self.tokenizer))
-
+        self.load_pipeline()
         entities = self.pipeline(name)
         inferred_entity = self.infer(entities)
         return inferred_entity
