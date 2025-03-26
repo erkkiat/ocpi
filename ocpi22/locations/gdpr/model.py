@@ -1,5 +1,6 @@
 import logging
 from transformers import pipeline
+from transformers.utils.hub import TRANSFORMERS_CACHE
 
 logger = logging.getLogger(__name__)
 
@@ -9,9 +10,7 @@ class LocationNERModel:
     _instance = None
 
     def __new__(cls):
-        from transformers.utils.hub import TRANSFORMERS_CACHE
-
-        print("Using HF cache dir:", TRANSFORMERS_CACHE)
+        logger.info(f"Using HF cache dir: {TRANSFORMERS_CACHE}")
 
         if cls._instance is None:
             cls._instance = super(LocationNERModel, cls).__new__(cls)
