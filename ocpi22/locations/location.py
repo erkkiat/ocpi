@@ -1,5 +1,6 @@
 from logging import getLogger
 
+from django.conf import settings
 from django.core.validators import RegexValidator
 from rest_framework import status
 from rest_framework.viewsets import GenericViewSet
@@ -145,7 +146,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         existing_location: Location = Location.get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )
-        if data.get("name") is not None:
+        if settings.ENABLE_GDPR_NAME_CHECK and data.get("name") is not None:
             logger.info(f"Checking GDPR compliance for Location {uid}.")
             name = LocationService.get_gdpr_validated_name(
                 data.get("name"), data.get("address")

@@ -5,7 +5,7 @@ WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
 preload_xlm_model() {
     echo "Preloading xlm-roberta-large english model..."
-    python /app/preload_xlm_roberta_model.py
+    python /app/preload_xlm_roberta_model.pyc
 }
 
 case "$1" in
