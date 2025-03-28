@@ -2,14 +2,20 @@
 from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.locations.gdpr.model import LocationNERModel
+from ocpi22.models.credentials import Credentials
+from ocpi22.models.location import Evse
+import logging
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.schemas import LocationIn
 from ocpi22.locations.serializers import LocationSerializer221
-from ocpi22.models.credentials import Credentials, CredentialsRole
-from ocpi22.models.location import Evse, Location
+from ocpi22.models.credentials import CredentialsRole
+from ocpi22.models.location import Location
 from ocpi22.models.tariff import Tariff
 from ocpi22.ocpi.util import remove_none_values_recursively_from_dict
 from ocpiconnector.party import Party
+
+logger = logging.getLogger(__name__)
 
 
 class EvseServices:
@@ -48,6 +54,14 @@ class LocationService:
         if credentials and credentials.allowed_locations:
             return queryset.filter(uid__in=credentials.allowed_locations)
         return queryset
+
+    @staticmethod
+    def get_gdpr_validated_name(name, address):
+        entity = LocationNERModel().get_entity(name)
+        if entity == "PER":
+            logger.info(f"Location name: {name} is a person name, changed to {address}")
+            return address
+        return name
 
     def update_tariff_in_request_payload(self, location: LocationIn):
         for e in location.evses:

@@ -3713,6 +3713,9 @@ class TestTasks(TestCase):
 
         # Successful connection, last_connection time should change
         with time_machine.travel(faketime, tick=False):
+            with patch("ocpi22.tasks.requests.get") as requests_get_mock:
+                requests_get_mock.return_value = FakeResponse(200)
+                check_still_alive(self.credentials_id)
             check_still_alive(self.credentials_id)
         credentials = Credentials.objects.get(pk=self.credentials_id)
         self.assertEqual(credentials.last_connection, faketime)

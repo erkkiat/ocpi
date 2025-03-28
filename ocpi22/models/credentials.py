@@ -139,8 +139,15 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     allowed_locations = JSONField(
         default=list, blank=True, null=False, validators=[validate_allowed_locations]
     )
-    certificate_name = models.CharField(max_length=255, blank=True, null=True)
-    private_key_name = models.CharField(max_length=255, blank=True, null=True)
+    client_certificate_name = models.CharField(
+        max_length=255, blank=True, null=False, default=""
+    )
+    private_key_name = models.CharField(
+        max_length=255, blank=True, null=False, default=""
+    )
+    ca_certificate_name = models.CharField(
+        max_length=255, blank=True, null=False, default=""
+    )
 
     def soft_delete(self):
         self.valid = False
@@ -503,6 +510,7 @@ def credentials_delete(sender, instance, *_args, **_kwargs):
                 our_party.country_code,
                 our_party.party_id,
                 "delete",
+                credentials.id,
             )
             retry_policy = dict(max_retries=5, interval_start=5)
             if settings.BACKGROUND_SEND:
