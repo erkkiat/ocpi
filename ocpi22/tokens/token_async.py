@@ -1,4 +1,5 @@
 import json
+import os
 from logging import getLogger
 from typing import Union
 from urllib.parse import urljoin
@@ -17,10 +18,12 @@ from ocpi22.choices import (
 )
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
+from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.headers import make_headers
+from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
@@ -34,10 +37,14 @@ if TYPE_CHECKING:
     ...
 
 
-async def post_request(session, url, data, ocpi_master, headers=None) -> (int, dict):
+async def post_request(
+    session, url, data, ocpi_master, headers=None, ssl_context=None
+) -> (int, dict):
     headers = headers or {}
     headers.update({"Content-Type": "application/json", "Accept:": "application/json"})
-    async with session.post(url, json=data, headers=headers) as response:
+    async with session.post(
+        url, json=data, headers=headers, ssl=ssl_context
+    ) as response:
         status = response.status
         try:
             json_data = await response.json()
@@ -72,6 +79,24 @@ def process_task_result(successful_task):
     return None
 
 
+async def create_ssl_context(credential_id):
+    """Create SSL context from environment variables based on credential ID."""
+    credentials = await sync_to_async(
+        Credentials.objects.filter(id=credential_id).first
+    )()
+
+    if not credentials:
+        return None
+
+    ca_cert = os.getenv(credentials.ca_certificate_name, None)
+    private_key = os.getenv(credentials.private_key_name, None)
+    client_cert = os.getenv(credentials.client_certificate_name, None)
+
+    return load_ssl_context(
+        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
+    )
+
+
 async def authorize_with_msps(token: Union[str, Token], data, parties):
     """
     Send authorization request asynchronously to all MSPs and wait for the first properly formatted response.
@@ -90,7 +115,9 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
     # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
-
+    ssl_contexts = await asyncio.gather(
+        *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
+    )
     async with aiohttp.ClientSession() as session:
         tasks = [
             asyncio.create_task(
@@ -107,7 +134,13 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 ),
                 name=str(Party(country_code, party_id)),
             )
-            for url, token_base64, country_code, party_id, credentials in parties
+            for (
+                url,
+                token_base64,
+                country_code,
+                party_id,
+                credentials,
+            ), ssl_context in zip(parties, ssl_contexts)
         ]
 
         while tasks:

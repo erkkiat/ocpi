@@ -40,7 +40,7 @@ class OcpiAuthTypes(Enum):
 @ttl_cache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=2 * 60 * 60)  # 2 hours
 def find_credentials(token_ascii: str) -> Optional[Credentials]:
     try:
-        return Credentials.objects.filter(ours__iexact=token_ascii, valid=True).first()
+        return Credentials.objects.filter(ours=token_ascii, valid=True).first()
     except (binascii.Error, UnicodeDecodeError):
         pass
     return None
