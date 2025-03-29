@@ -117,15 +117,6 @@ def create_session(
     else:
         authorization_method = authorization_method or enum.AuthMethodChoices.COMMAND
 
-    # Too expensive to check this every time
-    # # Make sure there are no active Sessions in progress
-    # active_sessions = Session.objects.filter(evse=evse, status__in=('ACTIVE', 'PENDING'))
-    # if active_sessions.exists():
-    #     logging.error(f'Cannot start a new Session because there are {active_sessions.count()} '
-    #                   f'active sessions at EVSE {evse.evse_id}: {",".join([s.uid for s in active_sessions])}')
-    #     raise EvseOccupied('Cannot start a new session because there is an active charging session '
-    #                        f'{active_sessions.first().uid} in progress.')
-
     from ocpi22.models.credentials import CredentialsRole
 
     if not (billed_to and billed_to != "*" and isinstance(billed_to, CredentialsRole)):
@@ -133,7 +124,6 @@ def create_session(
 
     currency = currency or os.environ.get("CPO_CURRENCY", "EUR")
     if connector and connector.tariff_ids:
-        # Is there some other currency specified in the Tariff for this Connector?
         first_tariff = connector.tariff_ids.first()
         if first_tariff:
             currency = first_tariff.currency
