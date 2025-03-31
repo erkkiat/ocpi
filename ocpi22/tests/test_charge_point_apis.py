@@ -140,9 +140,9 @@ def authorize_never_token_not_allowed_response(never_token, session):
 class TestChargePointAPI:
     status_change_url = reverse("chargepoint-status-change")
     authorize_url = reverse("chargepoint-authorize")
-    start_trasaction_url = reverse("chargepoint-start-transaction")
+    start_transaction_url = reverse("chargepoint-start-transaction")
     meter_values_url = reverse("chargepoint-meter-values")
-    stop_trasaction_url = reverse("chargepoint-stop-transaction")
+    stop_transaction_url = reverse("chargepoint-stop-transaction")
 
     def test_status_change_post_forbidden_for_authenticated_user(
         self, authenticated_user_client, available_evse, charging_request_body
@@ -336,7 +336,7 @@ class TestChargePointAPI:
             "connector_id": session.connector_id,
             "start_kwh": 0,
         }
-        response = admin_user_client.post(self.start_trasaction_url, data=request_body)
+        response = admin_user_client.post(self.start_transaction_url, data=request_body)
         assert response.status_code == 200
         assert response.json() == {
             "session_id": "SESSION_ID_1234",
@@ -375,7 +375,7 @@ class TestChargePointAPI:
             mock_authorize_token.return_value = authorize_token_response
             request_body = {"session_id": session.uid, "stop_kwh": 10}
             response = admin_user_client.post(
-                self.stop_trasaction_url, data=request_body
+                self.stop_transaction_url, data=request_body
             )
             assert response.status_code == 200
             assert response.json() == {
