@@ -40,6 +40,26 @@ def always_token(msp_de_ice, admin_user):
 
 
 @pytest.fixture
+def never_token(msp_de_ice, admin_user):
+    return TokenFactory(
+        uid="NEVER_TOKEN",
+        ocpi_master=msp_de_ice,
+        customer=admin_user,
+        whitelist="NEVER",
+    )
+
+
+@pytest.fixture
+def allowed_offline_token(msp_de_ice, admin_user):
+    return TokenFactory(
+        uid="ALLOWED_OFFLINE_TOKEN",
+        ocpi_master=msp_de_ice,
+        customer=admin_user,
+        whitelist="ALLOWED_OFFLINE",
+    )
+
+
+@pytest.fixture
 def authorize_token_response(allowed_token):
     session = OCPISessionFactory()
     return TokenAuthorization(
@@ -61,6 +81,36 @@ def authorize_whitelist_token_response(always_token):
         allowed="ALLOWED",
         info=MessageTexts.get("TOKEN_ACCEPTED"),
         token=always_token,
+        responding_party=session.billed_to.party_str(),
+        authorization_reference=session.authorization_reference,
+        auth_method=session.auth_method,
+        billed_to=session.billed_to.party_str(),
+        ocpi_master=session.billed_to,
+    )
+
+
+@pytest.fixture
+def authorize_never_token_success_response(never_token):
+    session = OCPISessionFactory()
+    return TokenAuthorization(
+        allowed="ALLOWED",
+        info=MessageTexts.get("TOKEN_ACCEPTED"),
+        token=never_token,
+        responding_party=session.billed_to.party_str(),
+        authorization_reference=session.authorization_reference,
+        auth_method=session.auth_method,
+        billed_to=session.billed_to.party_str(),
+        ocpi_master=session.billed_to,
+    )
+
+
+@pytest.fixture
+def authorize_never_token_not_allowed_response(never_token):
+    session = OCPISessionFactory()
+    return TokenAuthorization(
+        allowed="NOT_ALLOWED",
+        info=MessageTexts.get("TOKEN_ACCEPTED"),
+        token=never_token,
         responding_party=session.billed_to.party_str(),
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
@@ -187,4 +237,72 @@ class TestChargePointAPI:
             assert response.data["allowed"] == AuthorizationEnum.ALLOWED
             assert (
                 response.data["token"] == authorize_whitelist_token_response.token.uid
+            )
+
+    def test_authorize_with_never_token_successful_return_200(
+        self,
+        admin_user_client,
+        available_evse,
+        never_token,
+        authorize_never_token_success_response,
+    ):
+        request_body = {"evse_id": available_evse.uid, "token_id": never_token.uid}
+        with patch(
+            "ocpi22.tokens.auth.authorize_with_msps_sync"
+        ) as mock_authorize_token:
+            mock_authorize_token.return_value = authorize_never_token_success_response
+            response = admin_user_client.post(self.authorize_url, data=request_body)
+            assert response.status_code == 200
+            mock_authorize_token.assert_called_once_with(
+                never_token.uid,
+                available_evse.location,
+                [
+                    (
+                        "https://localhost/ocpi/tokens",
+                        never_token.ocpi_master.credentials.theirs_base64(),
+                        never_token.ocpi_master.country_code,
+                        never_token.ocpi_master.party_id,
+                        never_token.ocpi_master.credentials,
+                    )
+                ],
+            )
+            assert response.data["allowed"] == AuthorizationEnum.ALLOWED
+            assert (
+                response.data["token"]
+                == authorize_never_token_success_response.token.uid
+            )
+
+    def test_authorize_with_never_token_unauthorized(
+        self,
+        admin_user_client,
+        available_evse,
+        never_token,
+        authorize_never_token_not_allowed_response,
+    ):
+        request_body = {"evse_id": available_evse.uid, "token_id": never_token.uid}
+        with patch(
+            "ocpi22.tokens.auth.authorize_with_msps_sync"
+        ) as mock_authorize_token:
+            mock_authorize_token.return_value = (
+                authorize_never_token_not_allowed_response
+            )
+            response = admin_user_client.post(self.authorize_url, data=request_body)
+            assert response.status_code == 401
+            mock_authorize_token.assert_called_once_with(
+                never_token.uid,
+                available_evse.location,
+                [
+                    (
+                        "https://localhost/ocpi/tokens",
+                        never_token.ocpi_master.credentials.theirs_base64(),
+                        never_token.ocpi_master.country_code,
+                        never_token.ocpi_master.party_id,
+                        never_token.ocpi_master.credentials,
+                    )
+                ],
+            )
+            assert response.data["allowed"] == AuthorizationEnum.NOT_ALLOWED
+            assert (
+                response.data["token"]
+                == authorize_never_token_not_allowed_response.token.uid
             )
