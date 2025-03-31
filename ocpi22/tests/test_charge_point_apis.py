@@ -30,12 +30,37 @@ def allowed_token(msp_de_ice, admin_user):
 
 
 @pytest.fixture
+def always_token(msp_de_ice, admin_user):
+    return TokenFactory(
+        uid="ALWAYS_TOKEN",
+        ocpi_master=msp_de_ice,
+        customer=admin_user,
+        whitelist="ALWAYS",
+    )
+
+
+@pytest.fixture
 def authorize_token_response(allowed_token):
     session = OCPISessionFactory()
     return TokenAuthorization(
         allowed="ALLOWED",
         info=MessageTexts.get("TOKEN_ACCEPTED"),
         token=allowed_token,
+        responding_party=session.billed_to.party_str(),
+        authorization_reference=session.authorization_reference,
+        auth_method=session.auth_method,
+        billed_to=session.billed_to.party_str(),
+        ocpi_master=session.billed_to,
+    )
+
+
+@pytest.fixture
+def authorize_whitelist_token_response(always_token):
+    session = OCPISessionFactory()
+    return TokenAuthorization(
+        allowed="ALLOWED",
+        info=MessageTexts.get("TOKEN_ACCEPTED"),
+        token=always_token,
         responding_party=session.billed_to.party_str(),
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
@@ -143,3 +168,23 @@ class TestChargePointAPI:
             )
             assert response.data["allowed"] == AuthorizationEnum.ALLOWED
             assert response.data["token"] == authorize_token_response.token.uid
+
+    def test_authorize_with_whitelisted_token_successful_return_200(
+        self,
+        admin_user_client,
+        available_evse,
+        always_token,
+        authorize_whitelist_token_response,
+    ):
+        request_body = {"evse_id": available_evse.uid, "token_id": always_token.uid}
+        with patch(
+            "ocpi22.tokens.auth.authorize_with_msps_sync"
+        ) as mock_authorize_token:
+            mock_authorize_token.return_value = authorize_whitelist_token_response
+            response = admin_user_client.post(self.authorize_url, data=request_body)
+            assert response.status_code == 200
+            assert mock_authorize_token.call_count == 0
+            assert response.data["allowed"] == AuthorizationEnum.ALLOWED
+            assert (
+                response.data["token"] == authorize_whitelist_token_response.token.uid
+            )
