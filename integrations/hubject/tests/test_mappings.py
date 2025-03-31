@@ -1,5 +1,6 @@
 import doctest
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import pytest
 import pytz
@@ -32,6 +33,14 @@ from ocpi22.tests.factories import LocationFactory, EvseFactory
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite("integrations.solid_to_hubject_converter"))
     return tests
+
+
+def get_timezone_offset(timezone: str) -> str:
+    try:
+        tz = datetime.now(pytz.timezone(timezone))
+        return f"{tz.strftime('UTC%z')[:6]}:{tz.strftime('UTC%z')[6:]}"
+    except pytz.exceptions.UnknownTimeZoneError:
+        raise ValidationError(f"Unknown timezone: {timezone}")
 
 
 @pytest.fixture
@@ -417,6 +426,7 @@ class TestMappings:
         assert result == pricing_product_data_successful_result
 
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
+        helsinki_timezone = ZoneInfo("Europe/Helsinki")
         return {
             "ActionType": ActionType.insert,
             "OperatorEvseData": {
@@ -437,7 +447,7 @@ class TestMappings:
                             "PostalCode": "00100",
                             "Region": None,
                             "Street": "Mannerheimintie",
-                            "TimeZone": "UTC+02:00",
+                            "TimeZone": get_timezone_offset(str(helsinki_timezone)),
                         },
                         "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
                         "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
@@ -521,7 +531,7 @@ class TestMappings:
                             "PostalCode": "",
                             "Region": None,
                             "Street": "Ansgarstr.",
-                            "TimeZone": "UTC+01:00",
+                            "TimeZone": get_timezone_offset("Europe/Berlin"),
                         },
                         "AuthenticationModes": [
                             AuthenticationMode.No_Authentication_Required
