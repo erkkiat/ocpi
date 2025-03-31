@@ -1,10 +1,17 @@
 from unittest.mock import patch
 
 import pytest
+import time_machine
 from django.urls import reverse
 
 from ocpi22.choices import MessageTexts, AuthorizationEnum
-from ocpi22.tests.factories import EvseFactory, TokenFactory, OCPISessionFactory
+from ocpi22.tests.factories import (
+    EvseFactory,
+    TokenFactory,
+    OCPISessionFactory,
+    ConnectorFactory,
+    LocationFactory,
+)
 from ocpi22.tokens.auth import TokenAuthorization
 
 
@@ -20,6 +27,21 @@ def charging_request_body(available_evse):
         "status": "CHARGING",
         "timestamp": "2021-01-01T00:00:00Z",
     }
+
+
+@pytest.fixture
+def session():
+    location = LocationFactory(uid="08C70E1E-BE47-44FC-BF84-1B56ADD17B4F")
+    evse = EvseFactory(uid="1743399882", location=location)
+    connector = ConnectorFactory(id=1, uid="1", evse=evse)
+
+    return OCPISessionFactory(
+        uid="SESSION_ID_1234",
+        start_kwh=0,
+        connector=connector,
+        location=location,
+        evse=evse,
+    )
 
 
 @pytest.fixture
@@ -60,8 +82,7 @@ def allowed_offline_token(msp_de_ice, admin_user):
 
 
 @pytest.fixture
-def authorize_token_response(allowed_token):
-    session = OCPISessionFactory()
+def authorize_token_response(allowed_token, session):
     return TokenAuthorization(
         allowed="ALLOWED",
         info=MessageTexts.get("TOKEN_ACCEPTED"),
@@ -75,8 +96,7 @@ def authorize_token_response(allowed_token):
 
 
 @pytest.fixture
-def authorize_whitelist_token_response(always_token):
-    session = OCPISessionFactory()
+def authorize_whitelist_token_response(always_token, session):
     return TokenAuthorization(
         allowed="ALLOWED",
         info=MessageTexts.get("TOKEN_ACCEPTED"),
@@ -90,8 +110,7 @@ def authorize_whitelist_token_response(always_token):
 
 
 @pytest.fixture
-def authorize_never_token_success_response(never_token):
-    session = OCPISessionFactory()
+def authorize_never_token_success_response(never_token, session):
     return TokenAuthorization(
         allowed="ALLOWED",
         info=MessageTexts.get("TOKEN_ACCEPTED"),
@@ -105,8 +124,7 @@ def authorize_never_token_success_response(never_token):
 
 
 @pytest.fixture
-def authorize_never_token_not_allowed_response(never_token):
-    session = OCPISessionFactory()
+def authorize_never_token_not_allowed_response(never_token, session):
     return TokenAuthorization(
         allowed="NOT_ALLOWED",
         info=MessageTexts.get("TOKEN_ACCEPTED"),
@@ -122,6 +140,9 @@ def authorize_never_token_not_allowed_response(never_token):
 class TestChargePointAPI:
     status_change_url = reverse("chargepoint-status-change")
     authorize_url = reverse("chargepoint-authorize")
+    start_trasaction_url = reverse("chargepoint-start-transaction")
+    meter_values_url = reverse("chargepoint-meter-values")
+    stop_trasaction_url = reverse("chargepoint-stop-transaction")
 
     def test_status_change_post_forbidden_for_authenticated_user(
         self, authenticated_user_client, available_evse, charging_request_body
@@ -306,3 +327,80 @@ class TestChargePointAPI:
                 response.data["token"]
                 == authorize_never_token_not_allowed_response.token.uid
             )
+
+    def test_start_transaction_post_successful_return_200(
+        self, admin_user_client, session
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "connector_id": session.connector_id,
+            "start_kwh": 0,
+        }
+        response = admin_user_client.post(self.start_trasaction_url, data=request_body)
+        assert response.status_code == 200
+        assert response.json() == {
+            "session_id": "SESSION_ID_1234",
+            "billed_to": "FI*MSP",
+            "start_date_time": "2021-01-01T10:00:00Z",
+            "end_date_time": "2021-01-01T12:00:00Z",
+            "start_kwh": 0.0,
+            "stop_kwh": 0.0,
+            "token": {
+                "country_code": "FI",
+                "party_id": "MSP",
+                "token_id": "CDRTOKEN-12345",
+                "type": "RFID",
+                "contract_id": "CONTRACT-12345",
+            },
+            "auth_method": "AUTH_REQUEST",
+            "authorization_reference": "AUTHORIZATION-12345",
+            "location_id": "08C70E1E-BE47-44FC-BF84-1B56ADD17B4F",
+            "evse_uid": "1743399882",
+            "connector_id": "1",
+            "currency": "EUR",
+            "total_cost_incl_vat": 12.0,
+            "total_cost_excl_vat": 10.0,
+            "total_kwh": 0.0,
+            "status": "ACTIVE",
+            "last_updated": "2021-01-01T12:00:00Z",
+        }
+
+    @time_machine.travel("2025-03-31 06:26:58")
+    def test_stop_transaction_post_return_401(
+        self, admin_user_client, session, authorize_token_response
+    ):
+        with patch(
+            "ocpi22.tokens.auth.authorize_with_msps_sync"
+        ) as mock_authorize_token:
+            mock_authorize_token.return_value = authorize_token_response
+            request_body = {"session_id": session.uid, "stop_kwh": 10}
+            response = admin_user_client.post(
+                self.stop_trasaction_url, data=request_body
+            )
+            assert response.status_code == 200
+            assert response.json() == {
+                "auth_method": "AUTH_REQUEST",
+                "authorization_reference": "AUTHORIZATION-12345",
+                "billed_to": "FI*MSP",
+                "connector_id": "1",
+                "currency": "EUR",
+                "end_date_time": "2025-03-31T06:26:58Z",
+                "evse_uid": "1743399882",
+                "last_updated": "2025-03-31T06:26:58Z",
+                "location_id": "08C70E1E-BE47-44FC-BF84-1B56ADD17B4F",
+                "session_id": "SESSION_ID_1234",
+                "start_date_time": "2021-01-01T10:00:00Z",
+                "start_kwh": 0.0,
+                "status": "COMPLETED",
+                "stop_kwh": 10.0,
+                "token": {
+                    "contract_id": "CONTRACT-12345",
+                    "country_code": "FI",
+                    "party_id": "MSP",
+                    "token_id": "CDRTOKEN-12345",
+                    "type": "RFID",
+                },
+                "total_cost_excl_vat": 0.8,
+                "total_cost_incl_vat": 0.9,
+                "total_kwh": 10.0,
+            }
