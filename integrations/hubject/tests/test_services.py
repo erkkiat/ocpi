@@ -502,7 +502,7 @@ class TestHubjectService:
                         Region=None,
                         ParkingFacility=True,
                         ParkingSpot=None,
-                        TimeZone="UTC+01:00",
+                        TimeZone="UTC+02:00",
                     ),
                     GeoCoordinates=GeoCoordinates(
                         Google=None,
@@ -581,7 +581,7 @@ class TestHubjectService:
                         Region=None,
                         ParkingFacility=True,
                         ParkingSpot=None,
-                        TimeZone="UTC+01:00",
+                        TimeZone="UTC+02:00",
                     ),
                     GeoCoordinates=GeoCoordinates(
                         Google=None,

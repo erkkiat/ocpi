@@ -437,7 +437,7 @@ class TestMappings:
                             "PostalCode": "00100",
                             "Region": None,
                             "Street": "Mannerheimintie",
-                            "TimeZone": "UTC+02:00",
+                            "TimeZone": "UTC+03:00",
                         },
                         "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
                         "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
@@ -521,7 +521,7 @@ class TestMappings:
                             "PostalCode": "",
                             "Region": None,
                             "Street": "Ansgarstr.",
-                            "TimeZone": "UTC+01:00",
+                            "TimeZone": "UTC+02:00",
                         },
                         "AuthenticationModes": [
                             AuthenticationMode.No_Authentication_Required

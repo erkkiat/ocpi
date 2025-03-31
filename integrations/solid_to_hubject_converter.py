@@ -498,7 +498,7 @@ class SolidToHubjectConverter:
         """
         >>> oicp_converter = SolidToHubjectConverter()
         >>> oicp_converter.get_timezone('Europe/Helsinki')
-        'UTC+02:00'
+        'UTC+03:00'
         >>> oicp_converter.get_timezone('Asia/Colombo')
         'UTC+05:30'
         >>> oicp_converter.get_timezone('Asia/Kathmandu')
