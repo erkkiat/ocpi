@@ -12,7 +12,6 @@ from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location
 from ocpi22.models.tariff import Tariff
-from ocpi22.ocpi.util import remove_none_values_recursively_from_dict
 from ocpiconnector.party import Party
 
 logger = logging.getLogger(__name__)
@@ -88,14 +87,12 @@ class LocationService:
     def get_data_from_request_payload(self, location: LocationIn):
         location = self.update_tariff_in_request_payload(location)
 
-        data = location.model_dump(by_alias=True)
+        data = location.model_dump(by_alias=True, exclude_unset=True)
 
         country_code = data.get("country_code")
         party_id = data.get("party_id")
         ocpi_master = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
         data["ocpi_master"] = ocpi_master
-
-        data = remove_none_values_recursively_from_dict(data)
 
         return data
 

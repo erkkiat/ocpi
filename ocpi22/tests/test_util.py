@@ -6,7 +6,6 @@ import pytest
 
 from ocpi22.models.location import Evse
 from ocpi22.ocpi import util
-from ocpi22.ocpi.util import remove_none_values_recursively_from_dict
 from ocpi22.tests.factories import EvseFactory
 
 
@@ -59,44 +58,3 @@ def test_applying_ocpi22_filters(evse_queryset, date_from, date_to, expected_cou
     result = util.apply_ocpi22_filters(mock_request, evse_queryset)
 
     assert result.count() == expected_count
-
-
-def test_remove_none_values_recursively_from_dict_success():
-    data = {
-        "key1": "value1",
-        "key2": None,
-        "key3": {
-            "subkey1": "subvalue1",
-            "subkey2": None,
-            "subkey3": {"subsubkey1": "subsubvalue1", "subsubkey2": None},
-        },
-        "key4": [None, "listvalue1", {"listkey1": None, "listkey2": "listvalue2"}],
-    }
-
-    expected_result = {
-        "key1": "value1",
-        "key3": {"subkey1": "subvalue1", "subkey3": {"subsubkey1": "subsubvalue1"}},
-        "key4": ["listvalue1", {"listkey2": "listvalue2"}],
-    }
-
-    result = remove_none_values_recursively_from_dict(data)
-
-    assert result == expected_result
-
-
-def test_remove_none_values_recursively_from_an_empty_dict():
-    data = {}
-
-    expected_result = {}
-
-    result = remove_none_values_recursively_from_dict(data)
-    assert result == expected_result
-
-
-def test_remove_none_values_recursively_from_an_empty_list():
-    data = []
-
-    expected_result = []
-
-    result = remove_none_values_recursively_from_dict(data)
-    assert result == expected_result

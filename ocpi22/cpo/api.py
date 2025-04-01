@@ -1370,22 +1370,19 @@ def update_location(request, location: LocationIn):
     existing_location: Location = Location.get_if_exists(
         uid__iexact=location.uid, ocpi_master=our_credentials_role
     )
-    created = bool(not existing_location)
     try:
-        if created:
-            response_data = location_service.create_location(
-                location, our_credentials_role
-            )
-        else:
-            response_data = location_service.update_location(
+        if existing_location:
+            saved_location = location_service.update_location(
                 location, our_credentials_role, existing_location
             )
+            status_code = status.HTTP_200_OK
+        else:
+            saved_location = location_service.create_location(
+                location, our_credentials_role
+            )
+            status_code = status.HTTP_201_CREATED
 
-        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-
-        return JsonResponse(
-            response_data, content_type="application/json", status=status_code
-        )
+        return JsonResponse(saved_location, status=status_code)
     except ValidationError as e:
         return JsonResponse(
             {"status_message": e.detail},
