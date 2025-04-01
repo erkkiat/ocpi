@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 from humanize import naturaltime
 
 import widgets
-from ocpi22.choices import OcpiRolesEnum, OCPIFacilityEnum, OCPICapabilityEnum
+from ocpi22.choices import OcpiRolesEnum, OCPIFacility, OCPICapability
 from django.utils.html import format_html
 from nested_admin.nested import (
     NestedModelAdmin,
@@ -58,7 +58,8 @@ class AdminUtilityMixin:
 class SolidModelAdmin(admin.ModelAdmin, AdminUtilityMixin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        obj.post_process_after_update_or_create()
+        if hasattr(obj, "post_process_after_update_or_create"):
+            obj.post_process_after_update_or_create()
 
 
 class SolidNestedModelAdmin(NestedModelAdmin, AdminUtilityMixin):
@@ -228,7 +229,7 @@ class ConnectorInline(NestedStackedInline):
 
 class LocationAdminForm(forms.ModelForm):
     facilities = forms.MultipleChoiceField(
-        choices=OCPIFacilityEnum.choices,
+        choices=OCPIFacility.choices,
         widget=forms.CheckboxSelectMultiple,
         required=False,
     )
@@ -240,7 +241,7 @@ class LocationAdminForm(forms.ModelForm):
 
 class EvseAdminForm(forms.ModelForm):
     capabilities = forms.MultipleChoiceField(
-        choices=OCPICapabilityEnum.choices,
+        choices=OCPICapability.choices,
         widget=forms.CheckboxSelectMultiple,
         required=False,
     )
@@ -774,7 +775,14 @@ class CredentialsAdmin(SolidModelAdmin):
         model = Endpoint
 
     model = Credentials
-    list_display = ["name", "party_str", "valid", "responding", "last_update"]
+    list_display = [
+        "name",
+        "party_str",
+        "valid",
+        "responding",
+        "last_update",
+        "allowed_locations",
+    ]
     readonly_fields = [
         "theirs_base64",
         "ours_base64",

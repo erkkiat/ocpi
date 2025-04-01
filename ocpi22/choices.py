@@ -117,6 +117,13 @@ TOKEN_TYPE_CHOICES = [
 ]
 
 
+class TokenType(Enum):
+    AD_HOC_USER = "AD_HOC_USER"
+    RFID = "RFID"
+    APP_USER = "APP_USER"
+    OTHER = "OTHER"
+
+
 class OcpiModuleEnum(Enum):
     CREDENTIALS = "credentials"
     LOCATIONS = "locations"
@@ -392,7 +399,7 @@ RESERVATION_CHOICES = (
 )
 
 
-class OCPIFacilityEnum(models.TextChoices):
+class OCPIFacility(models.TextChoices):
     HOTEL = "HOTEL", _lazy("Hotel")
     RESTAURANT = "RESTAURANT", _lazy("Restaurant")
     CAFE = "CAFE", _lazy("Cafe")
@@ -421,7 +428,7 @@ class OCPIFacilityEnum(models.TextChoices):
     OTHER = "OTHER", _lazy("Other")
 
 
-class OCPICapabilityEnum(models.TextChoices):
+class OCPICapability(models.TextChoices):
     CHARGING_PROFILE_CAPABLE = "CHARGING_PROFILE_CAPABLE", _lazy("Charging profiles")
     CHARGING_PREFERENCES_CAPABLE = (
         "CHARGING_PREFERENCES_CAPABLE",
@@ -477,3 +484,80 @@ DYNAMIC_PRICE_SOURCE_CHOICES = (
     ("NPFR", "Nordpool France"),
     ("NPNL", "Nordpool Netherlands"),
 )
+
+PARKING_CHOICES = (
+    ("ALONG_MOTORWAY", "Along a motorway"),
+    ("PARKING_GARAGE", "Parking garage"),
+    ("PARKING_LOT", "Parking lot"),
+    ("ON_DRIVEWAY", "Driveway"),
+    ("ON_STREET", "Street"),
+    ("UNDERGROUND_GARAGE", "Underground garage"),
+)
+
+
+class ParkingChoices(Enum):
+    ALONG_MOTORWAY = "ALONG_MOTORWAY"
+    PARKING_GARAGE = "PARKING_GARAGE"
+    PARKING_LOT = "PARKING_LOT"
+    ON_DRIVEWAY = "ON_DRIVEWAY"
+    ON_STREET = "ON_STREET"
+    UNDERGROUND_GARAGE = "UNDERGROUND_GARAGE"
+
+
+AVAILABLE = "AVAILABLE"
+BLOCKED = "BLOCKED"
+CHARGING = "CHARGING"
+INOPERATIVE = "INOPERATIVE"
+OUTOFORDER = "OUTOFORDER"
+PLANNED = "PLANNED"
+REMOVED = "REMOVED"
+RESERVED = "RESERVED"
+UNKNOWN = "UNKNOWN"
+
+EVSE_STATUS_CHOICES = (
+    (AVAILABLE, _("Available")),
+    (BLOCKED, _("Physically blocked")),
+    (CHARGING, _("Charging")),
+    (INOPERATIVE, _("Inoperative")),
+    (OUTOFORDER, _("Out of order")),
+    (PLANNED, _("Planned, will be operating soon")),
+    (REMOVED, _("Discontinued/removed")),
+    (RESERVED, _("Reserved for a particular EV driver")),
+    (UNKNOWN, _("No status information available (also used when offline)")),
+)
+
+
+class EVSEStatus(Enum):
+    AVAILABLE = "AVAILABLE"
+    BLOCKED = "BLOCKED"
+    CHARGING = "CHARGING"
+    INOPERATIVE = "INOPERATIVE"
+    OUTOFORDER = "OUTOFORDER"
+    PLANNED = "PLANNED"
+    REMOVED = "REMOVED"
+    RESERVED = "RESERVED"
+    UNKNOWN = "UNKNOWN"
+
+
+class ParkingRestriction(Enum):
+    EV_ONLY = "EV_ONLY"
+    PLUGGED = "PLUGGED"
+    DISABLED = "DISABLED"
+    CUSTOMERS = "CUSTOMERS"
+    MOTORCYCLES = "MOTORCYCLES"
+
+
+class EnvironmentalImpactCategory(Enum):
+    NUCLEAR_WASTE = "NUCLEAR_WASTE"
+    CARBON_DIOXIDE = "CARBON_DIOXIDE"
+
+
+class EnergySourceCategory(Enum):
+    NUCLEAR = "NUCLEAR"
+    GENERAL_FOSSIL = "GENERAL_FOSSIL"
+    COAL = "COAL"
+    GAS = "GAS"
+    GENERAL_GREEN = "GENERAL_GREEN"
+    SOLAR = "SOLAR"
+    WIND = "WIND"
+    WATER = "WATER"

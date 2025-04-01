@@ -22,6 +22,7 @@ from rest_framework import status
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
+from ocpi22.ssl_services import load_ssl_context, SSLAdapter
 from ocpiconnector.party import Party
 from util import unwrap
 
@@ -55,7 +56,6 @@ pull_minute = random.randint(0, 59)
 # DO NOT REMOVE IT!!
 from base_task_services import setup_worker_connection  # noqa
 
-# print(f'Pulling all objects daily at {pull_hour:02d}:{pull_minute:02d}')
 
 app.conf.beat_schedule = {
     "run-me-every-minute": {
@@ -81,10 +81,9 @@ def celery_heartbeat() -> bool:
 
 @shared_task(max_retries=3, retry_backoff=3600)
 def pull_all_objects() -> bool:
-    from ocpi22.models.credentials import Credentials
+    from ocpi22.models.credentials import Credentials  # noqa
     from ocpi22.pull import schedule_full_update
 
-    print("Starting a scheduled full OCPI object pull.")
     credentials = Credentials.objects.filter(valid=True)
     for c in credentials:
         schedule_full_update(c)
@@ -111,6 +110,24 @@ if REDIS_URL:
         cronitor.celery.initialize(app, api_key=CRONITOR_API_KEY)
 else:
     logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
+
+
+def _get_request_session(credential_id):
+    from ocpi22.models.credentials import Credentials  # noqa
+
+    credentials = Credentials.objects.filter(id=credential_id).first()
+    request_session = requests.Session()
+    if not credentials:
+        return request_session
+    ca_cert = os.getenv(credentials.ca_certificate_name, None)
+    private_key = os.getenv(credentials.private_key_name, None)
+    client_cert = os.getenv(credentials.client_certificate_name, None)
+    ssl_context = load_ssl_context(
+        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
+    )
+    if ssl_context:
+        request_session.mount("https://", SSLAdapter(ssl_context=ssl_context))
+    return request_session
 
 
 @shared_task(
@@ -142,8 +159,8 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    # Call the specified method in requests, for example, if method == 'put', call requests.put
-    function = getattr(requests, method.lower())
+    request_session = _get_request_session(credentials_id)
+    function = getattr(request_session, method.lower())
     if not function:
         raise NotImplementedError(
             f"Method {method} is not supported for send_ocpi_request"
@@ -178,11 +195,11 @@ def exchange_credentials(token, url):
 def pull_objects(
     object_list, limit=10, delay=2, total_objects=0, credentials_id=None, **kwargs
 ) -> None:
-    from ocpi22.models.credentials import Credentials
-
     assert isinstance(
         credentials_id, int
     ), f"credentials_id is missing: {credentials_id}"
+    from ocpi22.models.credentials import Credentials  # noqa
+
     credentials = Credentials.objects.get(pk=credentials_id)
 
     try:
@@ -290,7 +307,7 @@ def pull_objects(
 
 @shared_task(max_retries=0)  # We will do this every 5 minutes anyways
 def check_still_alive(credentials_id: int = None) -> None:
-    from ocpi22.models.credentials import Credentials
+    from ocpi22.models.credentials import Credentials  # noqa
 
     if credentials_id:
         credentials = Credentials.objects.none()

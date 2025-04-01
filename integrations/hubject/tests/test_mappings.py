@@ -24,7 +24,7 @@ from integrations.hubject.schemas import (
     HubjectDefaultTariff,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
-from ocpi22.choices import OCPICapabilityEnum
+from ocpi22.choices import OCPICapability
 from ocpi22.models.location import Connector
 from ocpi22.tests.factories import LocationFactory, EvseFactory
 
@@ -32,6 +32,14 @@ from ocpi22.tests.factories import LocationFactory, EvseFactory
 def load_tests(_loader, tests, _ignore):
     tests.addTests(doctest.DocTestSuite("integrations.solid_to_hubject_converter"))
     return tests
+
+
+def get_timezone_offset(timezone: str) -> str:
+    try:
+        tz = datetime.now(pytz.timezone(timezone))
+        return f"{tz.strftime('UTC%z')[:6]}:{tz.strftime('UTC%z')[6:]}"
+    except pytz.exceptions.UnknownTimeZoneError:
+        raise ValidationError(f"Unknown timezone: {timezone}")
 
 
 @pytest.fixture
@@ -208,7 +216,7 @@ class TestMappings:
         )
 
     def test_get_all_authentication_modes_from_capabilities(self):
-        capabilities = [OCPICapabilityEnum.RFID_READER, OCPICapabilityEnum.RESERVABLE]
+        capabilities = [OCPICapability.RFID_READER, OCPICapability.RESERVABLE]
 
         authentication_modes = [AuthenticationMode.NFC_RFID_Classic]
         assert (
@@ -437,7 +445,7 @@ class TestMappings:
                             "PostalCode": "00100",
                             "Region": None,
                             "Street": "Mannerheimintie",
-                            "TimeZone": "UTC+03:00",
+                            "TimeZone": get_timezone_offset("Europe/Helsinki"),
                         },
                         "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
                         "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
@@ -521,7 +529,7 @@ class TestMappings:
                             "PostalCode": "",
                             "Region": None,
                             "Street": "Ansgarstr.",
-                            "TimeZone": "UTC+02:00",
+                            "TimeZone": get_timezone_offset("Europe/Berlin"),
                         },
                         "AuthenticationModes": [
                             AuthenticationMode.No_Authentication_Required
