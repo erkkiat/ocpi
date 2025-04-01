@@ -1,6 +1,5 @@
 import doctest
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 
 import pytest
 import pytz
@@ -426,7 +425,6 @@ class TestMappings:
         assert result == pricing_product_data_successful_result
 
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
-        helsinki_timezone = ZoneInfo("Europe/Helsinki")
         return {
             "ActionType": ActionType.insert,
             "OperatorEvseData": {
@@ -447,7 +445,7 @@ class TestMappings:
                             "PostalCode": "00100",
                             "Region": None,
                             "Street": "Mannerheimintie",
-                            "TimeZone": get_timezone_offset(str(helsinki_timezone)),
+                            "TimeZone": get_timezone_offset("Europe/Helsinki"),
                         },
                         "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
                         "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
