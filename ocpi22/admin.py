@@ -58,7 +58,8 @@ class AdminUtilityMixin:
 class SolidModelAdmin(admin.ModelAdmin, AdminUtilityMixin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        obj.post_process_after_update_or_create()
+        if hasattr(obj, "post_process_after_update_or_create"):
+            obj.post_process_after_update_or_create()
 
 
 class SolidNestedModelAdmin(NestedModelAdmin, AdminUtilityMixin):

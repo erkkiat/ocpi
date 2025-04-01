@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth.models import Permission
@@ -7,7 +8,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from ocpi22.models.credentials import CredentialsRole
-from ocpi22.models.tariff import SolidTariff
+from ocpi22.models.tariff import SolidTariff, Tariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import TariffFactory, SolidTariffFactory
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
@@ -349,12 +350,23 @@ class TestSolidTariffs:
         smp1_solid_tariff_with_all_records_response,
     ):
         url = reverse("solid-tariff-list")
-        response = authenticated_user_client.put(
-            url, smp1_solid_tariff_with_all_records_json
-        )
+        with patch(
+            "ocpi22.ocpi.util.OcpiModule.post_process_after_update_or_create"
+        ) as mock_send_updates:
+            response = authenticated_user_client.put(
+                url, smp1_solid_tariff_with_all_records_json
+            )
 
-        assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_all_records_response
+            tariff = Tariff.objects.get(
+                uid=smp1_solid_tariff_with_all_records_json["external_id"]
+            )
+            assert (
+                tariff.price() == "0,69€/kWh + 25,20€/h + 0,56€ flat + 32,40€/h parking"
+            )
+
+            assert response.status_code == status.HTTP_200_OK
+            assert response.json() == smp1_solid_tariff_with_all_records_response
+            mock_send_updates.assert_called_once()
 
     @pytest.mark.django_db
     def test_put_solid_tariffs_by_resending_same_request_twice_creates_single_record_in_database(

@@ -311,7 +311,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
     evses = EvseSerializer(many=True, required=False)
     coordinates = CoordinatesSerializer()
-    name = serializers.CharField(required=False)
     facilities = FacilityField(required=False)
     owner = BusinessDetailsSerializer(required=False)
     operator = BusinessDetailsSerializer(required=False)

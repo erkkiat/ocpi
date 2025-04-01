@@ -562,7 +562,7 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     uid = "SESSION-12345"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
     end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
-    start_kwh = 100.0
+    start_kwh = 0.0
     stop_kwh = 120.0
     cdr_token = factory.SubFactory(CdrTokenFactory)
     billed_to = factory.LazyAttribute(lambda obj: obj.cdr_token.ocpi_master)
@@ -576,3 +576,4 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     total_cost_incl_vat = 12.0
     status = Session.ACTIVE
     last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+    credentials = factory.LazyAttribute(lambda obj: obj.ocpi_master.credentials)
