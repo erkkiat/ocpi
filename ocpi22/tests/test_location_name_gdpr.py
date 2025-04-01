@@ -1,6 +1,5 @@
-import os
-
 import pytest
+from django.conf import settings
 from django.urls import reverse
 
 from ocpi22.models.location import Location
@@ -34,7 +33,7 @@ def person_names():
 
 
 def test_assert_that_pytorch_env_vars_set_correctly():
-    assert os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK") == "True"
+    assert settings.PYTORCH_ENABLE_MPS_FALLBACK
 
 
 @pytest.mark.skip(reason="The GDPR compliance is OFF on the test environment")
