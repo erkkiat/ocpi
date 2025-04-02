@@ -52,8 +52,8 @@ The scripts will start Locust with the host set to `http://localhost:8000`. You 
 1. Open your browser and navigate to http://localhost:8089 to access the Locust web interface.
 2. Set the URL of the tested host in the "Host" field
 3. From the tested host, select a MSP roaming partner you want to simulate, and get the base64 encoded token from the field "OCPI token for receiving" and paste it to the "OCPI Token" field.
-3. Set the number of charging sessions to simulate and the spawn rate.
-4. Start the test and monitor the results in real-time.
+4. Set the number of charging sessions to simulate and the spawn rate.
+5. Start the test and monitor the results in real-time.
 
 ## What the Tests Do
 
