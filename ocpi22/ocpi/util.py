@@ -140,7 +140,11 @@ class OcpiModule:
                 setattr(self, "updates_sent", True)
 
     def send_all_updates(
-        self, data=None, method="put", path_components=[], ocpi_module_name=None
+        self,
+        data=None,
+        method="put",
+        path_components=[],
+        ocpi_module_name=None,
     ) -> bool:
         if not settings.SEND_UPDATES:
             return True
@@ -171,6 +175,7 @@ class OcpiModule:
                         to=Party(country_code, party_id),
                         sender=Party(our_country_code, our_party_id),
                         method=method,
+                        credentials=credentials,
                     )
                 except Exception:
                     logger.exception(f"Unable to send update to {url}")
@@ -182,7 +187,14 @@ class OcpiModule:
 
     @classmethod
     def send_background_update(
-        cls, data: dict, url, token_base64, to: Party, sender: Party, method="put"
+        cls,
+        data: dict,
+        url,
+        token_base64,
+        to: Party,
+        sender: Party,
+        method="put",
+        credentials=None,
     ):
         if not settings.SEND_UPDATES:
             return
@@ -199,6 +211,7 @@ class OcpiModule:
                 sender.country_code,
                 sender.party_id,
                 method,
+                credentials.id,
             )
             send_ocpi_request.apply_async(
                 args, retry=False, title=f"{cls.ocpi_module_name.value} update"
@@ -241,7 +254,7 @@ class OcpiModule:
         return serializer.data
 
     def route_single_update_message(
-        self, method, to, data=None, path_components=[]
+        self, method, to, data=None, path_components=[], credentials=None
     ) -> None:
         sender = Party(*(self.get_owner_identity().split("*")))
         route = find_route(
@@ -250,13 +263,20 @@ class OcpiModule:
         if route:
             data = data or self.serialize(version=route.version.pure_number)
             self.send_background_update(
-                data, route.url, route.token_base64, to=to, sender=sender, method=method
+                data,
+                route.url,
+                route.token_base64,
+                to=to,
+                sender=sender,
+                method=method,
+                credentials=credentials,
             )
         else:
             logger.error(f"Unable to find route to {str(to)}")
 
     def send_update_to_interested_parties(self, *args, method="PUT", **kwargs) -> None:
-        if hasattr(self, "credentials"):
+        credentials = getattr(self, "credentials", None)
+        if credentials:
             if not hasattr(self, "billed_to"):
                 logger.error(
                     f"Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties",
@@ -264,7 +284,9 @@ class OcpiModule:
                 return
             # self.send_subscriber_updates(*args, **kwargs)  # This was used by a Dutch startup, no longer a customer
             to = self.billed_to.get_party()
-            return self.route_single_update_message(to=to, method=method, **kwargs)
+            return self.route_single_update_message(
+                to=to, method=method, credentials=credentials, **kwargs
+            )
         else:
             logger.error(
                 f"Object #{self.uid} - {self} has no credentials, cannot send updates to interested parties"
@@ -275,13 +297,6 @@ class OcpiModule:
     def _get_subscriber_parties(self, partylist=None) -> list:
         partylist = partylist or self.subscribers or []
         return [Party(*(p.split("*"))) for p in partylist if p]
-
-    def send_subscriber_updates(self, *args, **kwargs) -> None:
-        """
-        Some business models rely on receiving all objects of type X, for example for statistics purposes
-        """
-        for party in self._get_subscriber_parties():
-            self.route_single_update_message(to=party, **kwargs)
 
 
 def ocpi_post(

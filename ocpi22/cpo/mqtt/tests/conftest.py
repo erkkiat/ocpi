@@ -57,3 +57,20 @@ def smappee_meter_message(smappee_meter_topic):
     message.qos = 1
     message.retain = False
     return message
+
+
+@pytest.fixture
+def smappee_meter_message_from_wouter(smappee_meter_topic):
+    message = MQTTMessage()
+    message.topic = smappee_meter_topic.encode("utf-8")
+    message.payload = orjson.dumps(
+        {
+            "session_id": "BE*SMP*S*5F6AA9AEF106482C9F8BE8F258D",
+            "kwh": 125.0,
+            "power": 22.0,
+            "timestamp": "2024-12-23T15:38:51.940979+00:00",
+        }
+    )
+    message.qos = 1
+    message.retain = False
+    return message

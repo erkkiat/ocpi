@@ -27,7 +27,7 @@ COPY . /app
 
 # Compile Python files and remove unneeded sources
 RUN python -m compileall -b . && \
-    find . -name '*.py' ! -name 'manage.py' -delete
+    find . -name '*.py' ! -name 'manage.py' ! -name 'preload_xlm_roberta_model.py' -delete
 
 RUN chmod +x /app/entrypoint.sh /app/fetch_secrets.sh
 

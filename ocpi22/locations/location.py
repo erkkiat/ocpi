@@ -1,5 +1,6 @@
 from logging import getLogger
 
+from django.conf import settings
 from django.core.validators import RegexValidator
 from rest_framework import status
 from rest_framework.viewsets import GenericViewSet
@@ -58,8 +59,6 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_queryset(self):
         credentials = getattr(self.request, "credentials", None)
-        logger.info(f"Request for headers: {self.request.headers}")
-        logger.info(f"Credentials is {credentials}")
         prefetch_fields = (
             "evses",
             "evses__connectors",
@@ -78,9 +77,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
                 .exclude(publish=False)
                 .order_by("created")
             )
-        logger.info(f"Original queryset: {queryset}")
         queryset = LocationService.get_allowed_locations_queryset(credentials, queryset)
-        logger.info(f"Filtered queryset: {queryset}")
         return queryset
 
     @ocpi_exception_handler
@@ -149,6 +146,12 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         existing_location: Location = Location.get_if_exists(
             uid__iexact=uid, ocpi_master=credentialsrole
         )
+        if settings.ENABLE_GDPR_NAME_CHECK and data.get("name") is not None:
+            logger.info(f"Checking GDPR compliance for Location {uid}.")
+            name = LocationService.get_gdpr_validated_name(
+                data.get("name"), data.get("address")
+            )
+            data.update({"name": name})
 
         serializer_class = Location.get_serializer_class(version)
         serializer = serializer_class(

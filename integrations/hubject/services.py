@@ -95,9 +95,8 @@ class HubjectService:
             OperatorEvseData=operator_evse_data,
         )
 
-    def post_evse_full_load(
-        self, operator_id: str, payload: ERoamingPushEvseData
-    ) -> dict:
+    @staticmethod
+    def post_evse_full_load(operator_id: str, payload: ERoamingPushEvseData) -> dict:
         full_load_url = urljoin(
             with_trailing_slash(settings.HUBJECT_URL),
             f"evsepush/v23/operators/{operator_id}/data-records",

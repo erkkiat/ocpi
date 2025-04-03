@@ -69,6 +69,9 @@ class SolidTariffService:
                 )
             else:
                 tariff = tariff.first()
+                tariff.currency = currency
+                tariff.save()
+
             te, _created = TariffElement.objects.get_or_create(tariff=tariff)
             if per_kwh:
                 PriceComponent.objects.update_or_create(
@@ -98,6 +101,8 @@ class SolidTariffService:
                         "step_size": 1,
                     },
                 )
+
+            tariff.post_process_after_update_or_create()
 
             solid_tariff = SolidTariff(
                 external_id=external_id,
