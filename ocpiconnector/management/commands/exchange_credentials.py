@@ -175,7 +175,11 @@ class Command(BaseCommand):
                 )
 
             credentials_response = ocpi_credentials_post(
-                url, token_a_base64, json=data_to_send, timeout=15
+                url,
+                token_a_base64,
+                json=data_to_send,
+                timeout=15,
+                credentials_id=credentials.id,
             )
             if credentials_response.status_code not in (
                 status.HTTP_200_OK,
