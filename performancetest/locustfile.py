@@ -11,7 +11,7 @@ from locust import HttpUser, task, events, between
 from locust.env import Environment
 
 EVSE_COUNT = 10000
-METER_VALUES_INTERVAL = 30
+METER_VALUES_INTERVAL = 20
 LOCATION_ID = "PERFORMANCETEST"
 evses_available = [True for x in range(EVSE_COUNT + 1)]
 basic_auth = requests.auth.HTTPBasicAuth("performance", "password")
