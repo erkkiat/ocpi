@@ -195,6 +195,10 @@ class Command(BaseCommand):
                 if credentials:
                     credentials.reset()
                 raise OCPIProtocolError(msg)
+            # Now that the credentials exchange is complete, remove token_a
+            if credentials.ours and credentials.theirs and credentials.token_a:
+                credentials.token_a = ""
+                credentials.save(update_fields=["token_a"])
             return True
 
         except (JSONDecodeError, NotAuthenticated) as e:

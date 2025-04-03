@@ -459,18 +459,6 @@ def new_connection(request):
     return HttpResponseRedirect(reverse("admin:ocpi22_credentials_changelist"))
 
 
-@receiver(pre_save, sender=Credentials)
-def credentials_pre_save(sender, instance, *_args, raw=False, **_kwargs):
-    if raw:  # Skip this if installing fixtures
-        return
-    credentials: Credentials = instance
-    if not credentials.valid:
-        credentials.connection_status = choices.SUSPENDED
-        credentials.last_connection = datetime.now(pytz.utc)
-    if credentials.ours and credentials.theirs and credentials.token_a:
-        credentials.token_a = ""
-
-
 @receiver(post_save, sender=Credentials)
 def credentials_post_save(sender, instance, *_args, raw, **_kwargs):
     if raw:
