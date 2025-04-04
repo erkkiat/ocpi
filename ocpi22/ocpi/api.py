@@ -485,7 +485,9 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         versions_url = select_version(
             credentials.url, token_base64, credentials_id=credentials.id
         )
-        endpoints = get_endpoints(versions_url, token_base64)
+        endpoints = get_endpoints(
+            versions_url, token_base64, credentials_id=credentials.id
+        )
         store_endpoints_for_party(credentials, endpoints)
         data = make_my_credentials_dict(request, our_token=credentials.ours)
         serializer = CredentialsSerializer(
@@ -523,7 +525,9 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         versions_url = select_version(
             credentials.url, token_base64, credentials_id=credentials.id
         )
-        endpoints = get_endpoints(versions_url, token_base64)
+        endpoints = get_endpoints(
+            versions_url, token_base64, credentials_id=credentials.id
+        )
         store_endpoints_for_party(credentials, endpoints)
         data = make_my_credentials_dict(request, our_token=credentials.ours)
         serializer = CredentialsSerializer(

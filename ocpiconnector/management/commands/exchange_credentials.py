@@ -87,8 +87,8 @@ def select_version(url, token, credentials_id=None) -> str:
     return version_url
 
 
-def get_endpoints(url, token):
-    endpoints_response = ocpi_credentials_get(url, token)
+def get_endpoints(url, token, credentials_id=None) -> dict:
+    endpoints_response = ocpi_credentials_get(url, token, credentials_id=credentials_id)
     data = endpoints_response.json()
     endpoints = data.get("data", data)
     endpoints_str = ", ".join(set([e["identifier"] for e in endpoints["endpoints"]]))
