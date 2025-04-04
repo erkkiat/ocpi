@@ -1,6 +1,7 @@
 import base64
 from unittest.mock import patch
 
+import responses
 import time_machine
 from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
@@ -62,23 +63,26 @@ class CredentialsTests(BetterTestCase):
         return request
 
     @simulate_surrounding_world
+    @responses.activate
     def test_credentials_post(self, simulation):
         token_a = "123"
         token_base64 = base64.b64encode(str(token_a).encode("ascii")).decode("ascii")
 
-        simulation.ocpi_requests.get.side_effect = [
-            # Response to the first GET ( /versions )
-            FakeResponse(
-                data=dict(data=get_versions_dict()), status_code=status.HTTP_200_OK
-            ),
-            # Response to the second GET ( /versions/2.2.1/endpoints )
-            FakeResponse(
-                data=dict(data=get_endpoints_dict(version="2.2.1")),
-                status_code=status.HTTP_200_OK,
-            ),
-        ]
+        responses.add(
+            responses.GET,
+            f"https://localhost/versions/",
+            json={"data": get_versions_dict()},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            f"https://localhost/versions/2.2.1/endpoints/",
+            json={"data": get_endpoints_dict(version="2.2.1")},
+            status=200,
+        )
 
         request = self.make_request(CredentialsData.example, token_base64=token_base64)
+
         random_token = "12345"
 
         with (
@@ -86,14 +90,14 @@ class CredentialsTests(BetterTestCase):
             patch("ocpi22.ocpi.api.generate_random_token", return_value=random_token),
         ):
             result = CredentialsViewSet().post(request)
-
+        import ipdb;ipdb.set_trace()
         credentials = Credentials.objects.get(pk=2)
         assert not credentials.token_a, "Token A should have been cleared"
         assert credentials.roles.count() == 2, "Credentials should have two roles"
         first_role: CredentialsRole = credentials.roles.first()
         assert first_role.country_code == "NL", "Expecting different country code"
         assert first_role.party_id == "EXA", "Expecting different party ID"
-
+        import ipdb;ipdb.set_trace()
         serializer = CredentialsSerializer(data=result.data.get("data"))
         assert (
             serializer.is_valid()
