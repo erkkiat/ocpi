@@ -178,36 +178,6 @@ class SolidTariffViewSet(
     def get_by_msp_id(self, request, country_code, party_id):
         return self.get_by_msp_id_and_external_id(request, None, country_code, party_id)
 
-    @action(
-        methods=["DELETE"],
-        detail=False,
-        url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<external_id>[^/.]+)",
-    )
-    def delete_by_msp_and_external_id(
-        self, request, country_code, party_id, external_id
-    ):
-        msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
-        if not msp:
-            return Response(
-                {"status": str(f"Partner {country_code}*{party_id} is not found")},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        self.service.delete_by_msp_and_external_id(msp, external_id)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(
-        methods=["DELETE"],
-        detail=False,
-        url_path="(?P<external_id>[^/.]+)",
-    )
-    def delete_by_external_id(self, request, external_id):
-        _deleted = self.service.delete_by_external_id(external_id)
-
-        if _deleted:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
     @staticmethod
     def get_object(uid=None) -> Tariff:
         # Needed for OPTIONS to work in list view, could just return None
