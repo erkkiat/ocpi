@@ -661,8 +661,10 @@ def ocpi_credentials_request(
     return response
 
 
-def ocpi_credentials_get(*args, **kwargs):
-    return ocpi_credentials_request(*args, credentials_id=None, method="get", **kwargs)
+def ocpi_credentials_get(*args, credentials_id=None, **kwargs):
+    return ocpi_credentials_request(
+        *args, credentials_id=credentials_id, method="get", **kwargs
+    )
 
 
 def ocpi_credentials_post(*args, credentials_id=None, **kwargs):
