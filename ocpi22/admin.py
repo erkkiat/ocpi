@@ -634,7 +634,23 @@ class SessionAdmin(SolidNestedModelAdmin):
         return super().response_post_save_change(request, obj)
 
 
+class TariffAdminForm(forms.ModelForm):
+    def clean_uid(self):
+        uid = self.cleaned_data.get("uid")
+        ocpi_master = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        tariff: Tariff = Tariff.objects.filter(
+            uid__iexact=str(uid), ocpi_master=ocpi_master, archived=False
+        )
+        if tariff.exists():
+            raise ValidationError(
+                _("Tariff with this UID already exists"), code="invalid"
+            )
+        return uid
+
+
 class TariffAdmin(SolidNestedModelAdmin):
+    form = TariffAdminForm
+
     class ElementsInline(NestedStackedInline):
         class PriceComponentsInline(NestedTabularInline):
             model = PriceComponent
