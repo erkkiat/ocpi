@@ -305,7 +305,7 @@ class TestSolidTariffs:
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
-    def test_super_user_can_delete_solid_tariff_returns_204_no_content(
+    def test_super_user_cannot_delete_solid_tariff_returns_405(
         self,
         super_user_client,
         smp1_solid_tariff_with_all_records_json,
@@ -317,7 +317,7 @@ class TestSolidTariffs:
         super_user.user_permissions.set([permission])
         url = f'{reverse("solid-tariff-list")}SMP1/'
         response = super_user_client.delete(url)
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
     def test_super_user_cannot_delete_solid_tariff_without_delete_permission_return_403_forbidden(
         self,
@@ -329,7 +329,7 @@ class TestSolidTariffs:
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_super_user_can_delete_solid_tariff_by_external_id_204_no_content(
+    def test_super_user_cannot_delete_solid_tariff_by_external_id_405(
         self,
         super_user_client,
         smp1_solid_tariff_with_all_records_json,
@@ -338,7 +338,7 @@ class TestSolidTariffs:
     ):
         url = f'{reverse("solid-tariff-list")}SMP1/'
         response = super_user_client.delete(url)
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
     @pytest.mark.django_db
     def test_put_solid_tariffs_with_all_valid_records_returns_status_code_200(
