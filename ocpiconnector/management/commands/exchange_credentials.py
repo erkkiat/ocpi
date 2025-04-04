@@ -63,8 +63,8 @@ def get_our_roles(source: dict = None) -> list:
     # Todo: Support multi-country CPOs / eMSPs
 
 
-def select_version(url, token) -> str:
-    versions_response = ocpi_credentials_get(url, token)
+def select_version(url, token, credentials_id=None) -> str:
+    versions_response = ocpi_credentials_get(url, token, credentials_id=credentials_id)
     if versions_response.status_code == 200:
         data = versions_response.json()
         serializer = VersionsSerializer(data=data)
