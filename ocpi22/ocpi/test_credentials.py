@@ -23,7 +23,6 @@ from ocpiconnector.party import Party
 from ocpiconnector.testutil import (
     OCPIAPIRequestFactory,
     simulate_surrounding_world,
-    FakeResponse,
     BetterTestCase,
 )
 from util import reverse
@@ -70,13 +69,13 @@ class CredentialsTests(BetterTestCase):
 
         responses.add(
             responses.GET,
-            f"https://localhost/versions/",
+            "https://localhost/versions/",
             json={"data": get_versions_dict()},
             status=200,
         )
         responses.add(
             responses.GET,
-            f"https://localhost/versions/2.2.1/endpoints/",
+            "https://localhost/versions/2.2.1/endpoints/",
             json={"data": get_endpoints_dict(version="2.2.1")},
             status=200,
         )
@@ -90,14 +89,12 @@ class CredentialsTests(BetterTestCase):
             patch("ocpi22.ocpi.api.generate_random_token", return_value=random_token),
         ):
             result = CredentialsViewSet().post(request)
-        import ipdb;ipdb.set_trace()
         credentials = Credentials.objects.get(pk=2)
         assert not credentials.token_a, "Token A should have been cleared"
         assert credentials.roles.count() == 2, "Credentials should have two roles"
         first_role: CredentialsRole = credentials.roles.first()
         assert first_role.country_code == "NL", "Expecting different country code"
         assert first_role.party_id == "EXA", "Expecting different party ID"
-        import ipdb;ipdb.set_trace()
         serializer = CredentialsSerializer(data=result.data.get("data"))
         assert (
             serializer.is_valid()
