@@ -79,6 +79,12 @@ class CredentialsTests(BetterTestCase):
             json={"data": get_endpoints_dict(version="2.2.1")},
             status=200,
         )
+        responses.add(
+            responses.GET,
+            "http://testserver.test/ocpi/2.2.1/",
+            json={"data": CredentialsData.ocpi_endpoints_response_221},
+            status=201,
+        )
 
         request = self.make_request(CredentialsData.example, token_base64=token_base64)
 
