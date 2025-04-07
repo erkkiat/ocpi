@@ -112,7 +112,7 @@ else:
     logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
 
 
-def _get_request_session(credential_id):
+def get_request_session(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
     credentials = Credentials.objects.filter(id=credential_id).first()
@@ -159,7 +159,7 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    request_session = _get_request_session(credentials_id)
+    request_session = get_request_session(credentials_id)
     function = getattr(request_session, method.lower())
     if not function:
         raise NotImplementedError(
