@@ -1,16 +1,16 @@
-name: Build and Push Images for Staging and Production
+name: Develop to Main Release Workflow
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
-    environment: production
-
+    name: Lint Code
+    runs-on: ubuntu-latest-m
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Set up Python
@@ -25,15 +25,14 @@ jobs:
         run: ruff check .
 
   test:
-    runs-on: ubuntu-latest
+    name: Run Tests
+    runs-on: ubuntu-latest-m
     needs: lint
-    environment: production
     services:
       redis:
         image: redis:latest
         ports:
           - 6379:6379
-        options: --health-cmd "redis-cli ping || exit 1" --health-interval 10s --health-timeout 5s --health-retries 3
       postgres:
         image: postgres:13
         ports:
@@ -42,16 +41,11 @@ jobs:
           POSTGRES_USER: test_user
           POSTGRES_PASSWORD: test_password
           POSTGRES_DB: test_db
-        options: >-
-          --health-cmd "pg_isready -U test_user"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
       DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Set up Python
@@ -59,38 +53,95 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Load Environment Variables from test.env
-        run: |
-          if [ -f test.env ]; then
-            export $(cat test.env | xargs)
-          fi
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install -r requirements.txt pytest pytest-cov
 
       - name: Run Pytest
         run: pytest
 
-      - name: Upload HTML Coverage Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: html-coverage-report
-          path: htmlcov/
-
-  build-and-push:
-    runs-on: ubuntu-latest
+  tag-and-release-draft:
+    name: Create Draft Release
+    runs-on: ubuntu-latest-m
     needs: test
-    environment: production
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Create Draft Release
+        id: draft_release
+        uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save Release Tag
+        run: |
+          RELEASE_TAG="${{ steps.draft_release.outputs.tag_name }}"
+
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "Error: Release tag missing!"
+            exit 1
+          fi
+
+          echo "$RELEASE_TAG" > release_tag.txt
+
+      - name: Upload Release Data
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-tag
+          path: release_tag.txt
+
+  build-and-deploy:
+    name: Build and Deploy to Production
+    runs-on: ubuntu-latest-m
+    needs: tag-and-release-draft
 
     env:
       ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
+      FARMS: "f1"
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
+
+      - name: Download Release Tag
+        uses: actions/download-artifact@v4
+        with:
+          name: release-tag
+
+      - name: Read Release Tag
+        run: |
+          IMAGE_TAG=$(cat release_tag.txt)
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "Error: No release tag found!"
+            exit 1
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Enable BuildKit
+        run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -100,26 +151,63 @@ jobs:
           aws-region: ${{ secrets.SMP_AWS_REGION }}
 
       - name: Log in to Amazon ECR
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set Docker Image Tag
-        id: set_tag
+      - name: Build Base Image Once
         run: |
-          BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/refs\/heads\///' | tr '/' '-')
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          echo "Building base image once with tag: $IMAGE_TAG"
+          docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" -f ./Dockerfile --load .
 
-      - name: Build and Push Images to ECR
+      - name: Tag and Push Multi-Architecture Images for Each Service
         run: |
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-              repo_url="$ECR_REPO_URL/solidroam-$service-f1"
-              full_image_url_with_tag="$repo_url:$IMAGE_TAG"
+              echo "Tagging image for $service from the base image"
+              docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG"
 
-              echo "Building image for $service with tag: $IMAGE_TAG"
-              docker build -t "$full_image_url_with_tag" -f ./Dockerfile .
+              for farm in $FARMS; do
+                  repo_url="$ECR_REPO_URL/solidroam-$service-$farm"
+                  full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
-              echo "Pushing image for $service to ECR: $full_image_url_with_tag"
-              docker push "$full_image_url_with_tag"
+                  echo "Tagging image for farm $farm"
+                  docker tag "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" "$full_image_url_with_tag"
+
+                  echo "Pushing image for $service to $repo_url"
+                  docker push "$full_image_url_with_tag"
+
+                  echo "Pushed image for $service to ECR: $full_image_url_with_tag"
+              done
           done
+
+  publish-release:
+    name: Tag and Publish GitHub Release
+    runs-on: ubuntu-latest-m
+    needs: build-and-deploy
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Download Release Tag
+        uses: actions/download-artifact@v4
+        with:
+          name: release-tag
+
+      - name: Read Release Tag
+        run: echo "RELEASE_TAG=$(cat release_tag.txt)" >> $GITHUB_ENV
+
+      - name: Push Git Tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+      - name: Publish Draft Release
+        run: |
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          gh release edit "$RELEASE_TAG" --draft=false

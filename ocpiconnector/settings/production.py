@@ -1,3 +1,7 @@
+import ssl
+
+from redis.commands.graph.query_result import strtobool
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
@@ -7,11 +11,11 @@ from ocpiconnector.settings.infra_services import (
 )
 
 ENV = os.getenv("ENV", "production").lower()
-DEBUG = False
+DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
 HUBJECT_URL = "Add the hubject production base url"
 
-CSRF_TRUSTED_ORIGINS = ["https://solidroam.f1-smappee.net"]
+CSRF_TRUSTED_ORIGINS = ["https://solidroam.smappee.net"]
 ALLOWED_HOSTS = get_allowed_hosts()
 
 USE_X_FORWARDED_PORT = True
@@ -28,15 +32,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 
-
-HUBJECT_URL = "Add the hubject production base url"
-
-
-MQTT_BROKER = os.getenv("MQTT_BROKER")
-MQTT_PORT = os.getenv("MQTT_PORT", 443)
-MQTT_USERNAME = os.getenv("MQTT_USERNAME")
-MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
-MQTT_SSL_VERIFY = os.getenv("MQTT_SSL_VERIFY", True)
+HUBJECT_URL = os.getenv("HUBJECT_URL", "")
+MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtt-int-f1.smappee.net")
+MQTT_PORT = os.getenv("MQTT_PORT", 8085)
+MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
+MQTT_USE_SSL = os.getenv("MQTT_USE_SSL", False)
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
     "SMAPPEE_STATUS_UPDATE_TOPIC", "$share/session_group/session/+/statusupdates"
@@ -44,6 +45,15 @@ SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
 SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
+
+REDIS_URL = os.environ["REDIS_URL"]
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {"SSL": True, "SSL_CERT_REQS": ssl.CERT_NONE},
+    },
+}
 
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {
@@ -54,5 +64,6 @@ DATABASES = {
         "PASSWORD": db_token,
         "HOST": db_url,
         "PORT": "3306",
+        "OPTIONS": {"ssl_mode": "REQUIRED"},
     }
 }

@@ -13,7 +13,6 @@ from ocpi22.commands.serializers import (
 )
 from ocpi22.models.session import Session
 from ocpi22.ocpi.util import OCPIResponse, Ocpi, options_message
-from ocpi22.rendering import RENDERERS
 
 
 class CommandsHubViewSet(GenericViewSet):
@@ -22,7 +21,6 @@ class CommandsHubViewSet(GenericViewSet):
         Session.objects.none()
     )  # Users who can access Sessions can issue Commands also
     permission_classes = [OCPIPermission]
-    renderer_classes = RENDERERS
 
     def get_serializer_class(self):
         if not hasattr(self, "action_map"):

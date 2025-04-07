@@ -11,7 +11,8 @@ from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from django.conf import settings
-from django.utils.functional import cached_property
+from django.contrib.auth import authenticate
+from ninja.security import HttpBasicAuth
 from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
@@ -39,7 +40,7 @@ class OcpiAuthTypes(Enum):
 @ttl_cache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=2 * 60 * 60)  # 2 hours
 def find_credentials(token_ascii: str) -> Optional[Credentials]:
     try:
-        return Credentials.objects.filter(ours__iexact=token_ascii, valid=True).first()
+        return Credentials.objects.filter(ours=token_ascii, valid=True).first()
     except (binascii.Error, UnicodeDecodeError):
         pass
     return None
@@ -81,7 +82,7 @@ def check_auth_token(request, token: str) -> bool:
                 token_a=token_ascii, valid=True
             )
             if credentials_matches.exists():
-                if not request.registering_credentials:
+                if not getattr(request, "registering_credentials", None):
                     raise exceptions.NotAuthenticated(  # HTTP 401
                         f'TOKEN_A can only be used for the Credentials and Versions modules, not for path "{request.path}".'
                     )
@@ -99,6 +100,8 @@ def check_auth_token(request, token: str) -> bool:
                 )
 
         sender_party = get_sender_party(request.headers)
+        if not sender_party and credentials.roles.count() == 1:
+            sender_party = credentials.roles.first().get_party()
 
         if credentials.is_hub:
             # Implicit trust for hubs, since there is no hub authentication in OCPI 2.x
@@ -114,7 +117,9 @@ def check_auth_token(request, token: str) -> bool:
             request.ocpi_party = get_credentialsrole(
                 request.credentials, party=sender_party
             )
-            if not request.ocpi_party and not request.registering_credentials:
+            if not getattr(request, "ocpi_party", None) and not getattr(
+                request, "registering_credentials", None
+            ):
                 request.credentials = None
                 raise NotAuthenticated(
                     f"Sender party {sender_party} is not allowed for these credentials"
@@ -136,7 +141,7 @@ def get_credentialsrole(
     credentials: Optional[Credentials] = None,
     party: Party = None,
     create=False,
-    role=None,
+    role: OcpiRolesEnum = None,
 ) -> Optional[CredentialsRole]:
     """
     Find the CredentialsRole for the given party and credentials
@@ -207,10 +212,6 @@ class OCPIPermission(DjangoModelPermissions):
             return authorization[6:]
         return ""
 
-    @cached_property
-    def public_views(self):
-        return {reverse(i) for i in settings.PUBLIC_VIEWS}
-
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
         # Remove the "Token" keyword if present to get just the token value
@@ -218,7 +219,8 @@ class OCPIPermission(DjangoModelPermissions):
 
         # Check for token authentication
         if check_auth_token(request, token) and (
-            request.registering_credentials or request.ocpi_party
+            getattr(request, "registering_credentials", None)
+            or getattr(request, "ocpi_party", None)
         ):
             return True
 
@@ -228,9 +230,18 @@ class OCPIPermission(DjangoModelPermissions):
         ):
             return True
 
-        # Allow access to public views
-        if request.path in self.public_views:
-            return True
-
         logger.warning(f"No valid authentication for {request.path} (token: {token})")
         raise exceptions.NotAuthenticated
+
+
+class NinjaBasicAuth(HttpBasicAuth):
+    def authenticate(self, request, username, password):
+        try:
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                if user.is_authenticated:
+                    request.user = user
+                    return user
+            return None
+        except exceptions.AuthenticationFailed:
+            return None

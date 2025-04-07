@@ -19,11 +19,11 @@ def make_headers(
 ) -> dict:
     """
     >>> make_headers('123456', Party('TO', 'TOO'), Party('FR', 'FRM'))
-    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO'}
+    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'accept': 'application/json', 'platform-revision': 'unknown', 'X-Request-ID': '...', 'X-Correlation-ID': '...', 'OCPI-to-country-code': 'TO', 'OCPI-to-party-id': 'TOO', 'OCPI-from-country-code': 'FR', 'OCPI-from-party-id': 'FRM'}
     >>> make_headers('123456', extra=dict(HTTP_OCPI_TO_COUNTRY_CODE='FI', HTTP_OCPI_TO_PARTY_ID='EON'))
-    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'ocpi-to-country-code': 'FI', 'ocpi-to-party-id': 'EON'}
+    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'accept': 'application/json', 'platform-revision': 'unknown', 'X-Request-ID': '...', 'X-Correlation-ID': '...', 'ocpi-to-country-code': 'FI', 'ocpi-to-party-id': 'EON'}
     >>> make_headers('123456', extra=dict(HTTP_OCPI_TO_COUNTRY_CODE='FI', HTTP_OCPI_TO_PARTY_ID='001'))
-    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'ocpi-to-country-code': 'FI', 'ocpi-to-party-id': '001'}
+    {'Authorization': 'Token 123456', 'content-type': 'application/json', 'accept': 'application/json', 'platform-revision': 'unknown', 'X-Request-ID': '...', 'X-Correlation-ID': '...', 'ocpi-to-country-code': 'FI', 'ocpi-to-party-id': '001'}
 
     @param token_base64: OCPI Credentials Token in base64
     @param to: Recipient party

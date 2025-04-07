@@ -1,3 +1,6 @@
+import ssl
+from distutils.util import strtobool
+
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
 
@@ -7,7 +10,7 @@ from ocpiconnector.settings.infra_services import (
 )
 
 ENV = os.getenv("ENV", "staging").lower()
-DEBUG = os.getenv("DEBUG", False)
+DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
 ALLOWED_HOSTS = get_allowed_hosts()
 USE_X_FORWARDED_PORT = True
@@ -24,17 +27,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 
-HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
+HUBJECT_URL = os.getenv("HUBJECT_URL", "https://service-qa.hubject.com/api/oicp/")
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtttest.smappee.net")
 MQTT_PORT = os.getenv("MQTT_PORT", 443)
 MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
-MQTT_SSL_VERIFY = os.getenv("MQTT_SSL_VERIFY", True)
-
-FIXIE_URL = os.getenv("FIXIE_URL", "")
-os.environ["http_proxy"] = FIXIE_URL
-os.environ["https_proxy"] = FIXIE_URL
-os.environ["no_proxy"] = "localhost,127.0.0.1"
+MQTT_USE_SSL = os.getenv("MQTT_USE_SSL", False)
 
 CSRF_TRUSTED_ORIGINS = ["https://solidroam.f3-smappee.net"]
 
@@ -44,6 +42,15 @@ SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
 SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "servicelocation/roaming/meter_values"
 )
+
+REDIS_URL = os.environ["REDIS_URL"]
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "OPTIONS": {"SSL": True, "SSL_CERT_REQS": ssl.CERT_NONE},
+    },
+}
 
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {

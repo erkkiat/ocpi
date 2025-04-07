@@ -1,12 +1,12 @@
 import base64
 from unittest.mock import patch
 
-import pytest
+import responses
 import time_machine
 from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
 
-from ocpi22.credentials.versions import get_versions_dict, get_endpoints_dict
+from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.api import CredentialsViewSet
 from ocpi22.ocpi.headers import make_headers
@@ -18,12 +18,12 @@ from ocpi22.ocpi.partners import (
 from ocpi22.ocpi.serializers import CredentialsSerializer
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.test_data import CredentialsData
-from ocpi22.test_tariff_location_and_evse import BetterTestCase, faketime
+from ocpi22.test_tariff_location_and_evse import faketime
 from ocpiconnector.party import Party
 from ocpiconnector.testutil import (
     OCPIAPIRequestFactory,
     simulate_surrounding_world,
-    FakeResponse,
+    BetterTestCase,
 )
 from util import reverse
 
@@ -61,25 +61,27 @@ class CredentialsTests(BetterTestCase):
         setattr(request, "data", data)
         return request
 
-    @pytest.mark.skip("Fix me before production")
     @simulate_surrounding_world
+    @responses.activate
     def test_credentials_post(self, simulation):
         token_a = "123"
         token_base64 = base64.b64encode(str(token_a).encode("ascii")).decode("ascii")
 
-        simulation.ocpi_requests.get.side_effect = [
-            # Response to the first GET ( /versions )
-            FakeResponse(
-                data=dict(data=get_versions_dict()), status_code=status.HTTP_200_OK
-            ),
-            # Response to the second GET ( /versions/2.2.1/endpoints )
-            FakeResponse(
-                data=dict(data=get_endpoints_dict(version="2.2.1")),
-                status_code=status.HTTP_200_OK,
-            ),
-        ]
+        responses.add(
+            responses.GET,
+            "https://localhost/versions/",
+            json={"data": get_versions_dict()},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "http://testserver.test/ocpi/2.2.1/",
+            json={"data": CredentialsData.ocpi_endpoints_response_221},
+            status=201,
+        )
 
         request = self.make_request(CredentialsData.example, token_base64=token_base64)
+
         random_token = "12345"
 
         with (
@@ -87,14 +89,12 @@ class CredentialsTests(BetterTestCase):
             patch("ocpi22.ocpi.api.generate_random_token", return_value=random_token),
         ):
             result = CredentialsViewSet().post(request)
-
         credentials = Credentials.objects.get(pk=2)
         assert not credentials.token_a, "Token A should have been cleared"
         assert credentials.roles.count() == 2, "Credentials should have two roles"
         first_role: CredentialsRole = credentials.roles.first()
         assert first_role.country_code == "NL", "Expecting different country code"
         assert first_role.party_id == "EXA", "Expecting different party ID"
-
         serializer = CredentialsSerializer(data=result.data.get("data"))
         assert (
             serializer.is_valid()

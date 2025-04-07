@@ -2,9 +2,12 @@ import functools
 import json
 import uuid
 from collections import OrderedDict
+from enum import Enum
 from urllib.parse import urljoin
 
 from logging import getLogger
+
+from django.contrib.auth.models import Permission
 from django.utils.datetime_safe import datetime
 from typing import Union
 
@@ -15,12 +18,14 @@ from django.db.models import QuerySet
 from django.utils.module_loading import import_string
 from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 from ocpi22.choices import OcpiRolesEnum
 from rest_framework.response import Response
 
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.routing import find_route
+from ocpi22.tasks import get_request_session
 from ocpiconnector.exceptions import OCPIProtocolError
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
@@ -79,7 +84,7 @@ class OcpiModule:
         if self.is_ours():
             recursive_update_last_updated(self)
 
-    def atomic_post_save(self, *_args, **_kwargs) -> None:
+    def post_process_after_update_or_create(self, *_args, **_kwargs) -> None:
         assert (
             hasattr(self, "ocpi_serializer_class")
             and hasattr(self, "ocpi_module_name")
@@ -98,7 +103,7 @@ class OcpiModule:
                 # Send update only once
                 setattr(self, "update_sent", True)
 
-    def send_updates(self, data=None, method="put", path_components=None) -> None:
+    def send_updates(self, data=None, method="put", path_components=[]) -> None:
         """
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
@@ -111,7 +116,7 @@ class OcpiModule:
                 self.uid,
             ]
 
-            if settings.SEND_UPDATES and settings.PREMIUM:
+            if settings.SEND_UPDATES:
                 # Do we possess the role who controls the master data for this type of object or are we acting as HUB
                 if (
                     self.ocpi_object_owner not in ocpi_identities.roles
@@ -136,7 +141,11 @@ class OcpiModule:
                 setattr(self, "updates_sent", True)
 
     def send_all_updates(
-        self, data=None, method="put", path_components=None, ocpi_module_name=None
+        self,
+        data=None,
+        method="put",
+        path_components=[],
+        ocpi_module_name=None,
     ) -> bool:
         if not settings.SEND_UPDATES:
             return True
@@ -167,6 +176,7 @@ class OcpiModule:
                         to=Party(country_code, party_id),
                         sender=Party(our_country_code, our_party_id),
                         method=method,
+                        credentials=credentials,
                     )
                 except Exception:
                     logger.exception(f"Unable to send update to {url}")
@@ -178,7 +188,14 @@ class OcpiModule:
 
     @classmethod
     def send_background_update(
-        cls, data: dict, url, token_base64, to: Party, sender: Party, method="put"
+        cls,
+        data: dict,
+        url,
+        token_base64,
+        to: Party,
+        sender: Party,
+        method="put",
+        credentials=None,
     ):
         if not settings.SEND_UPDATES:
             return
@@ -195,12 +212,13 @@ class OcpiModule:
                 sender.country_code,
                 sender.party_id,
                 method,
+                credentials.id,
             )
             send_ocpi_request.apply_async(
                 args, retry=False, title=f"{cls.ocpi_module_name.value} update"
             )
         else:
-            logger.warning(f"Skipping send for {cls}")
+            logger.error(f"Skipping send for {cls} due to missing parameters")
 
     def send_hub_updates(self) -> None:
         if ocpi_platform.is_hub and settings.SEND_UPDATES:
@@ -237,14 +255,8 @@ class OcpiModule:
         return serializer.data
 
     def route_single_update_message(
-        self, method, to, data=None, path_components=None
+        self, method, to, data=None, path_components=[], credentials=None
     ) -> None:
-        path_components = path_components or [
-            self.ocpi_master.country_code,
-            self.ocpi_master.party_id,
-            self.uid,
-        ]
-
         sender = Party(*(self.get_owner_identity().split("*")))
         route = find_route(
             to, self.ocpi_module_name, add_path="/".join(path_components)
@@ -252,13 +264,20 @@ class OcpiModule:
         if route:
             data = data or self.serialize(version=route.version.pure_number)
             self.send_background_update(
-                data, route.url, route.token_base64, to=to, sender=sender, method=method
+                data,
+                route.url,
+                route.token_base64,
+                to=to,
+                sender=sender,
+                method=method,
+                credentials=credentials,
             )
         else:
             logger.error(f"Unable to find route to {str(to)}")
 
     def send_update_to_interested_parties(self, *args, method="PUT", **kwargs) -> None:
-        if hasattr(self, "credentials"):
+        credentials = getattr(self, "credentials", None)
+        if credentials:
             if not hasattr(self, "billed_to"):
                 logger.error(
                     f"Object #{self.uid} - {self} has no billed_to, cannot send updates to interested parties",
@@ -266,7 +285,9 @@ class OcpiModule:
                 return
             # self.send_subscriber_updates(*args, **kwargs)  # This was used by a Dutch startup, no longer a customer
             to = self.billed_to.get_party()
-            return self.route_single_update_message(to=to, method=method, **kwargs)
+            return self.route_single_update_message(
+                to=to, method=method, credentials=credentials, **kwargs
+            )
         else:
             logger.error(
                 f"Object #{self.uid} - {self} has no credentials, cannot send updates to interested parties"
@@ -277,13 +298,6 @@ class OcpiModule:
     def _get_subscriber_parties(self, partylist=None) -> list:
         partylist = partylist or self.subscribers or []
         return [Party(*(p.split("*"))) for p in partylist if p]
-
-    def send_subscriber_updates(self, *args, **kwargs) -> None:
-        """
-        Some business models rely on receiving all objects of type X, for example for statistics purposes
-        """
-        for party in self._get_subscriber_parties():
-            self.route_single_update_message(to=party, **kwargs)
 
 
 def ocpi_post(
@@ -390,10 +404,43 @@ class Ocpi:
         ("TESLA_S", 'Tesla "Model-S"-type'),
     )
 
+    class Standard(Enum):
+        IEC_62196_T2 = "IEC_62196_T2"
+        IEC_62196_T2_COMBO = "IEC_62196_T2_COMBO"
+        CHADEMO = "CHADEMO"
+        IEC_62196_T1 = "IEC_62196_T1"
+        IEC_62196_T1_COMBO = "IEC_62196_T1_COMBO"
+        IEC_62196_T3A = "IEC_62196_T3A"
+        IEC_62196_T3C = "IEC_62196_T3C"
+        DOMESTIC_A = "DOMESTIC_A"
+        DOMESTIC_B = "DOMESTIC_B"
+        DOMESTIC_C = "DOMESTIC_C"
+        DOMESTIC_D = "DOMESTIC_D"
+        DOMESTIC_E = "DOMESTIC_E"
+        DOMESTIC_F = "DOMESTIC_F"
+        DOMESTIC_G = "DOMESTIC_G"
+        DOMESTIC_H = "DOMESTIC_H"
+        DOMESTIC_I = "DOMESTIC_I"
+        DOMESTIC_J = "DOMESTIC_J"
+        DOMESTIC_K = "DOMESTIC_K"
+        DOMESTIC_L = "DOMESTIC_L"
+        IEC_60309_2_single_16 = "IEC_60309_2_single_16"
+        IEC_60309_2_three_16 = "IEC_60309_2_three_16"
+        IEC_60309_2_three_32 = "IEC_60309_2_three_32"
+        IEC_60309_2_three_64 = "IEC_60309_2_three_64"
+        PANTOGRAPH_BOTTOM_UP = "PANTOGRAPH_BOTTOM_UP"
+        PANTOGRAPH_TOP_DOWN = "PANTOGRAPH_TOP_DOWN"
+        TESLA_R = "TESLA_R"
+        TESLA_S = "TESLA_S"
+
     FORMAT_CHOICES = (
         ("SOCKET", "Socket"),
         ("CABLE", "Cable"),
     )
+
+    class Format(Enum):
+        SOCKET = "SOCKET"
+        CABLE = "CABLE"
 
     POWERTYPES = dict(CHADEMO="DC", IEC_62196_T2_COMBO="DC", IEC_62196_T2="AC_3_PHASE")
 
@@ -405,12 +452,20 @@ class Ocpi:
         ("DC", "DC", 3),
     )
 
-    POWERTYPE_CHOICES_221 = (
+    POWERTYPE_CHOICES_221 = [
         (x[0], x[1]) for x in _POWERTYPE_DATA
-    )  # For model: (('AC_1_PHASE', 'AC 1-phase'), ... )
+    ]  # For model choices: (('AC_1_PHASE', 'AC 1-phase'), ... )
+
     POWERTYPE_PHASES = dict(
         (x[0], x[2]) for x in _POWERTYPE_DATA
     )  # For power calculation: (('AC_1_PHASE', 1), ... )
+
+    class PowerType(Enum):
+        AC_1_PHASE = "AC_1_PHASE"
+        AC_2_PHASE = "AC_2_PHASE"
+        AC_3_PHASE = "AC_3_PHASE"
+        AC_2_PHASE_SPLIT = "AC_2_PHASE_SPLIT"
+        DC = "DC"
 
 
 class OCPIResponse(Response):
@@ -505,7 +560,7 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
         next_url = self.get_next_link()
         if next_url:
-            headers["Link"] = '<{next_url}; rel="next">'.format(
+            headers["Link"] = '<{next_url}>; rel="next"'.format(
                 next_url=self.get_next_link()
             )
 
@@ -523,8 +578,6 @@ class OCPIPaginationAndHeaders(LimitOffsetPagination):
 
     def paginate_queryset(self, queryset, request, view=None):
         queryset = apply_ocpi22_filters(request, queryset)
-        if not queryset or not queryset.count():
-            return None
         return super().paginate_queryset(queryset, request, view)
 
 
@@ -539,13 +592,13 @@ def apply_ocpi22_filters(request, queryset) -> QuerySet:
     if date_from:
         import dateutil.parser
 
-        date_from: datetime = dateutil.parser.parse(date_from, ignoretz=True)
+        date_from: datetime = dateutil.parser.parse(date_from).replace(tzinfo=pytz.UTC)
         queryset = queryset.filter(last_updated__gte=date_from)
     date_to: str = request.GET.get("date_to")
     if date_to:
         import dateutil.parser
 
-        date_to: datetime = dateutil.parser.parse(date_to, ignoretz=True)
+        date_to: datetime = dateutil.parser.parse(date_to).replace(tzinfo=pytz.UTC)
         queryset = queryset.filter(last_updated__lt=date_to)
 
     return queryset
@@ -585,8 +638,11 @@ def generate_cdr_uid():
     return generate_reference("C*", OcpiRolesEnum.CPO)
 
 
-def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwargs):
-    function = getattr(requests, method)
+def ocpi_credentials_request(
+    url, token_base64, method, *args, timeout=20, credentials_id=None, **kwargs
+):
+    request_session = get_request_session(credentials_id)
+    function = getattr(request_session, method)
     if not function:
         raise NotImplementedError(
             f"Method {method} is not supported for ocpi_credentials_request"
@@ -605,12 +661,16 @@ def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwa
     return response
 
 
-def ocpi_credentials_get(*args, **kwargs):
-    return ocpi_credentials_request(*args, method="get", **kwargs)
+def ocpi_credentials_get(*args, credentials_id=None, **kwargs):
+    return ocpi_credentials_request(
+        *args, credentials_id=credentials_id, method="get", **kwargs
+    )
 
 
-def ocpi_credentials_post(*args, **kwargs):
-    return ocpi_credentials_request(*args, method="post", **kwargs)
+def ocpi_credentials_post(*args, credentials_id=None, **kwargs):
+    return ocpi_credentials_request(
+        *args, credentials_id=credentials_id, method="post", **kwargs
+    )
 
 
 def recursive_update_last_updated(obj):
@@ -632,3 +692,36 @@ def recursive_update_last_updated(obj):
                 (x for x in obj.connectors.all()),
             )
         )
+
+
+class IsModificationAllowed(BasePermission):
+    def has_permission(self, request, view):
+        if (
+            request.method in SAFE_METHODS
+            or request.method == "POST"
+            or request.method == "PUT"
+        ):
+            return True
+        elif request.method == "DELETE" and request.user.is_superuser:
+            return True
+        return False
+
+
+class HasSolidTariffDeletePermission(BasePermission):
+    def has_permission(self, request, view):
+        if (
+            request.method in SAFE_METHODS
+            or request.method == "POST"
+            or request.method == "PUT"
+        ):
+            return True
+        if request.method == "DELETE" and request.user.is_superuser:
+            delete_permission = Permission.objects.filter(
+                codename="delete_solidtariff"
+            ).first()
+            if (
+                delete_permission
+                and delete_permission in request.user.user_permissions.all()
+            ):
+                return True
+        return False

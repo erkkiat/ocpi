@@ -19,6 +19,8 @@
     "postal_code": "-"
   },
   "cdr_token": {
+    "country_code": "FI",
+    "party_id": "MSP",
     "contract_id": "INTERNAL",
     "type": "OTHER",
     "uid": "FI*001*T*ADMIN*TOKEN"
@@ -53,6 +55,14 @@
       "type": "REGULAR"
     }
   ],
+  "charging_periods": [{
+    "start_date_time": "2022-01-22T09:28:30Z",
+    "dimensions": [{
+      "type": "TIME",
+      "volume": 1.973
+    }],
+    "tariff_id": "TTYPE2"
+  }],
   "total_cost": {
     "excl_vat": 0.22,
     "incl_vat": 0.27

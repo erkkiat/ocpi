@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import factory
 import pytest
 import pytz
 
@@ -14,6 +15,16 @@ from integrations.hubject.schemas import (
     ValueAddedService,
     PowerType,
     PaymentOption,
+    PricingProductDataRecord,
+    AdditionalReference,
+    AdditionalReferenceChoice,
+    ReferenceUnit,
+    HubjectPriceComponent,
+    PricingProductData,
+    OperatorID,
+    ProviderIDAsterisk,
+    CurrencyID,
+    ProductID,
 )
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -27,6 +38,9 @@ from ocpi22.tests.factories import (
     GeoCoordinatesFactory,
     ChargingFacilityFactory,
     TariffFactory,
+    OCPIImageFactory,
+    SolidTariffFactory,
+    ERoamingPushPricingProductDataFactory,
 )
 
 
@@ -35,7 +49,7 @@ def smappee_business_details():
     return BusinessDetailsFactory(
         name="Smappee Pvt Ltd",
         website="https://www.helsinki-supercharger.com",
-        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+        logo=factory.SubFactory(OCPIImageFactory),
     )
 
 
@@ -54,7 +68,7 @@ def helsinki_operator_details():
     return BusinessDetailsFactory(
         name="Helsinki Supercharger Operator",
         website="https://www.helsinki-supercharger.com",
-        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+        logo=factory.SubFactory(OCPIImageFactory),
     )
 
 
@@ -63,7 +77,7 @@ def helsinki_sub_operator_details(helsinki_ocpi_master):
     return BusinessDetailsFactory(
         name="Helsinki Supercharger Sub Operator",
         website="https://www.helsinki-supercharger.com",
-        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+        logo=factory.SubFactory(OCPIImageFactory),
     )
 
 
@@ -72,7 +86,7 @@ def helsinki_owner_details():
     return BusinessDetailsFactory(
         name="Smappee Pvt Ltd.",
         website="https://www.helsinki-supercharger.com",
-        logo="https://www.helsinki-supercharger.com/static/test_logo.png",
+        logo=factory.SubFactory(OCPIImageFactory),
     )
 
 
@@ -450,3 +464,161 @@ def hubject_unsuccessful_response():
             }
         ],
     }
+
+
+@pytest.fixture
+def operator_fi_cpo():
+    return CredentialsRoleFactory(
+        country_code="FI",
+        party_id="CPO",
+        business_details=BusinessDetailsFactory(name="Smappee Pvt Ltd"),
+    )
+
+
+@pytest.fixture
+def msp_de_ice():
+    return CredentialsRoleFactory(country_code="DE", party_id="ICE")
+
+
+@pytest.fixture
+def smp1_solid_tariff(operator_fi_cpo, msp_de_ice):
+    return SolidTariffFactory(
+        external_id="SMP1", operator=operator_fi_cpo, msp=msp_de_ice
+    )
+
+
+@pytest.fixture
+def smp2_solid_tariff(operator_fi_cpo, msp_de_ice):
+    return SolidTariffFactory(
+        external_id="SMP2", operator=operator_fi_cpo, msp=msp_de_ice
+    )
+
+
+@pytest.fixture
+def pricing_products_full_load_payload():
+    return ERoamingPushPricingProductDataFactory()
+
+
+@pytest.fixture
+def connector_max_electric_power_10kw():
+    return ConnectorFactory(max_electric_power=10000)
+
+
+@pytest.fixture
+def connector_max_electric_power_15kw():
+    return ConnectorFactory(max_electric_power=15000)
+
+
+@pytest.fixture
+def connector_max_electric_power_5kw():
+    return ConnectorFactory(max_electric_power=5000)
+
+
+@pytest.fixture
+def connector_max_electric_power_none():
+    return ConnectorFactory(max_electric_power=None)
+
+
+@pytest.fixture
+def smp1_solid_tariff_with_all_records():
+    return SolidTariffFactory(external_id="SMP1")
+
+
+@pytest.fixture
+def smp1_solid_tariff_with_none_prices():
+    return SolidTariffFactory(
+        external_id="SMP1", price_per_kwh=None, price_per_min=None
+    )
+
+
+@pytest.fixture
+def smp1_solid_tariff_without_msp():
+    return SolidTariffFactory(external_id="SMP1", msp=None)
+
+
+@pytest.fixture
+def pricing_product_data_record_successful_result():
+    return [
+        PricingProductDataRecord(
+            AdditionalReferences=[
+                AdditionalReference(
+                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                    AdditionalReferenceUnit=ReferenceUnit(
+                        root=HubjectPriceComponent.HOUR.value
+                    ),
+                    PricePerAdditionalReferenceUnit=0.3,
+                ),
+            ],
+            IsValid24hours=True,
+            MaximumProductChargingPower=0,
+            PricePerReferenceUnit=0.2,
+            ProductAvailabilityTimes=[],
+            ProductID="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE",
+            ProductPriceCurrency="EUR",
+            ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+        ),
+        PricingProductDataRecord(
+            AdditionalReferences=[
+                AdditionalReference(
+                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                    AdditionalReferenceUnit=ReferenceUnit(
+                        root=HubjectPriceComponent.HOUR.value
+                    ),
+                    PricePerAdditionalReferenceUnit=0.3,
+                ),
+            ],
+            IsValid24hours=True,
+            MaximumProductChargingPower=0,
+            PricePerReferenceUnit=0.3,
+            ProductAvailabilityTimes=[],
+            ProductID="FI*CPO*SMP1*MINUTE*DE*ICE",
+            ProductPriceCurrency="EUR",
+            ReferenceUnit=ReferenceUnit(root="MINUTE"),
+        ),
+    ]
+
+
+@pytest.fixture
+def pricing_product_data_successful_result():
+    return PricingProductData(
+        OperatorID=OperatorID(root="FI*CPO"),
+        OperatorName="Smappee eRoam CPO",
+        ProviderID=ProviderIDAsterisk(root="DE*ICE"),
+        PricingDefaultPrice=0.3,
+        PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
+        PricingDefaultReferenceUnit=ReferenceUnit(root="HOUR"),
+        PricingProductDataRecords=[
+            PricingProductDataRecord(
+                ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                ProductPriceCurrency=CurrencyID(root="EUR"),
+                PricePerReferenceUnit=0.2,
+                MaximumProductChargingPower=0.0,
+                IsValid24hours=True,
+                ProductAvailabilityTimes=[],
+                AdditionalReferences=[
+                    AdditionalReference(
+                        AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                        AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                        PricePerAdditionalReferenceUnit=0.3,
+                    )
+                ],
+            ),
+            PricingProductDataRecord(
+                ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
+                ReferenceUnit=ReferenceUnit(root="MINUTE"),
+                ProductPriceCurrency=CurrencyID(root="EUR"),
+                PricePerReferenceUnit=0.3,
+                MaximumProductChargingPower=0.0,
+                IsValid24hours=True,
+                ProductAvailabilityTimes=[],
+                AdditionalReferences=[
+                    AdditionalReference(
+                        AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                        AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                        PricePerAdditionalReferenceUnit=0.3,
+                    )
+                ],
+            ),
+        ],
+    )

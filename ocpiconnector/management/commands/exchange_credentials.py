@@ -1,11 +1,12 @@
 import base64
 from json import JSONDecodeError
+from logging import getLogger
 
 import cachetools
 from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 import os
 
 from django.conf import settings
@@ -13,16 +14,19 @@ from django.core import exceptions
 from django.core.management.base import BaseCommand
 
 from ocpiconnector.management.commands.serializers import VersionsSerializer
-from util import reverse
 
 from ocpi22.models.credentials import store_endpoints_for_party, store_tokens_for_party
 from ocpi22.ocpi.serializers import CredentialsSerializer
 from ocpi22.ocpi.util import ocpi_credentials_get, ocpi_credentials_post
 from ocpiconnector.exceptions import OCPIProtocolError, NoCommonVersion
-from ocpi22.util import generate_random_token
+from ocpi22.util import generate_random_token, build_absolute_uri
 from ocpiconnector.ocpi_identities import ROLE_OPTIONS
 
 from colorama import Style
+
+from util import reverse
+
+logger = getLogger(__name__)
 
 
 @cachetools.cached(cache=cachetools.Cache(maxsize=len(ROLE_OPTIONS)))
@@ -30,9 +34,10 @@ def get_our_roles(source: dict = None) -> list:
     """
     Get the OCPI roles list of dicts for sending during Credentials exchange
 
+    >>> from util import reverse, HashableDict
     >>> get_our_roles(source=HashableDict(CPO='FI*EON', HUB='FI*HUB', \
-    BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://example.com'))
-    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'HUB'}]
+    BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://localhost'))
+    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://localhost'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://localhost'}, 'party_id': 'HUB'}]
 
     @param source: For testing purposes, you can set the source for role settings
     @return: a list of roles formatted for Credentials registration
@@ -47,19 +52,19 @@ def get_our_roles(source: dict = None) -> list:
         country_code, party_id = source.get(role, "*").split("*")
         if country_code and party_id:
             roles.append(
-                dict(
-                    role=role,
-                    country_code=country_code,
-                    business_details=dict(name=business_name, website=website),
-                    party_id=party_id,
-                )
+                {
+                    "role": role,
+                    "country_code": country_code,
+                    "business_details": {"name": business_name, "website": website},
+                    "party_id": party_id,
+                }
             )
     return roles
     # Todo: Support multi-country CPOs / eMSPs
 
 
-def select_version(url, token) -> str:
-    versions_response = ocpi_credentials_get(url, token)
+def select_version(url, token, credentials_id=None) -> str:
+    versions_response = ocpi_credentials_get(url, token, credentials_id=credentials_id)
     if versions_response.status_code == 200:
         data = versions_response.json()
         serializer = VersionsSerializer(data=data)
@@ -82,8 +87,8 @@ def select_version(url, token) -> str:
     return version_url
 
 
-def get_endpoints(url, token):
-    endpoints_response = ocpi_credentials_get(url, token)
+def get_endpoints(url, token, credentials_id=None) -> dict:
+    endpoints_response = ocpi_credentials_get(url, token, credentials_id=credentials_id)
     data = endpoints_response.json()
     endpoints = data.get("data", data)
     endpoints_str = ", ".join(set([e["identifier"] for e in endpoints["endpoints"]]))
@@ -156,7 +161,7 @@ class Command(BaseCommand):
 
             data_to_send = dict(
                 token=our_token,
-                url=f'http://{settings.HOSTNAME}{reverse("base-versions")}',
+                url=build_absolute_uri(reverse("base-versions")),
                 roles=roles,
             )
             url = find_endpoint_url(
@@ -170,7 +175,11 @@ class Command(BaseCommand):
                 )
 
             credentials_response = ocpi_credentials_post(
-                url, token_a_base64, json=data_to_send, timeout=15
+                url,
+                token_a_base64,
+                json=data_to_send,
+                timeout=15,
+                credentials_id=credentials.id,
             )
             if credentials_response.status_code not in (
                 status.HTTP_200_OK,

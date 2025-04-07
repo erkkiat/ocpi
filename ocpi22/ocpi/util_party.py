@@ -29,10 +29,10 @@ def get_sender_party(
     headers = dict_keys_to_lower_and_filter(headers, "ocpi")
     country_code = headers.get(
         country_code_key.lower(),
-        headers.get(_secondary_header_name(country_code_key), ""),
+        headers.get(secondary_header_name(country_code_key), ""),
     ).upper()
     party_id = headers.get(
-        party_id_key.lower(), headers.get(_secondary_header_name(party_id_key), "")
+        party_id_key.lower(), headers.get(secondary_header_name(party_id_key), "")
     ).upper()
     return Party(country_code, party_id)
 
@@ -62,11 +62,11 @@ def dict_keys_to_lower_and_filter(d: dict, filter_word: str) -> Optional[dict]:
 
 
 @lru_cache(maxsize=None)
-def _secondary_header_name(header_name: str) -> str:
+def secondary_header_name(header_name: str) -> str:
     """
-    >>> _secondary_header_name('HTTP_OCPI_FROM_COUNTRY_CODE')
+    >>> secondary_header_name('HTTP_OCPI_FROM_COUNTRY_CODE')
     'ocpi-from-country-code'
-    >>> _secondary_header_name('http_ocpi_to_party_id')
+    >>> secondary_header_name('http_ocpi_to_party_id')
     'ocpi-to-party-id'
     """
     return header_name.replace("_", "-").lower().replace("http-", "")

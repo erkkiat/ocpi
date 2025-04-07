@@ -14,7 +14,9 @@ class BusinessDetails(models.Model, ModelUtilMixin):
 
     name = models.CharField(max_length=100)
     website = models.URLField(blank=True, default="")
-    logo = models.URLField(blank=True, default="")
+    logo = models.ForeignKey(
+        "OCPIImage", blank=True, null=True, on_delete=models.CASCADE
+    )
 
     def __str__(self):
         return self.name

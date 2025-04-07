@@ -11,7 +11,6 @@ from rest_framework_csv.renderers import CSVRenderer
 from ocpi22.models.cdr import Cdr
 from ocpi22.ocpi.serializers import CdrSerializer
 from ocpi22.util import StandardResultsSetPagination
-from premium import requires_premium
 from settlement.serializers import CsvCdrSerializer
 
 
@@ -30,7 +29,7 @@ def get_date_range(params: dict) -> tuple[date, date]:
     return calculate_first_and_last_day(month, year)
 
 
-class InvoiceReportViews(viewsets.GenericViewSet):
+class CdrReportViews(viewsets.GenericViewSet):
     # Todo: Limit access based on privileges set by admin
 
     model = Cdr
@@ -92,7 +91,6 @@ class InvoiceReportViews(viewsets.GenericViewSet):
         name="Charging session list",
         url_path="list",
     )
-    @requires_premium
     def session_list(self, request) -> Response:
         """
         This is the full list of charging sessions filtered with the query parameters below.

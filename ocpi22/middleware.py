@@ -1,11 +1,8 @@
 import json
-from datetime import datetime
 
 import redis
-from django.conf import settings
-from django.shortcuts import render
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from json import JSONDecodeError
 from pprint import pprint
 
@@ -17,8 +14,6 @@ from ocpi22.ocpi.util import format_ocpi_response
 from ocpi22.ocpi.util_party import get_sender_party, get_to_party
 from ocpi22.routing import route_ocpi_request
 from ocpi22.util import is_our_identifier
-
-# For profiling
 
 
 class OCPIHubMiddleware:
@@ -97,22 +92,6 @@ class DebugMiddleware:
         return response
 
 
-class UserActivityMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        if request.user.is_authenticated:
-            logging.log_user_activity(request.user.username)
-        else:
-            party = get_sender_party(request.META)
-            if party:
-                logging.log_ocpi_activity(str(party))
-
-        response = self.get_response(request)
-        return response
-
-
 class ErrorLoggingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -121,7 +100,10 @@ class ErrorLoggingMiddleware:
         try:
             response = self.get_response(request)
             if response.status_code >= 405:
-                party = get_sender_party(request.META)
+                try:
+                    party = get_sender_party(request.META)
+                except ValueError:
+                    party = None
                 if party:
                     logging.error(
                         f"Returning status code {response.status_code} for party {str(party)}."
@@ -143,22 +125,6 @@ class ErrorLoggingMiddleware:
             raise
 
 
-class EnabledUntilMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        now = datetime.now()
-        if now > settings.EXPIRES_ON:
-            logging.error(
-                f"Someone is trying to access an expired instance, expired since {settings.EXPIRES_ON}",
-                request,
-            )
-            return render(request, "expired.html", {"expires_on": settings.EXPIRES_ON})
-        response = self.get_response(request)
-        return response
-
-
 class OCPI221HeadersMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -166,9 +132,14 @@ class OCPI221HeadersMiddleware:
     def __call__(self, request):
         response: HttpResponse = self.get_response(request)
 
-        response.headers["X-Request-ID"] = request.headers.get("X-Request-ID", "")
-        response.headers["X-Correlation-ID"] = request.headers.get(
-            "X-Correlation-ID", ""
-        )
+        for request_key, response_key in (
+            ("X-Request-ID", "X-Request-ID"),
+            ("X-Correlation-ID", "X-Correlation-ID"),
+            ("OCPI-To-Party-Id", "OCPI-From-Party-Id"),
+            ("OCPI-To-Country-Code", "OCPI-From-Country-Code"),
+            ("OCPI-From-Party-Id", "OCPI-To-Party-Id"),
+            ("OCPI-From-Country-Code", "OCPI-To-Country-Code"),
+        ):
+            response.headers[response_key] = request.headers.get(request_key, "")
 
         return response
