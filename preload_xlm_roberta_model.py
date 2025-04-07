@@ -1,9 +1,8 @@
 import os
-from logging import getLogger, basicConfig, INFO
+from logging import getLogger
 
 from transformers import XLMRobertaTokenizer
 
-basicConfig(level=INFO)
 logger = getLogger(__name__)
 
 MODEL_NAME = os.getenv("XLM-MODEL", "xlm-roberta-large-finetuned-conll03-english")
