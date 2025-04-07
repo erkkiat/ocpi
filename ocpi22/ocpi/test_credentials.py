@@ -6,7 +6,7 @@ import time_machine
 from django.core.handlers.wsgi import WSGIRequest
 from rest_framework import status
 
-from ocpi22.credentials.versions import get_versions_dict, get_endpoints_dict
+from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.api import CredentialsViewSet
 from ocpi22.ocpi.headers import make_headers
@@ -71,12 +71,6 @@ class CredentialsTests(BetterTestCase):
             responses.GET,
             "https://localhost/versions/",
             json={"data": get_versions_dict()},
-            status=200,
-        )
-        responses.add(
-            responses.GET,
-            "https://localhost/versions/2.2.1/endpoints/",
-            json={"data": get_endpoints_dict(version="2.2.1")},
             status=200,
         )
         responses.add(
