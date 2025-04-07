@@ -201,7 +201,7 @@ class HubjectService:
             )
             payload_json = payload.model_dump_json()
 
-            response = HubjectService.client.post(url, data=payload_json)
+            response = HubjectService.client.post(url, json=payload_json)
 
             ocpi_master = await sync_to_async(get_credentialsrole)(
                 credentials=None,
