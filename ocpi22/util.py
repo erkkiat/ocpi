@@ -433,7 +433,7 @@ class ParseUrl:
 
 
 uid_validator = RegexValidator(
-    r"^[0-9a-zA-Z\*\-]+$", message="Numbers and letters only"
+    r"^[0-9a-zA-Z\*\-\_]+$", message="Numbers and letters only"
 )
 
 
