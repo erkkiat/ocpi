@@ -41,7 +41,7 @@ async def post_request(
     session, url, data, ocpi_master, headers=None, ssl_context=None
 ) -> (int, dict):
     headers = headers or {}
-    headers.update({"Content-Type": "application/json", "Accept:": "application/json"})
+    headers.update({"Content-Type": "application/json", "Accept": "application/json"})
     async with session.post(
         url, json=data, headers=headers, ssl=ssl_context
     ) as response:
