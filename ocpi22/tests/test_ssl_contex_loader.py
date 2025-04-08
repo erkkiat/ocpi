@@ -52,9 +52,7 @@ def to_env_format(pem: str) -> str:
 
 @pytest.fixture
 def mock_env_certs(monkeypatch):
-    # Minimal dummy certs (valid structure, not cryptographically functional)
     cert, key, ca = generate_cert_and_key()
-    print("Cert:", cert)
 
     monkeypatch.setenv("CLIENT_CERT", to_env_format(cert))
     monkeypatch.setenv("PRIVATE_KEY", to_env_format(key))
