@@ -508,3 +508,4 @@ PYTORCH_ENABLE_MPS_FALLBACK = os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK", True
 AXES_FAILURE_LIMIT = 3
 AXES_COOLOFF_TIME = lambda request: timedelta(hours=2)  # noqa
 AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
+AXES_ENABLE_ADMIN = True
