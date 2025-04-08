@@ -56,7 +56,6 @@ pull_minute = random.randint(0, 59)
 # DO NOT REMOVE IT!!
 from base_task_services import setup_worker_connection  # noqa
 
-
 app.conf.beat_schedule = {
     "run-me-every-minute": {
         "task": "ocpi22.tasks.celery_heartbeat",
@@ -112,6 +111,13 @@ else:
     logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
 
 
+def get_cert_from_env(var_name: str) -> str | None:
+    val = os.getenv(var_name, None)
+    if not val:
+        return
+    return val.replace("\\n", "\n").strip()
+
+
 def get_request_session(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
@@ -119,9 +125,9 @@ def get_request_session(credential_id):
     request_session = requests.Session()
     if not credentials:
         return request_session
-    ca_cert = os.getenv(credentials.ca_certificate_name, None)
-    private_key = os.getenv(credentials.private_key_name, None)
-    client_cert = os.getenv(credentials.client_certificate_name, None)
+    ca_cert = os.getenv(credentials.ca_certificate_name)
+    private_key = get_cert_from_env(credentials.private_key_name)
+    client_cert = get_cert_from_env(credentials.client_certificate_name)
     ssl_context = load_ssl_context(
         client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
     )
