@@ -25,6 +25,7 @@ from rest_framework.response import Response
 
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.routing import find_route
+from ocpi22.tasks import get_request_session
 from ocpiconnector.exceptions import OCPIProtocolError
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
@@ -637,8 +638,11 @@ def generate_cdr_uid():
     return generate_reference("C*", OcpiRolesEnum.CPO)
 
 
-def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwargs):
-    function = getattr(requests, method)
+def ocpi_credentials_request(
+    url, token_base64, method, *args, timeout=20, credentials_id=None, **kwargs
+):
+    request_session = get_request_session(credentials_id)
+    function = getattr(request_session, method)
     if not function:
         raise NotImplementedError(
             f"Method {method} is not supported for ocpi_credentials_request"
@@ -657,12 +661,16 @@ def ocpi_credentials_request(url, token_base64, method, timeout=20, *args, **kwa
     return response
 
 
-def ocpi_credentials_get(*args, **kwargs):
-    return ocpi_credentials_request(*args, method="get", **kwargs)
+def ocpi_credentials_get(*args, credentials_id=None, **kwargs):
+    return ocpi_credentials_request(
+        *args, credentials_id=credentials_id, method="get", **kwargs
+    )
 
 
-def ocpi_credentials_post(*args, **kwargs):
-    return ocpi_credentials_request(*args, method="post", **kwargs)
+def ocpi_credentials_post(*args, credentials_id=None, **kwargs):
+    return ocpi_credentials_request(
+        *args, credentials_id=credentials_id, method="post", **kwargs
+    )
 
 
 def recursive_update_last_updated(obj):
