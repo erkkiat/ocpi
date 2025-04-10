@@ -1,6 +1,3 @@
-# Enable BuildKit for faster builds (if not enabled globally)
-# DOCKER_BUILDKIT=1 docker build .
-
 # ---- Stage 1: Build Dependencies ----
 FROM python:3.11-slim AS build
 
@@ -11,15 +8,15 @@ WORKDIR /app
 
 # Install required system dependencies in a single step
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev pkg-config default-libmysqlclient-dev \
+    build-essential python3-dev libpq-dev pkg-config default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only requirements to leverage Docker caching
 COPY requirements.txt /app/
 
-# Install dependencies using BuildKit caching for faster installs
+# Install pip tools, wheel, and setuptools FIRST to fix wheel-building errors
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
 # Now copy the rest of the app (this prevents unnecessary invalidation of cache)
