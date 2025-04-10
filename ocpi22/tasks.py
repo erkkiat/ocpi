@@ -5,7 +5,6 @@ from logging import getLogger
 from urllib.parse import urlparse
 
 import celery
-import cronitor.celery
 import pytz
 import requests
 import pprint
@@ -102,11 +101,6 @@ if REDIS_URL:
 
     # Load task modules from all registered Django apps.
     app.autodiscover_tasks()
-
-    CRONITOR_API_KEY = os.environ.get("CRONITOR_API_KEY")
-    if CRONITOR_API_KEY:
-        # Send pings automatically to Cronitor for Celery background tasks
-        cronitor.celery.initialize(app, api_key=CRONITOR_API_KEY)
 else:
     logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
 
