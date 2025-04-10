@@ -78,7 +78,6 @@ def test_ssl_session_client_mounts_ssl_context(mock_env_certs):
 
     https_adapter = session.adapters.get("https://")
 
-    # Get the mounted ssl_context from the adapter
     ssl_context = getattr(https_adapter.poolmanager, "connection_pool_kw", {}).get(
         "ssl_context", None
     )
@@ -97,7 +96,6 @@ def test_get_request_session_returns_plain_session_when_no_credentials():
 
         https_adapter = session.adapters.get("https://")
 
-        # Check if the SSLContext is missing
         ssl_context = getattr(https_adapter.poolmanager, "connection_pool_kw", {}).get(
             "ssl_context", None
         )
