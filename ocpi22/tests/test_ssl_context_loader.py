@@ -113,3 +113,23 @@ def test__get_ssl_session_client_without_certs_returns_plain_session():
         "ssl_context", None
     )
     assert ssl_context is None
+
+
+def test_ssl_context_fails_with_malformed_certs():
+    malformed_cert = (
+        "-----BEGIN CERTIFICATE-----\\nthis-is-not-valid\\n-----END CERTIFICATE-----"
+    )
+    malformed_key = (
+        "-----BEGIN PRIVATE KEY-----\\ninvalid-key-content\\n-----END PRIVATE KEY-----"
+    )
+    malformed_ca = (
+        "-----BEGIN CERTIFICATE-----\\ncorrupt-ca\\n-----END CERTIFICATE-----"
+    )
+
+    # Decode as the app would do
+    client_cert = malformed_cert.replace("\\n", "\n")
+    private_key = malformed_key.replace("\\n", "\n")
+    ca_cert = malformed_ca.replace("\\n", "\n")
+
+    with pytest.raises(ssl.SSLError):
+        load_ssl_context(client_cert, private_key, ca_cert)
