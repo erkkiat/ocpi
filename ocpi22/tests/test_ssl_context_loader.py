@@ -135,10 +135,20 @@ def test_load_ssl_context_raises_error_with_malformed_certs():
     with pytest.raises(ssl.SSLError):
         load_ssl_context(client_cert, private_key, ca_cert)
 
+
 def test_get_request_session_raises_with_invalid_certs(monkeypatch, db):
-    monkeypatch.setenv("BAD_CLIENT_CERT", "-----BEGIN CERTIFICATE-----\\ninvalid\\n-----END CERTIFICATE-----")
-    monkeypatch.setenv("BAD_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\\nnotakey\\n-----END PRIVATE KEY-----")
-    monkeypatch.setenv("BAD_CA_CERT", "-----BEGIN CERTIFICATE-----\\nnotaca\\n-----END CERTIFICATE-----")
+    monkeypatch.setenv(
+        "BAD_CLIENT_CERT",
+        "-----BEGIN CERTIFICATE-----\\ninvalid\\n-----END CERTIFICATE-----",
+    )
+    monkeypatch.setenv(
+        "BAD_PRIVATE_KEY",
+        "-----BEGIN PRIVATE KEY-----\\nnotakey\\n-----END PRIVATE KEY-----",
+    )
+    monkeypatch.setenv(
+        "BAD_CA_CERT",
+        "-----BEGIN CERTIFICATE-----\\nnotaca\\n-----END CERTIFICATE-----",
+    )
 
     creds = CredentialsFactory(
         client_certificate_name="BAD_CLIENT_CERT",
