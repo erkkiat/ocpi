@@ -115,7 +115,7 @@ def test__get_ssl_session_client_without_certs_returns_plain_session():
     assert ssl_context is None
 
 
-def test_ssl_context_fails_with_malformed_certs():
+def test_load_ssl_context_raises_error_with_malformed_certs():
     malformed_cert = (
         "-----BEGIN CERTIFICATE-----\\nthis-is-not-valid\\n-----END CERTIFICATE-----"
     )
