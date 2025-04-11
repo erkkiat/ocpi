@@ -118,7 +118,7 @@ def get_request_session(credential_id):
     credentials = Credentials.objects.filter(id=credential_id).first()
 
     if credentials:
-        ca_cert = os.getenv(credentials.ca_certificate_name)
+        ca_cert = get_cert_from_env(credentials.ca_certificate_name)
         private_key = get_cert_from_env(credentials.private_key_name)
         client_cert = get_cert_from_env(credentials.client_certificate_name)
     else:
