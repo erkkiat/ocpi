@@ -116,18 +116,25 @@ def get_request_session(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
     credentials = Credentials.objects.filter(id=credential_id).first()
-    request_session = requests.Session()
-    if not credentials:
-        return request_session
-    ca_cert = os.getenv(credentials.ca_certificate_name)
-    private_key = get_cert_from_env(credentials.private_key_name)
-    client_cert = get_cert_from_env(credentials.client_certificate_name)
-    ssl_context = load_ssl_context(
-        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
-    )
+
+    if credentials:
+        ca_cert = get_cert_from_env(credentials.ca_certificate_name)
+        private_key = get_cert_from_env(credentials.private_key_name)
+        client_cert = get_cert_from_env(credentials.client_certificate_name)
+    else:
+        client_cert = private_key = ca_cert = ""
+
+    return _get_ssl_session_client(client_cert, private_key, ca_cert)
+
+
+def _get_ssl_session_client(
+    client_cert: str, private_key: str, ca_cert: str, verify_ssl=True
+) -> requests.Session:
+    ssl_context = load_ssl_context(client_cert, private_key, ca_cert, verify_ssl)
+    session = requests.Session()
     if ssl_context:
-        request_session.mount("https://", SSLAdapter(ssl_context=ssl_context))
-    return request_session
+        session.mount("https://", SSLAdapter(ssl_context=ssl_context))
+    return session
 
 
 @shared_task(
