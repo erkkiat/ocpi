@@ -181,6 +181,77 @@ class CredentialsData:
         ],
     }
 
+    ocpi_endpoints_response_221 = {
+        "version": "2.2.1",
+        "endpoints": [
+            {
+                "identifier": "credentials",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/credentials",
+            },
+            {
+                "identifier": "credentials",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/credentials",
+            },
+            {
+                "identifier": "locations",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/locations",
+            },
+            {
+                "identifier": "locations",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/locations",
+            },
+            {
+                "identifier": "tokens",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/tokens",
+            },
+            {
+                "identifier": "tokens",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/tokens",
+            },
+            {
+                "identifier": "tariffs",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/tariffs",
+            },
+            {
+                "identifier": "tariffs",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/tariffs",
+            },
+            {
+                "identifier": "sessions",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/sessions",
+            },
+            {
+                "identifier": "sessions",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/sessions",
+            },
+            {
+                "identifier": "cdrs",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/cdrs",
+            },
+            {
+                "identifier": "cdrs",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/cdrs",
+            },
+            {
+                "identifier": "commands",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/commands",
+            },
+        ],
+    }
+
 
 expected_get_responses = {
     "http://localhost:8001/ocpi/2.2.1/tariffs/?limit=3": {

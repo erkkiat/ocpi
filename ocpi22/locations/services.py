@@ -2,7 +2,6 @@
 from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
-from ocpi22.locations.gdpr.model import LocationNERModel
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
@@ -53,14 +52,6 @@ class LocationService:
         if credentials and credentials.allowed_locations:
             return queryset.filter(uid__in=credentials.allowed_locations)
         return queryset
-
-    @staticmethod
-    def get_gdpr_validated_name(name, address):
-        entity = LocationNERModel().get_entity(name)
-        if entity == "PER":
-            logger.info(f"Location name: {name} is a person name, changed to {address}")
-            return address
-        return name
 
     def update_tariff_in_request_payload(self, location: LocationIn):
         for e in location.evses:

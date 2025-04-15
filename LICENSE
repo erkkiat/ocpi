@@ -30,7 +30,6 @@
 - slack-logger: MIT License
 - colorama: BSD License
 - django-nested-admin: BSD License
-- cronitor: MIT License
 - time_machine: MIT License
 - django-multiselectfield: MIT License
 - moesifdjango: MIT License

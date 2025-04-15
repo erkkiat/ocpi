@@ -63,8 +63,8 @@ def get_our_roles(source: dict = None) -> list:
     # Todo: Support multi-country CPOs / eMSPs
 
 
-def select_version(url, token) -> str:
-    versions_response = ocpi_credentials_get(url, token)
+def select_version(url, token, credentials_id=None) -> str:
+    versions_response = ocpi_credentials_get(url, token, credentials_id=credentials_id)
     if versions_response.status_code == 200:
         data = versions_response.json()
         serializer = VersionsSerializer(data=data)
@@ -87,8 +87,8 @@ def select_version(url, token) -> str:
     return version_url
 
 
-def get_endpoints(url, token):
-    endpoints_response = ocpi_credentials_get(url, token)
+def get_endpoints(url, token, credentials_id=None) -> dict:
+    endpoints_response = ocpi_credentials_get(url, token, credentials_id=credentials_id)
     data = endpoints_response.json()
     endpoints = data.get("data", data)
     endpoints_str = ", ".join(set([e["identifier"] for e in endpoints["endpoints"]]))
@@ -175,7 +175,11 @@ class Command(BaseCommand):
                 )
 
             credentials_response = ocpi_credentials_post(
-                url, token_a_base64, json=data_to_send, timeout=15
+                url,
+                token_a_base64,
+                json=data_to_send,
+                timeout=15,
+                credentials_id=credentials.id,
             )
             if credentials_response.status_code not in (
                 status.HTTP_200_OK,

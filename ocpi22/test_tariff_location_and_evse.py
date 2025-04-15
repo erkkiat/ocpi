@@ -10,6 +10,8 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
+import responses
+from deepdiff import DeepSearch
 
 from rest_framework.exceptions import NotAuthenticated
 
@@ -37,6 +39,7 @@ from django.test import TestCase, Client
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
 from rest_framework import status
 
+from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
@@ -85,7 +88,7 @@ from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet, EvseViewSet
 from ocpi22.middleware import OCPIHubMiddleware
-from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -129,7 +132,6 @@ faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = OCPIAPIRequestFactory()
-
 
 logger = getLogger(__name__)
 
@@ -1912,31 +1914,56 @@ class TestCredentials(TestCase):
         side_effect=[fake_token],
     )
     @simulate_surrounding_world
+    @responses.activate
     def test_exchange(self, _mock_generate_random_token, simulation):
-        simulation.ocpi_requests.get.side_effect = mocked_credentials_get
-        simulation.ocpi_requests.post.side_effect = mocked_credentials_post
+        # simulation.ocpi_requests.get.side_effect = mocked_credentials_get
+        # simulation.ocpi_requests.post.side_effect = mocked_credentials_post
+        responses.add(
+            responses.GET,
+            "https://localhost/versions/",
+            json={"data": get_versions_dict()},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "http://testserver.test/ocpi/2.2.1/",
+            json={"data": CredentialsData.ocpi_endpoints_response_221},
+            status=201,
+        )
+        responses.add(
+            responses.POST,
+            "http://localhost/ocpi/2.2.1/credentials",
+            json={**CredentialsData.expected_credentials_response},
+            status=201,
+        )
 
         command = exchange_credentials.Command()
         self.assertTrue(
             command.handle(
-                token_a="918273", versions_endpoint_url="http://localhost/versions"
+                token_a="918273", versions_endpoint_url="https://localhost/versions/"
             )
         )
+        self.assert_endpoints_saved(
+            CredentialsData.ocpi_endpoints_response_221["endpoints"]
+        )
 
-        # Let's examine what was actually sent
-        args, kwargs = simulation.ocpi_requests.get.call_args
-
-        expected_headers = {
-            "Authorization": "Token OTE4Mjcz",
-            "accept": "application/json",
-            "content-type": "application/json",
-        }
-        headers = kwargs["headers"]
-        assert headers.pop("X-Request-ID") != "", "Expecting a request ID"
-        assert headers.pop("X-Correlation-ID") != "", "Expecting a correlation ID"
-        headers.pop("platform-revision")
-
-        assert kwargs["headers"] == expected_headers
+    def assert_endpoints_saved(self, expected_endpoints):
+        endpoints = Endpoint.objects.all()
+        endpoints_from_db = []
+        for endpoint in endpoints:
+            endpoints_from_db.append(
+                {
+                    "identifier": endpoint.identifier,
+                    "url": endpoint.url,
+                    "role": endpoint.role,
+                }
+            )
+        missing = [
+            expected
+            for expected in expected_endpoints
+            if not DeepSearch(endpoints_from_db, expected)
+        ]
+        assert not missing, f"Missing endpoints: {missing}"
 
     @pytest.mark.skip("Fix me before production")
     def test_credentials_response(self):
@@ -2595,7 +2622,8 @@ class TestCpoApi(TestCase):
                     "status_text": "Session updated",
                     "total_kwh": Decimal("3.450"),
                 },
-                session_data={  # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                session_data={
+                    # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
                     "auth_method": "AUTH_REQUEST",
                     "authorization_reference": "MOCK-AUTHORIZATION-REFERENCE",
                     "cdr_token": OrderedDict(
@@ -2684,7 +2712,8 @@ class TestCpoApi(TestCase):
                     "status_text": "Session updated",
                     "total_kwh": Decimal("33.450"),
                 },
-                session_data={  # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                session_data={
+                    # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
                     "auth_method": "AUTH_REQUEST",
                     "authorization_reference": "MOCK-AUTHORIZATION-REFERENCE",
                     "cdr_token": OrderedDict(
