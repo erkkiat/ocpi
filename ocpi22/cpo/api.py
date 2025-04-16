@@ -31,7 +31,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 
 from custom_ninja_api import CustomNinjaAPI
-from ocpi22.cpo.schemas import LocationIn
+from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
@@ -1356,7 +1356,7 @@ api = CustomNinjaAPI(
 location_service = LocationService()
 
 
-@api.put("/", response={200: LocationIn, 201: LocationIn, 403: dict, 400: dict})
+@api.put("/", response={200: LocationIn, 201: LocationIn, 403: Error, 400: Error})
 def update_location(request, location: LocationIn):
     our_credentials_role = get_our_credentialsrole(role=OcpiRolesEnum.CPO)
     if (
