@@ -24,7 +24,7 @@ from ocpi22.ocpi.util import Ocpi
 
 
 class BaseSchema(Schema):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class StatusSchedule(BaseSchema):

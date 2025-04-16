@@ -1381,6 +1381,6 @@ def update_location(request, location: LocationIn):
             )
             status_code = status.HTTP_201_CREATED
 
-        return status_code, saved_location
+        return status_code, LocationIn.from_orm(saved_location)
     except ValidationError as e:
         return 400, {"msg": e.detail}
