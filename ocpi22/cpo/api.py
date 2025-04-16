@@ -1352,11 +1352,16 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
 api = CustomNinjaAPI(
     auth=NinjaBasicAuth(),
     urls_namespace="cpo",
+    title="CPO API",
 )
 location_service = LocationService()
 
 
-@api.put("/", response={200: LocationIn, 201: LocationIn, 403: Error, 400: Error})
+@api.put(
+    "/",
+    response={200: LocationIn, 201: LocationIn, 403: Error, 400: Error},
+    tags=["Location"],
+)
 def update_location(request, location: LocationIn):
     our_credentials_role = get_our_credentialsrole(role=OcpiRolesEnum.CPO)
     if (
