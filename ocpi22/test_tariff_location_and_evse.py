@@ -13,7 +13,7 @@ import requests
 import responses
 from deepdiff import DeepSearch
 
-from rest_framework.exceptions import NotAuthenticated
+from rest_framework.exceptions import NotAuthenticated, ValidationError
 
 import uuid
 from collections import OrderedDict
@@ -39,8 +39,10 @@ from django.test import TestCase, Client
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
 from rest_framework import status
 
+from ocpi22.cpo.schemas import LocationIn, GeoLocation, EVSE, Connector as ConnectorIn
 from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
+from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
@@ -4009,6 +4011,52 @@ def tariffs(ocpi_master):
     TariffFactory(uid="13", ocpi_master=ocpi_master)
 
 
+@pytest.fixture()
+def connector_in():
+    connector = ConnectorIn(
+        id="1",
+        standard="IEC_62196_T2",
+        format="SOCKET",
+        power_type="AC_3_PHASE",
+        max_voltage=400,
+        max_amperage=32,
+        last_updated=datetime.now(pytz.utc),
+        tariff_ids=["11", "12"],
+    )
+    return connector
+
+
+@pytest.fixture()
+def rome_location_in(connector_in):
+    print(connector_in)
+    evse = EVSE(
+        uid="ROME01EVSE01",
+        evse_id="FI*CPO*EROME01EVSE01",
+        status="AVAILABLE",
+        connectors=[],
+        last_updated=datetime.now(pytz.utc),
+    )
+
+    evse.connectors.append(connector_in)
+
+    location = LocationIn(
+        country_code="IT",
+        party_id="CPO",
+        id="ROME01",
+        publish=True,
+        address="Via del Corso 123",
+        city="Rome",
+        postal_code="00100",
+        country="ITA",
+        coordinates=GeoLocation(latitude=41.9028, longitude=12.4964),
+        evses=[],
+        last_updated=datetime.now(pytz.utc),
+    )
+    location.evses.append(evse)
+
+    return location
+
+
 @pytest.fixture
 def location_data(ocpi_master):
     data = load_example("data/examples/location_example.json")
@@ -4097,3 +4145,20 @@ class TestSolidLocation:
         response = authenticated_user_client.put(url, location_data, format="json")
 
         assert response.status_code == 422
+
+    @pytest.mark.django_db
+    def test_update_tariff_in_payload_success(self, tariffs, rome_location_in):
+        location_service = LocationService()
+        updated_location = location_service.update_tariff_in_payload(rome_location_in)
+
+        assert updated_location.evses[0].connectors[0].tariff_ids == ["11", "12"]
+
+    @pytest.mark.django_db
+    def test_update_tariff_in_payload_missing_tariff(self, rome_location_in):
+        location_service = LocationService()
+        with pytest.raises(ValidationError) as exc_info:
+            location_service.update_tariff_in_payload(rome_location_in)
+
+            assert "SolidTariff with external_id invalid_tariff not found" in str(
+                exc_info.value
+            )

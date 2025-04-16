@@ -53,7 +53,7 @@ class LocationService:
             return queryset.filter(uid__in=credentials.allowed_locations)
         return queryset
 
-    def update_tariff_in_request_payload(self, location: LocationIn):
+    def update_tariff_in_payload(self, location: LocationIn):
         for e in location.evses:
             for c in e.connectors:
                 tariffs = []
@@ -76,7 +76,7 @@ class LocationService:
         return location
 
     def get_data_from_request_payload(self, location: LocationIn):
-        location = self.update_tariff_in_request_payload(location)
+        location = self.update_tariff_in_payload(location)
 
         data = location.model_dump(by_alias=True, exclude_unset=True)
 
