@@ -8,8 +8,13 @@ from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party, get_our_identity
+from django.conf import settings
 
-api = NinjaAPI(auth=NinjaBasicAuth(), docs=Swagger(), urls_namespace="hubject-api")
+api = NinjaAPI(
+    auth=NinjaBasicAuth(),
+    docs=None if settings.ENV == "production" else Swagger(),
+    urls_namespace="hubject-api",
+)
 hubject_service = HubjectService()
 
 

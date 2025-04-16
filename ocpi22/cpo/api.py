@@ -1350,7 +1350,11 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
         logger.error(f"Unable to send the new CDR to CpoInvoiceWebhook: {e}")
 
 
-api = NinjaAPI(auth=NinjaBasicAuth(), docs=Swagger(), urls_namespace="cpo")
+api = NinjaAPI(
+    auth=NinjaBasicAuth(),
+    docs=None if settings.ENV == "production" else Swagger(),
+    urls_namespace="cpo",
+)
 location_service = LocationService()
 
 
