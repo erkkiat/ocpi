@@ -5,7 +5,6 @@ from functools import reduce
 from logging import getLogger
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import JsonResponse
 from django.urls import reverse_lazy
 from django.utils.datetime_safe import datetime
 
@@ -16,7 +15,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
-from ninja import Swagger, NinjaAPI
+from ninja.errors import HttpError
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import IsAdminUser
 
@@ -30,8 +29,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_503_SERVICE_UNAVAILABLE
 
+from custom_ninja_api import CustomNinjaAPI
 from ocpi22.cpo.schemas import LocationIn
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
@@ -1350,26 +1349,22 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
         logger.error(f"Unable to send the new CDR to CpoInvoiceWebhook: {e}")
 
 
-api = NinjaAPI(
+api = CustomNinjaAPI(
     auth=NinjaBasicAuth(),
-    docs=None if settings.ENV == "production" else Swagger(),
     urls_namespace="cpo",
 )
 location_service = LocationService()
 
 
-@api.put("/")
+@api.put("/", response={200: LocationIn, 201: LocationIn, 403: dict, 400: dict})
 def update_location(request, location: LocationIn):
     our_credentials_role = get_our_credentialsrole(role=OcpiRolesEnum.CPO)
     if (
         not our_credentials_role.party_str()
         == f"{location.country_code}*{location.party_id}"
     ):
-        return JsonResponse(
-            {
-                "status_message": f"{location.country_code}*{location.party_id} party is not allowed. Please use /ocpi/2.2.1/locations/ instead."
-            },
-            status=HTTP_400_BAD_REQUEST,
+        raise HttpError(
+            403, f"{location.country_code}*{location.party_id} party is not allowed."
         )
     existing_location: Location = Location.get_if_exists(
         uid__iexact=location.uid, ocpi_master=our_credentials_role
@@ -1386,16 +1381,6 @@ def update_location(request, location: LocationIn):
             )
             status_code = status.HTTP_201_CREATED
 
-        return JsonResponse(saved_location, status=status_code)
+        return status_code, saved_location
     except ValidationError as e:
-        return JsonResponse(
-            {"status_message": e.detail},
-            content_type="application/json",
-            status=HTTP_400_BAD_REQUEST,
-        )
-    except RuntimeError:
-        return JsonResponse(
-            "Unknown error has occurred",
-            content_type="application/json",
-            status=HTTP_503_SERVICE_UNAVAILABLE,
-        )
+        return 400, {"msg": e.detail}
