@@ -140,29 +140,6 @@ class SolidTariffViewSet(
                 )
                 return Response(serializer.data)
 
-            serializer = SolidTariffSerializer(
-                solid_tariff,
-                data=request.data,
-                partial=False,
-                context={"request": request},
-            )
-            if serializer.is_valid():
-                tariff, solid_tariff = serializer.save(ocpi_master=our_role)
-                serializer = SolidTariffSerializer(
-                    SolidTariff.objects.get(
-                        external_id=external_id, archived=False, msp=msp
-                    )
-                )
-                return Response(
-                    self.get_response_data(
-                        model_to_dict(solid_tariff, exclude=["id", "operator"]),
-                        solid_tariff.ocpi_tariff,
-                    ),
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         except (
             IntegrityError,
             AssertionError,

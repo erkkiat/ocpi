@@ -507,7 +507,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         required=False,
         allow_null=True,
     )
-    last_updated_at = UTCDateTimeField(required=False)
+    last_updated = UTCDateTimeField(required=False)
 
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):
