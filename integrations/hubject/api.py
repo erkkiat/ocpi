@@ -1,6 +1,6 @@
 from typing import Dict
-from ninja import NinjaAPI, Swagger
 
+from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import PricingProductData, ActionType
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
@@ -9,7 +9,10 @@ from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party, get_our_identity
 
-api = NinjaAPI(auth=NinjaBasicAuth(), docs=Swagger(), urls_namespace="hubject-api")
+api = CustomNinjaAPI(
+    auth=NinjaBasicAuth(),
+    urls_namespace="hubject-api",
+)
 hubject_service = HubjectService()
 
 
