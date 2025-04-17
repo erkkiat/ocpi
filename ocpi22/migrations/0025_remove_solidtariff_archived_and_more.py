@@ -8,7 +8,7 @@ from django.utils import timezone
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ocpi22', '0020_credentials_allowed_locations'),
+        ('ocpi22', '0024_alter_evse_uid'),
     ]
 
     operations = [

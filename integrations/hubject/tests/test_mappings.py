@@ -34,6 +34,14 @@ def load_tests(_loader, tests, _ignore):
     return tests
 
 
+def get_timezone_offset(timezone: str) -> str:
+    try:
+        tz = datetime.now(pytz.timezone(timezone))
+        return f"{tz.strftime('UTC%z')[:6]}:{tz.strftime('UTC%z')[6:]}"
+    except pytz.exceptions.UnknownTimeZoneError:
+        raise ValidationError(f"Unknown timezone: {timezone}")
+
+
 @pytest.fixture
 @time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False)
 def helsinki2_evse(helsinki_connector):
@@ -437,7 +445,7 @@ class TestMappings:
                             "PostalCode": "00100",
                             "Region": None,
                             "Street": "Mannerheimintie",
-                            "TimeZone": "UTC+02:00",
+                            "TimeZone": get_timezone_offset("Europe/Helsinki"),
                         },
                         "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
                         "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
@@ -521,7 +529,7 @@ class TestMappings:
                             "PostalCode": "",
                             "Region": None,
                             "Street": "Ansgarstr.",
-                            "TimeZone": "UTC+01:00",
+                            "TimeZone": get_timezone_offset("Europe/Berlin"),
                         },
                         "AuthenticationModes": [
                             AuthenticationMode.No_Authentication_Required

@@ -1,6 +1,5 @@
 from django.db.models import Q, QuerySet, Max
 
-from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import SolidTariff
 
 
@@ -19,16 +18,13 @@ class SolidTariffRepository:
             )
         )
 
-    def delete_all_by_external_id_msp(
-        self, external_id: str, msp: CredentialsRole
-    ) -> bool:
-        deleted, _rows_count = SolidTariff.objects.filter(
-            external_id=external_id, msp=msp
-        ).delete()
-        return deleted
+    def exists(self, **kwargs) -> bool:
+        return SolidTariff.objects.filter(**kwargs).exists()
 
-    def delete_all_by_external_id(self, external_id: str) -> bool:
-        deleted, _rows_count = SolidTariff.objects.filter(
-            external_id=external_id
-        ).delete()
-        return deleted
+    def get_latest_with_external_id(self, external_id) -> SolidTariff | None:
+        try:
+            return SolidTariff.objects.filter(external_id=external_id).latest(
+                "created_at"
+            )
+        except SolidTariff.DoesNotExist:
+            return None

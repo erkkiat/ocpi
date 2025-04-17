@@ -1,4 +1,4 @@
-import ocpi22.ocpi_logging as logging
+from logging import getLogger
 
 from django.core.validators import RegexValidator
 from rest_framework import status
@@ -34,6 +34,8 @@ from ocpiconnector.exception_handler import ocpi_exception_handler
 from ocpiconnector.ocpi_identities import ocpi_platform
 from util import OCPIVersion
 
+logger = getLogger(__name__)
+
 evse_validator = RegexValidator(
     r"[A-Z]{2}\*[A-Za-z0-9]{3}\*[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}$",
     message="OCPI evse_id has to contain a valid eMI3 EVSE-ID (NL*EVN*E123456ABCD)",
@@ -55,31 +57,30 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         return "Locations"
 
     def get_queryset(self):
+        credentials = getattr(self.request, "credentials", None)
         prefetch_fields = (
             "evses",
             "evses__connectors",
             "evses__connectors__tariff_ids",
         )
         if ocpi_platform.is_hub and hasattr(self, "request"):
-            return (
+            queryset = (
                 Location.objects.prefetch_related(*prefetch_fields)
                 .partner_filter(self.request)
                 .exclude(publish=False)
                 .order_by("created")
             )
-        return (
-            Location.objects.prefetch_related(*prefetch_fields)
-            .exclude(publish=False)
-            .order_by("created")
-        )
+        else:
+            queryset = (
+                Location.objects.prefetch_related(*prefetch_fields)
+                .exclude(publish=False)
+                .order_by("created")
+            )
+        queryset = LocationService.get_allowed_locations_queryset(credentials, queryset)
+        return queryset
 
     @ocpi_exception_handler
     def list(self, request, *args, **kwargs):
-        credentials = getattr(request, "credentialsrole", None)
-        queryset = LocationService.get_allowed_locations_queryset(
-            credentials, self.get_queryset()
-        )
-        self.queryset = queryset
         return super().list(request, *args, **kwargs)
 
     @staticmethod
@@ -160,7 +161,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             created = bool(not existing_location)
-            logging.info(
+            logger.info(
                 f'{"Creating" if created else "Updating"}'
                 f' Location {credentialsrole} - {uid}.'
             )

@@ -40,7 +40,7 @@ class OcpiAuthTypes(Enum):
 @ttl_cache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=2 * 60 * 60)  # 2 hours
 def find_credentials(token_ascii: str) -> Optional[Credentials]:
     try:
-        return Credentials.objects.filter(ours__iexact=token_ascii, valid=True).first()
+        return Credentials.objects.filter(ours=token_ascii, valid=True).first()
     except (binascii.Error, UnicodeDecodeError):
         pass
     return None
@@ -180,7 +180,7 @@ def get_credentialsrole(
         result = query.filter(
             country_code__iexact=party.country_code, party_id__iexact=party.party_id
         ).first()
-        return result or (create and create_it())
+        return result if result is not None else (create_it() if create else None)
     except CredentialsRole.DoesNotExist:
         if create:
             return create_it()

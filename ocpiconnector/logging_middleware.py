@@ -64,7 +64,8 @@ class LoggingMiddleware(MiddlewareMixin):
 
     def clean_auth_headers(self, request):
         """
-        Cleans sensitive headers while logging others as is.
+        Masks sensitive headers partially while logging others as is.
+        Shows first 4 and last 4 characters of the value, masks the middle.
         """
         sensitive_headers = {
             "authorization",
@@ -82,13 +83,16 @@ class LoggingMiddleware(MiddlewareMixin):
         headers = request.headers
         cleaned_headers = {}
 
-        for key, value in headers.items():
-            # Mask sensitive headers
-            if key.lower() in sensitive_headers:
-                cleaned_headers[key] = "*******"
-            else:
-                cleaned_headers[key] = value  # Log other headers as is
+        def partial_mask(value, show_start=4, show_end=4):
+            if not isinstance(value, str) or len(value) <= (show_start + show_end):
+                return "*" * len(value)
+            return f"{value[:show_start]}****{value[-show_end:]}"
 
+        for key, value in headers.items():
+            if key.lower() in sensitive_headers:
+                cleaned_headers[key] = partial_mask(value)
+            else:
+                cleaned_headers[key] = value
         return cleaned_headers
 
     def get_cleaned_payload(self, request):
