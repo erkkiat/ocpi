@@ -10,7 +10,6 @@ from ocpi22.cpo.schemas import LocationIn
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location
-from ocpi22.models.tariff import Tariff
 from ocpiconnector.party import Party
 
 logger = logging.getLogger(__name__)
@@ -65,9 +64,7 @@ class LocationService:
                         )
                     )
                     if solid_tariff:
-                        # TODO: This will be replaced when the SolidTariff and OCPI Tariff is linked.
-                        tariff = Tariff.objects.get(uid=t)
-                        tariffs.append(tariff.uid)
+                        tariffs.append(solid_tariff.ocpi_tariff.uid)
                     else:
                         raise ValidationError(
                             f"SolidTariff with external_id {t} not found"

@@ -45,6 +45,7 @@ from ocpiconnector.util import (
 #  If 6 minutes were used, 10 minutes (2 blocks of step_size) will be billed.
 
 
+# Tariff is an immutable model
 class Tariff(models.Model, ModelUtilMixin, OcpiModule):
     ocpi_serializer_class = "ocpi22.ocpi.api.TariffSerializer"
     ocpi_module_name = OcpiModuleEnum.TARIFFS
@@ -500,6 +501,19 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
             )
 
 
+def populate_ocpi_tariff(apps, schema_editor):
+    SolidTariff = apps.get_model("ocpi22", "SolidTariff")
+    Tariff = apps.get_model("ocpi22", "Tariff")
+
+    default_tariff = Tariff.objects.first()
+
+    for solid_tariff in SolidTariff.objects.all():
+        if solid_tariff.ocpi_tariff_id is None:
+            solid_tariff.ocpi_tariff = default_tariff
+            solid_tariff.save()
+
+
+# SolidTariff is an immutable model
 class SolidTariff(models.Model):
     objects = PartnerManager()
 
@@ -531,7 +545,7 @@ class SolidTariff(models.Model):
     msp = models.ForeignKey(
         CredentialsRole,
         on_delete=models.CASCADE,
-        related_name="msp_credentialsroles",
+        related_name="msp_credentialsrole",
         verbose_name=_("MSP details"),
         null=True,
         blank=True,
@@ -539,16 +553,21 @@ class SolidTariff(models.Model):
     operator = models.ForeignKey(
         CredentialsRole,
         on_delete=models.CASCADE,
-        related_name="operator_credentialsroles",
+        related_name="operator_credentialsrole",
         verbose_name=_("CPO details"),
     )
 
-    archived = models.BooleanField(default=False, verbose_name=_("Archived"))
-
-    last_updated_at = models.DateTimeField(
-        auto_now=True, verbose_name=_("Last_updated_at")
+    ocpi_tariff = models.ForeignKey(
+        Tariff,
+        on_delete=models.PROTECT,
+        related_name="tariff",
+        verbose_name=_("Tariff"),
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Created_at"))
+
+    last_updated = models.DateTimeField(verbose_name=_("Last updated timestamp"))
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name=_("Created timestamp")
+    )
 
     def get_type(self, tariff_type: str) -> Optional[object]:
         match tariff_type:
