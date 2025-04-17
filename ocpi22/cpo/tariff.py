@@ -78,7 +78,7 @@ class SolidTariffViewSet(
                 validated_data["ocpi_master"] = our_role
                 solid_tariff = self.service.create(validated_data)
                 if solid_tariff.ocpi_tariff:
-                    solid_tariff.ocpi_tariff.send_updates()
+                    solid_tariff.ocpi_tariff.post_process_after_update_or_create()
                 else:
                     logger.error("Tariff send updates failed.")
                 http_status = (
