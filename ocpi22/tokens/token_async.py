@@ -8,7 +8,7 @@ import aiohttp
 import asyncio
 
 from asgiref.sync import sync_to_async
-
+from django.db import close_old_connections
 
 from ocpi22.choices import (
     OcpiRolesEnum,
@@ -79,11 +79,15 @@ def process_task_result(successful_task):
     return None
 
 
+def _get_credentials_by_id(credential_id):
+    close_old_connections()
+    return Credentials.objects.filter(id=credential_id).first()
+
+
 async def create_ssl_context(credential_id):
-    """Create SSL context from environment variables based on credential ID."""
-    credentials = await sync_to_async(
-        Credentials.objects.filter(id=credential_id).first
-    )()
+    credentials = await sync_to_async(_get_credentials_by_id, thread_sensitive=True)(
+        credential_id
+    )
 
     if not credentials:
         return None
