@@ -4002,13 +4002,19 @@ def ocpi_master():
 
 @pytest.fixture
 def tariffs(ocpi_master):
-    SolidTariffFactory(external_id="11", operator=ocpi_master, msp=None)
-    SolidTariffFactory(external_id="12", operator=ocpi_master, msp=None)
-    SolidTariffFactory(external_id="13", operator=ocpi_master, msp=None)
+    t11 = TariffFactory(uid="11", ocpi_master=ocpi_master)
+    t12 = TariffFactory(uid="12", ocpi_master=ocpi_master)
+    t13 = TariffFactory(uid="13", ocpi_master=ocpi_master)
 
-    TariffFactory(uid="11", ocpi_master=ocpi_master)
-    TariffFactory(uid="12", ocpi_master=ocpi_master)
-    TariffFactory(uid="13", ocpi_master=ocpi_master)
+    SolidTariffFactory(
+        external_id="11", operator=ocpi_master, msp=None, ocpi_tariff=t11
+    )
+    SolidTariffFactory(
+        external_id="12", operator=ocpi_master, msp=None, ocpi_tariff=t12
+    )
+    SolidTariffFactory(
+        external_id="13", operator=ocpi_master, msp=None, ocpi_tariff=t13
+    )
 
 
 @pytest.fixture()
@@ -4028,7 +4034,6 @@ def connector_in():
 
 @pytest.fixture()
 def rome_location_in(connector_in):
-    print(connector_in)
     evse = EVSE(
         uid="ROME01EVSE01",
         evse_id="FI*CPO*EROME01EVSE01",
@@ -4098,6 +4103,8 @@ class TestSolidLocation:
         client = request.getfixturevalue(api_client)
 
         response = client.put(url, location_data, format="json")
+
+        print(response.json())
 
         assert response.status_code == expected_status_code
 
