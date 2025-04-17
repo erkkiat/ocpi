@@ -88,8 +88,9 @@ class SolidTariffViewSet(
                     self.get_response_data(
                         model_to_dict(
                             solid_tariff,
-                            exclude=["id", "operator", "ocpi_tariff"],
-                        )
+                            exclude=["id", "operator"],
+                        ),
+                        solid_tariff.ocpi_tariff,
                     ),
                     status=http_status,
                 )
@@ -154,7 +155,8 @@ class SolidTariffViewSet(
                 )
                 return Response(
                     self.get_response_data(
-                        model_to_dict(solid_tariff, exclude=["id", "operator"])
+                        model_to_dict(solid_tariff, exclude=["id", "operator"]),
+                        solid_tariff.ocpi_tariff,
                     ),
                     status=status.HTTP_200_OK,
                 )
@@ -186,7 +188,8 @@ class SolidTariffViewSet(
         if uid:
             return get_object_or_404(Tariff, uid=uid)
 
-    def get_response_data(self, data: dict):
+    def get_response_data(self, data: dict, tariff: Tariff) -> dict:
+        data["ocpi_tariff"] = tariff.uid
         msp = data["msp"]
         if not msp:
             del data["msp"]

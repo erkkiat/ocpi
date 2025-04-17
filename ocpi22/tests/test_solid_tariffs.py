@@ -389,16 +389,16 @@ class TestSolidTariffs:
             response = authenticated_user_client.put(
                 url, smp1_solid_tariff_with_all_records_json
             )
-
-            tariff = Tariff.objects.get(
-                uid=smp1_solid_tariff_with_all_records_json["external_id"]
-            )
+            response_json = response.json()
+            tariff = Tariff.objects.get(uid=response_json["ocpi_tariff"])
             assert (
                 tariff.price() == "0,69€/kWh + 25,20€/h + 0,56€ flat + 32,40€/h parking"
             )
 
             assert response.status_code == status.HTTP_200_OK
-            assert response.json() == smp1_solid_tariff_with_all_records_response
+
+            smp1_solid_tariff_with_all_records_response["ocpi_tariff"] = tariff.uid
+            assert response_json == smp1_solid_tariff_with_all_records_response
             mock_send_updates.assert_called_once()
 
     @pytest.mark.django_db
@@ -433,8 +433,13 @@ class TestSolidTariffs:
             url, smp1_solid_tariff_minimal_records_json
         )
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_minimal_records_response
+        smp1_solid_tariff_with_minimal_records_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_solid_tariff_with_minimal_records_response
 
     @pytest.mark.django_db
     def test_put_solid_tariffs_with_zero_pricing_returns_status_code_200(
@@ -449,8 +454,13 @@ class TestSolidTariffs:
             url, smp1_solid_tariff_zero_pricing_json
         )
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_zero_pricing_response
+        smp1_solid_tariff_with_zero_pricing_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_solid_tariff_with_zero_pricing_response
 
     @pytest.mark.django_db
     def test_put_solid_tariff_with_minus_pricing_returns_status_code_400(
@@ -533,7 +543,10 @@ class TestSolidTariffs:
         url = reverse("solid-tariff-list")
         response = authenticated_user_client.put(url, smp1_update_solid_tariff_json)
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
+        smp1_update_response["ocpi_tariff"] = response_json["ocpi_tariff"]
         assert response.json() == smp1_update_response
         assert (
             SolidTariff.objects.filter(
@@ -568,8 +581,13 @@ class TestSolidTariffs:
             url, smp1_solid_tariff_minimal_records_json
         )
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_minimal_records_response
+        smp1_solid_tariff_with_minimal_records_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_solid_tariff_with_minimal_records_response
         assert (
             SolidTariff.objects.filter(
                 external_id=smp1_solid_tariff_minimal_records_json["external_id"]
@@ -603,8 +621,13 @@ class TestSolidTariffs:
             url, smp1_solid_tariff_zero_pricing_json
         )
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_zero_pricing_response
+        smp1_solid_tariff_with_zero_pricing_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_solid_tariff_with_zero_pricing_response
         assert (
             SolidTariff.objects.filter(
                 external_id=smp1_solid_tariff_zero_pricing_json["external_id"]
@@ -655,7 +678,9 @@ class TestSolidTariffs:
         response = authenticated_user_client.put(url, smp1_tariff_no_msp_json)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_create_response_no_msp
+        response_json = response.json()
+        smp1_create_response_no_msp["ocpi_tariff"] = response_json["ocpi_tariff"]
+        assert response_json == smp1_create_response_no_msp
 
     @pytest.mark.django_db
     def test_update_solid_tariff_no_msp_create_a_new_solid_tariff(
@@ -668,8 +693,13 @@ class TestSolidTariffs:
         url = reverse("solid-tariff-list")
         response = authenticated_user_client.put(url, smp1_update_tariff_without_msp)
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_update_tariff_without_msp_response
+        smp1_update_tariff_without_msp_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_update_tariff_without_msp_response
         assert (
             SolidTariff.objects.filter(
                 external_id=smp1_update_tariff_without_msp["external_id"]

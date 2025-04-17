@@ -4,6 +4,14 @@ from django.db import migrations, models
 import django.db.models.deletion
 from django.utils import timezone
 
+def update_existing_tables(apps, schema_editor):
+    SolidTariff = apps.get_model('ocpi22', 'SolidTariff')
+    Tariff = apps.get_model('ocpi22', 'Tariff')
+
+    for solid_tariff in SolidTariff.objects.all():
+        t = Tariff.objects.filter(uid=solid_tariff.external_id)
+        solid_tariff.ocpi_tariff = t.first() if t.exists() else None
+        solid_tariff.save()
 
 class Migration(migrations.Migration):
 
@@ -47,4 +55,5 @@ class Migration(migrations.Migration):
             name='operator',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='operator_credentialsrole', to='ocpi22.credentialsrole', verbose_name='CPO details'),
         ),
+        migrations.RunPython(update_existing_tables),
     ]
