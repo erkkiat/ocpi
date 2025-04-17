@@ -1388,4 +1388,4 @@ def update_location(request, location: LocationIn):
 
         return status_code, LocationIn.from_orm(saved_location)
     except ValidationError as e:
-        return 400, {"msg": e.detail}
+        return 400, Error(message=str(e.detail))
