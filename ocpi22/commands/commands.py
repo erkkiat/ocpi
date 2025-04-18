@@ -20,6 +20,7 @@ from ocpi22.commands.cpo_simulator import start_simulated_session
 from ocpi22.decorators import requires_sender_role
 from ocpi22.models import enum
 from ocpi22.msp.models import Authorization
+from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse
@@ -150,7 +151,8 @@ class CommandsViewSet(GenericViewSet):
         params.pop("token")
 
         close_active_sessions_for_evse(evse_uid)
-        session: Session = create_session(**params)
+        ad_hoc_token = AdhocToken.from_dict(params.pop("ad_hoc_token"))
+        session: Session = create_session(ad_hoc_token=ad_hoc_token, **params)
 
         return session
 

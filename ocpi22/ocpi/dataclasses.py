@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from ocpi22.choices import OcpiModuleEnum
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
 from ocpiconnector.party import Party
 
 
@@ -22,17 +22,17 @@ class AdhocToken:
     ocpi_master: Any  # "Any" to avoid importing CredentialsRole
 
     # Optional fields
-    country_code: str=field(default='')
-    party_id: str=field(default='')
-    whitelist: str=field(default='NEVER')
-    visual_number: str=field(default='')
-    issuer: str=field(default='')
-    group_id: str=field(default='')
-    language: str=field(default='en')
-    default_profile_type: str=field(default='REGULAR')
-    energy_contract: str=field(default='')
-    contract_id: str=field(default='-')
-    last_updated: datetime=field(default=None)
+    country_code: str = field(default="")
+    party_id: str = field(default="")
+    whitelist: str = field(default="NEVER")
+    visual_number: str = field(default="")
+    issuer: str = field(default="")
+    group_id: str = field(default="")
+    language: str = field(default="en")
+    default_profile_type: str = field(default="REGULAR")
+    energy_contract: str = field(default="")
+    contract_id: str = field(default="-")
+    last_updated: datetime = field(default=None)
 
     def party_str(self):
         return str(self.billed_to)
@@ -45,3 +45,22 @@ class AdhocToken:
 
     def get(self, key, default=None):
         return getattr(self, key, default)
+
+    @classmethod
+    def from_dict(cls, data):
+        if not hasattr(data, "valid"):
+            data["valid"] = True
+        if not hasattr(data, "billed_to"):
+            data["billed_to"] = Party(
+                country_code=data["country_code"], party_id=data["party_id"]
+            )
+        if not hasattr(data, "ocpi_master"):
+            from ocpi22.ocpi.auth import get_credentialsrole
+
+            data["ocpi_master"] = get_credentialsrole(
+                credentials=None,
+                party=data["billed_to"],
+                create=True,
+                role=OcpiRolesEnum.EMSP.value,
+            )
+        return cls(**data)
