@@ -141,18 +141,18 @@ class CommandsViewSet(GenericViewSet):
         params = serializer.validated_data.copy()
         params.update(
             dict(
-                ad_hoc_token=token,
-                billed_to=billed_to,
+                ad_hoc_token=AdhocToken.from_dict(token),
+                billed_to=billed_to.get_party(),
                 authorization_method=enum.AuthMethodChoices.COMMAND,
                 credentials=request.credentials,
                 connector_id=connector_id,
+                ocpi_master=billed_to,
             )
         )
         params.pop("token")
 
         close_active_sessions_for_evse(evse_uid)
-        ad_hoc_token = AdhocToken.from_dict(params.pop("ad_hoc_token"))
-        session: Session = create_session(ad_hoc_token=ad_hoc_token, **params)
+        session: Session = create_session(**params)
 
         return session
 
