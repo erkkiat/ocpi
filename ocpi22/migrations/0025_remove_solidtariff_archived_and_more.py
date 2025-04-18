@@ -10,7 +10,7 @@ def update_existing_tables(apps, schema_editor):
 
     for solid_tariff in SolidTariff.objects.all():
         t = Tariff.objects.filter(uid=solid_tariff.external_id)
-        solid_tariff.ocpi_tariff = t.first() if t.exists() else None
+        solid_tariff.ocpi_tariff = t.first() if t.exists() else Tariff.objects.get(id=1)
         solid_tariff.save()
 
 class Migration(migrations.Migration):
