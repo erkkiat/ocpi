@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
+from ocpi22.choices import OcpiModuleEnum
 from ocpiconnector.party import Party
 
 
@@ -15,13 +15,13 @@ class OCPIUrlComponents:
 
 @dataclass(eq=True, frozen=True)
 class AdhocToken:
-    valid: bool
     billed_to: Party
     uid: str
     type: str
     ocpi_master: Any  # "Any" to avoid importing CredentialsRole
 
     # Optional fields
+    valid: bool = field(default=True)
     country_code: str = field(default="")
     party_id: str = field(default="")
     whitelist: str = field(default="NEVER")
@@ -48,19 +48,4 @@ class AdhocToken:
 
     @classmethod
     def from_dict(cls, data):
-        if not hasattr(data, "valid"):
-            data["valid"] = True
-        if not hasattr(data, "billed_to"):
-            data["billed_to"] = Party(
-                country_code=data["country_code"], party_id=data["party_id"]
-            )
-        if not hasattr(data, "ocpi_master"):
-            from ocpi22.ocpi.auth import get_credentialsrole
-
-            data["ocpi_master"] = get_credentialsrole(
-                credentials=None,
-                party=data["billed_to"],
-                create=True,
-                role=OcpiRolesEnum.EMSP.value,
-            )
         return cls(**data)
