@@ -1,34 +1,22 @@
 from datetime import datetime
+import pytest
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpiconnector.party import Party
 
 
-def test_adhoc_token_from_dict_required_fields():
-    # Setup data with only required fields
-    data = {
+@pytest.fixture
+def required_fields_data():
+    return {
         "billed_to": Party("NL", "TNM"),
         "uid": "TOKEN123",
         "type": "RFID",
         "ocpi_master": None,
     }
 
-    # Call the method
-    token = AdhocToken.from_dict(data)
 
-    # Assert results
-    assert token.valid is True  # Default when not specified
-    assert token.billed_to == Party("NL", "TNM")
-    assert token.uid == "TOKEN123"
-    assert token.type == "RFID"
-    assert token.ocpi_master is None
-    assert token.country_code == ""
-    assert token.party_id == ""
-    assert token.whitelist == "NEVER"
-
-
-def test_adhoc_token_from_dict_all_fields():
-    # Setup data with all fields
-    data = {
+@pytest.fixture
+def all_fields_data():
+    return {
         "valid": False,
         "billed_to": Party("BE", "ABC"),
         "uid": "TOKEN456",
@@ -47,10 +35,31 @@ def test_adhoc_token_from_dict_all_fields():
         "last_updated": datetime(2023, 1, 1, 12, 0, 0),
     }
 
-    # Call the method
-    token = AdhocToken.from_dict(data)
 
-    # Assert results
+@pytest.fixture
+def minimal_token_data():
+    return {
+        "billed_to": Party("NL", "TNM"),
+        "uid": "TOKEN789",
+        "type": "RFID",
+        "ocpi_master": None,
+    }
+
+
+def test_adhoc_token_from_dict_required_fields(required_fields_data):
+    token = AdhocToken.from_dict(required_fields_data)
+    assert token.valid is True  # Default when not specified
+    assert token.billed_to == Party("NL", "TNM")
+    assert token.uid == "TOKEN123"
+    assert token.type == "RFID"
+    assert token.ocpi_master is None
+    assert token.country_code == ""
+    assert token.party_id == ""
+    assert token.whitelist == "NEVER"
+
+
+def test_adhoc_token_from_dict_all_fields(all_fields_data):
+    token = AdhocToken.from_dict(all_fields_data)
     assert token.valid is False
     assert token.billed_to == Party("BE", "ABC")
     assert token.uid == "TOKEN456"
@@ -69,26 +78,10 @@ def test_adhoc_token_from_dict_all_fields():
     assert token.last_updated == datetime(2023, 1, 1, 12, 0, 0)
 
 
-def test_adhoc_token_methods():
-    # Setup
-    token = AdhocToken.from_dict(
-        {
-            "billed_to": Party("NL", "TNM"),
-            "uid": "TOKEN789",
-            "type": "RFID",
-            "ocpi_master": None,
-        }
-    )
-
-    # Test party_str method
-    assert token.party_str() == str(Party("NL", "TNM"))
-
-    # Test get_party method
-    assert token.get_party() == Party("NL", "TNM")
-
-    # Test __str__ method
-    assert str(token) == f"{str(Party('NL', 'TNM'))}: RFID TOKEN789"
-
-    # Test get method
-    assert token.get("uid") == "TOKEN789"
-    assert token.get("nonexistent", "default") == "default"
+def test_adhoc_token_methods(minimal_token_data):
+    minimal_token = AdhocToken.from_dict(minimal_token_data)
+    assert minimal_token.party_str() == str(Party("NL", "TNM"))
+    assert minimal_token.get_party() == Party("NL", "TNM")
+    assert str(minimal_token) == f"{str(Party('NL', 'TNM'))}: RFID TOKEN789"
+    assert minimal_token.get("uid") == "TOKEN789"
+    assert minimal_token.get("nonexistent", "default") == "default"
