@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from ocpi22.commands.cpo_simulator import start_simulated_session
 from ocpi22.decorators import requires_sender_role
 from ocpi22.models import enum
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.msp.models import Authorization
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tasks import send_ocpi_request
@@ -74,6 +75,14 @@ class ResponseData:
     http_status: int
     message: list
     timeout: int
+
+
+def fill_msp_information(token: dict, billed_to: CredentialsRole) -> dict:
+    if "billed_to" not in token:
+        token["billed_to"] = billed_to.get_party()
+    if "ocpi_master" not in token:
+        token["ocpi_master"] = billed_to
+    return token
 
 
 class CommandsViewSet(GenericViewSet):
@@ -257,6 +266,7 @@ class CommandsViewSet(GenericViewSet):
         )
         if serializer.is_valid():
             token = serializer.validated_data.get("token", "")
+            token = fill_msp_information(token, billed_to)
             authorization_reference = serializer.validated_data.get(
                 "authorization_reference"
             )
