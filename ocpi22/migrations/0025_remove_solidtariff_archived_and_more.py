@@ -35,12 +35,6 @@ class Migration(migrations.Migration):
             field=models.DateTimeField(default=timezone.now(), verbose_name='Last updated timestamp'),
             preserve_default=False,
         ),
-        migrations.AddField(
-            model_name='solidtariff',
-            name='ocpi_tariff',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='tariff', to='ocpi22.tariff', verbose_name='Tariff'),
-            preserve_default=False,
-        ),
         migrations.AlterField(
             model_name='solidtariff',
             name='created_at',
