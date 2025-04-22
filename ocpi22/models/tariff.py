@@ -501,18 +501,6 @@ def tariff_pre_delete(sender, instance: Tariff, *_args, **_kwargs):
             )
 
 
-def populate_ocpi_tariff(apps, schema_editor):
-    SolidTariff = apps.get_model("ocpi22", "SolidTariff")
-    Tariff = apps.get_model("ocpi22", "Tariff")
-
-    default_tariff = Tariff.objects.first()
-
-    for solid_tariff in SolidTariff.objects.all():
-        if solid_tariff.ocpi_tariff_id is None:
-            solid_tariff.ocpi_tariff = default_tariff
-            solid_tariff.save()
-
-
 # SolidTariff is an immutable model
 class SolidTariff(models.Model):
     objects = PartnerManager()
