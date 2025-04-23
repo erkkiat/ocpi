@@ -550,9 +550,12 @@ class SolidTariff(models.Model):
         on_delete=models.PROTECT,
         related_name="tariff",
         verbose_name=_("Tariff"),
+        null=True,
     )
 
-    last_updated = models.DateTimeField(verbose_name=_("Last updated timestamp"))
+    last_updated = models.DateTimeField(
+        verbose_name=_("Last updated timestamp"), null=True
+    )
     created_at = models.DateTimeField(
         auto_now_add=True, verbose_name=_("Created timestamp")
     )
