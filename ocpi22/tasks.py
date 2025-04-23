@@ -5,7 +5,6 @@ from logging import getLogger
 from urllib.parse import urlparse
 
 import celery
-import cronitor.celery
 import pytz
 import requests
 import pprint
@@ -56,7 +55,6 @@ pull_minute = random.randint(0, 59)
 # DO NOT REMOVE IT!!
 from base_task_services import setup_worker_connection  # noqa
 
-
 app.conf.beat_schedule = {
     "run-me-every-minute": {
         "task": "ocpi22.tasks.celery_heartbeat",
@@ -103,31 +101,40 @@ if REDIS_URL:
 
     # Load task modules from all registered Django apps.
     app.autodiscover_tasks()
-
-    CRONITOR_API_KEY = os.environ.get("CRONITOR_API_KEY")
-    if CRONITOR_API_KEY:
-        # Send pings automatically to Cronitor for Celery background tasks
-        cronitor.celery.initialize(app, api_key=CRONITOR_API_KEY)
 else:
     logger.error(f"{settings.HOSTNAME}: REDIS_URL not set, no connection to REDIS")
+
+
+def get_cert_from_env(var_name: str) -> str | None:
+    val = os.getenv(var_name, None)
+    if not val:
+        return
+    return val.replace("\\n", "\n").strip()
 
 
 def get_request_session(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
     credentials = Credentials.objects.filter(id=credential_id).first()
-    request_session = requests.Session()
-    if not credentials:
-        return request_session
-    ca_cert = os.getenv(credentials.ca_certificate_name, None)
-    private_key = os.getenv(credentials.private_key_name, None)
-    client_cert = os.getenv(credentials.client_certificate_name, None)
-    ssl_context = load_ssl_context(
-        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
-    )
+
+    if credentials:
+        ca_cert = get_cert_from_env(credentials.ca_certificate_name)
+        private_key = get_cert_from_env(credentials.private_key_name)
+        client_cert = get_cert_from_env(credentials.client_certificate_name)
+    else:
+        client_cert = private_key = ca_cert = ""
+
+    return _get_ssl_session_client(client_cert, private_key, ca_cert)
+
+
+def _get_ssl_session_client(
+    client_cert: str, private_key: str, ca_cert: str, verify_ssl=True
+) -> requests.Session:
+    ssl_context = load_ssl_context(client_cert, private_key, ca_cert, verify_ssl)
+    session = requests.Session()
     if ssl_context:
-        request_session.mount("https://", SSLAdapter(ssl_context=ssl_context))
-    return request_session
+        session.mount("https://", SSLAdapter(ssl_context=ssl_context))
+    return session
 
 
 @shared_task(

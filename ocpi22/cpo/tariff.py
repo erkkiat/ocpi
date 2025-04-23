@@ -13,7 +13,11 @@ from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
-from ocpi22.ocpi.util import IsModificationAllowed, HasSolidTariffDeletePermission
+from ocpi22.ocpi.util import (
+    IsModificationAllowed,
+    HasSolidTariffDeletePermission,
+    logger,
+)
 from ocpiconnector.exceptions import MspNotFoundError
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -35,7 +39,7 @@ class SolidTariffViewSet(
 
     """
 
-    queryset = SolidTariff.objects.filter(archived=False).order_by("external_id")
+    queryset = SolidTariff.objects.all().order_by("external_id")
     serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
@@ -72,11 +76,11 @@ class SolidTariffViewSet(
             if serializer.is_valid():
                 validated_data = serializer.validated_data
                 validated_data["ocpi_master"] = our_role
-                solid_tariff, created = serializer.create(validated_data)
-                if created:
-                    # TODO: At the moment solid tariff does not have the link to ocpi tariff. This is coming on the next PR
-                    # solid_tariff.ocpi_tariff.send_updates()
-                    pass
+                solid_tariff = self.service.create(validated_data)
+                if solid_tariff.ocpi_tariff:
+                    solid_tariff.ocpi_tariff.post_process_after_update_or_create()
+                else:
+                    logger.error("Tariff send updates failed.")
                 http_status = (
                     status.HTTP_200_OK if solid_tariff else status.HTTP_201_CREATED
                 )
@@ -84,8 +88,9 @@ class SolidTariffViewSet(
                     self.get_response_data(
                         model_to_dict(
                             solid_tariff,
-                            exclude=["id", "operator", "archived"],
-                        )
+                            exclude=["id", "operator"],
+                        ),
+                        solid_tariff.ocpi_tariff,
                     ),
                     status=http_status,
                 )
@@ -135,30 +140,6 @@ class SolidTariffViewSet(
                 )
                 return Response(serializer.data)
 
-            serializer = SolidTariffSerializer(
-                solid_tariff,
-                data=request.data,
-                partial=False,
-                context={"request": request},
-            )
-            if serializer.is_valid():
-                tariff, solid_tariff = serializer.save(ocpi_master=our_role)
-                serializer = SolidTariffSerializer(
-                    SolidTariff.objects.get(
-                        external_id=external_id, archived=False, msp=msp
-                    )
-                )
-                return Response(
-                    self.get_response_data(
-                        model_to_dict(
-                            solid_tariff, exclude=["id", "operator", "archived"]
-                        )
-                    ),
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         except (
             IntegrityError,
             AssertionError,
@@ -184,7 +165,8 @@ class SolidTariffViewSet(
         if uid:
             return get_object_or_404(Tariff, uid=uid)
 
-    def get_response_data(self, data: dict):
+    def get_response_data(self, data: dict, tariff: Tariff) -> dict:
+        data["ocpi_tariff"] = tariff.uid
         msp = data["msp"]
         if not msp:
             del data["msp"]

@@ -128,14 +128,13 @@ def process_start_charging(
         token = construct_adhoc_token(account.app_token_id, contract_id)
 
     authorization_reference = generate_auth_reference()
-
-    response: requests.Response = send_start_command(
-        request, evse, token, connector_id, contract_id, authorization_reference
-    )
     Authorization.objects.create(
         authorization_reference=authorization_reference,
         max_price=max_price,
         token_uid=token.uid,
+    )
+    response: requests.Response = send_start_command(
+        request, evse, token, connector_id, contract_id, authorization_reference
     )
     if response.status_code == status.HTTP_200_OK:
         messages.success(

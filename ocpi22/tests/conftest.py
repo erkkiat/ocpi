@@ -30,6 +30,7 @@ def smp1_solid_tariff_with_all_records_json():
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -48,9 +49,23 @@ def smp1_solid_tariff_with_all_records_without_msp_json():
 
 
 @pytest.fixture
-def smp1_msp1_solid_tariff_with_all_records(
-    self, solid_tariff_smp1_msp1_data, msp_de_ice, operator_fi_cpo
-):
+def smp1_solid_tariff_validated_json(operator_fi_cpo, msp_de_ice):
+    return {
+        "external_id": "SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0.690,
+        "price_per_min": 0.42,
+        "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_grace_period": 100,
+        "vat_percentage": 0.2,
+        "ocpi_master": operator_fi_cpo,
+        "msp": msp_de_ice,
+    }
+
+
+@pytest.fixture
+def smp1_msp1_solid_tariff_with_all_records(msp_de_ice, operator_fi_cpo):
     return SolidTariffFactory(
         external_id="SMP1",
         currency="EUR",
@@ -61,7 +76,6 @@ def smp1_msp1_solid_tariff_with_all_records(
         parking_grace_period=100,
         msp=msp_de_ice,
         operator=operator_fi_cpo,
-        archived=False,
     )
 
 
@@ -77,6 +91,7 @@ def smp1_solid_tariff_with_all_records_response():
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "msp": "DE*ICE",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -100,7 +115,6 @@ def smp1_solid_tariff_minimal_records(operator_fi_cpo):
         parking_grace_period=None,
         msp=None,
         operator=operator_fi_cpo,
-        archived=False,
     )
 
 
@@ -115,6 +129,7 @@ def smp1_solid_tariff_with_minimal_records_response():
         "price_per_kwh": None,
         "price_per_min": None,
         "vat_percentage": None,
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -129,6 +144,7 @@ def smp1_solid_tariff_zero_pricing_json():
         "parking_price_per_min": 0,
         "parking_grace_period": 0,
         "vat_percentage": 0,
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -143,6 +159,7 @@ def smp1_solid_tariff_with_zero_pricing_response():
         "price_per_kwh": "0",
         "price_per_min": "0",
         "vat_percentage": "0",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -217,7 +234,7 @@ def smp1_tariff():
 
 
 @pytest.fixture
-def smp1_tariff_no_msp():
+def smp1_tariff_no_msp_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
@@ -227,6 +244,7 @@ def smp1_tariff_no_msp():
         "parking_price_per_min": 0.54,
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -241,6 +259,7 @@ def smp1_tariff_data_with_no_external_id():
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -270,6 +289,7 @@ def smp1_update_solid_tariff_json():
         "parking_grace_period": 100,
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -284,6 +304,7 @@ def smp1_update_tariff_without_msp():
         "parking_price_per_min": 0.54,
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -307,7 +328,7 @@ def solid_tariff_smp1_msp1_update_data(operator_fi_cpo, msp_de_ice):
         "vat_percentage": 20.0,
         "msp": msp_de_ice,
         "operator": operator_fi_cpo,
-        "archived": False,
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -324,7 +345,7 @@ def solid_tariff_smp1_msp1_json():
         "vat_percentage": 20.0,
         "msp": "DE*ICE",
         "operator": "FI*CPO",
-        "archived": False,
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -341,5 +362,5 @@ def solid_tariff_smp1_msp2_data(operator_fi_cpo, msp_de_icd):
         "vat_percentage": 20.0,
         "msp": msp_de_icd,
         "operator": operator_fi_cpo,
-        "archived": False,
+        "last_updated": "2024-09-22T12:30:30Z",
     }
