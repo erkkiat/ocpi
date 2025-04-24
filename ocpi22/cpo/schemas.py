@@ -206,6 +206,9 @@ class LocationIn(BaseSchema):
     images: Optional[List[OCPIImage]] = None
     energy_mix: Optional[List[EnergyMix]] = None
     last_updated: datetime
+    roaming_enabled: Optional[bool] = Field(
+        ..., description="Indicates whether to share the location with roaming partners"
+    )
 
 
 class Error(Schema):

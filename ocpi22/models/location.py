@@ -214,6 +214,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         default=True, verbose_name=_("Charging when closed")
     )
 
+    roaming_enabled = models.BooleanField(
+        default=True, verbose_name=_("Roaming enabled")
+    )
+
     def get_timezone(self):
         return tz.gettz(str(self.time_zone))
 
