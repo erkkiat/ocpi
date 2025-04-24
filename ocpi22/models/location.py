@@ -18,7 +18,7 @@ import generic.countries
 from ocpi22 import choices
 import util
 
-from ocpi22.choices import OcpiModuleEnum, OCPIFacility, OCPICapability
+from ocpi22.choices import OcpiModuleEnum, OCPIFacility, OCPICapability, ROLE_CHOICES
 from ocpi22.models.models import MultipleChoiceCharField
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.util import (
@@ -291,7 +291,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         return ", ".join(set(results))
 
     def send_updates(self, *args, **kwargs) -> None:
-        if self.publish:
+        if not self.roaming_enabled:
+            self.send_updates_to = [ROLE_CHOICES.NAP, ROLE_CHOICES.NSP]
+            super().send_all_updates(*args, **kwargs)
+        else:
             super().send_updates(*args, **kwargs)
 
 

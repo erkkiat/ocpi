@@ -174,11 +174,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
 
             # Was Location posted from the CPO backend using OCPI Locations endpoint, not from a roaming partner?
-            if (
-                request.ocpi_auth == OcpiAuthTypes.NONE
-                and ocpi_platform.is_cpo
-                and saved_location.roaming_enabled
-            ):
+            if request.ocpi_auth == OcpiAuthTypes.NONE and ocpi_platform.is_cpo:
                 saved_location.send_updates(data=serializer.data)
 
             return OCPIResponse(serializer.data, http_status=http_status)
