@@ -36,6 +36,8 @@ from ocpiconnector.ocpi_identities import (
     get_our_credentialsrole,
 )
 
+from ocpi22.credentials.util import find_endpoints_by_roles
+
 
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
@@ -48,6 +50,11 @@ def load_json(filename, serializer, object_type):
         uid = data.get("id") or data.get("uid")
         instance = object_type.get_if_exists(uid=uid.upper()) if uid else None
         return serializer(data=data, instance=instance)
+
+
+@pytest.fixture
+def msp_de_ice():
+    return CredentialsRoleFactory(country_code="DE", party_id="ICE", role="EMSP")
 
 
 class TestLocations(TestCase):
@@ -465,6 +472,7 @@ class TestRoamingEnabledLocations:
         msp_de_ice,
         nap_np_nap,
     ):
+        find_endpoints_by_roles.cache_clear()
         url = reverse("cpo:update_location")
 
         if roaming_enabled is not None:
@@ -480,12 +488,14 @@ class TestRoamingEnabledLocations:
                 == expected_response["roaming_enabled"]
             )
 
-            roles_to_check = [ocpi_master, nsp_lk_nsp, nap_np_nap]
+            roles_to_check = [nsp_lk_nsp, nap_np_nap]
 
             if roaming_enabled:
                 roles_to_check.extend([hub_fr_gir, msp_de_ice])
 
-            roles_not_to_check = [] if roaming_enabled else [hub_fr_gir, msp_de_ice]
+            roles_not_to_check = (
+                [] if roaming_enabled else [hub_fr_gir, msp_de_ice, ocpi_master]
+            )
 
             for role in roles_to_check:
                 party = Party(role.country_code, role.party_id)
