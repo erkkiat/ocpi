@@ -67,15 +67,18 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             queryset = (
                 Location.objects.prefetch_related(*prefetch_fields)
                 .partner_filter(self.request)
-                .exclude(publish=False)
+                .exclude(roaming_enabled=False)
                 .order_by("created")
             )
         else:
-            queryset = (
-                Location.objects.prefetch_related(*prefetch_fields)
-                .exclude(publish=False)
-                .order_by("created")
+            queryset = Location.objects.prefetch_related(*prefetch_fields).order_by(
+                "created"
             )
+
+            ocpi_party = getattr(self.request, "ocpi_party", None)
+            if ocpi_party.role in ["EMSP", "HUB"]:
+                queryset = queryset.exclude(roaming_enabled=False)
+
         queryset = LocationService.get_allowed_locations_queryset(credentials, queryset)
         return queryset
 
