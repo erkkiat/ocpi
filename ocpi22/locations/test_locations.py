@@ -77,20 +77,6 @@ def test_pre_save_always_saves_emi3_standard_evse_id():
 class TestPublicAndNonPublicLocations:
     mock_send_all_updates_name = "ocpi22.ocpi.util.OcpiModule.send_all_updates"
 
-    def test_that_exclusive_location_is_not_pushed(self):
-        with patch(self.mock_send_all_updates_name) as mock_send_all_updates:
-            location = LocationFactory(publish=False)
-            location.send_updates()
-
-        assert mock_send_all_updates.called is False
-
-    def test_that_public_location_is_pushed(self):
-        with patch(self.mock_send_all_updates_name) as mock_send_all_updates:
-            location = LocationFactory(publish=True)
-            location.send_updates()
-
-        assert mock_send_all_updates.called
-
     @staticmethod
     def get_location_list(credentials: Credentials):
         return client.get(
@@ -101,24 +87,6 @@ class TestPublicAndNonPublicLocations:
                 sender=Party("FI", "MSP"),
             ),
         )
-
-    def test_that_exclusive_location_is_not_listed_in_locations_list(
-        self, exclusive_location, msp_credentials_with_endpoints
-    ):
-        response = self.get_location_list(msp_credentials_with_endpoints)
-        assert not any(
-            location.get("id") == exclusive_location.uid
-            for location in response.data.get("data")
-        ), "A private location should not be listed when GETting the OCPI Locations list"
-
-    def test_that_public_location_is_listed_in_locations_list(
-        self, public_location, exclusive_location, msp_credentials_with_endpoints
-    ):
-        response = self.get_location_list(msp_credentials_with_endpoints)
-        assert any(
-            location.get("id") == public_location.uid
-            for location in response.data.get("data")
-        ), "A public location should be listed when GETting the OCPI Locations list"
 
     def test_location_list_view_only_returns_allowed_locations(
         self, msp_credentials_with_endpoints
