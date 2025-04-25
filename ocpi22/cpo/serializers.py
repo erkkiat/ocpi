@@ -507,9 +507,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         required=False,
         allow_null=True,
     )
-
-    def create(self, validated_data):
-        return self.service.create(validated_data)
+    last_updated = UTCDateTimeField(required=False)
 
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):

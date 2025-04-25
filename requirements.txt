@@ -22,14 +22,12 @@ aiohttp~=3.9.5  # 3.10 will break async Token validation
 gunicorn~=23.0.0
 colorama~=0.4.6
 django-nested-admin==4.1.1
-cronitor~=4.7.1
 time_machine==2.15.0
 django-multiselectfield==0.1.13
 moesifdjango~=2.3.9
 geojson~=3.1.0
 python-dotenv~=1.0.1
 sentry-sdk==2.18.0
-googletrans~=3.1.0a0
 geopy~=2.4.1
 pycountry~=24.6.1
 langcodes~=3.4.0
@@ -61,6 +59,5 @@ responses~=0.25.3
 boto3==1.35.76
 python-json-logger==3.2.1
 newrelic==10.4.0
-transformers==4.49.0
-torch==2.6.0
-sentencepiece==0.2.0
+locust==2.33.2
+deepdiff==8.4.2

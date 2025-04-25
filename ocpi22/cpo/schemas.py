@@ -24,7 +24,7 @@ from ocpi22.ocpi.util import Ocpi
 
 
 class BaseSchema(Schema):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class StatusSchedule(BaseSchema):
@@ -206,3 +206,7 @@ class LocationIn(BaseSchema):
     images: Optional[List[OCPIImage]] = None
     energy_mix: Optional[List[EnergyMix]] = None
     last_updated: datetime
+
+
+class Error(Schema):
+    message: str

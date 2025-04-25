@@ -1,9 +1,12 @@
 import json
 from unittest.mock import patch
 
+from datetime import datetime
+
 import pytest
 from django.contrib.auth.models import Permission
 from django.core.serializers import serialize
+import time_machine
 from django.urls import reverse
 from rest_framework import status
 
@@ -46,9 +49,9 @@ def solid_tariff_smp1_msp1(msp_de_ice, operator_fi_cpo):
         parking_price_per_min=0.54,
         parking_grace_period=100,
         vat_percentage=20.0,
+        last_updated=datetime(2024, 9, 22, 12, 30, 30, 0),
         msp=msp_de_ice,
         operator=operator_fi_cpo,
-        archived=False,
     )
 
 
@@ -63,7 +66,7 @@ def solid_tariff_smp1_without_msp():
         parking_price_per_min=0.54,
         parking_grace_period=100,
         vat_percentage=20.0,
-        archived=False,
+        last_updated=datetime(2024, 9, 22, 12, 30, 30, 0),
     )
 
 
@@ -110,6 +113,7 @@ def smp1_update_tariff_without_msp_response():
         "price_per_min": "0.42",
         "price_flat": "0.56",
         "vat_percentage": "20.0",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -125,6 +129,7 @@ def smp1_update_response():
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "msp": "DE*ICE",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -139,6 +144,7 @@ def smp1_create_response_no_msp():
         "parking_price_per_min": "0.54",
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
+        "last_updated": "2024-09-22T12:30:30Z",
     }
 
 
@@ -153,34 +159,48 @@ def super_user_with_delete_solid_tariff_permission(super_user):
     super_user.user_permissions.set([permission])
 
 
+@pytest.fixture(scope="class", autouse=True)
+def freeze_time():
+    with time_machine.travel(datetime(2024, 9, 22, 12, 30, 30, 0), tick=False):
+        yield
+
+
 class TestSolidTariffs:
-    def test_unauthenticated_user_cannot_get_solid_tariff_returns_401_unauthorized(
-        self, client
+    @pytest.mark.parametrize(
+        "method, payload, expected_status",
+        [
+            pytest.param(
+                "get",
+                None,
+                status.HTTP_401_UNAUTHORIZED,
+                id="unauthenticated_user_cannot_get_solid_tariff",
+            ),
+            pytest.param(
+                "post",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_401_UNAUTHORIZED,
+                id="unauthenticated_user_cannot_post_solid_tariff",
+            ),
+            pytest.param(
+                "put",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_401_UNAUTHORIZED,
+                id="unauthenticated_user_cannot_put_solid_tariff",
+            ),
+            pytest.param(
+                "delete",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_401_UNAUTHORIZED,
+                id="unauthenticated_user_cannot_delete_solid_tariff",
+            ),
+        ],
+    )
+    def test_unauthenticated_user_http_methods_on_solid_tariffs(
+        self, client, method, payload, expected_status
     ):
         url = reverse("solid-tariff-list")
-        response = client.get(url)
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    def test_unauthenticated_user_cannot_post_solid_tariff_returns_401_unauthorized(
-        self, client, smp1_solid_tariff_with_all_records_json
-    ):
-        url = reverse("solid-tariff-list")
-        response = client.post(url, smp1_solid_tariff_with_all_records_json)
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    def test_unauthenticated_user_cannot_put_solid_tarif_returns_401_unauthorizedf(
-        self, client, smp1_solid_tariff_with_all_records_json
-    ):
-        url = reverse("solid-tariff-list")
-        response = client.put(url, smp1_solid_tariff_with_all_records_json)
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    def test_unauthenticated_user_cannot_delete_all_solid_tariffs_returns_401_unauthorized(
-        self, client, smp1_solid_tariff_with_all_records_json
-    ):
-        url = reverse("solid-tariff-list")
-        response = client.delete(url)
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        response = getattr(client, method)(url, payload)
+        assert response.status_code == expected_status
 
     def test_unauthenticated_user_cannot_delete_solid_tariff_by_external_id_returns_401_unauthorized(
         self, client
@@ -189,77 +209,89 @@ class TestSolidTariffs:
         response = client.delete(url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_normal_user_can_get_solid_tariff_returns_200_ok(
-        self, authenticated_user_client
+    @pytest.mark.parametrize(
+        "method, payload, expected_status",
+        [
+            pytest.param(
+                "get",
+                None,
+                status.HTTP_200_OK,
+                id="authenticated_user_can_get_solid_tariff",
+            ),
+            pytest.param(
+                "post",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_405_METHOD_NOT_ALLOWED,
+                id="authenticated_user_cannot_post_solid_tariff",
+            ),
+            pytest.param(
+                "put",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_200_OK,
+                id="authenticated_user_can_put_solid_tariff",
+            ),
+            pytest.param(
+                "delete",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_403_FORBIDDEN,
+                id="authenticated_user_cannot_delete_solid_tariff",
+            ),
+        ],
+    )
+    def test_authenticated_user_http_methods_on_solid_tariffs(
+        self, authenticated_user_client, method, payload, expected_status
     ):
         url = reverse("solid-tariff-list")
-        response = authenticated_user_client.get(url)
-        assert response.status_code == status.HTTP_200_OK
-
-    def test_normal_user_cannot_post_solid_tariff_returns_405_method_not_allowed(
-        self,
-        authenticated_user_client,
-        smp1_solid_tariff_with_all_records_json,
-        msp_de_ice,
-    ):
-        url = reverse("solid-tariff-list")
-        response = authenticated_user_client.post(
-            url, smp1_solid_tariff_with_all_records_json
+        response = (
+            getattr(authenticated_user_client, str(method))(url, payload)
+            if payload
+            else getattr(authenticated_user_client, str(method))(url)
         )
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        assert response.status_code == expected_status
 
-    def test_normal_user_can_put_solid_tariff_returns_200_ok(
-        self,
-        authenticated_user_client,
-        smp1_solid_tariff_with_all_records_without_msp_json,
-    ):
-        url = reverse("solid-tariff-list")
-        response = authenticated_user_client.put(
-            url, smp1_solid_tariff_with_all_records_without_msp_json
-        )
-        assert response.status_code == status.HTTP_200_OK
-
-    def test_normal_user_cannot_delete_solid_tariff_403_forbidden(
-        self, authenticated_user_client, smp1_solid_tariff_with_all_records_json
-    ):
-        url = reverse("solid-tariff-list")
-        response = authenticated_user_client.delete(url)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
-    def test_normal_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
+    def test_authenticated_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
         self, authenticated_user_client, smp1_solid_tariff_with_all_records_json
     ):
         url = f'{reverse("solid-tariff-list")}SMP1/'
         response = authenticated_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_admin_user_can_get_solid_tariff_200_ok(self, admin_user_client):
-        url = reverse("solid-tariff-list")
-        response = admin_user_client.get(url)
-        assert response.status_code == status.HTTP_200_OK
-
-    def test_admin_user_cannot_post_solid_tariff_405_method_not_allowed(
-        self, admin_user_client, smp1_solid_tariff_with_all_records_json, msp_de_ice
+    @pytest.mark.parametrize(
+        "method, payload, expected_status",
+        [
+            pytest.param(
+                "get", None, status.HTTP_200_OK, id="admin_user_can_get_solid_tariff"
+            ),
+            pytest.param(
+                "post",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_405_METHOD_NOT_ALLOWED,
+                id="admin_user_cannot_post_solid_tariff",
+            ),
+            pytest.param(
+                "put",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_200_OK,
+                id="admin_user_can_put_solid_tariff",
+            ),
+            pytest.param(
+                "delete",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_403_FORBIDDEN,
+                id="admin_user_cannot_delete_solid_tariff",
+            ),
+        ],
+    )
+    def test_admin_user_http_methods_on_solid_tariffs(
+        self, admin_user_client, method, payload, expected_status
     ):
         url = reverse("solid-tariff-list")
-        response = admin_user_client.post(url, smp1_solid_tariff_with_all_records_json)
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-    def test_admin_user_can_put_solid_tariff_200_ok(
-        self, admin_user_client, smp1_solid_tariff_with_all_records_without_msp_json
-    ):
-        url = reverse("solid-tariff-list")
-        response = admin_user_client.put(
-            url, smp1_solid_tariff_with_all_records_without_msp_json
+        response = (
+            getattr(admin_user_client, method)(url, payload)
+            if payload
+            else getattr(admin_user_client, method)(url)
         )
-        assert response.status_code == status.HTTP_200_OK
-
-    def test_admin_user_cannot_delete_solid_tariff_403_forbidden(
-        self, admin_user_client, smp1_solid_tariff_with_all_records_json
-    ):
-        url = reverse("solid-tariff-list")
-        response = admin_user_client.delete(url)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == expected_status
 
     def test_admin_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
         self, admin_user_client, smp1_solid_tariff_with_all_records_json
@@ -268,44 +300,44 @@ class TestSolidTariffs:
         response = admin_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_super_user_can_get_solid_tariff_200_ok(self, super_user_client):
-        url = reverse("solid-tariff-list")
-        response = super_user_client.get(url)
-        assert response.status_code == status.HTTP_200_OK
-
-    def test_super_user_cannot_post_solid_tariff_405_method_not_allowed(
-        self,
-        super_user_client,
-        smp1_solid_tariff_with_all_records_without_msp_json,
-        msp_de_ice,
+    @pytest.mark.parametrize(
+        "method, payload, expected_status",
+        [
+            pytest.param(
+                "get", None, status.HTTP_200_OK, id="super_user_can_get_solid_tariff"
+            ),
+            pytest.param(
+                "post",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_405_METHOD_NOT_ALLOWED,
+                id="super_user_cannot_post_solid_tariff",
+            ),
+            pytest.param(
+                "put",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_200_OK,
+                id="super_user_can_put_solid_tariff",
+            ),
+            pytest.param(
+                "delete",
+                {"external_id": "SMP1", "currency": "EUR"},
+                status.HTTP_403_FORBIDDEN,
+                id="super_user_cannot_delete_solid_tariff",
+            ),
+        ],
+    )
+    def test_super_user_http_methods_on_solid_tariffs(
+        self, super_user_client, method, payload, expected_status
     ):
         url = reverse("solid-tariff-list")
-        response = super_user_client.post(
-            url, smp1_solid_tariff_with_all_records_without_msp_json
+        response = (
+            getattr(super_user_client, method)(url, payload)
+            if payload
+            else getattr(super_user_client, method)(url)
         )
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        assert response.status_code == expected_status
 
-    def test_super_user_can_put_solid_tariff_200_ok(
-        self, super_user_client, smp1_solid_tariff_with_all_records_without_msp_json
-    ):
-        url = reverse("solid-tariff-list")
-        response = super_user_client.put(
-            url, smp1_solid_tariff_with_all_records_without_msp_json
-        )
-        assert response.status_code == status.HTTP_200_OK
-
-    @pytest.mark.django_db
-    def test_super_user_cannot_delete_all_solid_tariffs_with_delete_permission_405_method_not_allowed(
-        self,
-        super_user_client,
-        smp1_solid_tariff_with_all_records_json,
-        super_user_with_delete_solid_tariff_permission,
-    ):
-        url = reverse("solid-tariff-list")
-        response = super_user_client.delete(url)
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-    def test_super_user_can_delete_solid_tariff_returns_204_no_content(
+    def test_super_user_cannot_delete_solid_tariff_returns_405(
         self,
         super_user_client,
         smp1_solid_tariff_with_all_records_json,
@@ -317,7 +349,7 @@ class TestSolidTariffs:
         super_user.user_permissions.set([permission])
         url = f'{reverse("solid-tariff-list")}SMP1/'
         response = super_user_client.delete(url)
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
     def test_super_user_cannot_delete_solid_tariff_without_delete_permission_return_403_forbidden(
         self,
@@ -329,7 +361,7 @@ class TestSolidTariffs:
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_super_user_can_delete_solid_tariff_by_external_id_204_no_content(
+    def test_super_user_cannot_delete_solid_tariff_by_external_id_405(
         self,
         super_user_client,
         smp1_solid_tariff_with_all_records_json,
@@ -338,7 +370,7 @@ class TestSolidTariffs:
     ):
         url = f'{reverse("solid-tariff-list")}SMP1/'
         response = super_user_client.delete(url)
-        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
     @pytest.mark.django_db
     def test_put_solid_tariffs_with_all_valid_records_returns_status_code_200(
@@ -346,6 +378,7 @@ class TestSolidTariffs:
         authenticated_user_client,
         msp_de_ice,
         operator_fi_cpo,
+        smp1_msp1_solid_tariff_with_all_records,
         smp1_solid_tariff_with_all_records_json,
         smp1_solid_tariff_with_all_records_response,
     ):
@@ -356,16 +389,16 @@ class TestSolidTariffs:
             response = authenticated_user_client.put(
                 url, smp1_solid_tariff_with_all_records_json
             )
-
-            tariff = Tariff.objects.get(
-                uid=smp1_solid_tariff_with_all_records_json["external_id"]
-            )
+            response_json = response.json()
+            tariff = Tariff.objects.get(uid=response_json["ocpi_tariff"])
             assert (
                 tariff.price() == "0,69€/kWh + 25,20€/h + 0,56€ flat + 32,40€/h parking"
             )
 
             assert response.status_code == status.HTTP_200_OK
-            assert response.json() == smp1_solid_tariff_with_all_records_response
+
+            smp1_solid_tariff_with_all_records_response["ocpi_tariff"] = tariff.uid
+            assert response_json == smp1_solid_tariff_with_all_records_response
             mock_send_updates.assert_called_once()
 
     @pytest.mark.django_db
@@ -400,8 +433,13 @@ class TestSolidTariffs:
             url, smp1_solid_tariff_minimal_records_json
         )
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_minimal_records_response
+        smp1_solid_tariff_with_minimal_records_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_solid_tariff_with_minimal_records_response
 
     @pytest.mark.django_db
     def test_put_solid_tariffs_with_zero_pricing_returns_status_code_200(
@@ -416,8 +454,13 @@ class TestSolidTariffs:
             url, smp1_solid_tariff_zero_pricing_json
         )
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_zero_pricing_response
+        smp1_solid_tariff_with_zero_pricing_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_solid_tariff_with_zero_pricing_response
 
     @pytest.mark.django_db
     def test_put_solid_tariff_with_minus_pricing_returns_status_code_400(
@@ -441,6 +484,8 @@ class TestSolidTariffs:
     ):
         url = reverse("solid-tariff-list")
         response = authenticated_user_client.get(url)
+        response_json = response.json()
+        smp1_get_response[0]["last_updated"] = response_json[0]["last_updated"]
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_get_response
@@ -449,7 +494,7 @@ class TestSolidTariffs:
     def test_get_solid_tariff_with_invalid_msp_returns_status_code_400(
         self,
         authenticated_user_client,
-        smp1_tariff_no_msp,
+        solid_tariff_smp1_without_msp,
         msp_de_ice,
         msp_de_icd,
         operator_fi_cpo,
@@ -470,7 +515,7 @@ class TestSolidTariffs:
     def test_get_solid_tariff_with_invalid_msp_with_external_id_returns_status_code_400(
         self,
         authenticated_user_client,
-        smp1_tariff_no_msp,
+        solid_tariff_smp1_without_msp,
         msp_de_ice,
         msp_de_icd,
         operator_fi_cpo,
@@ -500,7 +545,10 @@ class TestSolidTariffs:
         url = reverse("solid-tariff-list")
         response = authenticated_user_client.put(url, smp1_update_solid_tariff_json)
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
+        smp1_update_response["ocpi_tariff"] = response_json["ocpi_tariff"]
         assert response.json() == smp1_update_response
         assert (
             SolidTariff.objects.filter(
@@ -535,8 +583,13 @@ class TestSolidTariffs:
             url, smp1_solid_tariff_minimal_records_json
         )
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_minimal_records_response
+        smp1_solid_tariff_with_minimal_records_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_solid_tariff_with_minimal_records_response
         assert (
             SolidTariff.objects.filter(
                 external_id=smp1_solid_tariff_minimal_records_json["external_id"]
@@ -570,8 +623,13 @@ class TestSolidTariffs:
             url, smp1_solid_tariff_zero_pricing_json
         )
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_solid_tariff_with_zero_pricing_response
+        smp1_solid_tariff_with_zero_pricing_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_solid_tariff_with_zero_pricing_response
         assert (
             SolidTariff.objects.filter(
                 external_id=smp1_solid_tariff_zero_pricing_json["external_id"]
@@ -612,17 +670,19 @@ class TestSolidTariffs:
     def test_post_solid_tariff_with_no_msp_returns_status_code_200(
         self,
         authenticated_user_client,
-        smp1_tariff_no_msp,
+        smp1_tariff_no_msp_json,
         msp_de_ice,
         msp_de_icd,
         operator_fi_cpo,
         smp1_create_response_no_msp,
     ):
         url = reverse("solid-tariff-list")
-        response = authenticated_user_client.put(url, smp1_tariff_no_msp)
+        response = authenticated_user_client.put(url, smp1_tariff_no_msp_json)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_create_response_no_msp
+        response_json = response.json()
+        smp1_create_response_no_msp["ocpi_tariff"] = response_json["ocpi_tariff"]
+        assert response_json == smp1_create_response_no_msp
 
     @pytest.mark.django_db
     def test_update_solid_tariff_no_msp_create_a_new_solid_tariff(
@@ -635,8 +695,13 @@ class TestSolidTariffs:
         url = reverse("solid-tariff-list")
         response = authenticated_user_client.put(url, smp1_update_tariff_without_msp)
 
+        response_json = response.json()
+
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == smp1_update_tariff_without_msp_response
+        smp1_update_tariff_without_msp_response["ocpi_tariff"] = response_json[
+            "ocpi_tariff"
+        ]
+        assert response_json == smp1_update_tariff_without_msp_response
         assert (
             SolidTariff.objects.filter(
                 external_id=smp1_update_tariff_without_msp["external_id"]
