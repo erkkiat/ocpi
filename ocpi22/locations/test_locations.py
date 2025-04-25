@@ -14,19 +14,28 @@ from django.test import Client
 from unittest import TestCase
 
 from ocpi22.locations.serializers import LocationSerializer221
+from unittest.mock import ANY
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.tariff import Tariff
 from ocpi22.ocpi.auth import get_credentialsrole, find_credentials
 from ocpi22.ocpi.headers import make_headers
+from ocpi22.test_tariff_location_and_evse import load_example
 from ocpi22.tests.factories import (
     EvseFactory,
     LocationFactory,
     TariffFactory,
     CredentialsRoleFactory,
+    BusinessDetailsFactory,
+    SolidTariffFactory,
 )
 from ocpiconnector.party import Party
 from util import reverse
+
+from ocpiconnector.ocpi_identities import (
+    get_our_credentialsrole,
+)
+
 
 faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
@@ -310,3 +319,219 @@ class TestEvseMove:
         assert Evse.objects.get(uid=result.evses[0].uid).location == result.location
         assert result.evses[0].status == "CHARGING"
         assert result.evses[0].connectors.first().power_type == "AC_1_PHASE"
+
+
+@pytest.fixture
+def roaming_enabled_prague():
+    return LocationFactory(
+        uid="PRAGUE",
+        publish=True,
+        roaming_enabled=True,
+    )
+
+
+@pytest.fixture
+def roaming_disabled_paris():
+    return LocationFactory(
+        uid="PARIS",
+        publish=True,
+        roaming_enabled=False,
+    )
+
+
+@pytest.fixture
+def roaming_enabled_kuopio():
+    return LocationFactory(
+        uid="KUOPIO",
+        publish=True,
+        roaming_enabled=True,
+    )
+
+
+@pytest.fixture
+def nsp_lk_nsp():
+    return CredentialsRoleFactory(
+        country_code="LK",
+        party_id="NSP",
+        role="NSP",
+        business_details=BusinessDetailsFactory(name="Test NSP"),
+    )
+
+
+@pytest.fixture
+def nap_np_nap():
+    return CredentialsRoleFactory(
+        country_code="NP",
+        party_id="NAP",
+        role="NAP",
+        business_details=BusinessDetailsFactory(name="Test NAP"),
+    )
+
+
+@pytest.fixture
+def hub_fr_gir():
+    return CredentialsRoleFactory(
+        country_code="FR",
+        party_id="GIR",
+        role="HUB",
+        business_details=BusinessDetailsFactory(name="Gireve"),
+    )
+
+
+@pytest.fixture
+def ocpi_master():
+    get_our_credentialsrole.cache_clear()
+    get_credentialsrole.cache_clear()
+
+    return CredentialsRoleFactory(country_code="FI", party_id="CPO")
+
+
+@pytest.fixture
+def location_data(ocpi_master):
+    data = load_example("data/examples/location_example.json")
+    data["country_code"] = ocpi_master.country_code
+    data["party_id"] = ocpi_master.party_id
+
+    return data
+
+
+@pytest.fixture
+def tariffs(ocpi_master):
+    t11 = TariffFactory(uid="11", ocpi_master=ocpi_master)
+    t12 = TariffFactory(uid="12", ocpi_master=ocpi_master)
+    t13 = TariffFactory(uid="13", ocpi_master=ocpi_master)
+
+    SolidTariffFactory(
+        external_id="11", operator=ocpi_master, msp=None, ocpi_tariff=t11
+    )
+    SolidTariffFactory(
+        external_id="12", operator=ocpi_master, msp=None, ocpi_tariff=t12
+    )
+    SolidTariffFactory(
+        external_id="13", operator=ocpi_master, msp=None, ocpi_tariff=t13
+    )
+
+
+@pytest.mark.django_db
+class TestRoamingEnabledLocations:
+    @pytest.mark.parametrize(
+        "role, expected_locations",
+        [
+            ("CPO", {"PRAGUE", "KUOPIO", "PARIS"}),
+            ("HUB", {"PRAGUE", "KUOPIO"}),
+            ("EMSP", {"PRAGUE", "KUOPIO"}),
+            ("NSP", {"PRAGUE", "KUOPIO", "PARIS"}),
+            ("NAP", {"PRAGUE", "KUOPIO", "PARIS"}),
+        ],
+    )
+    def test_get_all_locations_per_role(
+        self,
+        authenticated_user_client,
+        role,
+        expected_locations,
+        roaming_enabled_kuopio,
+        roaming_enabled_prague,
+        roaming_disabled_paris,
+        ocpi_master,
+        hub_fr_gir,
+        nsp_lk_nsp,
+        msp_de_ice,
+        nap_np_nap,
+    ):
+        role_to_credentials = {
+            "CPO": ocpi_master,
+            "HUB": hub_fr_gir,
+            "NSP": nsp_lk_nsp,
+            "EMSP": msp_de_ice,
+            "NAP": nap_np_nap,
+        }
+        credentials_role = role_to_credentials[role]
+
+        response = authenticated_user_client.get(
+            reverse("location-list"),
+            headers=make_headers(
+                credentials_role.credentials.ours_base64(),
+                to=Party("FI", "CPO"),
+                sender=Party(credentials_role.country_code, credentials_role.party_id),
+            ),
+        )
+
+        location_ids = {location.get("id") for location in response.json().get("data")}
+
+        assert response.status_code == 200
+        assert location_ids == expected_locations
+
+    @pytest.mark.parametrize(
+        "roaming_enabled, expected_status, expected_response",
+        [
+            (True, 201, {"roaming_enabled": True}),
+            (False, 201, {"roaming_enabled": False}),
+            (
+                None,
+                422,
+                {
+                    "detail": [
+                        {
+                            "type": "missing",
+                            "loc": ["body", "location", "roaming_enabled"],
+                            "msg": "Field required",
+                        }
+                    ]
+                },
+            ),
+        ],
+    )
+    @patch("ocpi22.ocpi.util.OcpiModule.send_background_update")
+    def test_put_location_with_roaming_enabled(
+        self,
+        mock_send_background_update,
+        authenticated_user_client,
+        location_data,
+        tariffs,
+        roaming_enabled,
+        expected_status,
+        expected_response,
+        ocpi_master,
+        nsp_lk_nsp,
+        hub_fr_gir,
+        msp_de_ice,
+        nap_np_nap,
+    ):
+        url = reverse("cpo:update_location")
+
+        if roaming_enabled is not None:
+            location_data["roaming_enabled"] = roaming_enabled
+
+        response = authenticated_user_client.put(url, location_data, format="json")
+
+        assert response.status_code == expected_status
+
+        if expected_status == 201:
+            assert (
+                response.json()["roaming_enabled"]
+                == expected_response["roaming_enabled"]
+            )
+
+            roles_to_check = [ocpi_master, nsp_lk_nsp, nap_np_nap]
+
+            if roaming_enabled:
+                roles_to_check.extend([hub_fr_gir, msp_de_ice])
+
+            roles_not_to_check = [] if roaming_enabled else [hub_fr_gir, msp_de_ice]
+
+            for role in roles_to_check:
+                party = Party(role.country_code, role.party_id)
+                mock_send_background_update.assert_any_call(
+                    ANY, ANY, ANY, party, ANY, ANY, ANY
+                )
+
+            for role in roles_not_to_check:
+                party = Party(role.country_code, role.party_id)
+                for call in mock_send_background_update.call_args_list:
+                    args, _ = call
+                    assert (
+                        args[3] != party
+                    ), f"Role {role.role} should not have been notified"
+
+        else:
+            assert response.json() == expected_response
