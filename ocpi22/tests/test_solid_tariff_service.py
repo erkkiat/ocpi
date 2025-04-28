@@ -150,7 +150,28 @@ def test_create_returns_same_object_if_exists(
 
 
 @pytest.mark.django_db
-def test_create_solid_tariff_with_same_external_id_updates_connectors_with_new_ocpi_tariff_id(
+def test_create_solid_tariff_with_same_external_id_replaces_ocpi_tariff_in_connectors(
+    solid_tariff_service_instance,
+    smp1_solid_tariff_validated_json,
+    connector_with_tariff,
+):
+    find_endpoints_by_roles.cache_clear()
+
+    smp1_solid_tariff_validated_json["price_per_kwh"] = 100
+    smp1_solid_tariff_validated_json["ocpi_master"] = smp1_solid_tariff_validated_json[
+        "operator"
+    ]
+
+    new_solid_tariff = solid_tariff_service_instance.create(
+        smp1_solid_tariff_validated_json
+    )
+
+    connector = Connector.get_if_exists(uid=connector_with_tariff.uid)
+    assert connector.get_tariffs().first() == new_solid_tariff.ocpi_tariff
+
+
+@pytest.mark.django_db
+def test_create_solid_tariff_send_tariff_and_location_updates_to_partners(
     solid_tariff_service_instance,
     smp1_solid_tariff_validated_json,
     connector_with_tariff,
@@ -168,9 +189,6 @@ def test_create_solid_tariff_with_same_external_id_updates_connectors_with_new_o
         new_solid_tariff = solid_tariff_service_instance.create(
             smp1_solid_tariff_validated_json
         )
-
-        connector = Connector.get_if_exists(uid=connector_with_tariff.uid)
-        assert connector.get_tariffs().first() == new_solid_tariff.ocpi_tariff
 
         assert mock_send_background_update.call_count >= 2
 
