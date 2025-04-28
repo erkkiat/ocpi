@@ -488,7 +488,8 @@ class TestRoamingEnabledLocations:
                 == expected_response["roaming_enabled"]
             )
 
-            roles_to_check = [nsp_lk_nsp, nap_np_nap]
+            # NSP, NAP does not have location RECEIVER endpoints, therefore, they are also not notified
+            roles_to_check = []
 
             if roaming_enabled:
                 roles_to_check.extend([hub_fr_gir, msp_de_ice])
