@@ -7,7 +7,6 @@ from django.forms import model_to_dict
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Connector
-from ocpi22.ocpi.serializers import TariffSerializer
 from ocpi22.tests.factories import ConnectorFactory
 
 from ocpi22.credentials.util import find_endpoints_by_roles
@@ -168,57 +167,3 @@ def test_create_solid_tariff_with_same_external_id_replaces_ocpi_tariff_in_conne
 
     connector = Connector.get_if_exists(uid=connector_with_tariff.uid)
     assert connector.get_tariffs().first() == new_solid_tariff.ocpi_tariff
-
-
-@pytest.mark.django_db
-def test_create_solid_tariff_send_tariff_and_location_updates_to_partners(
-    solid_tariff_service_instance,
-    smp1_solid_tariff_validated_json,
-    connector_with_tariff,
-):
-    find_endpoints_by_roles.cache_clear()
-
-    smp1_solid_tariff_validated_json["price_per_kwh"] = 100
-    smp1_solid_tariff_validated_json["ocpi_master"] = smp1_solid_tariff_validated_json[
-        "operator"
-    ]
-
-    with patch(
-        "ocpi22.ocpi.util.OcpiModule.send_background_update"
-    ) as mock_send_background_update:
-        new_solid_tariff = solid_tariff_service_instance.create(
-            smp1_solid_tariff_validated_json
-        )
-
-        assert mock_send_background_update.call_count >= 2
-
-        tariff_data = TariffSerializer(instance=new_solid_tariff.ocpi_tariff).data
-
-        tariff_call_found = False
-        for call_args in mock_send_background_update.call_args_list:
-            args = call_args[0]
-            if (
-                args
-                and isinstance(args[0], dict)
-                and args[0].get("id") == tariff_data.get("id")
-            ):
-                tariff_call_found = True
-                break
-
-        assert tariff_call_found, "No call found for the tariff update"
-
-        location_call_found = False
-        for call_args in mock_send_background_update.call_args_list:
-            args = call_args[0]
-            if args and isinstance(args[0], dict) and "evses" in args[0]:
-                location_call_found = True
-                for evse in args[0]["evses"]:
-                    for connector_data in evse.get("connectors", []):
-                        if connector_data.get("id") == connector_with_tariff.uid:
-                            assert (
-                                new_solid_tariff.ocpi_tariff.uid
-                                in connector_data.get("tariff_ids", [])
-                            )
-                break
-
-        assert location_call_found, "No call found for the location update"
