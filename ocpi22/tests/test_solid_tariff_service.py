@@ -6,11 +6,28 @@ from django.forms import model_to_dict
 
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.models.location import Connector
+from ocpi22.tests.factories import ConnectorFactory
+
+from ocpi22.credentials.util import find_endpoints_by_roles
 
 
 @pytest.fixture
 def solid_tariff_service_instance():
     return SolidTariffService()
+
+
+@pytest.fixture
+def connector_with_tariff(
+    solid_tariff_service_instance, smp1_solid_tariff_validated_json
+):
+    old_solid_tariff = solid_tariff_service_instance.create(
+        smp1_solid_tariff_validated_json
+    )
+    return ConnectorFactory(
+        uid="ConnectorWithTariff",
+        tariff_ids=[old_solid_tariff.ocpi_tariff],
+    )
 
 
 @pytest.mark.parametrize(
@@ -129,3 +146,24 @@ def test_create_returns_same_object_if_exists(
         solid_tariff_service_instance.create(smp1_solid_tariff_validated_json)
 
         mock_create_new_tariff.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_create_solid_tariff_with_same_external_id_replaces_ocpi_tariff_in_connectors(
+    solid_tariff_service_instance,
+    smp1_solid_tariff_validated_json,
+    connector_with_tariff,
+):
+    find_endpoints_by_roles.cache_clear()
+
+    smp1_solid_tariff_validated_json["price_per_kwh"] = 100
+    smp1_solid_tariff_validated_json["ocpi_master"] = smp1_solid_tariff_validated_json[
+        "operator"
+    ]
+
+    new_solid_tariff = solid_tariff_service_instance.create(
+        smp1_solid_tariff_validated_json
+    )
+
+    connector = Connector.get_if_exists(uid=connector_with_tariff.uid)
+    assert connector.get_tariffs().first() == new_solid_tariff.ocpi_tariff

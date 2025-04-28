@@ -4056,6 +4056,7 @@ def rome_location_in(connector_in):
         coordinates=GeoLocation(latitude=41.9028, longitude=12.4964),
         evses=[],
         last_updated=datetime.now(pytz.utc),
+        time_zone="Europe/Rome",
     )
     location.evses.append(evse)
 
