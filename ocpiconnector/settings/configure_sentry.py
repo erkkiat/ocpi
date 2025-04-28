@@ -31,4 +31,4 @@ def setup_sentry():
         profiles_sample_rate=profiling_sample_rate,
         send_default_pii=False,
     )
-    sentry_sdk.set_tags("service_name", service_name)
+    sentry_sdk.set_tag("service_name", service_name)
