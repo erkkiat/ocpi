@@ -11,6 +11,7 @@ logger = getLogger("__name__")
 def setup_sentry():
     sentry_dsn = os.getenv("SENTRY_DSN")
     env = os.getenv("ENV", "development").lower()
+    service_name = os.getenv("SENTRY_SERVICE_NAME", "django-app")
     tracing_sampling_rate = float(os.getenv("SENTRY_TRACING_SAMPLING_RATE", 0.2))
     profiling_sample_rate = float(os.getenv("SENTRY_PROFILING_SAMPLING_RATE", 0.2))
     if env in ["development", "test"]:
@@ -25,7 +26,9 @@ def setup_sentry():
             DjangoIntegration(),
             CeleryIntegration(),
         ],
+        environment=env,
         traces_sample_rate=tracing_sampling_rate,  # Adjust based on your needs
         profiles_sample_rate=profiling_sample_rate,
         send_default_pii=False,
     )
+    sentry_sdk.set_tags("service_name", service_name)
