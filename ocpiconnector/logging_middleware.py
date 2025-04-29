@@ -4,6 +4,7 @@ from http import HTTPStatus
 from logging import getLogger
 
 import orjson
+import sentry_sdk
 from django.utils.deprecation import MiddlewareMixin
 
 
@@ -41,8 +42,8 @@ class LoggingMiddleware(MiddlewareMixin):
         return response
 
     def process_exception(self, request, exception):
-        self.logger.info("This is the exception", exc_info=exception)
         self.exception = exception
+        sentry_sdk.capture_exception(exception)
         return None
 
     def get_response_data(self, response, processing_time):
