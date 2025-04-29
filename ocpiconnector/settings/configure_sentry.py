@@ -7,6 +7,13 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 
 logger = getLogger("__name__")
 
+def before_send(event, hint):
+    request = event.get("request", {})
+    url = request.get("url", "")
+    if url.endswith("/health-check/"):
+        return None  # Drop the event
+    return event
+
 
 def setup_sentry():
     sentry_dsn = os.getenv("SENTRY_DSN")
@@ -22,6 +29,7 @@ def setup_sentry():
         return
     sentry_sdk.init(
         dsn=sentry_dsn,
+        before_send=before_send,
         integrations=[
             DjangoIntegration(),
             CeleryIntegration(),
