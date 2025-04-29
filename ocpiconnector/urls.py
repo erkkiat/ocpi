@@ -43,6 +43,7 @@ from ocpi22.views import home
 from payment.views import PaymentViewSet
 from settlement.views import CdrReportViews
 from integrations.hubject.api import api as hubject_api
+from ocpi22.cpo.api import api as cpo_locations_api
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r"credentials/", CredentialsViewSet, basename="credentials")
@@ -50,14 +51,14 @@ ocpi_router.register(r"hubclientinfo/", ClientInfoViewSet, basename="clientinfo"
 
 cpo_router = CPORouter()
 cpo_router.register(
-    r"tariffs", ocpi22.cpo.tariff.SolidTariffViewSet, basename="solid-tariff"
+    r"v2/tariffs", ocpi22.cpo.tariff.SolidTariffViewSet, basename="solid-tariff"
 )
-cpo_router.register(r"chargepoint", ChargePointViewSet, basename="chargepoint")
-cpo_router.register(r"webhook", CpoReserveNowWebhookViewSet, basename="cpo")
-cpo_router.register(r"webhook", CpoStartWebhookViewSet, basename="cpo-start")
-cpo_router.register(r"webhook", CpoStopWebhookViewSet, basename="cpo-stop")
-cpo_router.register(r"webhook", InvoiceWebhookViewSet, basename="cpo-invoicing")
-cpo_router.register(r"reports/billing", CdrReportViews, basename="billing")
+cpo_router.register(r"v2/chargepoint", ChargePointViewSet, basename="chargepoint")
+cpo_router.register(r"v2/webhook", CpoReserveNowWebhookViewSet, basename="cpo")
+cpo_router.register(r"v2/webhook", CpoStartWebhookViewSet, basename="cpo-start")
+cpo_router.register(r"v2/webhook", CpoStopWebhookViewSet, basename="cpo-stop")
+cpo_router.register(r"v2/webhook", InvoiceWebhookViewSet, basename="cpo-invoicing")
+cpo_router.register(r"v2/reports/billing", CdrReportViews, basename="billing")
 
 msp_router = MSPRouter()
 msp_router.register(r"roaming", MspRoamingViewSet, basename="roaming")
@@ -101,7 +102,8 @@ urlpatterns = [
     re_path(
         r"^ocpi/(?P<version>[1-2.]+)/", include(ocpi_router.urls), name="ocpi-22-root"
     ),
-    path("api/cpo/v2/", include(cpo_router.urls), name="cpo-interface"),
+    path("api/cpo/", include(cpo_router.urls), name="cpo-interface"),
+    path("api/cpo/locations/", cpo_locations_api.urls),
     path("api/msp/v1/", include(msp_router.urls), name="msp-interface"),
     path("ocpi/", include(common_router.urls)),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),

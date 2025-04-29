@@ -22,6 +22,12 @@ class OCPITokenField(models.CharField):
 
 
 class Authorization(models.Model):
+    """
+    The Authorization model exists to track and control financial authorizations for charging sessions and
+    enforce spending limits. Each authorization_reference provided by the MSP API consumer is stored, and
+    when the Session is PUT from CPO, the Authorization is linked to the newly created Session object.
+    """
+
     authorization_reference = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         blank=True,
