@@ -51,7 +51,7 @@ ocpi_router.register(r"hubclientinfo/", ClientInfoViewSet, basename="clientinfo"
 
 cpo_router = CPORouter()
 cpo_router.register(
-    r"v3/tariffs", ocpi22.cpo.tariff.SolidTariffViewSet, basename="solid-tariff"
+    r"v2/tariffs", ocpi22.cpo.tariff.SolidTariffViewSet, basename="solid-tariff"
 )
 cpo_router.register(r"v2/chargepoint", ChargePointViewSet, basename="chargepoint")
 cpo_router.register(r"v2/webhook", CpoReserveNowWebhookViewSet, basename="cpo")
