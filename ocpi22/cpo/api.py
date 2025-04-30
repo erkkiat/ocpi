@@ -649,7 +649,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        except (Evse.DoesNotExist, Token.DoesNotExist, ValueError, OSError) as e:
+        except (ObjectDoesNotExist, ValueError, OSError) as e:
             logger.exception("Exception in CPO authorize()")
             evse_admin = reverse("admin:ocpi22_evse_changelist")
             token_admin = reverse("admin:ocpi22_token_changelist")
