@@ -504,8 +504,10 @@ MQTT_PORT = os.getenv("MQTT_PORT", 1883)
 DEFAULT_OICP_PRICE = os.environ.get("DEFAULT_OICP_PRICE")
 DEFAULT_OICP_CURRENCY = os.environ.get("DEFAULT_OICP_CURRENCY")
 DEFAULT_OICP_PRICE_REFERENCE = os.environ.get("DEFAULT_OICP_PRICE_REFERENCE")
-PYTORCH_ENABLE_MPS_FALLBACK = os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK", True)
+
 AXES_FAILURE_LIMIT = 3
 AXES_COOLOFF_TIME = lambda request: timedelta(hours=2)  # noqa
 AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
 AXES_ENABLE_ADMIN = True
+
+NINJA_DOCS_UI = os.environ.get("NINJA_DOCS_UI", "swagger")

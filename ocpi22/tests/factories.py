@@ -43,6 +43,7 @@ from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
+from ocpi22.models.token import Token
 
 fake = Faker()
 
@@ -225,7 +226,9 @@ class TariffFactory(factory.django.DjangoModelFactory):
     min_price_incl_vat = 0.2
     max_price_excl_vat = 0.8
     max_price_incl_vat = 0.9
-    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
+    ocpi_master = factory.SubFactory(
+        CredentialsRoleFactory, role="CPO", country_code="FI", party_id="MSP"
+    )
 
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -445,15 +448,15 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
     price_per_min = 0.3
     price_flat = 0.3
     vat_percentage = 0.2
-    archived = False
     msp = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"
     )
     operator = factory.SubFactory(
-        CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
+        CredentialsRoleFactory, role="CPO", country_code="FI", party_id="MSP"
     )
+    ocpi_tariff = factory.SubFactory(TariffFactory)
 
-    last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    last_updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
 
 
@@ -577,3 +580,24 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     status = Session.ACTIVE
     last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
     credentials = factory.LazyAttribute(lambda obj: obj.ocpi_master.credentials)
+
+
+class TokenFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Token
+
+    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
+    uid = "TOKEN1"
+    type = "RFID"
+    contract_id = factory.Faker("uuid4")
+    visual_number = "045736789864"
+    issuer = factory.Faker("company")
+    group_id = factory.Faker("uuid4")
+    valid = True
+    whitelist = Token.ALLOWED
+    language = "EN"
+    default_profile_type = "REGULAR"
+    last_updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    created = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    customer = factory.SubFactory(UserFactory)

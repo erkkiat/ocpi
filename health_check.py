@@ -1,12 +1,13 @@
-from ninja import NinjaAPI
 from ninja.throttling import AnonRateThrottle
+
+from custom_ninja_api import CustomNinjaAPI
 
 
 class HealthCheckThrottle(AnonRateThrottle):
     scope = "health_check"
 
 
-health_check_api = NinjaAPI(urls_namespace="health-check")
+health_check_api = CustomNinjaAPI(urls_namespace="health-check")
 
 
 @health_check_api.get("/")

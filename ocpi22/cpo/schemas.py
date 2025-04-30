@@ -24,7 +24,7 @@ from ocpi22.ocpi.util import Ocpi
 
 
 class BaseSchema(Schema):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class StatusSchedule(BaseSchema):
@@ -184,9 +184,11 @@ class LocationIn(BaseSchema):
     city: Annotated[
         str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
     ]
-    postal_code: Annotated[
-        str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
-    ]
+    postal_code: Optional[
+        Annotated[
+            str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
+        ]
+    ] = None
     state: Optional[Annotated[str, StringConstraints(max_length=20)]] = None
     country: Annotated[str, AfterValidator(validate_country)]
     coordinates: GeoLocation = Field(..., description="Geographical coordinates")
@@ -200,9 +202,13 @@ class LocationIn(BaseSchema):
     suboperator: Optional[BusinessDetails] = None
     owner: Optional[BusinessDetails] = None
     facilities: Optional[List[OCPIFacility]] = None
-    time_zone: Optional[Annotated[str, AfterValidator(validate_time_zone)]] = None
+    time_zone: Annotated[str, AfterValidator(validate_time_zone)]
     opening_times: Optional[OpeningTimes] = None
     charging_when_closed: Optional[bool] = False
     images: Optional[List[OCPIImage]] = None
     energy_mix: Optional[List[EnergyMix]] = None
     last_updated: datetime
+
+
+class Error(Schema):
+    message: str

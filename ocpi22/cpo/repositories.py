@@ -20,3 +20,11 @@ class SolidTariffRepository:
 
     def exists(self, **kwargs) -> bool:
         return SolidTariff.objects.filter(**kwargs).exists()
+
+    def get_latest_with_external_id(self, external_id) -> SolidTariff | None:
+        try:
+            return SolidTariff.objects.filter(external_id=external_id).latest(
+                "created_at"
+            )
+        except SolidTariff.DoesNotExist:
+            return None
