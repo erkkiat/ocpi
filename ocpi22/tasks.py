@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 import celery
 import pytz
 import requests
-import pprint
 
 from celery import shared_task
 from celery.schedules import crontab
@@ -23,12 +22,12 @@ from ocpi22 import choices
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context, SSLAdapter
 from ocpiconnector.party import Party
+from ocpiconnector.settings import setup_sentry
 from util import unwrap
 
 logger = getLogger(__name__)
-pp = pprint.PrettyPrinter(indent=4).pprint
-zoined_token = os.environ.get("ZOINED_TOKEN")
 
+setup_sentry()
 # Set the default Django settings module for the 'celery' program.
 if "DJANGO_SETTINGS_MODULE" not in os.environ:
     os.environ["DJANGO_SETTINGS_MODULE"] = "ocpiconnector.settings"

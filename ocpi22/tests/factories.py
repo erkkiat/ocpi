@@ -43,6 +43,7 @@ from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
+from ocpi22.models.token import Token
 
 fake = Faker()
 
@@ -580,3 +581,24 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     status = Session.ACTIVE
     last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
     credentials = factory.LazyAttribute(lambda obj: obj.ocpi_master.credentials)
+
+
+class TokenFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Token
+
+    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
+    uid = "TOKEN1"
+    type = "RFID"
+    contract_id = factory.Faker("uuid4")
+    visual_number = "045736789864"
+    issuer = factory.Faker("company")
+    group_id = factory.Faker("uuid4")
+    valid = True
+    whitelist = Token.ALLOWED
+    language = "EN"
+    default_profile_type = "REGULAR"
+    last_updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    created = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    customer = factory.SubFactory(UserFactory)
