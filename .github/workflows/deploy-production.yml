@@ -156,7 +156,13 @@ jobs:
       - name: Build Base Image Once
         run: |
           echo "Building base image once with tag: $IMAGE_TAG"
-          docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" -f ./Dockerfile --load .
+          docker buildx build \
+            --platform linux/arm64 \
+            -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" \
+            -f ./Dockerfile \
+            --cache-from=type=gha \
+            --cache-to=type=gha,mode=max \
+            --load .
 
       - name: Tag and Push Base Image to Production Farm
         run: |
