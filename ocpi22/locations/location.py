@@ -80,7 +80,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
             ocpi_party = getattr(self.request, "ocpi_party", None)
             # ocpi_party is None when the basic auth is used
-            if ocpi_party and ocpi_party.role not in ["NAP", "NSP"]:
+            if ocpi_party and ocpi_party.role not in ["NAP", "NSP", "CPO"]:
                 queryset = queryset.exclude(roaming_enabled=False)
 
         queryset = LocationService.get_allowed_locations_queryset(credentials, queryset)

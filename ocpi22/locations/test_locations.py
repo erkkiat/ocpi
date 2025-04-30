@@ -357,7 +357,7 @@ def roaming_enabled_kuopio():
 
 @pytest.fixture
 def nsp_lk_nsp():
-    return CredentialsRoleFactory(
+    return CredentialsRoleFactory.create(
         country_code="LK",
         party_id="NSP",
         role="NSP",
@@ -520,8 +520,8 @@ class TestRoamingEnabledLocations:
                 == expected_response["roaming_enabled"]
             )
 
-            # NSP, NAP does not have location RECEIVER endpoints, therefore, they are also not notified
-            roles_to_check = []
+            # NSP, NAP does not have location RECEIVER endpoints irl, however, in this case we simulate it
+            roles_to_check = [nsp_lk_nsp, nap_np_nap]
 
             if roaming_enabled:
                 roles_to_check.extend([hub_fr_gir, msp_de_ice])
@@ -533,15 +533,16 @@ class TestRoamingEnabledLocations:
             for role in roles_to_check:
                 party = Party(role.country_code, role.party_id)
                 mock_send_background_update.assert_any_call(
-                    ANY, ANY, ANY, party, ANY, ANY, ANY
+                    ANY, ANY, ANY, to=party, sender=ANY, method=ANY, credentials=ANY
                 )
 
             for role in roles_not_to_check:
                 party = Party(role.country_code, role.party_id)
                 for call in mock_send_background_update.call_args_list:
                     args, _ = call
+                    kwargs = call.kwargs
                     assert (
-                        args[3] != party
+                        kwargs["to"] != party
                     ), f"Role {role.role} should not have been notified"
 
         else:
