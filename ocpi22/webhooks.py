@@ -42,7 +42,6 @@ def send_to_webhook(
         return {}
     if isinstance(data, Evse):
         ocpi_master = ocpi_master or data.location.ocpi_master
-        # Send updates for this EVSE
         return send_to_webhook(
             dict(location_id=data.location.uid, evse_id=data.uid, status=data.status),
             serializer,

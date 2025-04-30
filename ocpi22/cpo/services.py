@@ -36,7 +36,11 @@ class SolidTariffService:
         if solid_tariff:
             return solid_tariff
 
-        return self._create_new_tariff(
+        old_solid_tariff = self.solid_tariff_repository.get_latest_with_external_id(
+            validated_data["external_id"]
+        )
+
+        saved_solid_tariff = self._create_new_tariff(
             validated_data,
             operator,
             currency,
@@ -49,6 +53,13 @@ class SolidTariffService:
             vat,
             grace_period,
         )
+
+        if old_solid_tariff:
+            self._send_updates_to_attached_connectors(
+                old_solid_tariff, saved_solid_tariff
+            )
+
+        return saved_solid_tariff
 
     def _extract_pricing_data(self, validated_data):
         from ocpi22.cpo.serializers import (
@@ -118,6 +129,8 @@ class SolidTariffService:
                 ocpi_tariff, per_kwh, per_hr, flat, parking_price_per_hr, vat
             )
 
+            ocpi_tariff.post_process_after_update_or_create()
+
             return SolidTariff.objects.create(
                 external_id=external_id,
                 currency=currency,
@@ -166,3 +179,10 @@ class SolidTariffService:
                     vat=vat,
                     step_size=1,
                 )
+
+    def _send_updates_to_attached_connectors(self, old_solid_tariff, new_solid_tariff):
+        for connector in old_solid_tariff.ocpi_tariff.connectors.all():
+            connector.tariff_ids.remove(old_solid_tariff.ocpi_tariff)
+            connector.tariff_ids.add(new_solid_tariff.ocpi_tariff)
+            connector.save()
+            connector.evse.location.post_process_after_update_or_create()

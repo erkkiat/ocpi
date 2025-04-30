@@ -73,40 +73,12 @@ class SessionStatus:
     PENDING = "PENDING"
     RESERVATION = "RESERVATION"
 
-    # def __eq__(self, other):
-    #     if isinstance(other, SessionStatusEnum):
-    #         return self.value == other.value
-    #     elif isinstance(other, str):
-    #         return self.value == other
-    #     else:
-    #         return False
-    #
-    # def __str__(self):
-    #     return self.value
-    #
-    # def __repr__(self):
-    #     return self.value
-
 
 class TokenType:
     AD_HOC_USER = "AD_HOC_USER"
     RFID = "RFID"
     APP_USER = "APP_USER"
     OTHER = "OTHER"
-
-    # def __eq__(self, other):
-    #     if isinstance(other, TokenTypeEnum):
-    #         return self.value == other.value
-    #     elif isinstance(other, str):
-    #         return self.value == other
-    #     else:
-    #         return False
-    #
-    # def __str__(self):
-    #     return self.value
-    #
-    # def __repr__(self):
-    #     return self.value
 
 
 TOKEN_TYPE_CHOICES = [
