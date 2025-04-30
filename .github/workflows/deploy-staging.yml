@@ -102,6 +102,7 @@ jobs:
 
     env:
       ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
+      FARMS: "f3"
 
     steps:
       - name: Checkout code
@@ -145,8 +146,6 @@ jobs:
 
       - name: Tag and Push Base Image to Each Farm
         run: |
-          FARMS="f3"
-
           for farm in $FARMS; do
               repo_url="$ECR_REPO_URL/solidroam-django-app-$farm"
               full_image_url_with_tag="$repo_url:$IMAGE_TAG"
