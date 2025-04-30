@@ -4057,6 +4057,7 @@ def rome_location_in(connector_in):
         evses=[],
         last_updated=datetime.now(pytz.utc),
         time_zone="Europe/Rome",
+        roaming_enabled=True,
     )
     location.evses.append(evse)
 
@@ -4068,6 +4069,7 @@ def location_data(ocpi_master):
     data = load_example("data/examples/location_example.json")
     data["country_code"] = ocpi_master.country_code
     data["party_id"] = ocpi_master.party_id
+    data["roaming_enabled"] = True
 
     return data
 
