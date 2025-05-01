@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 import responses
 
-from ocpi22.models.credentials import Credentials
 from ocpi22.tests.factories import CredentialsFactory
 from ocpiconnector.management.commands.exchange_credentials import Command
 
@@ -73,42 +72,15 @@ class TestDisableTokenA:
 
         with (
             patch(
-                "ocpiconnector.management.commands.exchange_credentials.store_tokens_for_party",
-                return_value=credentials,
-            ),
-            patch(
-                "ocpiconnector.management.commands.exchange_credentials.store_endpoints_for_party"
-            ),
-            patch(
-                "ocpiconnector.management.commands.exchange_credentials.get_our_roles",
-                return_value=[
-                    {
-                        "role": "CPO",
-                        "country_code": "NL",
-                        "party_id": "TEST",
-                        "business_details": {
-                            "name": "Test",
-                            "website": "http://testserver.test",
-                        },
-                    }
-                ],
-            ),
-            patch(
-                "ocpiconnector.management.commands.exchange_credentials.build_absolute_uri",
-                return_value="http://localhost/versions",
-            ),
-            patch(
-                "ocpiconnector.management.commands.exchange_credentials.reverse",
-                return_value="/versions",
-            ),
-            patch(
                 "ocpiconnector.management.commands.exchange_credentials.generate_random_token",
                 return_value=our_token,
             ),
             patch("django.conf.settings.HOSTNAME", "testserver2.test"),
-            patch.object(Credentials, "disable_token_a") as mock_disable_token_a,
         ):
             command = Command()
             command.handle(token_a=token_a, versions_endpoint_url=versions_url)
 
-            mock_disable_token_a.assert_called_once_with()
+            credentials.refresh_from_db()
+            assert credentials.token_a == ""
+            assert credentials.ours == our_token
+            assert credentials.theirs == their_token
