@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import responses
 
-from ocpi22.tests.factories import CredentialsFactory
+from ocpi22.tests.factories import CredentialsFactory, CredentialsRoleFactory
 from ocpiconnector.management.commands.exchange_credentials import Command
 from ocpi22.ocpi.api import CredentialsViewSet
 from ocpiconnector.testutil import OCPIAPIRequestFactory
@@ -16,7 +16,7 @@ from util import reverse
 class TestDisableTokenA:
     @responses.activate
     def test_exchange_credentials_command(self):
-        """Test that exchange_credentials.py calls disable_token_a()"""
+        """Test that exchange_credentials.py disables TOKEN_A"""
         token_a = "token_a_123456"
         our_token = "our_token_123456"
         their_token = "their_token_123456"
@@ -92,7 +92,7 @@ class TestDisableTokenA:
 
     @responses.activate
     def test_credentials_viewset_post(self):
-        """Test that CredentialsViewSet.post calls disable_token_a()"""
+        """Test that CredentialsViewSet.post disables TOKEN_A"""
         token_a = "token_a_123456"
         token_a_base64 = base64.b64encode(token_a.encode("ascii")).decode("ascii")
         our_token = "our_token_123456"
@@ -149,3 +149,78 @@ class TestDisableTokenA:
             assert credentials.token_a == ""
             assert credentials.ours == our_token
             assert credentials.theirs == their_token
+
+    @responses.activate
+    def test_credentials_viewset_put(self):
+        """Test that CredentialsViewSet.put disables TOKEN_A"""
+        token_a = "token_a_123456"
+        our_token = "our_token_123456"
+        their_token = "their_token_123456"
+        new_token = "new_token_123456"
+
+        credentials = CredentialsFactory(
+            token_a=token_a, ours=our_token, theirs=their_token
+        )
+        CredentialsRoleFactory(credentials=credentials)
+
+        request_data = {
+            "token": new_token,
+            "url": "https://testserver.test/versions/",
+            "roles": [
+                {
+                    "role": "CPO",
+                    "country_code": "NL",
+                    "party_id": "EXA",
+                    "business_details": {
+                        "name": "Test CPO",
+                        "website": "https://testserver.test",
+                    },
+                }
+            ],
+        }
+
+        api_factory = OCPIAPIRequestFactory()
+        our_token_base64 = base64.b64encode(our_token.encode("ascii")).decode("ascii")
+        headers = make_headers(our_token_base64)
+        request = api_factory.put(
+            reverse("credentials-list"), data=request_data, **headers
+        )
+        request.data = request_data
+        request.credentials = credentials
+        request.version = "2.2.1"
+
+        responses.add(
+            responses.GET,
+            "https://testserver.test/versions/",
+            json={
+                "data": [
+                    {"version": "2.2.1", "url": "https://testserver.test/ocpi/2.2.1/"}
+                ]
+            },
+            status=200,
+        )
+
+        responses.add(
+            responses.GET,
+            "https://testserver.test/ocpi/2.2.1/",
+            json={"data": {"version": "2.2.1", "endpoints": []}},
+            status=200,
+        )
+
+        with (
+            patch(
+                "ocpi22.ocpi.api.select_version",
+                return_value="https://testserver.test/ocpi/2.2.1/",
+            ),
+            patch(
+                "ocpi22.ocpi.api.get_endpoints",
+                return_value={"version": "2.2.1", "endpoints": []},
+            ),
+        ):
+            viewset = CredentialsViewSet()
+            viewset.put(request)
+
+            credentials.refresh_from_db()
+            assert credentials.token_a == ""
+            assert credentials.ours == our_token
+            assert credentials.theirs == new_token
