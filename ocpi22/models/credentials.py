@@ -316,6 +316,10 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     def __hash__(self):
         return util.member_hash(self)
 
+    def disable_token_a(self):
+        self.token_a = ""
+        self.save(update_fields=["token_a"])
+
 
 class CredentialsRole(models.Model, ModelUtilMixin):
     class Meta:

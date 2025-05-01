@@ -504,10 +504,8 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        # Remove token_a now that the exchange is complete
-        if credentials.ours and credentials.theirs and credentials.token_a:
-            credentials.token_a = ""
-            credentials.save(update_fields=["token_a"])
+        if credentials.ours and credentials.theirs:
+            credentials.disable_token_a()
         return OCPIResponse(data, http_status=status.HTTP_201_CREATED)
 
     @ocpi_exception_handler
@@ -549,10 +547,8 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        # Remove token_a now that the credentials update is complete
-        if credentials.ours and credentials.theirs and credentials.token_a:
-            credentials.token_a = ""
-            credentials.save(update_fields=["token_a"])
+        if credentials.ours and credentials.theirs:
+            credentials.disable_token_a()
         return OCPIResponse(data)
 
 
