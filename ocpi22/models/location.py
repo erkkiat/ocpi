@@ -39,38 +39,6 @@ def validate_timezone(t: str):
         )
 
 
-#
-# For use in the future
-#
-# class OCPIPeriod(models.Model):
-#     period_begin = models.DateTimeField()
-#     period_end = models.DateTimeField()
-#
-#
-# class OCPIDayPeriod(models.Model):
-#     WEEKDAYS = [
-#         (0, 'Monday'),
-#         (1, 'Tuesday'),
-#         (2, 'Wednesday'),
-#         (3, 'Thursday'),
-#         (4, 'Friday'),
-#         (5, 'Saturday'),
-#         (6, 'Sunday'),
-#     ]
-#     weekday = models.IntegerField(choices=WEEKDAYS)
-#
-#     time_validator = RegexValidator(regex=r'^[0-2][0-9]:[0-5][0-9]$')
-#     period_begin = models.CharField(max_length=5, validators=[time_validator])
-#     period_end = models.CharField(max_length=5, validators=[time_validator])
-#
-#
-# class OCPIOpeningTimes(models.Model):
-#     regular_hours = models.ManyToManyField(OCPIDayPeriod, blank=True)
-#     twentyfourseven = models.BooleanField(default=False)
-#     exceptional_openings = models.ManyToManyField(OCPIPeriod, related_name='exceptional_openings', blank=True)
-#     exceptional_closings = models.ManyToManyField(OCPIPeriod, related_name='exceptional_closings', blank=True)
-
-
 class Location(OcpiModule, models.Model, ModelUtilMixin):
     """
     A physical location with one or more EVSEs

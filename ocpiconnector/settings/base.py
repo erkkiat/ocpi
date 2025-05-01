@@ -292,6 +292,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
     "ocpiconnector.logging_middleware.LoggingMiddleware",
+    "axes.middleware.AxesMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
@@ -330,6 +331,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "ninja_jwt",
     "ninja_extra",
+    "axes",
 ]
 
 CORS_ORIGIN_ALLOW_ALL = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
@@ -502,7 +504,10 @@ MQTT_PORT = os.getenv("MQTT_PORT", 1883)
 DEFAULT_OICP_PRICE = os.environ.get("DEFAULT_OICP_PRICE")
 DEFAULT_OICP_CURRENCY = os.environ.get("DEFAULT_OICP_CURRENCY")
 DEFAULT_OICP_PRICE_REFERENCE = os.environ.get("DEFAULT_OICP_PRICE_REFERENCE")
-PYTORCH_ENABLE_MPS_FALLBACK = strtobool(
-    os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK", "True")
-)
-ENABLE_GDPR_NAME_CHECK = strtobool(os.environ.get("ENABLE_GDPR_NAME_CHECK", "True"))
+
+AXES_FAILURE_LIMIT = 3
+AXES_COOLOFF_TIME = lambda request: timedelta(minutes=5)  # noqa
+AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
+AXES_ENABLE_ADMIN = True
+
+NINJA_DOCS_UI = os.environ.get("NINJA_DOCS_UI", "swagger")

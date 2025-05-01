@@ -64,6 +64,7 @@ DATABASES = {
         "PASSWORD": db_token,
         "HOST": db_url,
         "PORT": "3306",
+        "CONN_MAX_AGE": 780,
         "OPTIONS": {"ssl_mode": "REQUIRED"},
     }
 }

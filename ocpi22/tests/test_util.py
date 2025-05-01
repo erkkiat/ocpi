@@ -3,10 +3,12 @@ from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
+from django.core.exceptions import ValidationError
 
 from ocpi22.models.location import Evse
 from ocpi22.ocpi import util
 from ocpi22.tests.factories import EvseFactory
+from ocpi22.util import uid_validator
 
 
 @pytest.fixture
@@ -58,3 +60,12 @@ def test_applying_ocpi22_filters(evse_queryset, date_from, date_to, expected_cou
     result = util.apply_ocpi22_filters(mock_request, evse_queryset)
 
     assert result.count() == expected_count
+
+
+def test_uid_validator_allows_underscore():
+    uid_validator("valid_uid_123")
+
+
+def test_uid_validator_does_not_allow_special_chars():
+    with pytest.raises(ValidationError):
+        uid_validator("valid?uid?123")

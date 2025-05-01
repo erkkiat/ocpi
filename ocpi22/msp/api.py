@@ -3,6 +3,7 @@ from functools import reduce
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
@@ -128,14 +129,13 @@ def process_start_charging(
         token = construct_adhoc_token(account.app_token_id, contract_id)
 
     authorization_reference = generate_auth_reference()
-
-    response: requests.Response = send_start_command(
-        request, evse, token, connector_id, contract_id, authorization_reference
-    )
     Authorization.objects.create(
         authorization_reference=authorization_reference,
         max_price=max_price,
         token_uid=token.uid,
+    )
+    response: requests.Response = send_start_command(
+        request, evse, token, connector_id, contract_id, authorization_reference
     )
     if response.status_code == status.HTTP_200_OK:
         messages.success(
@@ -344,12 +344,7 @@ class MspRoamingViewSet(FlowchartViewSet):
                 dict(help="Please see `OPTIONS` for the schema"),
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        except (
-            Evse.DoesNotExist,
-            Token.DoesNotExist,
-            Location.DoesNotExist,
-            Connector.DoesNotExist,
-        ) as e:
+        except ObjectDoesNotExist as e:
             logging.error(
                 f"Trying to start charging on a nonexistent Location, EVSE or Token: {e}",
                 request,

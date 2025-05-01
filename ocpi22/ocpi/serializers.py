@@ -671,8 +671,6 @@ class AuthorizeSerializer(serializers.Serializer):
         max_price = serializers.FloatField(required=False)
 
 
-# class MspAuthorizationResponseSerializer(serializers.Serializer):
-#     result = serializers.ChoiceField(choices=AuthorizationEnum.choices)
 
 
 class LocationReferencesSerializer(serializers.Serializer):

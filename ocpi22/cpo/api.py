@@ -15,6 +15,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
+from ninja.errors import HttpError
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import IsAdminUser
 
@@ -29,8 +30,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 
+from custom_ninja_api import CustomNinjaAPI
+from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
+from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
+from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -87,7 +92,7 @@ from ocpi22.util import MyMetadata
 from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
-from ocpiconnector.ocpi_identities import get_our_party
+from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
 from ocpiconnector.party import party_from_str
 
 pp = PrettyPrinter(indent=4).pprint
@@ -644,7 +649,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        except (Evse.DoesNotExist, Token.DoesNotExist, ValueError, OSError) as e:
+        except (ObjectDoesNotExist, ValueError, OSError) as e:
             logger.exception("Exception in CPO authorize()")
             evse_admin = reverse("admin:ocpi22_evse_changelist")
             token_admin = reverse("admin:ocpi22_token_changelist")
@@ -1342,3 +1347,45 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
             )
     except Exception as e:
         logger.error(f"Unable to send the new CDR to CpoInvoiceWebhook: {e}")
+
+
+api = CustomNinjaAPI(
+    auth=NinjaBasicAuth(),
+    urls_namespace="cpo",
+    title="CPO API",
+)
+location_service = LocationService()
+
+
+@api.put(
+    "/",
+    response={200: LocationIn, 201: LocationIn, 403: Error, 400: Error},
+    tags=["Location"],
+)
+def update_location(request, location: LocationIn):
+    our_credentials_role = get_our_credentialsrole(role=OcpiRolesEnum.CPO)
+    if (
+        not our_credentials_role.party_str()
+        == f"{location.country_code}*{location.party_id}"
+    ):
+        raise HttpError(
+            403, f"{location.country_code}*{location.party_id} party is not allowed."
+        )
+    existing_location: Location = Location.get_if_exists(
+        uid__iexact=location.uid, ocpi_master=our_credentials_role
+    )
+    try:
+        if existing_location:
+            saved_location = location_service.update_location(
+                location, our_credentials_role, existing_location
+            )
+            status_code = status.HTTP_200_OK
+        else:
+            saved_location = location_service.create_location(
+                location, our_credentials_role
+            )
+            status_code = status.HTTP_201_CREATED
+
+        return status_code, LocationIn.from_orm(saved_location)
+    except ValidationError as e:
+        return 400, Error(message=str(e.detail))
