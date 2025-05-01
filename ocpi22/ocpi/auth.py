@@ -180,7 +180,7 @@ def get_credentialsrole(
         result = query.filter(
             country_code__iexact=party.country_code, party_id__iexact=party.party_id
         ).first()
-        return result or (create and create_it())
+        return result if result is not None else (create_it() if create else None)
     except CredentialsRole.DoesNotExist:
         if create:
             return create_it()
