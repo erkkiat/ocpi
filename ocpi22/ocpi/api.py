@@ -496,8 +496,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-        if credentials.ours and credentials.theirs:
-            credentials.disable_token_a()
+        credentials.disable_token_a_if_applicable()
         return OCPIResponse(data, http_status=status.HTTP_201_CREATED)
 
     @ocpi_exception_handler
@@ -539,8 +538,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        if credentials.ours and credentials.theirs:
-            credentials.disable_token_a()
+        credentials.disable_token_a_if_applicable()
         return OCPIResponse(data)
 
 

@@ -199,9 +199,7 @@ class Command(BaseCommand):
                 if credentials:
                     credentials.reset()
                 raise OCPIProtocolError(msg)
-            if credentials.ours and credentials.theirs:
-                credentials.disable_token_a()
-
+            credentials.disable_token_a_if_applicable()
             return True
 
         except (JSONDecodeError, NotAuthenticated) as e:
