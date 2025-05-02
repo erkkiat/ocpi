@@ -6,9 +6,12 @@ ENV PYTHONPATH=/app:/app/ocpiconnector
 
 WORKDIR /app
 
-# Install required system dependencies in a single step
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install required system dependencies with improved caching
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential python3-dev libpq-dev pkg-config default-libmysqlclient-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only requirements to leverage Docker caching
@@ -39,17 +42,17 @@ ENV PATH="/usr/local/bin:$PATH"
 WORKDIR /app
 
 # Install only necessary runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev default-libmysqlclient-dev \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 default-libmysqlclient-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy compiled application from build stage
 COPY --from=build /app /app
 COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=build /usr/local/bin /usr/local/bin
-
-# Remove unnecessary Python source files in one step
-RUN find . -name '*.py' ! -name 'manage.py' -delete
 
 EXPOSE 8000
 ENTRYPOINT ["/app/entrypoint.sh"]
