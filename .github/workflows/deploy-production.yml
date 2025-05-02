@@ -160,8 +160,8 @@ jobs:
             --platform linux/arm64 \
             -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" \
             -f ./Dockerfile \
-            --cache-from=type=gha \
-            --cache-to=type=gha,mode=max \
+            --cache-from=type=gha,scope=prod-build \
+            --cache-to=type=gha,mode=max,scope=prod-build \
             --load .
 
       - name: Tag and Push Base Image to Production Farm
