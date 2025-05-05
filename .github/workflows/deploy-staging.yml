@@ -22,11 +22,19 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install Ruff
-        run: pip install ruff
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Set up virtual environment
+        run: uv venv .venv
+
+      - name: Install dev dependencies
+        run: |
+          source .venv/bin/activate
+          uv sync --dev
 
       - name: Run Ruff Linting
-        run: ruff check .
+        run: uv run ruff check .
 
   test:
     name: Run Tests
@@ -64,28 +72,19 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Load Environment Variables from test.env
-        run: |
-          if [ -f test.env ]; then
-            export $(cat test.env | xargs)
-          fi
+      - name: Set up virtual environment
+        run: uv venv .venv
 
-      - name: Install Dependencies
+      - name: Install test dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          source .venv/bin/activate
+          uv sync --test
 
       - name: Run Pytest
-        run: pytest
+        run: uv run pytest
 
       - name: Upload HTML Coverage Report
         uses: actions/upload-artifact@v4
