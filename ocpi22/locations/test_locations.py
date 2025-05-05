@@ -513,28 +513,27 @@ class TestRoamingEnabledLocations:
         response = authenticated_user_client.put(url, location_data, format="json")
 
         assert response.status_code == expected_status
+        assert (
+            response.json()["roaming_enabled"] == expected_response["roaming_enabled"]
+            if roaming_enabled is not None
+            else expected_response
+        )
 
         if expected_status == 201:
-            assert (
-                response.json()["roaming_enabled"]
-                == expected_response["roaming_enabled"]
-            )
-
-            # NSP, NAP does not have location RECEIVER endpoints irl, however, in this case we simulate it
             roles_to_check = [nsp_lk_nsp, nap_np_nap]
 
             if roaming_enabled:
                 roles_to_check.extend([hub_fr_gir, msp_de_ice])
-
-            roles_not_to_check = (
-                [] if roaming_enabled else [hub_fr_gir, msp_de_ice, ocpi_master]
-            )
 
             for role in roles_to_check:
                 party = Party(role.country_code, role.party_id)
                 mock_send_background_update.assert_any_call(
                     ANY, ANY, ANY, to=party, sender=ANY, method=ANY, credentials=ANY
                 )
+
+            roles_not_to_check = (
+                [] if roaming_enabled else [hub_fr_gir, msp_de_ice, ocpi_master]
+            )
 
             for role in roles_not_to_check:
                 party = Party(role.country_code, role.party_id)
