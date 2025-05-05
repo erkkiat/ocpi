@@ -24,10 +24,8 @@ jobs:
       - name: Set up virtual environment
         run: uv venv .venv
 
-      - name: Install dev dependencies
-        run: |
-          source .venv/bin/activate
-          uv sync --dev
+      - name: Install test dependencies
+        run: uv sync --test --frozen
 
       - name: Run Ruff Linting
         run: uv run ruff check .
@@ -68,9 +66,7 @@ jobs:
         run: uv venv .venv
 
       - name: Install test dependencies
-        run: |
-          source .venv/bin/activate
-          uv sync --test
+        run: uv sync --test --frozen
 
       - name: Run Pytest
         run: uv run pytest
