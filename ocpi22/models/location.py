@@ -260,10 +260,9 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     def send_updates(self, *args, **kwargs) -> None:
         if self.publish:
-            if self.roaming_enabled:
-                super().send_updates(*args, **kwargs)
+            if not self.roaming_enabled:
+                super().send_updates(*args, send_updates_to=("NAP", "NSP"), **kwargs)
             else:
-                self.send_updates_to = ("NAP", "NSP")
                 super().send_updates(*args, **kwargs)
 
 
