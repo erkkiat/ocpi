@@ -96,6 +96,10 @@ async def create_ssl_context(credential_id):
     private_key = os.getenv(credentials.private_key_name, None)
     client_cert = os.getenv(credentials.client_certificate_name, None)
 
+    logger.info(
+        f"Received credentials id in create ssl context for token async {credential_id}"
+    )
+
     return load_ssl_context(
         client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
     )
@@ -119,6 +123,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
     # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
+    logger.info(f"Creating ssl context for parties {parties}")
     ssl_contexts = await asyncio.gather(
         *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
     )

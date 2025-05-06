@@ -161,6 +161,7 @@ class OcpiModule:
         if isinstance(self.send_updates_to, (list, tuple)):
             endpoints = find_endpoints_by_roles(self.send_updates_to, ocpi_module_name)
             for url, token_base64, country_code, party_id, credentials in endpoints:
+                logger.info(f"Credentials from find by roles {credentials.id}")
                 try:
                     if path_components:
                         url = urljoin(
@@ -199,7 +200,9 @@ class OcpiModule:
     ):
         if not settings.SEND_UPDATES:
             return
-
+        logger.info(
+            f"Received credentials id in send_background_update, {credentials.id}"
+        )
         if url and token_base64 and to and sender:
             from ocpi22.tasks import send_ocpi_request
 
