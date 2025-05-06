@@ -118,15 +118,34 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     def make_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
+    # Prefetch credential roles before async operations
+    async def prefetch_roles():
+        roles = []
+        for _, _, country_code, party_id, credentials in parties:
+            # Prefetch the role in a synchronous context
+            role = await sync_to_async(
+                lambda creds, cc, pid: creds.roles.filter(
+                    country_code__iexact=cc, 
+                    party_id__iexact=pid
+                ).first(),
+                thread_sensitive=True
+            )(credentials, country_code, party_id)
+            roles.append(role)
+        return roles
+
     result = None
     pending_tasks = []
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
-    # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
-    logger.info(f"Creating ssl context for parties {parties}")
+    
+    # Get all contexts and roles before creating tasks
+    logger.info(f"Creating ssl context and prefetching roles for parties {parties}")
     ssl_contexts = await asyncio.gather(
         *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
     )
+    # Get all roles up front
+    prefetched_roles = await prefetch_roles()
+    
     async with aiohttp.ClientSession() as session:
         tasks = [
             asyncio.create_task(
@@ -134,10 +153,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                     session=session,
                     url=make_url(url, token_id),
                     data=data,
-                    ocpi_master=await sync_to_async(
-                        lambda: credentials.get_role(Party(country_code, party_id)),
-                        thread_sensitive=True,
-                    )(),
+                    ocpi_master=role,  # Use prefetched role instead of async lookup
                     headers=make_headers(
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
@@ -149,8 +165,8 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 token_base64,
                 country_code,
                 party_id,
-                credentials,
-            ), ssl_context in zip(parties, ssl_contexts)
+                _,  # credentials not needed anymore
+            ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
         ]
 
         while tasks:
