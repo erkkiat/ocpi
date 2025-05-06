@@ -134,9 +134,10 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                     session=session,
                     url=make_url(url, token_id),
                     data=data,
-                    ocpi_master=await sync_to_async(credentials.get_role)(
-                        Party(country_code, party_id)
-                    ),
+                    ocpi_master=await sync_to_async(
+                        lambda: credentials.get_role(Party(country_code, party_id)),
+                        thread_sensitive=True,
+                    )(),
                     headers=make_headers(
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
