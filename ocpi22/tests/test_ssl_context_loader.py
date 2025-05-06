@@ -8,10 +8,12 @@ from unittest.mock import patch
 
 import pytest
 import requests
+from asgiref.sync import sync_to_async
 
 from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tasks import get_cert_from_env, _get_ssl_session_client, get_request_session
 from ocpi22.tests.factories import CredentialsFactory
+from ocpi22.tokens.token_async import create_ssl_context
 
 
 def generate_cert_and_key():
@@ -112,6 +114,20 @@ class TestSSLContextLoader:
 
         with pytest.raises(ssl.SSLError):
             load_ssl_context(client_cert, private_key, ca_cert)
+
+    @pytest.mark.asyncio
+    @pytest.mark.django_db(transaction=True)
+    async def test_loads_valid_context(self, mock_env_certs):
+        creds = await sync_to_async(CredentialsFactory)(
+            client_certificate_name="CLIENT_CERT",
+            private_key_name="PRIVATE_KEY",
+            ca_certificate_name="CA_CERT",
+        )
+
+        ssl_context = await create_ssl_context(creds.id)
+
+        assert isinstance(ssl_context, ssl.SSLContext)
+        assert ssl_context.verify_mode == ssl.CERT_REQUIRED
 
 
 class TestSessionClient:

@@ -1,5 +1,4 @@
 import json
-import os
 from logging import getLogger
 from typing import Union
 from urllib.parse import urljoin
@@ -24,6 +23,7 @@ from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context
+from ocpi22.tasks import get_cert_from_env
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
@@ -92,9 +92,9 @@ async def create_ssl_context(credential_id):
     if not credentials:
         return None
 
-    ca_cert = os.getenv(credentials.ca_certificate_name, None)
-    private_key = os.getenv(credentials.private_key_name, None)
-    client_cert = os.getenv(credentials.client_certificate_name, None)
+    ca_cert = get_cert_from_env(credentials.ca_certificate_name)
+    private_key = get_cert_from_env(credentials.private_key_name)
+    client_cert = get_cert_from_env(credentials.client_certificate_name)
 
     logger.info(
         f"Received credentials id in create ssl context for token async {credential_id}"
