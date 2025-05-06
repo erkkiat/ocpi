@@ -115,14 +115,21 @@ def get_request_session(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
     credentials = Credentials.objects.filter(id=credential_id).first()
-
     if credentials:
+        logger.info(f"Getting certificates for credentials for {credentials.id}")
         ca_cert = get_cert_from_env(credentials.ca_certificate_name)
         private_key = get_cert_from_env(credentials.private_key_name)
         client_cert = get_cert_from_env(credentials.client_certificate_name)
     else:
+        logger.info(f"No credentials found for {credential_id}, setting empty string")
         client_cert = private_key = ca_cert = ""
 
+    if not all([client_cert, private_key, ca_cert]):
+        logger.warning(
+            f"Missing one or more certificates. for credentials {credential_id}"
+        )
+        return requests.Session()
+    logger.info(f"Creating SSL session client for {credential_id}")
     return _get_ssl_session_client(client_cert, private_key, ca_cert)
 
 
@@ -130,6 +137,7 @@ def _get_ssl_session_client(
     client_cert: str, private_key: str, ca_cert: str, verify_ssl=True
 ) -> requests.Session:
     ssl_context = load_ssl_context(client_cert, private_key, ca_cert, verify_ssl)
+
     session = requests.Session()
     if ssl_context:
         session.mount("https://", SSLAdapter(ssl_context=ssl_context))
@@ -172,7 +180,7 @@ def send_ocpi_request(
             f"Method {method} is not supported for send_ocpi_request"
         )
 
-    logger.info(f"Sending ocpi {method} request to {url} ")
+    logger.info(f"Sending ocpi {method} request to {url} for {credentials_id}")
     response: requests.Response = function(**kwargs)
     if self.request.is_eager:
         return response

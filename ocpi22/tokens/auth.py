@@ -190,7 +190,6 @@ def authorize_token(
                     allowed="ALLOWED",
                     info=MessageTexts.get("TOKEN_ACCEPTED"),
                     token=AdhocToken(
-                        True,
                         session.billed_to,
                         token,
                         TokenType.AD_HOC_USER,

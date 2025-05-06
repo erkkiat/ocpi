@@ -15,7 +15,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.db import models
 from django.db.models import Q, JSONField
-from django.db.models.signals import pre_save, pre_delete, post_save
+from django.db.models.signals import pre_delete, post_save
 from django.dispatch import receiver
 from django.http import HttpResponseRedirect
 
@@ -316,6 +316,11 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     def __hash__(self):
         return util.member_hash(self)
 
+    def disable_token_a_if_applicable(self):
+        if self.theirs and self.ours:
+            self.token_a = ""
+            self.save(update_fields=["token_a"])
+
 
 class CredentialsRole(models.Model, ModelUtilMixin):
     class Meta:
@@ -457,18 +462,6 @@ def new_connection(request):
     from util import reverse
 
     return HttpResponseRedirect(reverse("admin:ocpi22_credentials_changelist"))
-
-
-@receiver(pre_save, sender=Credentials)
-def credentials_pre_save(sender, instance, *_args, raw=False, **_kwargs):
-    if raw:  # Skip this if installing fixtures
-        return
-    credentials: Credentials = instance
-    if not credentials.valid:
-        credentials.connection_status = choices.SUSPENDED
-        credentials.last_connection = datetime.now(pytz.utc)
-    if credentials.ours and credentials.theirs and credentials.token_a:
-        credentials.token_a = ""
 
 
 @receiver(post_save, sender=Credentials)
