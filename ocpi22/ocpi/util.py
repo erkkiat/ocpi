@@ -161,7 +161,6 @@ class OcpiModule:
         if isinstance(self.send_updates_to, (list, tuple)):
             endpoints = find_endpoints_by_roles(self.send_updates_to, ocpi_module_name)
             for url, token_base64, country_code, party_id, credentials in endpoints:
-                logger.info(f"Credentials from find by roles {credentials.id}")
                 try:
                     if path_components:
                         url = urljoin(
@@ -169,6 +168,9 @@ class OcpiModule:
                         )
 
                     data = data or self.serialize(credentials.version)
+                    logger.info(
+                        f"Sending updates for {self} from {our_country_code}*{our_party_id} to {self.send_updates_to}, with credentials {credentials.id}"
+                    )
                     logger.info(f"Sending update to URL {url}")
                     self.send_background_update(
                         data,
