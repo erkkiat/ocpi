@@ -23,7 +23,7 @@ jobs:
           python-version: 3.11
 
       - name: Install uv
-        uses: astral-sh/setup-uv-action@main
+        uses: astral-sh/setup-uv@v6
 
       - name: Set up virtual environment
         run: uv venv .venv
@@ -71,7 +71,7 @@ jobs:
           python-version: 3.11
 
       - name: Install uv
-        uses: astral-sh/setup-uv-action@main
+        uses: astral-sh/setup-uv@v6
 
       - name: Set up virtual environment
         run: uv venv .venv
