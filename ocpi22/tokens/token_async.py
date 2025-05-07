@@ -85,20 +85,20 @@ def _get_credentials_by_id(credential_id):
 
 
 async def create_ssl_context(credential_id):
+    logger.info(f"Creating SSL context for credentials {credential_id}")
     credentials = await sync_to_async(_get_credentials_by_id, thread_sensitive=True)(
         credential_id
     )
 
     if not credentials:
+        logger.warning(
+            f"No credentials found for {credential_id}, skipping ssl context creation"
+        )
         return None
 
     ca_cert = get_cert_from_env(credentials.ca_certificate_name)
     private_key = get_cert_from_env(credentials.private_key_name)
     client_cert = get_cert_from_env(credentials.client_certificate_name)
-
-    logger.info(
-        f"Received credentials id in create ssl context for token async {credential_id}"
-    )
 
     return load_ssl_context(
         client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
@@ -123,7 +123,6 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
     # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
-    logger.info(f"Creating ssl context for parties {parties}")
     ssl_contexts = await asyncio.gather(
         *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
     )
