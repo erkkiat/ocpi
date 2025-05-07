@@ -168,6 +168,9 @@ class OcpiModule:
                         )
 
                     data = data or self.serialize(credentials.version)
+                    logger.info(
+                        f"Sending updates for {self} from {our_country_code}*{our_party_id} to {self.send_updates_to}, with credentials {credentials.id}"
+                    )
                     logger.info(f"Sending update to URL {url}")
                     self.send_background_update(
                         data,
@@ -199,7 +202,9 @@ class OcpiModule:
     ):
         if not settings.SEND_UPDATES:
             return
-
+        logger.info(
+            f"Received credentials id in send_background_update, {credentials.id}"
+        )
         if url and token_base64 and to and sender:
             from ocpi22.tasks import send_ocpi_request
 
