@@ -125,10 +125,9 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
             # Prefetch the role in a synchronous context
             role = await sync_to_async(
                 lambda creds, cc, pid: creds.roles.filter(
-                    country_code__iexact=cc, 
-                    party_id__iexact=pid
+                    country_code__iexact=cc, party_id__iexact=pid
                 ).first(),
-                thread_sensitive=True
+                thread_sensitive=True,
             )(credentials, country_code, party_id)
             roles.append(role)
         return roles
@@ -151,6 +150,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
             asyncio.create_task(
                 post_request(
                     session=session,
+                    ssl_context=ssl_context,
                     url=make_url(url, token_id),
                     data=data,
                     ocpi_master=role,  # Use prefetched role instead of async lookup
