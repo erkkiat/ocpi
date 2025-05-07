@@ -19,7 +19,7 @@ jobs:
           python-version: 3.11
 
       - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        uses: astral-sh/setup-uv-action@main
 
       - name: Set up virtual environment
         run: uv venv .venv
@@ -66,7 +66,7 @@ jobs:
           python-version: 3.11
 
       - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        uses: astral-sh/setup-uv-action@main
 
       - name: Set up virtual environment
         run: uv venv .venv
