@@ -14,3 +14,4 @@ env.sh
 /htmlcov
 .coverage
 **/.coverage
+.python-version
