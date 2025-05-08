@@ -69,7 +69,7 @@ jobs:
         run: uv sync --group test
 
       - name: Run Pytest
-        run: uv run pytest
+        run: uv run pytest -n auto
 
   tag-and-release-draft:
     name: Create Draft Release
