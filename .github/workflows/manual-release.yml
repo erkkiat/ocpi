@@ -18,14 +18,8 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Set up virtual environment
-        run: uv venv .venv
-
-      - name: Install test dependencies
-        run: uv sync --group test
+      - name: Install Ruff
+        run: pip install ruff
 
       - name: Run Ruff Linting
         run: ruff check .
@@ -65,17 +59,21 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      - name: Set up virtual environment
-        run: uv venv .venv
-
-      - name: Install test dependencies
-        run: uv sync --group test
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pytest-cov
 
       - name: Run Pytest
-        run: uv run pytest -n auto
+        run: pytest
 
   build-and-deploy:
     name: Build and Deploy to Production
