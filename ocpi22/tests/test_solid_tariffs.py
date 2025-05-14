@@ -494,7 +494,8 @@ class TestSolidTariffs:
     def test_retrieve_solid_tariff_by_external_id_returns_expected_data(
         self, authenticated_user_client, solid_tariff_smp1_msp1
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        from urllib.parse import urljoin
+        url = urljoin(reverse("solid-tariff-list"), "SMP1/")
         response = authenticated_user_client.get(url)
         response_json = response.json()
 
