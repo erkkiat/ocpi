@@ -166,17 +166,14 @@ class SolidTariffViewSet(
         """
         external_id = kwargs.get(self.lookup_field)
 
-        try:
-            solid_tariff = SolidTariffRepository().get_latest_with_external_id(
-                external_id
-            )
+        solid_tariff = SolidTariffRepository().get_latest_with_external_id(external_id)
+        if solid_tariff:
             serializer = self.get_serializer(solid_tariff)
             return Response(serializer.data)
-        except SolidTariff.DoesNotExist:
-            return Response(
-                {"status_message": f"No tariff found with external_id: {external_id}"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        return Response(
+            {"status_message": f"No tariff found with external_id: {external_id}"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
     def get_response_data(self, data: dict, tariff: Tariff) -> dict:
         data["ocpi_tariff"] = tariff.uid
