@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
@@ -60,9 +61,7 @@ class SolidTariffViewSet(
     ) -> Response:
         try:
             data = request.data
-            data = data.get(
-                "data", data
-            )  # Is the actual data on the top level or one level lower?
+            data = data.get("data", data)
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
 
             serializer = SolidTariffSerializer(
@@ -106,7 +105,7 @@ class SolidTariffViewSet(
     ) -> Response:
         try:
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
+            msp = Party(country_code, party_id).get_role_if_exists()
             if msp is None:
                 raise MspNotFoundError(f"No MSP found for {country_code}*{party_id}")
             if external_id is None:
@@ -159,6 +158,25 @@ class SolidTariffViewSet(
         # Needed for OPTIONS to work in list view, could just return None
         if uid:
             return get_object_or_404(Tariff, uid=uid)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a SolidTariff by external_id.
+        This overrides the default retrieve behavior to properly handle SolidTariff lookups.
+        """
+        external_id = kwargs.get(self.lookup_field)
+
+        try:
+            solid_tariff = SolidTariffRepository().get_latest_with_external_id(
+                external_id
+            )
+            serializer = self.get_serializer(solid_tariff)
+            return Response(serializer.data)
+        except SolidTariff.DoesNotExist:
+            return Response(
+                {"status_message": f"No tariff found with external_id: {external_id}"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
     def get_response_data(self, data: dict, tariff: Tariff) -> dict:
         data["ocpi_tariff"] = tariff.uid
