@@ -204,6 +204,10 @@ def send_ocpi_request(
     except ssl.SSLError as e:
         logger.warning(f"SSL error while connecting to {url}: {str(e)}")
         # Don't retry on SSL errors as they're likely configuration issues
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Request error while connecting to {url}: {str(e)}")
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e)
 
 
 @shared_task(max_retries=2, retry_backoff=2)
