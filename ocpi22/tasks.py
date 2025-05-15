@@ -1,5 +1,6 @@
 import os
 import random
+import ssl
 from datetime import timedelta, datetime
 from logging import getLogger
 from urllib.parse import urlparse
@@ -162,7 +163,7 @@ def send_ocpi_request(
     credentials_id=None,
     title=None,
     **kwargs,
-) -> Response:
+) -> Response | None:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
@@ -173,28 +174,36 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    request_session = get_request_session(credentials_id)
-    function = getattr(request_session, method.lower())
-    if not function:
-        raise NotImplementedError(
-            f"Method {method} is not supported for send_ocpi_request"
-        )
+    try:
+        request_session = get_request_session(credentials_id)
+        function = getattr(request_session, method.lower())
+        if not function:
+            raise NotImplementedError(
+                f"Method {method} is not supported for send_ocpi_request"
+            )
 
-    logger.info(f"Sending ocpi {method} request to {url} for {credentials_id}")
-    response: requests.Response = function(**kwargs)
-    if self.request.is_eager:
-        return response
-    env = os.environ["ENV"]
-    if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
-        )
-    if response.status_code >= 500 and env == "production":
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
-        )
+        logger.info(f"Sending ocpi {method} request to {url} for {credentials_id}")
+        response: requests.Response = function(**kwargs)
+        if self.request.is_eager:
+            return response
+        env = os.environ.get("ENV", "development")
+        if response.status_code >= 300 and env in ["staging", "development"]:
+            logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+            raise self.retry(
+                exc=Exception(
+                    f"Server Error for {response.url}: {response.status_code}"
+                )
+            )
+        if response.status_code >= 500 and env == "production":
+            logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+            raise self.retry(
+                exc=Exception(
+                    f"Server Error for {response.url}: {response.status_code}"
+                )
+            )
+    except ssl.SSLError as e:
+        logger.warning(f"SSL error while connecting to {url}: {str(e)}")
+        # Don't retry on SSL errors as they're likely configuration issues
 
 
 @shared_task(max_retries=2, retry_backoff=2)
