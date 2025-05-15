@@ -9,6 +9,8 @@ import asyncio
 from aiohttp import ClientError
 from asgiref.sync import sync_to_async
 from django.db import close_old_connections
+from rest_framework import status
+
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import (
     OcpiRolesEnum,
@@ -41,26 +43,22 @@ if TYPE_CHECKING:
 async def post_request(
     session, url, data, ocpi_master, headers=None, ssl_context=None
 ) -> (int, dict):
+    headers = headers or {}
+    response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+    headers.update({"Content-Type": "application/json", "Accept": "application/json"})
     try:
-        headers = headers or {}
-        headers.update(
-            {"Content-Type": "application/json", "Accept": "application/json"}
-        )
-        async with session.post(
-            url, json=data, headers=headers, ssl=ssl_context
-        ) as response:
-            status = response.status
-            try:
-                json_data = await response.json()
-            except (aiohttp.ContentTypeError, json.JSONDecodeError):
-                logger.error(f"Cannot decode JSON response from url {url}")
-                json_data = None
-
-            logger.info("Response from %s status: %s", url, status, extra=json_data)
-            return status, json_data, ocpi_master
+        response = await session.post(url, json=data, headers=headers, ssl=ssl_context)
+        response_status = response.status
+        json_data = await response.json()
+    except (aiohttp.ContentTypeError, json.JSONDecodeError):
+        logger.error(f"Cannot decode JSON response from url {url}")
+        json_data = None
     except ClientError:
         logger.error(f"Cannot connect to {url} for token authorization")
         return 0, None, None
+
+    logger.info("Response from %s status: %s", url, response_status, extra=json_data)
+    return response_status, json_data, ocpi_master
 
 
 def process_task_result(successful_task):
@@ -174,7 +172,6 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
             ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
         ]
 
-        # Todo: Hubject authorize
         tasks.append(
             # Do SSL context per request, Hubject/Gireve separately
             asyncio.create_task(
