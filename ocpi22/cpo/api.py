@@ -597,10 +597,11 @@ class ChargePointViewSet(FlowchartViewSet):
                         )
                         assert (
                             authorization.ocpi_master
-                            and authorization.ocpi_master.credentials
-                        ), f"No OCPI Master or Credentials found: {authorization.ocpi_master}"
+                        ), f"No OCPI Master found: {authorization.ocpi_master}"
                         session = create_session(
-                            credentials=authorization.ocpi_master.credentials,
+                            credentials=getattr(
+                                authorization.ocpi_master, "credentials", None
+                            ),
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
                             billed_to=authorization.ocpi_master,
