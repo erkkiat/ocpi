@@ -9,6 +9,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
+from rest_framework import status
 
 from integrations.hubject.client import HubjectClient
 from integrations.hubject.schemas import (
@@ -205,12 +206,14 @@ class HubjectService:
 
             response = HubjectService.client.post(url, json=payload_json)
 
-            ocpi_master = await sync_to_async(get_credentialsrole)(
-                credentials=None,
-                party=Party.from_str(response.json().get("ProviderID")),
-                create=True,
-                role=OcpiRolesEnum.EMSP,
-            )
+            ocpi_master = None
+            if response.status_code == status.HTTP_200_OK:
+                ocpi_master = await sync_to_async(get_credentialsrole)(
+                    credentials=None,
+                    party=Party.from_str(response.json().get("ProviderID")),
+                    create=True,
+                    role=OcpiRolesEnum.EMSP,
+                )
 
             return (
                 response.status_code,
