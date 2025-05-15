@@ -202,15 +202,15 @@ class HubjectService:
                     )
                 ),
             )
-            payload_json = payload.model_dump_json()
+            payload_dict = payload.model_dump(exclude_none=True)
 
-            response = HubjectService.client.post(url, json=payload_json)
+            response = HubjectService.client.post(url, json=payload_dict)
 
             ocpi_master = None
             if response.status_code == status.HTTP_200_OK:
                 ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
-                    party=Party.from_str(response.json().get("ProviderID")),
+                    party=Party.from_str(response.json().get("ProviderID", "*")),
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
