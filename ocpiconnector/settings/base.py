@@ -507,7 +507,9 @@ DEFAULT_OICP_PRICE_REFERENCE = os.environ.get("DEFAULT_OICP_PRICE_REFERENCE")
 
 AXES_FAILURE_LIMIT = 3
 AXES_COOLOFF_TIME = lambda request: timedelta(minutes=5)  # noqa
-AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
+AXES_LOCKOUT_PARAMETERS = [
+    "username",
+]
 AXES_ENABLE_ADMIN = True
 
 NINJA_DOCS_UI = os.environ.get("NINJA_DOCS_UI", "swagger")
