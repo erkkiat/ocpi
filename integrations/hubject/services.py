@@ -8,7 +8,6 @@ import pytz
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
-from icecream import ic
 from pydantic_core import PydanticSerializationError
 
 from integrations.hubject.client import HubjectClient
@@ -215,7 +214,6 @@ class HubjectService:
             response = HubjectService.client.post(
                 url, json=payload_dict, headers={"accept": "application/json"}
             )
-            ic(response, response.json())
 
             ocpi_master = None
             if response.status_code == 200:
