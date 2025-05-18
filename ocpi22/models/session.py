@@ -79,19 +79,19 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     # Hubject OICP fields
     hubject_session_id = models.CharField(
-        max_length=36,
+        max_length=settings.HUBJECT_MAX_ID_LENGTH,
         blank=True,
         null=True,
         verbose_name=_("Hubject session ID"),
     )
     emp_partner_session_id = models.CharField(
-        max_length=36,
+        max_length=settings.HUBJECT_MAX_ID_LENGTH,
         blank=True,
         null=True,
         verbose_name=_("EMP partner session ID"),
     )
     cpo_partner_session_id = models.CharField(
-        max_length=36,
+        max_length=settings.HUBJECT_MAX_ID_LENGTH,
         blank=True,
         null=True,
         verbose_name=_("CPO partner session ID"),
