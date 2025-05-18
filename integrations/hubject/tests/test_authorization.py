@@ -5,25 +5,41 @@ from django.conf import settings
 from integrations.hubject.services import map_oicp_authorization_response_to_ocpi_221
 
 
+def oicp_authorization_response(**kwargs):
+    # Below is an actual response from the Hubject QA server
+    response = {
+        "AuthorizationStatus": "Authorized",
+        "AuthorizationStopIdentifications": None,
+        "CPOPartnerSessionID": None,
+        "EMPPartnerSessionID": None,
+        "ProviderID": "DE*ICE",
+        "SessionID": "4a0fe067-de32-4ab7-9a27-0c107438a57b",
+        "StatusCode": {"AdditionalInfo": None, "Code": "000", "Description": None},
+    }
+    response.update(kwargs)
+    return response
+
+
 class TestMapOICPAuthorizationResponseToOCPI221:
-    def test_successful_mapping_with_valid_response(self):
+    @pytest.mark.asyncio
+    @pytest.mark.django_db
+    async def test_successful_mapping_with_valid_response(self):
         """Test that a valid OICP authorization response is correctly mapped to OCPI format"""
         token_id = "TEST123456"
-        oicp_response = {
-            "AuthorizationStatus": "Authorized",
-            "ProviderID": "FI*MSP",
-            "StatusCode": {"Code": "000"},
-            "SessionID": "HUBJECT-SESSION-1234",
-        }
+        oicp_response = oicp_authorization_response(
+            ProviderID="FI*MSP", SessionID="HUBJECT-SESSION-1234"
+        )
 
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        result = await map_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
 
         assert result is not None
         assert "data" in result
 
         data = result["data"]
         assert data["allowed"] == "ALLOWED"
-        assert data["authorization_reference"] == "HUBJECT"
+        assert data["authorization_reference"] == "HUBJECT-SESSION-1234"
         assert data["hubject_session_id"] == "HUBJECT-SESSION-1234"
 
         token = data["token"]
@@ -44,7 +60,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         except ValueError:
             pytest.fail("last_updated field is not in the correct date format")
 
-    def test_mapping_with_different_authorization_status(self):
+    async def test_mapping_with_different_authorization_status(self):
         """Test mapping with a different authorization status than 'Authorized'"""
         token_id = "TEST123456"
         oicp_response = {
@@ -54,14 +70,16 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             "SessionID": "HUBJECT-SESSION-1234",
         }
 
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        result = await map_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
 
         assert result is not None
         assert result["data"]["allowed"] == "NOT_ALLOWED"
-        assert result["data"]["authorization_reference"] == "HUBJECT"
+        assert result["data"]["authorization_reference"] == "HUBJECT-SESSION-1234"
         assert result["data"]["hubject_session_id"] == "HUBJECT-SESSION-1234"
 
-    def test_mapping_with_complex_provider_id(self):
+    async def test_mapping_with_complex_provider_id(self):
         """Test mapping with a more complex ProviderID format"""
         token_id = "TEST123456"
         oicp_response = {
@@ -71,14 +89,16 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             "SessionID": "HUBJECT-SESSION-1234",
         }
 
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        result = await map_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
 
         assert result is not None
         assert result["data"]["token"]["country_code"] == "DE"
         assert result["data"]["token"]["party_id"] == "COMPLEX123"
         assert result["data"]["token"]["issuer"] == "DE*COMPLEX123"
 
-    def test_mapping_with_failed_status_code(self):
+    async def test_mapping_with_failed_status_code(self):
         """Test mapping with a non-success status code"""
         token_id = "TEST123456"
         oicp_response = {
@@ -88,10 +108,12 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             "SessionID": "HUBJECT-SESSION-1234",
         }
 
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        result = await map_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
         assert result is None
 
-    def test_mapping_with_missing_authorization_status(self):
+    async def test_mapping_with_missing_authorization_status(self):
         """Test mapping when AuthorizationStatus is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -101,10 +123,12 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             "SessionID": "HUBJECT-SESSION-1234",
         }
 
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        result = await map_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
         assert result is None
 
-    def test_mapping_with_missing_status_code(self):
+    async def test_mapping_with_missing_status_code(self):
         """Test mapping when StatusCode is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -114,10 +138,12 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             "SessionID": "HUBJECT-SESSION-1234",
         }
 
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        result = await map_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
         assert result is None
 
-    def test_mapping_with_missing_provider_id(self):
+    async def test_mapping_with_missing_provider_id(self):
         """Test mapping when ProviderID is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -128,22 +154,26 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         }
 
         assert (
-            map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id) is None
+            await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+            is None
         )
 
-    def test_mapping_with_empty_response(self):
+    async def test_mapping_with_empty_response(self):
         """Test mapping with an empty response"""
         token_id = "TEST123456"
         oicp_response = {}
 
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        result = await map_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
         assert result is None
 
-    def test_mapping_with_null_response(self):
+    async def test_mapping_with_null_response(self):
         """Test mapping with a None response"""
         token_id = "TEST123456"
         oicp_response = None
 
         assert (
-            map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id) is None
+            await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+            is None
         )

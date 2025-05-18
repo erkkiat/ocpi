@@ -885,7 +885,7 @@ class TestOICPDynamicPricingService:
         )
 
 
-def test_map_oicp_authorization_response_to_ocpi_221_success():
+async def test_map_oicp_authorization_response_to_ocpi_221_success():
     token_id = "TEST123456"
     oicp_response = {
         "AuthorizationStatus": "Authorized",
@@ -894,13 +894,13 @@ def test_map_oicp_authorization_response_to_ocpi_221_success():
         "SessionID": "HUBJECT-SESSION-1234",
     }
 
-    result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
 
     assert result is not None
     assert "data" in result
     data = result["data"]
     assert data["allowed"] == "ALLOWED"
-    assert data["authorization_reference"] == "HUBJECT"
+    assert data["authorization_reference"] == "HUBJECT-SESSION-1234"
     assert data["hubject_session_id"] == "HUBJECT-SESSION-1234"
     assert data["token"]["uid"] == token_id
     assert data["token"]["country_code"] == "FI"
@@ -908,7 +908,7 @@ def test_map_oicp_authorization_response_to_ocpi_221_success():
     assert data["token"]["issuer"] == "FI*MSP"
 
 
-def test_map_oicp_authorization_response_to_ocpi_221_failure():
+async def test_map_oicp_authorization_response_to_ocpi_221_failure():
     token_id = "TEST123456"
     oicp_response = {
         "AuthorizationStatus": "NotAuthorized",
@@ -917,11 +917,11 @@ def test_map_oicp_authorization_response_to_ocpi_221_failure():
         "SessionID": "HUBJECT-SESSION-1234",
     }
 
-    result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
     assert result is None
 
 
-def test_map_oicp_authorization_response_to_ocpi_221_missing_status():
+async def test_map_oicp_authorization_response_to_ocpi_221_missing_status():
     token_id = "TEST123456"
     oicp_response = {
         "ProviderID": "FI*MSP",
@@ -929,5 +929,5 @@ def test_map_oicp_authorization_response_to_ocpi_221_missing_status():
         "SessionID": "HUBJECT-SESSION-1234",
     }
 
-    result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
     assert result is None

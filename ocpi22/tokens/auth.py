@@ -199,7 +199,7 @@ def authorize_token(
                     token=AdhocToken(
                         session.billed_to,
                         token,
-                        TokenType.AD_HOC_USER,
+                        str(TokenType.AD_HOC_USER),
                         session.billed_to,
                     ),
                     responding_party=session.billed_to.party_str(),

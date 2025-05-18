@@ -8,6 +8,7 @@ import asyncio
 
 from aiohttp import ClientError
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.db import close_old_connections
 from rest_framework import status
 
@@ -179,7 +180,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                     operator_id=str(sender),
                     token_id=token_id,
                 ),
-                name="Hubject",
+                name=settings.HUBJECT_OPERATOR_ID,
             )
         )
 
