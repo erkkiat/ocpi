@@ -23,6 +23,7 @@ def location_data():
         "evses": [],
         "time_zone": "Europe/Brussels",
         "last_updated": "2015-06-29T20:39:09Z",
+        "roaming_enabled": True,
     }
 
 
@@ -69,18 +70,21 @@ def invalid_type(location_data):
 
 def test_location_in_schema_valid_data_does_not_raise_validation_error():
     data = load_example("data/examples/location_example.json")
+    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_evse_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_evse.json")
+    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_connector_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_connector.json")
+    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
@@ -89,6 +93,7 @@ def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validat
     data = load_example(
         "data/examples/location_example_parking_garage_opening_hours.json"
     )
+    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "SWE"
 
