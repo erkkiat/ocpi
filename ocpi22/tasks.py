@@ -176,38 +176,32 @@ def send_ocpi_request(
 
     try:
         request_session = get_request_session(credentials_id)
-        function = getattr(request_session, method.lower())
-        if not function:
-            raise NotImplementedError(
-                f"Method {method} is not supported for send_ocpi_request"
-            )
-
-        logger.info(f"Sending ocpi {method} request to {url} for {credentials_id}")
-        response: requests.Response = function(**kwargs)
-        if self.request.is_eager:
-            return response
-        env = os.environ.get("ENV", "development")
-        if response.status_code >= 300 and env in ["staging", "development"]:
-            logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-            raise self.retry(
-                exc=Exception(
-                    f"Server Error for {response.url}: {response.status_code}"
-                )
-            )
-        if response.status_code >= 500 and env == "production":
-            logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-            raise self.retry(
-                exc=Exception(
-                    f"Server Error for {response.url}: {response.status_code}"
-                )
-            )
     except ssl.SSLError as e:
         logger.warning(f"SSL error while connecting to {url}: {str(e)}")
         # Don't retry on SSL errors as they're likely configuration issues
-    except requests.exceptions.RequestException as e:
-        logger.warning(f"Request error while connecting to {url}: {str(e)}")
-        if self.request.retries < self.max_retries:
-            raise self.retry(exc=e)
+        return None
+
+    function = getattr(request_session, method.lower())
+    if not function:
+        raise NotImplementedError(
+            f"Method {method} is not supported for send_ocpi_request"
+        )
+
+    logger.info(f"Sending ocpi {method} request to {url} for {credentials_id}")
+    response: requests.Response = function(**kwargs)
+    if self.request.is_eager:
+        return response
+    env = os.environ.get("ENV", "development")
+    if response.status_code >= 300 and env in ["staging", "development"]:
+        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        raise self.retry(
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+        )
+    if response.status_code >= 500 and env == "production":
+        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        raise self.retry(
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+        )
 
 
 @shared_task(max_retries=2, retry_backoff=2)
