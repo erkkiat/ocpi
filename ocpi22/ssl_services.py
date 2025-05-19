@@ -19,14 +19,22 @@ class SSLAdapter(HTTPAdapter):
         super().init_poolmanager(*args, **kwargs)
 
 
-def load_ssl_context(client_cert: str, private_key: str, ca_cert: str, verify_ssl=True):
+def load_ssl_context(
+    client_cert: str,
+    private_key: str,
+    ca_cert: str,
+    verify_ssl=True,
+    credential_id=None,
+):
     if not any([ca_cert, private_key, client_cert]):
-        logger.warning("No SSL config provided. Proceeding without SSL context.")
+        logger.warning(
+            f"No SSL config provided for credentials {credential_id}. Proceeding without SSL context."
+        )
         return None
 
     if not all([ca_cert, private_key, client_cert]):
         logger.error(
-            "Incomplete SSL config. All or none of ca_cert, private_key, and client_cert must be provided."
+            f"Incomplete SSL config for credentials {credential_id}. All or none of ca_cert, private_key, and client_cert must be provided."
         )
         return None
 

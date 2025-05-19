@@ -156,26 +156,27 @@ jobs:
       - name: Build Base Image Once
         run: |
           echo "Building base image once with tag: $IMAGE_TAG"
-          docker buildx build --platform linux/arm64 -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" -f ./Dockerfile --load .
+          docker buildx build \
+            --platform linux/arm64 \
+            -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" \
+            -f ./Dockerfile \
+            --cache-from=type=gha,scope=prod-build \
+            --cache-to=type=gha,mode=max,scope=prod-build \
+            --load .
 
-      - name: Tag and Push Multi-Architecture Images for Each Service
+      - name: Tag and Push Base Image to Production Farm
         run: |
-          for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-              echo "Tagging image for $service from the base image"
-              docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG"
+          for farm in $FARMS; do
+              repo_url="$ECR_REPO_URL/solidroam-django-app-$farm"
+              full_image_url_with_tag="$repo_url:$IMAGE_TAG"
 
-              for farm in $FARMS; do
-                  repo_url="$ECR_REPO_URL/solidroam-$service-$farm"
-                  full_image_url_with_tag="$repo_url:$IMAGE_TAG"
+              echo "Tagging base image for farm $farm..."
+              docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$full_image_url_with_tag"
 
-                  echo "Tagging image for farm $farm"
-                  docker tag "$ECR_REPO_URL/solidroam-$service:$IMAGE_TAG" "$full_image_url_with_tag"
+              echo "Pushing image to ECR: $full_image_url_with_tag"
+              docker push "$full_image_url_with_tag"
 
-                  echo "Pushing image for $service to $repo_url"
-                  docker push "$full_image_url_with_tag"
-
-                  echo "Pushed image for $service to ECR: $full_image_url_with_tag"
-              done
+              echo "✅ Pushed image for farm $farm: $full_image_url_with_tag"
           done
 
   publish-release:
