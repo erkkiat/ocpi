@@ -103,7 +103,9 @@ class OcpiModule:
                 # Send update only once
                 setattr(self, "update_sent", True)
 
-    def send_updates(self, data=None, method="put", path_components=[]) -> None:
+    def send_updates(
+        self, data=None, method="put", path_components=[], send_updates_to=None
+    ) -> None:
         """
         Find all endpoints interested in OCPI object updates and send update in a background task.
         To disable updates, set env SEND_UPDATES to false
@@ -127,7 +129,10 @@ class OcpiModule:
                     )
                     return
 
-                if self.send_updates_to == OcpiModule.INTERESTED_PARTIES:
+                if not send_updates_to:
+                    send_updates_to = self.send_updates_to
+
+                if send_updates_to == OcpiModule.INTERESTED_PARTIES:
                     logger.info("Sending updates to INTERESTED PARTIES")
                     self.send_update_to_interested_parties(
                         method=method, path_components=path_components
@@ -135,7 +140,10 @@ class OcpiModule:
                 else:
                     logger.info("Sending updates to ALL connected parties")
                     self.send_all_updates(
-                        data=data, method=method, path_components=path_components
+                        data=data,
+                        method=method,
+                        path_components=path_components,
+                        send_updates_to=send_updates_to,
                     )
 
                 setattr(self, "updates_sent", True)
@@ -146,20 +154,24 @@ class OcpiModule:
         method="put",
         path_components=[],
         ocpi_module_name=None,
+        send_updates_to=None,
     ) -> bool:
         if not settings.SEND_UPDATES:
             return True
         # Todo: Use sender identity, not our HUB identity
         from ocpi22.credentials.util import find_endpoints_by_roles
 
+        if not send_updates_to:
+            send_updates_to = self.send_updates_to
+
         our_country_code, our_party_id = self.get_owner_identity().split("*")
         logger.info(
-            f"Sending updates for {self} from {our_country_code}*{our_party_id} to {self.send_updates_to}"
+            f"Sending updates for {self} from {our_country_code}*{our_party_id} to {send_updates_to}"
         )
 
         ocpi_module_name = ocpi_module_name or self.ocpi_module_name
-        if isinstance(self.send_updates_to, (list, tuple)):
-            endpoints = find_endpoints_by_roles(self.send_updates_to, ocpi_module_name)
+        if isinstance(send_updates_to, (list, tuple)):
+            endpoints = find_endpoints_by_roles(send_updates_to, ocpi_module_name)
             for url, token_base64, country_code, party_id, credentials in endpoints:
                 try:
                     if path_components:

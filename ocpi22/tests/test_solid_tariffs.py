@@ -491,6 +491,38 @@ class TestSolidTariffs:
         assert response.json() == smp1_get_response
 
     @pytest.mark.django_db
+    def test_retrieve_solid_tariff_by_external_id_returns_expected_data(
+        self, authenticated_user_client, solid_tariff_smp1_msp1
+    ):
+        from urllib.parse import urljoin
+        url = urljoin(reverse("solid-tariff-list"), "SMP1/")
+        response = authenticated_user_client.get(url)
+        response_json = response.json()
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response_json["external_id"] == "SMP1"
+        assert response_json["currency"] == "EUR"
+        assert response_json["price_per_kwh"] == 0.69
+        assert response_json["price_per_min"] == 0.42
+        assert response_json["price_flat"] == 0.56
+        assert response_json["parking_price_per_min"] == 0.54
+        assert response_json["parking_grace_period"] == 100
+        assert response_json["vat_percentage"] == 20.0
+        assert response_json["msp"] == "DE*ICE"
+
+    @pytest.mark.django_db
+    def test_retrieve_nonexistent_solid_tariff_returns_404(
+        self, authenticated_user_client
+    ):
+        url = f'{reverse("solid-tariff-list")}NONEXISTENT/'
+        response = authenticated_user_client.get(url)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json() == {
+            "status_message": "No tariff found with external_id: NONEXISTENT"
+        }
+
+    @pytest.mark.django_db
     def test_get_solid_tariff_with_invalid_msp_returns_status_code_400(
         self,
         authenticated_user_client,

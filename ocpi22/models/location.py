@@ -182,6 +182,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
         default=True, verbose_name=_("Charging when closed")
     )
 
+    roaming_enabled = models.BooleanField(
+        default=True, verbose_name=_("Roaming enabled")
+    )
+
     def get_timezone(self):
         return tz.gettz(str(self.time_zone))
 
@@ -256,7 +260,10 @@ class Location(OcpiModule, models.Model, ModelUtilMixin):
 
     def send_updates(self, *args, **kwargs) -> None:
         if self.publish:
-            super().send_updates(*args, **kwargs)
+            if not self.roaming_enabled:
+                super().send_updates(*args, send_updates_to=("NAP", "NSP"), **kwargs)
+            else:
+                super().send_updates(*args, **kwargs)
 
 
 class Evse(models.Model, ModelUtilMixin):
