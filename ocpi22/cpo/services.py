@@ -192,8 +192,7 @@ class SolidTariffService:
 
     def get_solid_tariff_external_id_by_ocpi_tariff_uid(self, ocpi_tariff_uid):
         try:
-            ocpi_tariff = Tariff.objects.get(uid=ocpi_tariff_uid)
-            solid_tariff = SolidTariff.objects.get(ocpi_tariff=ocpi_tariff)
+            solid_tariff = SolidTariff.objects.get(ocpi_tariff__uid=ocpi_tariff_uid)
             return solid_tariff.external_id
         except (Tariff.DoesNotExist, SolidTariff.DoesNotExist):
             return None

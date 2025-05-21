@@ -137,7 +137,7 @@ class LocationService:
                     solid_tariff_ids = []
                     for tariff_id in connector["tariff_ids"]:
                         solid_tariff_external_id = self.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid(
-                            tariff_id
+                            tariff_id.upper()
                         )
                         if solid_tariff_external_id:
                             solid_tariff_ids.append(solid_tariff_external_id)
